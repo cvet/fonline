@@ -41,8 +41,6 @@ ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const Prope
     _engine {engine},
     _id {id}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     // The engine is borrowed, not owned: it owns the property registrars, protos, hashes and managers this
@@ -52,8 +50,6 @@ ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const Prope
 
 ServerEntity::~ServerEntity()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
@@ -76,104 +72,78 @@ ServerEntity::~ServerEntity()
 
 void ServerEntity::SetInitCalled() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     _initCalled = true;
 }
 
 void ServerEntity::SetEntityLock(nptr<EntityLock> lock) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     _entityLock = lock;
 }
 
 auto ServerEntity::GetId() const noexcept -> ident_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _id;
 }
 
 auto ServerEntity::GetEngine() const noexcept -> ptr<const ServerEngine>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _engine;
 }
 
 auto ServerEntity::GetEngine() noexcept -> ptr<ServerEngine>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _engine;
 }
 
 auto ServerEntity::IsInitCalled() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _initCalled;
 }
 
 auto ServerEntity::IsPersistent() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _isPersistent;
 }
 
 auto ServerEntity::GetEntityLock() const noexcept -> nptr<EntityLock>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _entityLock;
 }
 
 auto ServerEntity::GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return nullptr;
 }
 
 auto ServerEntity::GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return nullptr;
 }
 
 void ServerEntity::SetId(ident_t id) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     _id = id;
 }
 
 void ServerEntity::SetPersistent(bool persistent) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     _isPersistent = persistent;
 }
 
 auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     auto& props = const_cast<Properties&>(*GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
@@ -181,16 +151,12 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 
 void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EntityProperties(*GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
 }
 
 void ServerEntity::ValidateAccess() const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     if (!IsEntityAccessValid(this)) {
@@ -200,24 +166,18 @@ void ServerEntity::ValidateAccess() const
 
 auto ServerEntity::GetParent() -> refcount_nptr<ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return GetParentRaw();
 }
 
 auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return GetParentRaw();
 }
 
 auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     // Load and pin under one hold: SetParent replaces the pointer under the same lock and only then drops the
@@ -229,8 +189,6 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
 
 void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
@@ -262,8 +220,6 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 
 auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (callbacks.empty()) {
@@ -303,16 +259,12 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 
 auto CustomEntity::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _propsRef->GetRegistrar()->GetTypeName();
 }
 
 auto CustomEntityWithProto::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _proto->GetName();
 }

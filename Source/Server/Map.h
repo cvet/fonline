@@ -57,7 +57,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 {
 public:
     Map() = delete;
-    Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props = nullptr) noexcept;
+    Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props = nullptr);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -139,10 +139,13 @@ public:
     auto CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;
     void ClearAllAssociations() noexcept;
 
+    // Runs while this map is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Exposes a project-defined critter visibility check; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCheckLook, ptr<Critter> /*cr*/, ptr<Critter> /*target*/);
+    // Exposes a project-defined trap visibility check; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
@@ -162,7 +165,7 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
+    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();

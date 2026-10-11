@@ -109,8 +109,6 @@ namespace
     // budget and not the watchdog, by requiring the contention to still be held when the throw lands
     static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::atomic<bool> state_locked {};
         std::atomic<bool> release_state {};
         std::atomic<bool> ensure_finished {};
@@ -156,8 +154,6 @@ namespace
     // retention must retry through that window and land
     static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::atomic<bool> state_locked {};
         std::jthread state_owner {[&](std::stop_token) {
             state_lock->LockStateMutex();
@@ -527,7 +523,7 @@ namespace ServerEngineInitGateTest
     static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
         auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
 
         SyncContext ctx;
@@ -891,6 +887,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
     }
 }
 
+#if FO_DATABASE_SQLITE
 TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 {
     auto storage_root = std::filesystem::temp_directory_path() / std::format("fo_engine_server_snapshot_{}", std::chrono::steady_clock::now().time_since_epoch().count());
@@ -1012,6 +1009,8 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         CHECK(next_location->GetId() == expected_next_location_id);
     }
 }
+
+#endif
 
 TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
 {
@@ -1240,6 +1239,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     CheckServerStartupFailsSafely(settings);
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 {
     // File-backed storage is what makes the restart world-load path reachable at all: the rest of the suite is
@@ -1321,6 +1321,8 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         ignore_unused(critter_id);
     }
 }
+
+#endif
 
 TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
 {

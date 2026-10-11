@@ -43,17 +43,15 @@ FO_BEGIN_NAMESPACE
 AngelScriptBaker::AngelScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 AngelScriptBaker::~AngelScriptBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fos-")) {
         return;
@@ -86,7 +84,11 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         return;
     }
 
-    // Process files
+#if defined(AS_DEBUG)
+    async_launch_mode script_compile_mode = launch_deferred_only;
+#else
+    async_launch_mode script_compile_mode = GetAsyncMode();
+#endif
     vector<std::future<void>> file_bakings;
     mutex messages_locker;
     unordered_set<string> messages;
@@ -103,21 +105,21 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
     };
 
     if (bake_server) {
-        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Server", [&] {
+        file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Server", [&] {
             auto engine = BakerServerEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-server", data);
         }));
     }
     if (bake_client) {
-        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Client", [&] {
+        file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Client", [&] {
             auto engine = BakerClientEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-client", data);
         }));
     }
     if (bake_mapper) {
-        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeAngelScript-Mapper", [&] {
+        file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Mapper", [&] {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
             auto data = CompileAngelScript(&engine, *_context->Settings, filtered_files, message_callback);
             _context->WriteData(_context->PackName + ".fos-bin-mapper", data);

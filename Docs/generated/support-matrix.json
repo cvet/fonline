@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_support_matrix.py",
+  "title": "FOnline current support matrix",
+  "channel": "current",
+  "policy": {
+    "build_gated": "Configured and compiled by the required validation workflow on every change.",
+    "smoke_gated": "Build-gated and exercised by an automated process-level starter, native-extension, multiplayer, or content-showcase smoke test.",
+    "source_capable": "The checked BuildTools registry exposes a target, but the required workflow does not exercise it.",
+    "not_in_public_matrix": "No supported validation target is published for this application/platform combination."
+  },
+  "sources": {
+    "workflow": ".github/workflows/validate.yml",
+    "validation_registry": "BuildTools/buildtools.py",
+    "platform_configuration": "BuildTools/cmake/stages/Init.cmake",
+    "application_targets": "BuildTools/cmake/stages/Applications.cmake"
+  },
+  "platforms": [
+    {
+      "id": "windows-x64-msvc",
+      "host": "Windows",
+      "target": "Windows x64",
+      "compiler": "MSVC 19.44 or newer",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "win64-client",
+        "win64-server",
+        "win64-mapper",
+        "win64-ascompiler",
+        "win64-baker"
+      ],
+      "applications": [
+        "desktop client and headless client",
+        "server, headless server, and Windows service",
+        "mapper, animation viewer, and particle viewer",
+        "AngelScript compiler",
+        "resource baker"
+      ],
+      "runtime_evidence": "No process-level smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The required lane proves configure and compilation, not renderer, driver, database, installer, signing, store, deployment, rollback, or runtime lifecycle behavior.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "windows-x86-msvc",
+      "host": "Windows",
+      "target": "Windows x86",
+      "compiler": "MSVC 19.44 or newer",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "win32-client"
+      ],
+      "applications": [
+        "desktop client"
+      ],
+      "runtime_evidence": "No process-level smoke route is required.",
+      "limitations": "Server and tool applications are outside the published x86 validation surface.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "linux-x64-clang",
+      "host": "Ubuntu 24.04",
+      "target": "Linux x64",
+      "compiler": "Clang 20 or newer",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "linux-client",
+        "linux-server",
+        "linux-mapper",
+        "linux-ascompiler",
+        "linux-baker"
+      ],
+      "applications": [
+        "desktop client and headless client",
+        "server, headless server, and daemon",
+        "mapper, animation viewer, and particle viewer",
+        "AngelScript compiler",
+        "resource baker"
+      ],
+      "runtime_evidence": "No process-level smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The current matrix qualifies Ubuntu 24.04 configure and compilation only; runtime, other distributions, installers, signing, stores, deployment, and rollback require project acceptance.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "linux-x64-gcc",
+      "host": "Ubuntu 24.04",
+      "target": "Linux x64",
+      "compiler": "GCC 13 or newer",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "linux-gcc-client",
+        "linux-gcc-server",
+        "linux-gcc-mapper",
+        "linux-gcc-ascompiler",
+        "linux-gcc-baker"
+      ],
+      "applications": [
+        "desktop client and headless client",
+        "server, headless server, and daemon",
+        "mapper, animation viewer, and particle viewer",
+        "AngelScript compiler",
+        "resource baker"
+      ],
+      "runtime_evidence": "No GCC-specific process smoke route is required.",
+      "limitations": "Runtime qualification comes from the Clang lane; a project relying on GCC-specific behavior needs its own smoke lane.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "macos-client",
+      "host": "macOS 26 Intel and Apple Silicon runners",
+      "target": "macOS x64 and arm64",
+      "compiler": "AppleClang",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "mac-client"
+      ],
+      "applications": [
+        "desktop client"
+      ],
+      "runtime_evidence": "No process-level client smoke route is required.",
+      "limitations": "The public matrix does not qualify macOS server, mapper, tools, packaging, signing, or notarization.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "ios-client",
+      "host": "macOS 26 Intel and Apple Silicon runners",
+      "target": "iOS client",
+      "compiler": "AppleClang",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "ios-client"
+      ],
+      "applications": [
+        "client library/application bundle inputs"
+      ],
+      "runtime_evidence": "No simulator or device smoke route is required.",
+      "limitations": "Provisioning, signing, App Store delivery, device input, audio, networking, and lifecycle acceptance are project-owned.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "android-arm-clients",
+      "host": "Ubuntu 24.04 cross-build host",
+      "target": "Android armeabi-v7a and arm64-v8a",
+      "compiler": "Android NDK Clang",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "android-arm32-client",
+        "android-arm64-client"
+      ],
+      "applications": [
+        "client shared library/package inputs"
+      ],
+      "runtime_evidence": "No emulator or physical-device smoke route is required.",
+      "limitations": "APK assembly, signing, store delivery, device GPU/input/audio, pause/resume, and network acceptance are project-owned.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "android-x86-client",
+      "host": "cross-build host",
+      "target": "Android x86",
+      "compiler": "Android NDK Clang",
+      "level": "source_capable",
+      "available_validation_targets": [
+        "android-x86-client"
+      ],
+      "ci_validation_targets": [],
+      "applications": [
+        "client shared library/package inputs"
+      ],
+      "runtime_evidence": "No required CI or runtime lane exists.",
+      "limitations": "Do not advertise Android x86 as a supported release target without a project-owned build and device/emulator gate."
+    },
+    {
+      "id": "web-client",
+      "host": "Ubuntu 24.04 cross-build host",
+      "target": "WebAssembly",
+      "compiler": "Emscripten Clang",
+      "level": "build_gated",
+      "ci_validation_targets": [
+        "web-client"
+      ],
+      "applications": [
+        "browser client"
+      ],
+      "runtime_evidence": "No browser process smoke route is required by the checked BuildTools validation registry.",
+      "limitations": "The stock web target is WebGL 2 client-only. The build lane does not qualify browser/GPU pairs or production hosting, headers, persistence, audio activation, deployment, CDN, signing, or rollback behavior; those remain project-owned acceptance gates.",
+      "available_validation_targets": []
+    },
+    {
+      "id": "windows-x64-clangcl",
+      "host": "Windows",
+      "target": "Windows x64",
+      "compiler": "ClangCL 20 or newer",
+      "level": "source_capable",
+      "available_validation_targets": [
+        "win64-clang-client",
+        "win64-clang-server",
+        "win64-clang-ascompiler",
+        "win64-clang-baker"
+      ],
+      "ci_validation_targets": [],
+      "applications": [
+        "desktop client",
+        "server",
+        "AngelScript compiler",
+        "resource baker"
+      ],
+      "runtime_evidence": "No required CI or runtime lane exists.",
+      "limitations": "Use MSVC for the qualified Windows route unless the embedding project adds and owns ClangCL validation."
+    }
+  ],
+  "renderer_policy": [
+    {
+      "platforms": "Windows, Linux, macOS",
+      "compiled_backends": "platform OpenGL plus opt-out Vulkan and SDL_GPU where the source backend can initialize",
+      "qualification": "Build coverage is not renderer/runtime-driver coverage; every shipped backend needs a visible project scene."
+    },
+    {
+      "platforms": "Android and iOS",
+      "compiled_backends": "OpenGL ES plus platform capabilities; Vulkan and SDL_GPU remain compile-time optional outside Web",
+      "qualification": "Device acceptance is required."
+    },
+    {
+      "platforms": "Web",
+      "compiled_backends": "WebGL 2",
+      "qualification": "Vulkan and SDL_GPU are excluded by the platform stage; browser acceptance is required."
+    },
+    {
+      "platforms": "headless applications",
+      "compiled_backends": "null/headless frontend",
+      "qualification": "Do not infer visible rendering or audio support from a headless smoke."
+    }
+  ],
+  "summary": {
+    "platform_profile_count": 10,
+    "build_gated_profile_count": 8,
+    "smoke_gated_profile_count": 0,
+    "ci_validation_target_count": 21
+  }
+}

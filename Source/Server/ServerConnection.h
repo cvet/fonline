@@ -35,8 +35,10 @@
 
 #include "Common.h"
 
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
+#include "SecureChannel.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -45,17 +47,17 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEnum
 enum class DisconnectReason : uint8_t
 {
-    None = 0,
-    ClientClosed = 1,
-    InactivityTimeout = 2,
-    PingTimeout = 3,
-    LoginTimeout = 4,
-    ProtocolError = 5,
-    UpdaterError = 6,
-    ServerShutdown = 7,
-    ScriptRequest = 8,
-    LoginFailed = 9,
-    ReplacedByReconnect = 10,
+    None = 0, // Indicates that the connection has not recorded a close cause
+    ClientClosed = 1, // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable
+    InactivityTimeout = 2, // Indicates that no inbound message arrived before the configured inactivity deadline
+    PingTimeout = 3, // Indicates that the peer did not answer the previous server ping
+    LoginTimeout = 4, // Indicates that a pre-login connection made no progress before the configured login deadline
+    ProtocolError = 5, // Indicates malformed or unexpected protocol data or failed connection publication
+    UpdaterError = 6, // Indicates that the client requested an invalid updater file or range
+    ServerShutdown = 7, // Indicates an orderly server shutdown
+    ScriptRequest = 8, // Indicates that server script called Player.HardDisconnect()
+    LoginFailed = 9, // Indicates that login was rolled back after a server-side failure
+    ReplacedByReconnect = 10, // Indicates that a new login for the same account replaced this session
 };
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
@@ -111,6 +113,7 @@ public:
         nanotime LastActivityTime {};
         nanotime LastLoginProgressTime {};
         bool PingAnswerReceived {true};
+        timespan RoundTrip {};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
     };
@@ -122,7 +125,7 @@ public:
     };
 
     ServerConnection() = delete;
-    explicit ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection);
+    explicit ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection, const SecureChannelIdentity& channel_identity);
     ServerConnection(const ServerConnection&) = delete;
     ServerConnection(ServerConnection&&) noexcept = delete;
     auto operator=(const ServerConnection&) = delete;
@@ -133,14 +136,16 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
-    [[nodiscard]] auto IsInputOverflowed() const noexcept -> bool;
+    [[nodiscard]] auto IsInputRejected() const noexcept -> bool;
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto NeedsPingWatchdog() const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
+    [[nodiscard]] auto GetRoundTrip() const noexcept -> timespan;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
     void SetDataArrivedCallback(DataArrivedCallback callback);
@@ -150,6 +155,8 @@ public:
     void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
+    // A client message stamped with the client's clock: how much later than the link usually takes it arrived
+    auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
@@ -168,6 +175,8 @@ private:
         bool HandshakeComplete {};
         nanotime NextPingTime {};
         bool PingAnswerReceived {true};
+        nanotime PingRequestTime {};
+        timespan RoundTrip {};
         nanotime LastActivityTime {};
         nanotime LastLoginProgressTime {};
     };
@@ -181,6 +190,7 @@ private:
     void StartAsyncSend();
     auto AsyncSendData() -> vector<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
+    void RejectInput(const std::exception& ex, bool report) noexcept;
     void RecordDisconnectReason(DisconnectReason reason) noexcept;
 
     ptr<ServerNetworkSettings> _settings;
@@ -190,11 +200,22 @@ private:
     mutex _outBufLocker {};
     NetOutBuffer _outBuf;
     stream_compressor _compressor {};
+    vector<uint8_t> _compressedBuf {};
+    // Taken inside either buffer lock and never around another, since the receive side decrypts under the input
+    // lock while the send side seals under the output lock
+    mutex _channelLocker {};
+    SecureChannel _channel FO_TSA_GUARDED_BY(_channelLocker);
+    vector<uint8_t> _channelPlaintext {};
+    FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31");
+    bool _inputStarted {};
+    bool _preChannelClient {};
+    std::atomic_bool _preChannelRefusalPending {};
     ActivityState _activity {};
+    LinkDelayEstimator _uplinkDelay;
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
-    std::atomic<bool> _inputOverflowed {};
+    std::atomic<bool> _inputRejected {};
     std::atomic<DisconnectReason> _disconnectReason {};
 };
 

@@ -65,6 +65,9 @@ public:
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
     [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving; }
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving; }
+    // Which server plan this copy follows, and its extra path distance, independent of changes in speed
+    [[nodiscard]] auto GetMovingServerUid() const noexcept -> uint32_t { return _movingServerUid; }
+    [[nodiscard]] auto GetMovingServerDistanceShift() const noexcept -> float32_t { return _movingServerDistanceShift; }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
@@ -89,6 +92,9 @@ public:
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;
     void SetMoving(refcount_ptr<MovingContext> moving);
+    // The current plan runs faster than its speed until it has made up the given time
+    void SetMovingCatchUp(timespan time);
+    void SetMovingServerPlan(uint32_t server_uid, float32_t distance_shift) noexcept;
     void StopMoving();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D
@@ -126,6 +132,12 @@ private:
     [[nodiscard]] auto EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t;
 
     refcount_nptr<MovingContext> _moving {};
+    timespan _movingCatchUpLeft {};
+    nanotime _movingCatchUpTime {};
+    uint32_t _movingServerUid {};
+    float32_t _movingServerDistanceShift {};
+    // A plan waiting at its lease is drawn standing, not walking in place
+    bool _movingHeld {};
 
     bool _needReset {};
     nanotime _resetTime {};

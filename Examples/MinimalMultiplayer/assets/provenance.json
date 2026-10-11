@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "engine-radiation-particle-texture",
+      "path": "Engine/Resources/Radiation.png",
+      "license": "MIT",
+      "source": "https://github.com/cvet/fonline/blob/fac978a67d1e601eb77389e8dc562d7e511705a0/Resources/Radiation.png",
+      "sha256": "c90de607e09ae59fecb0deae638fe8f12b634204025bb550ab41187bf4750e73"
+    }
+  ]
+}

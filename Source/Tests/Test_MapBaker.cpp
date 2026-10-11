@@ -42,8 +42,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> props_data;
     set<hstring> str_hashes;
 
@@ -75,8 +73,6 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
 
 static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view proto_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
@@ -104,8 +100,6 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 
 static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_view map_proto_name, string_view critter_proto_name, string_view visible_item_proto_name, string_view hidden_item_proto_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddMapBakerMetadataAndProto(rig, map_proto_name);
 
     BakerServerEngine server_proto_engine {rig.BakedFiles};
@@ -170,8 +164,6 @@ struct BakedMapClientSummary
 
 static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (uint32_t i = 0; i < count; i++) {
         uint32_t len = reader.read<uint32_t>();
         (void)reader.read_bytes(len);
@@ -180,8 +172,6 @@ static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 
 static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (uint32_t i = 0; i < count; i++) {
         (void)reader.read<ident_t::underlying_type>();
         (void)reader.read<hstring::hash_t>();
@@ -192,8 +182,6 @@ static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 
 static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader {data};
     auto summary = BakedMapServerSummary {};
 
@@ -211,8 +199,6 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader {data};
     auto summary = BakedMapClientSummary {};
 
@@ -226,10 +212,23 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
     return summary;
 }
 
+static auto ReadBakedMapClientStrings(const vector<uint8_t>& data, string_view map_name) -> set<string>
+{
+    auto reader = data_reader {data};
+    set<string> strings;
+
+    MapLoader::ReadBakedFileHeader(reader, map_name);
+    uint32_t count = reader.read<uint32_t>();
+
+    for (uint32_t i = 0; i < count; i++) {
+        strings.emplace(reader.read_string());
+    }
+
+    return strings;
+}
+
 static void ConfigureMapSourceExtensions(BakerTests::TestRig& rig)
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 }
 
@@ -442,6 +441,13 @@ TEST_CASE("MapBaker")
         CHECK(server_summary.Items == 2);
         CHECK(client_summary.Hashes >= 2);
         CHECK(client_summary.Items == 1);
+
+        // A critter never reaches the client map-bin, yet the strings of its map-instance values do: script code
+        // copies them into synced data, and the client resolves a hash only against its own pool
+        auto client_strings = ReadBakedMapClientStrings(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap");
+        CHECK(client_strings.contains("MapBakerCritterOverride"));
+        CHECK(client_strings.contains("MapBakerVisibleItemOverride"));
+        CHECK(client_strings.contains("MapBakerHiddenItemOverride"));
     }
 
     SECTION("RejectsValidationErrors")

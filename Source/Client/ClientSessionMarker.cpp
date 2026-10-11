@@ -55,8 +55,6 @@ static void WriteTeardownRecord(TeardownRecordState& state, string_view set_name
 
 auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (stage) {
     case ClientShutdownStage::Running:
         return "Running";
@@ -81,8 +79,6 @@ auto GetClientShutdownStageName(ClientShutdownStage stage) noexcept -> string_vi
 
 auto MakeClientSessionMarkerPath(string_view writable_root) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Named after the executable, so two clients sharing one root keep their own
     string marker_name = strex("{}{}", strex(GetExeLogFileName()).erase_file_extension(), SessionMarkerExtension).str();
     return fs::resolve_path(fs::make_writable_path(writable_root, marker_name));
@@ -90,7 +86,7 @@ auto MakeClientSessionMarkerPath(string_view writable_root) -> string
 
 auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<PreviousClientSession>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     optional<string> content;
 
@@ -161,7 +157,7 @@ auto TakePreviousClientSession(string_view marker_path) noexcept -> optional<Pre
 
 void BeginClientSession(string_view marker_path) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     safe_call([&] { (void)fs::create_directories(strex(marker_path).extract_dir().str()); });
 
@@ -176,8 +172,6 @@ void BeginClientSession(string_view marker_path) noexcept
 
 void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Rewritten rather than appended, so the file always states the furthest stage reached and stays
     // one small write even when a shutdown crosses process boundaries
     safe_call([&] {
@@ -194,8 +188,6 @@ void SetClientShutdownStage(string_view marker_path, ClientShutdownStage stage) 
 
 void DestroyGlobalDataRecordingTeardown(string_view marker_path) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TeardownRecordState state;
 
     safe_call([&] {
@@ -230,8 +222,6 @@ void DestroyGlobalDataRecordingTeardown(string_view marker_path) noexcept
 // line of the dropped key is left out, so neither is ever stated twice
 static auto ReplaceMarkerLines(string_view previous, string_view first_line, string_view dropped_key) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string content {first_line};
 
     for (string_view line : strex(previous).split('\n')) {
@@ -251,8 +241,6 @@ static auto ReplaceMarkerLines(string_view previous, string_view first_line, str
 
 static auto ReadMarkerProcess(string_view content) noexcept -> platform::process_identity
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     platform::process_identity process;
 
     for (string_view line : strvex(content).split('\n')) {
@@ -280,16 +268,12 @@ static auto ReadMarkerProcess(string_view content) noexcept -> platform::process
 
 static auto IsCurrentClientSession(const platform::process_identity& process) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     platform::process_identity current = platform::get_current_process_identity();
     return process.pid == current.pid && process.start_time == current.start_time;
 }
 
 static void RecordTeardownSet(void* context, const char* set_name) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto state = cast_from_void<TeardownRecordState*>(context);
     FO_STRONG_ASSERT(state, "Teardown observer called without its record state");
     WriteTeardownRecord(*state, set_name != nullptr ? string_view {set_name} : string_view {});
@@ -297,8 +281,6 @@ static void RecordTeardownSet(void* context, const char* set_name) noexcept
 
 static void WriteTeardownRecord(TeardownRecordState& state, string_view set_name) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Every helper here must work outside the global-data lifetime: logging and string tables may already be gone
     safe_call([&] {
         auto previous = fs::read_file_bounded(state.MarkerPath, SessionMarkerMaxSize);

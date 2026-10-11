@@ -68,8 +68,6 @@ static void CleanupClientApp() noexcept;
 
 static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* runtime_result) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Resolved by the run once settings are loaded; declared here so that the teardown below can name its parts
     // in the marker. Empty when the run never got that far, and then the teardown records nothing
     string session_marker;
@@ -94,12 +92,10 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 
 FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, ClientRuntimeExports* raw_exports) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
-        logging::write("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
+        logging::write(logging::type::warning, "Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
         return false;
     }
 
@@ -125,8 +121,6 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 // client files and breaks the next update; one that is gone never finished its exit
 static void ReportPreviousUncleanSession(string_view marker_path) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto previous = TakePreviousClientSession(marker_path);
 
     if (!previous.has_value()) {
@@ -136,7 +130,7 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
     string_view teardown_set = !previous->TeardownSet.empty() ? string_view {previous->TeardownSet} : string_view {"none"};
 
     if (previous->StillRunning) {
-        logging::write("Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+        logging::write(logging::type::warning, "Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
             ClientSessionException ex("Previous client process is still running", previous->StageName, teardown_set, previous->Pid, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
@@ -144,7 +138,7 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
         });
     }
     else {
-        logging::write("Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+        logging::write(logging::type::warning, "Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
             ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
@@ -155,8 +149,6 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
 
 static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> runtime_result, string& session_marker) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (runtime_result) {
         runtime_result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
         runtime_result->ResultKind = ClientRuntimeResultKind::Shutdown;
@@ -242,15 +234,13 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
 
 static auto GetClient() -> ptr<ClientEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
     return Data->Client;
 }
 
 static void MainEntry([[maybe_unused]] void* data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (GetApp()->IsQuitRequested()) {
         return;
@@ -308,7 +298,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         GetApp()->RequestQuit();
                         return;
                     default:
-                        logging::write("Client runtime DLL: updater failed");
+                        logging::write(logging::type::warning, "Client runtime DLL: updater failed");
                         ShowUpdaterFailure(result);
                         GetApp()->RequestQuit();
                         return;
@@ -357,7 +347,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
 static void CleanupClientApp() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     Data->ResourceUpdater.reset();
 

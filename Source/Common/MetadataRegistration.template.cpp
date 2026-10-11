@@ -81,7 +81,7 @@ void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem>
 #endif
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
 #if SERVER_REGISTRATION
     meta->RegisterSide(EngineSideKind::ServerSide);

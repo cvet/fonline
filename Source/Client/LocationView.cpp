@@ -41,14 +41,11 @@ LocationView::LocationView(ptr<ClientEngine> engine, ident_t id, ptr<const Proto
     EntityWithProto(proto),
     LocationProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
 void LocationView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 FO_END_NAMESPACE

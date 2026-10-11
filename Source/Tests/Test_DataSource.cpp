@@ -37,6 +37,7 @@
 #include "DataSource.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -186,7 +187,7 @@ static auto MakeStoredZip(string_view file_name, string_view file_content) -> st
     return MakeStoredZip({StoredZipEntry {file_name, file_content}});
 }
 
-static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view file_content, uint32_t declared_size) -> string
+[[maybe_unused]] static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view file_content, uint32_t declared_size) -> string
 {
     string zip;
     auto name_size = numeric_cast<uint16_t>(file_name.size());
@@ -241,7 +242,7 @@ static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view fil
     return zip;
 }
 
-static auto MakeEmptyZip() -> string
+[[maybe_unused]] static auto MakeEmptyZip() -> string
 {
     string zip;
 
@@ -289,7 +290,7 @@ static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> 
     return MakeFallout2DatEntry(file_name, file_content, 0, content_size, content_size, 0);
 }
 
-static auto MakeFallout2DatWithInvalidNameSize() -> string
+[[maybe_unused]] static auto MakeFallout2DatWithInvalidNameSize() -> string
 {
     string dat;
     string tree;
@@ -308,7 +309,7 @@ static auto MakeFallout2DatWithInvalidNameSize() -> string
     return dat;
 }
 
-static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> string
+[[maybe_unused]] static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> string
 {
     string dat;
 
@@ -319,7 +320,7 @@ static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> 
     return dat;
 }
 
-static auto MakeFallout1LikeDat() -> string
+[[maybe_unused]] static auto MakeFallout1LikeDat() -> string
 {
     string dat;
 
@@ -330,7 +331,7 @@ static auto MakeFallout1LikeDat() -> string
     return dat;
 }
 
-static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
+[[maybe_unused]] static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
 {
     string dat;
 
@@ -341,7 +342,7 @@ static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
     return dat;
 }
 
-static auto MakeArcanumDat(string_view file_name, string_view file_content) -> string
+[[maybe_unused]] static auto MakeArcanumDat(string_view file_name, string_view file_content) -> string
 {
     vector<uint8_t> plain_content;
     plain_content.reserve(file_content.size());
@@ -535,6 +536,7 @@ TEST_CASE("DataSource")
         CHECK(fs::remove_dir_tree(temp_dir));
     }
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackLoadsStoredEntries")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_zip_pack");
@@ -577,7 +579,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackSkipsDirectoryEntriesAndFiltersMultipleFiles")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_zip_multi_pack");
@@ -625,7 +629,52 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_ZIP
+    SECTION("PackMountPrefersTheEnginePackOverALegacyZip")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_pack_bridge");
+        bool removed_before = fs::remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("Bridge.zip").str(), MakeStoredZip("entry.txt", "legacy")));
+
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        // A plain zip stays mountable for content the engine packager did not write, so a name that has both must
+        // answer from the zip until the engine pack appears and from the pack the moment it does
+        {
+            auto legacy_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            auto legacy_buf = legacy_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(legacy_buf);
+            CHECK(BufferAsString(legacy_buf, size) == "legacy");
+        }
+
+        string pack_path = strex(temp_dir).combine_path("Bridge.fores").str();
+        string_view current_text = "current";
+
+        {
+            ResourcePackWriter writer {pack_path};
+            writer.AddFile("entry.txt", const_span<uint8_t> {reinterpret_cast<const uint8_t*>(current_text.data()), current_text.size()});
+            writer.Finish();
+        }
+
+        {
+            auto current_pack = DataSource::MountPack(temp_dir, "Bridge", false);
+            CHECK(current_pack->GetPackName() == pack_path);
+            auto current_buf = current_pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(current_buf);
+            CHECK(BufferAsString(current_buf, size) == "current");
+        }
+
+        (void)fs::remove_dir_tree(temp_dir);
+    }
+#endif
+
+#if FO_DATA_SOURCE_ZIP
     SECTION("BosPackUsesZipReader")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_bos_pack");
@@ -649,7 +698,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackLoadsPlainEntries")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_dat_pack");
@@ -684,7 +735,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackEntryReadErrorsThrow")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_dat_read_errors");
@@ -716,7 +769,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackTreeEdgeCases")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_dat_tree_edges");
@@ -743,7 +798,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackRejectsMalformedTrees")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_dat_malformed_trees");
@@ -763,7 +820,9 @@ TEST_CASE("DataSource")
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT
     SECTION("ArcanumDatLoadsCompressedEntries")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_arcanum_dat_pack");
@@ -795,7 +854,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_DAT && FO_DATA_SOURCE_ZIP
     SECTION("MalformedPacksThrow")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_malformed_pack");
@@ -813,7 +874,9 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
+#if FO_DATA_SOURCE_ZIP
     SECTION("ZipPackEntryReadErrorsThrow")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_zip_read_errors");
@@ -846,16 +909,17 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
     SECTION("EmbeddedPackAcceptsDefaultResourceArray")
     {
-        auto embedded = DataSource::MountPack("", "Embedded", false);
+        auto embedded = DataSource::MountPack("", EMBEDDED_PACK_NAME, false);
 
         size_t size = 0;
         uint64_t write_time = 0;
 
         CHECK_FALSE(embedded->IsDiskDir());
-        CHECK(embedded->GetPackName() == "Embedded");
+        CHECK(embedded->GetPackName() == EMBEDDED_PACK_NAME);
         CHECK_FALSE(embedded->IsFileExists("missing.txt"));
         CHECK_FALSE(embedded->GetFileInfo("missing.txt", size, write_time));
         CHECK_FALSE(embedded->OpenFile("missing.txt", size, write_time));
@@ -864,6 +928,7 @@ TEST_CASE("DataSource")
 
     // The snapshot is what a file system indexes instead of probing, so it must agree with the metadata the
     // same source answers with, and a source whose content can move under it must offer none
+#if FO_DATA_SOURCE_DAT && FO_DATA_SOURCE_ZIP
     SECTION("IndexSnapshotIsOfferedByPacksAndWithheldByLiveSources")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_index_snapshot");
@@ -921,9 +986,11 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
     // The combination that actually ships: a file system built from packs alone indexes itself, so this is
     // the shadowing and the metadata a packaged client resolves through
+#if FO_DATA_SOURCE_ZIP
     SECTION("FileSystemIndexesPackSourcesAndKeepsTheirShadowing")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_indexed_packs");
@@ -956,9 +1023,11 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
     // The installed client mounts every pack name against its writable overlay, where most of them are absent;
     // an absent pack that withheld its snapshot would silently take the whole client off the index
+#if FO_DATA_SOURCE_ZIP
     SECTION("FileSystemKeepsItsIndexWhenAnOptionalPackIsAbsent")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_absent_pack");
@@ -984,6 +1053,7 @@ TEST_CASE("DataSource")
 
         (void)fs::remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
+#endif
 
     SECTION("MaybeNotAvailableReturnsDummySources")
     {
@@ -1004,80 +1074,30 @@ TEST_CASE("DataSource")
         CHECK_FALSE(maybe_pack->IsFileExists("anything"));
     }
 
-    SECTION("FilesListPackLoadsEntriesFromManifest")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
-        ignore_unused(removed_before);
-
-        string listed_file = strex(temp_dir).combine_path("listed.txt").str();
-        string nested_file = strex(temp_dir).combine_path("nested/value.bin").str();
-        string shrinking_file = strex(temp_dir).combine_path("shrinking.txt").str();
-        string manifest_path = "FilesTree.txt";
-        CHECK_FALSE(fs::exists(manifest_path));
-
-        REQUIRE(fs::write_file(listed_file, string_view {"listed-data"}));
-        REQUIRE(fs::write_file(nested_file, string_view {"nested-data"}));
-        REQUIRE(fs::write_file(shrinking_file, string_view {"shrinking-data"}));
-        REQUIRE(fs::write_file(manifest_path, strex("{}\n\n  \n{}\n{}\n", listed_file, nested_file, shrinking_file).str()));
-
-        auto files_list = DataSource::MountPack("ignored", "FilesList", false);
-
-        size_t size = 0;
-        uint64_t write_time = 0;
-        CHECK_FALSE(files_list->IsDiskDir());
-        CHECK(files_list->GetPackName() == "@FilesList");
-        CHECK(files_list->IsFileExists(listed_file));
-        CHECK_FALSE(files_list->IsFileExists(strex(temp_dir).combine_path("missing.txt").str()));
-        CHECK(files_list->GetFileInfo(listed_file, size, write_time));
-        CHECK(size == 11);
-        CHECK(write_time != 0);
-        CHECK_FALSE(files_list->GetFileInfo(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto buf = files_list->OpenFile(listed_file, size, write_time);
-        REQUIRE(buf);
-        CHECK(BufferAsString(buf, size) == "listed-data");
-        CHECK_FALSE(files_list->OpenFile(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
-
-        auto filtered = files_list->GetFileNames(temp_dir, true, "bin");
-        REQUIRE(filtered.size() == 1);
-        CHECK(filtered[0] == nested_file);
-
-        CHECK(fs::remove_file(listed_file));
-        CHECK_THROWS_AS(files_list->OpenFile(listed_file, size, write_time), DataSourceException);
-
-        REQUIRE(fs::write_file(shrinking_file, string_view {"tiny"}));
-        CHECK_THROWS_AS(files_list->OpenFile(shrinking_file, size, write_time), DataSourceException);
-
-        CHECK(fs::remove_file(manifest_path));
-        CHECK(fs::remove_dir_tree(temp_dir));
-    }
-
-    SECTION("FilesListPackRejectsMissingManifestAndEntries")
-    {
-        string temp_dir = MakeTempDataSourceDir("data_source_files_list_errors");
-        string manifest_path = "FilesTree.txt";
-        bool removed_manifest_before = fs::remove_file(manifest_path);
-        bool removed_dir_before = fs::remove_dir_tree(temp_dir);
-        ignore_unused(removed_manifest_before, removed_dir_before);
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        REQUIRE(fs::create_directories(temp_dir));
-        REQUIRE(fs::write_file(manifest_path, strex("{}\n", strex(temp_dir).combine_path("missing.txt").str()).str()));
-
-        CHECK_THROWS_AS(DataSource::MountPack("ignored", "FilesList", false), DataSourceException);
-
-        CHECK(fs::remove_file(manifest_path));
-        CHECK(fs::remove_dir_tree(temp_dir));
-    }
-
     SECTION("MissingMandatorySourcesThrow")
     {
         CHECK_THROWS_AS(DataSource::MountDir("/tmp/lf_data_source_missing_dir_required", false, false, false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack("/tmp/lf_data_source_missing_pack_required", "MissingPack", false), DataSourceException);
         CHECK_THROWS(DataSource::MountPack("/tmp/lf_data_source_missing_pack_required", "", false));
     }
+}
+
+TEST_CASE("DisabledArchiveProvidersFailForPresentOptionalPacks")
+{
+    string temp_dir = MakeTempDataSourceDir("disabled-archive-provider");
+    ignore_unused(fs::remove_dir_tree(temp_dir));
+    REQUIRE(fs::create_directories(temp_dir));
+
+#if !FO_DATA_SOURCE_ZIP
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Archive.zip").str(), MakeStoredZip("entry.txt", "payload")));
+    CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Archive", true), Catch::Matchers::ContainsSubstring("FO_DATA_SOURCE_ZIP"));
+#endif
+#if !FO_DATA_SOURCE_DAT
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Fallout.dat").str(), MakeFallout2Dat("entry.txt", "payload")));
+    CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Fallout", true), Catch::Matchers::ContainsSubstring("FO_DATA_SOURCE_DAT"));
+#endif
+    CHECK_FALSE(DataSource::MountPack(temp_dir, "Absent", true)->IsFileExists("entry.txt"));
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

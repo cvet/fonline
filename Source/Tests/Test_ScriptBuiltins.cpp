@@ -196,8 +196,6 @@ namespace
 
     static auto CheckArrayCmpOnlyValueOps() -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto ctx = make_nptr(AngelScript::asGetActiveContext());
         FO_VERIFY_AND_THROW(ctx, "Missing active AngelScript context");
 
@@ -251,8 +249,6 @@ namespace
 
     static void ReportScriptMessages(const ScriptMessages& messages)
     {
-        FO_STACK_TRACE_ENTRY();
-
         for (const string& entry : messages.Entries) {
             UNSCOPED_INFO(entry);
         }
@@ -260,8 +256,6 @@ namespace
 
     static auto RequireScriptModule(AngelScript::asIScriptEngine* engine, ScriptMessages& messages, string_view module_name, string_view source) -> ptr<AngelScript::asIScriptModule>
     {
-        FO_STACK_TRACE_ENTRY();
-
         int32_t build_result = BuildAngelScriptModule(engine, module_name, source);
         ReportScriptMessages(messages);
         REQUIRE(build_result >= 0);
@@ -273,8 +267,6 @@ namespace
 
     static void RunScriptFunction(ptr<AngelScript::asIScriptEngine> engine, ptr<AngelScript::asIScriptModule> module, string_view declaration)
     {
-        FO_STACK_TRACE_ENTRY();
-
         nptr<AngelScript::asIScriptFunction> func = module->GetFunctionByDecl(string {declaration}.c_str());
         REQUIRE(func);
 
@@ -290,8 +282,6 @@ namespace
 
     static void RequireFullGarbageCollection(ptr<AngelScript::asIScriptEngine> engine)
     {
-        FO_STACK_TRACE_ENTRY();
-
         REQUIRE(engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE) >= 0);
 
         AngelScript::asUINT current_size = 0;
@@ -301,8 +291,6 @@ namespace
 
     static void ShutdownAndCheckGcDiagnostics(nptr<AngelScript::asIScriptEngine> engine, const ScriptMessages& messages)
     {
-        FO_STACK_TRACE_ENTRY();
-
         REQUIRE(engine);
         CHECK(engine->ShutDownAndRelease() >= 0);
         ReportScriptMessages(messages);
@@ -317,8 +305,6 @@ namespace
 
     static void NotifyGcShutdownDestruction()
     {
-        FO_STACK_TRACE_ENTRY();
-
         nptr<AngelScript::asIScriptContext> context = AngelScript::asGetActiveContext();
         FO_VERIFY_AND_THROW(context, "Missing active AngelScript context");
         nptr<GcShutdownTracker> tracker = cast_from_void<GcShutdownTracker*>(context->GetEngine()->GetUserData());

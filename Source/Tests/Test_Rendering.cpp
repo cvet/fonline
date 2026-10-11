@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ModelSpriteLayout.h"
+#include "ModelSprites.h"
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
@@ -84,13 +85,57 @@ TEST_CASE("NullRenderer")
         array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
         tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data);
 
-        CHECK(tex->GetTexturePixel({0, 0}) == row_data[0]);
-        CHECK(tex->GetTexturePixel({3, 0}) == row_data[3]);
+        CHECK(tex->GetTextureRegion({0, 0}, {1, 1}).front() == row_data[0]);
+        CHECK(tex->GetTextureRegion({3, 0}, {1, 1}).front() == row_data[3]);
 
         renderer.SetRenderTarget(tex);
         renderer.ClearRenderTarget(ucolor {20, 30, 40, 50});
 
-        CHECK(tex->GetTexturePixel({1, 1}) == ucolor {20, 30, 40, 50});
+        CHECK(tex->GetTextureRegion({1, 1}, {1, 1}).front() == ucolor {20, 30, 40, 50});
+    }
+
+    SECTION("RequestedRegionMatchesTheBlockingReadAndIsHandedOverOnce")
+    {
+        auto tex = renderer.CreateTexture({4, 3}, false, false);
+        vector<ucolor> pixels;
+
+        for (uint8_t i = 0; i < 12; i++) {
+            pixels.emplace_back(ucolor {i, numeric_cast<uint8_t>(i + 1), numeric_cast<uint8_t>(i + 2), numeric_cast<uint8_t>(255 - i)});
+        }
+
+        tex->UpdateTextureRegion({0, 0}, {4, 3}, pixels);
+
+        auto readback = tex->RequestTextureRegion({1, 1}, {3, 2});
+        optional<vector<ucolor>> taken = readback->TakePixels();
+
+        // The null backend has no GPU to wait for, so its readback is ready at once, row by row like the blocking read
+        REQUIRE(taken.has_value());
+        CHECK(taken.value() == tex->GetTextureRegion({1, 1}, {3, 2}));
+        CHECK(taken.value().front() == pixels[5]);
+        CHECK(taken.value().back() == pixels[11]);
+        CHECK_THROWS(readback->TakePixels());
+    }
+
+    SECTION("RequestedRegionShowsTheTextureAsOfTheRequest")
+    {
+        auto tex = renderer.CreateTexture({2, 2}, false, false);
+        renderer.SetRenderTarget(tex);
+        renderer.ClearRenderTarget(ucolor {1, 2, 3, 4});
+
+        auto readback = tex->RequestTextureRegion({0, 0}, {2, 2});
+        renderer.ClearRenderTarget(ucolor {9, 9, 9, 9});
+
+        optional<vector<ucolor>> taken = readback->TakePixels();
+        REQUIRE(taken.has_value());
+        CHECK(taken.value() == vector<ucolor>(4, ucolor {1, 2, 3, 4}));
+    }
+
+    SECTION("RequestedRegionOutsideTheTextureIsRefused")
+    {
+        auto tex = renderer.CreateTexture({4, 4}, false, false);
+
+        CHECK_THROWS(tex->RequestTextureRegion({3, 0}, {2, 1}));
+        CHECK_THROWS(tex->RequestTextureRegion({0, 0}, {0, 1}));
     }
 
     SECTION("DrawBufferUploadAndEffectDraw")
@@ -130,6 +175,145 @@ TEST_CASE("NullRenderer")
 }
 
 #if FO_ENABLE_3D
+
+struct HitMaskTestState
+{
+    vector<ucolor> Pixels {};
+    size_t Requests {};
+    size_t Readers {};
+    bool FailNext {};
+};
+
+class HitMaskTestReadback final : public RenderTextureReadback
+{
+public:
+    explicit HitMaskTestReadback(ptr<HitMaskTestState> state) :
+        _state {state},
+        _pixels {state->Pixels},
+        _failed {std::exchange(state->FailNext, false)}
+    {
+        _state->Readers++;
+    }
+
+    ~HitMaskTestReadback() override { _state->Readers--; }
+
+    auto TakePixels() -> optional<vector<ucolor>> override
+    {
+        if (std::exchange(_pending, false)) {
+            return std::nullopt;
+        }
+
+        FO_VERIFY_AND_THROW(!_failed, "Injected texture readback failure");
+        FO_VERIFY_AND_THROW(_pixels.has_value(), "Texture readback was already taken");
+        return std::exchange(_pixels, std::nullopt);
+    }
+
+private:
+    ptr<HitMaskTestState> _state;
+    optional<vector<ucolor>> _pixels;
+    bool _failed;
+    bool _pending {true};
+};
+
+class HitMaskTestTexture final : public RenderTexture
+{
+public:
+    explicit HitMaskTestTexture(ptr<HitMaskTestState> state) :
+        RenderTexture({2, 1}, false, false),
+        _state {state}
+    {
+    }
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override
+    {
+        REQUIRE(pos == ipos32 {0, 0});
+        REQUIRE(size == Size);
+        _state->Requests++;
+        return safe_alloc::make_unique<HitMaskTestReadback>(_state);
+    }
+
+    auto GetTextureRegion(ipos32, isize32) const -> vector<ucolor> override { throw GenericException("Hit mask must not use blocking texture reads"); }
+
+    void UpdateTextureRegion(ipos32, isize32, const_span<ucolor>, bool) override { throw GenericException("Unexpected texture write"); }
+
+private:
+    mutable ptr<HitMaskTestState> _state;
+};
+
+TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
+{
+    HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
+    HitMaskTestTexture texture {&state};
+    ModelSpriteHitMask mask;
+    function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
+    bool had_mask = false;
+
+    SECTION("BeforeTheFirstMask")
+    {
+        REQUIRE_FALSE(mask.IsHitTest({0, 0}));
+        REQUIRE_FALSE(mask.IsHitTest({1, 0}));
+    }
+    SECTION("ReplacingACompletedMask")
+    {
+        mask.Refresh(&texture, {}, texture.Size, check_hit);
+        mask.Refresh(&texture, {}, texture.Size, check_hit);
+        had_mask = true;
+        REQUIRE(mask.IsHitTest({0, 0}));
+        REQUIRE_FALSE(mask.IsHitTest({1, 0}));
+    }
+
+    state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
+    state.FailNext = true;
+    mask.MarkStale();
+    size_t previous_requests = state.Requests;
+
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    CHECK(state.Requests == previous_requests + 1);
+    CHECK(state.Readers == 1);
+    CHECK(mask.IsHitTest({0, 0}) == had_mask);
+    CHECK_FALSE(mask.IsHitTest({1, 0}));
+
+    REQUIRE_THROWS_WITH(mask.Refresh(&texture, {}, texture.Size, check_hit), Catch::Matchers::ContainsSubstring("Injected texture readback failure"));
+    CHECK(state.Readers == 0);
+    CHECK(mask.IsHitTest({0, 0}) == had_mask);
+    CHECK_FALSE(mask.IsHitTest({1, 0}));
+
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    CHECK(state.Requests == previous_requests + 2);
+    CHECK(state.Readers == 1);
+    CHECK(mask.IsHitTest({0, 0}) == had_mask);
+    CHECK_FALSE(mask.IsHitTest({1, 0}));
+
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    CHECK(state.Readers == 0);
+    CHECK_FALSE(mask.IsHitTest({0, 0}));
+    CHECK(mask.IsHitTest({1, 0}));
+    CHECK_FALSE(mask.IsHitTest({-1, 0}));
+    CHECK_FALSE(mask.IsHitTest({2, 0}));
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    CHECK(state.Requests == previous_requests + 2);
+}
+
+TEST_CASE("ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending")
+{
+    HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
+    HitMaskTestTexture texture {&state};
+    ModelSpriteHitMask mask;
+    function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
+    mask.MarkStale();
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    REQUIRE(mask.IsHitTest({0, 0}));
+    REQUIRE_FALSE(mask.IsHitTest({1, 0}));
+
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    CHECK(state.Requests == 2);
+    CHECK(state.Readers == 0);
+    CHECK_FALSE(mask.IsHitTest({0, 0}));
+    CHECK(mask.IsHitTest({1, 0}));
+}
 
 TEST_CASE("ModelSpriteFrameSizeIsBounded")
 {

@@ -464,17 +464,17 @@ macro(WriteBuildHash target)
 
 	set(buildHashCommand
 		${CMAKE_COMMAND}
-		-DHASH_FILE="${outputDir}/${target}.build-hash"
-		-DGIT_ROOT="${FO_GIT_ROOT}"
+		"-DHASH_FILE=${outputDir}/${target}.build-hash"
+		"-DBUILD_HASH=${FO_BUILD_HASH}"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
 		-E remove -f "${outputDir}/${target}.build-hash")
 
 	AddCustomCommand(TARGET ${target} PRE_BUILD
-		COMMAND ${removeBuildHashCommand})
+		COMMAND ${removeBuildHashCommand} VERBATIM)
 	AddCustomCommand(TARGET ${target} POST_BUILD
-		COMMAND ${buildHashCommand})
+		COMMAND ${buildHashCommand} VERBATIM)
 endmacro()
 
 macro(SetBuildPlatformInfo buildPlatform monoOs monoArch)
@@ -667,6 +667,10 @@ macro(AddExecutableApplication target sourceFile)
 		AddExecutable(${target} "${sourceFile}" ${APP_EXEC_EXTRA_SOURCES})
 	endif()
 	set(CMAKE_FOLDER "${_fo_prev_folder}")
+
+	if(FO_WINDOWS AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+		TargetLinkOptions(${target} PRIVATE /LARGEADDRESSAWARE)
+	endif()
 
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so

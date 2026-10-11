@@ -1646,6 +1646,7 @@ TEST_CASE("LoadUnloadCritter")
     }
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
 {
     // The inner-entity read path runs nowhere else in the suite, because every other test here keeps the world in
@@ -1724,6 +1725,8 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
         CHECK_FALSE(server->EntityMngr.GetCustomEntity(custom_type, ident_t {}));
     }
 }
+
+#endif
 
 TEST_CASE("BulkMoveOperations")
 {

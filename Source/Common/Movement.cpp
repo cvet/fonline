@@ -48,8 +48,6 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
     _startHexOffset {start_hex_offset},
     _endHexOffset {end_hex_offset}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _elapsedTime = std::max(offset_time.to_ms<float32_t>(), 0.0f);
     RecalculateMetrics();
 }
@@ -57,15 +55,11 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
 MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32_t whole_time) :
     MovingContext(map_size, speed, std::move(steps), std::move(control_steps), start_time, offset_time, start_hex, start_hex_offset, end_hex_offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _wholeTime = std::max(whole_time, 0.0001f);
 }
 
 void MovingContext::RecalculateMetrics()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto metrics = EvaluateMetrics();
 
     _endHex = metrics.EndHex;
@@ -75,13 +69,30 @@ void MovingContext::RecalculateMetrics()
 
 auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t
 {
-    return std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+    float32_t runtime_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+
+    if (_leaseTime > 0.0f && runtime_elapsed > _leaseTime) {
+        return _leaseTime;
+    }
+
+    return runtime_elapsed;
+}
+
+// The time a plan spends waiting at its lease is taken out of its clock, so a longer lease resumes it where it stood
+auto MovingContext::HoldAtLease(nanotime current_time) -> float32_t
+{
+    float32_t clock_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+
+    if (_leaseTime > 0.0f && clock_elapsed > _leaseTime) {
+        _offsetTime -= timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(clock_elapsed - _leaseTime) * 1000000.0)}};
+        return _leaseTime;
+    }
+
+    return clock_elapsed;
 }
 
 void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32_t& dist) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(control_step_begin <= control_step_end, "Movement control-step segment has inverted boundaries", control_step_begin, control_step_end, _controlSteps.size(), _steps.size());
     FO_VERIFY_AND_THROW(control_step_end <= _steps.size(), "Movement control-step segment ends past the stored movement steps", control_step_begin, control_step_end, _controlSteps.size(), _steps.size());
 
@@ -110,8 +121,6 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
 
 auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> MovingRawProgress
 {
-    FO_STACK_TRACE_ENTRY();
-
     MovingRawProgress raw_progress;
     raw_progress.Hex = _startHex;
 
@@ -166,8 +175,6 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
 
 void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_speed != 0, "Speed must be non-zero");
 
     float32_t diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
@@ -177,10 +184,28 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
     float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
 
     _wholeTime = new_whole_time;
+    _leaseTime = _leaseTime > 0.0f ? _leaseTime / diff : 0.0f;
     _startTime = current_time;
     _offsetTime = new_offset_time;
     _elapsedTime = std::max(_offsetTime.to_ms<float32_t>(), 0.0f);
     _speed = speed;
+}
+
+void MovingContext::SetLeaseTime(float32_t lease_time, nanotime current_time)
+{
+    FO_VERIFY_AND_THROW(lease_time >= 0.0f, "Movement lease must not be negative", lease_time);
+
+    // The wait under the old lease is settled first, so a longer lease resumes from where the plan stood
+    (void)HoldAtLease(current_time);
+    _leaseTime = lease_time;
+}
+
+// The plan runs ahead by the given time from the next time update on: a late plan catching up with where it would be
+void MovingContext::FastForward(timespan time)
+{
+    FO_VERIFY_AND_THROW(time >= timespan::zero, "Movement can only be fast-forwarded", time.milliseconds());
+
+    _offsetTime += time;
 }
 
 void MovingContext::Complete(MovingState reason) noexcept
@@ -201,8 +226,6 @@ void MovingContext::SetBlockHexes(mpos pre_block_hex, mpos block_hex) noexcept
 
 void MovingContext::ValidateRuntimeState() const
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_steps.empty(), "Moving context has no movement steps in runtime state", _startHex, _wholeTime, _wholeDist);
     FO_VERIFY_AND_THROW(!_controlSteps.empty(), "Moving context has no control steps in runtime state", _startHex, _steps.size(), _wholeTime, _wholeDist);
     FO_VERIFY_AND_THROW(_wholeTime > 0.0f, "Whole time must be positive");
@@ -211,8 +234,6 @@ void MovingContext::ValidateRuntimeState() const
 
 auto MovingContext::EvaluateMetrics() const -> MovingMetrics
 {
-    FO_STACK_TRACE_ENTRY();
-
     MovingMetrics metrics;
     metrics.EndHex = _startHex;
 
@@ -250,8 +271,6 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
 
 auto MovingContext::EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_steps.empty() || _controlSteps.empty() || _wholeTime <= 0.0f || _wholeDist <= 0.0f) {
         return _endHex;
     }
@@ -261,8 +280,6 @@ auto MovingContext::EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos
 
 auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos fallback_hex) const -> mpos
 {
-    FO_STACK_TRACE_ENTRY();
-
     mpos best_hex = fallback_hex;
     int32_t best_dist = GeometryHelper::GetDistance(from_hex, best_hex);
 
@@ -313,8 +330,6 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
 
 auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<mpos> path_hexes;
 
     if (_steps.empty()) {
@@ -352,23 +367,17 @@ auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
 
 auto MovingContext::EvaluateProgress() const -> MovingProgress
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto raw_progress = EvaluateRawProgress(_elapsedTime);
     return BuildProgress(raw_progress, raw_progress.Hex);
 }
 
 auto MovingContext::EvaluateProgress(mpos current_hex) const -> MovingProgress
 {
-    FO_STACK_TRACE_ENTRY();
-
     return BuildProgress(EvaluateRawProgress(_elapsedTime), current_hex);
 }
 
 auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos current_hex) const -> MovingProgress
 {
-    FO_STACK_TRACE_ENTRY();
-
     MovingProgress progress;
     progress.Hex = raw_progress.Hex;
     progress.Completed = raw_progress.Completed;
@@ -397,16 +406,12 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
 
 void MovingContext::UpdateCurrentTime(nanotime current_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    _elapsedTime = GetRuntimeElapsedTime(current_time);
+    _elapsedTime = HoldAtLease(current_time);
 }
 
 void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    float32_t runtime_elapsed = GetRuntimeElapsedTime(current_time);
+    float32_t runtime_elapsed = HoldAtLease(current_time);
 
     if (runtime_elapsed <= _elapsedTime) {
         _elapsedTime = runtime_elapsed;
@@ -438,6 +443,51 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
     }
 
     _elapsedTime = std::min(high, runtime_elapsed);
+}
+
+auto FindPathPrefixSteps(mpos start_hex, const vector<mdir>& steps, mpos hex, msize map_size, size_t max_steps) -> size_t
+{
+    mpos path_hex = start_hex;
+    size_t limit = std::min(max_steps, steps.size());
+
+    for (size_t i = 0; i < limit; i++) {
+        if (!GeometryHelper::MoveHexByDir(path_hex, steps[i], map_size)) {
+            return 0;
+        }
+
+        if (path_hex == hex) {
+            return i + 1;
+        }
+    }
+
+    return 0;
+}
+
+void DropPathPrefix(vector<mdir>& steps, vector<uint16_t>& control_steps, size_t count)
+{
+    FO_VERIFY_AND_THROW(count < steps.size(), "Dropping a path prefix must leave at least one step", count, steps.size());
+
+    steps.erase(steps.begin(), steps.begin() + numeric_cast<ptrdiff_t>(count));
+
+    vector<uint16_t> shifted_steps;
+    shifted_steps.reserve(control_steps.size());
+
+    for (uint16_t control_step : control_steps) {
+        if (control_step > count) {
+            shifted_steps.emplace_back(numeric_cast<uint16_t>(control_step - count));
+        }
+    }
+
+    if (shifted_steps.empty() || shifted_steps.back() != numeric_cast<uint16_t>(steps.size())) {
+        shifted_steps.emplace_back(numeric_cast<uint16_t>(steps.size()));
+    }
+
+    control_steps = std::move(shifted_steps);
+}
+
+void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time, string_view details)
+{
+    logging::write("MOVESYNC side={} ev={} t={} st={} {}", side, event, nanotime::now().microseconds(), sync_time.milliseconds(), details);
 }
 
 FO_END_NAMESPACE

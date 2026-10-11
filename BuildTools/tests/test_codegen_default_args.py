@@ -22,7 +22,7 @@ def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch
 
     [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
     assert f"char INTERNAL_CONFIG[{_codegen.INTERNAL_CONFIG_CAPACITY}]" in declaration
-    assert _codegen.INTERNAL_CONFIG_CAPACITY == 10000
+    assert _codegen.INTERNAL_CONFIG_CAPACITY == 20000
     assert "-internalcfg" not in _codegen.create_parser()._option_string_actions
 
 
@@ -43,6 +43,8 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
     monkeypatch.setattr(_codegen, "compatibility_hasher", CompatibilityHasher())
     monkeypatch.setattr(_codegen, "generated_output", output)
     monkeypatch.setattr(_codegen, "try_get_git_branch", lambda: "test-branch")
+    monkeypatch.setattr(_codegen, "read_engine_version", lambda root: "2026.1.42-dev")
+    monkeypatch.setattr(_codegen, "read_engine_revision", lambda root: "engine-revision")
 
     _codegen.write_engine_config()
 
@@ -53,6 +55,8 @@ def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monke
         "#define FO_GEOMETRY 1",
         "#define FO_EMPTY_DEFINE",
         '#define FO_BUILD_HASH "build-hash"',
+        '#define FO_ENGINE_VERSION "2026.1.42-dev"',
+        '#define FO_ENGINE_REVISION "engine-revision"',
         '#define FO_DEV_NAME "DEV"',
         '#define FO_NICE_NAME "Nice Name"',
         f'#define FO_GENERATED_SOURCE_DIR "{tmp_path.as_posix()}"',

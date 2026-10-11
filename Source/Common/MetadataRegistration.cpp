@@ -51,7 +51,7 @@ static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector
 
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     auto reader = data_reader(metadata_bin);
 
@@ -74,8 +74,6 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
 
 static auto ReadMetadataHeader(data_reader& reader) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto magic = reader.read<uint32_t>();
     FO_VERIFY_AND_THROW(magic == METADATA_FILE_MAGIC, "Baked metadata does not start with the metadata file marker", magic, METADATA_FILE_MAGIC);
 
@@ -99,7 +97,7 @@ static auto ReadMetadataHeader(data_reader& reader) -> string_view
 
 static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector<vector<string_view>>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     map<string_view, vector<vector<string_view>>> engine_data;
     auto sections_count = reader.read<uint16_t>();
@@ -134,7 +132,7 @@ static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector
 
 static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 2, "Enum metadata record is missing enum name or underlying type", tokens.size());
@@ -172,7 +170,7 @@ static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<
 
 static void RegisterDynamicMetadataEntities(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(!tokens.empty(), "Entity metadata record is empty and cannot provide an entity type name", engine_data.size());
@@ -189,7 +187,7 @@ static void RegisterDynamicMetadataEntities(ptr<EngineMetadata> meta, const vect
 
 static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "EntityHolder metadata record is missing target, holder entity, target entity or entry name", tokens.size());
@@ -218,7 +216,7 @@ static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const
 
 static void RegisterDynamicMetadataFixedTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(!tokens.empty(), "FixedType metadata record is empty and cannot provide a type name", engine_data.size());
@@ -229,7 +227,7 @@ static void RegisterDynamicMetadataFixedTypes(ptr<EngineMetadata> meta, const ve
 
 static void RegisterDynamicMetadataValueTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 3, "ValueType metadata record is missing type name or at least one field/type pair", tokens.size());
@@ -251,7 +249,7 @@ static void RegisterDynamicMetadataValueTypes(ptr<EngineMetadata> meta, const ve
 
 static void RegisterDynamicMetadataRefTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(!tokens.empty(), "RefType metadata record is empty and cannot provide a type name", engine_data.size());
@@ -301,7 +299,7 @@ static void RegisterDynamicMetadataRefTypes(ptr<EngineMetadata> meta, const vect
 
 static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
@@ -317,7 +315,7 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
 
 static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 2, "Event metadata record is missing entity name or event name", tokens.size());
@@ -339,7 +337,7 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
 
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 6, "RemoteCall metadata record is missing call name, subsystem hint, direction or structural limits", tokens.size());
@@ -371,7 +369,7 @@ static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const v
 
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() == 3, "Setting metadata record must contain setting name, value type, and initial value", tokens.size());
@@ -385,19 +383,29 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
 
 static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() == 4, "Invalid MigrationRule metadata record", tokens.size());
+        if (!tokens.empty() && (tokens[0] == "Property" || tokens[0] == "Proto")) {
+            FO_VERIFY_AND_THROW((tokens.size() == 4 && tokens[2] == "Remove") || (tokens.size() == 5 && tokens[2] != "Remove"), "Invalid MigrationRule action metadata record", tokens[0], tokens.size());
+            string_view replacement = tokens.size() == 5 ? tokens[4] : string_view {};
 
-        meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
+            if (tokens[0] == "Property") {
+                meta->RegisterPropertyMigrationRule(tokens[1], tokens[2], tokens[3], replacement);
+            }
+            else {
+                meta->RegisterProtoMigrationRule(tokens[1], tokens[2], tokens[3], replacement);
+            }
+        }
+        else {
+            FO_VERIFY_AND_THROW(tokens.size() == 4, "Invalid MigrationRule metadata record", tokens.size());
+            meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
+        }
     }
 }
 
 auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string target_lower = strex(target).lower();
     string metadata_file_name = strex("Metadata.fometa-{}", target_lower).str();
 
@@ -411,8 +419,6 @@ auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vec
 
 auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Header only: the updater compares its own resource pack against the server before any engine exists, and it
     // has no reason to walk the sections to do that
     auto reader = data_reader(metadata_bin);
@@ -422,8 +428,6 @@ auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
 
 auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!metadata_version.empty(), "Metadata version is empty");
 
     vector<uint8_t> metadata_bin;

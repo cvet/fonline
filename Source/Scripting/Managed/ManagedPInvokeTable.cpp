@@ -49,8 +49,6 @@ static auto NormalizeInteropShimName(string_view name) -> string;
 
 void RegisterManagedInteropShims()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Mono consults a fallback only after its own dlopen failed, so a real shared library on the host
     // still wins and this path serves exactly the shims that are linked in statically
     (void)mono_dl_fallback_register(ManagedInteropShimLoad, ManagedInteropShimSymbol, ManagedInteropShimClose, nullptr);
@@ -58,8 +56,6 @@ void RegisterManagedInteropShims()
 
 static auto ManagedInteropShimLoad(const char* name, int flags, char** err, void* user_data) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(flags);
     ignore_unused(err);
     ignore_unused(user_data);
@@ -80,8 +76,6 @@ static auto ManagedInteropShimLoad(const char* name, int flags, char** err, void
 
 static auto ManagedInteropShimSymbol(void* handle, const char* name, char** err, void* user_data) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(err);
     ignore_unused(user_data);
 
@@ -112,8 +106,6 @@ static auto ManagedInteropShimSymbol(void* handle, const char* name, char** err,
 
 static auto ManagedInteropShimClose(void* handle, void* user_data) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(handle);
     ignore_unused(user_data);
 
@@ -122,7 +114,7 @@ static auto ManagedInteropShimClose(void* handle, void* user_data) -> void*
 
 static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     string normalized = NormalizeInteropShimName(name);
 
@@ -139,8 +131,6 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 // so both sides are reduced to the bare module name before they are compared
 static auto NormalizeInteropShimName(string_view name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t separator_pos = name.find_last_of("/\\");
 
     if (separator_pos != string_view::npos) {

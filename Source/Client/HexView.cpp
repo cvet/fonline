@@ -42,13 +42,10 @@ FO_BEGIN_NAMESPACE
 HexView::HexView(ptr<MapView> map) :
     _map {map}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
     ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
@@ -65,8 +62,6 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
 
 auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_extraMapSpr) {
         _extraMapSpr.emplace();
     }
@@ -85,15 +80,11 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
 
 void HexView::SetupSprite(ptr<MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
 void HexView::Finish()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _targetAlpha = 0;
     StartFade(_curAlpha);
 
@@ -103,29 +94,21 @@ void HexView::Finish()
 
 auto HexView::IsFinished() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
 void HexView::ProcessFading()
 {
-    FO_STACK_TRACE_ENTRY();
-
     EvaluateCurAlpha();
 }
 
 void HexView::FadeUp()
 {
-    FO_STACK_TRACE_ENTRY();
-
     StartFade(0);
 }
 
 void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _curAlpha = prev->_curAlpha;
 
     if (_curAlpha != _targetAlpha) {
@@ -139,8 +122,6 @@ void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 
 void HexView::StartFade(uint8_t from_alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
 
     _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration};
@@ -152,8 +133,6 @@ void HexView::StartFade(uint8_t from_alpha)
 
 void HexView::EvaluateCurAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_fading) {
         nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
         int32_t fading_duration = _map->GetEngine()->Settings->View.FadingDuration;
@@ -175,8 +154,6 @@ void HexView::EvaluateCurAlpha()
 
 void HexView::SetTargetAlpha(uint8_t alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_targetAlpha == alpha) {
         return;
     }
@@ -188,8 +165,6 @@ void HexView::SetTargetAlpha(uint8_t alpha)
 
 void HexView::SetDefaultAlpha(uint8_t alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_defaultAlpha == _targetAlpha) {
         _defaultAlpha = alpha;
         SetTargetAlpha(alpha);
@@ -201,15 +176,11 @@ void HexView::SetDefaultAlpha(uint8_t alpha)
 
 void HexView::RestoreAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetTargetAlpha(_defaultAlpha);
 }
 
 void HexView::RefreshSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_mapSprValid) {
         SetupSprite(_mapSpr);
     }
@@ -225,8 +196,6 @@ void HexView::RefreshSprite()
 
 auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr;
@@ -234,8 +203,6 @@ auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 
 auto HexView::GetMapSprite() -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr;
@@ -243,8 +210,6 @@ auto HexView::GetMapSprite() -> ptr<MapSprite>
 
 void HexView::InvalidateSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_mapSprValid) {
         FO_VERIFY_AND_THROW(_mapSpr, "Map sprite is null");
 
@@ -269,8 +234,6 @@ void HexView::InvalidateSprite()
 
 void HexView::SetSpriteVisiblity(bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool hidden = !enabled;
 
     if (_mapSprHidden == hidden) {

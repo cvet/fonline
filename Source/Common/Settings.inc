@@ -55,7 +55,7 @@ SETTING(bool, AngelScript, DebuggerEnabled, false); // If true, AngelScript debu
 SETTING(string, AngelScript, DebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
 SETTING(vector<string>, AngelScript, MutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 SETTING(vector<string>, AngelScript, AttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
-SETTING(vector<string>, AngelScript, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+SETTING(vector<string>, AngelScript, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls in addition to the engine's built-in dispatcher-bound list
 SETTING_GROUP_END(AngelScript);
 
 ///@ ExportSettings Common
@@ -77,6 +77,9 @@ SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configurati
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
+SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
+SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way
+SETTING(bool, ManagedScript, ClientPatchesEnabled, false); // If true, a client applies the script patches its server sends; each client reads its own config
 SETTING_GROUP_END(ManagedScript);
 
 ///@ ExportSettings Common
@@ -99,6 +102,12 @@ SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compress
 SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
 SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds, applied to both directions
 SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
+SETTING(int32_t, Network, LinkDelayWindowMs, 30000); // How far back in milliseconds the usual transit of a link is remembered; a message's lateness is its transit over the median usual one
+SETTING(int32_t, Network, LinkDelayRebaseMs, 3000); // A link whose every message was late for this many milliseconds got slower for good: its new transit becomes the usual one
+SETTING(int32_t, Network, MoveLateCatchUpMinMs, 150); // A movement plan that arrived later than the link's usual transit by at least this many milliseconds is played from where it would be by now; such messages never count as usual
+SETTING(int32_t, Network, MoveLateCatchUpMaxMs, 10000); // Upper bound in milliseconds on how far ahead a late movement plan is placed
+SETTING(int32_t, Network, MovePlanJoinMaxSteps, 3); // A received movement plan whose first steps the receiver's critter has already walked is joined where the critter stands, up to this many steps in, instead of walking back to its start; 0 disables
+SETTING(bool, Network, MoveSyncTrace, false); // If true, server and client write one MOVESYNC log line per movement synchronization event, as stable key=value fields for offline analysis; too verbose for production
 SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING(string, Network, ForceMetadataVersion, ""); // Custom metadata version, for simulating a client baked apart from the server
@@ -125,6 +134,7 @@ SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in milliseconds
 SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
+SETTING(string, ServerNetwork, ChannelSecretKey, ""); // Secure channel static X25519 secret key, 64 hex digits; every server needs it, in-process connections included
 SETTING_GROUP_END(ServerNetwork);
 
 ///@ ExportSettings Client
@@ -132,6 +142,7 @@ SETTING_GROUP(ClientNetwork, virtual NetworkSettings)
 SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
 SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
+SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
@@ -139,6 +150,7 @@ SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
 SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
 SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
+SETTING(vector<string>, ClientNetwork, ChannelServerKeys); // Pinned secure channel server public keys, 64 hex digits each; all are offered at once, so the next key can be pinned ahead of a rotation
 SETTING_GROUP_END(ClientNetwork);
 
 ///@ ExportSettings Client
@@ -181,6 +193,8 @@ SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothi
 SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
 SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
+SETTING(int32_t, Geometry, PathFindEnclosureProbe, 1024); // Hexes a path search may flood back from its target to prove it walled off, 0 to disable
+SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for walking through one living critter
 SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common
@@ -209,8 +223,6 @@ SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 SETTING(bool, Render, ForceSDLGpu, false); // If true, SDL_GPU backend is forced
 SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
 SETTING(bool, Render, AllowSoftwareRenderer, false); // If true, a software rasterizer may stand in when no hardware device is available
-SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
-SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
 SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
@@ -218,8 +230,8 @@ SETTING(bool, Render, VSync, false); // If true, vertical synchronization is ena
 SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top
 SETTING(bool, Render, Fullscreen, false); // If true, fullscreen mode is enabled
 SETTING(int32_t, Render, Brightness, 0); // Brightness value
-SETTING(int32_t, Render, Sleep, -1); // Sleep duration in milliseconds (-1 to disable)
-SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 to disable)
+SETTING(int32_t, Render, Sleep, -1); // Per-frame sleep in milliseconds when FixedFPS is 0 (0 yields, -1 to disable)
+SETTING(int32_t, Render, FixedFPS, 100); // Frame rate cap, takes precedence over Sleep (0 to disable)
 SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
@@ -293,12 +305,14 @@ SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
+SETTING(bool, Baking, PrebakeOnStartup, true); // If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout
 SETTING(vector<string>, Baking, IgnoreInputDirs); // Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack
 SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
 SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
 SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "ogv", "json", "ini"); // Raw copy file extensions
 SETTING(float32_t, Baking, AudioVorbisQuality, 0.5f); // Vorbis VBR quality audio baking encodes with, from -0.1 (smallest) to 1.0 (largest)
+SETTING(bool, Baking, Direct3DLevel9Shaders, false); // If true, Direct3D effects other than model ones also carry level 9.3 code and a build without 3D accepts feature level 9.3 devices; an effect that does not fit level 9.3 fails the bake
 SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
@@ -307,7 +321,9 @@ SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources
 SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
 SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
-SETTING(int32_t, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
+SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
+SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
+SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);
 
@@ -371,6 +387,15 @@ SETTING(string, Client, DefaultSplashPack); // Default splash pack
 SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
 SETTING(string, Client, Language, "engl"); // Language setting
+SETTING(int32_t, Client, DirectMoveTraceSteps, 24); // Hexes a held direction is traced ahead as one plan; the next plan is traced before this one runs out
+SETTING(int32_t, Client, DirectMoveExtendAheadSteps, 4); // A held direction's plan is followed by the next one once at most this many of its steps remain; must be below DirectMoveTraceSteps
+SETTING(int32_t, Client, DirectMoveLeaseSteps, 4); // Hexes ahead of the player the server and the other players may run a held direction's plan; this bounds how far they walk on when the player's link stalls
+SETTING(int32_t, Client, DirectMoveLeaseRenewSteps, 2); // The lease is renewed once at most this many of its steps are left ahead of the player; must be below DirectMoveLeaseSteps
+SETTING(int32_t, Client, DirectMoveRetargetMinMs, 100); // Minimum time in milliseconds between re-plans of a held direction for turns smaller than DirectMoveRetargetImmediateAngle
+SETTING(int32_t, Client, DirectMoveRetargetImmediateAngle, 60); // A turn of a held direction of at least this many degrees, like a key change, is planned at once
+SETTING(bool, Client, DirectMoveSlide, true); // If true, a held direction blocked ahead steps along the obstacle toward the direction instead of stopping at it
+SETTING(float32_t, Client, MoveCatchUpRate, 3.0f); // Playback rate at which another critter's late plan catches up with where it would be by now, instead of jumping there
+SETTING(int32_t, Client, MoveCatchUpSmoothMaxMs, 1500); // Largest lateness in milliseconds caught up smoothly; the rest of a later plan is skipped at once
 SETTING_GROUP_END(Client);
 
 ///@ ExportSettings Server
@@ -387,14 +412,16 @@ SETTING(int32_t, Server, LockMaxWaitTime, 100); // Maximum lock wait time in mil
 SETTING(int32_t, Server, WorkerThreads, 0); // Worker thread count for entity processing (0 = auto)
 SETTING(bool, Server, SingleThreadedLogic, false); // If true, all game logic runs on one worker thread and scripts need no explicit entity synchronization
 SETTING(bool, Server, WriteHealthFile, false); // If true, health file is written
-SETTING(bool, Server, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled
-SETTING(bool, Server, MapInstanceStaticGrid, false); // If true, map instance static grid is enabled
+SETTING(string, Server, ProtoMapGridType, "Dynamic"); // Shared prototype field storage: Static, Chunked or Dynamic
+SETTING(string, Server, MapInstanceGridType, "Dynamic"); // Runtime map field storage: Static, Chunked or Dynamic
 SETTING(int64_t, Server, EntityStartId, 10000000001); // Entity start ID
 SETTING(int64_t, Server, EntityIdReserveBatch, 1000); // Entity IDs reserved per persisted-counter bump, so a new entity does not force a DB write of the last-id marker every time
 SETTING(int32_t, Server, SyncPeriodMs, 10); // Sync-point job period in milliseconds (100 FPS by default)
 SETTING(int32_t, Server, FrameTimePeriodNs, 900); // Frame-time update job period in nanoseconds
 SETTING(int32_t, Server, ConnectionProcessPeriodMs, 100); // Player / unlogined-player connection job re-poll period between data-arrival wakes, in milliseconds
 SETTING(int32_t, Server, CritterMovingPeriodMs, 50); // Critter movement-step job period in milliseconds
+SETTING(int32_t, Server, MoveBridgeReportHexes, 2); // Async-fix bridge length in hexes from which the client/server movement divergence is logged; 0 disables the report
+SETTING(int32_t, Server, MoveFinishCatchUpMaxMs, 300); // Upper bound in milliseconds on the movement remainder a client-reported arrival may fast-forward; the effective allowance is also capped by the connection round trip
 SETTING(int32_t, Server, HealthFilePeriodMs, 300); // Health-file refresh job period in milliseconds
 SETTING(int32_t, Server, ShutdownGraceMs, 5000); // Grace period in milliseconds for in-flight worker jobs to drain on shutdown before parked entity-lock waiters are force-aborted
 SETTING_GROUP_END(Server);

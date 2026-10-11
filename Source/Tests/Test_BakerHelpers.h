@@ -41,6 +41,7 @@
 #include "DataSource.h"
 #include "FileSystem.h"
 #include "MetadataRegistration.h"
+#include "SecureChannel.h"
 #include "Settings.h"
 #include "SpriteResource.h"
 
@@ -51,8 +52,6 @@ namespace BakerTests
     template<typename T>
     [[nodiscard]] inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return const_cast<T*>(&setting);
     }
 
@@ -64,8 +63,49 @@ namespace BakerTests
         *mutable_setting = setting_type {std::forward<U>(value)};
     }
 
+    // Every connection runs the secure channel, in-process ones included, so a test server and its clients share
+    // this pair; the secret half protects nothing and must never be reused outside tests
+    constexpr string_view TEST_CHANNEL_SECRET_KEY = "8b2f91afe7a12c2391799af9094131fa3874021ae219dca8425ae7fecdc806df";
+    constexpr string_view TEST_CHANNEL_PUBLIC_KEY = "cdd0e74747f2a569b9da28c9750b2d9ec6ffad05dc65329e434b702712a2d15f";
+
+    inline void ApplyTestChannelKeys(GlobalSettings& settings)
+    {
+        OverrideSetting(settings.ServerNetwork.ChannelSecretKey, string {TEST_CHANNEL_SECRET_KEY});
+        OverrideSetting(settings.ClientNetwork.ChannelServerKeys, vector<string> {string {TEST_CHANNEL_PUBLIC_KEY}});
+    }
+
+    // For a ServerConnection a test builds by hand, outside ServerEngine::CreateNotLoggedInPlayer
+    inline auto MakeTestChannelIdentity() -> SecureChannelIdentity
+    {
+        return SecureChannelIdentity {ParseSecureChannelKey(TEST_CHANNEL_SECRET_KEY, "Test")};
+    }
+
+    // Isolate persisted client/mapper settings and history from the embedding project's cache
+    inline auto GetTestCacheDir() -> string
+    {
+        struct TestCacheDir
+        {
+            TestCacheDir() :
+                Path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
+            {
+            }
+            TestCacheDir(const TestCacheDir&) = delete;
+            TestCacheDir(TestCacheDir&&) noexcept = delete;
+            auto operator=(const TestCacheDir&) = delete;
+            auto operator=(TestCacheDir&&) noexcept = delete;
+            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(Path)); }
+
+            string Path;
+        };
+
+        static TestCacheDir dir;
+        return dir.Path;
+    }
+
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
+        ApplyTestChannelKeys(settings);
+        OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
         OverrideSetting(settings.Audio.DisableAudio, true);
@@ -112,6 +152,7 @@ namespace BakerTests
 
     inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
     {
+        ApplyTestChannelKeys(settings);
         OverrideSetting(settings.ServerNetwork.DisableNetworking, true);
         OverrideSetting(settings.DataBase.OpLogEnabled, false);
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
@@ -163,16 +204,12 @@ namespace BakerTests
 
     inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
     {
-        FO_STACK_TRACE_ENTRY();
-
         unique_arr_ptr<const uint8_t> owned_buf {p.get()};
         ignore_unused(owned_buf);
     }
 
     inline auto MakeMemoryDataSourceFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto released_buf = make_ptr<const uint8_t*>(buf.release());
         return make_unique_del_ptr(released_buf, CleanupMemoryDataSourceFileBuffer);
     }

@@ -43,6 +43,7 @@
 #include "Client.h"
 #include "DataSerialization.h"
 #include "ImGuiStuff.h"
+#include "ResourcePack.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -89,6 +90,8 @@ namespace ClientServerIntegrationServer
         // Handing the session a controlled critter drives the client through the whole world-entry protocol:
         // load map, add critter, initial property sync
         Critter cr = Game.CreateCritter("UnitTestSharedCritter".hstr(), true);
+        // Keep the ground-item probes visible after movement, including in projects with distance-based visibility hooks
+        cr.LookDistance = 20;
         loggedPlayer.SwitchCritter(cr);
         SwitchedCritters++;
 
@@ -101,7 +104,9 @@ namespace ClientServerIntegrationServer
 
         // Inventory and map items each take their own send path to the owning client
         cr.AddItem("UnitTestSharedItem".hstr());
-        map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
+        Item groundItem = map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
+        // A draw sub-layer of the item's own, which only its synced data can carry to the client
+        groundItem.DrawOrderSubLayer = 3;
 
         // A second critter on the same map arrives at the client as a foreign critter, which is a different
         // send path from the controlled one, and moving it drives the position updates
@@ -168,6 +173,8 @@ namespace ClientServerIntegrationServer
 
             if (crMapCover !is null) {
                 Game.MoveItem(added, crMapCover, mpos(10, 10));
+                // Written once the item is already drawn, so the client has to sort its sprite again
+                added.DrawOrderSubLayer = 5;
             }
         }
         else if (step == 2) {
@@ -613,7 +620,19 @@ namespace ClientServerIntegrationClient
 
         // Map contents are not asserted on: the world steps move items between the inventory and the map,
         // so the count here depends on which step last landed
-        CurMap.GetItems();
+        Item[] landedItems = CurMap.GetItems();
+
+        // The login's ground item carries a draw sub-layer of its own, and the inspection waits until the client
+        // holds that value as well
+        bool layeredItemArrived = false;
+
+        for (uint i = 0; i < landedItems.length(); i++) {
+            if (landedItems[i].Id.value != 0 && landedItems[i].DrawOrderSubLayer == 3) {
+                layeredItemArrived = true;
+            }
+        }
+
+        if (!layeredItemArrived) return -20;
 
         if (CurMap.GetCritters(CritterFindType::Any).isEmpty()) return -5;
         if (CurMap.GetCritter(Chosen.Id) is null) return -6;
@@ -685,7 +704,7 @@ namespace ClientServerIntegrationClient
 
         CurMap.MoveScreenToHex(there, ipos16(0, 0), 20, true);
         CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
-        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8));
+        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8), TransparentEggTarget::Structure);
 
         // The global lookups resolve against the current map, so they only answer in a session
         if (Game.GetCritter(Chosen.Id) is null) return -9;
@@ -781,8 +800,6 @@ namespace ClientServerIntegrationClient
 
     static auto MakeTempClientUpdaterBakeDir(string_view name) -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
@@ -791,8 +808,6 @@ namespace ClientServerIntegrationClient
 
     static auto PrepareClientUpdaterBakeOutput() -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         string bake_dir = MakeTempClientUpdaterBakeDir("resources");
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 
@@ -1149,6 +1164,82 @@ End
 
         return false;
     }
+
+    // Talks to the server's interthread listener by hand, so a test can write raw messages; the secure channel runs
+    // underneath as on every connection. The listener callback shares the state, so it may outlive this object
+    class RawChannelClient final
+    {
+    public:
+        explicit RawChannelClient(uint16_t port) :
+            _state {safe_alloc::make_shared<State>()}
+        {
+            vector<crypto::key_bytes> server_keys {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")};
+            _channel.emplace(server_keys);
+
+            _send = FindInterthreadListener(port).value()([state = _state](const_span<uint8_t> data) mutable {
+                scoped_lock locker {state->Locker};
+
+                if (data.empty()) {
+                    state->Disconnected = true;
+                }
+                else {
+                    state->Received.insert(state->Received.end(), data.begin(), data.end());
+                }
+            });
+
+            vector<uint8_t> offer;
+            _channel->TakeHandshakeOutput(offer);
+            _send(offer);
+        }
+
+        [[nodiscard]] auto IsDisconnected() -> bool
+        {
+            scoped_lock locker {_state->Locker};
+
+            return _state->Disconnected;
+        }
+
+        // Everything the server has sent so far, decrypted
+        [[nodiscard]] auto GetPlaintext() -> vector<uint8_t>
+        {
+            vector<uint8_t> received;
+
+            {
+                scoped_lock locker {_state->Locker};
+
+                received = std::move(_state->Received);
+                _state->Received.clear();
+            }
+
+            _channel->Receive(received, _plaintext);
+            return _plaintext;
+        }
+
+        void Send(const_span<uint8_t> plaintext)
+        {
+            (void)GetPlaintext();
+            REQUIRE(_channel->IsEstablished());
+
+            vector<uint8_t> sealed;
+            _channel->Seal(plaintext, sealed);
+            _send(sealed);
+        }
+
+        void Close() { _send({}); }
+
+    private:
+        struct State
+        {
+            mutex Locker {};
+            vector<uint8_t> Received {};
+            bool Disconnected {};
+        };
+
+        shared_ptr<State> _state;
+        optional<SecureChannel> _channel {};
+        vector<uint8_t> _plaintext {};
+        InterthreadDataCallback _send {};
+    };
 
     static auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
@@ -1560,6 +1651,45 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
             REQUIRE_NOTHROW(map_view->DrawMap());
             ImGui::Render();
         }
+
+        // A sub-layer set on a server item reaches the client as its offset does, and a value that arrives after
+        // the item is drawn moves its sprite: the item world step 0 drops beside the login's one comes out after it
+        nptr<ItemHexView> login_item;
+        nptr<ItemHexView> dropped_item;
+
+        for (ptr<ItemHexView> hex_item : map_view->GetItemsOnHex(mpos {10, 10})) {
+            if (hex_item->GetDrawOrderSubLayer() == 3) {
+                login_item = hex_item;
+            }
+            else if (hex_item->GetDrawOrderSubLayer() == 5) {
+                dropped_item = hex_item;
+            }
+        }
+
+        REQUIRE(login_item);
+        REQUIRE(dropped_item);
+        REQUIRE_NOTHROW(map_view->InstantScrollTo(mpos {10, 10}));
+
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(map_view->Process());
+        REQUIRE_NOTHROW(map_view->DrawMap());
+        ImGui::Render();
+
+        REQUIRE(login_item->IsMapSpriteVisible());
+        REQUIRE(dropped_item->IsMapSpriteVisible());
+        CHECK(dropped_item->GetMapSprite()->GetSortValue() > login_item->GetMapSprite()->GetSortValue());
+
+        // A scroll rebuilds every sprite from current values, so the new value is also written where no rebuild
+        // follows: the sprite has to move by itself
+        dropped_item->SetDrawOrderSubLayer(1);
+
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(map_view->Process());
+        REQUIRE_NOTHROW(map_view->DrawMap());
+        ImGui::Render();
+
+        REQUIRE(dropped_item->IsMapSpriteVisible());
+        CHECK(dropped_item->GetMapSprite()->GetSortValue() < login_item->GetMapSprite()->GetSortValue());
     }
 
     // A static item the server drops from this map instance has to leave the client's map view without a reload
@@ -1779,13 +1909,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
-    std::atomic_bool disconnected {};
-    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
-        if (data.empty()) {
-            disconnected.store(true);
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     auto malformed_handshake = NetOutBuffer(64);
@@ -1793,10 +1917,10 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
     malformed_handshake.Write<uint16_t>(uint16_t {0});
     malformed_handshake.EndMsg();
-    send_to_server(malformed_handshake.GetData());
+    client.Send(malformed_handshake.GetData());
 
     REQUIRE(WaitForServerConnectionCount(server, 0));
-    CHECK(disconnected.load());
+    CHECK(client.IsDisconnected());
     CHECK(exception_reports.load() == 0);
 }
 
@@ -1823,20 +1947,14 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    std::atomic_bool disconnected {};
-    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
-        if (data.empty()) {
-            disconnected.store(true);
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    for (int32_t i = 0; i < 2000 && !disconnected.load(); i++) {
+    for (int32_t i = 0; i < 2000 && !client.IsDisconnected(); i++) {
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
 
-    CHECK(disconnected.load());
+    CHECK(client.IsDisconnected());
     CHECK(WaitForServerConnectionCount(server, 0));
 }
 
@@ -1862,15 +1980,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    mutex received_data_lock;
-    vector<uint8_t> received_data;
-    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
-        if (!data.empty()) {
-            scoped_lock locker {received_data_lock};
-            received_data.insert(received_data.end(), data.begin(), data.end());
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     // A binary-compatible client whose resources come from another bake: the layout verdict is what keeps its
@@ -1882,18 +1992,13 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     handshake.Write<string_view>("0123456789abcdef");
     handshake.Write<uint32_t>(FO_UPDATER_VERSION);
     handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
-    send_to_server(handshake.GetData());
+    client.Send(handshake.GetData());
 
     bool received_answer = false;
 
     for (int32_t i = 0; i < 2000 && !received_answer; i++) {
-        vector<uint8_t> response_data;
-        {
-            scoped_lock locker {received_data_lock};
-            response_data = received_data;
-        }
+        vector<uint8_t> response_data = client.GetPlaintext();
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -1905,8 +2010,6 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<bool>());
                 CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
-                CHECK(response_encrypt_key != 0);
                 received_answer = true;
             }
         }
@@ -1917,7 +2020,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     }
 
     REQUIRE(received_answer);
-    send_to_server({});
+    client.Close();
     CHECK(WaitForServerConnectionCount(server, 0));
 }
 
@@ -1943,15 +2046,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    mutex received_data_lock;
-    vector<uint8_t> received_data;
-    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
-        if (!data.empty()) {
-            scoped_lock locker {received_data_lock};
-            received_data.insert(received_data.end(), data.begin(), data.end());
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     static_assert(FO_UPDATER_VERSION > 1);
@@ -1961,17 +2056,12 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     handshake.Write(server->GetMetadataVersion());
     handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
     handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
-    send_to_server(handshake.GetData());
+    client.Send(handshake.GetData());
 
     bool received_rejection = false;
     for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
-        vector<uint8_t> response_data;
-        {
-            scoped_lock locker {received_data_lock};
-            response_data = received_data;
-        }
+        vector<uint8_t> response_data = client.GetPlaintext();
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -1983,9 +2073,6 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
                 CHECK(response.Read<bool>());
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
-                CHECK(response_encrypt_key != 0);
-                response.SetEncryptKey(response_encrypt_key);
 
                 if (response.NeedProcess()) {
                     REQUIRE(response.ReadMsg() == NetMessage::Disconnect);
@@ -2002,7 +2089,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     }
 
     REQUIRE(received_rejection);
-    send_to_server({});
+    client.Close();
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
@@ -2157,6 +2244,190 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(second_client, server, 2));
     REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
     CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientUpdaterResourcePatchLifecycle")
+{
+    using namespace TestClientServerIntegration;
+
+    string install = PrepareClientUpdaterBakeOutput();
+    string published = MakeTempClientUpdaterBakeDir("published");
+    string writable = MakeTempClientUpdaterBakeDir("writable");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    auto write_art = [](string_view directory, const vector<pair<string, string>>& files) {
+        ResourcePackWriter writer {strex(directory).combine_path("Art.fores").str(), {0, 100}};
+
+        for (const auto& [name, content] : files) {
+            writer.AddFile(name, {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        }
+
+        writer.Finish();
+    };
+    string unchanged(65536, 'b');
+    write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
+    write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
+    string installed_base = strex(install).combine_path("Art.fores").str();
+    auto original = fs::read_file(installed_base);
+    REQUIRE(original);
+    string writable_resources = strex(writable).combine_path("Resources").str();
+    string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
+    string replacement = strex(writable_resources).combine_path("Art.fores").str();
+
+    auto synchronize = [&](bool in_memory, bool replace_published = false) {
+        uint16_t port = IntegrationTestPort.fetch_add(1);
+        GlobalSettings server_settings = MakeServerTestSettings(port);
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        server_settings.ApplyConfigFile(server_pack_config, "");
+        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+        auto server = MakeServerEngine(server_settings);
+        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
+        string error = WaitForServerStart(server);
+        INFO(error);
+        REQUIRE(error.empty());
+
+#if !FO_WINDOWS
+        if (replace_published) {
+            REQUIRE(fs::rename_durable(strex(published).combine_path("Art.fores").str(), strex(published).combine_path("Pinned.fores").str()));
+            write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "replaced after server start"}});
+        }
+#else
+        ignore_unused(replace_published);
+#endif
+
+        GlobalSettings client_settings = MakeClientTestSettings(port);
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        client_settings.ApplyConfigFile(client_pack_config, "");
+        client_settings.ApplyWritableRoot(writable);
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        REQUIRE(WaitForUpdaterResult(updater));
+        REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
+        REQUIRE_FALSE(updater.IsAborted());
+        FileSystem resources = GetClientResources(client_settings);
+        CHECK(resources.ReadFileText("Keep.bin") == unchanged);
+        CHECK_FALSE(resources.IsFileExists("Removed.txt"));
+    };
+
+    synchronize(false);
+    REQUIRE(fs::exists(patch));
+    CHECK_FALSE(fs::exists(replacement));
+    CHECK(fs::read_file(installed_base) == original);
+    auto first = fs::read_file(patch);
+    REQUIRE(first);
+    CHECK(first->size() < 1024);
+
+    SECTION("SecondUpdateAppendsAndRetainsTheCommittedPrefix")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
+        synchronize(true);
+        auto second = fs::read_file(patch);
+        REQUIRE(second);
+        CHECK(second->size() > first->size());
+        CHECK(second->starts_with(*first));
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Renamed.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+
+    SECTION("DamagedBaseTheCatalogStillNamesIsDownloadedAgain")
+    {
+        // One flipped payload byte leaves the header and the catalog intact, so the pair still reports the advertised
+        // content; only reading its bytes back tells the damage apart, and the whole pack is the repair
+        string damaged = *original;
+        damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(installed_base, damaged));
+
+        synchronize(false);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
+        CHECK(fs::read_file(installed_base) == optional<string> {damaged});
+    }
+
+    SECTION("DamagedPatchPayloadIsFetchedAgain")
+    {
+        string damaged = *first;
+        damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(patch, damaged));
+
+        synchronize(false);
+        CHECK_FALSE(fs::exists(replacement));
+        auto repaired = fs::read_file(patch);
+        REQUIRE(repaired);
+        CHECK(repaired->starts_with(damaged));
+        ResourcePackSource pair {installed_base, patch};
+        size_t size = 0;
+        uint64_t write_time = 0;
+        CHECK(static_cast<bool>(pair.OpenFile("Change.txt", size, write_time)));
+        CHECK(size == string_view {"first update"}.size());
+    }
+
+    SECTION("PatchThatWouldOutgrowItsPackIsReplacedByThePack")
+    {
+        constexpr size_t large_size = 65 * 1024 * 1024;
+
+        {
+            vector<uint8_t> content(large_size, 'n');
+            string intermediate = strex(writable).combine_path("Intermediate.fores").str();
+
+            {
+                ResourcePackWriter writer {intermediate, {0, 100}};
+                writer.AddFile("Keep.bin", {reinterpret_cast<const uint8_t*>(unchanged.data()), unchanged.size()});
+                writer.AddFile("Change.txt", content);
+                writer.Finish();
+            }
+
+            ResourcePackSource target {intermediate};
+            ResourcePatchWriter writer {installed_base, patch, target.GetEntryRefs(), target.GetContentHash()};
+            REQUIRE(writer.GetDownloads().size() == 1);
+            REQUIRE(writer.GetDownloads().front().Path == "Change.txt");
+            fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
+            writer.Begin(patch_lock);
+            writer.AddEncodedFile(content);
+            writer.Finish();
+        }
+
+        // The published pack dropped the large payload again, so another append would leave a patch far larger than
+        // the pack it patches: the pack replaces the pair instead
+        REQUIRE(fs::file_size(patch).value() > large_size);
+        synchronize(false);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
+        synchronize(true);
+        CHECK_FALSE(fs::exists(patch));
+        CHECK(fs::read_file(installed_base) == original);
+    }
+
+#if !FO_WINDOWS
+    SECTION("DiskBackendPinsTheAdvertisedArtifactAcrossReplacement")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Pinned.txt", "advertised before replacement"}});
+        synchronize(false, true);
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Pinned.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Pinned.fores").str()).GetContentHash());
+        CHECK(pair.GetContentHash() != ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+#endif
 }
 
 TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")

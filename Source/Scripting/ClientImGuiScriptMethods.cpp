@@ -42,8 +42,6 @@ static constexpr float32_t IMGUI_UV_EPSILON = 0.001f;
 
 static void CheckImageSize(fsize32 image_size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (image_size.width <= 0.0f || image_size.height <= 0.0f) {
         throw ScriptException("Image size args must be positive");
     }
@@ -51,8 +49,6 @@ static void CheckImageSize(fsize32 image_size)
 
 static void CheckUvRange(fpos32 uv0, fpos32 uv1)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto in_range = [](float32_t value) noexcept -> bool { return value >= -IMGUI_UV_EPSILON && value <= 1.0f + IMGUI_UV_EPSILON; };
 
     if (!in_range(uv0.x) || !in_range(uv0.y) || !in_range(uv1.x) || !in_range(uv1.y)) {
@@ -62,22 +58,16 @@ static void CheckUvRange(fpos32 uv0, fpos32 uv1)
 
 static auto IsFullUvRange(fpos32 uv0, fpos32 uv1) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::abs(uv0.x) <= IMGUI_UV_EPSILON && std::abs(uv0.y) <= IMGUI_UV_EPSILON && std::abs(uv1.x - 1.0f) <= IMGUI_UV_EPSILON && std::abs(uv1.y - 1.0f) <= IMGUI_UV_EPSILON;
 }
 
 static auto ResolveTintColor(ucolor tint_color) noexcept -> ucolor
 {
-    FO_STACK_TRACE_ENTRY();
-
     return tint_color == ucolor::clear ? Color::Neutral : tint_color;
 }
 
 static auto MakeItemRect(const ImVec2& min_pos, const ImVec2& max_pos) -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t left = iround<int32_t>(min_pos.x);
     int32_t top = iround<int32_t>(min_pos.y);
     int32_t right = std::max(left, iround<int32_t>(max_pos.x));
@@ -87,8 +77,6 @@ static auto MakeItemRect(const ImVec2& min_pos, const ImVec2& max_pos) -> irect3
 
 static void RenderImageButtonFrame(ucolor bg_color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto item_min = ImGui::GetItemRectMin();
     auto item_max = ImGui::GetItemRectMax();
     const auto& style = ImGui::GetStyle();
@@ -105,8 +93,6 @@ static void RenderImageButtonFrame(ucolor bg_color)
 
 static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize32 image_size, ucolor tint_color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto sprite = client_ptr->AnimGetSpr(spr_id);
 
     if (!sprite) {
@@ -126,8 +112,6 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
 
 static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize32 image_size, fpos32 uv0, fpos32 uv1, ucolor tint_color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsFullUvRange(uv0, uv1)) {
         DrawItemSprite(client_ptr, spr_id, image_size, tint_color);
         return;
@@ -154,6 +138,7 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
     }
 }
 
+// Draws a client sprite in an ImGui layout slot at the requested positive size and UV range; partial UV drawing requires an atlas sprite, while a missing sprite leaves the slot blank
 ///@ ExportMethod
 FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f})
 {
@@ -167,6 +152,7 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, ui
     DrawItemSprite(client, sprId, imageSize, uv0, uv1, ucolor::clear);
 }
 
+// Creates a uniquely identified ImGui image button, draws its standard state frame plus optional background and sprite tint, and returns whether it was pressed; size and UV validation match Image
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ptr<ScriptImGui> self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f}, ucolor bgColor = ucolor {}, ucolor tintColor = ucolor {})
 {

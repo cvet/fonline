@@ -62,7 +62,7 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend>, ptr<BaseEngine
 }
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend>, uint32_t, const ManagedCallbackPlan&, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     call.Body();
 }
@@ -173,7 +173,7 @@ def build_context_probe(build: Path, output: Path, *, without_callback_scope: bo
     link_args.insert(link_args.index("-o"), str(obj))
     inputs = []
     for argument in link_args:
-        if argument.endswith((".a", ".o")):
+        if not argument.startswith("-") and argument.endswith((".a", ".o")):
             path = Path(argument)
             path = path if path.is_absolute() else build / path
             inputs.append({"path": str(path), "sha256": sha(path)})

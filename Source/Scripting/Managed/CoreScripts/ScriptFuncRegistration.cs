@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 // attribute — e.g. static-item triggers ([[ItemTrigger]], bound by MapManager from the item's TriggerScript
 // property). Engine marker attributes register from Initializator.InitializeEarly because maps bind triggers
 // before normal [ModuleInit] runs; project extensions (e.g. dialogs) call RegisterAttributedScriptFuncs with
-// their own attribute type + marker name.
+// their own attribute type + marker name
 public static class ScriptFuncRegistration
 {
     // Engine-owned marker attributes resolved by name through the cross-backend registry. (Anim callbacks are a
@@ -184,7 +184,7 @@ public static class ScriptFuncRegistration
 
     // Map a C# parameter/return type to the engine base-type name the metadata uses (see AngelScriptCall.cpp
     // resolve_type). Entity wrappers and value structs are named after the engine type, so their simple name is
-    // used directly.
+    // used directly
     public static string EngineTypeName(Type type)
     {
         if (type == typeof(void)) {
@@ -251,7 +251,7 @@ public static class ScriptFuncRegistration
 
         // Collections map to the engine array type name "element[]" so the registered signature matches the
         // FindFunc<...> an AngelScript array arg produces (the engine builds an Array ComplexTypeDesc for it).
-        // Covers List<T> (the managed idiom) and T[]; the engine marshals both ends as the same array.
+        // Covers List<T> (the managed idiom) and T[]; the engine marshals both ends as the same array
         if (type.IsArray) {
             return EngineTypeName(type.GetElementType()!) + "[]";
         }

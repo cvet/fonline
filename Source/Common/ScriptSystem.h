@@ -129,6 +129,9 @@ struct DataAccessor
     virtual void AddArrayElement(ptr<void> /*data*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearDict(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddDictElement(ptr<void> /*data*/, ptr<void> /*key*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
+    // An array of plain numbers may cross as one byte block; false leaves the caller on element-wise access
+    [[nodiscard]] virtual auto ReadArrayRaw(ptr<void> /*data*/, span<uint8_t> /*dest*/) const -> bool { return false; }
+    [[nodiscard]] virtual auto WriteArrayRaw(ptr<void> /*data*/, const_span<uint8_t> /*src*/) const -> bool { return false; }
     virtual ~DataAccessor() = default;
 };
 
@@ -192,12 +195,10 @@ namespace NativeDataProvider
         // Mutable array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
         }
@@ -205,23 +206,23 @@ namespace NativeDataProvider
         // Const array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(const T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(const T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [&](ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> ptr<void> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> value) { _addCallback(value), _ptrs.emplace_back(value); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _sizeCallback(); }
+        [[nodiscard]] auto Get(size_t index) const noexcept -> ptr<void> { return _getCallback(index); }
+
+        void Add(ptr<void> value) { _addCallback(value); }
+        void Clear() { _clearCallback(); }
 
     private:
-        vector<ptr<void>> _ptrs;
+        function<size_t()> _sizeCallback {};
+        function<ptr<void>(size_t)> _getCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>)> _addCallback {};
     };
@@ -232,9 +233,16 @@ namespace NativeDataProvider
         // Mutable dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
         }
@@ -242,20 +250,58 @@ namespace NativeDataProvider
         // Const dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(const T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> pair<ptr<void>, ptr<void>> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> key, ptr<void> value) { _addCallback(key, value), _ptrs.emplace_back(key, value); }
+        [[nodiscard]] auto Size() const -> size_t
+        {
+            Refresh();
+            return _ptrs.size();
+        }
+
+        [[nodiscard]] auto Get(size_t index) const -> pair<ptr<void>, ptr<void>>
+        {
+            if (_dirty) {
+                Refresh();
+            }
+
+            return _ptrs[index];
+        }
+
+        void Add(ptr<void> key, ptr<void> value)
+        {
+            _addCallback(key, value);
+            _dirty = true;
+        }
+
+        void Clear()
+        {
+            _clearCallback();
+            _ptrs.clear();
+            _dirty = true;
+        }
 
     private:
-        vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        void Refresh() const
+        {
+            _refreshCallback(_ptrs);
+            _dirty = false;
+        }
+
+        mutable vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        mutable bool _dirty {true};
+        function<void(vector<pair<ptr<void>, ptr<void>>>&)> _refreshCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>, ptr<void>)> _addCallback {};
     };
@@ -632,6 +678,10 @@ namespace NativeDataCaller
     template<typename T>
     concept entity_handle_collection = vector_collection<T> && entity_handle_arg<typename T::value_type>;
 
+    // Plain numbers have one layout in every backend, so an array of them can be copied as bytes
+    template<typename T>
+    concept raw_array_value = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+
     // A collection slot holds the script Entity handle whatever the declared element type says, so it is
     // promoted here rather than reinterpreted, which would let a prototype through and kill the callee
     template<typename ElemT>
@@ -660,6 +710,17 @@ namespace NativeDataCaller
             using value_t = typename raw_t::value_type;
             auto& v = temp.emplace();
             size_t size = accessor.GetArraySize(data);
+
+            if constexpr (raw_array_value<value_t>) {
+                v.resize(size);
+
+                if (size == 0 || accessor.ReadArrayRaw(data, make_span(v))) {
+                    return v;
+                }
+
+                v.clear();
+            }
+
             v.reserve(size);
 
             for (size_t i = 0; i < size; i++) {
@@ -762,6 +823,13 @@ namespace NativeDataCaller
         if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
             if constexpr (vector_collection<raw_t>) {
                 auto& v = temp.value();
+
+                if constexpr (raw_array_value<typename raw_t::value_type>) {
+                    if (accessor.WriteArrayRaw(data, make_const_span(v))) {
+                        return;
+                    }
+                }
+
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {

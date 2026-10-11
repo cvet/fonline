@@ -8,6 +8,14 @@ cmake_minimum_required(VERSION 3.22)
 IncludeFile(FindPython3)
 RequirePackage(Python3 REQUIRED COMPONENTS Interpreter)
 
+SetValue(engineVersionRoot "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}")
+include("${CMAKE_CURRENT_LIST_DIR}/../helpers/EngineVersion.cmake")
+ReadEngineVersion("${engineVersionRoot}" FO_ENGINE_VERSION engineGitDependencies)
+message(STATUS "FOnline Engine version: ${FO_ENGINE_VERSION}")
+
+ComputeBakingConfigHash(FO_BAKING_CONFIG_HASH)
+StatusMessage("Baking configuration: ${FO_BAKING_CONFIG_HASH}")
+
 AppendList(FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
@@ -45,6 +53,7 @@ else()
 endif()
 
 AppendList(FO_CODEGEN_COMMAND_ARGS
+	-enginedefine "FO_BAKING_CONFIG_HASH=\"${FO_BAKING_CONFIG_HASH}\""
 	-enginedefine "FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
 	-enginedefine "FO_GEOMETRY=${foGeometryValue}"
 	-enginedefine "FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}"
@@ -75,7 +84,6 @@ foreach(entry ${FO_ADDED_COMMON_HEADERS})
 endforeach()
 
 AppendList(FO_CODEGEN_OUTPUT
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EngineConfig.gen.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources.gen.inc"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
@@ -107,20 +115,29 @@ SetValue(FO_CODEGEN_COMMAND
     ${Python3_EXECUTABLE}
     "${FO_CODEGEN_SCRIPT}"
     "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+SetValue(codegenStampPath "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch")
+SetValue(codegenArgsArgument "@${codegenArgsPath}")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../helpers/EnsureCodegenOutputs.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/EnsureCodegenOutputs.cmake" @ONLY)
+
 SetValue(codegenTouchCommand
     ${CMAKE_COMMAND}
     -E touch
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch")
 
-AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
+AddCustomCommand(OUTPUT "${codegenStampPath}"
+    BYPRODUCTS ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE} "${codegenArgsPath}"
+        "${engineVersionRoot}/VERSION" "${engineVersionRoot}/BuildTools/engine_version.py"
+        ${engineGitDependencies}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 
 AddCommandTarget(CodeGeneration
-    DEPENDS ${FO_CODEGEN_OUTPUT}
+    COMMAND_ARGS COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/EnsureCodegenOutputs.cmake"
+    DEPENDS "${codegenStampPath}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 AppendList(FO_GEN_DEPENDENCIES CodeGeneration)
 

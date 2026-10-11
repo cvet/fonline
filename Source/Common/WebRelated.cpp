@@ -232,6 +232,10 @@ EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
     Module['websocket']['url'] = secure != 0 ? 'wss://' : 'ws://';
 });
 
+EM_JS(void, WebGetUserAgentImpl, (char* buffer, int buffer_size), {
+    stringToUTF8(navigator.userAgent || "", Number(buffer), buffer_size);
+});
+
 EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {
     const title = UTF8ToString(Number(title_ptr));
     const text = UTF8ToString(Number(text_ptr));
@@ -385,13 +389,11 @@ extern "C"
     // its timer, video and GL backends, but the engine never reaches those paths
     void emscripten_sleep(unsigned int ms)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_UNREACHABLE_PLACE();
     }
 
     // Emscripten ships these two as weak stubs only in its libstubs library, which it links solely under
-    // ALLOW_UNIMPLEMENTED_SYSCALLS - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    // ALLOW_UNIMPLEMENTED_SYSCALLS; the Web managed-runtime diagnostics explain why weak stubs are insufficient
     int __syscall_uname(struct utsname* buf)
     {
         if (buf == nullptr) {
@@ -497,8 +499,6 @@ namespace WebRelated
 
     void SetupClipboard()
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         auto canvas_selector = make_ptr(CanvasSelector.c_str());
         WebSetupClipboardImpl(canvas_selector.get());
@@ -507,8 +507,6 @@ namespace WebRelated
 
     void SyncClipboardToSystem(string_view text)
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         const string clipboard_text = string(text);
         auto text_ptr = make_ptr(clipboard_text.c_str());
@@ -560,10 +558,19 @@ namespace WebRelated
 #endif
     }
 
+    auto GetUserAgent() -> string
+    {
+#if FO_WEB
+        char buffer[512] {};
+        WebGetUserAgentImpl(&buffer[0], numeric_cast<int32_t>(std::size(buffer)));
+        return string(&buffer[0]);
+#else
+        return {};
+#endif
+    }
+
     void ShowError(string_view title, string_view text)
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         const auto title_str = string(title);
         const auto text_str = string(text);

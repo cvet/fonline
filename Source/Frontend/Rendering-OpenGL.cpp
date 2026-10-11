@@ -145,15 +145,22 @@ FO_BEGIN_NAMESPACE
     X(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC); \
     X(glViewport, PFNGLVIEWPORTPROC)
 
+// Loaded like the required ones, but a context without them only loses the non-blocking texture readback
+#define FO_GL_OPTIONAL_FUNCTIONS(X) \
+    X(glClientWaitSync, PFNGLCLIENTWAITSYNCPROC); \
+    X(glDeleteSync, PFNGLDELETESYNCPROC); \
+    X(glFenceSync, PFNGLFENCESYNCPROC); \
+    X(glMapBufferRange, PFNGLMAPBUFFERRANGEPROC); \
+    X(glUnmapBuffer, PFNGLUNMAPBUFFERPROC)
+
 #define FO_GL_FUNCTION_DEF(name, type) static type name = nullptr
 FO_GL_FUNCTIONS(FO_GL_FUNCTION_DEF);
+FO_GL_OPTIONAL_FUNCTIONS(FO_GL_FUNCTION_DEF);
 #undef FO_GL_FUNCTION_DEF
 
 template<typename T>
 static auto LoadOpenGlFunction(const char* name) noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     SDL_FunctionPointer function = SDL_GL_GetProcAddress(name);
     return reinterpret_cast<T>(function); // NOLINT(clang-diagnostic-cast-function-type-strict)
 }
@@ -162,6 +169,7 @@ static void LoadOpenGLFunctions() noexcept
 {
 #define FO_GL_FUNCTION_LOAD(name, type) name = LoadOpenGlFunction<type>(#name)
     FO_GL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
+    FO_GL_OPTIONAL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
 #undef FO_GL_FUNCTION_LOAD
 }
 #endif
@@ -189,8 +197,6 @@ static void LoadOpenGLFunctions() noexcept
 
 static auto ErrCodeToString(GLenum err_code) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
 #define ERR_CODE_CASE(err_code_variant) \
     case err_code_variant: \
         return #err_code_variant
@@ -256,13 +262,12 @@ struct OpenGL_Renderer::Context
     bool OGL_framebuffer_object_ext {};
     bool OGL_vertex_array_object {};
     bool OGL_uniform_buffer_object {};
+    bool OGL_async_readback {};
     // ReSharper restore CppInconsistentNaming
 };
 
 static auto GetOpenGlContext(nptr<OpenGL_Renderer::Context> ctx) -> ptr<OpenGL_Renderer::Context>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ctx, "OpenGL renderer context is not initialized");
     return ctx;
 }
@@ -277,8 +282,9 @@ public:
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     GLuint FramebufObj {};
@@ -288,6 +294,31 @@ public:
 private:
     ptr<OpenGL_Renderer::Context> _ctx;
 };
+
+#if !FO_WEB
+// The read lands in a pixel buffer behind a fence, and the buffer is mapped only once the fence has signaled
+class OpenGL_TextureReadback final : public RenderTextureReadback
+{
+public:
+    OpenGL_TextureReadback(ptr<OpenGL_Renderer::Context> ctx, GLuint pixel_buf, GLsync fence, isize32 size);
+    OpenGL_TextureReadback(const OpenGL_TextureReadback&) = delete;
+    OpenGL_TextureReadback(OpenGL_TextureReadback&&) noexcept = delete;
+    auto operator=(const OpenGL_TextureReadback&) = delete;
+    auto operator=(OpenGL_TextureReadback&&) noexcept = delete;
+    ~OpenGL_TextureReadback() override;
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    void ReleaseObjects() noexcept;
+
+    ptr<OpenGL_Renderer::Context> _ctx;
+    GLuint _pixelBuf;
+    GLsync _fence;
+    isize32 _size;
+    bool _flushed {};
+};
+#endif
 
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
@@ -327,8 +358,6 @@ private:
 
 static auto GetOpenGlString(GLenum name) noexcept -> nptr<const char>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto chars = make_nptr(glGetString(name));
 
     if (!chars) {
@@ -340,16 +369,12 @@ static auto GetOpenGlString(GLenum name) noexcept -> nptr<const char>
 
 static auto OpenGlBufferOffset(size_t offset) noexcept -> nptr<const GLvoid>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return reinterpret_cast<const GLvoid*>(offset);
 }
 
 #if FO_WEB
 static auto WebGlContextHandleAsSdlContext(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context) noexcept -> SDL_GLContext
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return reinterpret_cast<SDL_GLContext>(context);
 }
 #endif
@@ -358,7 +383,7 @@ OpenGL_Renderer::OpenGL_Renderer() = default;
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
@@ -471,6 +496,11 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     _ctx->OGL_vertex_array_object = at_least(3, 0) || has_extension("GL_ARB_vertex_array_object");
 #endif
     _ctx->OGL_uniform_buffer_object = at_least(3, 1) || has_extension("GL_ARB_uniform_buffer_object");
+    bool has_sync = at_least(3, 2) || has_extension("GL_ARB_sync");
+    bool has_pixel_buffer = at_least(2, 1) || has_extension("GL_ARB_pixel_buffer_object");
+    bool has_map_range = at_least(3, 0) || has_extension("GL_ARB_map_buffer_range");
+    bool has_readback_entries = glClientWaitSync != nullptr && glDeleteSync != nullptr && glFenceSync != nullptr && glMapBufferRange != nullptr && glUnmapBuffer != nullptr;
+    _ctx->OGL_async_readback = has_sync && has_pixel_buffer && has_map_range && has_readback_entries;
 #endif
 
     // OpenGL ES extensions
@@ -481,7 +511,19 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     _ctx->OGL_framebuffer_object_ext = false;
     _ctx->OGL_vertex_array_object = true; // No in es 2 / webgl 1
     _ctx->OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
+    // WebGL exposes fences, but a pixel buffer cannot be mapped there, so the browser keeps the blocking read
+    _ctx->OGL_async_readback = !FO_WEB;
 #endif
+
+    // Name the GPU and driver so a client log can explain a rendering problem
+    {
+        auto gl_info = [](GLenum name) -> string_view {
+            auto chars = GetOpenGlString(name);
+            return chars ? string_view(chars.get()) : string_view("unknown");
+        };
+
+        logging::write("Render device: {}, vendor {}, driver {}, GLSL {}", gl_info(GL_RENDERER), gl_info(GL_VENDOR), gl_info(GL_VERSION), gl_info(GL_SHADING_LANGUAGE_VERSION));
+    }
 
     // Check OpenGL extensions
     size_t extension_errors = 0;
@@ -489,7 +531,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
-            logging::write("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            logging::write(logging::type::warning, "OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
             }
@@ -500,6 +542,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     check_extension("vertex_buffer_object", GL_HAS_CTX(vertex_buffer_object, _ctx.get()), true);
     check_extension("uniform_buffer_object", GL_HAS_CTX(uniform_buffer_object, _ctx.get()), true);
     check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, _ctx.get()), false);
+    check_extension("async_readback", GL_HAS_CTX(async_readback, _ctx.get()), false);
     check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, _ctx.get()), false);
     if (!GL_HAS_CTX(framebuffer_object, _ctx.get())) {
         check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, _ctx.get()), true);
@@ -576,7 +619,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
 
     if (max_uniform_components < 1024) {
-        logging::write("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
+        logging::write(logging::type::warning, "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
 
@@ -593,8 +636,6 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
 
 OpenGL_Renderer::~OpenGL_Renderer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_ctx) {
         return;
     }
@@ -639,13 +680,14 @@ OpenGL_Renderer::~OpenGL_Renderer()
     _ctx->OGL_framebuffer_object_ext = false;
     _ctx->OGL_vertex_array_object = false;
     _ctx->OGL_uniform_buffer_object = false;
+    _ctx->OGL_async_readback = false;
 
     _ctx.reset();
 }
 
 void OpenGL_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -668,7 +710,7 @@ void OpenGL_Renderer::Present()
 
 auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto opengl_tex = safe_alloc::make_unique<OpenGL_Texture>(size, linear_filtered, with_depth, _ctx);
@@ -721,7 +763,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 
 auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto opengl_dbuf = safe_alloc::make_unique<OpenGL_DrawBuffer>(is_static, _ctx);
@@ -731,7 +773,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
 
 auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto opengl_effect = safe_alloc::make_unique<OpenGL_Effect>(usage, name, loader, _ctx);
@@ -876,8 +918,6 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 
 auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t r_l = right - left;
     float32_t t_b = top - bottom;
     float32_t f_n = farp - nearp;
@@ -912,15 +952,13 @@ auto OpenGL_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
 
 auto OpenGL_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ViewPortRect;
 }
 
 void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -981,8 +1019,6 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ctx->OrthoNear = nearp;
     _ctx->OrthoFar = farp;
     _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
@@ -990,16 +1026,12 @@ void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexce
 
 auto OpenGL_Renderer::GetProjMatrix() const -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ProjMatrix;
 }
 
 void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     GLbitfield clear_flags = 0;
 
     if (color.has_value()) {
@@ -1028,8 +1060,6 @@ void OpenGL_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool
 
 void OpenGL_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     int32_t l;
@@ -1059,14 +1089,12 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
 
 void OpenGL_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
 void OpenGL_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -1082,8 +1110,6 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 
 OpenGL_Texture::~OpenGL_Texture()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A new texture may reuse this address; a stale cache entry would elide its first select
     if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget.get() == static_cast<RenderTexture*>(this)) {
         _ctx->CurrentRenderTargetValid = false;
@@ -1100,28 +1126,9 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested OpenGL texture pixel is outside texture bounds", pos, Size);
-
-    ucolor result;
-
-    int32_t prev_fbo = 0;
-    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
-
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
-
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
-
-    return result;
-}
-
 auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
@@ -1144,9 +1151,112 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     return result;
 }
 
+auto OpenGL_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+#if FO_WEB
+    return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+
+#else
+    // Without fences and mappable pixel buffers there is no way to read without waiting, so such a context reads now
+    if (!_ctx->OGL_async_readback) {
+        return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+    }
+
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+
+    GLuint pixel_buf = 0;
+    GL(glGenBuffers(1, &pixel_buf));
+    auto delete_pixel_buf = scope_fail([&pixel_buf]() noexcept { glDeleteBuffers(1, &pixel_buf); });
+
+    GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, pixel_buf));
+    auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });
+    GL(glBufferData(GL_PIXEL_PACK_BUFFER, numeric_cast<GLsizeiptr>(size.square() * sizeof(ucolor)), nullptr, GL_STREAM_READ));
+
+    GLint prev_fbo;
+    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
+    GLuint prev_fbo_id = numeric_cast<GLuint>(prev_fbo);
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
+    auto restore_fbo = scope_exit([prev_fbo_id]() noexcept { glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo_id); });
+
+    // With a pack buffer bound the last argument is an offset into it, and the call returns before the pixels exist
+    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+
+    GLsync fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    FO_VERIFY_AND_THROW(fence != nullptr, "OpenGL glFenceSync failed for a texture readback", pos, size);
+    auto delete_fence = scope_fail([fence]() noexcept { glDeleteSync(fence); });
+
+    return safe_alloc::make_unique<OpenGL_TextureReadback>(_ctx, pixel_buf, fence, size);
+#endif
+}
+
+#if !FO_WEB
+OpenGL_TextureReadback::OpenGL_TextureReadback(ptr<OpenGL_Renderer::Context> ctx, GLuint pixel_buf, GLsync fence, isize32 size) :
+    _ctx {ctx},
+    _pixelBuf {pixel_buf},
+    _fence {fence},
+    _size {size}
+{
+}
+
+OpenGL_TextureReadback::~OpenGL_TextureReadback()
+{
+    ReleaseObjects();
+}
+
+auto OpenGL_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_pixelBuf != 0, "OpenGL texture readback pixels were already taken");
+
+    // The first poll also flushes, so a fence still sitting in the command queue is sure to be reached
+    GLenum wait_result = glClientWaitSync(_fence, _flushed ? 0 : GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+    _flushed = true;
+
+    if (wait_result == GL_TIMEOUT_EXPIRED) {
+        return std::nullopt;
+    }
+
+    FO_VERIFY_AND_THROW(wait_result == GL_ALREADY_SIGNALED || wait_result == GL_CONDITION_SATISFIED, "OpenGL glClientWaitSync failed for a texture readback", wait_result);
+
+    size_t data_size = _size.square() * sizeof(ucolor);
+    vector<ucolor> pixels;
+    pixels.resize(_size.square());
+
+    GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, _pixelBuf));
+    auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });
+
+    auto mapped = make_nptr(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, numeric_cast<GLsizeiptr>(data_size), GL_MAP_READ_BIT));
+    FO_VERIFY_AND_THROW(mapped, "OpenGL glMapBufferRange failed for a texture readback", _size);
+    memory::copy(pixels.data(), mapped, data_size);
+    GL(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
+
+    ReleaseObjects();
+
+    return pixels;
+}
+
+void OpenGL_TextureReadback::ReleaseObjects() noexcept
+{
+    if (_fence != nullptr) {
+        glDeleteSync(_fence);
+        _fence = nullptr;
+    }
+    if (_pixelBuf != 0) {
+        glDeleteBuffers(1, &_pixelBuf);
+        _pixelBuf = 0;
+    }
+}
+#endif
+
 void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
@@ -1175,8 +1285,6 @@ void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
 static void EnableVertAtribs(ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(ctx, usage);
 
 #if FO_ENABLE_3D
@@ -1211,8 +1319,6 @@ static void EnableVertAtribs(ptr<OpenGL_Renderer::Context> ctx, EffectUsage usag
 
 static void DisableVertAtribs(ptr<OpenGL_Renderer::Context> ctx, EffectUsage usage)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(ctx, usage);
 
 #if FO_ENABLE_3D
@@ -1234,16 +1340,12 @@ OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static, ptr<OpenGL_Renderer::Contex
     RenderDrawBuffer(is_static),
     _ctx {ctx}
 {
-    FO_STACK_TRACE_ENTRY();
-
     GL(glGenBuffers(1, &VertexBufObj));
     GL(glGenBuffers(1, &IndexBufObj));
 }
 
 OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (VertexArrObj != 0) {
         glDeleteVertexArrays(1, &VertexArrObj);
     }
@@ -1254,7 +1356,7 @@ OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1317,8 +1419,6 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (name) {
     case BlendFuncType::Zero:
         return 0;
@@ -1353,8 +1453,6 @@ static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
 
 static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (name) {
     case BlendEquationType::FuncAdd:
         return 0x8006;
@@ -1373,8 +1471,6 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
 
 static auto ConvertDepthFunc(DepthFuncType name) -> GLenum
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (name) {
     case DepthFuncType::Always:
         return GL_ALWAYS;
@@ -1399,8 +1495,6 @@ static auto ConvertDepthFunc(DepthFuncType name) -> GLenum
 
 OpenGL_Effect::~OpenGL_Effect()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < _passCount; i++) {
         if (Program[i] != 0) {
             glDeleteProgram(Program[i]);
@@ -1410,7 +1504,7 @@ OpenGL_Effect::~OpenGL_Effect()
 
 void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto opengl_dbuf = dbuf.dyn_cast<OpenGL_DrawBuffer>();
     FO_VERIFY_AND_THROW(opengl_dbuf, "OpenGL draw buffer is not of the expected backend type");

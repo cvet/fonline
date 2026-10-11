@@ -1,0 +1,70 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "starter-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {
+        "FO_BUILD_SERVER": "ON",
+        "FO_BUILD_BAKER": "ON"
+      }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows x64 (installed Visual Studio)",
+      "description": "Configure the starter server, baker, unit tests, and smoke target with the newest installed Visual Studio generator.",
+      "inherits": "starter-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux GCC",
+      "description": "Configure the starter server, baker, unit tests, and smoke target with GCC and Ninja Multi-Config.",
+      "inherits": "starter-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-smoke",
+      "displayName": "Windows starter smoke",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": [
+        "RunStarterSmoke"
+      ]
+    },
+    {
+      "name": "linux-smoke",
+      "displayName": "Linux starter smoke",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": [
+        "RunStarterSmoke"
+      ]
+    }
+  ]
+}

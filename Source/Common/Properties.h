@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AnyData.h"
 #include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE
@@ -110,6 +111,7 @@ private:
 using PropertyGetCallback = function<PropertyRawData(nptr<Entity>, ptr<const Property>)>;
 using PropertySetCallback = function<void(nptr<Entity>, ptr<const Property>, PropertyRawData&)>;
 using PropertyPostSetCallback = function<void(nptr<Entity>, ptr<const Property>)>;
+using PropertyMigratorCallback = function<optional<AnyData::Value>(const AnyData::Value&, const AnyData::Document&)>;
 
 class Property final
 {
@@ -130,6 +132,8 @@ public:
     [[nodiscard]] auto GetComponentName() const noexcept -> string_view { return _componentName; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16_t { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> string_view { return _scriptFuncType; }
+    [[nodiscard]] auto GetMigratorName() const noexcept -> string_view { return _migratorName; }
+    [[nodiscard]] auto GetMigrator() const noexcept -> const PropertyMigratorCallback& { return _migrator; }
 
     [[nodiscard]] auto GetBaseType() const noexcept -> const BaseTypeDesc& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> string_view { return _baseType.Name; }
@@ -216,6 +220,8 @@ public:
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
     void AddPostSetter(PropertyPostSetCallback setter) const;
+    void SetMigratorName(string_view name) const;
+    void SetMigrator(PropertyMigratorCallback migrator) const;
 
 private:
     explicit Property(ptr<const PropertyRegistrar> registrar);
@@ -225,6 +231,8 @@ private:
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
     mutable vector<PropertyPostSetCallback> _postSetters {};
+    mutable string _migratorName {};
+    mutable PropertyMigratorCallback _migrator {};
 
     string _propName {};
     string _propNameWithoutComponent {};
@@ -527,8 +535,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
@@ -557,8 +563,6 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
@@ -587,8 +591,6 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
 
@@ -617,8 +619,6 @@ template<typename T>
     requires(vector_collection<T>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
 
@@ -693,8 +693,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in fast value getter", prop->GetName());
@@ -712,8 +710,6 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in hstring fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t), "Property hash base size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), prop->GetBaseSize());
     FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in hstring fast value getter", prop->GetName());
@@ -730,8 +726,6 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in string fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->IsString(), "Property is not string data in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in string fast value getter", prop->GetName());
@@ -749,8 +743,6 @@ template<typename T>
     requires(vector_collection<T>)
 auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in array fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->IsArray(), "Property is not array data in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(!prop->IsVirtual(), "Virtual property used in array fast value getter", prop->GetName());
@@ -821,8 +813,6 @@ template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
@@ -887,8 +877,6 @@ template<typename T>
     requires(std::same_as<T, hstring>)
 void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hstring::hash_t), "Hash property base size does not match assigned hash storage size", prop->GetName(), prop->GetBaseSize(), sizeof(hstring::hash_t));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
@@ -942,8 +930,6 @@ template<typename T>
     requires(std::same_as<T, string> || std::same_as<T, any_t>)
 void Properties::SetValue(ptr<const Property> prop, const T& new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsString(), "Property base type is not string");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
@@ -987,8 +973,6 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
 template<typename T>
 void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->IsArray(), "Property is not an array");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");

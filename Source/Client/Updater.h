@@ -40,6 +40,7 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
@@ -110,14 +111,72 @@ private:
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool TryPatch {true};
+        ResourcePackHeader PackHeader {};
+    };
+
+    enum class ResourceRange
+    {
+        None,
+        Catalog,
+        Payload,
+    };
+
+    // The run holds the writable resource directory from the first stage to its result, so a second client started on
+    // the same folder waits for this one instead of failing or interleaving with it
+    enum class Stage : uint8_t
+    {
+        WaitingForDirectory,
+        VerifyingResources,
+        Synchronizing,
+    };
+
+    enum class LocalDamage : uint8_t
+    {
+        Base,
+        Patch,
+    };
+
+    // What one verified file was when it was proved intact, so a later run can skip reading it again
+    struct VerifiedFileIdentity
+    {
+        uint64_t Size;
+        uint64_t WriteTime;
+        uint64_t Content;
+    };
+
+    struct PackVerification
+    {
+        string PackName {};
+        string BasePath {};
+        string PatchPath {};
+        optional<VerifiedFileIdentity> BaseIdentity {};
+        optional<VerifiedFileIdentity> PatchIdentity {};
+        unique_nptr<ResourcePairVerifier> Verifier {};
     };
 
     void AddText(string_view text);
     void Abort(UpdaterResult result, string_view text);
+    void TryStart();
+    void StartSynchronization();
+    void PlanResourceVerification();
+    void ProcessResourceVerification();
+    void FinishPackVerification(const PackVerification& verification);
     void GetNextFile();
     void FinishResourcesUpdate();
+    void RebuildResourceIndex() const;
     auto ReadLocalMetadataVersion() const -> string;
+    void RecoverInterruptedReplacements() const;
+    void RemoveStaleTempPacks() const;
     void RequestUpdateFile(const UpdateFile& update_file);
+    void RequestResourceRange();
+    void FinishResourceRange();
+    void AdvanceResourcePatch();
+    auto IsLocalResourceCurrent(const UpdateFile& file) const -> bool;
+    auto IsIdentityVerified(string_view path, const VerifiedFileIdentity& identity) const -> bool;
+    void RecordVerifiedIdentity(string_view path, const VerifiedFileIdentity& identity);
+    void RecordVerifiedBase(string_view base_path);
+    void RecordVerifiedPatch(string_view pack_name);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -127,8 +186,12 @@ private:
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;
+    auto IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool;
 
+    static auto ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileIdentity>;
+    static auto ReadPatchIdentity(string_view patch_path, string_view base_path) -> optional<VerifiedFileIdentity>;
     static auto IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool;
+    static auto IsResourcePackName(string_view file_name) noexcept -> bool;
     static auto GetDiskFileSize(string_view file_path) -> optional<uint64_t>;
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
@@ -139,13 +202,27 @@ private:
     string _binaryDir;
     string _serverMetadataVersion {};
     optional<UpdaterResult> _result;
+    Stage _stage {Stage::WaitingForDirectory};
+    nanotime _nextDirectoryAttempt {};
     bool _binariesMode {};
     bool _aborted {};
     bool _fileListReceived {};
     bool _hasMatchingEntries {};
     bool _restartPrompt {};
+    bool _waitingNoticeShown {};
+    vector<PackVerification> _verifications {};
+    size_t _verificationIndex {};
+    unordered_map<string, LocalDamage> _damagedPacks {};
     vector<UpdateFile> _filesToUpdate {};
-    std::ofstream _tempFile {};
+    vector<UpdateFile> _resourceTargets {};
+    unique_nptr<ResourcePatchWriter> _patchWriter {};
+    ResourceRange _resourceRange {ResourceRange::None};
+    uint64_t _rangeOffset {};
+    uint64_t _rangeSize {};
+    vector<uint8_t> _rangeData {};
+    size_t _patchDownloadIndex {};
+    unique_nptr<fs::disk_directory_lock> _directoryLock {};
+    fs::disk_write_file _tempFile {};
     vector<uint8_t> _updateFileBuf {};
     vector<string> _messages {};
     FileSystem _resources {};

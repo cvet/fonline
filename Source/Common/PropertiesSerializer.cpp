@@ -41,7 +41,7 @@ static auto ParseStrictIntText(string_view text) -> int64_t;
 
 auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!base || props->GetRegistrar() == base->GetRegistrar(), "Serialized properties use a different base registrar");
 
@@ -91,9 +91,72 @@ auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<cons
     return doc;
 }
 
+auto PropertiesSerializer::MigrateDocument(ptr<const PropertyRegistrar> registrar, AnyData::Document& doc, nptr<AnyData::Document> updates, optional<AnyData::Value> prototype) -> bool
+{
+    FO_TRACE_ZONE(Entity);
+
+    AnyData::Document staged;
+
+    if (prototype) {
+        staged.Emplace("_Proto", std::move(*prototype));
+    }
+
+    vector<string> retired;
+    unordered_set<ptr<const Property>> seen;
+
+    for (const auto& [key, value] : doc) {
+        if (key.empty() || key[0] == '_' || key[0] == '$') {
+            continue;
+        }
+
+        auto prop = registrar->FindPersistedProperty(key);
+
+        if (!prop || prop->IsDisabled() || !prop->IsPersistent() || (prop->GetName() != key && doc.Contains(prop->GetName()))) {
+            continue;
+        }
+
+        bool first_seen = seen.emplace(prop.as_ptr()).second;
+        FO_VERIFY_AND_THROW(first_seen, "Duplicate persisted property during migration", registrar->GetTypeName(), key);
+
+        optional<AnyData::Value> replacement;
+
+        if (!prop->GetMigratorName().empty()) {
+            FO_VERIFY_AND_THROW(prop->GetMigrator(), "Property migrator is not bound", registrar->GetTypeName(), prop->GetName(), prop->GetMigratorName());
+            replacement = prop->GetMigrator()(value, doc);
+        }
+
+        if (prop->GetName() != key) {
+            retired.emplace_back(key);
+
+            if (!replacement) {
+                replacement = value.Copy();
+            }
+        }
+
+        if (replacement) {
+            staged.Emplace(string {prop->GetName()}, std::move(*replacement));
+        }
+    }
+
+    bool changed = !staged.Empty();
+
+    for (const auto& [key, value] : staged) {
+        doc.Assign(key, value.Copy());
+    }
+    for (const auto& key : retired) {
+        doc.Erase(key);
+    }
+
+    if (updates) {
+        *updates = std::move(staged);
+    }
+
+    return changed;
+}
+
 auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_STRONG_ASSERT(props.get(), "Missing required properties to load into");
 
@@ -115,7 +178,8 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
                     continue;
                 }
 
-                FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
+                bool first_seen = seen_properties.emplace(prop.as_ptr()).second;
+                FO_VERIFY_AND_THROW(first_seen, "Duplicate persisted property", doc_key);
                 LoadPropertyFromValue(props, prop, doc_value, hashes, name_resolver);
             }
         }
@@ -130,8 +194,6 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
 
 auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -144,8 +206,6 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<
 
 static auto NormalizeTopLevelCodedString(string str) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str.length() >= 2 && str.front() == '"' && str.back() == '"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
             str = StringEscaping::DecodeString(str);
@@ -157,8 +217,6 @@ static auto NormalizeTopLevelCodedString(string str) -> string
 
 static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<const char>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str[0] == 0) {
         return nullptr;
     }
@@ -237,8 +295,6 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
 
 static auto RawBytesPtr(span<const uint8_t> data) -> ptr<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!data.empty(), "Raw byte span is empty");
 
     return data.data();
@@ -246,8 +302,6 @@ static auto RawBytesPtr(span<const uint8_t> data) -> ptr<const uint8_t>
 
 static auto RawVectorBytesPtr(vector<uint8_t>& data) -> ptr<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!data.empty(), "Raw byte vector is empty");
 
     return data.data();
@@ -257,8 +311,6 @@ template<typename T>
     requires(!std::is_const_v<T>)
 static auto RawMutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_trivially_copyable_v<T>);
 
     auto value_ptr = make_ptr(&value);
@@ -268,8 +320,6 @@ static auto RawMutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
 template<typename T>
 static auto RawObjectBytes(const T& value) noexcept -> ptr<const uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_trivially_copyable_v<T>);
 
     auto value_ptr = make_ptr(&value);
@@ -278,15 +328,11 @@ static auto RawObjectBytes(const T& value) noexcept -> ptr<const uint8_t>
 
 static auto RawWritePtrAt(ptr<uint8_t> data, size_t pos) noexcept -> ptr<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return data.offset(pos);
 }
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (lhs.size() != rhs.size()) {
         return false;
     }
@@ -302,8 +348,6 @@ static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> b
 template<typename T>
 static auto ReadRawValue(span<const uint8_t> data) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(data.size() >= sizeof(T), "Raw byte span is too small to hold the requested value");
 
     T value {};
@@ -327,8 +371,6 @@ struct RawWriteCursor final
 
 static auto TakeRawBytes(span<const uint8_t> raw_data, size_t& data_pos, size_t size) -> span<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(data_pos <= raw_data.size(), "Raw data read position is past the end of the buffer");
     FO_VERIFY_AND_THROW(raw_data.size() - data_pos >= size, "Raw data buffer has fewer remaining bytes than requested");
 
@@ -339,16 +381,12 @@ static auto TakeRawBytes(span<const uint8_t> raw_data, size_t& data_pos, size_t 
 
 static auto ReadCursorBytes(RawReadCursor& cursor, size_t size) -> span<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return TakeRawBytes(cursor.Data, cursor.Pos, size);
 }
 
 template<typename T>
 static auto ReadCursorValue(RawReadCursor& cursor) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     cursor.Pos = align_up(cursor.Pos, alignment_for_size(sizeof(T)));
     return ReadRawValue<T>(ReadCursorBytes(cursor, sizeof(T)));
 }
@@ -356,8 +394,6 @@ static auto ReadCursorValue(RawReadCursor& cursor) -> T
 template<typename T>
 static auto ReadFiniteRawFloat(span<const uint8_t> data, string_view type_name) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     T value = ReadRawValue<T>(data);
 
     if (!std::isfinite(value)) {
@@ -370,8 +406,6 @@ static auto ReadFiniteRawFloat(span<const uint8_t> data, string_view type_name) 
 template<typename T>
 static auto ReadFiniteCursorFloat(RawReadCursor& cursor, string_view type_name) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     T value = ReadCursorValue<T>(cursor);
 
     if (!std::isfinite(value)) {
@@ -383,8 +417,6 @@ static auto ReadFiniteCursorFloat(RawReadCursor& cursor, string_view type_name) 
 
 static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size <= sizeof(int32_t), "Enum value size is larger than its int32 storage");
 
     cursor.Pos = align_up(cursor.Pos, alignment_for_size(size));
@@ -403,8 +435,6 @@ static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
 
 static auto TakePropertyRawBytes(ptr<const Property> prop, string_view message, span<const uint8_t> raw_data, size_t& data_pos, size_t size) -> span<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (data_pos > raw_data.size() || raw_data.size() - data_pos < size) {
         throw PropertySerializationException(message, prop->GetName());
     }
@@ -414,8 +444,6 @@ static auto TakePropertyRawBytes(ptr<const Property> prop, string_view message, 
 
 static void AlignPropertyRawPos(ptr<const Property> prop, string_view message, span<const uint8_t> raw_data, size_t& data_pos, size_t alignment)
 {
-    FO_STACK_TRACE_ENTRY();
-
     data_pos = align_up(data_pos, alignment);
 
     if (data_pos > raw_data.size()) {
@@ -425,8 +453,6 @@ static void AlignPropertyRawPos(ptr<const Property> prop, string_view message, s
 
 static auto ReadPropertyRawUInt32(ptr<const Property> prop, string_view message, span<const uint8_t> raw_data, size_t& data_pos) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     AlignPropertyRawPos(prop, message, raw_data, data_pos, sizeof(uint32_t));
     auto bytes = TakePropertyRawBytes(prop, message, raw_data, data_pos, sizeof(uint32_t));
     return ReadRawValue<uint32_t>(bytes);
@@ -434,8 +460,6 @@ static auto ReadPropertyRawUInt32(ptr<const Property> prop, string_view message,
 
 static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void> source, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size != 0) {
         FO_VERIFY_AND_THROW(source, "Raw write source is null for a non-empty copy");
         auto target_pos = RawWritePtrAt(target, data_pos);
@@ -447,8 +471,6 @@ static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void
 
 static void WriteRawUInt32(ptr<uint8_t> target, size_t& data_pos, uint32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     data_pos = align_up(data_pos, sizeof(uint32_t));
 
     auto value_bytes = RawObjectBytes(value);
@@ -457,8 +479,6 @@ static void WriteRawUInt32(ptr<uint8_t> target, size_t& data_pos, uint32_t value
 
 static void WriteRawSpan(ptr<uint8_t> target, size_t& data_pos, span<const uint8_t> source)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (source.empty()) {
         return;
     }
@@ -469,8 +489,6 @@ static void WriteRawSpan(ptr<uint8_t> target, size_t& data_pos, span<const uint8
 
 static void WriteCursorBytes(RawWriteCursor& cursor, nptr<const void> source, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(cursor.Data, "Write cursor has no target buffer");
     WriteRawBytes(cursor.Data, cursor.Pos, source, size);
 }
@@ -478,8 +496,6 @@ static void WriteCursorBytes(RawWriteCursor& cursor, nptr<const void> source, si
 template<typename T>
 static void WriteCursorValue(RawWriteCursor& cursor, T value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     cursor.Pos = align_up(cursor.Pos, alignment_for_size(sizeof(T)));
 
     auto value_bytes = RawObjectBytes(value);
@@ -488,8 +504,6 @@ static void WriteCursorValue(RawWriteCursor& cursor, T value)
 
 static void WriteCursorEnumValue(RawWriteCursor& cursor, int32_t enum_value, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size <= sizeof(int32_t), "Enum value size is larger than its int32 storage");
 
     cursor.Pos = align_up(cursor.Pos, alignment_for_size(size));
@@ -508,8 +522,6 @@ static void WriteCursorEnumValue(RawWriteCursor& cursor, int32_t enum_value, siz
 
 static void WriteRawString(ptr<uint8_t> target, size_t& data_pos, string_view value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.empty()) {
         return;
     }
@@ -519,8 +531,6 @@ static void WriteRawString(ptr<uint8_t> target, size_t& data_pos, string_view va
 
 static void AppendRawBytes(vector<uint8_t>& data, nptr<const void> value, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size == 0) {
         return;
     }
@@ -538,8 +548,6 @@ static void AppendRawBytes(vector<uint8_t>& data, nptr<const void> value, size_t
 
 static void AppendRawBytes(vector<uint8_t>& data, span<const uint8_t> value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.empty()) {
         return;
     }
@@ -550,23 +558,17 @@ static void AppendRawBytes(vector<uint8_t>& data, span<const uint8_t> value)
 
 static void AlignRawBuffer(vector<uint8_t>& data, size_t alignment)
 {
-    FO_STACK_TRACE_ENTRY();
-
     data.resize(align_up(data.size(), alignment));
 }
 
 static void AppendRawScalarBytes(vector<uint8_t>& data, nptr<const void> value, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AlignRawBuffer(data, alignment_for_size(size));
     AppendRawBytes(data, value, size);
 }
 
 static void AppendRawString(vector<uint8_t>& data, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str_len = numeric_cast<uint32_t>(str.length());
     AppendRawScalarBytes(data, &str_len, sizeof(str_len));
 
@@ -575,8 +577,6 @@ static void AppendRawString(vector<uint8_t>& data, string_view str)
 
 static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (text.find_first_of("\\\"") == string_view::npos) {
         return text;
     }
@@ -588,8 +588,6 @@ static auto DecodeTextIfNeeded(string_view text, string& decoded_storage) -> str
 template<typename T>
 static auto GetIntegralMaxFloat64() noexcept -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float64_t max_value = static_cast<float64_t>(std::numeric_limits<T>::max());
 
     if constexpr (std::same_as<T, int64_t>) {
@@ -603,8 +601,6 @@ static auto ParseStrictFloatText(string_view text) -> float64_t;
 
 static auto ParseStrictIntText(string_view text) -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     strvex value = strvex(text);
     value.trim();
     string_view str = value.strv();
@@ -676,8 +672,6 @@ static auto ParseStrictIntText(string_view text) -> int64_t
 
 static auto ParseStrictFloatText(string_view text) -> float64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     strvex value = strvex(text);
     value.trim();
     string_view str = value.strv();
@@ -712,8 +706,6 @@ static auto ParseStrictFloatText(string_view text) -> float64_t
 
 static auto ParseStrictBoolText(string_view text) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     strvex value = strvex(text);
     value.trim();
 
@@ -738,8 +730,6 @@ static auto ConvertFloat64ToNumber(float64_t value) -> T;
 
 static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& primitive_type, string_view text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (primitive_type.IsInt8) {
         auto value = numeric_cast<int8_t>(ParseStrictIntText(text));
         AppendRawScalarBytes(data, &value, sizeof(value));
@@ -787,8 +777,6 @@ static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& p
 
 static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string decoded = StringEscaping::DecodeString(text);
     auto s = make_nptr(decoded.c_str());
     string_view token;
@@ -810,8 +798,6 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Propert
 
 static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, string_view value_name) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool failed = false;
     int32_t enum_value = name_resolver.ResolveEnumValue(base_type.Name, value_name, &failed);
 
@@ -830,8 +816,6 @@ static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, hash_re
 
 static auto IsProtoReferenceRemovedByMigration(const BaseTypeDesc& base_type, hstring proto_id, hash_resolver& hashes, NameResolver& name_resolver) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string_view migration_type_name = base_type.Name;
 
     if (base_type.IsEntityProto) {
@@ -846,8 +830,6 @@ static auto IsProtoReferenceRemovedByMigration(const BaseTypeDesc& base_type, hs
 
 static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.IsString) {
         string decoded_storage;
         AppendRawString(data, DecodeTextIfNeeded(text, decoded_storage));
@@ -935,8 +917,6 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
 
 static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
     auto s = make_nptr(decoded.c_str());
     string_view token;
@@ -965,8 +945,6 @@ static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& bas
 
 static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& primitive_type, RawReadCursor& cursor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (primitive_type.IsInt8) {
         result += strex("{}", ReadCursorValue<int8_t>(cursor));
     }
@@ -1004,8 +982,6 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
 
 static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, RawReadCursor& cursor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.IsString) {
         uint32_t str_len = ReadCursorValue<uint32_t>(cursor);
         StringEscaping::AppendCodeString(result, span_to_string(ReadCursorBytes(cursor, str_len)));
@@ -1051,8 +1027,6 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
 
 static void AppendBaseTypeToCodedStringAt(string& result, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos)
 {
-    FO_STACK_TRACE_ENTRY();
-
     RawReadCursor cursor {raw_data, data_pos};
     AppendBaseTypeToCodedString(result, base_type, hashes, name_resolver, cursor);
     data_pos = cursor.Pos;
@@ -1060,8 +1034,6 @@ static void AppendBaseTypeToCodedStringAt(string& result, const BaseTypeDesc& ba
 
 static auto RawDataToValue(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, RawReadCursor& cursor) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.IsString) {
         uint32_t str_len = ReadCursorValue<uint32_t>(cursor);
         return string {span_to_string(ReadCursorBytes(cursor, str_len))};
@@ -1131,8 +1103,6 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, hash_resolver& hashes,
 
 static auto RawDataToValueAt(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     RawReadCursor cursor {raw_data, data_pos};
     auto value = RawDataToValue(base_type, hashes, name_resolver, cursor);
     data_pos = cursor.Pos;
@@ -1141,8 +1111,6 @@ static auto RawDataToValueAt(const BaseTypeDesc& base_type, hash_resolver& hashe
 
 static auto IsDefaultPropertyRawData(ptr<const Property> prop, span<const uint8_t> raw_data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (raw_data.empty()) {
         return true;
     }
@@ -1161,8 +1129,6 @@ static auto IsDefaultPropertyRawData(ptr<const Property> prop, span<const uint8_
 
 static auto GetRefTypeFieldsRegistrar(const BaseTypeDesc& base_type) -> ptr<const PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -1171,8 +1137,6 @@ static auto GetRefTypeFieldsRegistrar(const BaseTypeDesc& base_type) -> ptr<cons
 
 static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, const function<void(ptr<const Property>, const_span<uint8_t>)>& callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     size_t data_pos = 0;
 
@@ -1214,8 +1178,6 @@ static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDes
 
 static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Properties& field_props) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     vector<span<const uint8_t>> field_raw_entries(fields_registrar->GetPropertiesCount());
     vector<bool> field_is_default(fields_registrar->GetPropertiesCount(), true);
@@ -1270,8 +1232,6 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
 
 static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     AnyData::Dict dict;
 
     ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&dict, &hashes, &name_resolver](ptr<const Property> field_prop, span<const uint8_t> field_raw_data) {
@@ -1288,8 +1248,6 @@ static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_
 
 static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(owner_name);
 
     string ref_str;
@@ -1319,8 +1277,6 @@ static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_t
 
 static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& base_type, const AnyData::Value& value, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.Type() != AnyData::ValueType::Dict) {
         throw PropertySerializationException("Wrong ref type value type", owner_name, value.Type());
     }
@@ -1333,8 +1289,9 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     for (auto&& [field_name, field_value] : dict) {
         auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
+        // A stored value keeps the fields it was saved with, so a field deleted since then is dropped like a deleted property
         if (!field_prop) {
-            throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+            continue;
         }
 
         if (!seen_fields.emplace(field_prop.as_ptr()).second) {
@@ -1349,8 +1306,6 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
 
 static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (text.empty()) {
         return {};
     }
@@ -1371,6 +1326,12 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
+            auto migration = name_resolver.CheckMigrationRule(hashes.to_hashed_string("Property"), fields_registrar->GetTypeName(), hashes.to_hashed_string(field_name));
+
+            if (migration.has_value() && !*migration) {
+                continue;
+            }
+
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
         if (!seen_fields.emplace(field_prop.as_ptr()).second) {
@@ -1385,8 +1346,6 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
 
 auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -1617,8 +1576,6 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
 // before it reaches storage, exactly like a typed property assignment does
 static void SetRawDataInValueRange(ptr<Properties> props, ptr<const Property> prop, span<const uint8_t> raw_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!prop->HasValueRange() || raw_data.empty()) {
         props->SetRawData(prop, raw_data);
         return;
@@ -1634,8 +1591,6 @@ static void SetRawDataInValueRange(ptr<Properties> props, ptr<const Property> pr
 
 void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, hash_resolver& hashes, NameResolver& name_resolver)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -1646,8 +1601,6 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<cons
 
 static auto ConvertToString(const AnyData::Value& value, string& buf) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (value.Type()) {
     case AnyData::ValueType::String:
         return value.AsString();
@@ -1668,8 +1621,6 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> string_
 template<typename T>
 static auto ConvertFloat64ToNumber(float64_t value) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(value)) {
         throw PropertySerializationException("Numeric value is not finite", value, typeid(T).name());
     }
@@ -1706,8 +1657,6 @@ static auto ConvertFloat64ToNumber(float64_t value) -> T
 template<typename T>
 static void ConvertToNumber(const AnyData::Value& value, T& result_value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.Type() == AnyData::ValueType::Int64) {
         if constexpr (std::same_as<T, bool>) {
             result_value = value.AsInt64() != 0;
@@ -1764,8 +1713,6 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
 
 auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -1776,8 +1723,6 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<c
 
 auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -1951,8 +1896,6 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
 
 static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, const AnyData::Value& value, RawWriteCursor& cursor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.IsHashedString) {
         hstring::hash_t hash = {};
 
@@ -2117,8 +2060,6 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
 
 static void ConvertFixedValueAt(ptr<const Property> prop, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, const AnyData::Value& value, ptr<uint8_t> data, size_t& data_pos)
 {
-    FO_STACK_TRACE_ENTRY();
-
     RawWriteCursor cursor {data, data_pos};
     ConvertFixedValue(prop, base_type, hashes, name_resolver, value, cursor);
     data_pos = cursor.Pos;
@@ -2126,8 +2067,6 @@ static void ConvertFixedValueAt(ptr<const Property> prop, const BaseTypeDesc& ba
 
 static void SetDataFromBuffer(const function<void(span<const uint8_t>)>& set_data, ptr<const uint8_t> data, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size == 0) {
         set_data({});
         return;
@@ -2138,8 +2077,6 @@ static void SetDataFromBuffer(const function<void(span<const uint8_t>)>& set_dat
 
 static void SetDataFromString(const function<void(span<const uint8_t>)>& set_data, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str.empty()) {
         set_data({});
         return;
@@ -2150,8 +2087,6 @@ static void SetDataFromString(const function<void(span<const uint8_t>)>& set_dat
 
 void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, hash_resolver& hashes, NameResolver& name_resolver)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
@@ -2517,8 +2452,6 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
 
 void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 

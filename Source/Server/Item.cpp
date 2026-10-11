@@ -44,16 +44,12 @@ Item::Item(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoItem> proto, npt
     ItemProperties(*GetInitRef()),
     _protoItem {proto}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
 }
 
 Item::~Item()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
@@ -61,8 +57,6 @@ Item::~Item()
 
 void Item::ClearAllAssociations() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     _innerItems.reset();
@@ -70,48 +64,36 @@ void Item::ClearAllAssociations() noexcept
 
 auto Item::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _protoItem->GetName();
 }
 
 auto Item::GetProtoItem() const noexcept -> ptr<const ProtoItem>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _protoItem;
 }
 
 auto Item::HasMultihexEntries() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return !!_multihexEntries;
 }
 
 auto Item::GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr;
 }
 
 auto Item::GetOwnedLock() noexcept -> ptr<EntityLock>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return &_ownedLock;
 }
 
 auto Item::IsInsideContainer(ptr<const Item> container) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     for (auto current = make_nptr(this).try_hold_ref(); current;) {
@@ -131,8 +113,6 @@ auto Item::IsInsideContainer(ptr<const Item> container) -> bool
 
 auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!_innerItems) {
@@ -150,8 +130,6 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 
 auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vector<ptr<Item>> result;
 
@@ -172,16 +150,12 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 
 auto Item::HasInnerItems() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _innerItems && !_innerItems->empty();
 }
 
 auto Item::GetAllInnerItems() -> vector<ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
@@ -197,8 +171,6 @@ auto Item::GetAllInnerItems() -> vector<ptr<Item>>
 
 auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
@@ -214,8 +186,6 @@ auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
 
 auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
@@ -227,8 +197,6 @@ auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
 
 void Item::SetItemToContainer(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
@@ -245,8 +213,6 @@ void Item::SetItemToContainer(ptr<Item> item)
 
 auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
@@ -274,8 +240,6 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
 
 void Item::RemoveItemFromContainer(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
     EnsureEntitySynced(item);
@@ -302,8 +266,6 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
 
 auto Item::CanSendItem(bool as_public) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     switch (GetOwnership()) {
@@ -338,8 +300,6 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
 void Item::SetMultihexEntries(vector<mpos> entries)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!entries.empty()) {

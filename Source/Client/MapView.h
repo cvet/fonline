@@ -72,29 +72,39 @@ enum class LightFlag : uint16_t
     StopDir7 = 0x200,
 };
 
+// Map-owned controller that places copies of a named sprite on matching visible hexes until finished or the map is destroyed
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
 class SpritePattern : public refcounted<SpritePattern>
 {
 public:
+    // Clears the pattern sprites and marks the controller finished; repeated calls are harmless
     void Finish();
 
+    // Reports whether Finish has stopped this pattern and released its sprite instances
     bool Finished {};
+    // Positive nonzero X/Y hex intervals used as modulo divisors when selecting placement cells
     ipos32 EveryHex {1, 1};
+    // Makes hidden roofs suppress the pattern and places matching roof sprites in the roof-particle draw order
     bool InteractWithRoof {};
+    // Enables the required ground-tile property filter; false currently suppresses all pattern placement
     bool CheckTileProperty {};
+    // Ground-tile item property read when CheckTileProperty is enabled
     ItemProperty TileProperty {};
+    // Integer value that the selected ground-tile property must equal for sprite placement
     int32_t ExpectedTilePropertyValue {};
     vector<shared_ptr<Sprite>> Sprites {};
 };
 
+// Map-owned fog or traced-zone layer whose shape and compositing parameters are rebuilt from mutable script fields each frame
 ///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
 class FogLayer : public refcounted<FogLayer>
 {
 public:
+    // Marks this layer for removal during the map's next fog preparation pass; repeated calls are harmless
     void Dispose() noexcept;
 
     // Script-tunable configuration (exported as properties)
-    bool Enabled {true};
+    bool Enabled {true}; // Enables shape generation while preserving transition state when toggled
     int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
     int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
     int32_t ExtraLength {1}; // Extra look length added to the derived radius
@@ -107,7 +117,7 @@ public:
     ucolor OverlayColor {}; // Traced-overlay (zone) color
     ucolor CenterColor {}; // Traced-overlay center color
     bool Traced {}; // Positive traced overlay (attack/observation zone) vs inverse look fog
-    bool CheckShootBlocks {true};
+    bool CheckShootBlocks {true}; // Includes shoot-blocking map geometry when tracing the fog boundary
     mpos OriginHex {}; // Origin for a hex-anchored fog (ignored when following a critter)
     bool Disposed {}; // Script-readable status: true once Dispose() ran or the owning map was destroyed (recreate then)
 
@@ -221,7 +231,7 @@ public:
 
     auto FindPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}, const function<bool(ptr<const ItemHexView>)>& gag_callback = {}) -> optional<FindPathResult>;
     auto CutPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
-    auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
+    auto TraceMoveWay(TraceDirectionInput input) const -> TraceDirectionOutput;
     void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks);
 
     void SetShowMapperOverlay(bool show);
@@ -291,16 +301,16 @@ public:
     void DestroyItems(const_span<ptr<ItemHexView>> items);
 
     auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offset) const -> bool;
-    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>; // With transparent egg
+    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>;
     auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<nptr<CritterHexView>, nptr<const MapSprite>>;
-    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
+    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
 
     void UpdateCritterLightSource(ptr<const CritterHexView> cr);
     void UpdateItemLightSource(ptr<const ItemHexView> item);
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
-    void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
+    void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
     auto AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int8_t draw_order_sub_layer, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>;
@@ -324,6 +334,7 @@ private:
         mpos Hex {};
         ipos32 HexOffset {};
         isize32 Size {};
+        TransparentEggTarget Target {};
         bool ApplySizeExt {};
         bool Valid {};
     };
@@ -366,6 +377,7 @@ private:
     void PrepareFogToDraw();
     void DrawSpritesWithFog(const irect32& draw_area);
     void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
+    auto GetMapCompositeRect(const irect32& draw_area) const -> irect32;
 
     void UpdateTransparentEgg(TransparentEggSlot slot);
     void UpdateTransparentEggs();
@@ -385,6 +397,7 @@ private:
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
+    void DestroyRenderTargets();
     void OnScreenSizeChanged();
 
     EventUnsubscriber _eventUnsubscriber {};
@@ -405,7 +418,7 @@ private:
     unordered_map<ident_t, ptr<ItemHexView>> _itemsMap {};
     unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
-    optional<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
+    optional<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::CLIENT_MAP_CHUNK_SIDE>> _hexField {};
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};

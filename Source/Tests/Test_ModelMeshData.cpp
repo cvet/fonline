@@ -44,8 +44,6 @@ static constexpr uint32_t MODEL_MESH_TEST_PAYLOAD = 0x78563412U;
 
 static auto MakeModelMeshRoundTripData() -> ModelMeshData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelMeshData data {.RootBone = safe_alloc::make_unique<ModelMeshBoneData>()};
     data.RootBone->Name = "Root";
     data.RootBone->TransformationMatrix = mat44 {1.0f};
@@ -70,8 +68,6 @@ static auto MakeModelMeshRoundTripData() -> ModelMeshData
 
 static auto MakeModelMeshTestData(const array<uint8_t, 8>& magic, uint16_t schema, uint16_t flags) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     data_writer writer {data};
     writer.write_bytes({magic.data(), magic.size()});

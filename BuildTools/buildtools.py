@@ -1028,6 +1028,24 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	# components absent from that toolchain, and Roslyn rejects invalid LIB entries
 	outer_build_variables = {'include', 'lib', 'libpath', 'makeflags', 'mflags', 'targetname'}
 	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in outer_build_variables}
+	processor_limits = []
+	for variable in ('CMAKE_BUILD_PARALLEL_LEVEL', 'DOTNET_PROCESSOR_COUNT'):
+		value = build_env.get(variable)
+		if not value:
+			continue
+		try:
+			limit = int(value)
+		except ValueError:
+			raise SystemExit(f'{variable} must be a decimal integer between 1 and 65535') from None
+		if not 1 <= limit <= 65535:
+			raise SystemExit(f'{variable} must be a decimal integer between 1 and 65535')
+		processor_limits.append(limit)
+	if processor_limits:
+		# Windows MSBuild's default node count ignores the runtime processor override.
+		# Its explicit node count accepts no more than 1024
+		processor_limit = min(processor_limits)
+		build_env['DOTNET_PROCESSOR_COUNT'] = str(processor_limit)
+		build_args.append(f'/maxcpucount:{min(processor_limit, 1024)}')
 	if target_os in ('ios', 'iossimulator'):
 		# Mono supplies the target SDK explicitly; its macOS cross-AOT tools must not inherit that SDK
 		build_env.pop('SDKROOT', None)
@@ -1143,7 +1161,7 @@ def run_with_retry(
 	label: str,
 	on_retry: Callable[[], None] | None = None,
 ) -> None:
-	# sdkmanager fetches platform zips from the same CDN as download_file and has no retry of its own
+	# The Android CLI fetches platform zips from the same CDN as download_file and has no retry of its own
 	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
 		try:
 			run(cmd, cwd=cwd, env=env)
@@ -2112,7 +2130,7 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 		'Raw+WebServer',
 		'-config',
 		config,
-		'-zip-compress-level',
+		'-resource-pack-compress-level',
 		'1',
 		'-output',
 		str(output_root),
@@ -2177,7 +2195,7 @@ def _package_android_debug_config(env: Mapping[str, str], devname: str, platform
 		'Raw',
 		'-config',
 		config,
-		'-zip-compress-level',
+		'-resource-pack-compress-level',
 		'1',
 		'-output',
 		str(output_root),
@@ -2533,7 +2551,7 @@ MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_i
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
-MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry_win7_stack_bounds'
 MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
@@ -2755,6 +2773,29 @@ def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
 	for path, text in patched_texts:
 		path.write_text(text, encoding='utf-8')
 		log('Patched', path, '- C and C++ objects embed their debug info')
+
+
+MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER = '(FOnline Patch) Stack bounds come from VirtualQuery, which Windows 7 has'
+
+
+def patch_runtime_windows_7_stack_bounds(runtime_root: Path) -> None:
+	# Mono compiles for Windows 8, and this branch is its one GetCurrentThreadStackLimits import: linked statically, it lands
+	# in the executable, which Windows 7 then refuses to load. The VirtualQuery branch beside it works on every version
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'mono-threads-windows.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = '#if _WIN32_WINNT >= 0x0602 // Windows 8 or newer and very fast, just a few instructions, no syscall.\n'
+
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the Mono Windows stack bounds, unique anchor not found in {path}: {anchor.strip()}')
+
+	path.write_text(text.replace(anchor, f'/* {marker} */\n#if 0 // Windows 8 or newer: GetCurrentThreadStackLimits\n', 1), encoding='utf-8')
+	log('Patched', path, '- thread stack bounds no longer import GetCurrentThreadStackLimits')
 
 
 MONO_ISA_FALLBACK_PATCH_MARKER = '(FOnline Patch) An ISA class the JIT does not implement reports IsSupported as false'
@@ -3352,28 +3393,38 @@ def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_nam
 
 
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
-	layout = resolve_mono_layout(os_name, arch, config, env)
-
 	# A published runtime tree stands in for the source build. It is what makes a Windows target
 	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
 	# no Windows cross-target, so that combination has to be produced on Windows and carried over
 	prebuilt_root = env.get('FO_MANAGED_RUNTIME_PREBUILT', '')
+
+	if os_name == 'windows' and os.name != 'nt' and not prebuilt_root:
+		raise SystemExit(
+			'Managed runtime for the requested Windows target cannot be built on this host: dotnet/runtime has no Windows cross-target. '
+			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
+
+	layout = resolve_mono_layout(os_name, arch, config, env)
 
 	if prebuilt_root:
 		adopt_prebuilt_mono(Path(prebuilt_root), layout.workspace, layout.publish_triplet, layout.ready_marker)
 		log(f'Runtime {layout.publish_triplet} is ready (prebuilt)!')
 		return
 
-	if os_name == 'windows' and os.name != 'nt':
-		raise SystemExit(
-			f'Managed runtime for {layout.publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
-			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
+	# The published tree is the product; the clone and build markers only make an unfinished build resumable, so a tree
+	# restored from the cache has neither, and a second build directory sharing the workspace must not rebuild beneath it
+	if layout.ready_marker.exists():
+		if is_published_mono_tree(layout.output_dir, os_name):
+			log(f'Runtime {layout.publish_triplet} is ready!')
+			return
+
+		log('Recover incomplete managed runtime:', layout.output_dir)
+		reset_marker(layout.ready_marker)
 
 	# The runtime build takes most of a CI build job and nothing the cache name leaves out changes its output, so a job
 	# takes a tree another job published. A local FO_DOTNET_RUNTIME_ROOT is not the pinned source and is never shared
 	cache_name = ''
 
-	if not layout.ready_marker.exists() and os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
+	if os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
 		cache_name = build_mono_workspace_cache_name(os_name, arch, config, env)
 
 		if restore_mono_workspace_cache(cache_name, layout):
@@ -3388,6 +3439,11 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	remove_incomplete_runtime_bootstrap(layout.runtime_root)
 	build_mono(os_name, arch, config, env)
+
+	missing = missing_mono_runtime_files(layout.output_dir, os_name)
+	if missing:
+		reset_marker(layout.ready_marker)
+		raise SystemExit(f'Incomplete published managed runtime for {layout.publish_triplet}: {", ".join(missing)}')
 
 	if cache_name:
 		workspace_cache_store_tree(cache_name, layout.workspace / cache_name, layout.output_dir, 'managed runtime')
@@ -3479,6 +3535,7 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
+			patch_runtime_windows_7_stack_bounds(runtime_root)
 			patch_runtime_windows_suspend_retry(runtime_root)
 
 		# The targets with a 32-bit architecture, where the JIT implements no hardware intrinsic class
@@ -3538,12 +3595,18 @@ def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: s
 	# straight at a single triplet's directory is accepted as well
 	source_dir = prebuilt_root / publish_triplet if (prebuilt_root / publish_triplet).is_dir() else prebuilt_root
 
-	if not (source_dir / 'lib').is_dir() or not (source_dir / 'include').is_dir():
-		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir}')
+	os_name = publish_triplet.split('.')[0]
+	missing = missing_mono_runtime_files(source_dir, os_name)
+	if missing:
+		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir} (missing or empty: {", ".join(missing)})')
 
 	output_dir = workspace / 'output' / 'mono' / publish_triplet
 	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
 	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
+	missing = missing_mono_runtime_files(output_dir, os_name)
+	if missing:
+		reset_marker(ready_marker)
+		raise SystemExit(f'Incomplete published managed runtime for {publish_triplet}: {", ".join(missing)}')
 	ready_marker.touch()
 
 
@@ -3730,11 +3793,50 @@ def restore_mono_workspace_cache(cache_name: str, layout: MonoLayout) -> bool:
 		return False
 
 	log('Unpack cached managed runtime:', cached_path)
-	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', is_published_mono_tree)
+	os_name = layout.publish_triplet.split('.')[0]
+	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', lambda tree: is_published_mono_tree(tree, os_name))
 
 
-def is_published_mono_tree(tree: Path) -> bool:
-	return (tree / 'include' / 'mono-2.0').is_dir() and (tree / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').is_file()
+def missing_mono_runtime_files(tree: Path, os_name: str) -> list[str]:
+	# Match the embedding headers and target archives consumed by the native backend and CMake
+	headers = (
+		'jit/jit.h', 'metadata/appdomain.h', 'metadata/assembly.h', 'metadata/class.h',
+		'metadata/debug-helpers.h', 'metadata/loader.h', 'metadata/mono-config.h',
+		'metadata/mono-debug.h', 'metadata/mono-gc.h', 'metadata/object.h',
+		'metadata/reflection.h', 'metadata/threads.h', 'metadata/profiler.h',
+		'utils/mono-publib.h', 'utils/mono-dl-fallback.h')
+	archives = [
+		'monosgen-2.0', 'mono-component-debugger-stub-static',
+		'mono-component-diagnostics_tracing-stub-static', 'mono-component-hot_reload-stub-static',
+		'mono-component-marshal-ilgen-stub-static', 'minipal']
+	if os_name != 'windows':
+		archives.append('System.Native')
+		if os_name != 'browser':
+			archives.append('System.Globalization.Native')
+		if os_name == 'linux':
+			archives.append('System.Security.Cryptography.Native.OpenSsl')
+		if os_name == 'browser':
+			archives.extend(('mono-ee-interp', 'mono-icall-table', 'mono-wasm-eh-js', 'mono-wasm-simd'))
+	prefix, suffix = ('', '.lib') if os_name == 'windows' else ('lib', '.a')
+	required = [f'include/mono-2.0/mono/{header}' for header in headers]
+	required.extend(f'lib/{prefix}{archive}{suffix}' for archive in archives)
+	required.extend(('lib/netcoreapp/System.Private.CoreLib.dll', 'lib/netcoreapp/System.Runtime.dll'))
+
+	def present(relative: str) -> bool:
+		path = tree / relative
+		try:
+			return path.is_file() and path.stat().st_size > 0
+		except OSError:
+			return False
+
+	missing = [relative for relative in required if not present(relative)]
+	if os_name == 'browser' and not any(present(path.relative_to(tree).as_posix()) for path in (tree / 'lib' / 'es6').glob('dotnet.es6.*.js')):
+		missing.append('lib/es6/dotnet.es6.*.js')
+	return missing
+
+
+def is_published_mono_tree(tree: Path, os_name: str) -> bool:
+	return not missing_mono_runtime_files(tree, os_name)
 
 
 def discover_clang_format() -> str:
@@ -4018,43 +4120,48 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 
 
 def create_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(description='Shared BuildTools helpers')
+	parser = argparse.ArgumentParser(prog='buildtools.py', description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
 
 	env_parser = subparsers.add_parser('env', help='resolve BuildTools environment')
-	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain')
-	env_parser.add_argument('--summary', action='store_true')
-	env_parser.add_argument('--summary-only', action='store_true')
+	env_parser.add_argument('--shell', choices=['bash', 'cmd', 'plain'], default='plain', help='environment output syntax')
+	env_parser.add_argument('--summary', action='store_true', help='append the resolved environment summary')
+	env_parser.add_argument('--summary-only', action='store_true', help='print only the resolved environment summary')
 
 	build_parser = subparsers.add_parser('build', help='configure and build a target')
-	build_parser.add_argument('platform')
-	build_parser.add_argument('target')
-	build_parser.add_argument('config', nargs='?', default='Release')
+	build_parser.add_argument('platform', help='engine platform key, such as linux, win64, web, or android-arm64')
+	build_parser.add_argument('target', help='BuildTools target profile, such as client, server, baker, or unit-tests')
+	build_parser.add_argument('config', nargs='?', default='Release', help='CMake build configuration')
 
 	validate_parser = subparsers.add_parser('validate', help='configure and validate scenarios')
-	validate_parser.add_argument('names', nargs='+')
+	validate_parser.add_argument('names', nargs='+', help='one or more named validation scenarios')
 
 	mono_parser = subparsers.add_parser('setup-mono', help='prepare mono runtime')
-	mono_parser.add_argument('os_name')
-	mono_parser.add_argument('arch')
-	mono_parser.add_argument('config')
+	mono_parser.add_argument('os_name', help='runtime operating-system key')
+	mono_parser.add_argument('arch', help='runtime architecture key')
+	mono_parser.add_argument('config', help='runtime build configuration')
 
 	format_parser = subparsers.add_parser('format-source', help='format engine source files')
 	format_parser.set_defaults(no_args=True)
 
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
-	toolset_parser.add_argument('target')
+	toolset_parser.add_argument('target', help='target from the configured toolset build tree')
 
 	auxiliary_parser = subparsers.add_parser('build-auxiliary', help='build a separately packaged auxiliary tool')
-	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS)
-	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
+	auxiliary_parser.add_argument('target', choices=AUXILIARY_BUILD_TARGETS, help='auxiliary tool to build')
+	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release', help='build configuration (default: Release)')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'wix', 'msan-libcxx'])
-	prepare_parser.add_argument('--check', action='store_true')
+	prepare_parser.add_argument(
+		'parts',
+		nargs='+',
+		choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'wix', 'msan-libcxx'],
+		help='workspace components to prepare',
+	)
+	prepare_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
-	repair_case_parser.add_argument('--check', action='store_true')
+	repair_case_parser.add_argument('--check', action='store_true', help='check for case drift without renaming entries')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
@@ -4066,10 +4173,10 @@ def create_parser() -> argparse.ArgumentParser:
 	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
 
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
-	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'])
+	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
-	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'])
+	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'], help='host platform to prepare')
 	prepare_host_parser.add_argument(
 		'features',
 		nargs='*',
@@ -4093,8 +4200,9 @@ def create_parser() -> argparse.ArgumentParser:
 			'msan-libcxx',
 			'all',
 		],
+		help='feature groups to prepare; omit to use the host defaults',
 	)
-	prepare_host_parser.add_argument('--check', action='store_true')
+	prepare_host_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
 	return parser
 

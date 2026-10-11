@@ -62,6 +62,7 @@
 #include "TimeRelated.h"
 #include "ExtendedTypes.h"
 #include "Compressor.h"
+#include "Cryptography.h"
 #include "WorkThread.h"
 #include "Logging.h"
 #include "DiskFileSystem.h"

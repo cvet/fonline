@@ -105,7 +105,7 @@ private:
 
 auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     logging::write("Listen UDP connections on port {}", settings->Network.ServerPort + settings->Network.UdpPortOffset);
 
@@ -120,8 +120,6 @@ NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<Serve
     NetworkServerConnection(settings),
     _channel(MakeOptions())
 {
-    FO_STACK_TRACE_ENTRY();
-
     _host = std::move(host);
     _port = port;
     _channel.SetSessionId(session_id);
@@ -129,22 +127,16 @@ NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<Serve
 
 auto NetworkServerConnection_UdpSockets::GetSessionId() const noexcept -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _channel.GetSessionId();
 }
 
 auto NetworkServerConnection_UdpSockets::HasPendingDisconnect() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _disconnectRequested;
 }
 
 void NetworkServerConnection_UdpSockets::HandlePacket(const UdpPacketInfo& packet)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (packet.Type == UdpPacketType::Disconnect) {
         Disconnect();
         return;
@@ -163,8 +155,6 @@ void NetworkServerConnection_UdpSockets::HandlePacket(const UdpPacketInfo& packe
 
 void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime now)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<vector<uint8_t>> packets;
 
     if (_disconnectRequested) {
@@ -200,23 +190,17 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
 
 void NetworkServerConnection_UdpSockets::DispatchImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sendRequested = true;
 }
 
 void NetworkServerConnection_UdpSockets::DisconnectImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _disconnectRequested = true;
     _sendRequested = false;
 }
 
 auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOptions
 {
-    FO_STACK_TRACE_ENTRY();
-
     UdpTransportOptions options;
     options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
     options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
@@ -229,8 +213,6 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
 
 void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& packet : packets) {
         if (packet.empty()) {
             continue;
@@ -248,8 +230,6 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> se
     _settings {settings},
     _connectionCallback {std::move(callback)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!net_sockets::startup()) {
         throw NetworkServerException("Socket startup failed for UDP transport");
     }
@@ -265,7 +245,7 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> se
 
 void NetworkServer_UdpSockets::ShutdownImpl()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _stopped = true;
 
@@ -280,8 +260,6 @@ void NetworkServer_UdpSockets::ShutdownImpl()
 
 uint32_t NetworkServer_UdpSockets::GenerateSessionId()
 {
-    FO_STACK_TRACE_ENTRY();
-
     return (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 24) | //
         (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 16) | //
         (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 8) | //
@@ -290,15 +268,11 @@ uint32_t NetworkServer_UdpSockets::GenerateSessionId()
 
 auto NetworkServer_UdpSockets::MakeEndpointKey(string_view host, uint16_t port) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}:{}", host, port);
 }
 
 void NetworkServer_UdpSockets::Run()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto tick = std::chrono::milliseconds {std::max(_settings->Network.UdpSendUpdateInterval, 1)};
 
     while (!_stopped) {
@@ -317,7 +291,7 @@ void NetworkServer_UdpSockets::Run()
 
 void NetworkServer_UdpSockets::ProcessIncomingPackets()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     while (_socket.can_read()) {
         string host;
@@ -366,7 +340,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
 void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, const UdpPacketInfo& packet)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     shared_ptr<NetworkServerConnection_UdpSockets> connection;
     bool is_new_connection = false;
@@ -411,7 +385,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
 
 void NetworkServer_UdpSockets::TickConnections(nanotime now)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     vector<shared_ptr<NetworkServerConnection_UdpSockets>> connections;
 

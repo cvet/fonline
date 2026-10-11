@@ -54,7 +54,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); }),
     ParticleEditors {this}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     GetApp()->LoadImGuiEffect(Resources);
 
@@ -208,7 +208,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 void MapperEngine::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     AnimViewer->SaveSettings();
     PartViewer->SaveSettings();
@@ -223,8 +223,6 @@ void MapperEngine::Shutdown()
 
 void MapperEngine::InitIface()
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Init interface");
 
     // Interface
@@ -266,8 +264,6 @@ void MapperEngine::InitIface()
 
 void MapperEngine::ResetImGuiSettings()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _uiSettings.Remove(MAPPER_IMGUI_SETTINGS_KEY);
     ImGui::LoadIniSettingsFromMemory("", 0);
     ImGui::GetIO().WantSaveIniSettings = false;
@@ -290,8 +286,6 @@ void MapperEngine::ResetImGuiSettings()
 
 auto MapperEngine::GetPreviewSprite(hstring fname) -> nptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto it = PreviewSprites.find(fname); it != PreviewSprites.end()) {
         return it->second;
     }
@@ -307,14 +301,12 @@ auto MapperEngine::GetPreviewSprite(hstring fname) -> nptr<Sprite>
 
 void MapperEngine::SetInputLocked(bool locked) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     InputLocked = locked;
 }
 
 void MapperEngine::MapperMainLoop()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FrameAdvance();
 
@@ -351,7 +343,7 @@ void MapperEngine::MapperMainLoop()
 
 auto MapperEngine::BeginMapperFrameInput() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     bool window_focused = SprMngr.IsWindowFocused();
 
@@ -413,8 +405,6 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 
 void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ev_type = ev.Type;
 
     if (ev_type == InputEvent::EventType::KeyDownEvent || ev_type == InputEvent::EventType::KeyUpEvent) {
@@ -492,7 +482,7 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
 
 void MapperEngine::DrawMapperFrame()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     EffectMngr.UpdateEffects(GameTime);
     FontMngr.FrameUpdate();
@@ -524,8 +514,6 @@ void MapperEngine::DrawMapperFrame()
 
 void MapperEngine::ProcessRightMouseInertia()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (InputLocked || !_curMap || MouseHoldMode == INT_PAN) {
         return;
     }
@@ -548,15 +536,11 @@ void MapperEngine::ProcessRightMouseInertia()
 
 void MapperEngine::ResetPendingSelectionMove()
 {
-    FO_STACK_TRACE_ENTRY();
-
     PendingSelectionMoveEntries.clear();
 }
 
 void MapperEngine::CommitPendingSelectionMove()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (PendingSelectionMoveEntries.empty() || !_curMap) {
         ResetPendingSelectionMove();
         return;
@@ -631,8 +615,6 @@ void MapperEngine::CommitPendingSelectionMove()
 
 void MapperEngine::HandleMapperKeyboardEvent(const InputEvent& ev)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ev_type = ev.Type;
     auto dikdw = ev_type == InputEvent::EventType::KeyDownEvent ? ev.KeyDown.Code : KeyCode::None;
     auto dikup = ev_type == InputEvent::EventType::KeyUpEvent ? ev.KeyUp.Code : KeyCode::None;
@@ -668,8 +650,6 @@ void MapperEngine::HandleMapperKeyboardEvent(const InputEvent& ev)
 
 void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (block_hotkeys || GetApp()->Input.IsAltDown() || GetApp()->Input.IsCtrlDown() || GetApp()->Input.IsShiftDown()) {
         return;
     }
@@ -757,8 +737,6 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 
 void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (block_hotkeys || !GetApp()->Input.IsShiftDown()) {
         return;
     }
@@ -792,8 +770,6 @@ void MapperEngine::HandleShiftMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 
 void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (block_hotkeys || !GetApp()->Input.IsCtrlDown()) {
         return;
     }
@@ -839,8 +815,6 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
 
 void MapperEngine::PushLayerVisibility()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_map = GetCurMap();
 
     if (cur_map) {
@@ -850,8 +824,6 @@ void MapperEngine::PushLayerVisibility()
 
 void MapperEngine::PushManualScroll()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_map = GetCurMap();
 
     if (!cur_map) {
@@ -878,8 +850,6 @@ void MapperEngine::PushManualScroll()
 
 void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (dikdw != KeyCode::None && !ConsoleEdit) {
         switch (dikdw) {
         case KeyCode::Left:
@@ -921,8 +891,6 @@ void MapperEngine::UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup)
 
 void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(key_text);
 
     if (!ConsoleEdit && dikdw == KeyCode::Grave) {
@@ -934,8 +902,6 @@ void MapperEngine::HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_tex
 
 void MapperEngine::ChangeZoom(float32_t new_zoom)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return;
     }
@@ -952,15 +918,11 @@ void MapperEngine::ChangeZoom(float32_t new_zoom)
 
 auto MapperEngine::IsImGuiMouseCaptured() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ImGui::GetIO().WantCaptureMouse;
 }
 
 auto MapperEngine::IsImGuiTextInputActive() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ImGui::GetIO().WantTextInput;
 }
 
@@ -974,8 +936,6 @@ MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
     StackId(other.StackId),
     Proto(other.Proto)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (other.Props) {
         Props.emplace(other.Props->Copy());
     }
@@ -988,8 +948,6 @@ MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
 
 auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         Id = other.Id;
         Hex = other.Hex;
@@ -1021,13 +979,10 @@ MapperEngine::UndoOp::UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<
     Undo(std::move(undo)),
     Redo(std::move(redo))
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto MapperEngine::GetUndoContext(nptr<MapView> map, bool create) -> nptr<UndoContext>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return nullptr;
     }
@@ -1045,8 +1000,6 @@ auto MapperEngine::GetUndoContext(nptr<MapView> map, bool create) -> nptr<UndoCo
 
 auto MapperEngine::GetUndoContext(nptr<const MapView> map, bool create) const -> nptr<const UndoContext>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return nullptr;
     }
@@ -1064,8 +1017,6 @@ auto MapperEngine::GetUndoContext(nptr<const MapView> map, bool create) const ->
 
 void MapperEngine::ClearUndoContext(nptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return;
     }
@@ -1075,8 +1026,6 @@ void MapperEngine::ClearUndoContext(nptr<MapView> map)
 
 void MapperEngine::RemapUndoContext(nptr<MapView> old_map, nptr<MapView> new_map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!old_map || !new_map || old_map == new_map) {
         return;
     }
@@ -1090,8 +1039,6 @@ void MapperEngine::RemapUndoContext(nptr<MapView> old_map, nptr<MapView> new_map
 
 void MapperEngine::PushUndoOp(nptr<MapView> map, UndoOp op)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (UndoRedoInProgress || !map || !op.Undo || !op.Redo) {
         return;
     }
@@ -1116,8 +1063,6 @@ void MapperEngine::PushUndoOp(nptr<MapView> map, UndoOp op)
 
 auto MapperEngine::CanUndo() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return false;
     }
@@ -1131,8 +1076,6 @@ auto MapperEngine::CanUndo() const -> bool
 
 auto MapperEngine::CanRedo() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return false;
     }
@@ -1146,8 +1089,6 @@ auto MapperEngine::CanRedo() const -> bool
 
 auto MapperEngine::GetUndoLabel() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto ctx = GetUndoContext(GetCurMap(), false)) {
         if (!ctx->UndoStack.empty()) {
             return ctx->UndoStack.back().Label;
@@ -1159,8 +1100,6 @@ auto MapperEngine::GetUndoLabel() const -> string
 
 auto MapperEngine::GetRedoLabel() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto ctx = GetUndoContext(GetCurMap(), false)) {
         if (!ctx->RedoStack.empty()) {
             return ctx->RedoStack.back().Label;
@@ -1172,7 +1111,7 @@ auto MapperEngine::GetRedoLabel() const -> string
 
 auto MapperEngine::ExecuteUndo() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return false;
@@ -1214,7 +1153,7 @@ auto MapperEngine::ExecuteUndo() -> bool
 
 auto MapperEngine::ExecuteRedo() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return false;
@@ -1256,8 +1195,6 @@ auto MapperEngine::ExecuteRedo() -> bool
 
 auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return {};
     }
@@ -1267,8 +1204,6 @@ auto MapperEngine::CaptureMapSnapshot(nptr<const MapView> map) const -> string
 
 void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> entity) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cr = entity.dyn_cast<CritterHexView>();
     auto item_view = entity.dyn_cast<ItemView>();
     auto entity_with_proto = entity.dyn_cast<EntityWithProto>();
@@ -1305,8 +1240,6 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
 
 void MapperEngine::RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<ItemView> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& child_buf : entity_buf.Children) {
         auto inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->StackId, child_buf->GetProps());
         RestoreEntityBufChildren(*child_buf, inner_item);
@@ -1315,8 +1248,6 @@ void MapperEngine::RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<Ite
 
 auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> owner) -> nptr<ClientEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
     auto cur_map = GetCurMap();
     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -1359,8 +1290,6 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
 
 auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!id) {
         return nullptr;
     }
@@ -1418,8 +1347,6 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
 
 auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto old_map = *map;
 
     auto restored_map = LoadMapFromText(map_name, map_name, map_text);
@@ -1436,8 +1363,6 @@ auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_nam
 
 auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Property> prop, string_view value_text) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         entity->GetPropertiesForEdit()->ApplyPropertyFromText(prop, value_text);
         SetMapDirty(GetCurMap());
@@ -1484,7 +1409,7 @@ auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Propert
 
 void MapperEngine::DrawMainPanelImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (ImGui::BeginMainMenuBar()) {
         auto pos = ImGui::GetWindowPos();
@@ -1704,7 +1629,7 @@ void MapperEngine::DrawMainPanelImGui()
 
 void MapperEngine::DrawWorkspaceWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!WorkspaceWindowVisible) {
         return;
@@ -2004,7 +1929,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
 void MapperEngine::DrawContentWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!ContentWindowVisible) {
         return;
@@ -2244,7 +2169,7 @@ void MapperEngine::DrawContentWindowImGui()
 
 void MapperEngine::DrawCritterAnimationsWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!CritterAnimationsWindowVisible) {
         return;
@@ -2286,7 +2211,7 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
 
 void MapperEngine::DrawScriptCallWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!ScriptCallWindowVisible) {
         return;
@@ -2330,7 +2255,7 @@ void MapperEngine::DrawScriptCallWindowImGui()
 
 void MapperEngine::DrawMapListWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!MapListWindowVisible) {
         return;
@@ -2427,7 +2352,7 @@ void MapperEngine::DrawMapListWindowImGui()
 
 void MapperEngine::DrawMapWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!MapWindowVisible || !_curMap) {
         return;
@@ -2585,7 +2510,7 @@ void MapperEngine::DrawMapWindowImGui()
 
 void MapperEngine::DrawInspectorImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!InspectorVisible) {
         return;
@@ -3239,8 +3164,6 @@ void MapperEngine::DrawInspectorImGui()
 
 void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr int32_t start_line = 3;
 
     if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size())) {
@@ -3291,8 +3214,6 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
 
 void MapperEngine::SelectInspectorPropertyLine(int32_t line)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr int32_t start_line = 3;
 
     InspectorSelectedLine = line;
@@ -3313,8 +3234,6 @@ void MapperEngine::SelectInspectorPropertyLine(int32_t line)
 
 void MapperEngine::ResetInspectorPropertyEditState()
 {
-    FO_STACK_TRACE_ENTRY();
-
     InspectorEditLine = -1;
     InspectorPendingFocusLine = -1;
     InspectorPendingFocusArrayIndex = -1;
@@ -3326,8 +3245,6 @@ void MapperEngine::ResetInspectorPropertyEditState()
 
 auto MapperEngine::CancelInspectorPropertyEdit() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (InspectorEditLine == -1) {
         return false;
     }
@@ -3344,8 +3261,6 @@ auto MapperEngine::CancelInspectorPropertyEdit() -> bool
 
 auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<ClientEntity> entity = nullptr;
 
     if (ActivePanelMode == INT_MODE_INCONT && InContItem) {
@@ -3377,8 +3292,6 @@ auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
 
 void MapperEngine::HandleLeftMouseDown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     MouseHoldMode = INT_NONE;
 
     if (HandleMapLeftMouseDown()) {
@@ -3388,8 +3301,6 @@ void MapperEngine::HandleLeftMouseDown()
 
 auto MapperEngine::HandleMapLeftMouseDown() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     InContItem.reset();
 
     if (!_curMap) {
@@ -3451,7 +3362,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
 
 void MapperEngine::HandleLeftMouseUp()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (CurMode == CUR_MODE_PLACE_OBJECT) {
         auto cur_map = GetCurMap();
@@ -3575,7 +3486,7 @@ void MapperEngine::HandleLeftMouseUp()
 
 void MapperEngine::HandleSelectionMouseDrag()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (IsImGuiMouseCaptured() || (MouseHoldMode != INT_SELECT && MouseHoldMode != INT_MOVE_SELECTION)) {
         return;
@@ -3640,8 +3551,6 @@ void MapperEngine::HandleSelectionMouseDrag()
 
 void MapperEngine::SetMapperHexOverlayVisible(bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (MapperHexOverlayVisible == visible) {
         return;
     }
@@ -3655,23 +3564,17 @@ void MapperEngine::SetMapperHexOverlayVisible(bool visible)
 
 void MapperEngine::ToggleMapperHexOverlay()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetMapperHexOverlayVisible(!MapperHexOverlayVisible);
 }
 
 void MapperEngine::ClearMapperTrackOverlay()
 {
-    FO_STACK_TRACE_ENTRY();
-
     MapperTrackOverlayHexes.clear();
     MapperTrackOverlayKinds.clear();
 }
 
 void MapperEngine::AddMapperTrackOverlayHex(mpos hex, int32_t kind)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_curMap && !_curMap->GetSize().is_valid_pos(hex)) {
         return;
     }
@@ -3684,7 +3587,7 @@ void MapperEngine::AddMapperTrackOverlayHex(mpos hex, int32_t kind)
 
 void MapperEngine::MarkBlockedHexes()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     ClearMapperTrackOverlay();
 
@@ -3717,8 +3620,6 @@ void MapperEngine::MarkBlockedHexes()
 
 auto MapperEngine::GetActiveSubTab() -> nptr<SubTab>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ActivePanelMode < 0 || ActivePanelMode >= TAB_COUNT) {
         return nullptr;
     }
@@ -3728,8 +3629,6 @@ auto MapperEngine::GetActiveSubTab() -> nptr<SubTab>
 
 auto MapperEngine::GetActiveSubTab() const -> nptr<const SubTab>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ActivePanelMode < 0 || ActivePanelMode >= TAB_COUNT) {
         return nullptr;
     }
@@ -3739,8 +3638,6 @@ auto MapperEngine::GetActiveSubTab() const -> nptr<const SubTab>
 
 auto MapperEngine::GetActiveProtoIndex() const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto active_subtab = GetActiveSubTab()) {
         return active_subtab->Index;
     }
@@ -3754,8 +3651,6 @@ auto MapperEngine::GetActiveProtoIndex() const -> int32_t
 
 void MapperEngine::SetActiveProtoIndex(int32_t index)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto active_subtab = GetActiveSubTab()) {
         active_subtab->Index = index;
     }
@@ -3767,8 +3662,6 @@ void MapperEngine::SetActiveProtoIndex(int32_t index)
 
 void MapperEngine::RefreshActiveProtoLists()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Select protos and scroll
     ActiveItemProtos = nullptr;
     ActiveProtoScroll = nullptr;
@@ -3810,8 +3703,6 @@ void MapperEngine::RefreshActiveProtoLists()
 
 void MapperEngine::SetActivePanelMode(int32_t mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ActivePanelMode = mode;
     MouseHoldMode = INT_NONE;
 
@@ -3820,8 +3711,6 @@ void MapperEngine::SetActivePanelMode(int32_t mode)
 
 void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_map = GetCurMap();
     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
 
@@ -3877,8 +3766,6 @@ void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
 
 void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_map = GetCurMap();
     EntityBuf entity_buf;
     CaptureEntityBuf(entity_buf, entity);
@@ -3947,8 +3834,6 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 
 void MapperEngine::SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The outline goes through the same script contour pipeline as the client, so writing the Contour
     // property is what makes the script draw it
     auto prop = entity->GetProperties()->GetRegistrar()->FindProperty("Contour");
@@ -3960,8 +3845,6 @@ void MapperEngine::SetSelectionContour(ptr<ClientEntity> entity, ucolor color) c
 
 void MapperEngine::SelectAdd(ptr<ClientEntity> entity, optional<mpos> hex, bool skip_refresh)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (entity->IsDestroyed()) {
         return;
     }
@@ -4003,7 +3886,7 @@ void MapperEngine::SelectAdd(ptr<ClientEntity> entity, optional<mpos> hex, bool 
 
 void MapperEngine::SelectAll()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     SelectClear();
 
@@ -4040,8 +3923,6 @@ void MapperEngine::SelectAll()
 
 void MapperEngine::SelectRemove(ptr<ClientEntity> entity, bool skip_refresh)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (SelectedEntitiesSet.erase(entity) == 0) {
         return;
     }
@@ -4102,7 +3983,7 @@ void MapperEngine::SelectRemove(ptr<ClientEntity> entity, bool skip_refresh)
 
 void MapperEngine::SelectClear()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     while (!SelectedEntities.empty()) {
         SelectRemove(SelectedEntities.back(), true);
@@ -4125,7 +4006,7 @@ void MapperEngine::SelectClear()
 
 auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy, int32_t& offs_x, int32_t& offs_y) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!hex_move && offs_x == 0 && offs_y == 0) {
         return false;
@@ -4368,7 +4249,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
 
 void MapperEngine::SelectDelete()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return;
@@ -4462,8 +4343,6 @@ void MapperEngine::SelectDelete()
 
 auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
     auto cur_map = GetCurMap();
     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -4507,8 +4386,6 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>
 
 auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
     auto cur_map = GetCurMap();
     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -4606,8 +4483,6 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
 
 auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
     auto cur_map = GetCurMap();
     FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -4680,8 +4555,6 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
 
 void MapperEngine::CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const_span<refcount_ptr<ItemView>> inner_items = from_item->GetInnerItems();
 
     for (size_t i = 0; i < inner_items.size(); i++) {
@@ -4697,7 +4570,7 @@ void MapperEngine::CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<
 
 auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     size_t merges = 0;
 
@@ -4738,7 +4611,9 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
             auto multihex_mesh = item->GetMultihexMesh();
             std::ranges::sort(multihex_mesh, hex_less);
 
-            if (hex_less(multihex_mesh.front(), item->GetHex())) {
+            // A physical-only mesh does not draw at its extra cells. Its origin
+            // anchors the single sprite, so normalizing it would move the art
+            if (item->GetDrawMultihexMesh() && hex_less(multihex_mesh.front(), item->GetHex())) {
                 auto hex = multihex_mesh.front();
                 multihex_mesh.front() = item->GetHex();
                 std::ranges::sort(multihex_mesh, hex_less);
@@ -4757,7 +4632,7 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
 
 auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     // Collapses each (proto, data) group into its lowest-id member, which is what the per-step loop converges
     // to without its rescan per merge; the merge order is irrelevant because the mesh is normalized afterward
@@ -4863,8 +4738,6 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
 
 auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Same merge sequence as repeated TryMergeItemToMultihexMesh calls, but each mesh hex contributes its
     // candidates once; only SameSibling grows hex by hex, so only it needs this
     if (item->GetMultihexGeneration() != MultihexGenerationType::SameSibling) {
@@ -5019,8 +4892,6 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
 
 auto MapperEngine::TryMergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> nptr<ItemHexView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
         return nullptr;
     }
@@ -5120,8 +4991,6 @@ auto MapperEngine::TryMergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView>
 
 void MapperEngine::MergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> source_item, ptr<ItemHexView> target_item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto multihex_mesh = target_item->GetMultihexMesh();
     bool some_hex_added = false;
 
@@ -5150,8 +5019,6 @@ void MapperEngine::MergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> so
 
 void MapperEngine::FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHexView> item, mpos hex, bool merge_to_it, unordered_set<ptr<ItemHexView>>& result) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto find_mergable_item_on_hex = [&](mpos check_hex) -> nptr<ItemHexView> {
         if (!map->GetSize().is_valid_pos(check_hex)) {
             return nullptr;
@@ -5190,8 +5057,6 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHe
 
 auto MapperEngine::CompareMultihexItemForMerge(ptr<const ItemHexView> source_item, ptr<const ItemHexView> target_item, bool allow_clean_merge) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (source_item->GetId() == target_item->GetId()) {
         return false;
     }
@@ -5218,7 +5083,7 @@ auto MapperEngine::CompareMultihexItemForMerge(ptr<const ItemHexView> source_ite
 
 auto MapperEngine::BreakItemsMultihexMeshes(ptr<MapView> map) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     size_t breaks = 0;
 
@@ -5248,8 +5113,6 @@ auto MapperEngine::BreakItemsMultihexMeshes(ptr<MapView> map) -> size_t
 
 auto MapperEngine::TryBreakItemFromMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, mpos hex) -> nptr<ItemHexView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!item->IsNonEmptyMultihexMesh()) {
         return item;
     }
@@ -5303,7 +5166,7 @@ auto MapperEngine::TryBreakItemFromMultihexMesh(ptr<MapView> map, ptr<ItemHexVie
 
 void MapperEngine::BufferCopy()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return;
@@ -5354,8 +5217,6 @@ void MapperEngine::BufferCopy()
 
 void MapperEngine::BufferCut()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return;
     }
@@ -5366,7 +5227,7 @@ void MapperEngine::BufferCut()
 
 void MapperEngine::BufferPaste()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return;
@@ -5451,7 +5312,7 @@ void MapperEngine::BufferPaste()
 
 auto MapperEngine::JumpHistoryToIndex(int32_t target_index) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return false;
@@ -5484,7 +5345,7 @@ auto MapperEngine::JumpHistoryToIndex(int32_t target_index) -> bool
 
 void MapperEngine::DrawHistoryWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!HistoryWindowVisible) {
         return;
@@ -5579,7 +5440,7 @@ void MapperEngine::DrawHistoryWindowImGui()
 
 void MapperEngine::CurDraw()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_curMap) {
         return;
@@ -5654,7 +5515,7 @@ void MapperEngine::CurDraw()
 
 void MapperEngine::DrawSettingsWindowImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!SettingsWindowVisible) {
         return;
@@ -5721,8 +5582,6 @@ void MapperEngine::DrawSettingsWindowImGui()
 
 void MapperEngine::CurRMouseUp()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (MouseHoldMode == INT_PAN) {
         if (RightMouseDragged) {
             nanotime now_time = nanotime::now();
@@ -5756,8 +5615,6 @@ void MapperEngine::CurRMouseUp()
 
 void MapperEngine::CurMMouseDown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (SelectedEntities.empty()) {
         CritterDir = GetNextCritterDir(CritterDir);
 
@@ -5774,8 +5631,6 @@ void MapperEngine::CurMMouseDown()
 
 void MapperEngine::SetCurMode(int cur_mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CurMode = cur_mode;
 
     // Restore alpha
@@ -5793,29 +5648,21 @@ void MapperEngine::SetCurMode(int cur_mode)
 
 auto MapperEngine::IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MousePos.x >= rect.x + ax && MousePos.y >= rect.y + ay && MousePos.x < rect.x + rect.width + ax && MousePos.y < rect.y + rect.height + ay;
 }
 
 auto MapperEngine::IsCurInRect(const irect32& rect) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MousePos.x >= rect.x && MousePos.y >= rect.y && MousePos.x < rect.x + rect.width && MousePos.y < rect.y + rect.height;
 }
 
 auto MapperEngine::IsCurInInterface() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return IsImGuiMouseCaptured();
 }
 
 auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     hex = {};
 
     if (!ignore_interface && IsCurInInterface()) {
@@ -5829,7 +5676,7 @@ auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 
 void MapperEngine::DrawConsoleImGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!ConsoleEdit) {
         return;
@@ -5896,8 +5743,6 @@ void MapperEngine::DrawConsoleImGui()
 
 void MapperEngine::ConsoleSubmitCommand()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ConsoleStr.empty()) {
         ConsoleEdit = false;
         return;
@@ -5938,7 +5783,7 @@ void MapperEngine::ConsoleSubmitCommand()
 
 void MapperEngine::ParseCommand(string_view command)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (command.empty()) {
         return;
@@ -6206,15 +6051,13 @@ void MapperEngine::ParseCommand(string_view command)
 
 auto MapperEngine::IsProtoFileExtension(string_view path) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string ext = strex(path).get_file_extension();
     return std::ranges::find(Settings->Baking.ProtoFileExtensions, ext) != Settings->Baking.ProtoFileExtensions.end();
 }
 
 auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, const string& map_text) -> nptr<MapView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     auto map_data = ConfigFile(map_text, ConfigFileOption::SkipNestedSections);
 
@@ -6287,7 +6130,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, string_view file_name, 
 
 auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     auto map_files = MapsFileSys.FilterFiles("");
 
@@ -6354,8 +6197,6 @@ auto MapperEngine::LoadMap(string_view map_name) -> nptr<MapView>
 
 void MapperEngine::ShowMap(ptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot show a destroyed map", map->GetName(), LoadedMaps.size());
 
     auto it = std::ranges::find_if(LoadedMaps, [map](const refcount_ptr<MapView>& loaded_map) noexcept {
@@ -6386,8 +6227,6 @@ void MapperEngine::ShowMap(ptr<MapView> map)
 
 auto MapperEngine::IsMapDirty(nptr<MapView> map) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return false;
     }
@@ -6397,8 +6236,6 @@ auto MapperEngine::IsMapDirty(nptr<MapView> map) const -> bool
 
 void MapperEngine::SetMapDirty(nptr<MapView> map, bool dirty)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!map) {
         return;
     }
@@ -6413,8 +6250,6 @@ void MapperEngine::SetMapDirty(nptr<MapView> map, bool dirty)
 
 void MapperEngine::SaveCurrentMap()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return;
     }
@@ -6427,8 +6262,6 @@ void MapperEngine::SaveCurrentMap()
 
 void MapperEngine::ResetCurrentMapChanges()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_curMap) {
         return;
     }
@@ -6452,7 +6285,7 @@ void MapperEngine::ResetCurrentMapChanges()
 // first original section
 static auto SpliceMapIntoFomapContent(string_view file_stem, const string& original_content, string_view map_name, string_view map_content) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     // Locate section runs: each starts at its [..] header line and spans up to the next header
     struct FomapSectionRange
@@ -6564,7 +6397,7 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
 
 void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot save a destroyed map", map->GetName(), custom_name);
 
@@ -6678,13 +6511,14 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
 
 void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot save a destroyed map");
     FO_VERIFY_AND_THROW(!name.empty(), "Map save name is empty");
 
     MergeItemsToMultihexMeshes(map);
-    FO_VERIFY_AND_THROW(MergeItemsToMultihexMeshes(map) == 0, "Failed to merge items to multihex meshes before save");
+    size_t merged_again = MergeItemsToMultihexMeshes(map);
+    FO_VERIFY_AND_THROW(merged_again == 0, "Failed to merge items to multihex meshes before save");
 
     auto it = std::ranges::find_if(LoadedMaps, [map](const refcount_ptr<MapView>& loaded_map) noexcept {
         auto loaded_map_view = loaded_map.as_nptr();
@@ -6754,7 +6588,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
 
 void MapperEngine::UnloadMap(ptr<MapView> map, bool clear_undo)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot unload a destroyed map", map->GetName(), clear_undo);
 
@@ -6787,7 +6621,7 @@ void MapperEngine::UnloadMap(ptr<MapView> map, bool clear_undo)
 
 void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
@@ -6817,8 +6651,6 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
 
 void MapperEngine::AddMess(string_view message_text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string str = strex("- {}\n", message_text);
     time_desc_t time = nanotime::now().desc(true);
     string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
@@ -6828,8 +6660,6 @@ void MapperEngine::AddMess(string_view message_text)
 
 auto MapperEngine::GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector<refcount_ptr<ItemView>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto cr = entity.dyn_cast<CritterView>()) {
         span<refcount_ptr<ItemView>> items = cr->GetInvItems();
         return {items.begin(), items.end()};
@@ -6844,15 +6674,11 @@ auto MapperEngine::GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector
 
 auto MapperEngine::MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t bottom) const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {left, top, right - left, bottom - top};
 }
 
 auto MapperEngine::ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     day_time += delta_minutes;
 
     while (day_time > DAY_TIME_VISIBLE_UPPER_BOUND) {
@@ -6868,15 +6694,11 @@ auto MapperEngine::ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes)
 
 auto MapperEngine::ScaleZoomValue(float32_t current_zoom, float32_t factor) const -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::clamp(current_zoom * factor, GameSettings::MIN_ZOOM, GameSettings::MAX_ZOOM);
 }
 
 auto MapperEngine::GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (key) {
     case KeyCode::C0:
     case KeyCode::Numpad0:
@@ -6900,22 +6722,16 @@ auto MapperEngine::GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>
 
 auto MapperEngine::GetNextCritterDir(mdir dir) const -> mdir
 {
-    FO_STACK_TRACE_ENTRY();
-
     return dir.incHex();
 }
 
 void MapperEngine::AdvanceCritterDir(ptr<CritterHexView> cr) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
 }
 
 void MapperEngine::ToggleMapVisibilityFlag(MapLayers layer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     VisibleLayers = is_enum_set(VisibleLayers, layer) ? exclude_enum(VisibleLayers, layer) : combine_enum(VisibleLayers, layer);
     PushLayerVisibility();
 
@@ -6928,8 +6744,6 @@ void MapperEngine::ToggleMapVisibilityFlag(MapLayers layer)
 
 auto MapperEngine::ContainsCaseInsensitive(string_view text, string_view filter) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filter.empty()) {
         return true;
     }
@@ -6942,8 +6756,6 @@ auto MapperEngine::ContainsCaseInsensitive(string_view text, string_view filter)
 
 auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto source_sprite = sprite;
 
     if (auto sprite_sheet = source_sprite.dyn_cast<const SpriteSheet>()) {
@@ -6955,8 +6767,6 @@ auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<c
 
 auto MapperEngine::DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const AtlasSprite> atlas_sprite, ImVec2 logical_min, ImVec2 logical_size) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto texture = atlas_sprite->GetBatchTexture();
 
     if (!texture) {
@@ -6977,8 +6787,6 @@ auto MapperEngine::DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const Atl
 
 auto MapperEngine::GetInspectorValueType(ptr<const Property> prop) const -> AnyData::ValueType
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsString() || prop->IsArrayOfString() || prop->IsDictOfString() || prop->IsDictOfArrayOfString() || prop->IsBaseTypeHash() || prop->IsBaseTypeEnum() || prop->IsBaseTypeComplexStruct()) {
         return AnyData::ValueType::String;
     }
@@ -6997,8 +6805,6 @@ auto MapperEngine::GetInspectorValueType(ptr<const Property> prop) const -> AnyD
 
 auto MapperEngine::ParseInspectorValue(ptr<const Property> prop, string_view text) const -> optional<AnyData::Value>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         return AnyData::ParseValue(string(text), false, prop->IsArray(), GetInspectorValueType(prop));
     }
@@ -7009,8 +6815,6 @@ auto MapperEngine::ParseInspectorValue(ptr<const Property> prop, string_view tex
 
 auto MapperEngine::MakeDefaultInspectorArrayElement(ptr<const Property> prop) const -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (GetInspectorValueType(prop)) {
     case AnyData::ValueType::Int64:
         return AnyData::Value {int64_t {0}};
@@ -7027,8 +6831,6 @@ auto MapperEngine::MakeDefaultInspectorArrayElement(ptr<const Property> prop) co
 
 auto MapperEngine::SerializeInspectorArray(vector<AnyData::Value> entries) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     AnyData::Array value_arr;
     value_arr.Reserve(entries.size());
 
@@ -7041,8 +6843,6 @@ auto MapperEngine::SerializeInspectorArray(vector<AnyData::Value> entries) const
 
 auto MapperEngine::SerializeInspectorStringArray(const vector<string>& entries) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<AnyData::Value> values;
     values.reserve(entries.size());
 
@@ -7055,8 +6855,6 @@ auto MapperEngine::SerializeInspectorStringArray(const vector<string>& entries) 
 
 auto MapperEngine::GetInspectorStructLayout(ptr<const Property> prop) const -> nptr<const StructLayoutDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& base_type = prop->GetBaseType();
     if (base_type.StructLayout && (base_type.IsComplexStruct || base_type.IsSimpleStruct) && base_type.StructLayout->Fields.size() > 1) {
         return base_type.StructLayout;
@@ -7067,8 +6865,6 @@ auto MapperEngine::GetInspectorStructLayout(ptr<const Property> prop) const -> n
 
 auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) const -> nptr<const char>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str[0] == 0) {
         return nullptr;
     }
@@ -7145,8 +6941,6 @@ auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) cons
 
 auto MapperEngine::ParseInspectorStructFields(const StructLayoutDesc& layout, string_view text) const -> optional<vector<string>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         string text_str = string {text};
         auto token_pos = make_nptr(text_str.c_str());
@@ -7171,8 +6965,6 @@ auto MapperEngine::ParseInspectorStructFields(const StructLayoutDesc& layout, st
 
 auto MapperEngine::ParseInspectorStringEntries(string_view text) const -> optional<vector<string>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto parsed = AnyData::ParseValue(string(text), false, true, AnyData::ValueType::String);
         if (parsed.Type() != AnyData::ValueType::Array) {
@@ -7195,8 +6987,6 @@ auto MapperEngine::ParseInspectorStringEntries(string_view text) const -> option
 
 auto MapperEngine::GetImGuiInputTextStringUserData(nptr<void> user_data) -> ptr<ImGuiInputTextStringUserData>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto typed_user_data = user_data.reinterpret_as<ImGuiInputTextStringUserData>();
     IM_ASSERT(typed_user_data);
     return typed_user_data;
@@ -7204,8 +6994,6 @@ auto MapperEngine::GetImGuiInputTextStringUserData(nptr<void> user_data) -> ptr<
 
 int MapperEngine::ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     IM_ASSERT(data);
     ptr<ImGuiInputTextCallbackData> callback_data = data;
     auto user_data = GetImGuiInputTextStringUserData(callback_data->UserData);
@@ -7235,22 +7023,16 @@ int MapperEngine::ImGuiInputTextStringCallback(ImGuiInputTextCallbackData* data)
 
 auto MapperEngine::ImGuiInputTextString(ptr<const char> label, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ImGuiInputTextStringImpl(label, nullptr, value, flags, latin_only, move_caret_to_end);
 }
 
 auto MapperEngine::ImGuiInputTextStringWithHint(ptr<const char> label, ptr<const char> hint, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ImGuiInputTextStringImpl(label, hint, value, flags, latin_only, move_caret_to_end);
 }
 
 auto MapperEngine::ImGuiInputTextStringImpl(ptr<const char> label, nptr<const char> hint, string& value, ImGuiInputTextFlags flags, bool latin_only, bool move_caret_to_end) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.capacity() == 0) {
         value.reserve(256);
     }
@@ -7274,8 +7056,6 @@ auto MapperEngine::ImGuiInputTextStringImpl(ptr<const char> label, nptr<const ch
 
 auto MapperEngine::IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Property> prop, string_view value_text) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity_with_proto = entity.dyn_cast<const EntityWithProto>();
     if (!entity_with_proto) {
         return true;
@@ -7291,7 +7071,7 @@ auto MapperEngine::IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<con
 
 void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_view value) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     string cfg_user;
 

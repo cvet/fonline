@@ -90,6 +90,7 @@ public:
     void Send_LoginSuccess();
     void Send_Moving(ptr<const Critter> from_cr);
     void Send_MovingSpeed(ptr<const Critter> from_cr);
+    void Send_MovingLease(ptr<const Critter> from_cr);
     void Send_Dir(ptr<const Critter> from_cr);
     void Send_AddCritter(ptr<const Critter> cr);
     void Send_RemoveCritter(ptr<const Critter> cr);
@@ -106,7 +107,7 @@ public:
     void Send_HashList(const_span<string> hash_strings);
     void Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data);
     void Send_Ping(bool answer);
-    void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version, uint32_t out_encrypt_key);
+    void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version);
     void Send_InitData(const_span<uint8_t> update_desc);
     void Send_UpdateFileData(const_span<uint8_t> update_data);
     void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item);
@@ -118,10 +119,13 @@ public:
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
+    // Exposes a project-defined player access callback with an integer input and mutable text argument; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGetAccess, int32_t /*arg1*/, string& /*arg2*/);
+    // Exposes a project-defined command authorization callback; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uint8_t /*arg2*/);
+    // Exposes a project-defined player logout callback; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLogout);
 

@@ -171,8 +171,6 @@ private:
 EffekseerRuntimeTestSettings::EffekseerRuntimeTestSettings() :
     GlobalSettings {false}
 {
-    FO_STACK_TRACE_ENTRY();
-
     ApplyDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
@@ -181,15 +179,11 @@ CapturingRenderEffect::CapturingRenderEffect(EffectUsage usage, string_view name
     RenderEffect(usage, name, loader),
     _capture {std::move(capture)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_capture, "Capturing render effect requires capture storage");
 }
 
 void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(custom_tex);
     FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Captured draw starts outside the index buffer", start_index, dbuf->IndCount);
 
@@ -241,8 +235,6 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
 CapturingAppRender::CapturingAppRender(ptr<GlobalSettings> settings) :
     _capture {safe_alloc::make_shared<EffekseerDrawCapture>()}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
     _screen.Fullscreen = settings->Render.Fullscreen;
     _renderer.Init(*settings, &_screen, nullptr);
@@ -250,107 +242,77 @@ CapturingAppRender::CapturingAppRender(ptr<GlobalSettings> settings) :
 
 auto CapturingAppRender::GetRenderTarget() -> nptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderTarget;
 }
 
 auto CapturingAppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderer.CreateTexture(size, linear_filtered, with_depth);
 }
 
 auto CapturingAppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderer.CreateDrawBuffer(is_static);
 }
 
 auto CapturingAppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<CapturingRenderEffect>(usage, name, loader, _capture);
 }
 
 auto CapturingAppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto CapturingAppRender::IsRenderTargetFlipped() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderer.IsRenderTargetFlipped();
 }
 
 auto CapturingAppRender::GetProjMatrix() const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderer.GetProjMatrix();
 }
 
 void CapturingAppRender::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _renderTarget = tex;
     _renderer.SetRenderTarget(tex);
 }
 
 void CapturingAppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _renderer.SetOrthoDepthRange(nearp, farp);
 }
 
 void CapturingAppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _renderer.ClearRenderTarget(color, depth, stencil);
 }
 
 void CapturingAppRender::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _renderer.EnableScissor(rect);
 }
 
 void CapturingAppRender::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _renderer.DisableScissor();
 }
 
 void CapturingAppRender::ClearDraws()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _capture->Draws.clear();
 }
 
 auto CapturingAppRender::GetDraws() const -> const vector<CapturedEffekseerDraw>&
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _capture->Draws;
 }
 
 static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& source, string_view effect_path, vector<uint8_t> effect_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     static constexpr string_view effect_config = "[Effect]\nPasses = 1\n";
     static constexpr string_view effect_info = "[EffectInfo]\nMainTex = 0\nProjBuf = 1\n";
 
@@ -385,8 +347,6 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
 
 static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EffekseerRuntimeTests");
     AddEffekseerRuntimeTestResources(*source, effect_path, std::move(effect_data));
 
@@ -402,13 +362,11 @@ static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<ui
 EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(bool provide_texture) :
     EffekseerRuntimeTestRig {EffekseerFixturePath, ParticleTests::MakeSimpleSpriteFixedYAxisEffect(), provide_texture}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, bool provide_texture) :
     EffekseerRuntimeTestRig {effect_path, std::move(effect_data), map<string, vector<uint8_t>> {}, provide_texture}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture) :
@@ -452,13 +410,10 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
         .DrawWireframe = [this]() { return _settings.Render.DrawWireframe; },
     })}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto EffekseerRuntimeTestRig::CreateSystem() -> unique_ptr<ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto system = _backend->Create(_effectPath);
     FO_VERIFY_AND_THROW(system, "Effekseer runtime test fixture failed to create");
     return system.take_not_null();
@@ -466,57 +421,41 @@ auto EffekseerRuntimeTestRig::CreateSystem() -> unique_ptr<ParticleRuntimeSystem
 
 auto EffekseerRuntimeTestRig::CreateManagedSystem() -> optional<ParticleSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _particleManager->CreateParticle(_effectPath);
 }
 
 auto EffekseerRuntimeTestRig::CanCreateSystem() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !!_backend->Create(_effectPath);
 }
 
 auto EffekseerRuntimeTestRig::TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _backend->Create(_effectPath);
 }
 
 auto EffekseerRuntimeTestRig::GetDraws() const -> const vector<CapturedEffekseerDraw>&
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _render->GetDraws();
 }
 
 auto EffekseerRuntimeTestRig::GetTextureRequests() const -> const vector<string>&
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _textureRequests;
 }
 
 auto EffekseerRuntimeTestRig::GetSceneBackground() const -> nptr<const RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _sceneBackground.as_nptr();
 }
 
 void EffekseerRuntimeTestRig::SetSceneBackgroundMode(TestSceneBackgroundMode mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sceneBackgroundMode = mode;
 }
 
 auto EffekseerRuntimeTestRig::ProvideSceneBackground() const -> ParticleSceneBackgroundResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (_sceneBackgroundMode) {
     case TestSceneBackgroundMode::Available:
         return {.State = ParticleSceneBackgroundState::Available, .Texture = _sceneBackground.as_nptr()};
@@ -531,15 +470,11 @@ auto EffekseerRuntimeTestRig::ProvideSceneBackground() const -> ParticleSceneBac
 
 void EffekseerRuntimeTestRig::ClearDraws()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _render->ClearDraws();
 }
 
 static auto MakeEffekseerIdentitySetup() -> ParticleRuntimeSetup
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ParticleRuntimeSetup {
         .Projection = mat44 {1.0f},
         .World = mat44 {1.0f},
@@ -549,8 +484,6 @@ static auto MakeEffekseerIdentitySetup() -> ParticleRuntimeSetup
 
 static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int32_t frame_count = 1) -> vector<CapturedEffekseerDraw>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_count > 0, "Effekseer runtime test requires a positive frame count", frame_count);
     unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
 
@@ -569,8 +502,6 @@ static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int
 
 static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, const vector<CapturedEffekseerDraw>& right)
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(left.size() == right.size());
 
     for (size_t draw_index = 0; draw_index < left.size(); draw_index++) {
@@ -602,8 +533,6 @@ static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, 
 
 static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& draws)
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(draws.size() == 1);
     const CapturedEffekseerDraw& draw = draws.front();
     CHECK(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
@@ -655,8 +584,6 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
 
 static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDraw>& draws, size_t expected_instance_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(draws.size() == 1);
     const CapturedEffekseerDraw& draw = draws.front();
     REQUIRE(draw.Vertices.size() == expected_instance_count * 4);
@@ -677,8 +604,6 @@ static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDr
 
 static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draws)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t segment_count = 16;
     constexpr size_t vertices_per_segment = 8;
     constexpr size_t indices_per_segment = 12;
@@ -736,8 +661,6 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
 
 static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t vertices_per_ring = 16 * 8;
 
     REQUIRE(draws.size() == 1);
@@ -762,8 +685,6 @@ static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -
 
 static auto GetEffekseerQuadDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(draws.size() == 1);
     const vector<Vertex2D>& vertices = draws.front().Vertices;
     REQUIRE(vertices.size() % 4 == 0);
@@ -1013,8 +934,6 @@ TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[partic
 // exists once several instances of one group are alive together, which a cooked single-instance fixture cannot express
 static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Strip.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerStripFixturePath, std::move(compiled.Binary));
@@ -1022,8 +941,6 @@ static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRunt
 
 static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntimeSetup& setup) -> vector<CapturedEffekseerDraw>
 {
-    FO_STACK_TRACE_ENTRY();
-
     unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
 
     system->Setup(setup);
@@ -1045,8 +962,6 @@ static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntime
 // far edge of one segment being the near edge of the next, and the texture stretched across the whole chain
 static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     REQUIRE(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     REQUIRE(draw.HasMainTexture);
@@ -1117,8 +1032,6 @@ static constexpr float32_t StripWidthTolerance = 0.001f;
 
 static auto GetStripWidthVector(const CapturedEffekseerDraw& draw, size_t segment_index) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     const Vertex2D& left = draw.Vertices[segment_index * 8 + 0];
     const Vertex2D& right = draw.Vertices[segment_index * 8 + 5];
 
@@ -1195,8 +1108,6 @@ TEST_CASE("Effekseer particle runtime builds track strip geometry", "[particle][
 // references - four vertices, two faces, a distinct red channel per corner so the vertex mapping is visible
 static auto MakeModelFixtureRig(int32_t culling, vector<uint8_t> model_payload) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string project = ParticleTests::MakeModelProject(culling);
     EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Mesh.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
     map<string, vector<uint8_t>> dependencies;
@@ -1207,8 +1118,6 @@ static auto MakeModelFixtureRig(int32_t culling, vector<uint8_t> model_payload) 
 
 static auto MakeModelFixtureRig(int32_t culling) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeModelFixtureRig(culling, ParticleTests::MakeFixtureModelPayload());
 }
 
@@ -1316,8 +1225,6 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
 // whose size it can read, and a refracting node without a texture is rejected by design
 static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / std::format("fo_effekseer_distortion_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     string project_path = fs::path_to_string(temp_dir / "Refraction.efkproj");
     string texture_path = fs::path_to_string(temp_dir / "Texture" / "Distortion.png");
@@ -1335,8 +1242,6 @@ static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -
 
 static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<CapturedEffekseerDraw>
 {
-    FO_STACK_TRACE_ENTRY();
-
     unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
 
     system->Setup(MakeEffekseerIdentitySetup());

@@ -55,7 +55,7 @@ android {
     }
 
     androidResources {
-        noCompress += ['zip']
+        noCompress += ['fores']
     }
 
     sourceSets.main {

@@ -61,6 +61,10 @@ namespace winapi
     // opened. With the id it names one process for good, since the id alone is handed on after the process ends
     auto get_running_process_start_time(uint32_t pid) noexcept -> optional<uint64_t>;
     auto get_module_file_name() noexcept -> optional<string>;
+    // Read through the wide API: the narrow environment is in the ANSI code page, which cannot carry every profile path
+    auto get_environment_variable(const string& name) noexcept -> optional<string>;
+    // The wide command line split the way the C runtime splits argv, but kept in UTF-8
+    auto get_command_line_args() -> optional<vector<string>>;
     // Asked of the shell, not the environment: a service or a sandbox has no LOCALAPPDATA, and answering
     // "none" sends the caller back to a directory it may not be allowed to write
     auto get_local_app_data_path() noexcept -> optional<string>;
@@ -69,6 +73,7 @@ namespace winapi
     auto get_process_cpu_time_ns() noexcept -> optional<uint64_t>;
     auto get_active_processor_count() noexcept -> uint32_t;
     auto get_system_cpu_times() noexcept -> optional<cpu_core_times>;
+    auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
 
     auto load_library(const string& path) noexcept -> nptr<void>;
     // Loaded and pinned: FreeLibrary no longer unmaps it, and it stays until the process exits
@@ -77,6 +82,9 @@ namespace winapi
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle means the running executable, which is where the loader search starts
     auto get_proc_address(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>;
+    // Code and system text of the calling thread's last error, read right after the call that failed
+    auto get_last_error_text() noexcept -> string;
+    auto get_os_version() noexcept -> string;
 
     // A file this process holds alone: a second opener is refused rather than allowed to share it. The
     // descriptor is the platform's own, and -1 means the open failed
@@ -88,6 +96,22 @@ namespace winapi
     auto write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t;
     auto truncate_file(int32_t fd) noexcept -> bool;
     auto sync_file(int32_t fd) noexcept -> bool;
+    // Windows flushes a directory only through a handle opened for writing, so a read-only directory answers false
+    auto sync_directory(const string& path) noexcept -> bool;
+    auto lock_named_mutex(const string& name) noexcept -> nptr<void>;
+    void unlock_named_mutex(nptr<void> lock) noexcept;
+    auto rename_file_durable(const string& from, const string& to) noexcept -> bool;
+
+    // A pack file opened for shared positional reading: the offset travels with each call, so a reader never
+    // depends on a shared file cursor. The descriptor is the platform own one, and -1 means the open failed
+    auto open_shared_read_file(const string& path) noexcept -> int32_t;
+    auto open_new_write_file(const string& path, bool append = false) noexcept -> int32_t;
+    auto resize_file(int32_t fd, uint64_t size) noexcept -> bool;
+    void close_file(int32_t fd) noexcept;
+    auto get_file_size(int32_t fd) noexcept -> int64_t;
+    auto read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t;
+    // Claims the space up front so a long write fails early instead of part way through
+    auto preallocate_file(int32_t fd, uint64_t size) noexcept -> bool;
 
     // Runs a command with its output captured, chunk by chunk through the callback, returning its exit code or
     // -1. Not noexcept: the callback is caller code, and a throw from it must reach the caller, not end here

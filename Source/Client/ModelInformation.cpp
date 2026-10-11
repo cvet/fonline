@@ -57,7 +57,6 @@ static constexpr size_t BAKED_MODEL_LINK_ANIMATION_BOUNDS_SIZE = 2 * sizeof(int3
 ModelInformation::ModelInformation(ptr<ModelManager> model_mngr) :
     _modelMngr {model_mngr}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelInformation::ModelInformation(ModelInformation&&) noexcept = default;
@@ -65,7 +64,7 @@ ModelInformation::~ModelInformation() = default;
 
 auto ModelInformation::Load(string_view name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     string ext = strex(name).get_file_extension();
 
@@ -85,7 +84,8 @@ auto ModelInformation::Load(string_view name) -> bool
         auto reader = data_reader(fo3d.GetDataSpan());
 
         try {
-            FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
+            bool loaded = LoadBaked(name, reader);
+            FO_VERIFY_AND_THROW(loaded, "Failed to load baked 3D asset");
         }
         catch (const DataReadingException& ex) {
             throw DataReadingException("Invalid baked model description", name, ex.what());
@@ -116,7 +116,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
 auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     const_span<uint8_t> magic = reader.read_bytes(MODEL_DESCRIPTION_MAGIC.size());
     FO_VERIFY_AND_THROW(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()), "Invalid baked model description magic", name);
@@ -321,7 +321,8 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
                 // exists to avoid, so a baker/rig divergence is reported like the model's own bounds report it
                 FO_VERIFY_AND_THROW(binding, "Model link animation bounds name an animation the runtime rig has no binding for", name, link.Data.ChildName, state_anim, action_anim);
                 FO_VERIFY_AND_THROW(binding->ClipIndex >= 0 && numeric_cast<size_t>(binding->ClipIndex) < link.Data.ClipBounds.size(), "Model link animation clip index is outside the bounds table", name, link.Data.ChildName, binding->ClipIndex, link.Data.ClipBounds.size());
-                FO_VERIFY_AND_THROW(IncludeModelBounds(link.Data.ClipBounds[numeric_cast<size_t>(binding->ClipIndex)], clip_bounds), "Model link animation bounds are invalid", name, link.Data.ChildName, state_anim, action_anim);
+                bool bounds_included = IncludeModelBounds(link.Data.ClipBounds[numeric_cast<size_t>(binding->ClipIndex)], clip_bounds);
+                FO_VERIFY_AND_THROW(bounds_included, "Model link animation bounds are invalid", name, link.Data.ChildName, state_anim, action_anim);
             }
         }
 
@@ -356,7 +357,8 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
         auto bounds_it = anim_info->Model->AnimationBounds.find({static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim)});
         FO_VERIFY_AND_THROW(bounds_it != anim_info->Model->AnimationBounds.end(), "Animation bounds are missing for a baked model binding", name, anim_entry.StateAnim, anim_entry.ActionAnim);
         FO_VERIFY_AND_THROW(binding->ClipIndex < _animationBounds.size(), "Animation runtime clip index is outside the bounds table", name, binding->ClipIndex, _animationBounds.size());
-        FO_VERIFY_AND_THROW(IncludeModelBounds(_animationBounds[binding->ClipIndex], bounds_it->second), "Animation bounds are invalid", name, anim_entry.StateAnim, anim_entry.ActionAnim);
+        bool bounds_included = IncludeModelBounds(_animationBounds[binding->ClipIndex], bounds_it->second);
+        FO_VERIFY_AND_THROW(bounds_included, "Animation bounds are invalid", name, anim_entry.StateAnim, anim_entry.ActionAnim);
     }
 
     FO_VERIFY_AND_THROW(expected_runtime_bindings.size() == animation_runtime_rig->GetBindings().size(), "Animation runtime rig binding count does not match the baked model description", name, expected_runtime_bindings.size(), animation_runtime_rig->GetBindings().size());
@@ -406,8 +408,6 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
 
 static void IndexModelRestPoseJoints(ptr<const ModelBone> bone, int32_t parent_joint_index, const unordered_map<ptr<const ModelBone>, uint32_t>& pose_joint_indexes, span<ModelPoseJoint> rest_pose_joints, span<uint8_t> indexed_joints, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t child_parent_joint_index = parent_joint_index;
 
     if (auto joint_it = pose_joint_indexes.find(bone); joint_it != pose_joint_indexes.end()) {
@@ -427,7 +427,7 @@ static void IndexModelRestPoseJoints(ptr<const ModelBone> bone, int32_t parent_j
 
 void ModelInformation::IndexDirectPoseJoints()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     _poseBones.assign(_hierarchy->_sourceBones.begin(), _hierarchy->_sourceBones.end());
     _poseJointCanonicalNames.clear();
@@ -455,7 +455,7 @@ void ModelInformation::IndexDirectPoseJoints()
 
 void ModelInformation::IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     ValidateModelAnimationRuntimeBaseJoints(rig, _hierarchy->_sourceJoints, _fileName);
     size_t canonical_joint_count = rig.GetJointCount();
@@ -487,7 +487,7 @@ void ModelInformation::IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& 
 
 void ModelInformation::IndexPoseJointLookups()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     FO_VERIFY_AND_THROW(_poseBones.size() == _poseJointCanonicalNames.size() && _poseBones.size() == _poseJointRuntimeNames.size(), "Model pose metadata sizes differ", _fileName, _poseBones.size(), _poseJointCanonicalNames.size(), _poseJointRuntimeNames.size());
     auto pose_joint_indexes = BuildModelPoseJointNameIndex(_poseJointRuntimeNames, _fileName);
@@ -526,8 +526,6 @@ void ModelInformation::IndexPoseJointLookups()
 
 auto ModelInformation::ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> ModelInformation::BakedModelDescriptionLink
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakedModelDescriptionLink link;
     link.Data.Layer = reader.read<int32_t>();
     link.Data.LayerValue = reader.read<int32_t>();
@@ -627,8 +625,6 @@ auto ModelInformation::ReadBakedModelDescriptionLink(data_reader& reader, string
 
 auto ModelInformation::ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> ModelInformation::BakedModelDescriptionCutInfo
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakedModelDescriptionCutInfo cut;
     cut.FileName = reader.read_string();
     cut.Layers = reader.read_sized_object_vector<int32_t>();
@@ -642,8 +638,6 @@ auto ModelInformation::ReadBakedModelDescriptionCutInfo(data_reader& reader) con
 
 auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> ModelInformation::BakedModelDescriptionAnimationEntry
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakedModelDescriptionAnimationEntry anim_entry;
     anim_entry.StateAnim = reader.read<int32_t>();
     anim_entry.ActionAnim = reader.read<int32_t>();
@@ -654,8 +648,6 @@ auto ModelInformation::ReadBakedModelDescriptionAnimationEntry(data_reader& read
 
 auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> ModelInformation::BakedModelDescriptionAnimLayerValue
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakedModelDescriptionAnimLayerValue value;
     value.StateAnim = reader.read<int32_t>();
     value.ActionAnim = reader.read<int32_t>();
@@ -667,8 +659,6 @@ auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(data_reader& read
 
 auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t anim_index = GetAnimationIndexEx(state_anim, action_anim, speed);
 
     if (anim_index != -1) {
@@ -698,7 +688,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
 
 auto ModelInformation::GetAvailableAnimations() const -> vector<pair<CritterStateAnim, CritterActionAnim>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     vector<pair<CritterStateAnim, CritterActionAnim>> result;
     result.reserve(_animIndexes.size());
@@ -719,8 +709,6 @@ auto ModelInformation::GetAvailableAnimations() const -> vector<pair<CritterStat
 
 auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A loaded model always has a hierarchy (both load paths reject a missing
     // one) and its root bone is a non-null ptr, so absence is an invariant break
     FO_VERIFY_AND_THROW(_hierarchy, "Model information has no hierarchy", _fileName);
@@ -729,8 +717,6 @@ auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
 
 auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto it1 = _stateAnimEquals.find(state_anim); it1 != _stateAnimEquals.end()) {
         state_anim = it1->second;
     }
@@ -760,7 +746,7 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
 
 auto ModelInformation::CalculateHierarchyBounds() const -> optional<ModelBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     FO_VERIFY_AND_THROW(_hierarchy, "Missing model hierarchy while calculating bounds", _fileName);
 
@@ -831,7 +817,7 @@ auto ModelInformation::CalculateHierarchyBounds() const -> optional<ModelBounds3
 
 auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     FO_VERIFY_AND_THROW(_hierarchy, "Missing required hierarchy");
     FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds), "Model has invalid bounds", _fileName, _modelBounds.Min.x, _modelBounds.Min.y, _modelBounds.Min.z, _modelBounds.Max.x, _modelBounds.Max.y, _modelBounds.Max.z);
@@ -860,8 +846,6 @@ auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 
 auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Cut mesh has no vertices");
 
     ModelCutData::Shape shape;

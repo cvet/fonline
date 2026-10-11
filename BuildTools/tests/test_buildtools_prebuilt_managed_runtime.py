@@ -14,6 +14,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools as _buildtools  # noqa: E402
+from managed_runtime_fixtures import write_published_runtime
 
 
 @pytest.fixture(autouse=True)
@@ -24,9 +25,7 @@ def no_workspace_cache(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def make_published_tree(root: Path, triplet: str) -> Path:
     tree = root / triplet
-    (tree / "lib").mkdir(parents=True)
-    (tree / "include" / "mono-2.0").mkdir(parents=True)
-    (tree / "lib" / "libmonosgen-2.0.a").write_text("archive", encoding="utf-8")
+    write_published_runtime(tree, triplet.split(".")[0], "archive")
     return tree
 
 
@@ -49,7 +48,7 @@ def test_prebuilt_runtime_is_adopted_instead_of_being_built(tmp_path: Path, monk
     _buildtools.setup_mono("windows", "x64", "Release", setup_mono_env(tmp_path, prebuilt_root))
 
     workspace = tmp_path / "workspace"
-    assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "libmonosgen-2.0.a").is_file()
+    assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "monosgen-2.0.lib").is_file()
     assert (workspace / f"READY_v10.0.11_windows.x64.Release{_buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX}").is_file()
 
 
@@ -149,7 +148,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     for phase in ("BUILT", "READY"):
         (workspace / f"{phase}_v10.0.11_{triplet}{previous_suffix}").touch()
     published = make_published_tree(workspace / "output/mono", triplet)
-    archive = published / "lib/libmonosgen-2.0.a"
+    archive = published / "lib" / ("monosgen-2.0.lib" if target == "windows" else "libmonosgen-2.0.a")
     calls = []
 
     def reject_clone(*args, **kwargs):
@@ -161,7 +160,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in command
         out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
         out.mkdir(parents=True)
-        (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
+        write_published_runtime(out.parent, target, "patched runtime")
         rid = f"{'win' if target == 'windows' else target}-x64"
         framework = runtime / "artifacts/bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release/runtimes" / rid / "lib/net10.0"
         framework.mkdir(parents=True)
@@ -180,6 +179,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         "patch_runtime_android_sources",
         "patch_runtime_android_x86_atomics",
         "patch_runtime_windows_embedded_debug_info",
+        "patch_runtime_windows_7_stack_bounds",
         "patch_runtime_windows_suspend_retry",
         "patch_runtime_isa_is_supported_fallback",
     )
@@ -199,8 +199,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
                       ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics",
                        "patch_runtime_isa_is_supported_fallback"] if target == "android" else
-                      ["patch_runtime_windows_embedded_debug_info", "patch_runtime_windows_suspend_retry",
-                       "patch_runtime_isa_is_supported_fallback"]
+                      ["patch_runtime_windows_embedded_debug_info", "patch_runtime_windows_7_stack_bounds",
+                       "patch_runtime_windows_suspend_retry", "patch_runtime_isa_is_supported_fallback"]
                       if target == "windows" else
                       ["patch_runtime_apple_sources"])
     if target in ("ios", "iossimulator"):
@@ -282,6 +282,35 @@ def test_windows_suspend_retry_refuses_a_moved_anchor(tmp_path: Path, needle: st
     write_windows_suspend_source(tmp_path, WINDOWS_SUSPEND_SOURCE.replace(needle, moved))
     with pytest.raises(SystemExit, match="Mono Windows thread suspension"):
         _buildtools.patch_runtime_windows_suspend_retry(tmp_path)
+
+
+WINDOWS_STACK_BOUNDS_SOURCE = (
+    "void\nmono_threads_platform_get_stack_bounds (guint8 **staddr, size_t *stsize)\n{\n"
+    "#if _WIN32_WINNT >= 0x0602 // Windows 8 or newer and very fast, just a few instructions, no syscall.\n"
+    "\tULONG_PTR low;\n\tULONG_PTR high;\n\tGetCurrentThreadStackLimits (&low, &high);\n"
+    "#else // Win7 and older (or newer, still works, but much slower).\n"
+    "\tMEMORY_BASIC_INFORMATION info;\n\tVirtualQuery (&info, &info, sizeof (info));\n"
+    "#endif\n}\n"
+)
+
+
+def test_windows_stack_bounds_never_import_get_current_thread_stack_limits(tmp_path: Path) -> None:
+    # The runtime is linked statically, so a Windows 8 import there makes Windows 7 refuse the whole executable
+    source = write_windows_suspend_source(tmp_path, WINDOWS_STACK_BOUNDS_SOURCE)
+    _buildtools.patch_runtime_windows_7_stack_bounds(tmp_path)
+    _buildtools.patch_runtime_windows_7_stack_bounds(tmp_path)
+    text = source.read_text(encoding="utf-8")
+    assert text.count(_buildtools.MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER) == 1
+    assert "_WIN32_WINNT >= 0x0602" not in text
+    assert text.index("#if 0") < text.index("GetCurrentThreadStackLimits (&low, &high);") < text.index("#else") < text.index("VirtualQuery (")
+
+
+def test_windows_stack_bounds_refuse_a_moved_anchor(tmp_path: Path) -> None:
+    moved = WINDOWS_STACK_BOUNDS_SOURCE.replace("#if _WIN32_WINNT >= 0x0602", "#if _WIN32_WINNT >= 0x0A00")
+    source = write_windows_suspend_source(tmp_path, moved)
+    with pytest.raises(SystemExit, match="Mono Windows stack bounds"):
+        _buildtools.patch_runtime_windows_7_stack_bounds(tmp_path)
+    assert source.read_text(encoding="utf-8") == moved
 
 
 def test_local_tasks_mark_is_discarded_for_every_configuration(tmp_path: Path) -> None:
@@ -602,7 +631,7 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)
     monkeypatch.setattr(_buildtools, "run_runtime_build", check_patched_before_build)
     monkeypatch.setattr(_buildtools, "patch_runtime_linux_signal_actions", lambda path: None)
-    _buildtools.setup_mono("linux", "x64", "Release", env)
+    _buildtools.build_mono("linux", "x64", "Release", env)
     assert len(calls) == 1
 
 
@@ -633,6 +662,7 @@ def test_publish_takes_target_class_libraries_and_replaces_old_files_only_after_
     inputs = runtime / "artifacts" / "obj" / "mono" / triplet / "out"
     inputs.mkdir(parents=True)
     (inputs / "current-library.so").write_text("current", encoding="utf-8")
+    write_published_runtime(inputs, target)
     # The SDK dotnet/runtime builds itself with carries a host-OS shared framework that must never be published
     sdk_framework = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App" / "10.0.9"
     sdk_framework.mkdir(parents=True)

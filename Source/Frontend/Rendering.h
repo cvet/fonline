@@ -94,14 +94,15 @@ enum class EffectUsage : uint8_t
 #endif
 };
 
+// Vertex assembly topology used when submitting primitive draw buffers
 ///@ ExportEnum
 enum class RenderPrimitiveType : uint8_t
 {
-    PointList,
-    LineList,
-    LineStrip,
-    TriangleList,
-    TriangleStrip,
+    PointList, // Draws each submitted vertex as an independent point primitive
+    LineList, // Draws each pair of submitted vertices as an independent line segment
+    LineStrip, // Draws connected line segments and enables primitive restart where supported
+    TriangleList, // Draws each group of three submitted vertices as an independent triangle
+    TriangleStrip, // Draws a connected triangle strip and enables primitive restart where supported
 };
 
 enum class BlendFuncType : uint8_t
@@ -204,6 +205,34 @@ static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 68 + 8 * MODEL_BONES_PER_VERTEX);
 #endif
 
+// A texture region on its way back to the CPU. The copy is recorded where it was requested, and the pixels arrive
+// once the GPU has executed it, usually a frame or two later; nothing here ever waits for the GPU
+class RenderTextureReadback
+{
+public:
+    RenderTextureReadback() = default;
+    RenderTextureReadback(const RenderTextureReadback&) = delete;
+    RenderTextureReadback(RenderTextureReadback&&) noexcept = delete;
+    auto operator=(const RenderTextureReadback&) = delete;
+    auto operator=(RenderTextureReadback&&) noexcept = delete;
+    virtual ~RenderTextureReadback() = default;
+
+    // Rows top to bottom, as GetTextureRegion returns them; empty until the copy has arrived, and handed over once
+    virtual auto TakePixels() -> optional<vector<ucolor>> = 0;
+};
+
+// Pixels read at request time, for a backend or a context with no non-blocking path
+class ImmediateTextureReadback final : public RenderTextureReadback
+{
+public:
+    explicit ImmediateTextureReadback(vector<ucolor> pixels);
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    optional<vector<ucolor>> _pixels;
+};
+
 class RenderTexture
 {
 public:
@@ -213,9 +242,11 @@ public:
     auto operator=(RenderTexture&&) noexcept = delete;
     virtual ~RenderTexture() = default;
 
-    [[nodiscard]] virtual auto GetTexturePixel(ipos32 pos) const -> ucolor = 0;
+    // Blocks until the GPU has finished everything that writes the texture: for screenshots, dumps and load-time
+    // baking, never for the frame path, which uses RequestTextureRegion
     [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> = 0;
 
+    virtual auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> = 0;
     virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch = false) = 0;
 
     const isize32 Size;
@@ -301,12 +332,11 @@ public:
     };
 
     // GLSL: uniform ParticleSamplingBuf { vec4 ParticleSampling; };
-    //   .x = point-sample flag (0 = sample the atlas as it is filtered, 1 = snap to texel centres)
-    //   .yzw reserved.
-    // Filtering is a per-node property in particle formats but a per-atlas one here, so a node that wants point
-    // sampling from a linearly filtered atlas gets it by snapping the coordinate to the texel centre - a bilinear fetch
-    // at a texel centre returns exactly that texel, so this is true point sampling rather than an approximation.
-    // (Particle runtimes, per draw.)
+    //   .x = point-sample flag (0 = sample the atlas as filtered, 1 = snap to texel centres)
+    //   .y = shader-clamp flag for atlas-safe Clamp addressing
+    //   .z = distortion intensity
+    //   .w = background-texture vertical-flip flag
+    // Particle runtimes define these values per draw. Ordinary color effects use x/y; distortion effects also use z/w
     struct ParticleSamplingBuffer
     {
         float32_t ParticleSampling[4] {};

@@ -130,7 +130,7 @@ static void RequireImageBytes(const_span<uint8_t> image, size_t offset, size_t s
 
 auto ReadManagedAssemblyIdentity(const_span<uint8_t> image) -> ManagedAssemblyIdentity
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     size_t metadata_offset = FindMetadataRoot(image);
     ManagedMetadataStreams streams = ReadMetadataStreams(image, metadata_offset);
@@ -170,7 +170,7 @@ auto ReadManagedAssemblyIdentity(const_span<uint8_t> image) -> ManagedAssemblyId
 
 auto CollectReferencedRuntimeAssemblies(const vector<ManagedAssemblyIdentity>& pack_assemblies, const FindManagedRuntimeAssemblyCallback& find_runtime_assembly) -> set<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     set<string> pack_names;
     vector<pair<string, string>> pending_references;
@@ -233,8 +233,6 @@ auto CollectReferencedRuntimeAssemblies(const vector<ManagedAssemblyIdentity>& p
 
 static auto FindMetadataRoot(const_span<uint8_t> image) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ReadU16(image, 0) != DOS_SIGNATURE) {
         throw ManagedAssemblyReferencesException("Managed assembly image has no DOS header");
     }
@@ -287,8 +285,6 @@ static auto FindMetadataRoot(const_span<uint8_t> image) -> size_t
 
 static auto ReadMetadataStreams(const_span<uint8_t> image, size_t metadata_offset) -> ManagedMetadataStreams
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t version_length = ReadU32(image, metadata_offset + 12);
     RequireImageBytes(image, metadata_offset + 16, version_length);
     size_t stream_count = ReadU16(image, metadata_offset + 18 + version_length);
@@ -326,8 +322,6 @@ static auto ReadMetadataStreams(const_span<uint8_t> image, size_t metadata_offse
 
 static auto ReadMetadataTables(const_span<uint8_t> image, const ManagedMetadataStream& tables_stream) -> ManagedMetadataTables
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint8_t heap_sizes = ReadU8(image, tables_stream.Offset + 6);
     uint64_t valid_tables = ReadU64(image, tables_stream.Offset + 8);
     size_t rows_offset = tables_stream.Offset + 24;
@@ -353,8 +347,6 @@ static auto ReadMetadataTables(const_span<uint8_t> image, const ManagedMetadataS
 
 static auto MakeTableRowSizes(const ManagedMetadataTables& tables) -> array<size_t, TABLE_ASSEMBLY_REF + 1>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const array<uint32_t, METADATA_TABLE_COUNT>& rows = tables.Rows;
     size_t str = tables.StringIndexSize;
     size_t guid = tables.GuidIndexSize;
@@ -427,8 +419,6 @@ static auto MakeTableRowSizes(const ManagedMetadataTables& tables) -> array<size
 
 static auto GetTableOffset(const ManagedMetadataTables& tables, const array<size_t, TABLE_ASSEMBLY_REF + 1>& row_sizes, size_t table) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t offset = tables.RowsOffset;
 
     for (size_t preceding_table = 0; preceding_table < table; preceding_table++) {
@@ -440,8 +430,6 @@ static auto GetTableOffset(const ManagedMetadataTables& tables, const array<size
 
 static auto RvaToOffset(const_span<uint8_t> image, size_t sections_offset, size_t section_count, uint32_t rva) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t section = 0; section < section_count; section++) {
         size_t header_offset = sections_offset + section * SECTION_HEADER_SIZE;
         uint32_t virtual_size = ReadU32(image, header_offset + 8);
@@ -465,8 +453,6 @@ static auto RvaToOffset(const_span<uint8_t> image, size_t sections_offset, size_
 
 static auto ReadHeapString(const_span<uint8_t> image, const ManagedMetadataStream& strings_stream, size_t index) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (index >= strings_stream.Size) {
         throw ManagedAssemblyReferencesException("Managed assembly string index is out of its heap", index, strings_stream.Size);
     }
@@ -489,46 +475,34 @@ static auto ReadHeapString(const_span<uint8_t> image, const ManagedMetadataStrea
 
 static auto ReadIndex(const_span<uint8_t> image, size_t offset, size_t index_size) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return index_size == 4 ? ReadU32(image, offset) : ReadU16(image, offset);
 }
 
 static auto ReadU8(const_span<uint8_t> image, size_t offset) -> uint8_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     RequireImageBytes(image, offset, 1);
     return image[offset];
 }
 
 static auto ReadU16(const_span<uint8_t> image, size_t offset) -> uint16_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     RequireImageBytes(image, offset, 2);
     return numeric_cast<uint16_t>(image[offset] | (image[offset + 1] << 8));
 }
 
 static auto ReadU32(const_span<uint8_t> image, size_t offset) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     RequireImageBytes(image, offset, 4);
     return uint32_t {image[offset]} | (uint32_t {image[offset + 1]} << 8) | (uint32_t {image[offset + 2]} << 16) | (uint32_t {image[offset + 3]} << 24);
 }
 
 static auto ReadU64(const_span<uint8_t> image, size_t offset) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return uint64_t {ReadU32(image, offset)} | (uint64_t {ReadU32(image, offset + 4)} << 32);
 }
 
 static void RequireImageBytes(const_span<uint8_t> image, size_t offset, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (offset > image.size() || image.size() - offset < size) {
         throw ManagedAssemblyReferencesException("Managed assembly image is truncated", offset, size, image.size());
     }

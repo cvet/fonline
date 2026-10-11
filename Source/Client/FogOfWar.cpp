@@ -39,8 +39,6 @@ FO_BEGIN_NAMESPACE
 
 void FogShape::Clear()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _rebuildFog = false;
     _lastEnabled = true;
     _transitionActive = false;
@@ -61,8 +59,6 @@ void FogShape::Clear()
 
 void FogShape::Prepare(const Input& input)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (input.Enabled != _lastEnabled || input.FogOrigin.Valid != _lastOrigin.Valid || //
         (input.FogOrigin.Valid && (input.FogOrigin.BaseHex != _lastOrigin.BaseHex || input.FogOrigin.LookDistance != _lastOrigin.LookDistance)) || //
         input.Distance != _lastDistance || input.Radius != _lastRadius || input.OverlayColor != _lastOverlayColor || //
@@ -91,7 +87,7 @@ void FogShape::Prepare(const Input& input)
 
 void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     fog_points.clear();
 
@@ -190,8 +186,6 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
 void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // One morph duration for every change: the oval grows from its center on appearance, glides between
     // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal
     _transitionDuration = std::max(duration, 0);
@@ -243,8 +237,6 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 
 void FogShape::UpdateTransition(nanotime frame_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_transitionActive) {
         return;
     }
@@ -267,8 +259,6 @@ void FogShape::UpdateTransition(nanotime frame_time)
 
 void FogShape::FinishTransition()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _points = _targetPoints;
     _transitionActive = false;
 
@@ -283,8 +273,6 @@ void FogShape::FinishTransition()
 
 auto FogShape::GetCollapsePoint(const vector<PrimitivePoint>& points) -> PrimitivePoint
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (points.empty()) {
         return {};
     }
@@ -297,8 +285,6 @@ auto FogShape::GetCollapsePoint(const vector<PrimitivePoint>& points) -> Primiti
 
 auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (points.empty()) {
         return {};
     }
@@ -319,8 +305,6 @@ auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
 
 auto FogShape::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge_count, size_t sample_edge_idx, size_t sample_edge_count, const PrimitivePoint& fallback) -> PrimitivePoint
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (edge_count == 0) {
         return fallback;
     }
@@ -337,8 +321,6 @@ auto FogShape::SampleEdgePoint(const vector<PrimitivePoint>& points, size_t edge
 
 auto FogShape::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto lerp_channel = [t](uint8_t from_value, uint8_t to_value) -> uint8_t { return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(lerp(numeric_cast<float32_t>(from_value), numeric_cast<float32_t>(to_value), t)), 0, 255)); };
 
     return ucolor {lerp_channel(from.comp.r, to.comp.r), lerp_channel(from.comp.g, to.comp.g), lerp_channel(from.comp.b, to.comp.b), lerp_channel(from.comp.a, to.comp.a)};
@@ -346,8 +328,6 @@ auto FogShape::LerpFogColor(ucolor from, ucolor to, float32_t t) -> ucolor
 
 auto FogShape::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to, float32_t t) -> PrimitivePoint
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     PrimitivePoint result;
     result.PointPos.x = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.x), numeric_cast<float32_t>(to.PointPos.x), t));
     result.PointPos.y = iround<int32_t>(lerp(numeric_cast<float32_t>(from.PointPos.y), numeric_cast<float32_t>(to.PointPos.y), t));
@@ -359,8 +339,6 @@ auto FogShape::LerpFogPoint(const PrimitivePoint& from, const PrimitivePoint& to
 
 void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto result_count = std::max(from_points.size(), to_points.size());
 
     if (result_count == 0) {

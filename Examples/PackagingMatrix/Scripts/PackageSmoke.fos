@@ -1,0 +1,68 @@
+namespace PackageSmoke
+{
+
+string GetFixtureName()
+{
+    return "FOnline Packaging Matrix";
+}
+
+const int TimespanMillisecondsPlace = 2;
+
+timespan Milliseconds(int value)
+{
+    return timespan(value, TimespanMillisecondsPlace);
+}
+
+#if SERVER
+///@ Setting Server bool PackageSmoke.Automation
+
+[[ModuleInit]]
+void InitServer()
+{
+    Game.OnStart.Subscribe(OnServerStart);
+}
+
+[[Event]]
+void OnServerStart()
+{
+    bool passed = Settings.Common.Packaged && Settings.PackageSmoke.Automation;
+    Game.Log("packaging_matrix_fixture=" + GetFixtureName());
+    Game.Log("packaging_matrix_server_packaged=" + passed);
+    if (!passed) {
+        Game.Log("packaging_matrix_server_failed");
+        Game.RequestQuit(false);
+        return;
+    }
+    Game.Log("packaging_matrix_server_ready");
+    Game.StartTimeEvent(Milliseconds(8000), QuitServer);
+}
+
+[[TimeEvent]]
+void QuitServer()
+{
+    Game.Log("packaging_matrix_server_passed");
+    Game.RequestQuit(true);
+}
+#endif
+
+#if CLIENT
+///@ Setting Client bool PackageSmoke.Automation
+
+[[ModuleInit]]
+void InitClient()
+{
+    Game.OnStart.Subscribe(OnClientStart);
+}
+
+[[Event]]
+void OnClientStart()
+{
+    bool passed = Settings.Common.Packaged && Settings.PackageSmoke.Automation;
+    Game.Log("packaging_matrix_fixture=" + GetFixtureName());
+    Game.Log("packaging_matrix_client_packaged=" + passed);
+    Game.Log(passed ? "packaging_matrix_client_passed" : "packaging_matrix_client_failed");
+    Game.RequestQuit(passed);
+}
+#endif
+
+}

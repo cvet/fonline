@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="engine-game-boundary-title engine-game-boundary-description">
+  <title id="engine-game-boundary-title">Reusable engine and embedding game boundary</title>
+  <desc id="engine-game-boundary-description">Ownership and dependency flow between the reusable FOnline engine and an embedding game project.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#42534a"/>
+    </marker>
+    <style>
+      text { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #17211c; }
+      .diagram-title { font-size: 28px; font-weight: 700; }
+      .diagram-subtitle { font-size: 15px; fill: #4c5b53; }
+      .band-title { font-size: 16px; font-weight: 700; }
+      .node-title { font-size: 16px; font-weight: 700; }
+      .node-line { font-size: 13px; fill: #35433b; }
+      .source-note { font-size: 12px; fill: #58675f; }
+      .edge { fill: none; stroke: #42534a; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1120" height="650" rx="6" fill="#f8faf8" stroke="#c9d2cc"/>
+  <text class="diagram-title" x="560" y="47" text-anchor="middle">Reusable engine and embedding game boundary</text>
+  <text class="diagram-subtitle" x="560" y="76" text-anchor="middle">Ownership and dependency flow between the reusable FOnline engine and an embedding game project.</text>
+  <rect x="32" y="112" width="504" height="462" rx="6" fill="#dff3e9" fill-opacity="0.38" stroke="#176b55" stroke-opacity="0.58"/>
+  <text class="band-title" x="284" y="146" text-anchor="middle">Reusable FOnline engine</text>
+  <rect x="584" y="112" width="504" height="462" rx="6" fill="#fff1cf" fill-opacity="0.38" stroke="#8a5a00" stroke-opacity="0.58"/>
+  <text class="band-title" x="836" y="146" text-anchor="middle">Embedding game project</text>
+  <path class="edge" d="M 274 230 C 390.28 230, 499.72 230, 616 230"/>
+  <path class="edge" d="M 504 230 C 620.28 230, 729.72 230, 846 230"/>
+  <path class="edge" d="M 274 370 C 390.28 370, 499.72 370, 616 370"/>
+  <path class="edge" d="M 504 370 C 620.28 370, 729.72 370, 846 370"/>
+  <rect x="64" y="178" width="210" height="104" rx="6" fill="#dff3e9" stroke="#176b55" stroke-width="2"/>
+  <text class="node-title" x="169" y="209" text-anchor="middle">Runtime systems</text>
+  <text class="node-line" x="169" y="235" text-anchor="middle">client, server, entities</text>
+  <text class="node-line" x="169" y="255" text-anchor="middle">networking, persistence</text>
+  <rect x="294" y="178" width="210" height="104" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="399" y="209" text-anchor="middle">Applications</text>
+  <text class="node-line" x="399" y="235" text-anchor="middle">client, server, mapper</text>
+  <text class="node-line" x="399" y="255" text-anchor="middle">baker, tests, platforms</text>
+  <rect x="64" y="318" width="210" height="104" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="169" y="349" text-anchor="middle">Build and tools</text>
+  <text class="node-line" x="169" y="375" text-anchor="middle">CMake stages, codegen</text>
+  <text class="node-line" x="169" y="395" text-anchor="middle">bakers and validators</text>
+  <rect x="294" y="318" width="210" height="104" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="399" y="349" text-anchor="middle">Stable boundaries</text>
+  <text class="node-line" x="399" y="375" text-anchor="middle">settings, script API</text>
+  <text class="node-line" x="399" y="395" text-anchor="middle">native extension hooks</text>
+  <rect x="616" y="178" width="210" height="104" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="721" y="209" text-anchor="middle">Project contract</text>
+  <text class="node-line" x="721" y="235" text-anchor="middle">.fomain, CMake options</text>
+  <text class="node-line" x="721" y="255" text-anchor="middle">resource pack topology</text>
+  <rect x="846" y="318" width="210" height="104" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="951" y="349" text-anchor="middle">Game implementation</text>
+  <text class="node-line" x="951" y="375" text-anchor="middle">scripts and content</text>
+  <text class="node-line" x="951" y="395" text-anchor="middle">project-native bridges</text>
+  <rect x="616" y="318" width="210" height="104" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="721" y="349" text-anchor="middle">Product evidence</text>
+  <text class="node-line" x="721" y="375" text-anchor="middle">gameplay tests, scenes</text>
+  <text class="node-line" x="721" y="395" text-anchor="middle">platform acceptance</text>
+  <rect x="846" y="178" width="210" height="104" rx="6" fill="#e4f3f2" stroke="#287274" stroke-width="2"/>
+  <text class="node-title" x="951" y="209" text-anchor="middle">Product delivery</text>
+  <text class="node-line" x="951" y="235" text-anchor="middle">assets, packaging</text>
+  <text class="node-line" x="951" y="255" text-anchor="middle">support and releases</text>
+  <rect x="382" y="470" width="356" height="72" rx="6" fill="#edf1ee" stroke="#59645d" stroke-width="2"/>
+  <text class="node-title" x="560" y="501" text-anchor="middle">Configured and generated integration contract</text>
+  <text class="node-line" x="560" y="527" text-anchor="middle">exact Engine revision + reviewed project inputs</text>
+  <text class="source-note" x="560" y="622" text-anchor="middle">Source-backed diagram: 6 checked paths; full provenance in Docs/generated/diagrams.json</text>
+</svg>

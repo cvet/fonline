@@ -47,12 +47,21 @@ struct BakeLanguageConfig final
     map<string, string> Fallbacks {};
 };
 
+// Hashed name that identifies a text-pack collection
+// Name: Hashed text-pack collection name
 ///@ ExportValueType Layout = hstring-Name
 using TextPackName = strong_type<hstring, struct TextPackName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Hashed name that identifies a language in localized text resources
+// Name: Hashed language identifier used to select localized text resources
 ///@ ExportValueType Layout = hstring-Name
 using LanguageName = strong_type<hstring, struct LanguageName_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 
+// Text lookup key composed of a collection name and up to three hashed key components
+// Collection: Text-pack collection in which the key is resolved
+// Key1: Primary hashed lookup-key component
+// Key2: Optional second hashed lookup-key component
+// Key3: Optional third hashed lookup-key component
 ///@ ExportValueType Layout = TextPackName-Collection+hstring-Key1+hstring-Key2+hstring-Key3
 struct TextPackKey
 {

@@ -179,7 +179,6 @@ namespace
         }
 
         FAIL("Unable to locate engine root");
-        return {};
     }
 
     [[nodiscard]] static auto ReadSourceFile(const std::filesystem::path& path) -> string

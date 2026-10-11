@@ -52,10 +52,9 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerHeadlessApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args = program_args.GetArgs();
 #endif
 
     try {
@@ -101,8 +100,6 @@ int main(int argc, char** argv)
 
 static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<GlobalSettings>>& client_settings, vector<refcount_ptr<ClientEngine>>& clients)
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Auto start embedded headless client(s): {}", GetApp()->Settings.Server.AutoStartClientOnServer);
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps

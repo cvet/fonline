@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
 
     // Escalation releases a parent-held lock to zero and re-takes it this many times, restoring the parent
-    // context's bookkeeping exactly (Docs/ServerRuntime.md, entity synchronization)
+    // context's bookkeeping exactly
     auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
 
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
@@ -81,7 +81,7 @@ public:
     void ReleaseShared() noexcept;
 
     // Bookkeeping, not access: nobody reads through the mark, it only tells an ancestor's exclusive Acquire that
-    // a descendant is busy. Compatibility and starvation rules: Docs/ServerRuntime.md, entity synchronization
+    // a descendant is busy
     void RegisterDescendantHold(uint64_t ticket);
     auto TryRegisterDescendantHold() -> bool;
     void UnregisterDescendantHold() noexcept;
@@ -160,6 +160,9 @@ private:
         storage_type _entries {};
     };
 
+    // Called without `_mutex`: parks on a queued entry until it is granted or aborted, then dequeues it and
+    // returns the final state
+    auto WaitForGrant(list<WaitEntry>::iterator entry_it) -> int32_t;
     // Called under `_mutex`. Consecutive shared waiters are granted together but the run stops at the first
     // exclusive one, so readers batch without starving writers
     void GrantWaiters() noexcept FO_TSA_REQUIRES(_mutex);
@@ -211,6 +214,9 @@ public:
     void WidenEntities(const_span<ptr<ServerEntity>> extras);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
+    // Hands every lock this thread holds, outer contexts included, to the threads queued on it and takes the same set
+    // back, so a retry waits for another thread's progress in place; state read before it may have changed
+    void YieldLocks();
     void Release() noexcept;
 
     // Recorded in a separate bucket from `_heldLocks`, which a later `Sync::Lock(...)` replaces wholesale and
@@ -243,6 +249,11 @@ private:
     // The deadlock breaker when back-off cannot progress: the whole thread-held union is released and re-taken
     // in address order with counts restored exactly, and a shutdown abort rolls it back to zero
     void AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds);
+    // The thread's recursion on every lock recorded by `first` and the contexts below it, exclusive and marked apart
+    static void CollectHeldUnion(nptr<SyncContext> first, unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, unordered_map<ptr<EntityLock>, int32_t>& reregister_count);
+    // Drops the counted union to zero and re-takes it in address order, parking holding nothing; a shutdown abort
+    // leaves `first` and the contexts below it holding nothing
+    static void ReacquireUnionOrderedFair(nptr<SyncContext> first, const unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, const unordered_map<ptr<EntityLock>, int32_t>& reregister_count, bool yield_between);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 
@@ -287,7 +298,7 @@ private:
 };
 
 // Retains the own lock of an already-covered entity without ever releasing the caller's cover or parking on a
-// lock; the bounded retry absorbs in-flight acquire/release windows (Docs/ServerRuntime.md)
+// lock; the bounded retry absorbs in-flight acquire/release windows
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

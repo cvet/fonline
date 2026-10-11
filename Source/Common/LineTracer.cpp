@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, msize map_size, ipos16 start_offset, ipos16 target_offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _mapSize = map_size;
 
     TraceInit(start_hex, target_hex, dir_angle_offset, start_offset, target_offset);
@@ -46,8 +44,6 @@ LineTracer::LineTracer(mpos start_hex, mpos target_hex, float32_t dir_angle_offs
 
 LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize map_size, ipos16 start_offset, ipos16 target_offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(dist >= 0, "Dist is negative");
 
     _mapSize = map_size;
@@ -68,8 +64,6 @@ LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize 
 
 void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t sx = numeric_cast<float32_t>(start_hex.x);
     float32_t sy = numeric_cast<float32_t>(start_hex.y);
     float32_t tx = numeric_cast<float32_t>(target_hex.x);
@@ -187,8 +181,6 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
 
 auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
 {
-    FO_STACK_TRACE_ENTRY();
-
     mpos cur_hex = hex;
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {

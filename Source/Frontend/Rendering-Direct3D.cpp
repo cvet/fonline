@@ -39,7 +39,6 @@
 
 #include "SDL3/SDL_video.h"
 #include <d3d11_1.h>
-#include <d3dcompiler.h>
 
 #include "WinApiUndef.inc"
 
@@ -59,8 +58,9 @@ public:
     auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     nptr<ID3D11Texture2D> TexHandle {};
@@ -71,6 +71,20 @@ public:
 
 private:
     ptr<Direct3D_Renderer::Context> _ctx;
+};
+
+// The copy sits in its own staging texture, which the device context maps without waiting once the GPU has written it
+class Direct3D_TextureReadback final : public RenderTextureReadback
+{
+public:
+    Direct3D_TextureReadback(ptr<Direct3D_Renderer::Context> ctx, unique_del_ptr<ID3D11Texture2D> staging_tex, isize32 size);
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    ptr<Direct3D_Renderer::Context> _ctx;
+    unique_del_nptr<ID3D11Texture2D> _stagingTex;
+    isize32 _size;
 };
 
 class Direct3D_DrawBuffer final : public RenderDrawBuffer
@@ -159,7 +173,6 @@ struct Direct3D_Renderer::Context
     nptr<ID3D11DepthStencilView> CurDepthStencil {};
     nptr<ID3D11SamplerState> PointSampler {};
     nptr<ID3D11SamplerState> LinearSampler {};
-    nptr<ID3D11Texture2D> OnePixStagingTex {};
     unique_nptr<RenderTexture> DummyTexture {};
     mat44 ProjMatrix {};
     float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
@@ -173,21 +186,9 @@ struct Direct3D_Renderer::Context
     isize32 TargetSize {};
 };
 
-static auto GetBlobString(ptr<ID3DBlob> blob) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<const void> buffer = blob->GetBufferPointer();
-    FO_VERIFY_AND_THROW(buffer, "Shader blob buffer pointer is null");
-    auto chars = buffer.reinterpret_as<char>();
-    return string {chars.get()};
-}
-
 template<typename T>
 static void ReleaseComObject(ptr<nptr<T>> object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (*object) {
         (*object)->Release();
         *object = nullptr;
@@ -197,8 +198,6 @@ static void ReleaseComObject(ptr<nptr<T>> object) noexcept
 template<typename T>
 static void ReleaseComObjectSlot(nptr<T>& object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<nptr<T>> object_ptr = &object;
     ReleaseComObject(object_ptr);
 }
@@ -206,8 +205,6 @@ static void ReleaseComObjectSlot(nptr<T>& object) noexcept
 template<typename T>
 static void ReleaseOwnedComObject(T* raw_object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (raw_object != nullptr) {
         auto object = make_ptr(raw_object);
         object->Release();
@@ -217,26 +214,23 @@ static void ReleaseOwnedComObject(T* raw_object) noexcept
 template<typename T>
 static auto MakeComObjectHolder(ptr<T> object) noexcept -> unique_del_ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return make_unique_del_ptr(object, ReleaseOwnedComObject<T>);
 }
 
 template<typename T>
 static auto MakeComObjectHolder(nptr<T> object) noexcept -> unique_del_ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<T> checked_object = object;
     return MakeComObjectHolder(checked_object);
 }
+
+static auto CopyTextureRegionToStaging(ptr<Direct3D_Renderer::Context> ctx, nptr<ID3D11Texture2D> tex_handle, isize32 tex_size, ipos32 pos, isize32 size) -> unique_del_ptr<ID3D11Texture2D>;
+static auto ReadStagingTexturePixels(ptr<Direct3D_Renderer::Context> ctx, ptr<ID3D11Texture2D> staging_tex, isize32 size, bool no_wait) -> optional<vector<ucolor>>;
 
 Direct3D_Renderer::Direct3D_Renderer() = default;
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend) {
     case BlendFuncType::Zero:
         return D3D11_BLEND_ZERO;
@@ -271,8 +265,6 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 
 static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
         return D3D11_BLEND_OP_ADD;
@@ -291,8 +283,6 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 
 static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (depth_func) {
     case DepthFuncType::Always:
         return D3D11_COMPARISON_ALWAYS;
@@ -317,8 +307,6 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
 
 static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (cull_mode) {
     case CullModeType::None:
         return D3D11_CULL_NONE;
@@ -333,7 +321,7 @@ static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
 
 void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
@@ -353,14 +341,14 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
     // Device
     {
-        constexpr D3D_FEATURE_LEVEL feature_levels[] = {
+        // A baked effect runs on feature level 10.0; level 9.3 only when its container also carries the level 9 code,
+        // which model effects never do: level 9 does not support 3D, so a build with 3D models stays at 10.0
+        static constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
             D3D_FEATURE_LEVEL_10_0,
             D3D_FEATURE_LEVEL_9_3,
-            D3D_FEATURE_LEVEL_9_2,
-            D3D_FEATURE_LEVEL_9_1,
         };
         map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
             {D3D_FEATURE_LEVEL_11_1, "11.1"},
@@ -368,10 +356,9 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             {D3D_FEATURE_LEVEL_10_1, "10.1"},
             {D3D_FEATURE_LEVEL_10_0, "10.0"},
             {D3D_FEATURE_LEVEL_9_3, "9.3"},
-            {D3D_FEATURE_LEVEL_9_2, "9.2"},
-            {D3D_FEATURE_LEVEL_9_1, "9.1"},
         };
-        constexpr auto feature_levels_count = numeric_cast<UINT>(std::size(feature_levels));
+        bool accept_level9 = settings.Baking.Direct3DLevel9Shaders && build_condition<!FO_ENABLE_3D>();
+        UINT feature_levels_count = numeric_cast<UINT>(std::size(feature_levels)) - (accept_level9 ? 0 : 1);
 
         UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
 
@@ -379,23 +366,78 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             device_flags |= D3D11_CREATE_DEVICE_DEBUG;
         }
 
-        auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+        // The Direct3D 11.0 runtime (Windows 7 without the platform update) rejects a list naming 11.1 instead of skipping it;
+        // the list is static because MSVC 14.44 refuses the address of a local constexpr array element in a lambda (C2101)
+        static_assert(feature_levels[0] == D3D_FEATURE_LEVEL_11_1);
+        auto create_device = [&](D3D_DRIVER_TYPE driver_type) -> HRESULT {
+            HRESULT d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+
+            if (d3d_create_device == E_INVALIDARG) {
+                d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, &feature_levels[1], feature_levels_count - 1, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            }
+
+            return d3d_create_device;
+        };
+
+        auto d3d_hardware_create_device = create_device(D3D_DRIVER_TYPE_HARDWARE);
 
         if (FAILED(d3d_hardware_create_device)) {
             if (!settings.Render.AllowSoftwareRenderer) {
                 throw AppInitException("Direct3D hardware device creation failed", d3d_hardware_create_device);
             }
 
-            auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            auto d3d_warp_create_device = create_device(D3D_DRIVER_TYPE_WARP);
 
             if (FAILED(d3d_warp_create_device)) {
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
             }
 
-            logging::write("Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+            logging::write(logging::type::warning, "Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
         }
         else {
             logging::write("Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+        }
+
+        // Name the adapter and its driver so a client log can explain a rendering problem
+        {
+            string adapter_name = "unknown";
+            string vendor_id = "unknown";
+            string driver_version = "unknown";
+            string device_id = "unknown";
+            string video_memory = "unknown";
+
+            nptr<IDXGIDevice> dxgi_device {};
+            HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
+
+            if (SUCCEEDED(d3d_query_dxgi_device) && dxgi_device) {
+                auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+                nptr<IDXGIAdapter> adapter {};
+                HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+                if (SUCCEEDED(d3d_get_adapter) && adapter) {
+                    auto adapter_holder = MakeComObjectHolder(adapter);
+                    DXGI_ADAPTER_DESC adapter_desc {};
+                    HRESULT d3d_get_adapter_desc = adapter->GetDesc(&adapter_desc);
+
+                    if (SUCCEEDED(d3d_get_adapter_desc)) {
+                        adapter_name = strex().parse_wide_char(make_ptr(adapter_desc.Description)).str();
+                        vendor_id = strex("0x{:04X}", adapter_desc.VendorId).str();
+                        device_id = strex("0x{:04X}", adapter_desc.DeviceId).str();
+                        video_memory = strex("{} MB", adapter_desc.DedicatedVideoMemory / (1024 * 1024)).str();
+                    }
+
+                    // DXGI answers the user-mode driver version through this query, packed as four 16-bit parts
+                    LARGE_INTEGER umd_version {};
+                    HRESULT d3d_get_umd_version = adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd_version);
+
+                    if (SUCCEEDED(d3d_get_umd_version)) {
+                        uint64_t umd_parts = std::bit_cast<uint64_t>(umd_version.QuadPart);
+                        driver_version = strex("{}.{}.{}.{}", umd_parts >> 48, (umd_parts >> 32) & 0xFFFF, (umd_parts >> 16) & 0xFFFF, umd_parts & 0xFFFF).str();
+                    }
+                }
+            }
+
+            logging::write("Render device: {}, vendor {}, driver {}, device {}, video memory {}", adapter_name, vendor_id, driver_version, device_id, video_memory);
         }
 
         if (SUCCEEDED(_ctx->D3DDeviceContext->QueryInterface(IID_PPV_ARGS(_ctx->D3DDeviceContext1.get_pp())))) {
@@ -403,17 +445,39 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             _ctx->D3DDeviceContext = _ctx->D3DDeviceContext1;
         }
         else {
-            logging::write("Direct3D ID3D11DeviceContext1 not found");
+            logging::write(logging::type::warning, "Direct3D ID3D11DeviceContext1 not found");
         }
     }
 
     // Swap chain
     {
-        nptr<IDXGIFactory> factory {};
-        auto d3d_create_factory = ::CreateDXGIFactory(IID_PPV_ARGS(factory.get_pp()));
+        // The swap chain comes from the factory that created the device, as DXGI documents: on DXGI 1.1 (Windows 7 without
+        // the platform update) a separate CreateDXGIFactory factory answers CreateSwapChain with DXGI_ERROR_INVALID_CALL
+        nptr<IDXGIDevice> dxgi_device {};
+        HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
 
-        if (FAILED(d3d_create_factory)) {
-            throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
+        if (FAILED(d3d_query_dxgi_device)) {
+            throw AppInitException("Direct3D device QueryInterface IDXGIDevice failed", d3d_query_dxgi_device);
+        }
+
+        FO_VERIFY_AND_THROW(dxgi_device, "DXGI device is null");
+        auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+
+        nptr<IDXGIAdapter> adapter {};
+        HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+        if (FAILED(d3d_get_adapter)) {
+            throw AppInitException("DXGI device GetAdapter failed", d3d_get_adapter);
+        }
+
+        FO_VERIFY_AND_THROW(adapter, "DXGI adapter is null");
+        auto adapter_holder = MakeComObjectHolder(adapter);
+
+        nptr<IDXGIFactory> factory {};
+        HRESULT d3d_get_factory = adapter->GetParent(IID_PPV_ARGS(factory.get_pp()));
+
+        if (FAILED(d3d_get_factory)) {
+            throw AppInitException("DXGI adapter GetParent IDXGIFactory failed", d3d_get_factory);
         }
 
         FO_VERIFY_AND_THROW(factory, "DXGI factory is null");
@@ -457,15 +521,15 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                             throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
                         }
                         else {
-                            logging::write("Direct3D swap chain created with one buffer count");
+                            logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                         }
                     }
                     else {
-                        logging::write("Direct3D swap chain created with non-flip swap effect");
+                        logging::write(logging::type::warning, "Direct3D swap chain created with non-flip swap effect");
                     }
                 }
                 else {
-                    logging::write("Direct3D swap chain created with flip sequential swap effect");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with flip sequential swap effect");
                 }
             }
         }
@@ -483,18 +547,13 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                     throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
                 }
                 else {
-                    logging::write("Direct3D swap chain created with one buffer count");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                 }
             }
         }
 
         // Disable Alt+Enter
-        nptr<IDXGIFactory> swap_chain_factory {};
-        if (SUCCEEDED(_ctx->SwapChain->GetParent(IID_PPV_ARGS(swap_chain_factory.get_pp())))) {
-            FO_VERIFY_AND_THROW(swap_chain_factory, "Swap chain factory is null");
-            auto swap_chain_factory_holder = MakeComObjectHolder(swap_chain_factory);
-            swap_chain_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
-        }
+        (void)factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
     }
 
     // Samplers
@@ -545,10 +604,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
         atlas_w = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
         atlas_h = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     }
-    else if (_ctx->FeatureLevel >= D3D_FEATURE_LEVEL_9_1) {
-        atlas_w = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-        atlas_h = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-    }
     else {
         FO_UNREACHABLE_PLACE();
     }
@@ -570,23 +625,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
     _ctx->BackBufSize = screen->Size;
 
-    // One pixel staging texture
-    D3D11_TEXTURE2D_DESC one_pix_staging_desc;
-    one_pix_staging_desc.Width = 1;
-    one_pix_staging_desc.Height = 1;
-    one_pix_staging_desc.MipLevels = 1;
-    one_pix_staging_desc.ArraySize = 1;
-    one_pix_staging_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    one_pix_staging_desc.SampleDesc.Count = 1;
-    one_pix_staging_desc.SampleDesc.Quality = 0;
-    one_pix_staging_desc.Usage = D3D11_USAGE_STAGING;
-    one_pix_staging_desc.BindFlags = 0;
-    one_pix_staging_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    one_pix_staging_desc.MiscFlags = 0;
-
-    auto d3d_create_one_pix_staging_tex = _ctx->D3DDevice->CreateTexture2D(&one_pix_staging_desc, nullptr, _ctx->OnePixStagingTex.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_one_pix_staging_tex), "Direct3D CreateTexture2D failed for the one-pixel staging texture", d3d_create_one_pix_staging_tex, one_pix_staging_desc.Width, one_pix_staging_desc.Height);
-
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
     _ctx->DummyTexture = CreateTexture({1, 1}, false, false);
@@ -599,8 +637,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
 Direct3D_Renderer::~Direct3D_Renderer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_ctx) {
         return;
     }
@@ -617,7 +653,6 @@ Direct3D_Renderer::~Direct3D_Renderer()
     ReleaseComObjectSlot(_ctx->MainRenderTarget);
     ReleaseComObjectSlot(_ctx->PointSampler);
     ReleaseComObjectSlot(_ctx->LinearSampler);
-    ReleaseComObjectSlot(_ctx->OnePixStagingTex);
     ReleaseComObjectSlot(_ctx->SwapChain);
     if (_ctx->D3DDeviceContext1) {
         ReleaseComObjectSlot(_ctx->D3DDeviceContext1);
@@ -645,7 +680,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
 
 void Direct3D_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_swap_chain = _ctx->SwapChain->Present(_ctx->VSync ? 1 : 0, 0);
@@ -660,7 +695,7 @@ void Direct3D_Renderer::Present()
 
 auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_tex = safe_alloc::make_unique<Direct3D_Texture>(size, linear_filtered, with_depth, _ctx);
@@ -723,7 +758,7 @@ auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool w
 
 auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_dbuf = safe_alloc::make_unique<Direct3D_DrawBuffer>(is_static, _ctx);
@@ -733,7 +768,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
 
 auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_effect = safe_alloc::make_unique<Direct3D_Effect>(usage, name, loader, _ctx);
@@ -741,34 +776,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).erase_file_extension(), pass + 1);
-            string vertex_shader_content = loader(vertex_shader_fname);
-            FO_VERIFY_AND_THROW(!vertex_shader_content.empty(), "Direct3D effect vertex shader content is empty after loading", name, pass + 1, vertex_shader_fname);
+            string vertex_shader_fname = strex("{}.fofx-{}-vert-dxbc", strex(name).erase_file_extension(), pass + 1);
+            string vertex_shader_bytecode = loader(vertex_shader_fname);
+            FO_VERIFY_AND_THROW(!vertex_shader_bytecode.empty(), "Direct3D effect vertex shader bytecode is empty after loading", name, pass + 1, vertex_shader_fname);
 
-            nptr<ID3DBlob> vertex_shader_blob {};
-            nptr<ID3DBlob> error_blob {};
-
-            auto vertex_shader_content_cstr = make_ptr(vertex_shader_content.c_str());
-            ptr<const char> vertex_shader_entry_point = "main";
-            auto vertex_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DVertexShaderProfile.c_str());
-            auto d3d_compile = ::D3DCompile(vertex_shader_content_cstr.get(), vertex_shader_content.length(), nullptr, nullptr, nullptr, vertex_shader_entry_point.get(), vertex_shader_profile.get(), 0, 0, vertex_shader_blob.get_pp(), error_blob.get_pp());
-
-            if (FAILED(d3d_compile)) {
-                FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-                string error = GetBlobString(error_blob);
-                throw EffectLoadException("Failed to compile Vertex Shader", vertex_shader_fname, vertex_shader_content, error);
-            }
-            if (error_blob) {
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-            }
-
-            FO_VERIFY_AND_THROW(vertex_shader_blob, "Vertex shader blob is null");
-            auto vertex_shader_blob_holder = MakeComObjectHolder(vertex_shader_blob);
-            auto d3d_create_vertex_shader = _ctx->D3DDevice->CreateVertexShader(vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), nullptr, d3d_effect->VertexShader[pass].get_pp());
+            auto d3d_create_vertex_shader = _ctx->D3DDevice->CreateVertexShader(vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), nullptr, d3d_effect->VertexShader[pass].get_pp());
 
             if (FAILED(d3d_create_vertex_shader)) {
-                throw EffectLoadException("Failed to create Vertex Shader from binary", d3d_create_vertex_shader, vertex_shader_fname, vertex_shader_content);
+                throw EffectLoadException("Failed to create Vertex Shader from binary", d3d_create_vertex_shader, vertex_shader_fname);
             }
 
             // Create the input layout
@@ -788,10 +803,10 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD", 8, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex3D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
-                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), d3d_effect->InputLayout[pass].get_pp());
+                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), d3d_effect->InputLayout[pass].get_pp());
 
                 if (FAILED(d3d_create_input_layout)) {
-                    throw EffectLoadException("Failed to create Vertex Shader 3D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
+                    throw EffectLoadException("Failed to create Vertex Shader 3D layout", d3d_create_input_layout, vertex_shader_fname);
                 }
             }
             else
@@ -804,44 +819,24 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, EggFlags)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
-                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), d3d_effect->InputLayout[pass].get_pp());
+                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), d3d_effect->InputLayout[pass].get_pp());
 
                 if (FAILED(d3d_create_input_layout)) {
-                    throw EffectLoadException("Failed to create Vertex Shader 2D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
+                    throw EffectLoadException("Failed to create Vertex Shader 2D layout", d3d_create_input_layout, vertex_shader_fname);
                 }
             }
         }
 
         // Create the pixel shader
         {
-            string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).erase_file_extension(), pass + 1);
-            string pixel_shader_content = loader(pixel_shader_fname);
-            FO_VERIFY_AND_THROW(!pixel_shader_content.empty(), "Direct3D effect pixel shader content is empty after loading", name, pass + 1, pixel_shader_fname);
+            string pixel_shader_fname = strex("{}.fofx-{}-frag-dxbc", strex(name).erase_file_extension(), pass + 1);
+            string pixel_shader_bytecode = loader(pixel_shader_fname);
+            FO_VERIFY_AND_THROW(!pixel_shader_bytecode.empty(), "Direct3D effect pixel shader bytecode is empty after loading", name, pass + 1, pixel_shader_fname);
 
-            nptr<ID3DBlob> pixel_shader_blob {};
-            nptr<ID3DBlob> error_blob {};
-
-            auto pixel_shader_content_cstr = make_ptr(pixel_shader_content.c_str());
-            ptr<const char> pixel_shader_entry_point = "main";
-            auto pixel_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DPixelShaderProfile.c_str());
-            auto d3d_compile = ::D3DCompile(pixel_shader_content_cstr.get(), pixel_shader_content.length(), nullptr, nullptr, nullptr, pixel_shader_entry_point.get(), pixel_shader_profile.get(), 0, 0, pixel_shader_blob.get_pp(), error_blob.get_pp());
-
-            if (FAILED(d3d_compile)) {
-                FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-                string error = GetBlobString(error_blob);
-                throw EffectLoadException("Failed to compile Pixel Shader", pixel_shader_fname, pixel_shader_content, error);
-            }
-            if (error_blob) {
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-            }
-
-            FO_VERIFY_AND_THROW(pixel_shader_blob, "Pixel shader blob is null");
-            auto pixel_shader_blob_holder = MakeComObjectHolder(pixel_shader_blob);
-            auto d3d_create_pixel_shader = _ctx->D3DDevice->CreatePixelShader(pixel_shader_blob->GetBufferPointer(), pixel_shader_blob->GetBufferSize(), nullptr, d3d_effect->PixelShader[pass].get_pp());
+            auto d3d_create_pixel_shader = _ctx->D3DDevice->CreatePixelShader(pixel_shader_bytecode.data(), pixel_shader_bytecode.size(), nullptr, d3d_effect->PixelShader[pass].get_pp());
 
             if (FAILED(d3d_create_pixel_shader)) {
-                throw EffectLoadException("Failed to create Pixel Shader from binary", d3d_create_pixel_shader, pixel_shader_fname, pixel_shader_content);
+                throw EffectLoadException("Failed to create Pixel Shader from binary", d3d_create_pixel_shader, pixel_shader_fname);
             }
         }
 
@@ -922,8 +917,6 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
 auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     const float32_t& l = left;
     const float32_t& t = top;
     const float32_t& r = right;
@@ -958,15 +951,13 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float
 
 auto Direct3D_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ViewPortRect;
 }
 
 void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -1032,8 +1023,6 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ctx->OrthoNear = nearp;
     _ctx->OrthoFar = farp;
     _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
@@ -1041,16 +1030,12 @@ void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noex
 
 auto Direct3D_Renderer::GetProjMatrix() const -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ProjMatrix;
 }
 
 void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     if (color.has_value()) {
@@ -1079,8 +1064,6 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
 
 void Direct3D_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
@@ -1104,15 +1087,13 @@ void Direct3D_Renderer::EnableScissor(irect32 rect)
 
 void Direct3D_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     _ctx->ScissorEnabled = false;
 }
 
 void Direct3D_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     bool is_cur_rt = _ctx->CurRenderTarget == _ctx->MainRenderTarget;
@@ -1145,8 +1126,6 @@ void Direct3D_Renderer::OnResizeWindow(isize32 size)
 
 Direct3D_Texture::~Direct3D_Texture()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ReleaseComObjectSlot(TexHandle);
     ReleaseComObjectSlot(DepthStencil);
     ReleaseComObjectSlot(RenderTargetView);
@@ -1154,59 +1133,61 @@ Direct3D_Texture::~Direct3D_Texture()
     ReleaseComObjectSlot(ShaderTexView);
 }
 
-auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested Direct3D texture pixel is outside texture bounds", pos, Size);
-
-    auto d3d_device_context = _ctx->D3DDeviceContext;
-    FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
-
-    D3D11_BOX src_box;
-    src_box.left = pos.x;
-    src_box.top = pos.y;
-    src_box.right = pos.x + 1;
-    src_box.bottom = pos.y + 1;
-    src_box.front = 0;
-    src_box.back = 1;
-
-    d3d_device_context->CopySubresourceRegion(_ctx->OnePixStagingTex.get_no_const(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
-
-    D3D11_MAPPED_SUBRESOURCE tex_resource;
-    auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get_no_const(), 0, D3D11_MAP_READ, 0, &tex_resource);
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for the one-pixel staging texture", d3d_map_staging_texture, pos, Size);
-
-    auto staging_unmap = scope_fail([&]() noexcept { d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0); });
-
-    auto mapped_data = make_nptr(tex_resource.pData);
-    FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
-    ucolor result = *mapped_data.reinterpret_as<ucolor>();
-
-    d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0);
-    staging_unmap.release();
-
-    return result;
-}
-
 auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
+    unique_del_ptr<ID3D11Texture2D> staging_tex = CopyTextureRegionToStaging(_ctx, TexHandle, Size, pos, size);
+    optional<vector<ucolor>> pixels = ReadStagingTexturePixels(_ctx, staging_tex, size, false);
+    FO_VERIFY_AND_THROW(pixels.has_value(), "Direct3D blocking staging map returned no pixels", pos, size);
+
+    return std::move(pixels.value());
+}
+
+auto Direct3D_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+    unique_del_ptr<ID3D11Texture2D> staging_tex = CopyTextureRegionToStaging(_ctx, TexHandle, Size, pos, size);
+
+    return safe_alloc::make_unique<Direct3D_TextureReadback>(_ctx, std::move(staging_tex), size);
+}
+
+Direct3D_TextureReadback::Direct3D_TextureReadback(ptr<Direct3D_Renderer::Context> ctx, unique_del_ptr<ID3D11Texture2D> staging_tex, isize32 size) :
+    _ctx {ctx},
+    _stagingTex {std::move(staging_tex)},
+    _size {size}
+{
+}
+
+auto Direct3D_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_stagingTex, "Direct3D texture readback pixels were already taken");
+
+    optional<vector<ucolor>> pixels = ReadStagingTexturePixels(_ctx, _stagingTex, _size, true);
+
+    if (pixels.has_value()) {
+        _stagingTex.reset();
+    }
+
+    return pixels;
+}
+
+// The immediate context executes in submission order, so the copy observes every draw recorded before it
+static auto CopyTextureRegionToStaging(ptr<Direct3D_Renderer::Context> ctx, nptr<ID3D11Texture2D> tex_handle, isize32 tex_size, ipos32 pos, isize32 size) -> unique_del_ptr<ID3D11Texture2D>
+{
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
-    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
-    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= tex_size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, tex_size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= tex_size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, tex_size.height);
+    FO_VERIFY_AND_THROW(tex_handle, "Direct3D texture handle is null");
 
-    auto d3d_device = _ctx->D3DDevice;
+    auto d3d_device = ctx->D3DDevice;
     FO_VERIFY_AND_THROW(d3d_device, "Direct3D device is null");
-    auto d3d_device_context = _ctx->D3DDeviceContext;
+    auto d3d_device_context = ctx->D3DDeviceContext;
     FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
-
-    vector<ucolor> result;
-    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
     staging_desc.Width = size.width;
@@ -1223,7 +1204,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
     nptr<ID3D11Texture2D> staging_tex {};
     auto d3d_create_staging_tex = d3d_device->CreateTexture2D(&staging_desc, nullptr, staging_tex.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_staging_tex), "Direct3D CreateTexture2D failed for a texture-region staging texture", d3d_create_staging_tex, pos, size, Size);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_staging_tex), "Direct3D CreateTexture2D failed for a texture-region staging texture", d3d_create_staging_tex, pos, size, tex_size);
     FO_VERIFY_AND_THROW(staging_tex, "Staging texture is null");
     auto staging_tex_holder = MakeComObjectHolder(staging_tex);
 
@@ -1235,28 +1216,45 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     src_box.front = 0;
     src_box.back = 1;
 
-    d3d_device_context->CopySubresourceRegion(staging_tex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(staging_tex.get(), 0, 0, 0, 0, tex_handle.get(), 0, &src_box);
+
+    return staging_tex_holder;
+}
+
+// Without waiting, a copy the GPU has not executed yet answers DXGI_ERROR_WAS_STILL_DRAWING and yields nothing
+static auto ReadStagingTexturePixels(ptr<Direct3D_Renderer::Context> ctx, ptr<ID3D11Texture2D> staging_tex, isize32 size, bool no_wait) -> optional<vector<ucolor>>
+{
+    auto d3d_device_context = ctx->D3DDeviceContext;
+    FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for a texture-region staging texture", d3d_map_staging_texture, pos, size, Size);
+    auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex.get(), 0, D3D11_MAP_READ, no_wait ? D3D11_MAP_FLAG_DO_NOT_WAIT : 0, &tex_resource);
+
+    if (no_wait && d3d_map_staging_texture == DXGI_ERROR_WAS_STILL_DRAWING) {
+        return std::nullopt;
+    }
+
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for a texture-region staging texture", d3d_map_staging_texture, size);
+    auto staging_unmap = scope_exit([&]() noexcept { d3d_device_context->Unmap(staging_tex.get(), 0); });
+
     auto mapped_data = make_nptr(tex_resource.pData);
     FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
     auto mapped_bytes = mapped_data.reinterpret_as<uint8_t>();
+
+    vector<ucolor> result;
+    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     for (int32_t i = 0; i < size.height; i++) {
         auto src = mapped_bytes.offset(numeric_cast<size_t>(tex_resource.RowPitch) * i);
         memory::copy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
-    d3d_device_context->Unmap(staging_tex.get(), 0);
-
     return result;
 }
 
 void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
@@ -1283,15 +1281,13 @@ void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ReleaseComObjectSlot(VertexBuf);
     ReleaseComObjectSlot(IndexBuf);
 }
 
 void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1399,8 +1395,6 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
 
 Direct3D_Effect::~Direct3D_Effect()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < EFFECT_MAX_PASSES; i++) {
         ReleaseComObjectSlot(VertexShader[i]);
         ReleaseComObjectSlot(InputLayout[i]);
@@ -1431,7 +1425,7 @@ Direct3D_Effect::~Direct3D_Effect()
 
 void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto d3d_dbuf = dbuf.dyn_cast<Direct3D_DrawBuffer>();
     FO_VERIFY_AND_THROW(d3d_dbuf, "Direct3D draw buffer is not of the expected backend type");

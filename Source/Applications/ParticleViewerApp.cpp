@@ -60,16 +60,12 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem;
 
 static auto GetEngine() -> ptr<ClientEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Engine, "Particle viewer engine is not created");
     return Data->Engine;
 }
 
 static auto GetViewer() -> ptr<ParticleViewer>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Viewer, "Particle viewer is not created");
     return Data->Viewer;
 }
@@ -78,7 +74,7 @@ static auto GetViewer() -> ptr<ParticleViewer>
 // screens this tool has no use for
 static void DrawViewerFrame()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     auto engine = GetEngine();
 
@@ -97,7 +93,7 @@ static void DrawViewerFrame()
 
 static void ParticleViewerEntry([[maybe_unused]] void* data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!WebRelated::IsPersistentDataReady()) {
         return;
@@ -150,8 +146,6 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ParticleViewerApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
@@ -205,8 +199,6 @@ int main(int argc, char** argv) // Handled by SDL
 
 static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (settings.Common.Packaged) {
         FileSystem resources;
         resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());

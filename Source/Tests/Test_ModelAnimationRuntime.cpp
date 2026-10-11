@@ -46,8 +46,6 @@ FO_BEGIN_NAMESPACE
 
 static void CheckModelAnimationRuntimeMatrix(const mat44& actual, const mat44& expected)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (mat44::length_type column = 0; column < actual.length(); column++) {
         for (mat44::length_type row = 0; row < actual[column].length(); row++) {
             CHECK(actual[column][row] == Catch::Approx(expected[column][row]).margin(1.0e-4f));

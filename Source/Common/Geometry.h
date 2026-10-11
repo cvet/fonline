@@ -37,6 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
+// Signed 16-bit map-coordinate position exposed to scripts as mutable x and y components
+// x: Signed X component of the map-cell coordinate
+// y: Signed Y component of the map-cell coordinate
 ///@ ExportValueType Layout = int16-x+int16-y
 struct mpos : ipos<int16_t>
 {
@@ -51,6 +54,9 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
+// Signed 16-bit map size exposed to scripts as mutable width and height components
+// width: Map width in addressable cells
+// height: Map height in addressable cells
 ///@ ExportValueType Layout = int16-width+int16-height
 struct msize : isize<int16_t>
 {
@@ -102,6 +108,8 @@ FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
 
+// Discrete map direction normalized modulo the configured six-direction hex or eight-direction square geometry
+// value: Direction index normalized to 0 through the configured six- or eight-direction count minus one
 ///@ ExportValueType Layout = int8-value
 class hdir
 {
@@ -153,6 +161,8 @@ inline constexpr hdir hdir::NorthWest {6};
 inline constexpr hdir hdir::North {7};
 #endif
 
+// Map direction angle stored as a signed 16-bit value with conversion and rotation operations for discrete map directions
+// angle: Direction angle in degrees normalized to the inclusive range 0 through 359
 ///@ ExportValueType Layout = int16-angle
 class mdir
 {

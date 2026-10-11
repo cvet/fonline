@@ -45,6 +45,7 @@
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
+#include "PropertiesSerializer.h"
 #include "RemoteCallWire.h"
 #include "Settings.h"
 
@@ -67,13 +68,13 @@ FO_DISABLE_WARNINGS_PUSH()
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/threads.h>
 #include <mono/utils/mono-publib.h>
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 #include <mono/metadata/profiler.h>
 #endif
 FO_DISABLE_WARNINGS_POP()
 
 // The published embedding headers omit this exported API. The unbalanced pair permits a worker to stay
-// registered with Mono while it is parked outside managed code; see Docs/Scripting.md
+// registered with Mono while it is parked outside managed code; this is the recurring-worker attachment contract
 extern "C" void* mono_threads_enter_gc_safe_region_unbalanced(void** stack_data);
 extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void** stack_data);
 
@@ -156,7 +157,7 @@ struct ManagedInteropThreadCounters
 static thread_local ManagedInteropThreadCounters InteropThreadCounters {};
 
 // Native workers normally detach after each managed entry. Recurring frame workers instead retain one attachment
-// and park it GC-safe between pumps; see Docs/Scripting.md
+// and park it GC-safe between pumps; ordinary native workers keep the detach-after-entry path
 enum class ManagedThreadAttachmentMode
 {
     PreserveExisting,
@@ -175,8 +176,6 @@ public:
 
     ~ManagedThreadAttachmentCache()
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (_thread) {
             FO_STRONG_ASSERT(_scopeDepth == 0, "Managed thread attachment cache destroyed inside an active scope");
 
@@ -193,8 +192,6 @@ public:
     // after Mono's own threads were killed possibly holding the locks the detach takes
     void Release() noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (!_thread || _scopeDepth != 0 || _thread != mono_thread_current()) {
             return;
         }
@@ -207,8 +204,6 @@ public:
 
     void Enter(ptr<MonoDomain> domain)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (!_thread) {
             _thread = mono_thread_attach(domain.get());
             FO_VERIFY_AND_THROW(_thread, "Failed to attach native thread to Managed runtime domain");
@@ -228,8 +223,6 @@ public:
 
     void Leave() noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_STRONG_ASSERT(_scopeDepth > 0, "Managed thread attachment cache scope is unbalanced");
         _scopeDepth--;
 
@@ -243,8 +236,6 @@ public:
 private:
     void Unpark() noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (_parked) {
             void* stack_data = nullptr;
             mono_threads_exit_gc_safe_region_unbalanced(_gcSafeCookie.get(), &stack_data);
@@ -268,8 +259,6 @@ class ManagedThreadAttachment final
 public:
     explicit ManagedThreadAttachment(ptr<MonoDomain> domain, ManagedThreadAttachmentMode mode = ManagedThreadAttachmentMode::CacheForThread)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (ManagedFrameWorkerThreadAttachment.IsAttached()) {
             ManagedFrameWorkerThreadAttachment.Enter(domain);
             _usesWorkerCache = true;
@@ -300,8 +289,6 @@ public:
 
     ~ManagedThreadAttachment()
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (_usesWorkerCache) {
             ManagedFrameWorkerThreadAttachment.Leave();
         }
@@ -316,7 +303,7 @@ private:
 };
 
 // A native call into managed script code. Entries chain per thread, innermost first, so the stack-trace provider can
-// give every run of managed frames the native stack it was entered from; see Docs/Debugging.md
+// give every run of managed frames the native stack it was entered from for mixed-stack diagnostics
 class ManagedScriptEntryScope final
 {
 public:
@@ -377,8 +364,6 @@ struct ManagedStackWalk
 
 static void ReleaseManagedGcHandle(nptr<MonoDomain> domain, uint32_t& handle) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (handle == 0) {
         return;
     }
@@ -406,7 +391,7 @@ struct ManagedWrapperClassEntry;
 struct ManagedDynamicFieldAccessors;
 struct ManagedCallbackPlan;
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 // Where a script method shows up in a capture, resolved once and read on every call after. An entry never
 // leaves the table, so its source locations are persistent and Tracy interns the name and the file once
 struct ManagedTracyMethodEntry
@@ -465,8 +450,12 @@ static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend,
 static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback);
 static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, timespan total_duration, timespan lock_wait_duration, const function<MonoObject*()>& get_entry);
 static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const function<MonoObject*()>& get_entry) -> string;
-static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames);
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames) noexcept;
 static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*;
+template<typename Body>
+static auto CaptureNativeError(Body&& body) noexcept -> MonoString*;
+template<typename Body>
+static auto CaptureNativeError(MonoString** error, Body&& body) noexcept -> decltype(body());
 static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept;
 static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool;
 static auto DescribeManagedException(ptr<const ManagedScriptBackend> backend, MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription;
@@ -479,7 +468,7 @@ static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const stack_trace
 static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool;
 
 // Script method profiling, mirroring what AngelScriptContext.cpp emits for script calls
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 static void InstallManagedTracyProfiler();
 static void RegisterManagedTracyImage(nptr<MonoImage> image);
 static auto ManagedTracyFilter(MonoProfiler* prof, MonoMethod* method) noexcept -> MonoProfilerCallInstrumentationFlags;
@@ -495,95 +484,101 @@ static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const Mana
 #endif
 
 // Native ABI: logging, hashing, backend and prototype queries
-static void NativeLog(MonoString* text);
-static auto NativeGetHash(void* backend_ptr, MonoString* text) -> void*;
-static auto NativeGetHashStr(void* value) -> MonoString*;
-static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*;
-static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
-static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
-static void NativeSignalContinuationsReady(void* backend_ptr);
-static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
-static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*;
-static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
-static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool;
-static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t;
-static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index) -> void*;
+static void NativeLog(MonoString* text) noexcept;
+static auto NativeGetHash(void* backend_ptr, MonoString* text, MonoString** error) noexcept -> void*;
+static auto NativeGetHashStr(void* value) noexcept -> MonoString*;
+static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value, MonoString** error) noexcept -> MonoString*;
+static auto NativeResolveHash(void* backend_ptr, uint64_t hash, MonoString** error) noexcept -> void*;
+static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) noexcept -> MonoString*;
+static void NativeSignalContinuationsReady(void* backend_ptr) noexcept;
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) noexcept -> MonoObject*;
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) noexcept -> MonoArray*;
+static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> void*;
+static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> mono_bool;
+static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name, MonoString** error) noexcept -> int32_t;
+static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index, MonoString** error) noexcept -> void*;
 
 // Native ABI: entity lifetime and property access
-static void NativeAddRefEntity(void* entity_ptr);
-static void NativeReleaseEntity(void* entity_ptr);
+static void NativeAddRefEntity(void* entity_ptr) noexcept;
+static void NativeReleaseEntity(void* entity_ptr) noexcept;
 static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*;
 static auto InvokeEntityWrapperTrackerCollect(ptr<const ManagedScriptBackend> backend, MonoMethod* method, int32_t pass_limit) -> int32_t;
 static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backend, MonoMethod* method) -> string;
-static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool;
-static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool;
-static auto NativeGetEntityName(void* entity_ptr) -> MonoString*;
-static auto NativeGetEntityId(void* entity_ptr) -> int64_t;
-static auto NativeGetEntityProtoId(void* entity_ptr) -> void*;
-static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t;
-static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*;
-static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*;
-static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*;
+static auto NativeIsEntityDestroyed(void* entity_ptr) noexcept -> mono_bool;
+static auto NativeIsEntityDestroying(void* entity_ptr) noexcept -> mono_bool;
+static auto NativeGetEntityName(void* entity_ptr) noexcept -> MonoString*;
+static auto NativeGetEntityId(void* entity_ptr) noexcept -> int64_t;
+static auto NativeGetEntityProtoId(void* entity_ptr) noexcept -> void*;
+static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> int32_t;
+static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) noexcept -> MonoString*;
+static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoString*;
+static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) noexcept -> MonoString*;
 
 // Native ABI: hex direction helpers
-static auto NativeHdirToMdir(int8_t dir) -> int16_t;
-static auto NativeMdirHex(int16_t angle) -> int8_t;
-static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t;
-static auto NativeMdirReverse(int16_t angle) -> int16_t;
+static auto NativeHdirToMdir(int8_t dir) noexcept -> int16_t;
+static auto NativeMdirHex(int16_t angle) noexcept -> int8_t;
+static auto NativeMdirRotateHex(int16_t angle, int32_t steps) noexcept -> int16_t;
+static auto NativeMdirReverse(int16_t angle) noexcept -> int16_t;
 
 // Native ABI: inner entities
-static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id) -> void*;
-static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id) -> mono_bool;
-static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id) -> void*;
-static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t;
-static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr) -> int64_t;
+static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id, MonoString** error) noexcept -> void*;
+static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, MonoString** error) noexcept -> mono_bool;
+static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id, MonoString** error) noexcept -> void*;
+static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) noexcept -> int32_t;
+static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr, MonoString** error) noexcept -> int64_t;
 
 // Native ABI: settings
-static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name) -> int32_t;
-static void NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value);
-static auto NativeGetSettingInt(void* backend_ptr, MonoString* name) -> int32_t;
-static void NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value);
-static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name) -> uint32_t;
-static void NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value);
-static auto NativeGetSettingLong(void* backend_ptr, MonoString* name) -> int64_t;
-static void NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value);
-static auto NativeGetSettingULong(void* backend_ptr, MonoString* name) -> uint64_t;
-static void NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value);
-static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name) -> float32_t;
-static void NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value);
-static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name) -> float64_t;
-static void NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value);
-static auto NativeGetSettingString(void* backend_ptr, MonoString* name) -> MonoString*;
-static void NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value);
-static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) -> MonoString*;
+static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t;
+static auto NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t;
+static auto NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint32_t;
+static auto NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingLong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int64_t;
+static auto NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingULong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint64_t;
+static auto NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float32_t;
+static auto NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float64_t;
+static auto NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingString(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> MonoString*;
+static auto NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value) noexcept -> MonoString*;
+static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) noexcept -> MonoString*;
 
 // Native ABI: events, properties, methods and remote calls
-static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority);
-static void NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler);
-static void NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr);
-static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t;
-static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t;
-static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoObject*;
-static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
-static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
-static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) -> MonoString*;
-static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) -> MonoString*;
-static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*;
-static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter);
-static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
-static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*;
-static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*;
-static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t;
-static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler);
-static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler);
-static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array);
-static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array);
+static auto NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) noexcept -> MonoString*;
+static auto NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr) noexcept -> MonoString*;
+static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> int32_t;
+static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) noexcept -> int32_t;
+static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoObject*;
+static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*;
+static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*;
+static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) noexcept -> MonoString*;
+static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) noexcept -> MonoString*;
+static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) noexcept -> MonoString*;
+static auto NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter) noexcept -> MonoString*;
+static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeRegisterPropertyMigrator(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* migrator) noexcept -> MonoString*;
+static auto NativeRegisterProtoMigrator(void* backend_ptr, MonoString* owner_type, MonoString* proto_name, MonoObject* migrator) noexcept -> MonoString*;
+static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, MonoString* property_name, MonoObject** result) noexcept -> MonoString*;
+static auto NativeReadDatabaseDocumentEncoded(void* backend_ptr, void* context_ptr, MonoString* field_name, MonoString** result) noexcept -> MonoString*;
+static auto NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*;
+static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) noexcept -> MonoString*;
+static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) noexcept -> MonoString*;
+static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args, MonoString** error) noexcept -> int32_t;
+static auto NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*;
+static auto NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*;
 
 // Internal-call registration
 static void RegisterInternalCalls();
+template<typename Ret, typename... Args>
+static void AddInternalCall(const char* name, Ret (*func)(Args...) noexcept);
 
 // Settings access helpers
 static auto GetSettingValueAsString(ptr<ManagedScriptBackend> backend, MonoString* name) -> string;
@@ -599,19 +594,20 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call) -> bool;
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
-static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t;
-static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t;
-static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t;
-static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t;
-static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool;
-static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error);
+static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetListItemCrossings(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t;
+static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) noexcept -> mono_bool;
+static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error) noexcept;
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*;
 
 // Event dispatch bridge
-static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst);
+static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> dst, ptr<const DataAccessor> accessor);
 static auto ResolveEventEntity(ptr<ManagedScriptBackend> backend, const ManagedAbiEventRuntime& entry, void* entity_ptr) -> nptr<Entity>;
 static auto FindManagedEventSubscription(ptr<ManagedScriptBackend> backend, ptr<const Entity> entity, string_view event_name, MonoObject* handler) -> optional<uintptr_t>;
 static auto GetManagedEventSubscriptionOwner(ptr<const ManagedScriptBackend> backend) noexcept -> uintptr_t;
@@ -651,6 +647,10 @@ static auto CreateManagedList(ptr<const ManagedScriptBackend> backend, const Bas
 static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObject* list) -> size_t;
 static auto GetManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, size_t index) -> MonoObject*;
 static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, MonoObject* item);
+static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend);
+static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool;
+static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool;
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool;
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*;
 static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*;
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t;
@@ -707,6 +707,7 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
 
 // Entity resolution and inner-entry helpers
 static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>;
 static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::hash_t;
 static void ValidateManagedInnerEntity(ptr<const Entity> entity);
@@ -758,8 +759,6 @@ struct ManagedScalarValue
 
     [[nodiscard]] auto Alloc(const BaseTypeDesc& type) -> void*
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         size_t size = type.Size;
 
         if (size <= Local.size()) {
@@ -782,8 +781,6 @@ struct ManagedObjectRoot
 
     ~ManagedObjectRoot()
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_objectHandle != 0) {
             mono_gchandle_free(_objectHandle);
         }
@@ -791,8 +788,6 @@ struct ManagedObjectRoot
 
     void SetObject(MonoObject* object)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_objectHandle != 0) {
             mono_gchandle_free(_objectHandle);
             _objectHandle = 0;
@@ -802,12 +797,7 @@ struct ManagedObjectRoot
         }
     }
 
-    [[nodiscard]] auto GetObject() const -> MonoObject*
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _objectHandle != 0 ? mono_gchandle_get_target(_objectHandle) : nullptr;
-    }
+    [[nodiscard]] auto GetObject() const -> MonoObject* { return _objectHandle != 0 ? mono_gchandle_get_target(_objectHandle) : nullptr; }
 
 private:
     uint32_t _objectHandle {};
@@ -836,12 +826,7 @@ struct ManagedCallbackBridgeData
     uint32_t Handler {};
     hstring Name {};
 
-    ~ManagedCallbackBridgeData()
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ReleaseManagedGcHandle(Domain, Handler);
-    }
+    ~ManagedCallbackBridgeData() { ReleaseManagedGcHandle(Domain, Handler); }
 };
 
 struct ManagedDataAccessor final : DataAccessor
@@ -850,16 +835,12 @@ struct ManagedDataAccessor final : DataAccessor
 
     [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         return GetManagedListCount(array->Backend, array->GetObject());
     }
 
     [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
 
         if (array->Elements.size() <= index) {
@@ -872,8 +853,6 @@ struct ManagedDataAccessor final : DataAccessor
 
     void ClearArray(ptr<void> data) const override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         array->SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
         array->Elements.clear();
@@ -881,25 +860,45 @@ struct ManagedDataAccessor final : DataAccessor
 
     void AddArrayElement(ptr<void> data, ptr<void> value) const override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
         AddManagedListItem(array->Backend, array->GetObject(), item);
     }
 
+    [[nodiscard]] auto ReadArrayRaw(ptr<void> data, span<uint8_t> dest) const -> bool override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+        return TryReadManagedListRaw(array->Backend, array->Type.BaseType, array->GetObject(), dest);
+    }
+
+    [[nodiscard]] auto WriteArrayRaw(ptr<void> data, const_span<uint8_t> src) const -> bool override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+
+        if (!IsManagedRawArrayElement(array->Type.BaseType)) {
+            return false;
+        }
+
+        // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
+        MonoObject* list = CreateManagedList(array->Backend, array->Type.BaseType);
+
+        if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
+            return false;
+        }
+
+        array->SetObject(list);
+        array->Elements.clear();
+        return true;
+    }
+
     [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         return GetManagedDictionaryCount(dict->Backend, dict->GetObject());
     }
 
     [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
 
@@ -916,17 +915,10 @@ struct ManagedDataAccessor final : DataAccessor
         return pair<ptr<void>, ptr<void>>(native_key, ConvertManagedSimpleObjectToNative(dict->Backend, dict->Type.BaseType, value, dict->Values[index]));
     }
 
-    [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return CreateManagedCallbackDesc(data.reinterpret_as<ManagedCallbackBridgeData>());
-    }
+    [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override { return CreateManagedCallbackDesc(data.reinterpret_as<ManagedCallbackBridgeData>()); }
 
     void ClearDict(ptr<void> data) const override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
         dict->SetObject(CreateManagedDictionary(dict->Backend, *dict->Type.KeyType, dict->Type.BaseType));
@@ -936,8 +928,6 @@ struct ManagedDataAccessor final : DataAccessor
 
     void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
         ManagedObjectRoot managed_key;
@@ -969,12 +959,7 @@ struct ManagedEventSubscription
     uint16_t FrameSize {};
     nptr<MonoMethod> AdaptInvoke {};
 
-    ~ManagedEventSubscription()
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ReleaseManagedGcHandle(Domain, Handler);
-    }
+    ~ManagedEventSubscription() { ReleaseManagedGcHandle(Domain, Handler); }
 };
 
 struct ManagedAbiMethodRuntime
@@ -1093,6 +1078,7 @@ struct ManagedBackendCaches
     std::atomic<uint64_t> TypedCallbackDispatches {};
     std::atomic<uint64_t> BoxedCallbackDispatches {};
     std::atomic<uint64_t> ContinuationPumps {};
+    std::atomic<uint64_t> ListItemCrossings {};
 };
 
 // Built once per callback registration: the native signature, the frame layout it maps to and the generated adapter
@@ -1113,8 +1099,6 @@ struct ManagedCallbackPlan
 // Wrappers finalized after this find their engine gone and keep the native references they hold
 void ManagedScriptBackend::UnbindBackend()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (nptr<void> unbind : _backendUnbinds) {
         MonoObject* exception = nullptr;
         (void)mono_runtime_invoke(unbind.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, &exception);
@@ -1126,8 +1110,6 @@ void ManagedScriptBackend::UnbindBackend()
 
 void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The core scripts always keep the live wrapper count; this arms the weak table that names what it reports. A backend with no
     // engine behind its metadata (the baker's) has no settings to read and stays counting only, naming being a running-game diagnostic
     nptr<GlobalSettings> settings = GetBackendSettings(this);
@@ -1151,8 +1133,6 @@ void ManagedScriptBackend::EnableDeepEntityWrapperTracking()
 // so every finalizer that follows is expected and must stay silent
 void ManagedScriptBackend::BeginManagedTeardown() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_domain) {
         return;
     }
@@ -1172,7 +1152,7 @@ void ManagedScriptBackend::BeginManagedTeardown() noexcept
 
 void ManagedScriptBackend::ClearScriptStatics() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (!_domain) {
         return;
@@ -1205,7 +1185,7 @@ void ManagedScriptBackend::ClearScriptStatics() noexcept
 
 void ManagedScriptBackend::FinalizeManagedObjects() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (!_domain || _images.empty()) {
         return;
@@ -1248,8 +1228,6 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
 // The calling assembly passes the backend bound to its own load context; zero means that backend is already torn down
 static auto ResolveBoundBackend(void* backend_ptr) -> ptr<ManagedScriptBackend>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<ManagedScriptBackend> backend = cast_from_void<ManagedScriptBackend*>(backend_ptr);
 
     if (!backend || !backend->GetMetadata()) {
@@ -1261,8 +1239,6 @@ static auto ResolveBoundBackend(void* backend_ptr) -> ptr<ManagedScriptBackend>
 
 static auto GetEntityManagerOrThrow(ptr<ManagedScriptBackend> backend) -> ptr<EntityManagerApi>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<EngineMetadata> meta = backend->GetMetadata();
     nptr<EntityManagerApi> entity_mngr = meta.dyn_cast<EntityManagerApi>();
 
@@ -1275,8 +1251,6 @@ static auto GetEntityManagerOrThrow(ptr<ManagedScriptBackend> backend) -> ptr<En
 
 static auto GetTargetName(EngineSideKind side) -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (side) {
     case EngineSideKind::ServerSide:
         return "Server";
@@ -1291,8 +1265,6 @@ static auto GetTargetName(EngineSideKind side) -> string_view
 
 static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> nptr<GlobalSettings>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<EngineMetadata> meta = backend->GetMetadata();
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
 
@@ -1308,8 +1280,6 @@ static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> nptr<Global
 // Every native call into script code goes through an entry, which is what places its frames in native stack traces
 static auto InvokeManagedScript(ptr<const ManagedScriptBackend> backend, MonoMethod* method, MonoObject* obj, void** args, string_view context) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedScriptEntryScope entry {method};
     (void)stack_trace::save_resume_point(entry.GetBirthPoint());
     MonoObject* exception = nullptr;
@@ -1321,8 +1291,6 @@ static auto InvokeManagedScript(ptr<const ManagedScriptBackend> backend, MonoMet
 
 static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend, MonoObject* delegate_obj, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The delegate target is not known natively, so the entry claims whichever frames run under its invoke
     ManagedScriptEntryScope entry {nullptr};
     (void)stack_trace::save_resume_point(entry.GetBirthPoint());
@@ -1336,7 +1304,7 @@ static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend,
 // ManagedScript.OverrunReportTime; a run that throws is reported by its exception instead
 static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     time_meter run_time;
     timespan lock_wait_duration = engine->RunScriptContext(callback);
@@ -1346,8 +1314,6 @@ static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEng
 // The same two measurements AngelScriptContextManager::RunContext reports, so both backends read alike in a log
 static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, timespan total_duration, timespan lock_wait_duration, const function<MonoObject*()>& get_entry)
 {
-    FO_STACK_TRACE_ENTRY();
-
     timespan overrun_time = std::chrono::milliseconds(engine->Settings->ManagedScript.OverrunReportTime);
 
     if (!overrun_time || is_run_in_debugger() || engine->IsStartingUp()) {
@@ -1378,18 +1344,14 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<Ba
 
 static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const function<MonoObject*()>& get_entry) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedThreadAttachment managed_thread {GetDomainOrThrow(backend->GetDomain())};
     void* args[] = {get_entry()};
     return ToStringAndFree(reinterpret_cast<MonoString*>(InvokeNativeHelper(backend, "DescribeScriptEntry", 1, args)));
 }
 
 // Script code reports an exception it caught itself; see ScriptExceptions.Record
-static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames)
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         string summary_str = ToStringAndFree(summary);
         nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning();
@@ -1424,8 +1386,6 @@ static void NativeReportException(MonoString* summary, MonoString* native_error,
 // in case script lets the error propagate
 static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoString* message = mono_string_new(mono_domain_get(), ex.what());
 
     if (nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning()) {
@@ -1435,10 +1395,42 @@ static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*
     return message;
 }
 
+// The body of an internal call whose managed wrapper throws the returned error; see AddInternalCall
+template<typename Body>
+static auto CaptureNativeError(Body&& body) noexcept -> MonoString*
+{
+    try {
+        body();
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+template<typename Body>
+static auto CaptureNativeError(MonoString** error, Body&& body) noexcept -> decltype(body())
+{
+    FO_STRONG_ASSERT(error != nullptr, "Managed internal call error output is null");
+    *error = nullptr;
+
+    try {
+        return body();
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return {};
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
 static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         // Script frames exist on a thread only under a running entry, which also proves the thread is attached
         nptr<ManagedScriptEntryScope> entry = ManagedScriptEntryScope::GetInnermostRunning();
@@ -1478,8 +1470,6 @@ static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::ve
 // Visits frames innermost first. A run of script frames ends at the runtime-invoke wrapper native code entered it through
 static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(native_offset);
 
     try {
@@ -1513,8 +1503,6 @@ static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, 
 
 static auto DescribeManagedException(ptr<const ManagedScriptBackend> backend, MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedExceptionDescription description;
 
     // The describing helper is part of the core scripts, which are not loaded while the load context itself is created
@@ -1546,8 +1534,6 @@ static auto DescribeManagedException(ptr<const ManagedScriptBackend> backend, Mo
 
 static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<ptr<MonoMethod>, int32_t>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t values_count = frames != nullptr ? mono_array_length(frames) : 0;
     FO_VERIFY_AND_THROW(values_count % 2 == 0, "Managed exception frames must pair a method handle with an IL offset", values_count);
 
@@ -1566,8 +1552,6 @@ static auto ReadManagedExceptionFrames(MonoArray* frames) -> vector<pair<ptr<Mon
 
 static auto MakeManagedExceptionLayer(const vector<pair<ptr<MonoMethod>, int32_t>>& frames) -> stack_trace::script_layer
 {
-    FO_STACK_TRACE_ENTRY();
-
     stack_trace::script_layer layer;
     layer.script_frames.reserve(frames.size());
 
@@ -1583,8 +1567,6 @@ static auto MakeManagedExceptionLayer(const vector<pair<ptr<MonoMethod>, int32_t
 // Generated marshalling stubs (reflection invoke stubs and the like) are runtime plumbing, not script frames
 static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> optional<stack_trace::frame>
 {
-    FO_STACK_TRACE_ENTRY();
-
     stack_trace::frame frame;
     frame.type = stack_trace::frame::frame_type::script;
 
@@ -1617,8 +1599,6 @@ static auto MakeManagedStackFrame(ptr<MonoMethod> method, int32_t il_offset) -> 
 
 static auto ReadManagedMethodFullName(ptr<MonoMethod> method, bool with_signature) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     char* full_name = mono_method_full_name(method.get(), with_signature ? 1 : 0);
 
     if (full_name == nullptr) {
@@ -1633,8 +1613,6 @@ static auto ReadManagedMethodFullName(ptr<MonoMethod> method, bool with_signatur
 // Mono spells a method "Namespace.Outer/Inner:Method (args)", while script code reads "Namespace.Outer.Inner.Method(args)"
 static void NormalizeManagedMethodFullName(string& name)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (size_t separator = name.find(':'); separator != string::npos) {
         name[separator] = '.';
     }
@@ -1647,8 +1625,6 @@ static void NormalizeManagedMethodFullName(string& name)
 
 static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const stack_trace::native_frame_address> frames, stack_trace::script_layer& layer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (stack_trace::native_frame_address address : frames) {
         // A return address may sit just past the end of its method, so the lookup asks for the call instruction
         if (address > 1 && mono_jit_info_table_find(domain, std::bit_cast<void*>(address - 1)) != nullptr) {
@@ -1660,19 +1636,15 @@ static void AppendRuntimeNativeFrames(MonoDomain* domain, span<const stack_trace
 // mono_runtime_invoke enters managed code through generated wrappers named after the signature they marshal
 static auto IsManagedRuntimeInvokeWrapper(MonoMethod* method) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const char* name = method != nullptr ? mono_method_get_name(method) : nullptr;
     return name != nullptr && string_view {name}.starts_with("runtime_invoke");
 }
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 // Script frames become Tracy zones the way AngelScriptBeginCall makes them, so a handler and the engine
 // zones under it read as one tree. Mono calls these from JIT-generated code, so none of them may unwind
 static void InstallManagedTracyProfiler()
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoProfilerHandle handle = mono_profiler_create(nullptr);
     FO_VERIFY_AND_THROW(handle != nullptr, "Managed profiler handle is null");
 
@@ -1692,8 +1664,6 @@ static void InstallManagedTracyProfiler()
 // image: a method already compiled keeps whatever hooks it was compiled with
 static void RegisterManagedTracyImage(nptr<MonoImage> image)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!image) {
         return;
     }
@@ -1704,8 +1674,6 @@ static void RegisterManagedTracyImage(nptr<MonoImage> image)
 
 static auto ManagedTracyFilter(MonoProfiler* prof, MonoMethod* method) noexcept -> MonoProfilerCallInstrumentationFlags
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof);
 
     if (method == nullptr) {
@@ -1740,8 +1708,6 @@ static auto ManagedTracyFilter(MonoProfiler* prof, MonoMethod* method) noexcept 
 
 static void ManagedTracyMethodEnter(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof, context);
 
     BeginManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
@@ -1749,8 +1715,6 @@ static void ManagedTracyMethodEnter(MonoProfiler* prof, MonoMethod* method, Mono
 
 static void ManagedTracyMethodLeave(MonoProfiler* prof, MonoMethod* method, MonoProfilerCallContext* context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof, context);
 
     EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
@@ -1758,8 +1722,6 @@ static void ManagedTracyMethodLeave(MonoProfiler* prof, MonoMethod* method, Mono
 
 static void ManagedTracyMethodExceptionLeave(MonoProfiler* prof, MonoMethod* method, MonoObject* exception) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof, exception);
 
     EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Call);
@@ -1767,8 +1729,6 @@ static void ManagedTracyMethodExceptionLeave(MonoProfiler* prof, MonoMethod* met
 
 static void ManagedTracyJitBegin(MonoProfiler* prof, MonoMethod* method) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof);
 
     BeginManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
@@ -1776,8 +1736,6 @@ static void ManagedTracyJitBegin(MonoProfiler* prof, MonoMethod* method) noexcep
 
 static void ManagedTracyJitDone(MonoProfiler* prof, MonoMethod* method, MonoJitInfo* jinfo) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof, jinfo);
 
     EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
@@ -1785,8 +1743,6 @@ static void ManagedTracyJitDone(MonoProfiler* prof, MonoMethod* method, MonoJitI
 
 static void ManagedTracyJitFailed(MonoProfiler* prof, MonoMethod* method) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(prof);
 
     EndManagedTracyZone(make_nptr(method), ManagedTracyZoneKind::Jit);
@@ -1794,8 +1750,6 @@ static void ManagedTracyJitFailed(MonoProfiler* prof, MonoMethod* method) noexce
 
 static void BeginManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!method) {
         return;
     }
@@ -1810,8 +1764,6 @@ static void BeginManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind 
 // The kind is matched too, because compiling a method and running it share its pointer
 static void EndManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind kind) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!method) {
         return;
     }
@@ -1834,8 +1786,6 @@ static void EndManagedTracyZone(nptr<MonoMethod> method, ManagedTracyZoneKind ki
 
 static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const ManagedTracyMethodEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     size_t method_key = std::bit_cast<size_t>(method.get());
 
     {
@@ -1903,15 +1853,11 @@ ManagedScriptEntryScope::ManagedScriptEntryScope(nptr<MonoMethod> method) noexce
     _method {method},
     _parent {CurrentScriptEntry}
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     CurrentScriptEntry = this;
 }
 
 ManagedScriptEntryScope::~ManagedScriptEntryScope()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(CurrentScriptEntry == this, "Managed script entries must unwind in nesting order");
     CurrentScriptEntry = _parent;
 
@@ -1922,8 +1868,6 @@ ManagedScriptEntryScope::~ManagedScriptEntryScope()
 
 auto ManagedScriptEntryScope::GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<ManagedScriptEntryScope> entry = CurrentScriptEntry;
 
     while (entry && !entry->_running) {
@@ -1935,8 +1879,6 @@ auto ManagedScriptEntryScope::GetInnermostRunning() noexcept -> nptr<ManagedScri
 
 auto ManagedScriptEntryScope::GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<ManagedScriptEntryScope> entry = _parent;
 
     while (entry && !entry->_running) {
@@ -1948,8 +1890,6 @@ auto ManagedScriptEntryScope::GetNextRunning() const noexcept -> nptr<ManagedScr
 
 void ManagedScriptEntryScope::CopyBirthFrames(stack_trace::script_layer& layer) const noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ResolveBirthFrames();
     std::copy_n(_birthFrames.begin(), _birthFrameCount, layer.birth_native_frames.begin());
     layer.birth_native_frame_count = _birthFrameCount;
@@ -1958,8 +1898,6 @@ void ManagedScriptEntryScope::CopyBirthFrames(stack_trace::script_layer& layer) 
 
 void ManagedScriptEntryScope::AppendBirthRuntimeFrames(MonoDomain* domain, stack_trace::script_layer& layer) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResolveBirthFrames();
     AppendRuntimeNativeFrames(domain, {_birthFrames.data(), _birthFrameCount}, layer);
 }
@@ -1967,8 +1905,6 @@ void ManagedScriptEntryScope::AppendBirthRuntimeFrames(MonoDomain* domain, stack
 // Runs on the entry's own thread while the opening frame is still active, which is what the birth point needs
 void ManagedScriptEntryScope::ResolveBirthFrames() const noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_birthResolved) {
         return;
     }
@@ -1979,8 +1915,6 @@ void ManagedScriptEntryScope::ResolveBirthFrames() const noexcept
 
 void ManagedScriptEntryScope::SetCrossedNativeException(std::exception_ptr exception, MonoString* message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Exception.Message preserves this string's identity; a strong handle keeps the key valid through moving collections
     uint32_t handle = NewManagedGcHandle(reinterpret_cast<MonoObject*>(message), 0);
     _crossedNativeExceptions.emplace_back(handle, std::move(exception));
@@ -1988,8 +1922,6 @@ void ManagedScriptEntryScope::SetCrossedNativeException(std::exception_ptr excep
 
 auto ManagedScriptEntryScope::FindCrossedNativeException(MonoString* message) const noexcept -> std::exception_ptr
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (message == nullptr) {
         return {};
     }
@@ -2007,10 +1939,8 @@ auto ManagedScriptEntryScope::FindCrossedNativeException(MonoString* message) co
 
 // === Native ABI: logging, hashing, backend and prototype queries ===
 
-static void NativeLog(MonoString* text)
+static void NativeLog(MonoString* text) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (text == nullptr) {
         logging::write("{}", string_view {});
         return;
@@ -2030,8 +1960,6 @@ static void NativeLog(MonoString* text)
 
 static auto NativeHstringHandle(const hstring& value) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!value) {
         return nullptr;
     }
@@ -2041,8 +1969,6 @@ static auto NativeHstringHandle(const hstring& value) -> void*
 
 static auto NativeHstringFromHandle(void* value) -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (value == nullptr) {
         return {};
     }
@@ -2050,24 +1976,22 @@ static auto NativeHstringFromHandle(void* value) -> hstring
     return hstring(ptr<const hstring::entry>(static_cast<const hstring::entry*>(value)));
 }
 
-static auto NativeGetHash(void* backend_ptr, MonoString* text) -> void*
+static auto NativeGetHash(void* backend_ptr, MonoString* text, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> void* {
+        string value = ToStringAndFree(text);
 
-    string value = ToStringAndFree(text);
+        if (value.empty()) {
+            return nullptr;
+        }
 
-    if (value.empty()) {
-        return nullptr;
-    }
-
-    auto backend = ResolveBoundBackend(backend_ptr);
-    return NativeHstringHandle(backend->GetMetadata()->Hashes.to_hashed_string(value));
+        auto backend = ResolveBoundBackend(backend_ptr);
+        return NativeHstringHandle(backend->GetMetadata()->Hashes.to_hashed_string(value));
+    });
 }
 
-static auto NativeGetHashStr(void* value) -> MonoString*
+static auto NativeGetHashStr(void* value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value == nullptr) {
         return mono_string_new(GetDomainOrThrow(mono_domain_get()), "");
     }
@@ -2075,45 +1999,43 @@ static auto NativeGetHashStr(void* value) -> MonoString*
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), NativeHstringFromHandle(value).c_str());
 }
 
-static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*
+static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value, MonoString** error) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string text = strex("{}", value).str();
+        bool failed = false;
+        hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(value, &failed);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string text = strex("{}", value).str();
-    bool failed = false;
-    hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(value, &failed);
+        if (!failed) {
+            text = resolved.as_str();
+        }
 
-    if (!failed) {
-        text = resolved.as_str();
-    }
-
-    return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
+        return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
+    });
 }
 
-static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*
+static auto NativeResolveHash(void* backend_ptr, uint64_t hash, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> void* {
+        if (hash == 0) {
+            return nullptr;
+        }
 
-    if (hash == 0) {
-        return nullptr;
-    }
+        auto backend = ResolveBoundBackend(backend_ptr);
+        bool failed = false;
+        hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(hash, &failed);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    bool failed = false;
-    hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(hash, &failed);
+        if (failed) {
+            throw ScriptSystemException("Managed hstring is not interned in the active backend", hash);
+        }
 
-    if (failed) {
-        throw ScriptSystemException("Managed hstring is not interned in the active backend", hash);
-    }
-
-    return NativeHstringHandle(resolved);
+        return NativeHstringHandle(resolved);
+    });
 }
 
-static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*
+static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto backend = ResolveBoundBackend(backend_ptr);
         auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
@@ -2131,18 +2053,14 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     }
 }
 
-static void NativeSignalContinuationsReady(void* backend_ptr)
+static void NativeSignalContinuationsReady(void* backend_ptr) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Reached from every post, so it only raises the flag; the managed side passes nothing but its live bound backend
     cast_from_void<ManagedScriptBackend*>(backend_ptr)->SignalContinuationsReady();
 }
 
-static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) noexcept -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed dynamic assembly load error output is null");
     *error = nullptr;
 
@@ -2160,10 +2078,8 @@ static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoA
     }
 }
 
-static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) noexcept -> MonoArray*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed client scripts image error output is null");
     *error = nullptr;
 
@@ -2186,69 +2102,67 @@ static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) 
 
 // Custom-entity proto getters: the built-in entities carry metadata-exported Game.GetProto*, custom ones
 // resolve through this path instead
-static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*
+static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    auto proto = meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id));
-    return proto.void_cast();
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
+        auto proto = meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id));
+        return proto.void_cast();
+    });
 }
 
-static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool
+static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> mono_bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id)) ? 1 : 0);
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
+        return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id)) ? 1 : 0);
+    });
 }
 
 // Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index, backing
 // the generated Game.GetProto<X>s()/Get<X>s() loops
-static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t
+static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    return numeric_cast<int32_t>(meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str)).size());
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        return numeric_cast<int32_t>(meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str)).size());
+    });
 }
 
-static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index) -> void*
+static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        const auto& protos = meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str));
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    const auto& protos = meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str));
+        int32_t i = 0;
 
-    int32_t i = 0;
+        for (const auto& [proto_id, proto] : protos) {
+            if (i == index) {
+                return static_cast<Entity*>(proto.get_no_const());
+            }
 
-    for (const auto& [proto_id, proto] : protos) {
-        if (i == index) {
-            return static_cast<Entity*>(proto.get_no_const());
+            i++;
         }
 
-        i++;
-    }
-
-    return nullptr;
+        return nullptr;
+    });
 }
 
 // === Native ABI: entity lifetime and property access ===
 
 static auto InvokeEntityWrapperTrackerCollect(ptr<const ManagedScriptBackend> backend, MonoMethod* method, int32_t pass_limit) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     void* args[] = {&pass_limit};
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, nullptr, args, &exception);
@@ -2260,8 +2174,6 @@ static auto InvokeEntityWrapperTrackerCollect(ptr<const ManagedScriptBackend> ba
 
 static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backend, MonoMethod* method) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, nullptr, nullptr, &exception);
     ThrowIfManagedException(backend, exception, "Managed entity wrapper report failed");
@@ -2272,19 +2184,15 @@ static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backe
 
 // A wrapper AddRefs the native entity and releases it only in its finalizer, so one retained past destroy keeps it alive-but-destroyed;
 // what teardown's collection cannot reach is reported by the live entity count rather than taken away behind the wrapper's back
-static void NativeAddRefEntity(void* entity_ptr)
+static void NativeAddRefEntity(void* entity_ptr) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (entity_ptr != nullptr) {
         static_cast<const Entity*>(entity_ptr)->AddRef();
     }
 }
 
-static void NativeReleaseEntity(void* entity_ptr)
+static void NativeReleaseEntity(void* entity_ptr) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (entity_ptr != nullptr) {
         static_cast<const Entity*>(entity_ptr)->Release();
     }
@@ -2293,8 +2201,6 @@ static void NativeReleaseEntity(void* entity_ptr)
 // The tracker is part of the core scripts, so it is reached through whichever loaded image carries them
 static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     CountMetadataLookup();
 
     for (nptr<void> image_ptr : backend->GetImages()) {
@@ -2314,29 +2220,23 @@ static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const 
 
 // Backs the managed `Entity.IsDestroyed` property (parity with AngelScript). A null wrapper pointer counts as
 // destroyed. The wrapper holds a strong ref (AddRef/Release), so reading a destroyed-but-alive entity is safe
-static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
+static auto NativeIsEntityDestroyed(void* entity_ptr) noexcept -> mono_bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     bool destroyed = entity_ptr == nullptr || static_cast<const Entity*>(entity_ptr)->IsDestroyed();
     return static_cast<mono_bool>(destroyed ? 1 : 0);
 }
 
 // Backs the managed `Entity.IsDestroying` property (parity with AngelScript get_IsDestroying). A null wrapper
 // pointer is already gone rather than mid-destruction, so it reports false
-static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
+static auto NativeIsEntityDestroying(void* entity_ptr) noexcept -> mono_bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     bool destroying = entity_ptr != nullptr && static_cast<const Entity*>(entity_ptr)->IsDestroying();
     return static_cast<mono_bool>(destroying ? 1 : 0);
 }
 
 // Managed Entity.Name -> AngelScript base-entity `get_Name()` (Entity::GetName); a manual base binding
-static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
+static auto NativeGetEntityName(void* entity_ptr) noexcept -> MonoString*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(mono_domain_get());
 
     if (entity_ptr == nullptr) {
@@ -2347,10 +2247,8 @@ static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
     return mono_string_new(domain, name.c_str());
 }
 
-static auto NativeGetEntityId(void* entity_ptr) -> int64_t
+static auto NativeGetEntityId(void* entity_ptr) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const Entity> entity = static_cast<const Entity*>(entity_ptr);
 
     if (!entity) {
@@ -2360,10 +2258,8 @@ static auto NativeGetEntityId(void* entity_ptr) -> int64_t
     return entity->GetId().underlying_value();
 }
 
-static auto NativeGetEntityProtoId(void* entity_ptr) -> void*
+static auto NativeGetEntityProtoId(void* entity_ptr) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const Entity> entity = static_cast<const Entity*>(entity_ptr);
 
     if (!entity) {
@@ -2383,8 +2279,6 @@ static auto NativeGetEntityProtoId(void* entity_ptr) -> void*
 // Generic property accessors by index: the generated Entity.GetAs*/SetAs* wrappers route through here
 static auto ResolveManagedGenericProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto backend = ResolveBoundBackend(backend_ptr);
     auto entity = ResolveEntity(backend, entity_ptr);
 
@@ -2411,8 +2305,6 @@ static auto ResolveManagedGenericProperty(void* backend_ptr, void* entity_ptr, i
 
 static auto ResolveManagedScalarProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t size, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto [entity, prop] = ResolveManagedGenericProperty(backend_ptr, entity_ptr, prop_index, require_mutable);
     const BaseTypeDesc& base_type = prop->GetBaseType();
     FO_VERIFY_AND_THROW(!prop->IsNullable() && IsManagedAbiFixedPropertyValue(base_type), "Managed property requires a non-nullable fixed value", prop->GetName());
@@ -2420,10 +2312,8 @@ static auto ResolveManagedScalarProperty(void* backend_ptr, void* entity_ptr, in
     return {entity, prop};
 }
 
-static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto [entity, prop] = ResolveManagedScalarProperty(backend_ptr, entity_ptr, prop_index, size, false);
         entity->LockForPropertyAccessShared();
@@ -2457,10 +2347,8 @@ static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t 
     }
 }
 
-static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto [entity, prop] = ResolveManagedScalarProperty(backend_ptr, entity_ptr, prop_index, size, true);
         entity->LockForPropertyAccess();
@@ -2483,8 +2371,6 @@ static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t 
 // An array property whose elements the scalar bridge carries: its storage is the elements back to back
 static auto ResolveManagedArrayProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t element_size, bool require_mutable) -> pair<ptr<Entity>, ptr<const Property>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto backend = ResolveBoundBackend(backend_ptr);
     auto entity = ResolveEntity(backend, entity_ptr);
     auto nullable_prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
@@ -2509,10 +2395,8 @@ static auto ResolveManagedArrayProperty(void* backend_ptr, void* entity_ptr, int
 
 // Reports the array size in bytes and copies the elements when the caller's buffer holds them all; a smaller buffer
 // is left untouched, so the caller sizes its list and asks again
-static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) -> MonoString*
+static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(size != nullptr, "Managed array property size output is null");
     *size = 0;
 
@@ -2553,10 +2437,8 @@ static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
     }
 }
 
-static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) -> MonoString*
+static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto [entity, prop] = ResolveManagedArrayProperty(backend_ptr, entity_ptr, prop_index, element_size, true);
         entity->LockForPropertyAccess();
@@ -2594,8 +2476,6 @@ static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
 
 static auto NativeGetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto [entity, prop] = ResolveManagedGenericProperty(backend_ptr, entity_ptr, prop_index, false);
     entity->LockForPropertyAccessShared();
     auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccessShared(); });
@@ -2604,10 +2484,8 @@ static auto NativeGetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, i
     return entity->GetValueAsInt(prop);
 }
 
-static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t
+static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed generic property getter error output is null");
     *error = nullptr;
 
@@ -2622,8 +2500,6 @@ static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32
 
 static void NativeSetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto [entity, prop] = ResolveManagedGenericProperty(backend_ptr, entity_ptr, prop_index, true);
     entity->LockForPropertyAccess();
     auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
@@ -2632,10 +2508,8 @@ static void NativeSetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, i
     entity->SetValueAsInt(prop, value);
 }
 
-static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*
+static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         NativeSetEntityValueAsIntImpl(backend_ptr, entity_ptr, prop_index, value);
         return nullptr;
@@ -2647,8 +2521,6 @@ static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32
 
 static auto NativeGetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index) -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(mono_domain_get());
     auto [entity, prop] = ResolveManagedGenericProperty(backend_ptr, entity_ptr, prop_index, false);
     entity->LockForPropertyAccessShared();
@@ -2659,10 +2531,8 @@ static auto NativeGetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, i
     return mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size()));
 }
 
-static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*
+static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed generic property getter error output is null");
     *error = nullptr;
 
@@ -2677,8 +2547,6 @@ static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32
 
 static void NativeSetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto [entity, prop] = ResolveManagedGenericProperty(backend_ptr, entity_ptr, prop_index, true);
     entity->LockForPropertyAccess();
     auto auto_unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
@@ -2687,10 +2555,8 @@ static void NativeSetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, i
     entity->SetValueAsAny(prop, any_t {ToStringAndFree(value)});
 }
 
-static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*
+static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         NativeSetEntityValueAsAnyImpl(backend_ptr, entity_ptr, prop_index, value);
         return nullptr;
@@ -2704,31 +2570,23 @@ static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32
 
 // Backs the managed `mdir.hex` property (parity with AngelScript mdir::get_hex). The conversion is
 // geometry-dependent (hex vs square map dirs), so it routes through the engine rather than a managed mirror
-static auto NativeHdirToMdir(int8_t dir) -> int16_t
+static auto NativeHdirToMdir(int8_t dir) noexcept -> int16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(hdir(dir)).angle();
 }
 
-static auto NativeMdirHex(int16_t angle) -> int8_t
+static auto NativeMdirHex(int16_t angle) noexcept -> int8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(static_cast<int32_t>(angle)).hex().value();
 }
 
-static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t
+static auto NativeMdirRotateHex(int16_t angle, int32_t steps) noexcept -> int16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(static_cast<int32_t>(angle)).rotateHex(steps).angle();
 }
 
-static auto NativeMdirReverse(int16_t angle) -> int16_t
+static auto NativeMdirReverse(int16_t angle) noexcept -> int16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(static_cast<int32_t>(angle)).reverse().angle();
 }
 
@@ -2736,8 +2594,6 @@ static auto NativeMdirReverse(int16_t angle) -> int16_t
 
 static auto ResolveAbiInner(ptr<ManagedScriptBackend> backend, int32_t entry_id) -> const ManagedAbiInnerRuntime&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto abi = backend->GetAbi();
     FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
     FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
@@ -2745,63 +2601,61 @@ static auto ResolveAbiInner(ptr<ManagedScriptBackend> backend, int32_t entry_id)
     return abi->Inners[numeric_cast<size_t>(entry_id)];
 }
 
-static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id) -> void*
+static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        ptr<EntityManagerApi> entity_mngr = GetEntityManagerOrThrow(backend);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    ptr<EntityManagerApi> entity_mngr = GetEntityManagerOrThrow(backend);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
-
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
+    });
 }
 
-static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id) -> mono_bool
+static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, MonoString** error) noexcept -> mono_bool
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> mono_bool {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
-
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    auto entities = holder->GetInnerEntities(entry);
-    return static_cast<mono_bool>(entities ? 1 : 0);
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        auto entities = holder->GetInnerEntities(entry);
+        return static_cast<mono_bool>(entities ? 1 : 0);
+    });
 }
 
-static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id) -> void*
+static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id, MonoString** error) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        ident_t entity_id {id};
+        auto entities = holder->GetInnerEntities(entry);
 
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    ident_t entity_id {id};
-    auto entities = holder->GetInnerEntities(entry);
-
-    if (!entities || entities->empty()) {
-        return nullptr;
-    }
-
-    for (auto& entity : *entities) {
-        ValidateManagedInnerEntity(entity.get());
-
-        if (entity->GetId() == entity_id) {
-            return entity.get();
+        if (!entities || entities->empty()) {
+            return nullptr;
         }
-    }
 
-    return nullptr;
+        for (auto& entity : *entities) {
+            ValidateManagedInnerEntity(entity.get());
+
+            if (entity->GetId() == entity_id) {
+                return entity.get();
+            }
+        }
+
+        return nullptr;
+    });
 }
 
-static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t
+static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed inner-entity fill error output is null");
     *error = nullptr;
 
@@ -2832,48 +2686,58 @@ static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t
     }
 }
 
-static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
-
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->TypedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->TypedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+    });
 }
 
-static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
-
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+    });
 }
 
-static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+    });
+}
 
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+static auto NativeGetAndResetListItemCrossings(void* backend_ptr, MonoString** error) noexcept -> int64_t
+{
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->ListItemCrossings.exchange(0, std::memory_order_relaxed));
+    });
 }
 
 // Interop probe: drives InteropProbe.AdaptProbe from a native loop over one transport and returns the loop time in
 // nanoseconds. Modes mirror InteropProbe.CallbackMode; the probe never touches a production registration
-static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t
+static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed probe error output is null");
     *error = nullptr;
 
@@ -3014,10 +2878,8 @@ static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler,
 
 // Interop probe: calls one probe adapter over one transport `iterations` times, optionally from a thread of its own,
 // and reports how many calls came back with a managed exception; the managed side checks what the handler received
-static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error)
+static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(faults != nullptr && error != nullptr, "Managed probe outputs are null");
     *faults = 0;
     *error = nullptr;
@@ -3126,10 +2988,8 @@ static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler,
 
 // Interop probe: switches the calling thread's counters on or off and reads them; native allocation counts exist
 // only in profiling builds, which the return value reports
-static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool
+static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) noexcept -> mono_bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(gc_handles != nullptr && metadata_lookups != nullptr && managed_objects != nullptr && native_allocations != nullptr && native_bytes != nullptr, "Managed probe counter outputs are null");
 
     InteropThreadCounters.Enabled = enable != 0;
@@ -3145,141 +3005,111 @@ static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int
     return native_available ? 1 : 0;
 }
 
-static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto abi = backend->GetAbi();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto abi = backend->GetAbi();
+        if (!abi) {
+            return 0;
+        }
 
-    if (!abi) {
-        return 0;
-    }
-
-    abi->CountInnerEntityVisits.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(abi->InnerEntityVisits.exchange(0, std::memory_order_relaxed));
+        abi->CountInnerEntityVisits.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(abi->InnerEntityVisits.exchange(0, std::memory_order_relaxed));
+    });
 }
 
 // === Native ABI: settings ===
 
-static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name) -> int32_t
+static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strvex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_bool() ? 1 : 0;
+    return CaptureNativeError(error, [&]() -> int32_t { return strvex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_bool() ? 1 : 0; });
 }
 
-static void NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value)
+static auto NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, value != 0 ? "True" : "False");
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, value != 0 ? "True" : "False"); });
 }
 
-static auto NativeGetSettingInt(void* backend_ptr, MonoString* name) -> int32_t
+static auto NativeGetSettingInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int32();
+    return CaptureNativeError(error, [&]() -> int32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int32(); });
 }
 
-static void NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value)
+static auto NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name) -> uint32_t
+static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_uint32();
+    return CaptureNativeError(error, [&]() -> uint32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_uint32(); });
 }
 
-static void NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value)
+static auto NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingLong(void* backend_ptr, MonoString* name) -> int64_t
+static auto NativeGetSettingLong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int64();
+    return CaptureNativeError(error, [&]() -> int64_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int64(); });
 }
 
-static void NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value)
+static auto NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingULong(void* backend_ptr, MonoString* name) -> uint64_t
+static auto NativeGetSettingULong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
-    return std::strtoull(value.c_str(), nullptr, 0);
+    return CaptureNativeError(error, [&]() -> uint64_t {
+        string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
+        return std::strtoull(value.c_str(), nullptr, 0);
+    });
 }
 
-static void NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value)
+static auto NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name) -> float32_t
+static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float32();
+    return CaptureNativeError(error, [&]() -> float32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float32(); });
 }
 
-static void NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value)
+static auto NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name) -> float64_t
+static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float64();
+    return CaptureNativeError(error, [&]() -> float64_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float64(); });
 }
 
-static void NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value)
+static auto NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingString(void* backend_ptr, MonoString* name) -> MonoString*
+static auto NativeGetSettingString(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
-    return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
+    return CaptureNativeError(error, [&]() -> MonoString* {
+        string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
+        return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
+    });
 }
 
-static void NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value)
+static auto NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, ToStringAndFree(value));
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, ToStringAndFree(value)); });
 }
 
 static auto SettingKindSize(ManagedAbiValueKind kind) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (kind) {
     case ManagedAbiValueKind::Bool:
     case ManagedAbiValueKind::Int8:
@@ -3304,8 +3134,6 @@ static auto SettingKindSize(ManagedAbiValueKind kind) -> int32_t
 
 static auto ResolveAbiSetting(ptr<ManagedScriptBackend> backend, int32_t setting_id) -> ManagedAbiSettingRuntime&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto abi = backend->GetAbi();
     FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
     FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
@@ -3315,17 +3143,13 @@ static auto ResolveAbiSetting(ptr<ManagedScriptBackend> backend, int32_t setting
 
 static void WriteSettingBytes(void* dst, int32_t size, const void* src, size_t src_size)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(dst, "Managed setting value buffer is null");
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(size) == src_size, "Managed setting value size mismatch", size, src_size);
     memory::copy(ptr<void> {dst}, src, src_size);
 }
 
-static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) -> MonoString*
+static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto backend = ResolveBoundBackend(backend_ptr);
         ManagedAbiSettingRuntime& entry = ResolveAbiSetting(backend, setting_id);
@@ -3489,8 +3313,6 @@ static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* v
 
 static auto ResolveAbiEvent(ptr<ManagedScriptBackend> backend, int32_t event_id) -> const ManagedAbiEventRuntime&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto abi = backend->GetAbi();
     FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
     FO_VERIFY_AND_THROW(abi->Bound, "Managed ABI manifest is not bound");
@@ -3498,9 +3320,9 @@ static auto ResolveAbiEvent(ptr<ManagedScriptBackend> backend, int32_t event_id)
     return abi->Events[numeric_cast<size_t>(event_id)];
 }
 
-static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority)
+static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
     nptr<EngineMetadata> meta = backend->GetMetadata();
@@ -3515,6 +3337,7 @@ static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* enti
 
     nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
     FO_VERIFY_AND_THROW(entity, "Managed event target is destroyed", entry.Owner, entry.Name);
+    entity->ValidateAccess();
 
     // A handler holds one subscription per entity event, whichever wrapper of the entity it arrives through
     if (FindManagedEventSubscription(backend, entity, entry.Name, handler).has_value()) {
@@ -3559,46 +3382,53 @@ static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* enti
     entity->SubscribeEvent(entry.Name, std::move(event_data));
 }
 
-static void NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler)
+static auto NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto backend = ResolveBoundBackend(backend_ptr);
-    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
-    nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
-
-    if (!entity || handler == nullptr) {
-        return;
-    }
-
-    if (optional<uintptr_t> subscription = FindManagedEventSubscription(backend, entity, entry.Name, handler); subscription.has_value()) {
-        entity->UnsubscribeEvent(entry.Name, subscription.value());
-    }
+    return CaptureNativeError([&] { NativeSubscribeEventImpl(backend_ptr, event_id, entity_ptr, handler, has_explicit_result, priority); });
 }
 
-static void NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr)
+static auto NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
-    nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+        nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
 
-    if (!entity) {
-        return;
-    }
+        if (!entity || handler == nullptr) {
+            return;
+        }
 
-    // Only this backend's subscriptions: native observers of the same event are not script state
-    for (uintptr_t subscription : entity->GetEventSubscriptions(entry.Name, GetManagedEventSubscriptionOwner(backend))) {
-        entity->UnsubscribeEvent(entry.Name, subscription);
-    }
+        if (optional<uintptr_t> subscription = FindManagedEventSubscription(backend, entity, entry.Name, handler); subscription.has_value()) {
+            entity->UnsubscribeEvent(entry.Name, subscription.value());
+        }
+    });
+}
+
+static auto NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr) noexcept -> MonoString*
+{
+    FO_TRACE_ZONE(Script);
+
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+        nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
+
+        if (!entity) {
+            return;
+        }
+
+        // Only this backend's subscriptions: native observers of the same event are not script state
+        for (uintptr_t subscription : entity->GetEventSubscriptions(entry.Name, GetManagedEventSubscriptionOwner(backend))) {
+            entity->UnsubscribeEvent(entry.Name, subscription);
+        }
+    });
 }
 
 // Null for a destroyed entity, which has already dropped every subscription it held
 static auto ResolveEventEntity(ptr<ManagedScriptBackend> backend, const ManagedAbiEventRuntime& entry, void* entity_ptr) -> nptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(entry.IsGlobal == (entity_ptr == nullptr), "Managed event target does not match the event owner", entry.Owner, entry.Name);
 
     nptr<Entity> entity = entity_ptr ? nptr<Entity>(static_cast<Entity*>(entity_ptr)) : backend->GetGlobalEntity();
@@ -3614,8 +3444,6 @@ static auto ResolveEventEntity(ptr<ManagedScriptBackend> backend, const ManagedA
 // Handlers match the way C# delegates do, so a method group converted again still names its subscription
 static auto FindManagedEventSubscription(ptr<ManagedScriptBackend> backend, ptr<const Entity> entity, string_view event_name, MonoObject* handler) -> optional<uintptr_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (uintptr_t subscription : entity->GetEventSubscriptions(event_name, GetManagedEventSubscriptionOwner(backend))) {
         MonoObject* subscribed = mono_gchandle_get_target(numeric_cast<uint32_t>(subscription));
 
@@ -3639,19 +3467,17 @@ static auto FindManagedEventSubscription(ptr<ManagedScriptBackend> backend, ptr<
 
 static auto GetManagedEventSubscriptionOwner(ptr<const ManagedScriptBackend> backend) noexcept -> uintptr_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::bit_cast<uintptr_t>(backend.get());
 }
 
 static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime& entry, void* entity_ptr, MonoArray* args) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
     FO_VERIFY_AND_THROW(entry.Desc && entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
 
-    auto entity = ResolveEntity(backend, entity_ptr);
+    auto entity = ResolveCoveredEntity(backend, entity_ptr);
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
     if (args_count != entry.Event->Args.size()) {
@@ -3731,10 +3557,8 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
     return static_cast<int32_t>(result);
 }
 
-static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t
+static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed event fire error output is null");
     *error = nullptr;
 
@@ -3748,9 +3572,9 @@ static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* enti
     }
 }
 
-static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t
+static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_STRONG_ASSERT(error != nullptr, "Managed event fire error output is null");
     *error = nullptr;
@@ -3764,7 +3588,7 @@ static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* en
         FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar event frame size mismatch", entry.Owner, entry.Name, frame_size, entry.FrameSize);
         FO_VERIFY_AND_THROW(entry.Args.size() == entry.Event->Args.size(), "Managed event ABI slot count mismatch", entry.Owner, entry.Name);
 
-        auto entity = ResolveEntity(backend, entity_ptr);
+        auto entity = ResolveCoveredEntity(backend, entity_ptr);
         Entity* self_entity = entity.get_no_const();
         size_t first_event_arg = entry.IsGlobal ? 0 : 1;
         size_t call_args_count = entry.Args.size() + first_event_arg;
@@ -3808,8 +3632,6 @@ static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* en
 
 static auto NativeGetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto backend = ResolveBoundBackend(backend_ptr);
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->LockForPropertyAccessShared();
@@ -3842,10 +3664,8 @@ static auto NativeGetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     return BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 }
 
-static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoObject*
+static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed property getter error output is null");
     *error = nullptr;
 
@@ -3860,8 +3680,6 @@ static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_
 
 static void NativeSetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto backend = ResolveBoundBackend(backend_ptr);
     auto entity = ResolveEntity(backend, entity_ptr);
     entity->LockForPropertyAccess();
@@ -3894,10 +3712,8 @@ static void NativeSetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
 }
 
-static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*
+static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         NativeSetPropertyImpl(backend_ptr, entity_ptr, prop_index, value);
         return nullptr;
@@ -3909,8 +3725,6 @@ static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_
 
 static auto MakeManagedCsTypeName(const BaseTypeDesc& type) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         return "bool";
     }
@@ -3953,8 +3767,6 @@ static auto MakeManagedCsTypeName(const BaseTypeDesc& type) -> string
 
 static auto FindPropertyCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view method_name) -> nptr<MonoMethod>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string method_name_str {method_name};
 
     for (nptr<void> image_ptr : backend->GetImages()) {
@@ -3975,15 +3787,13 @@ static auto FindPropertyCallbackAdapter(ptr<ManagedScriptBackend> backend, strin
 
 static auto IsManagedScalarProperty(ptr<const Property> prop) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const BaseTypeDesc& base_type = prop->GetBaseType();
     return !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && IsManagedAbiFixedPropertyValue(base_type);
 }
 
-static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter)
+static void NativeSetPropertyGetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
 
@@ -4048,9 +3858,14 @@ static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, M
     });
 }
 
-static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static auto NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError([&] { NativeSetPropertyGetterImpl(backend_ptr, owner_type, property_name, getter); });
+}
+
+static void NativeAddPropertySetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+{
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
 
@@ -4118,9 +3933,209 @@ static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, M
     });
 }
 
-static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+struct ManagedDatabaseDocumentContext
 {
-    FO_STACK_TRACE_ENTRY();
+    ptr<const AnyData::Document> Document;
+    ptr<const PropertyRegistrar> Registrar;
+    ptr<ManagedScriptBackend> Backend;
+};
+
+static auto NativeRegisterPropertyMigrator(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* migrator) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta && migrator, "Missing property migrator metadata or delegate");
+
+        auto registrar = meta->GetPropertyRegistrar(meta->Hashes.to_hashed_string(ToStringAndFree(owner_type)));
+        FO_VERIFY_AND_THROW(registrar, "Property migrator owner does not exist");
+
+        auto prop = registrar->FindProperty(ToStringAndFree(property_name));
+        FO_VERIFY_AND_THROW(prop && prop->IsPersistent(), "Property migrator target must exist and be Persistent");
+
+        uint32_t handle = NewManagedGcHandle(migrator, false);
+        auto release_on_error = scope_fail([handle]() noexcept { mono_gchandle_free(handle); });
+
+        backend->AdoptPersistentGcHandle(handle);
+        release_on_error.release();
+
+        prop->SetMigrator([backend, prop = prop.as_ptr(), registrar = registrar.as_ptr(), handle](const AnyData::Value& value, const AnyData::Document& document) -> optional<AnyData::Value> FO_DEFERRED {
+            auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+            FO_VERIFY_AND_THROW(engine, "Property migration requires an engine context");
+
+            optional<AnyData::Value> migrated;
+
+            RunManagedScriptEntry(
+                backend, engine.as_ptr(), [handle] { return mono_gchandle_get_target(handle); },
+                [&] {
+                    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                    ManagedThreadAttachment attachment {domain};
+
+                    PropertyRawData raw;
+                    PropertiesSerializer::LoadPropertyFromValue(prop, value, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, engine->Hashes, *engine);
+
+                    ManagedObjectRoot input;
+                    input.SetObject(BoxPropertyValue(backend, prop, {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()}));
+
+                    ManagedDatabaseDocumentContext context {&document, registrar, backend};
+                    void* context_ptr = &context;
+                    ManagedObjectRoot owner;
+                    owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
+
+                    bool changed = false;
+                    void* args[] = {mono_gchandle_get_target(handle), input.GetObject(), &context_ptr, owner.GetObject(), &changed};
+                    ManagedObjectRoot output;
+                    output.SetObject(InvokeNativeHelper(backend, "InvokePropertyMigrator", 5, args));
+
+                    if (changed) {
+                        PropertyRawData result = ConvertManagedObjectToPropertyData(backend, prop, output.GetObject());
+                        migrated = PropertiesSerializer::SavePropertyToValue(prop, {result.GetPtrAs<uint8_t>().get(), result.GetSize()}, engine->Hashes, *engine);
+                    }
+                });
+
+            return migrated;
+        });
+    });
+}
+
+static auto NativeRegisterProtoMigrator(void* backend_ptr, MonoString* owner_type, MonoString* proto_name, MonoObject* migrator) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta && migrator, "Missing prototype migrator metadata or delegate");
+
+        hstring owner_type_id = meta->Hashes.to_hashed_string(ToStringAndFree(owner_type));
+        hstring source = meta->Hashes.to_hashed_string(ToStringAndFree(proto_name));
+        auto registrar = meta->GetPropertyRegistrar(owner_type_id);
+        FO_VERIFY_AND_THROW(registrar, "Prototype migrator owner does not exist");
+
+        uint32_t handle = NewManagedGcHandle(migrator, false);
+        auto release_on_error = scope_fail([handle]() noexcept { mono_gchandle_free(handle); });
+
+        backend->AdoptPersistentGcHandle(handle);
+        release_on_error.release();
+
+        meta->BindProtoMigrator(owner_type_id, source, [backend, registrar = registrar.as_ptr(), handle](hstring value, const AnyData::Document& document) -> optional<hstring> FO_DEFERRED {
+            auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+            FO_VERIFY_AND_THROW(engine, "Prototype migration requires an engine context");
+
+            optional<hstring> migrated;
+
+            RunManagedScriptEntry(
+                backend, engine.as_ptr(), [handle] { return mono_gchandle_get_target(handle); },
+                [&] {
+                    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                    ManagedThreadAttachment attachment {domain};
+
+                    ManagedObjectRoot input;
+                    input.SetObject(BoxNativeSimpleValue(backend, engine->GetBaseType("hstring"), &value));
+
+                    ManagedDatabaseDocumentContext context {&document, registrar, backend};
+                    void* context_ptr = &context;
+                    ManagedObjectRoot owner;
+                    owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
+
+                    bool changed = false;
+                    void* args[] = {mono_gchandle_get_target(handle), input.GetObject(), &context_ptr, owner.GetObject(), &changed};
+                    ManagedObjectRoot output;
+                    output.SetObject(InvokeNativeHelper(backend, "InvokePropertyMigrator", 5, args));
+
+                    if (changed) {
+                        migrated = ExtractNativeHstring(output.GetObject());
+                    }
+                });
+
+            return migrated;
+        });
+    });
+}
+
+static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, MonoString* property_name, MonoObject** result) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        FO_VERIFY_AND_THROW(context_ptr && result, "Missing database document context or output");
+
+        const auto& context = *static_cast<const ManagedDatabaseDocumentContext*>(context_ptr);
+        FO_VERIFY_AND_THROW(context.Backend == backend, "Database document belongs to a different backend");
+
+        string key = ToStringAndFree(property_name);
+        *result = nullptr;
+
+        if (!key.empty() && (key[0] == '_' || key[0] == '$')) {
+            if (context.Document->Contains(key)) {
+                const auto& value = (*context.Document)[key];
+                FO_VERIFY_AND_THROW(value.Type() == AnyData::ValueType::String, "Technical document read requires a string", key);
+                *result = reinterpret_cast<MonoObject*>(mono_string_new(GetDomainOrThrow(backend->GetDomain()), string {value.AsString()}.c_str()));
+            }
+
+            return;
+        }
+
+        auto prop = context.Registrar->FindProperty(key);
+        FO_VERIFY_AND_THROW(prop, "Database document property does not exist", context.Registrar->GetTypeName(), key);
+
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta, "Missing database document metadata");
+
+        nptr<const AnyData::Value> selected;
+
+        if (context.Document->Contains(key)) {
+            selected = &(*context.Document)[key];
+        }
+        else {
+            for (const auto& [stored_key, value] : *context.Document) {
+                if (context.Registrar->FindPersistedProperty(stored_key) == prop) {
+                    FO_VERIFY_AND_THROW(!selected, "Ambiguous database document property", key);
+                    selected = &value;
+                }
+            }
+        }
+
+        if (selected) {
+            PropertyRawData raw;
+            PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, meta->Hashes, *meta);
+            *result = BoxPropertyValue(backend, prop.as_ptr(), {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()});
+        }
+        else if (context.Document->Contains("_Proto")) {
+            const auto& proto_value = (*context.Document)["_Proto"];
+            FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
+
+            auto proto = meta->GetProtoEntity(context.Registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()));
+
+            if (proto) {
+                *result = BoxPropertyValue(backend, prop.as_ptr(), proto->GetProperties()->GetRawData(prop.as_ptr()));
+            }
+        }
+    });
+}
+
+static auto NativeReadDatabaseDocumentEncoded(void* backend_ptr, void* context_ptr, MonoString* field_name, MonoString** result) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        FO_VERIFY_AND_THROW(context_ptr && result, "Missing database document context or output");
+
+        const auto& context = *static_cast<const ManagedDatabaseDocumentContext*>(context_ptr);
+        FO_VERIFY_AND_THROW(context.Backend == backend, "Database document belongs to a different backend");
+
+        string key = ToStringAndFree(field_name);
+        FO_VERIFY_AND_THROW(context.Document->Contains(key), "Database document field does not exist", key);
+
+        string encoded = AnyData::ValueToString((*context.Document)[key]);
+        *result = mono_string_new(GetDomainOrThrow(backend->GetDomain()), encoded.c_str());
+    });
+}
+
+static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] { NativeAddPropertySetterImpl(backend_ptr, owner_type, property_name, setter); });
+}
+
+static void NativeAddPropertySetterWithPropertyImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+{
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
 
@@ -4171,9 +4186,14 @@ static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* o
     });
 }
 
-static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static auto NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError([&] { NativeAddPropertySetterWithPropertyImpl(backend_ptr, owner_type, property_name, setter); });
+}
+
+static void NativeAddPropertyDeferredSetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+{
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
 
@@ -4219,10 +4239,13 @@ static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner
     });
 }
 
+static auto NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] { NativeAddPropertyDeferredSetterImpl(backend_ptr, owner_type, property_name, setter); });
+}
+
 static auto ResolveAbiMethod(ptr<ManagedScriptBackend> backend, int32_t method_id, bool require_bound) -> const ManagedAbiMethodRuntime&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto abi = backend->GetAbi();
     FO_VERIFY_AND_THROW(abi, "Managed ABI tables are not built");
 
@@ -4236,13 +4259,11 @@ static auto ResolveAbiMethod(ptr<ManagedScriptBackend> backend, int32_t method_i
 
 static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntime& entry, void* entity_ptr, MonoArray* args) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto backend = ResolveBoundBackend(backend_ptr);
     string_view owner_type_name = entry.Owner;
     string_view method_name_str = entry.Method ? string_view {entry.Method->Name} : string_view {};
     bool is_ref_type_method = entry.IsRefType;
-    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
     uint32_t args_handle = args != nullptr ? NewManagedGcHandle(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
@@ -4408,10 +4429,8 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
 }
 
-static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*
+static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(error != nullptr, "Managed method call error output is null");
     *error = nullptr;
 
@@ -4425,10 +4444,8 @@ static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* en
     }
 }
 
-static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*
+static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto backend = ResolveBoundBackend(backend_ptr);
         const ManagedAbiMethodRuntime& entry = ResolveAbiMethod(backend, method_id, true);
@@ -4441,7 +4458,7 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
 
         bool is_ref_type_method = entry.IsRefType;
         bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
-        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
         Entity* self_entity = entity.get_no_const();
         void* self_ref = entity_ptr;
         size_t first_method_arg = is_ref_type_factory ? 0 : 1;
@@ -4489,10 +4506,8 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
     }
 }
 
-static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*
+static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto backend = ResolveBoundBackend(backend_ptr);
         auto abi = backend->GetAbi();
@@ -4517,9 +4532,9 @@ static constexpr int32_t INVOKE_STATUS_FAILED = -1;
 static constexpr int32_t INVOKE_STATUS_NO_CANDIDATE = 0;
 static constexpr int32_t INVOKE_STATUS_COMPLETED = 1;
 
-static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t
+static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto backend = ResolveBoundBackend(backend_ptr);
     nptr<EngineMetadata> meta = backend->GetMetadata();
@@ -4702,9 +4717,14 @@ static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_nam
     return INVOKE_STATUS_NO_CANDIDATE;
 }
 
-static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler)
+static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args, MonoString** error) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError(error, [&] { return NativeInvokeScriptFuncStatusImpl(backend_ptr, func_name, args); });
+}
+
+static void NativeRegisterGlobalScriptFuncImpl(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler)
+{
+    FO_TRACE_ZONE(Script);
 
     // Register a managed global script function into the engine's cross-backend function map under a named marker
     // attribute, so a consumer that resolves funcs by attribute (via `ScriptSystem::FindFunc`) can invoke it
@@ -4799,9 +4819,14 @@ static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_n
     backend->AddManagedGlobalFunc(std::move(func_desc));
 }
 
-static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler)
+static auto NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError([&] { NativeRegisterGlobalScriptFuncImpl(backend_ptr, full_name, attr_name, param_type_names, ret_type_name, handler); });
+}
+
+static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler)
+{
+    FO_TRACE_ZONE(Script);
 
     // Wire a managed inbound remote-call handler ([ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall])
     auto backend = ResolveBoundBackend(backend_ptr);
@@ -4944,9 +4969,17 @@ static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_
                     bridge.Type = arg_type;
                     bridge.SetObject(CreateManagedList(backend, arg_type.BaseType));
 
-                    for (int32_t j = 0; j < count; j++) {
-                        auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
-                        AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
+                    // Plain numbers are stored on the wire exactly as in memory, so the whole block goes over at once
+                    if (count != 0 && IsManagedRawArrayElement(arg_type.BaseType)) {
+                        const_span<uint8_t> raw = reader.read_bytes(numeric_cast<size_t>(count) * arg_type.BaseType.Size);
+                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.GetObject(), raw);
+                        FO_VERIFY_AND_THROW(written, "Managed list rejected a raw remote call array", call_name, wire_arg_name, arg_type.BaseType.Name);
+                    }
+                    else {
+                        for (int32_t j = 0; j < count; j++) {
+                            auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
+                            AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
+                        }
                     }
 
                     data_storage[arg_index] = make_ptr(&bridge).void_cast();
@@ -4975,9 +5008,14 @@ static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_
         client_facade_call ? BaseEngine::RemoteCallHandlerMode::OverrideFallback : BaseEngine::RemoteCallHandlerMode::Fallback);
 }
 
-static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+static auto NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError([&] { NativeRegisterRemoteCallHandlerImpl(backend_ptr, name_str, param_count, handler); });
+}
+
+static void NativeSendRemoteCallImpl(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+{
+    FO_TRACE_ZONE(Script);
 
     // Managed outbound remote call: serialize the boxed args into the shared RemoteCallWire format and hand them to
     // engine->SendRemoteCall (which forwards to the remote peer)
@@ -5015,10 +5053,13 @@ static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoStri
     engine->SendRemoteCall(name_hashed, caller_entity, data);
 }
 
-static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+static auto NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*
 {
-    FO_STACK_TRACE_ENTRY();
+    return CaptureNativeError([&] { NativeSendRemoteCallImpl(backend_ptr, caller, name_str, args_array); });
+}
 
+static void NativeLoopbackRemoteCallImpl(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+{
     // Diagnostic/test helper: serialize the boxed args into the shared RemoteCallWire format and dispatch them
     // through the engine's real inbound path (HandleInboundRemoteCall) in-process, with no network peer
     auto backend = ResolveBoundBackend(backend_ptr);
@@ -5056,100 +5097,114 @@ static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, Mono
     engine->HandleInboundRemoteCall(name_hashed, caller_entity, data);
 }
 
+static auto NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] { NativeLoopbackRemoteCallImpl(backend_ptr, caller, name_str, args_array); });
+}
+
 // === Internal-call registration ===
 
 static void RegisterInternalCalls()
 {
-    FO_STACK_TRACE_ENTRY();
+    AddInternalCall("FOnline.Native::RunScriptContinuationInternal", NativeRunScriptContinuation);
+    AddInternalCall("FOnline.Native::SignalContinuationsReadyInternal", NativeSignalContinuationsReady);
+    AddInternalCall("FOnline.Native::LoadDynamicAssemblyInternal", NativeLoadDynamicAssembly);
+    AddInternalCall("FOnline.Native::ReadClientScriptsImageInternal", NativeReadClientScriptsImage);
+    AddInternalCall("FOnline.Native::Log", NativeLog);
+    AddInternalCall("FOnline.Native::ReportExceptionInternal", NativeReportException);
+    AddInternalCall("FOnline.Native::GetHashStr", NativeGetHashStr);
+    AddInternalCall("FOnline.Native::GetHashStrFromHashInternal", NativeGetHashStrFromHash);
+    AddInternalCall("FOnline.Native::GetHashInternal", NativeGetHash);
+    AddInternalCall("FOnline.Native::ResolveHashInternal", NativeResolveHash);
+    AddInternalCall("FOnline.Native::GetEntityId", NativeGetEntityId);
+    AddInternalCall("FOnline.Native::GetEntityProtoId", NativeGetEntityProtoId);
+    AddInternalCall("FOnline.Native::AddRefEntity", NativeAddRefEntity);
+    AddInternalCall("FOnline.Native::ReleaseEntity", NativeReleaseEntity);
+    AddInternalCall("FOnline.Native::IsEntityDestroyed", NativeIsEntityDestroyed);
+    AddInternalCall("FOnline.Native::IsEntityDestroying", NativeIsEntityDestroying);
+    AddInternalCall("FOnline.Native::HdirToMdir", NativeHdirToMdir);
+    AddInternalCall("FOnline.Native::MdirHex", NativeMdirHex);
+    AddInternalCall("FOnline.Native::MdirRotateHex", NativeMdirRotateHex);
+    AddInternalCall("FOnline.Native::MdirReverse", NativeMdirReverse);
+    AddInternalCall("FOnline.Native::GetEntityName", NativeGetEntityName);
+    AddInternalCall("FOnline.Native::SubscribeEventInternal", NativeSubscribeEvent);
+    AddInternalCall("FOnline.Native::UnsubscribeEventInternal", NativeUnsubscribeEvent);
+    AddInternalCall("FOnline.Native::UnsubscribeAllEventsInternal", NativeUnsubscribeAllEvents);
+    AddInternalCall("FOnline.Native::FireEventBoxedInternal", NativeFireEventBoxed);
+    AddInternalCall("FOnline.Native::FireEventIndexedInternal", NativeFireEventIndexed);
+    AddInternalCall("FOnline.Native::GetPropertyInternal", NativeGetProperty);
+    AddInternalCall("FOnline.Native::GetPropertyValueInternal", NativeGetPropertyValue);
+    AddInternalCall("FOnline.Native::SetPropertyValueInternal", NativeSetPropertyValue);
+    AddInternalCall("FOnline.Native::GetPropertyArrayInternal", NativeGetPropertyArray);
+    AddInternalCall("FOnline.Native::SetPropertyArrayInternal", NativeSetPropertyArray);
+    AddInternalCall("FOnline.Native::SetPropertyInternal", NativeSetProperty);
+    AddInternalCall("FOnline.Native::SetPropertyGetterInternal", NativeSetPropertyGetter);
+    AddInternalCall("FOnline.Native::AddPropertySetterInternal", NativeAddPropertySetter);
+    AddInternalCall("FOnline.Native::RegisterPropertyMigratorInternal", NativeRegisterPropertyMigrator);
+    AddInternalCall("FOnline.Native::RegisterProtoMigratorInternal", NativeRegisterProtoMigrator);
+    AddInternalCall("FOnline.Native::ReadDatabaseDocumentInternal", NativeReadDatabaseDocument);
+    AddInternalCall("FOnline.Native::ReadDatabaseDocumentEncodedInternal", NativeReadDatabaseDocumentEncoded);
+    AddInternalCall("FOnline.Native::AddPropertySetterWithPropertyInternal", NativeAddPropertySetterWithProperty);
+    AddInternalCall("FOnline.Native::AddPropertyDeferredSetterInternal", NativeAddPropertyDeferredSetter);
+    AddInternalCall("FOnline.Native::BindAbiInternal", NativeBindAbi);
+    AddInternalCall("FOnline.Native::CallMethodBoxedInternal", NativeCallMethodBoxed);
+    AddInternalCall("FOnline.Native::CallMethodIndexedInternal", NativeCallMethodIndexed);
+    AddInternalCall("FOnline.Native::InvokeScriptFuncStatusInternal", NativeInvokeScriptFuncStatus);
+    AddInternalCall("FOnline.Native::GetProtoEntityInternal", NativeGetProtoEntity);
+    AddInternalCall("FOnline.Native::CheckProtoEntityInternal", NativeCheckProtoEntity);
+    AddInternalCall("FOnline.Native::GetProtoEntityCountInternal", NativeGetProtoEntityCount);
+    AddInternalCall("FOnline.Native::GetProtoEntityAtInternal", NativeGetProtoEntityAt);
+    AddInternalCall("FOnline.Native::CreateInnerEntityInternal", NativeCreateInnerEntity);
+    AddInternalCall("FOnline.Native::HasInnerEntitiesInternal", NativeHasInnerEntities);
+    AddInternalCall("FOnline.Native::GetInnerEntityInternal", NativeGetInnerEntity);
+    AddInternalCall("FOnline.Native::FillInnerEntitiesInternal", NativeFillInnerEntities);
+    AddInternalCall("FOnline.Native::GetAndResetInnerEntityVisitsInternal", NativeGetAndResetInnerEntityVisits);
+    AddInternalCall("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", NativeGetAndResetTypedCallbackDispatches);
+    AddInternalCall("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", NativeGetAndResetBoxedCallbackDispatches);
+    AddInternalCall("FOnline.Native::GetAndResetContinuationPumpsInternal", NativeGetAndResetContinuationPumps);
+    AddInternalCall("FOnline.Native::GetAndResetListItemCrossingsInternal", NativeGetAndResetListItemCrossings);
+    AddInternalCall("FOnline.Native::ProbeCallbackTransportInternal", NativeProbeCallbackTransport);
+    AddInternalCall("FOnline.Native::ProbeTransportScenarioInternal", NativeProbeTransportScenario);
+    AddInternalCall("FOnline.Native::ReadInteropCountersInternal", NativeReadInteropCounters);
+    AddInternalCall("FOnline.Native::GetEntityValueAsIntInternal", NativeGetEntityValueAsInt);
+    AddInternalCall("FOnline.Native::SetEntityValueAsIntInternal", NativeSetEntityValueAsInt);
+    AddInternalCall("FOnline.Native::GetEntityValueAsAnyInternal", NativeGetEntityValueAsAny);
+    AddInternalCall("FOnline.Native::SetEntityValueAsAnyInternal", NativeSetEntityValueAsAny);
+    AddInternalCall("FOnline.Native::RegisterGlobalScriptFuncInternal", NativeRegisterGlobalScriptFunc);
+    AddInternalCall("FOnline.Native::RegisterRemoteCallHandlerInternal", NativeRegisterRemoteCallHandler);
+    AddInternalCall("FOnline.Native::SendRemoteCallInternal", NativeSendRemoteCall);
+    AddInternalCall("FOnline.Native::LoopbackRemoteCallInternal", NativeLoopbackRemoteCall);
+    AddInternalCall("FOnline.Native::GetSettingBoolRaw", NativeGetSettingBoolRaw);
+    AddInternalCall("FOnline.Native::SetSettingBoolRaw", NativeSetSettingBoolRaw);
+    AddInternalCall("FOnline.Native::GetSettingIntInternal", NativeGetSettingInt);
+    AddInternalCall("FOnline.Native::SetSettingIntInternal", NativeSetSettingInt);
+    AddInternalCall("FOnline.Native::GetSettingUIntInternal", NativeGetSettingUInt);
+    AddInternalCall("FOnline.Native::SetSettingUIntInternal", NativeSetSettingUInt);
+    AddInternalCall("FOnline.Native::GetSettingLongInternal", NativeGetSettingLong);
+    AddInternalCall("FOnline.Native::SetSettingLongInternal", NativeSetSettingLong);
+    AddInternalCall("FOnline.Native::GetSettingULongInternal", NativeGetSettingULong);
+    AddInternalCall("FOnline.Native::SetSettingULongInternal", NativeSetSettingULong);
+    AddInternalCall("FOnline.Native::GetSettingFloatInternal", NativeGetSettingFloat);
+    AddInternalCall("FOnline.Native::SetSettingFloatInternal", NativeSetSettingFloat);
+    AddInternalCall("FOnline.Native::GetSettingDoubleInternal", NativeGetSettingDouble);
+    AddInternalCall("FOnline.Native::SetSettingDoubleInternal", NativeSetSettingDouble);
+    AddInternalCall("FOnline.Native::GetSettingStringInternal", NativeGetSettingString);
+    AddInternalCall("FOnline.Native::SetSettingStringInternal", NativeSetSettingString);
+    AddInternalCall("FOnline.Native::GetSettingValueInternal", NativeGetSettingValue);
+}
 
-    mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
-    mono_add_internal_call("FOnline.Native::SignalContinuationsReadyInternal", reinterpret_cast<const void*>(NativeSignalContinuationsReady));
-    mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
-    mono_add_internal_call("FOnline.Native::ReadClientScriptsImageInternal", reinterpret_cast<const void*>(NativeReadClientScriptsImage));
-    mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
-    mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
-    mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
-    mono_add_internal_call("FOnline.Native::GetHashStrFromHashInternal", reinterpret_cast<const void*>(NativeGetHashStrFromHash));
-    mono_add_internal_call("FOnline.Native::GetHashInternal", reinterpret_cast<const void*>(NativeGetHash));
-    mono_add_internal_call("FOnline.Native::ResolveHashInternal", reinterpret_cast<const void*>(NativeResolveHash));
-    mono_add_internal_call("FOnline.Native::GetEntityId", reinterpret_cast<const void*>(NativeGetEntityId));
-    mono_add_internal_call("FOnline.Native::GetEntityProtoId", reinterpret_cast<const void*>(NativeGetEntityProtoId));
-    mono_add_internal_call("FOnline.Native::AddRefEntity", reinterpret_cast<const void*>(NativeAddRefEntity));
-    mono_add_internal_call("FOnline.Native::ReleaseEntity", reinterpret_cast<const void*>(NativeReleaseEntity));
-    mono_add_internal_call("FOnline.Native::IsEntityDestroyed", reinterpret_cast<const void*>(NativeIsEntityDestroyed));
-    mono_add_internal_call("FOnline.Native::IsEntityDestroying", reinterpret_cast<const void*>(NativeIsEntityDestroying));
-    mono_add_internal_call("FOnline.Native::HdirToMdir", reinterpret_cast<const void*>(NativeHdirToMdir));
-    mono_add_internal_call("FOnline.Native::MdirHex", reinterpret_cast<const void*>(NativeMdirHex));
-    mono_add_internal_call("FOnline.Native::MdirRotateHex", reinterpret_cast<const void*>(NativeMdirRotateHex));
-    mono_add_internal_call("FOnline.Native::MdirReverse", reinterpret_cast<const void*>(NativeMdirReverse));
-    mono_add_internal_call("FOnline.Native::GetEntityName", reinterpret_cast<const void*>(NativeGetEntityName));
-    mono_add_internal_call("FOnline.Native::SubscribeEventInternal", reinterpret_cast<const void*>(NativeSubscribeEvent));
-    mono_add_internal_call("FOnline.Native::UnsubscribeEventInternal", reinterpret_cast<const void*>(NativeUnsubscribeEvent));
-    mono_add_internal_call("FOnline.Native::UnsubscribeAllEventsInternal", reinterpret_cast<const void*>(NativeUnsubscribeAllEvents));
-    mono_add_internal_call("FOnline.Native::FireEventBoxedInternal", reinterpret_cast<const void*>(NativeFireEventBoxed));
-    mono_add_internal_call("FOnline.Native::FireEventIndexedInternal", reinterpret_cast<const void*>(NativeFireEventIndexed));
-    mono_add_internal_call("FOnline.Native::GetPropertyInternal", reinterpret_cast<const void*>(NativeGetProperty));
-    mono_add_internal_call("FOnline.Native::GetPropertyValueInternal", reinterpret_cast<const void*>(NativeGetPropertyValue));
-    mono_add_internal_call("FOnline.Native::SetPropertyValueInternal", reinterpret_cast<const void*>(NativeSetPropertyValue));
-    mono_add_internal_call("FOnline.Native::GetPropertyArrayInternal", reinterpret_cast<const void*>(NativeGetPropertyArray));
-    mono_add_internal_call("FOnline.Native::SetPropertyArrayInternal", reinterpret_cast<const void*>(NativeSetPropertyArray));
-    mono_add_internal_call("FOnline.Native::SetPropertyInternal", reinterpret_cast<const void*>(NativeSetProperty));
-    mono_add_internal_call("FOnline.Native::SetPropertyGetterInternal", reinterpret_cast<const void*>(NativeSetPropertyGetter));
-    mono_add_internal_call("FOnline.Native::AddPropertySetterInternal", reinterpret_cast<const void*>(NativeAddPropertySetter));
-    mono_add_internal_call("FOnline.Native::AddPropertySetterWithPropertyInternal", reinterpret_cast<const void*>(NativeAddPropertySetterWithProperty));
-    mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetterInternal", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
-    mono_add_internal_call("FOnline.Native::BindAbiInternal", reinterpret_cast<const void*>(NativeBindAbi));
-    mono_add_internal_call("FOnline.Native::CallMethodBoxedInternal", reinterpret_cast<const void*>(NativeCallMethodBoxed));
-    mono_add_internal_call("FOnline.Native::CallMethodIndexedInternal", reinterpret_cast<const void*>(NativeCallMethodIndexed));
-    mono_add_internal_call("FOnline.Native::InvokeScriptFuncStatusInternal", reinterpret_cast<const void*>(NativeInvokeScriptFuncStatus));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityInternal", reinterpret_cast<const void*>(NativeGetProtoEntity));
-    mono_add_internal_call("FOnline.Native::CheckProtoEntityInternal", reinterpret_cast<const void*>(NativeCheckProtoEntity));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityCountInternal", reinterpret_cast<const void*>(NativeGetProtoEntityCount));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityAtInternal", reinterpret_cast<const void*>(NativeGetProtoEntityAt));
-    mono_add_internal_call("FOnline.Native::CreateInnerEntityInternal", reinterpret_cast<const void*>(NativeCreateInnerEntity));
-    mono_add_internal_call("FOnline.Native::HasInnerEntitiesInternal", reinterpret_cast<const void*>(NativeHasInnerEntities));
-    mono_add_internal_call("FOnline.Native::GetInnerEntityInternal", reinterpret_cast<const void*>(NativeGetInnerEntity));
-    mono_add_internal_call("FOnline.Native::FillInnerEntitiesInternal", reinterpret_cast<const void*>(NativeFillInnerEntities));
-    mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisitsInternal", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
-    mono_add_internal_call("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetTypedCallbackDispatches));
-    mono_add_internal_call("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetBoxedCallbackDispatches));
-    mono_add_internal_call("FOnline.Native::GetAndResetContinuationPumpsInternal", reinterpret_cast<const void*>(NativeGetAndResetContinuationPumps));
-    mono_add_internal_call("FOnline.Native::ProbeCallbackTransportInternal", reinterpret_cast<const void*>(NativeProbeCallbackTransport));
-    mono_add_internal_call("FOnline.Native::ProbeTransportScenarioInternal", reinterpret_cast<const void*>(NativeProbeTransportScenario));
-    mono_add_internal_call("FOnline.Native::ReadInteropCountersInternal", reinterpret_cast<const void*>(NativeReadInteropCounters));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsAny));
-    mono_add_internal_call("FOnline.Native::RegisterGlobalScriptFuncInternal", reinterpret_cast<const void*>(NativeRegisterGlobalScriptFunc));
-    mono_add_internal_call("FOnline.Native::RegisterRemoteCallHandlerInternal", reinterpret_cast<const void*>(NativeRegisterRemoteCallHandler));
-    mono_add_internal_call("FOnline.Native::SendRemoteCallInternal", reinterpret_cast<const void*>(NativeSendRemoteCall));
-    mono_add_internal_call("FOnline.Native::LoopbackRemoteCallInternal", reinterpret_cast<const void*>(NativeLoopbackRemoteCall));
-    mono_add_internal_call("FOnline.Native::GetSettingBoolRaw", reinterpret_cast<const void*>(NativeGetSettingBoolRaw));
-    mono_add_internal_call("FOnline.Native::SetSettingBoolRaw", reinterpret_cast<const void*>(NativeSetSettingBoolRaw));
-    mono_add_internal_call("FOnline.Native::GetSettingIntInternal", reinterpret_cast<const void*>(NativeGetSettingInt));
-    mono_add_internal_call("FOnline.Native::SetSettingIntInternal", reinterpret_cast<const void*>(NativeSetSettingInt));
-    mono_add_internal_call("FOnline.Native::GetSettingUIntInternal", reinterpret_cast<const void*>(NativeGetSettingUInt));
-    mono_add_internal_call("FOnline.Native::SetSettingUIntInternal", reinterpret_cast<const void*>(NativeSetSettingUInt));
-    mono_add_internal_call("FOnline.Native::GetSettingLongInternal", reinterpret_cast<const void*>(NativeGetSettingLong));
-    mono_add_internal_call("FOnline.Native::SetSettingLongInternal", reinterpret_cast<const void*>(NativeSetSettingLong));
-    mono_add_internal_call("FOnline.Native::GetSettingULongInternal", reinterpret_cast<const void*>(NativeGetSettingULong));
-    mono_add_internal_call("FOnline.Native::SetSettingULongInternal", reinterpret_cast<const void*>(NativeSetSettingULong));
-    mono_add_internal_call("FOnline.Native::GetSettingFloatInternal", reinterpret_cast<const void*>(NativeGetSettingFloat));
-    mono_add_internal_call("FOnline.Native::SetSettingFloatInternal", reinterpret_cast<const void*>(NativeSetSettingFloat));
-    mono_add_internal_call("FOnline.Native::GetSettingDoubleInternal", reinterpret_cast<const void*>(NativeGetSettingDouble));
-    mono_add_internal_call("FOnline.Native::SetSettingDoubleInternal", reinterpret_cast<const void*>(NativeSetSettingDouble));
-    mono_add_internal_call("FOnline.Native::GetSettingStringInternal", reinterpret_cast<const void*>(NativeGetSettingString));
-    mono_add_internal_call("FOnline.Native::SetSettingStringInternal", reinterpret_cast<const void*>(NativeSetSettingString));
-    mono_add_internal_call("FOnline.Native::GetSettingValueInternal", reinterpret_cast<const void*>(NativeGetSettingValue));
+// Managed frames carry no C++ handler, so an exception leaving an internal call would skip every managed catch and
+// finally and leave the runtime's per-thread state half unwound; a failure is returned instead, see CaptureNativeError
+template<typename Ret, typename... Args>
+static void AddInternalCall(const char* name, Ret (*func)(Args...) noexcept)
+{
+    mono_add_internal_call(name, reinterpret_cast<const void*>(func));
 }
 
 // === Settings access helpers ===
 
 static auto GetSettingValueAsString(ptr<ManagedScriptBackend> backend, MonoString* name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<GlobalSettings> settings = GetBackendSettings(backend);
     string setting_name = ToStringAndFree(name);
 
@@ -5162,8 +5217,6 @@ static auto GetSettingValueAsString(ptr<ManagedScriptBackend> backend, MonoStrin
 
 static void SetSettingValueFromString(nptr<GlobalSettings> settings, string_view setting_name, string value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!settings) {
         return;
     }
@@ -5173,8 +5226,6 @@ static void SetSettingValueFromString(nptr<GlobalSettings> settings, string_view
 
 static void SetSettingValueFromString(ptr<ManagedScriptBackend> backend, MonoString* name, string value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<GlobalSettings> settings = GetBackendSettings(backend);
     string setting_name = ToStringAndFree(name);
     SetSettingValueFromString(settings, setting_name, std::move(value));
@@ -5184,8 +5235,6 @@ static void SetSettingValueFromString(ptr<ManagedScriptBackend> backend, MonoStr
 
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoMethod* invoke_callback = FindNativeMethod(backend, "InvokeCallback", 2);
 
     void* invoke_args[] = {handler, args_array};
@@ -5194,8 +5243,6 @@ static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, Mono
 
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<EngineMetadata> meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
@@ -5236,8 +5283,6 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
 
 static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args) -> shared_ptr<ManagedCallbackPlan>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_ptr<ManagedCallbackPlan> plan = safe_alloc::make_shared<ManagedCallbackPlan>();
     plan->Ret = ret;
     plan->Args = std::move(args);
@@ -5253,8 +5298,6 @@ static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const Com
 
 static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view key) -> nptr<MonoMethod>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
@@ -5288,8 +5331,6 @@ static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view k
 
 static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Resolved once with the plan: a cast across the engine hierarchy per dispatch is measurable
     FO_VERIFY_AND_THROW(plan.Engine, "Managed callback dispatch requires an engine context");
     ptr<BaseEngine> engine = plan.Engine.get_no_const();
@@ -5299,8 +5340,6 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
 
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
     ManagedThreadAttachment managed_thread {domain};
@@ -5321,8 +5360,6 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
 // fixed-value result comes back in it. The adapter wraps handles as non-null, so a null one declines to the boxed path
 static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
     FO_VERIFY_AND_THROW(plan.Layout.Args.size() == plan.Args.size(), "Managed callback layout does not match its signature");
@@ -5370,8 +5407,6 @@ static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, u
 // delegate through DynamicInvoke; signatures with strings, collections or by-ref arguments still take it
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
@@ -5414,8 +5449,6 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
 // signature that should never have been registered rather than a case to grow support for
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type.Kind == ComplexTypeKind::Simple && type.BaseType.IsString, "Only a string by-ref argument is supported", type.BaseType.Name);
 
     ManagedScalarValue storage;
@@ -5425,8 +5458,6 @@ static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const
 
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return;
     }
@@ -5504,8 +5535,6 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
 
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (callback->Handler == 0) {
         return nullptr;
     }
@@ -5553,8 +5582,6 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
 
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return nullptr;
     }
@@ -5566,6 +5593,17 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
         ManagedObjectRoot list;
         list.SetObject(CreateManagedList(backend, type.BaseType));
         size_t size = accessor->GetArraySize(data);
+
+        // Plain numbers go over in one block whenever the source array can hand them out that way
+        if (size != 0 && IsManagedRawArrayElement(type.BaseType)) {
+            vector<uint8_t> raw(size * type.BaseType.Size);
+
+            if (accessor->ReadArrayRaw(data, raw)) {
+                bool written = TryWriteManagedListRaw(backend, type.BaseType, list.GetObject(), raw);
+                FO_VERIFY_AND_THROW(written, "Managed list rejected a raw array block", type.BaseType.Name);
+                return list.GetObject();
+            }
+        }
 
         for (size_t i = 0; i < size; i++) {
             MonoObject* item = BoxNativeSimpleValue(backend, type.BaseType, accessor->GetArrayElement(data, i).get());
@@ -5598,9 +5636,50 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
 
 // Writes a managed event argument that a [Event] handler mutated through a `ref` parameter back into the native inout
 // slot the engine fired the event with
-static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst)
+static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> dst, ptr<const DataAccessor> accessor)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
+
+    if (type.Kind == ComplexTypeKind::Array || type.Kind == ComplexTypeKind::Dict) {
+        ManagedNativeValue storage;
+        ptr<void> source = ConvertManagedObjectToNative(backend, type, value, storage);
+
+        if (type.Kind == ComplexTypeKind::Array) {
+            size_t count = MANAGED_DATA_ACCESSOR.GetArraySize(source);
+            storage.Array->Elements.resize(count);
+            vector<ptr<void>> elements;
+            elements.reserve(count);
+
+            for (size_t i = 0; i < count; i++) {
+                elements.emplace_back(MANAGED_DATA_ACCESSOR.GetArrayElement(source, i));
+            }
+
+            accessor->ClearArray(dst);
+
+            for (ptr<void> element : elements) {
+                accessor->AddArrayElement(dst, element);
+            }
+        }
+        else {
+            size_t count = MANAGED_DATA_ACCESSOR.GetDictSize(source);
+            storage.Dict->Keys.resize(count);
+            storage.Dict->Values.resize(count);
+            vector<pair<ptr<void>, ptr<void>>> elements;
+            elements.reserve(count);
+
+            for (size_t i = 0; i < count; i++) {
+                elements.emplace_back(MANAGED_DATA_ACCESSOR.GetDictElement(source, i));
+            }
+
+            accessor->ClearDict(dst);
+
+            for (const auto& [key, element] : elements) {
+                accessor->AddDictElement(dst, key, element);
+            }
+        }
+
+        return;
+    }
 
     if (type.Kind != ComplexTypeKind::Simple) {
         throw ScriptSystemException("Managed mutable event argument type is not supported", type.BaseType.Name);
@@ -5608,16 +5687,16 @@ static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const Co
 
     const BaseTypeDesc& base_type = type.BaseType;
     ManagedScalarValue storage;
-    void* converted = ConvertManagedSimpleObjectToNative(backend, base_type, value, storage);
+    ptr<void> converted = ConvertManagedSimpleObjectToNative(backend, base_type, value, storage);
 
     if (base_type.IsString) {
-        *static_cast<string*>(dst) = *static_cast<string*>(converted);
+        *dst.reinterpret_as<string>() = *converted.reinterpret_as<string>();
     }
     else if (base_type.IsHashedString) {
-        *static_cast<hstring*>(dst) = *static_cast<hstring*>(converted);
+        *dst.reinterpret_as<hstring>() = *converted.reinterpret_as<hstring>();
     }
     else if (base_type.IsEntity) {
-        *static_cast<Entity**>(dst) = *static_cast<Entity**>(converted);
+        *dst.reinterpret_as<Entity*>() = *converted.reinterpret_as<Entity*>();
     }
     else if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
         memory::copy(dst, converted, base_type.Size);
@@ -5629,8 +5708,6 @@ static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const Co
 
 static auto DispatchManagedEvent(shared_ptr<ManagedEventSubscription> subscription, FuncCallData& call) -> Entity::EventResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<EngineMetadata> meta = subscription->Backend->GetMetadata();
     nptr<BaseEngine> engine = meta.dyn_cast<BaseEngine>();
     FO_VERIFY_AND_THROW(engine, "Managed event dispatch requires an engine context");
@@ -5642,8 +5719,6 @@ static auto DispatchManagedEvent(shared_ptr<ManagedEventSubscription> subscripti
 
 static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> subscription, FuncCallData& call) -> Entity::EventResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(subscription->Backend->GetDomain());
 
     ManagedThreadAttachment managed_thread {domain};
@@ -5733,7 +5808,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
     for (size_t i = 0; i < subscription->Args.size(); i++) {
         if (subscription->Args[i].IsMutable) {
             MonoObject* mutated = mono_array_get(get_args_array(), MonoObject*, i);
-            WriteBackManagedEventArg(subscription->Backend.as_ptr(), subscription->Args[i], mutated, ptr<void>(call.ArgsData[i]).get());
+            WriteBackManagedEventArg(subscription->Backend, subscription->Args[i], mutated, call.ArgsData[i], call.Accessor);
         }
     }
 
@@ -5749,8 +5824,6 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
 static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, const vector<ArgDesc>& call_args, MonoArray* args_array, string_view name) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Serialize boxed managed args into the shared RemoteCallWire byte format (the same format the AngelScript
     // backend reads/writes). Scalar args only for now (collections/ref types come later).
     size_t arg_count = args_array != nullptr ? mono_array_length(args_array) : 0;
@@ -5794,6 +5867,15 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
             size_t count = arg_obj != nullptr ? GetManagedListCount(backend, arg_obj) : 0;
             writer.write<int32_t>(numeric_cast<int32_t>(count));
 
+            if (count != 0 && IsManagedRawArrayElement(arg.Type.BaseType)) {
+                vector<uint8_t> raw(count * arg.Type.BaseType.Size);
+
+                if (TryReadManagedListRaw(backend, arg.Type.BaseType, arg_obj, raw)) {
+                    writer.write_bytes(raw);
+                    continue;
+                }
+            }
+
             for (size_t j = 0; j < count; j++) {
                 MonoObject* item = GetManagedListItem(backend, arg_obj, j);
                 ManagedScalarValue elem_storage;
@@ -5811,8 +5893,6 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
 
 static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bytes.empty()) {
         return;
     }
@@ -5824,8 +5904,6 @@ static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
 
 static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes, size_t alignment)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!bytes.empty()) {
         data.resize(align_up(data.size(), alignment));
     }
@@ -5836,16 +5914,12 @@ static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> byt
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
 }
 
 template<typename T>
 static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t alignment)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AppendAlignedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)}, alignment);
 }
 
@@ -5853,8 +5927,6 @@ static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t 
 
 static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     // The managed hstring is the native object representation, so boxing copies it as is
@@ -5866,8 +5938,6 @@ static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstr
 
 static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view text) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     // The managed `any` is one text reference, so its boxed form is that reference copied in place
@@ -5880,8 +5950,6 @@ static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view
 
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     if (!entity) {
@@ -5907,8 +5975,6 @@ static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_v
 
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     string property_enum_name = strex("{}Property", owner_type_name).str();
     MonoClass* enum_class = FindFOnlineClass(backend, property_enum_name);
@@ -5918,8 +5984,6 @@ static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, st
 
 static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoMethod* ctor = mono_class_get_method_from_name(klass, ".ctor", args_count);
 
     if (ctor == nullptr) {
@@ -5936,8 +6000,6 @@ static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, Mo
 
 static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     if (ref_ptr == nullptr) {
@@ -5962,8 +6024,6 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
 
 static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     FO_VERIFY_AND_THROW(IsDynamicManagedRefType(base_type), "Base type is not a dynamic managed ref type");
@@ -6026,8 +6086,6 @@ static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, 
 
 static auto CreateRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a ref type");
 
     if (IsDynamicManagedRefType(base_type)) {
@@ -6045,8 +6103,6 @@ static auto CreateRefTypeObject(ptr<const ManagedScriptBackend> backend, const B
 
 static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value) -> refcount_nptr<DynamicRefTypeInstance>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsDynamicManagedRefType(base_type), "Base type is not a dynamic managed ref type");
 
     if (value == nullptr) {
@@ -6072,8 +6128,6 @@ static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, c
 // the size check is what holds the managed declaration to that layout
 static auto GetManagedStructClass(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type) -> MonoClass*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsStruct && base_type.StructLayout, "Base type is not a value type", base_type.Name);
     MonoClass* klass = FindFOnlineClass(backend, base_type.Name);
     FO_VERIFY_AND_THROW(klass != nullptr, "Managed value type not found", base_type.Name);
@@ -6083,8 +6137,6 @@ static auto GetManagedStructClass(ptr<const ManagedScriptBackend> backend, const
 
 static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, void* data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)GetManagedStructClass(backend, base_type);
     FO_VERIFY_AND_THROW(value != nullptr, "Managed value type object is null", base_type.Name);
     memory::copy(data, mono_object_unbox(value), base_type.Size);
@@ -6092,16 +6144,12 @@ static void CopyManagedStructToNative(ptr<const ManagedScriptBackend> backend, c
 
 static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, void* data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CopyManagedStructToNative(backend, base_type, value, data);
     ValueToPropertyData(base_type, static_cast<uint8_t*>(data));
 }
 
 static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     MonoClass* klass = GetManagedStructClass(backend, base_type);
@@ -6112,8 +6160,6 @@ static auto CreateStructObject(ptr<const ManagedScriptBackend> backend, const Ba
 
 static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
 
     small_vector<uint8_t, 64> value(raw_data.begin(), raw_data.end());
@@ -6123,8 +6169,6 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
 
 static auto GetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, MonoObject* obj, ptr<const Property> field_prop) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (obj == nullptr) {
         return nullptr;
     }
@@ -6143,8 +6187,6 @@ static auto GetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, Mon
 
 static void SetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, MonoObject* obj, ptr<const Property> field_prop, MonoObject* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedDynamicFieldAccessors accessors = ResolveDynamicRefTypeField(backend, obj, field_prop);
     FO_VERIFY_AND_THROW(accessors.Setter, "Managed property setter not found", field_prop->GetName());
 
@@ -6163,8 +6205,6 @@ static void SetManagedPropertyValue(ptr<const ManagedScriptBackend> backend, Mon
 // Read-only after the ABI binds; a field met before that is looked up by its C# name on the spot
 static auto ResolveDynamicRefTypeField(ptr<const ManagedScriptBackend> backend, MonoObject* obj, ptr<const Property> field_prop) -> ManagedDynamicFieldAccessors
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
@@ -6186,8 +6226,6 @@ static auto ResolveDynamicRefTypeField(ptr<const ManagedScriptBackend> backend, 
 
 static auto CreateManagedList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -6205,8 +6243,6 @@ static auto CreateManagedList(ptr<const ManagedScriptBackend> backend, const Bas
 
 static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObject* list) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (list == nullptr) {
         return 0;
     }
@@ -6225,25 +6261,81 @@ static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObj
 
 static auto GetManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, size_t index) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t index_value = numeric_cast<int32_t>(index);
     void* args[] = {list, &index_value};
-    return InvokeNativeHelper(backend, "GetListItem", 2, args);
+    MonoObject* item = InvokeNativeHelper(backend, "GetListItem", 2, args);
+    CountManagedListItemCrossing(backend);
+    return item;
 }
 
 static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, MonoObject* item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     void* args[] = {list, item};
     (void)InvokeNativeHelper(backend, "AddListItem", 2, args);
+    CountManagedListItemCrossing(backend);
+}
+
+// A test proves a list crossed as one block by reading this counter; it stays off until the first read
+static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend)
+{
+    nptr<ManagedBackendCaches> caches = backend->GetCaches();
+
+    if (caches && caches->CountDispatches.load(std::memory_order_relaxed)) {
+        caches->ListItemCrossings.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+// Element-wise list access boxes every value through a runtime invoke, which turns a megabyte of bytes into seconds
+static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool
+{
+    return element_type.IsInt || element_type.IsFloat;
+}
+
+static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool
+{
+    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+        return false;
+    }
+
+    void* args[] = {list};
+    MonoArray* raw = reinterpret_cast<MonoArray*>(InvokeNativeHelper(backend, "GetListRawBytes", 1, args));
+
+    if (raw == nullptr) {
+        return false;
+    }
+
+    size_t raw_size = mono_array_length(raw);
+    FO_VERIFY_AND_THROW(raw_size == dest.size(), "Managed list raw size does not match the native array", element_type.Name, raw_size, dest.size());
+
+    if (raw_size != 0) {
+        memory::copy(dest.data(), mono_array_addr(raw, uint8_t, 0), raw_size);
+    }
+
+    return true;
+}
+
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool
+{
+    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+        return false;
+    }
+
+    FO_VERIFY_AND_THROW(element_type.Size != 0 && src.size() % element_type.Size == 0, "Raw array block is not a whole number of elements", element_type.Name, src.size());
+
+    MonoArray* raw = mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size());
+    FO_VERIFY_AND_THROW(raw != nullptr, "Can't allocate a managed raw array block", element_type.Name, src.size());
+
+    if (!src.empty()) {
+        memory::copy(mono_array_addr(raw, uint8_t, 0), src.data(), src.size());
+    }
+
+    void* args[] = {list, raw};
+    MonoObject* result = InvokeNativeHelper(backend, "SetListRawBytes", 2, args);
+    return result != nullptr && *static_cast<MonoBoolean*>(mono_object_unbox(result)) != 0;
 }
 
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -6264,8 +6356,6 @@ static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, con
 
 static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -6286,8 +6376,6 @@ static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backen
 
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (dictionary == nullptr) {
         return 0;
     }
@@ -6306,8 +6394,6 @@ static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, M
 
 static auto GetManagedDictionaryKey(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary, size_t index) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t index_value = numeric_cast<int32_t>(index);
     void* args[] = {dictionary, &index_value};
     return InvokeNativeHelper(backend, "GetDictionaryKey", 2, args);
@@ -6315,8 +6401,6 @@ static auto GetManagedDictionaryKey(ptr<const ManagedScriptBackend> backend, Mon
 
 static auto GetManagedDictionaryValue(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary, size_t index) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t index_value = numeric_cast<int32_t>(index);
     void* args[] = {dictionary, &index_value};
     return InvokeNativeHelper(backend, "GetDictionaryValue", 2, args);
@@ -6324,16 +6408,12 @@ static auto GetManagedDictionaryValue(ptr<const ManagedScriptBackend> backend, M
 
 static void AddManagedDictionaryItem(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary, MonoObject* key, MonoObject* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     void* args[] = {dictionary, key, value};
     (void)InvokeNativeHelper(backend, "AddDictionaryItem", 3, args);
 }
 
 static auto GetManagedDelegateKey(ptr<const ManagedScriptBackend> backend, MonoObject* handler) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (handler == nullptr) {
         return {};
     }
@@ -6347,8 +6427,6 @@ static auto GetManagedDelegateKey(ptr<const ManagedScriptBackend> backend, MonoO
 
 static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& type) -> MonoClass*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.Name == "any") {
         return FindFOnlineClass(backend, "any");
     }
@@ -6367,8 +6445,6 @@ static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseT
 
 static auto InvokeNativeHelper(ptr<const ManagedScriptBackend> backend, const char* method_name, uint32_t args_count, void** args) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoMethod* method = FindNativeMethod(backend, method_name, numeric_cast<int32_t>(args_count));
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, nullptr, args, &exception);
@@ -6383,8 +6459,6 @@ static auto InvokeNativeHelper(ptr<const ManagedScriptBackend> backend, const ch
 
 static auto InvokeNativeBoolHelper(ptr<const ManagedScriptBackend> backend, const char* method_name, MonoObject* value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value == nullptr) {
         return false;
     }
@@ -6400,11 +6474,9 @@ static auto InvokeNativeBoolHelper(ptr<const ManagedScriptBackend> backend, cons
 }
 
 // The managed entity hierarchy is not the native one: managed ProtoCritter derives from Critter, while
-// natively it derives from ProtoEntity and shares no base with it - see Docs/Scripts.md
+// natively it derives from ProtoEntity and shares no base with it, so validation must use metadata kinds
 static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!entity || base_type.IsEntityProto || base_type.IsFixedType || base_type.IsAbstractEntity) {
         return;
     }
@@ -6416,8 +6488,6 @@ static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity
 // the one place that keeps its hash instead, so these two swap hash and handle in place, field by field
 static void PropertyDataToValue(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& type, uint8_t* data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     static_assert(sizeof(hstring) == sizeof(hstring::hash_t));
 
     if (type.IsHashedString) {
@@ -6437,8 +6507,6 @@ static void PropertyDataToValue(ptr<const ManagedScriptBackend> backend, const B
 
 static void ValueToPropertyData(const BaseTypeDesc& type, uint8_t* data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsHashedString) {
         hstring value;
         memory::copy(&value, data, sizeof(value));
@@ -6457,8 +6525,6 @@ static void ValueToPropertyData(const BaseTypeDesc& type, uint8_t* data)
 // A handle slot arrives from managed code as a bare pointer, so it is held to what a boxed argument is held to
 static void ValidateManagedFrameHandle(const ManagedAbiSlot& slot, const ArgDesc& arg, const uint8_t* slot_data, string_view owner, string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (slot.Kind != ManagedAbiValueKind::Handle) {
         return;
     }
@@ -6474,8 +6540,6 @@ static void ValidateManagedFrameHandle(const ManagedAbiSlot& slot, const ArgDesc
 
 static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value, ManagedScalarValue& storage) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.Name == "any") {
         storage.Any = any_t(ExtractNativeAnyText(value));
         return &storage.Any;
@@ -6526,8 +6590,6 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
 
 static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ManagedNativeValue& storage) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.Kind == ComplexTypeKind::Simple) {
         return ConvertManagedSimpleObjectToNative(backend, type.BaseType, value, storage);
     }
@@ -6569,8 +6631,6 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
 
 static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, ManagedNativeValue& storage) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!type.IsMutable || type.Kind != ComplexTypeKind::Simple || !IsDynamicManagedRefType(type.BaseType)) {
         return;
     }
@@ -6591,15 +6651,11 @@ static void ReconcileMutableDynamicRefTypeOwner(const ComplexTypeDesc& type, Man
 
 static auto ManagedObjectClassMatches(MonoObject* value, MonoClass* expected_class) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return value != nullptr && expected_class != nullptr && mono_object_get_class(value) == expected_class;
 }
 
 static auto ManagedObjectClassMatchesOrDerives(MonoObject* value, MonoClass* expected_class) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (value == nullptr || expected_class == nullptr) {
         return false;
     }
@@ -6615,8 +6671,6 @@ static auto ManagedObjectClassMatchesOrDerives(MonoObject* value, MonoClass* exp
 
 static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.Name == "any") {
         return value != nullptr && ManagedObjectClassMatches(value, FindFOnlineClass(backend, "any"));
     }
@@ -6645,8 +6699,6 @@ static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend
 
 static auto CanConvertManagedObjectToNative(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.Kind == ComplexTypeKind::Simple) {
         return CanConvertManagedSimpleObjectToNative(backend, type.BaseType, value);
     }
@@ -6665,8 +6717,6 @@ static auto CanConvertManagedObjectToNative(ptr<const ManagedScriptBackend> back
 
 static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     CountManagedObject();
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
@@ -6714,8 +6764,6 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
 
 static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
     if (base_type.Name == "any") {
@@ -6750,8 +6798,6 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
 
 static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const Property> prop, span<const uint8_t> raw_data) -> MonoObject*
 {
-    FO_STACK_TRACE_ENTRY();
-
     const BaseTypeDesc& base_type = prop->GetBaseType();
 
     if (prop->IsArray()) {
@@ -6879,8 +6925,6 @@ static auto BoxPropertyValue(ptr<const ManagedScriptBackend> backend, ptr<const 
 
 static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value) -> PropertyRawData
 {
-    FO_STACK_TRACE_ENTRY();
-
     PropertyRawData prop_data;
 
     if (base_type.Name == "any") {
@@ -6932,8 +6976,6 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
 
 static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend, ptr<const Property> prop, MonoObject* value) -> PropertyRawData
 {
-    FO_STACK_TRACE_ENTRY();
-
     const BaseTypeDesc& base_type = prop->GetBaseType();
 
     if (!prop->IsArray() && !prop->IsDict()) {
@@ -7078,8 +7120,6 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
 
 static auto GetPropertyRawData(ptr<Entity> entity, ptr<const Property> prop) -> PropertyRawData
 {
-    FO_STACK_TRACE_ENTRY();
-
     PropertyRawData prop_data;
 
     if (prop->IsVirtual()) {
@@ -7104,8 +7144,6 @@ static auto GetPropertyRawData(ptr<Entity> entity, ptr<const Property> prop) -> 
 
 static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // A fixed type is a proto-reference value (stored as a proto-id hash, resolved to its proto entity on
     // both sides), so it crosses the bridge like an entity proto even though it is not flagged IsEntity
     return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsEntityProto || type.IsRefType;
@@ -7113,8 +7151,6 @@ static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool
 
 static auto IsManagedBridgeType(const ComplexTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return true;
     }
@@ -7138,22 +7174,16 @@ static auto IsManagedBridgeType(const ComplexTypeDesc& type) -> bool
 
 static auto IsManagedBridgeFixedDictionaryValueType(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.IsPrimitive || type.IsEnum || type.IsStruct || type.IsHashedString || type.IsFixedType || type.IsEntityProto;
 }
 
 static auto IsManagedBridgeDictionaryArrayValueType(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.Name == "any" || type.IsString || IsManagedBridgeFixedDictionaryValueType(type);
 }
 
 static auto IsManagedBridgeDictionaryProperty(ptr<const Property> prop) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!prop->IsDict() || prop->IsDictKeyString() || !IsManagedBridgeFixedDictionaryValueType(prop->GetDictKeyType())) {
         return false;
     }
@@ -7167,15 +7197,11 @@ static auto IsManagedBridgeDictionaryProperty(ptr<const Property> prop) -> bool
 
 static auto IsDynamicManagedRefType(const BaseTypeDesc& base_type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return base_type.IsRefType && base_type.RefType && base_type.RefType->FieldsRegistrar;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsInComponent()) {
         return strex("{}{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str();
     }
@@ -7189,8 +7215,6 @@ static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> s
 // name it does not hold is resolved on the spot and never added
 static auto ResolveWrapperClass(ptr<const ManagedScriptBackend> backend, string_view type_name) -> ManagedWrapperClassEntry
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
@@ -7208,8 +7232,6 @@ static auto ResolveWrapperClass(ptr<const ManagedScriptBackend> backend, string_
 
 static auto FindWrapperClass(ptr<const ManagedScriptBackend> backend, string_view type_name) -> ManagedWrapperClassEntry
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedWrapperClassEntry entry;
     entry.Class = FindFOnlineClass(backend, type_name);
 
@@ -7224,7 +7246,7 @@ static auto FindWrapperClass(ptr<const ManagedScriptBackend> backend, string_vie
 // is simply left out
 static void BuildWrapperClassCache(ptr<ManagedScriptBackend> backend)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
@@ -7338,8 +7360,6 @@ static void BuildWrapperClassCache(ptr<ManagedScriptBackend> backend)
 // Read-only after the ABI binds; a helper looked up before that, or one outside the table, is resolved on the spot
 static auto FindNativeMethod(ptr<const ManagedScriptBackend> backend, const char* method_name, int32_t args_count) -> MonoMethod*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto caches = backend->GetCaches();
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
@@ -7356,8 +7376,6 @@ static auto FindNativeMethod(ptr<const ManagedScriptBackend> backend, const char
 
 static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_view class_name) -> MonoClass*
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Read-only once the ABI binds; a class looked up before that, or one the bridge does not name, is found on the spot
     if (auto caches = backend->GetCaches(); caches) {
         if (auto it = caches->Classes.find(class_name); it != caches->Classes.end()) {
@@ -7383,8 +7401,6 @@ static auto FindFOnlineClass(ptr<const ManagedScriptBackend> backend, string_vie
 
 static auto GetPrimitiveClass(const BaseTypeDesc& type) -> MonoClass*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         return mono_get_boolean_class();
     }
@@ -7424,8 +7440,6 @@ static auto GetPrimitiveClass(const BaseTypeDesc& type) -> MonoClass*
 
 static auto GetValueClass(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& type) -> MonoClass*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (MonoClass* primitive_class = GetPrimitiveClass(type); primitive_class != nullptr) {
         return primitive_class;
     }
@@ -7443,8 +7457,6 @@ static auto GetValueClass(ptr<const ManagedScriptBackend> backend, const BaseTyp
 
 static auto FindFieldInHierarchy(MonoClass* klass, const char* field_name) -> MonoClassField*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (MonoClass* cur_class = klass; cur_class != nullptr; cur_class = mono_class_get_parent(cur_class)) {
         if (MonoClassField* field = mono_class_get_field_from_name(cur_class, field_name); field != nullptr) {
             return field;
@@ -7456,8 +7468,6 @@ static auto FindFieldInHierarchy(MonoClass* klass, const char* field_name) -> Mo
 
 static auto FindEntityTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_name) -> nptr<const EntityTypeDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (meta->IsValidEntityType(owner_type_name)) {
         return &meta->GetEntityType(meta->Hashes.to_hashed_string(owner_type_name));
     }
@@ -7470,8 +7480,6 @@ static auto FindEntityTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_
 
 static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_name) -> nptr<const RefTypeDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!meta->IsValidBaseType(owner_type_name)) {
         return nullptr;
     }
@@ -7487,8 +7495,6 @@ static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_nam
 
 static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view type_name) -> ComplexTypeDesc
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Build a ComplexTypeDesc from an engine type name (mirrors the simple-type and array branches of AngelScript's
     // resolve_type)
     ComplexTypeDesc type;
@@ -7532,8 +7538,6 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
 
 static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<Entity> entity = entity_ptr ? nptr<Entity>(static_cast<Entity*>(entity_ptr)) : backend->GetGlobalEntity();
 
     if (!entity) {
@@ -7546,10 +7550,17 @@ static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -
     return entity;
 }
 
+// The receiver of an exported method or event is checked for cover before the native body runs: a body that reads a
+// property reaches a noexcept accessor, where the same check terminates the process instead of throwing
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>
+{
+    ptr<Entity> entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
+    return entity;
+}
+
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsFixedType || base_type.IsEntityProto, "Base type is not a fixed type or entity proto");
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Proto reference raw data size does not match a hash");
 
@@ -7563,8 +7574,6 @@ static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backen
 
 static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::hash_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<Entity> entity = ExtractEntityPtr(value);
 
     if (!entity) {
@@ -7582,8 +7591,6 @@ static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::has
 
 static void ValidateManagedInnerEntity(ptr<const Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     entity->ValidateAccess();
 
     if (entity->IsDestroyed()) {
@@ -7593,8 +7600,6 @@ static void ValidateManagedInnerEntity(ptr<const Entity> entity)
 
 static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<Entity> holder, hstring entry) -> vector<ptr<Entity>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entities = holder->GetInnerEntities(entry);
     vector<ptr<Entity>> result;
 
@@ -7618,8 +7623,6 @@ static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<E
 
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (obj == nullptr) {
         return nullptr;
     }
@@ -7643,8 +7646,6 @@ static auto ExtractEntityPtr(MonoObject* obj) -> Entity*
 
 static auto ExtractRefPtr(MonoObject* obj) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (obj == nullptr) {
         return nullptr;
     }
@@ -7662,8 +7663,6 @@ static auto ExtractRefPtr(MonoObject* obj) -> void*
 
 static auto ExtractNativeHstring(MonoObject* obj) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (obj == nullptr) {
         return {};
     }
@@ -7676,8 +7675,6 @@ static auto ExtractNativeHstring(MonoObject* obj) -> hstring
 
 static auto ExtractNativeAnyText(MonoObject* obj) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(obj != nullptr, "Managed any value is null");
     FO_VERIFY_AND_THROW(mono_class_value_size(mono_object_get_class(obj), nullptr) == sizeof(MonoString*), "Managed any size does not match one text reference");
     MonoString* text = nullptr;
@@ -7687,8 +7684,6 @@ static auto ExtractNativeAnyText(MonoObject* obj) -> string
 
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value == 0) {
         return {};
     }
@@ -7707,21 +7702,17 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
 
 static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view target_name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return file_name.ends_with(strex(".{}.dll", target_name).str());
 }
 
 static auto IsManagedHostAssemblyFileName(string_view file_name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return file_name == MANAGED_HOST_ASSEMBLY_FILE_NAME;
 }
 
 static auto CollectAssemblyResources(const FileSystem& resources, string_view target_name) -> vector<ManagedAssemblyResource>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     string assembly_dir = MakeManagedAssemblyResourceDir(target_name);
     vector<ManagedAssemblyResource> result;
@@ -7748,19 +7739,15 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
 
 static void AppendExistingAssemblyPath(vector<string>& paths, const std::filesystem::path& dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
 
     if (std::filesystem::is_directory(dir, ec)) {
-        paths.emplace_back(dir.string());
+        paths.emplace_back(fs::path_to_string(dir));
     }
 }
 
 static auto BuildAssemblySearchPath(const std::filesystem::path& lib_dir) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> paths;
     AppendExistingAssemblyPath(paths, lib_dir / "netcoreapp");
     AppendExistingAssemblyPath(paths, lib_dir);
@@ -7780,8 +7767,6 @@ static auto BuildAssemblySearchPath(const std::filesystem::path& lib_dir) -> str
 
 static void SetEnvironmentVariableDefault(const char* name, const char* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (std::getenv(name) != nullptr) {
         return;
     }
@@ -7795,35 +7780,27 @@ static void SetEnvironmentVariableDefault(const char* name, const char* value)
 
 static auto ManagedMemMalloc(size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::malloc_raw(size).get();
 }
 
 static auto ManagedMemRealloc(void* mem, size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::realloc_raw(mem, size).get();
 }
 
 static void ManagedMemFree(void* mem) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     safe_alloc::free_raw(mem);
 }
 
 static auto ManagedMemCalloc(size_t num, size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::calloc_raw(num, size).get();
 }
 
 static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     // eglib g_malloc (metadata, runtime internals). Must precede every other Mono call, including
     // debug init. SGen and code pages stay on mono_valloc
@@ -7833,7 +7810,8 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
     allocator_vtable.realloc = &ManagedMemRealloc;
     allocator_vtable.free = &ManagedMemFree;
     allocator_vtable.calloc = &ManagedMemCalloc;
-    FO_VERIFY_AND_THROW(mono_set_allocator_vtable(&allocator_vtable) != 0, "Failed to install Managed runtime allocator vtable");
+    int32_t installed = mono_set_allocator_vtable(&allocator_vtable);
+    FO_VERIFY_AND_THROW(installed != 0, "Failed to install Managed runtime allocator vtable");
 
     MonoEglibMemVTable installed_vtable {};
     monoeg_g_mem_get_vtable(&installed_vtable);
@@ -7888,7 +7866,7 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 
 #if FO_WEB
     // WebAssembly has no JIT, so IL runs through the interpreter, and both halves are needed before the
-    // domain exists - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    // domain exists; both interpreter initialization halves must precede domain creation on WebAssembly
     mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
 
     // The runtime is built with DISABLE_ICALL_TABLES, so mono_icall_init skips the table and every icall
@@ -7907,15 +7885,13 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 
 static void AddManagedAssemblyCacheByte(uint64_t& hash, uint8_t byte) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     hash ^= byte;
     hash *= 1099511628211ull;
 }
 
 static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& assembly_resources) noexcept -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     uint64_t hash = 1469598103934665603ull;
 
@@ -7938,9 +7914,7 @@ static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& a
 
 static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> assembly_data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
-    auto existing_data = fs::read_file(disk_path.string());
+    auto existing_data = fs::read_file(fs::path_to_string(disk_path));
 
     if (!existing_data.has_value()) {
         return false;
@@ -7960,7 +7934,7 @@ static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_pat
 
 static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources, string_view cache_dir) -> unordered_map<string, std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     unordered_map<string, std::filesystem::path> restored_paths;
 
@@ -7981,7 +7955,7 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
             throw ScriptSystemException("Can't create Managed assembly cache directory", disk_dir);
         }
         if (!IsSameManagedAssemblyCacheFile(disk_path, resource.Data)) {
-            if (!fs::write_file(disk_path.string(), resource.Data)) {
+            if (!fs::write_file(fs::path_to_string(disk_path), resource.Data)) {
                 throw ScriptSystemException("Can't restore Managed assembly from resources", resource.ResourcePath);
             }
         }
@@ -7995,9 +7969,9 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
 // Bake-time only: scan the bake output tree for the managed entry assembly a validation engine needs
 static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_view target_name) -> vector<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
-    std::filesystem::path bake_root {bake_output_dir};
+    std::filesystem::path bake_root {fs::make_path(bake_output_dir)};
 
     if (!std::filesystem::exists(bake_root)) {
         return {};
@@ -8024,13 +7998,13 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
                 continue;
             }
 
-            string file_name = strex("{}", it->path().filename().string()).str();
+            string file_name = fs::path_to_string(it->path().filename());
             result.emplace_back(it->path().lexically_normal());
             has_entry = has_entry || IsManagedEntryAssemblyFileName(file_name, target_name);
         }
 
         if (has_entry) {
-            std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.string(); });
+            std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.u8string(); });
             return result;
         }
     }
@@ -8042,8 +8016,6 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
 
 static auto GetDomainOrThrow(void* domain) -> MonoDomain*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     MonoDomain* mdomain = static_cast<MonoDomain*>(domain);
 
     if (mdomain == nullptr) {
@@ -8055,8 +8027,6 @@ static auto GetDomainOrThrow(void* domain) -> MonoDomain*
 
 static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesystem::path>& paths) -> MonoArray*
 {
-    FO_STACK_TRACE_ENTRY();
-
     MonoArray* result = mono_array_new(domain, mono_get_string_class(), paths.size());
 
     if (result == nullptr) {
@@ -8082,8 +8052,6 @@ static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesyste
 
 static auto NewManagedGcHandle(MonoObject* obj, mono_bool pinned) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (InteropThreadCounters.Enabled) {
         InteropThreadCounters.GcHandles++;
     }
@@ -8093,8 +8061,6 @@ static auto NewManagedGcHandle(MonoObject* obj, mono_bool pinned) -> uint32_t
 
 static void CountMetadataLookup() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (InteropThreadCounters.Enabled) {
         InteropThreadCounters.MetadataLookups++;
     }
@@ -8102,8 +8068,6 @@ static void CountMetadataLookup() noexcept
 
 static void CountManagedObject() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (InteropThreadCounters.Enabled) {
         InteropThreadCounters.ManagedObjects++;
     }
@@ -8111,8 +8075,6 @@ static void CountManagedObject() noexcept
 
 static auto ToStringAndFree(MonoString* text) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (text == nullptr) {
         return {};
     }
@@ -8130,8 +8092,6 @@ static auto ToStringAndFree(MonoString* text) -> string
 
 static auto ManagedObjectToString(MonoObject* obj) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (obj == nullptr) {
         return {};
     }
@@ -8147,8 +8107,6 @@ static auto ManagedObjectToString(MonoObject* obj) -> string
 
 static void ThrowIfManagedException(ptr<const ManagedScriptBackend> backend, MonoObject* exception, string_view context, nptr<ManagedScriptEntryScope> entry)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (exception == nullptr) {
         return;
     }
@@ -8169,7 +8127,7 @@ static void ThrowIfManagedException(ptr<const ManagedScriptBackend> backend, Mon
 
 auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(_loadScopeGcHandle == 0, "Managed load scope is already created");
     scoped_lock load_locker {ManagedAssemblyLoadLocker};
@@ -8244,7 +8202,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
         MonoAssembly* assembly = reflection_assembly != nullptr ? mono_reflection_assembly_get_assembly(reflection_assembly) : nullptr;
 
         if (assembly == nullptr) {
-            throw ScriptSystemException("Managed load-context returned a null entry assembly", entry_assembly_paths[i].string());
+            throw ScriptSystemException("Managed load-context returned a null entry assembly", fs::path_to_string(entry_assembly_paths[i]));
         }
 
         entry_assemblies.emplace_back(assembly);
@@ -8255,8 +8213,6 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
 
 void ManagedScriptBackend::ReleaseLoadScope() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t load_scope_handle = _loadScopeGcHandle;
     _loadScopeGcHandle = 0;
 
@@ -8308,21 +8264,17 @@ void ManagedScriptBackend::ReleaseLoadScope() noexcept
 
 ManagedScriptBackend::ManagedScriptBackend()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _caches = safe_alloc::make_unique<ManagedBackendCaches>();
 }
 
 auto ManagedScriptBackend::GetCaches() const -> nptr<ManagedBackendCaches>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _caches.get_no_const();
 }
 
 ManagedScriptBackend::~ManagedScriptBackend()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (_domain) {
         bool managed_teardown_complete = false;
@@ -8381,7 +8333,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 
 void ManagedScriptBackend::Process()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (_continuationPumps.empty() || !_continuationsReady.exchange(false, std::memory_order_acq_rel)) {
         return;
@@ -8404,22 +8356,16 @@ void ManagedScriptBackend::Process()
 
 void ManagedScriptBackend::SignalContinuationsReady()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _continuationsReady.store(true, std::memory_order_release);
 }
 
 void ManagedScriptBackend::AdoptPersistentGcHandle(uint32_t gc_handle)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _persistentGcHandles.emplace_back(gc_handle);
 }
 
 void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(desc->Name, "Script function descriptor has no name");
 
     _globalFuncs.emplace_back(std::move(desc));
@@ -8431,7 +8377,7 @@ void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc)
 
 void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* method_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
 
@@ -8463,8 +8409,6 @@ void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* metho
 
 void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _meta = meta;
     // The embedding engine is both metadata and script system, so take the script system here to register managed
     // global funcs into the cross-backend func map
@@ -8474,7 +8418,7 @@ void ManagedScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 
 void ManagedScriptBackend::BuildAbiTables()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
 
@@ -8551,22 +8495,16 @@ void ManagedScriptBackend::BuildAbiTables()
 
 auto ManagedScriptBackend::GetAbi() const -> nptr<const ManagedAbiRuntimeState>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _abi.get();
 }
 
 auto ManagedScriptBackend::GetAbi() -> nptr<ManagedAbiRuntimeState>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _abi.get();
 }
 
 void ManagedScriptBackend::AddInnerEntityVisits(uint64_t count)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_abi && _abi->CountInnerEntityVisits.load(std::memory_order_relaxed)) {
         _abi->InnerEntityVisits.fetch_add(count, std::memory_order_relaxed);
     }
@@ -8574,14 +8512,12 @@ void ManagedScriptBackend::AddInnerEntityVisits(uint64_t count)
 
 auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> nptr<Entity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetMetadata().dyn_cast<Entity>();
 }
 
 void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
     FO_VERIFY_AND_THROW(_scriptSys, "Script system is not available");
@@ -8601,7 +8537,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
                 // Fail before Mono turns missing CoreLib into an opaque `corlib' assertion; unpackaged
                 // applications retain the side-by-side fallback
-                FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), platform::get_exe_path().value_or(""));
+                FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", fs::path_to_string(std::filesystem::current_path()), platform::get_exe_path().value_or(""));
 
                 ConfigureManagedRuntime(*runtime_dir);
 
@@ -8630,7 +8566,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
                 stack_trace::set_script_provider("Managed", &CollectManagedScriptStackLayers);
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
                 // Before the game assemblies are loaded, because the filter decides a method's
                 // instrumentation while it is compiled and never again
                 InstallManagedTracyProfiler();
@@ -8663,7 +8599,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     optional<std::filesystem::path> host_assembly_path;
 
     auto append_assembly_path = [&](const std::filesystem::path& assembly_path) {
-        string file_name = strex("{}", assembly_path.filename().string()).str();
+        string file_name = fs::path_to_string(assembly_path.filename());
 
         if (IsManagedHostAssemblyFileName(file_name)) {
             if (host_assembly_path.has_value() && *host_assembly_path != assembly_path) {
@@ -8717,7 +8653,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 throw ScriptSystemException("Managed image is null for loaded entry assembly");
             }
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
             RegisterManagedTracyImage(make_nptr(image));
 #endif
 
@@ -8746,8 +8682,6 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
             auto init_func = safe_alloc::make_unique<ScriptFuncDesc>();
             init_func->Call = [this, assembly](FuncCallData& call) {
-                FO_STACK_TRACE_ENTRY();
-
                 ignore_unused(call);
                 InvokeInitializator(assembly.get_no_const(), "Initialize");
             };
@@ -8769,7 +8703,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
 auto ManagedScriptBackend::LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     // The host refuses a taken name before loading, so the name is read here, from the image itself
     ptr<MonoArray> image_array = image.reinterpret_as<MonoArray>();
@@ -8804,7 +8738,7 @@ auto ManagedScriptBackend::LoadDynamicAssembly(ptr<void> image, nptr<void> symbo
 
 auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     nptr<GlobalSettings> settings = GetBackendSettings(this);
     FO_VERIFY_AND_THROW(settings, "Managed client scripts image requires engine settings");
@@ -8835,8 +8769,6 @@ auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
 
 void ManagedScriptBackend::BindRequiredStuff()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
 }
 

@@ -35,8 +35,10 @@
 
 #include "Common.h"
 
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkClient.h"
+#include "SecureChannel.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -83,12 +85,16 @@ public:
     void Process();
     void Disconnect();
     void FlushPendingData();
+    // A server message stamped with the server's clock: how much later than the link usually takes it arrived
+    auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
 
     ptr<NetInBuffer> InBuf {&_netIn};
     ptr<NetOutBuffer> OutBuf {&_netOut};
 
 private:
     void CreateNetworkConnection(bool use_udp);
+    void StartSecureChannel();
+    void ResetConnectionState() noexcept;
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
@@ -103,6 +109,9 @@ private:
 
     ptr<ClientNetworkSettings> _settings;
     unique_nptr<NetworkClientConnection> _netConnection {};
+    optional<SecureChannel> _channel {};
+    vector<uint8_t> _channelPlaintext {};
+    vector<uint8_t> _sealedOut {};
     bool _connectingOverUdp {};
     bool _connectingHandled {};
     bool _udpFallbackTried {};
@@ -123,8 +132,10 @@ private:
     optional<nanotime> _artificalOutboundLagTime {};
     random_generator _randomGenerator {};
     int32_t _ping {};
+    LinkDelayEstimator _downlinkDelay;
     nanotime _pingTime {};
     nanotime _pingCallTime {};
+    nanotime _lastReceiveTime {};
     size_t _msgCount {};
 #if FO_DEBUG
     static constexpr size_t NET_MESSAGE_HISTORY_LIMIT = 1024;

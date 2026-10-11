@@ -43,50 +43,92 @@
 
 FO_BEGIN_NAMESPACE
 
+auto ModelSpriteHitMask::IsHitTest(ipos32 pos) const -> bool
+{
+    if (!_maskSize.is_valid_pos(pos)) {
+        return false;
+    }
+
+    return _mask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_maskSize.width) + numeric_cast<size_t>(pos.x)];
+}
+
+void ModelSpriteHitMask::Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit)
+{
+    FO_TRACE_ZONE(Render);
+
+    auto discard_readback_on_fail = scope_fail([this]() noexcept {
+        _readback.reset();
+        _stale = true;
+    });
+
+    if (!_readback && _stale) {
+        _readback = texture->RequestTextureRegion(pos, size);
+        _readbackSize = size;
+        _stale = false;
+    }
+
+    if (!_readback) {
+        return;
+    }
+
+    optional<vector<ucolor>> pixels = _readback->TakePixels();
+
+    if (!pixels.has_value()) {
+        return;
+    }
+
+    vector<bool> mask(pixels->size());
+
+    for (size_t i = 0; i < pixels->size(); i++) {
+        mask[i] = check_hit(numeric_cast<int32_t>((*pixels)[i].comp.a));
+    }
+
+    _mask = std::move(mask);
+    _maskSize = _readbackSize;
+    _readback.reset();
+}
+
 ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> factory, unique_ptr<ModelInstance> model, AtlasType atlas_type) :
     AtlasSprite(spr_mngr, {}, {}, {}, {}, {}, {}),
     _factory {factory},
     _model {std::move(model)},
     _atlasType {atlas_type}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelSprite::~ModelSprite() = default;
 
 auto ModelSprite::GetModel() -> ptr<ModelInstance>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _model;
 }
 
 auto ModelSprite::IsPlaying() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _model->IsAnimationPlaying();
 }
 
 auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_size.is_valid_pos(pos)) {
         return false;
     }
 
-    int32_t atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-    int32_t atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+    RefreshHitMask();
 
-    uint8_t alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
-    return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
+    return _hitMask.IsHitTest(pos);
+}
+
+// The mask trails the drawn picture by the frame or two a readback takes, a lag picking under a moving cursor absorbs
+void ModelSprite::RefreshHitMask() const
+{
+    ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
+    ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
+    _hitMask.Refresh(atlas_tex, atlas_pos, _size, [this](int32_t value) { return _sprMngr->CheckHitTest(value); });
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     irect32 view_rect = _model->GetViewRect();
 
     return irect32 {
@@ -99,15 +141,11 @@ auto ModelSprite::GetViewSize() const -> optional<irect32>
 
 auto ModelSprite::IsDirectDraw() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _factory->_settings->Render.ModelDirectDraw;
 }
 
 auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_frameSize.width > 0 && _frameSize.height > 0 && _cropRect.x >= 0 && _cropRect.y >= 0 && _cropRect.width > 0 && _cropRect.height > 0 && numeric_cast<int64_t>(_cropRect.x) + _cropRect.width <= _frameSize.width && numeric_cast<int64_t>(_cropRect.y) + _cropRect.height <= _frameSize.height, "Model sprite crop is outside the logical frame", _cropRect, _frameSize);
 
     isize32 lighting_size = _model->GetLightingSize();
@@ -141,7 +179,7 @@ auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
 
 void ModelSprite::Prewarm()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them
     _model->PrepareFrameLayout();
@@ -152,16 +190,12 @@ void ModelSprite::Prewarm()
 
 void ModelSprite::SetDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _model->SetLookDir(dir);
     _model->SetMoveDir(dir, true);
 }
 
 void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(anim_name);
     ignore_unused(looped);
     ignore_unused(reversed);
@@ -171,13 +205,10 @@ void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)
 
 void ModelSprite::Stop()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ModelSprite::Update() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _model->PrepareFrameLayout();
     bool direct_draw = IsDirectDraw();
 
@@ -190,8 +221,6 @@ auto ModelSprite::Update() -> bool
 
 void ModelSprite::SetSize(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
@@ -206,15 +235,14 @@ void ModelSprite::SetSize(isize32 size)
 
 void ModelSprite::DrawToAtlas()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _factory->DrawModelToAtlas(this);
+
+    // The mask now shows the previous picture, and the next hit test asks for this one
+    _hitMask.MarkStale();
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
     mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
@@ -226,8 +254,6 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
 void ModelSprite::SetupFrame(isize32 frame_size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
     FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
 
@@ -246,8 +272,6 @@ void ModelSprite::SetupFrame(isize32 frame_size)
 
 auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
     FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
 
@@ -321,8 +345,6 @@ auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBound
 
 void ModelSprite::CommitFrameCrop(PreparedFrameCrop&& prepared_crop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetupFrame(prepared_crop.FrameSize);
     _cropRect = prepared_crop.CropRect;
     _size = prepared_crop.Size;
@@ -339,14 +361,13 @@ void ModelSprite::CommitFrameCrop(PreparedFrameCrop&& prepared_crop)
 
 void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CommitFrameCrop(PrepareFrameCrop(frame_size, bounds));
 }
 
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
+    _effectMngr {effect_mngr},
     _modelMngr {safe_alloc::make_unique<ModelManager>(
         settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
         [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.to_hashed_string(path)); }, //
@@ -356,21 +377,18 @@ ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSe
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
         })}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelSpriteFactory::~ModelSpriteFactory() = default;
 
 auto ModelSpriteFactory::GetModelMngr() -> ptr<ModelManager>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _modelMngr;
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto model = _modelMngr->CreateModel(path);
 
@@ -387,9 +405,69 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     return model_spr;
 }
 
+void ModelSpriteFactory::ClenupCache()
+{
+    FO_TRACE_ZONE(Model);
+
+    _sprMngr->Flush();
+
+    while (!_rtIntermediate.empty()) {
+        ptr<RenderTarget> rt = _rtIntermediate.back();
+        _rtIntermediate.pop_back();
+        ReleaseIntermediateRenderTarget(rt);
+    }
+}
+
+auto ModelSpriteFactory::AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>
+{
+    FO_TRACE_ZONE(Model);
+
+    // 32 MiB of RGBA colour storage, plus backend depth storage. One oversized frame may use the cache alone
+    constexpr uint64_t pixel_budget = 8 * 1024 * 1024;
+    uint64_t cached_pixels = 0;
+
+    for (auto it = _rtIntermediate.begin(); it != _rtIntermediate.end(); ++it) {
+        isize32 cached_size = (*it)->GetTexture()->Size;
+
+        if (cached_size == size) {
+            std::rotate(it, std::next(it), _rtIntermediate.end());
+            return _rtIntermediate.back();
+        }
+
+        cached_pixels += numeric_cast<uint64_t>(cached_size.width) * numeric_cast<uint64_t>(cached_size.height);
+    }
+
+    uint64_t requested_pixels = numeric_cast<uint64_t>(size.width) * numeric_cast<uint64_t>(size.height);
+
+    while (!_rtIntermediate.empty() && cached_pixels + requested_pixels > pixel_budget) {
+        _sprMngr->Flush();
+        ptr<RenderTarget> rt = _rtIntermediate.front();
+        isize32 retired_size = rt->GetTexture()->Size;
+        cached_pixels -= numeric_cast<uint64_t>(retired_size.width) * numeric_cast<uint64_t>(retired_size.height);
+        _rtIntermediate.erase(_rtIntermediate.begin());
+        ReleaseIntermediateRenderTarget(rt);
+    }
+
+    ptr<RenderTarget> rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, size, true);
+    _rtIntermediate.emplace_back(rt);
+    return rt;
+}
+
+void ModelSpriteFactory::ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt)
+{
+    FO_TRACE_ZONE(Model);
+
+    // DrawTexture stores this borrow after the immediate atlas blit; discard it before retiring its owner
+    if (auto effect = _effectMngr->Effects.FlushRenderTarget; effect && effect->MainTex == nptr<const RenderTexture> {rt->GetTexture()}) {
+        effect->MainTex.reset();
+    }
+
+    _sprMngr->GetRtMngr().DeleteRenderTarget(rt);
+}
+
 auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
@@ -403,7 +481,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
         }
         else {
             break_into_debugger();
-            logging::write("Texture '{}' not found", path);
+            logging::write(logging::type::warning, "Texture '{}' not found", path);
             _loadedMeshTextures[path] = nullptr;
         }
     }
@@ -416,7 +494,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
 
 void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
     model_spr->GetModel()->PrepareFrameLayout();
@@ -463,17 +541,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
     FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
 
-    ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
-        for (ptr<RenderTarget> rt : _rtIntermediate) {
-            if (rt->GetTexture()->Size == frame_size) {
-                return rt;
-            }
-        }
-
-        auto rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
-        _rtIntermediate.emplace_back(rt);
-        return rt;
-    }();
+    ptr<RenderTarget> rt_model = AcquireIntermediateRenderTarget(frame_size);
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
@@ -500,7 +568,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
     auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
-    prepared_crop.Atlas->GetRenderTarget()->ClearLastPixelPicks();
     _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();

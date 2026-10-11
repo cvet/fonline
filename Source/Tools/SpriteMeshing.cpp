@@ -112,8 +112,6 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
 
 auto ResolveSpriteMeshBakeConfig(ptr<const BakingSettings> settings) -> SpriteMeshBakeConfig
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(settings->SpriteMesh.AlphaThreshold >= 0 && settings->SpriteMesh.AlphaThreshold <= 254, "Sprite mesh alpha threshold must be in range 0..254", settings->SpriteMesh.AlphaThreshold);
     FO_VERIFY_AND_THROW(settings->SpriteMesh.MaxTriangles >= 1, "Sprite mesh maximum triangle count must be positive", settings->SpriteMesh.MaxTriangles);
     FO_VERIFY_AND_THROW(std::isfinite(settings->SpriteMesh.AreaSavingsWeight) && settings->SpriteMesh.AreaSavingsWeight >= 0.0f, "Sprite mesh area savings weight must be finite and non-negative", settings->SpriteMesh.AreaSavingsWeight);
@@ -128,7 +126,7 @@ auto ResolveSpriteMeshBakeConfig(ptr<const BakingSettings> settings) -> SpriteMe
 
 auto BuildSpriteMesh(const vector<uint8_t>& rgba, isize32 size, const SpriteMeshBakeConfig& config, int64_t reference_quad_double_area) -> BakedSpriteMesh
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     int32_t width = size.width;
     int32_t height = size.height;
@@ -199,8 +197,6 @@ auto BuildSpriteMesh(const vector<uint8_t>& rgba, isize32 size, const SpriteMesh
 
 auto SpriteMeshCandidateSourceName(SpriteMeshCandidateSource source) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (source) {
     case SpriteMeshCandidateSource::None:
         return "none";
@@ -227,8 +223,6 @@ auto SpriteMeshCandidateSourceName(SpriteMeshCandidateSource source) -> string_v
 
 auto SpriteMeshQuadReasonName(SpriteMeshQuadReason reason) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (reason) {
     case SpriteMeshQuadReason::None:
         return "none";
@@ -251,8 +245,6 @@ auto SpriteMeshQuadReasonName(SpriteMeshQuadReason reason) -> string_view
 
 static auto CountSpriteMaskComponents(const_span<uint8_t> mask, int32_t width, int32_t height) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(width >= 0 && height >= 0, "Sprite mask dimensions must be non-negative", width, height);
     FO_VERIFY_AND_THROW(mask.size() == numeric_cast<size_t>(width) * height, "Sprite mask size does not match dimensions", mask.size(), width, height);
 
@@ -307,8 +299,6 @@ static auto CountSpriteMaskComponents(const_span<uint8_t> mask, int32_t width, i
 
 static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32_t height, int32_t radius) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (radius == 0 || source.empty()) {
         return source;
     }
@@ -368,8 +358,6 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
 
 static auto SpriteContourDoubleArea(const vector<ipos32>& points) noexcept -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int64_t double_area = 0;
 
     for (size_t i = 0; i < points.size(); i++) {
@@ -383,22 +371,16 @@ static auto SpriteContourDoubleArea(const vector<ipos32>& points) noexcept -> in
 
 static auto SpritePointCross(ipos32 a, ipos32 b, ipos32 c) noexcept -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x);
 }
 
 static auto IsSpritePointBetween(ipos32 a, ipos32 point, ipos32 b) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return point.x >= std::min(a.x, b.x) && point.x <= std::max(a.x, b.x) && point.y >= std::min(a.y, b.y) && point.y <= std::max(a.y, b.y);
 }
 
 static auto RoundSpriteIntersectionPoint(float64_t x, float64_t y) -> optional<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Nearly parallel support lines intersect arbitrarily far away and iround throws rather than saturating,
     // so the bound sits outside any frame but inside int32, leaving frame checks to the callers
     constexpr float64_t coordinate_bound = 1.0e9;
@@ -412,8 +394,6 @@ static auto RoundSpriteIntersectionPoint(float64_t x, float64_t y) -> optional<i
 
 static void NormalizeSpriteContour(vector<ipos32>& points)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (points.empty()) {
         return;
     }
@@ -458,8 +438,6 @@ static void NormalizeSpriteContour(vector<ipos32>& points)
 
 static auto SpritePointSegmentDistanceSquared(ipos32 point, ipos32 segment_start, ipos32 segment_end) noexcept -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float64_t dx = numeric_cast<float64_t>(segment_end.x - segment_start.x);
     float64_t dy = numeric_cast<float64_t>(segment_end.y - segment_start.y);
 
@@ -479,8 +457,6 @@ static auto SpritePointSegmentDistanceSquared(ipos32 point, ipos32 segment_start
 
 static auto SimplifyOpenSpriteContour(const vector<ipos32>& points, float64_t tolerance_squared) -> vector<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (points.size() <= 2) {
         return points;
     }
@@ -529,8 +505,6 @@ static auto SimplifyOpenSpriteContour(const vector<ipos32>& points, float64_t to
 
 static void SimplifyClosedSpriteContour(vector<ipos32>& points, float32_t tolerance)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (tolerance <= 0.0f || points.size() <= 3) {
         return;
     }
@@ -574,8 +548,6 @@ static void SimplifyClosedSpriteContour(vector<ipos32>& points, float32_t tolera
 
 static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32_t tolerance)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (tolerance <= 0.0f || points.size() <= 3) {
         return;
     }
@@ -685,8 +657,6 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
 
 static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t point_index, int64_t contour_double_area) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (points.size() <= 3 || point_index >= points.size() || contour_double_area == 0) {
         return false;
     }
@@ -777,8 +747,6 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
 
 static auto BuildSpriteConvexHull(const vector<SpriteContour>& contours) -> vector<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ipos32> points;
 
     for (const SpriteContour& contour : contours) {
@@ -827,8 +795,6 @@ static auto BuildSpriteConvexHull(const vector<SpriteContour>& contours) -> vect
 
 static auto DoesSpriteConvexPolygonCoverHull(const vector<ipos32>& polygon, const vector<ipos32>& hull) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (polygon.size() < 3 || hull.empty()) {
         return false;
     }
@@ -849,15 +815,11 @@ static auto DoesSpriteConvexPolygonCoverHull(const vector<ipos32>& polygon, cons
 
 static auto SpriteGridPointKey(ipos32 point) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (numeric_cast<uint64_t>(numeric_cast<uint32_t>(point.y)) << 32u) | numeric_cast<uint32_t>(point.x);
 }
 
 static auto AdvanceSpriteBoundaryPoint(ipos32 point, uint8_t direction) noexcept -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (direction) {
     case 0:
         point.x++;
@@ -880,8 +842,6 @@ static auto AdvanceSpriteBoundaryPoint(ipos32 point, uint8_t direction) noexcept
 
 static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, int32_t height, float32_t simplify_tolerance) -> optional<vector<SpriteContour>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<SpriteBoundaryEdge> edges;
     unordered_map<uint64_t, uint8_t> outgoing_edges;
 
@@ -1003,8 +963,6 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
 
 static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const vector<SpriteContour>& exact_contours, const vector<SpriteContour>& allowed_contours, int32_t width, int32_t height, float32_t simplify_tolerance, int32_t dilation) -> optional<vector<SpriteContour>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (dilation <= 0) {
         return contours;
     }
@@ -1089,8 +1047,6 @@ static auto OffsetSpriteContours(const vector<SpriteContour>& contours, const ve
 
 static auto InflateSimplifiedSpriteContours(const vector<SpriteContour>& contours, int32_t dilation) -> optional<vector<SpriteContour>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (dilation <= 0) {
         return contours;
     }
@@ -1144,8 +1100,6 @@ static auto InflateSimplifiedSpriteContours(const vector<SpriteContour>& contour
 
 static auto IsPointOnSpriteContour(ipos32 point, const vector<ipos32>& contour) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < contour.size(); i++) {
         ipos32 a = contour[i];
         ipos32 b = contour[(i + 1) % contour.size()];
@@ -1160,8 +1114,6 @@ static auto IsPointOnSpriteContour(ipos32 point, const vector<ipos32>& contour) 
 
 static auto IsPointStrictlyInsideSpriteContour(ipos32 point, const vector<ipos32>& contour) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (IsPointOnSpriteContour(point, contour)) {
         return false;
     }
@@ -1190,8 +1142,6 @@ using EarcutPolygon = vector<vector<EarcutPoint>>;
 
 static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int32_t width, int32_t height) -> optional<SpriteMeshData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t total_vertices = 0;
     vector<size_t> outer_indices;
     vector<size_t> hole_indices;
@@ -1320,15 +1270,11 @@ static auto TriangulateSpriteContours(const vector<SpriteContour>& contours, int
 
 static auto SpriteTriangleDoubleArea(ipos32 a, ipos32 b, ipos32 c) noexcept -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::abs(SpritePointCross(a, b, c));
 }
 
 static auto ClipSpriteValidationPolygon(const array<SpriteValidationPoint, 8>& source, size_t source_count, array<SpriteValidationPoint, 8>& destination, bool x_axis, float64_t boundary, bool keep_greater) noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (source_count == 0) {
         return 0;
     }
@@ -1370,8 +1316,6 @@ static auto ClipSpriteValidationPolygon(const array<SpriteValidationPoint, 8>& s
 
 static auto SpriteTrianglePixelCoveredDoubleArea(ipos32 a, ipos32 b, ipos32 c, int32_t pixel_x, int32_t pixel_y) noexcept -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     array<SpriteValidationPoint, 8> first {};
     array<SpriteValidationPoint, 8> second {};
     first[0] = SpriteValidationPoint {.X = numeric_cast<float64_t>(a.x), .Y = numeric_cast<float64_t>(a.y)};
@@ -1404,8 +1348,6 @@ static auto SpriteTrianglePixelCoveredDoubleArea(ipos32 a, ipos32 b, ipos32 c, i
 
 static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteContour>& contours, const_span<uint8_t> original_mask, const_span<uint8_t> tolerance_mask, int32_t width, int32_t height, int64_t& mesh_double_area) -> SpriteMeshBuildFailure
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (mesh.Vertices.size() < 3 || mesh.Vertices.size() > std::numeric_limits<uint16_t>::max() || mesh.Indices.empty() || mesh.Indices.size() % 3 != 0) {
         return SpriteMeshBuildFailure::InvalidMeshShape;
     }
@@ -1514,8 +1456,6 @@ static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteCo
 
 static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t width, int32_t height, int64_t& mesh_double_area) -> SpriteMeshBuildAttempt
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<vector<SpriteContour>> exact_contours = ExtractSpriteContours(mask, width, height, 0.0f);
 
     if (!exact_contours.has_value() || exact_contours->empty()) {
@@ -1666,8 +1606,6 @@ static auto TryBuildEnclosingSpriteTriangle(const vector<uint8_t>& mask, int32_t
 
 static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t width, int32_t height, int64_t& mesh_double_area) -> SpriteMeshBuildAttempt
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<vector<SpriteContour>> exact_contours = ExtractSpriteContours(mask, width, height, 0.0f);
 
     if (!exact_contours.has_value() || exact_contours->empty()) {
@@ -1843,8 +1781,6 @@ static auto TryBuildEnclosingSpriteQuad(const vector<uint8_t>& mask, int32_t wid
 
 static auto MergeSpriteMeshCandidates(const SpriteMeshCandidate& left, const SpriteMeshCandidate& right) -> optional<SpriteMeshCandidate>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (right.Mesh.Vertices.size() > SPRITE_MESH_SERIALIZED_VERTEX_LIMIT - std::min(SPRITE_MESH_SERIALIZED_VERTEX_LIMIT, left.Mesh.Vertices.size())) {
         return std::nullopt;
     }
@@ -1876,8 +1812,6 @@ static auto MergeSpriteMeshCandidates(const SpriteMeshCandidate& left, const Spr
 
 static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& source_contours, int32_t width, int32_t height, size_t max_triangles) -> vector<SpriteMeshCandidate>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ipos32> hull = BuildSpriteConvexHull(source_contours);
 
     if (hull.size() < 3 || max_triangles == 0) {
@@ -2211,8 +2145,6 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
 
 static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplified_contours, int32_t width, int32_t height, int32_t dilation, size_t max_triangles) -> vector<SpriteMeshCandidate>
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<vector<SpriteContour>> contours = InflateSimplifiedSpriteContours(simplified_contours, dilation);
 
     if (!contours.has_value() || contours->empty()) {
@@ -2389,8 +2321,6 @@ struct SpriteContourCluster
 
 static auto BuildSpriteContourCluster(const SpriteContour& contour) -> SpriteContourCluster
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!contour.Points.empty(), "Sprite contour cluster source must not be empty");
 
     SpriteContourCluster cluster {
@@ -2413,8 +2343,6 @@ static auto BuildSpriteContourCluster(const SpriteContour& contour) -> SpriteCon
 
 static auto MergeSpriteContourClusters(SpriteContourCluster left, SpriteContourCluster right) -> SpriteContourCluster
 {
-    FO_STACK_TRACE_ENTRY();
-
     left.Contours.reserve(left.Contours.size() + right.Contours.size());
     left.Contours.insert(left.Contours.end(), std::make_move_iterator(right.Contours.begin()), std::make_move_iterator(right.Contours.end()));
     left.MinX = std::min(left.MinX, right.MinX);
@@ -2426,8 +2354,6 @@ static auto MergeSpriteContourClusters(SpriteContourCluster left, SpriteContourC
 
 static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_contours, int32_t width, int32_t height, size_t max_triangles) -> vector<SpriteMeshCandidate>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (outer_contours.size() <= 1 || outer_contours.size() > SPRITE_MESH_COMPONENT_CLUSTER_LIMIT || max_triangles == 0) {
         return {};
     }
@@ -2539,8 +2465,6 @@ static auto BuildClusteredSpriteCandidates(const vector<SpriteContour>& outer_co
 
 static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const vector<uint8_t>& dilated_mask, int32_t width, int32_t height, const SpriteMeshBakeConfig& config, int64_t reference_quad_double_area) -> SpriteMeshSearchResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (config.MaxTriangles == 0) {
         return SpriteMeshSearchResult {.QuadReason = SpriteMeshQuadReason::NoValidCandidate};
     }
@@ -2750,8 +2674,6 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
 
 static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vector<uint8_t>& dilated_mask, const vector<SpriteContour>& simplified_contours, const vector<SpriteContour>& exact_contours, const vector<SpriteContour>& allowed_contours, int32_t width, int32_t height, float32_t simplify_tolerance, int32_t dilation, int64_t& mesh_double_area) -> SpriteMeshBuildAttempt
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<vector<SpriteContour>> contours = OffsetSpriteContours(simplified_contours, exact_contours, allowed_contours, width, height, simplify_tolerance, dilation);
 
     if (!contours.has_value() || contours->empty()) {

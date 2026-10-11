@@ -31,19 +31,18 @@
 // SOFTWARE.
 //
 
-#include "DataBase.h"
+#include "DataBase-Mongo.h"
 
-#if FO_HAVE_MONGO
+#if FO_DATABASE_MONGO
+
 FO_DISABLE_WARNINGS_PUSH()
 #include <mongoc/mongoc.h>
 FO_DISABLE_WARNINGS_POP()
-#endif
 
 #include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
-#if FO_HAVE_MONGO
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
 FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
@@ -51,6 +50,9 @@ FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 static constexpr size_t MONGO_BATCH_READ_SIZE = 1000;
 
 static void InitializeMongoRuntime();
+static void InitializeBsonMemory() noexcept;
+static void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot = 0);
+static void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot = 0);
 static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain, const char* message, void* user_data);
 
 class DbMongo final : public DataBaseImpl
@@ -65,8 +67,6 @@ public:
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _escapeDot {db_settings->DataBase.MongoEscapeChar.empty() ? '\0' : db_settings->DataBase.MongoEscapeChar.front()}
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (db_settings->DataBase.MongoEscapeChar.length() > 1) {
             throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings->DataBase.MongoEscapeChar);
         }
@@ -176,8 +176,6 @@ public:
 
     ~DbMongo() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         StopCommitThread();
 
         scoped_lock locker {_storageLocker};
@@ -195,8 +193,6 @@ protected:
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(key_type);
 
         scoped_lock locker {_storageLocker};
@@ -222,7 +218,7 @@ protected:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -302,7 +298,7 @@ protected:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -347,13 +343,14 @@ protected:
 
     [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         vector<AnyData::Document> docs(ids.size());
         unordered_map<DataBaseKey, size_t> index_by_id;
 
         for (size_t i = 0; i < ids.size(); i++) {
-            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
+            bool first_request = index_by_id.emplace(ids[i], i).second;
+            FO_VERIFY_AND_THROW(first_request, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
         }
 
         scoped_lock locker {_storageLocker};
@@ -431,7 +428,7 @@ protected:
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database insert received an empty document", collection_name, id);
 
@@ -457,7 +454,7 @@ protected:
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database update received an empty document", collection_name, id);
 
@@ -497,7 +494,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -519,7 +516,7 @@ protected:
 
     auto TryReconnect() -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -548,8 +545,6 @@ protected:
 private:
     ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
@@ -587,17 +582,10 @@ private:
         return "Unknown";
     }
 
-    static void AppendMongoDbKey(ptr<bson_t> bson, const DataBaseKey& key, hstring collection_name)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        AppendMongoDbValue(bson, "_id", key, collection_name);
-    }
+    static void AppendMongoDbKey(ptr<bson_t> bson, const DataBaseKey& key, hstring collection_name) { AppendMongoDbValue(bson, "_id", key, collection_name); }
 
     static void AppendMongoDbValue(ptr<bson_t> bson, string_view field_name, const DataBaseKey& key, hstring collection_name)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
         string field_name_str {field_name};
         auto field_name_ptr = make_ptr(field_name_str.c_str());
@@ -624,8 +612,6 @@ private:
 
     static auto ReadMongoDbKey(ptr<const bson_t> bson, hstring collection_name) -> DataBaseKey
     {
-        FO_STACK_TRACE_ENTRY();
-
         bson_iter_t iter;
         auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
@@ -658,7 +644,7 @@ private:
     char _escapeDot {};
 };
 
-auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto DataBaseMongo::Create(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
     return safe_alloc::make_unique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
@@ -668,8 +654,6 @@ auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, str
 // handshake data and its lock, and no later init restores them, so a second database would run on freed state
 static void InitializeMongoRuntime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     static std::once_flag once;
     std::call_once(once, [] {
         mongoc_init();
@@ -679,8 +663,6 @@ static void InitializeMongoRuntime()
 
 static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain, const char* message, void* user_data)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(user_data);
 
     auto domain_text = make_nptr(log_domain);
@@ -707,8 +689,226 @@ static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain
     });
 }
 
+static auto BsonMalloc(size_t size) noexcept -> void*
+{
+    return safe_alloc::malloc_raw(size).get();
+}
+
+static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
+{
+    return safe_alloc::calloc_raw(num, size).get();
+}
+
+static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
+{
+    return safe_alloc::realloc_raw(mem, size).get();
+}
+
+static void BsonFree(void* mem) noexcept
+{
+    safe_alloc::free_raw(mem);
+}
+
+// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
+// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
+static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
+{
+#if FO_HAVE_RPMALLOC || !FO_WINDOWS
+    return safe_alloc::malloc_aligned_raw(size, alignment).get();
+#else
+    ignore_unused(alignment);
+
+    return safe_alloc::malloc_raw(size).get();
+#endif
+}
+
+static void InitializeBsonMemory() noexcept
+{
+    static std::once_flag once;
+    std::call_once(once, [] {
+        bson_mem_vtable_t vtable {};
+        vtable.malloc = &BsonMalloc;
+        vtable.calloc = &BsonCalloc;
+        vtable.realloc = &BsonRealloc;
+        vtable.free = &BsonFree;
+        vtable.aligned_alloc = &BsonAlignedAlloc;
+        bson_mem_set_vtable(&vtable);
+    });
+}
+
+static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
+{
+    strex key_buf = strex(key);
+    string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
+    string_view key_data = escaped_key;
+    int32_t key_len = numeric_cast<int32_t>(escaped_key.length());
+    auto key_ptr = make_nptr(key_data.data());
+    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+
+    if (value.Type() == AnyData::ValueType::Int64) {
+        if (!bson_append_int64(aligned_bson, key_ptr.get(), key_len, value.AsInt64())) {
+            throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
+        }
+    }
+    else if (value.Type() == AnyData::ValueType::Float64) {
+        float64_t double_value = value.AsDouble();
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("ValueToBson non-finite double", key, double_value);
+        }
+        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, double_value)) {
+            throw DataBaseException("ValueToBson bson_append_double", key, double_value);
+        }
+    }
+    else if (value.Type() == AnyData::ValueType::Bool) {
+        if (!bson_append_bool(aligned_bson, key_ptr.get(), key_len, value.AsBool())) {
+            throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
+        }
+    }
+    else if (value.Type() == AnyData::ValueType::String) {
+        string_view value_str = value.AsString();
+
+        if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
+            throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
+        }
+    }
+    else if (value.Type() == AnyData::ValueType::Array) {
+        bson_t bson_arr;
+
+        if (!bson_append_array_unsafe_begin(aligned_bson, key_ptr.get(), key_len, &bson_arr)) {
+            throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
+        }
+
+        const auto& arr = value.AsArray();
+        size_t arr_index = 0;
+
+        for (const auto& arr_entry : arr) {
+            string arr_key = strex("{}", arr_index++);
+            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
+        }
+
+        if (!bson_append_array_end(aligned_bson, &bson_arr)) {
+            throw DataBaseException("ValueToBson bson_append_array_end");
+        }
+    }
+    else if (value.Type() == AnyData::ValueType::Dict) {
+        bson_t bson_doc;
+
+        if (!bson_append_document_begin(aligned_bson, key_ptr.get(), key_len, &bson_doc)) {
+            throw DataBaseException("ValueToBson bson_append_bool", key);
+        }
+
+        const auto& dict = value.AsDict();
+
+        for (auto&& [dict_key, dict_value] : dict) {
+            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
+        }
+
+        if (!bson_append_document_end(aligned_bson, &bson_doc)) {
+            throw DataBaseException("ValueToBson bson_append_document_end");
+        }
+    }
+    else {
+        FO_UNREACHABLE_PLACE();
+    }
+}
+
+static void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot)
+{
+    for (auto&& [doc_key, doc_value] : doc) {
+        ValueToBson(doc_key, doc_value, bson, escape_dot);
+    }
+}
+
+static auto BsonToValue(ptr<bson_iter_t> iter, char escape_dot) -> AnyData::Value
+{
+    auto value = make_ptr(bson_iter_value(iter.get()));
+
+    if (value->value_type == BSON_TYPE_INT32) {
+        return numeric_cast<int64_t>(value->value.v_int32);
+    }
+    else if (value->value_type == BSON_TYPE_INT64) {
+        return value->value.v_int64;
+    }
+    else if (value->value_type == BSON_TYPE_DOUBLE) {
+        float64_t double_value = value->value.v_double;
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter.get()), double_value);
+        }
+
+        return double_value;
+    }
+    else if (value->value_type == BSON_TYPE_BOOL) {
+        return value->value.v_bool;
+    }
+    else if (value->value_type == BSON_TYPE_UTF8) {
+        return string(value->value.v_utf8.str, value->value.v_utf8.len);
+    }
+    else if (value->value_type == BSON_TYPE_ARRAY) {
+        bson_iter_t arr_iter;
+
+        if (!bson_iter_recurse(iter.get(), &arr_iter)) {
+            throw DataBaseException("BsonToValue bson_iter_recurse");
+        }
+
+        AnyData::Array arr;
+
+        while (bson_iter_next(&arr_iter)) {
+            auto arr_entry = BsonToValue(&arr_iter, escape_dot);
+            arr.EmplaceBack(std::move(arr_entry));
+        }
+
+        return std::move(arr);
+    }
+    else if (value->value_type == BSON_TYPE_DOCUMENT) {
+        bson_iter_t doc_iter;
+
+        if (!bson_iter_recurse(iter.get(), &doc_iter)) {
+            throw DataBaseException("BsonToValue bson_iter_recurse");
+        }
+
+        AnyData::Dict dict;
+
+        while (bson_iter_next(&doc_iter)) {
+            auto key = make_ptr(bson_iter_key(&doc_iter));
+            string unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
+            auto dict_value = BsonToValue(&doc_iter, escape_dot);
+            dict.Emplace(std::move(unescaped_key), std::move(dict_value));
+        }
+
+        return std::move(dict);
+    }
+    else {
+        throw DataBaseException("BsonToValue Invalid type", value->value_type);
+    }
+}
+
+static void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
+{
+    bson_iter_t iter;
+    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+
+    if (!bson_iter_init(&iter, aligned_bson)) {
+        throw DataBaseException("BsonToDocument bson_iter_init");
+    }
+
+    while (bson_iter_next(&iter)) {
+        auto key = make_ptr(bson_iter_key(&iter));
+        string_view key_text {key.get()};
+
+        if (key_text == "_id") {
+            continue;
+        }
+
+        auto value = BsonToValue(&iter, escape_dot);
+        string unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
+        doc.Emplace(std::move(unescaped_key), std::move(value));
+    }
+}
+
 FO_GCC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()
-#endif
 
 FO_END_NAMESPACE
+#endif

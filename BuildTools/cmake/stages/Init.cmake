@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 
+TemporaryCompat(RetiredDatabaseOptions "2026-12-31")
+foreach(retiredOption FO_DISABLE_MONGO FO_DISABLE_SQLITE)
+    if(DEFINED ${retiredOption} OR DEFINED ENV{${retiredOption}})
+        AbortMessage("${retiredOption} was removed. Select positive FO_DATABASE_MONGO/FO_DATABASE_SQLITE options with SetOptionValues; clear the retired cache entry")
+    endif()
+endforeach()
+
 # === Stage: Init ===
 # Establishes baseline configuration: project options, target platform,
 # compiler/link flags, configurations, output directories, build hash.
@@ -9,43 +16,62 @@ cmake_minimum_required(VERSION 3.22)
 StatusMessage("Start project generation")
 
 # Options
-DeclareRequiredValueOptions(
+DeclareRequiredValueOptions(BAKING
 	FO_MAIN_CONFIG "Main project config"
 	FO_DEV_NAME "Short name for project"
 	FO_NICE_NAME "More readable name for project"
 	FO_GEOMETRY "HEXAGONAL or SQUARE geometry mode"
 	FO_MAP_HEX_WIDTH "Map hex width in pixels"
 	FO_MAP_HEX_HEIGHT "Map hex height in pixels"
-	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees"
+	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees")
+
+DeclareRequiredValueOptions(
 	FO_APP_ICON "Executable file icon"
 	FO_OUTPUT_PATH "Common output path")
 
-DeclareValueOptions(
-	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
-	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
-	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
+DeclareValueOptions(BAKING
 	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
 	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
 	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
 	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
 	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
-	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
+	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4)
+
+DeclareValueOptions(
+	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
+	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
+	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
+	FO_TRACE_CATEGORIES "Profiling categories compiled into Tracy configurations: empty for every zone category, Name to keep, +Name to add (opt-in Memory, Log), -Name to drop" ""
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" ""
 	FO_NATIVE_SCRIPTS_DIR "Path to user-provided Native C++ scripting sources (Common/Server/Client/Mapper/Baker subfolders)" "")
 
-DeclareBoolOptions(
+DeclareBoolOptions(BAKING
 	FO_ENABLE_3D "Supporting of 3d models" OFF
 	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
+	FO_DATA_SOURCE_DAT "Enable DAT 2.0 and 2.1 resource archives" OFF
+	FO_DATA_SOURCE_ZIP "Enable external ZIP and BOS resource archives" OFF
+	FO_IMAGE_FRM "Enable the FRM image importer" OFF
+	FO_IMAGE_RIX "Enable the RIX image importer" OFF
+	FO_IMAGE_ART "Enable the ART image importer" OFF
+	FO_IMAGE_SPR "Enable the SPR image importer" OFF
+	FO_IMAGE_ZAR "Enable the ZAR image importer" OFF
+	FO_IMAGE_TIL "Enable the TIL image importer" OFF
+	FO_IMAGE_MOS "Enable the MOS image importer" OFF
+	FO_IMAGE_BAM "Enable the BAM image importer" OFF)
+
+DeclareBoolOptions(
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
-	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
-	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
+	FO_MEMORY_DIAGNOSTICS "Enable rpmalloc occupancy statistics in regular builds" OFF
+	FO_DATABASE_JSON "Enable the JSON file database provider" OFF
+	FO_DATABASE_SQLITE "Enable the SQLite CBOR database provider" OFF
+	FO_DATABASE_MONGO "Enable the MongoDB database provider" OFF
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF
 	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
@@ -374,6 +400,19 @@ endif()
 # test harnesses that lead with catch_amalgamated.hpp, or headers self-guarded with #if FO_ANGELSCRIPT_SCRIPTING
 # before their own includes), so they must be defined without first pulling in EngineConfig.gen.h
 AddCompileDefinitionsList(
+	FO_DATA_SOURCE_DAT=$<BOOL:${FO_DATA_SOURCE_DAT}>
+	FO_DATA_SOURCE_ZIP=$<BOOL:${FO_DATA_SOURCE_ZIP}>
+	FO_DATABASE_JSON=$<BOOL:${FO_DATABASE_JSON}>
+	FO_DATABASE_SQLITE=$<BOOL:${FO_DATABASE_SQLITE}>
+	FO_DATABASE_MONGO=$<BOOL:${FO_DATABASE_MONGO}>
+	FO_IMAGE_FRM=$<BOOL:${FO_IMAGE_FRM}>
+	FO_IMAGE_RIX=$<BOOL:${FO_IMAGE_RIX}>
+	FO_IMAGE_ART=$<BOOL:${FO_IMAGE_ART}>
+	FO_IMAGE_SPR=$<BOOL:${FO_IMAGE_SPR}>
+	FO_IMAGE_ZAR=$<BOOL:${FO_IMAGE_ZAR}>
+	FO_IMAGE_TIL=$<BOOL:${FO_IMAGE_TIL}>
+	FO_IMAGE_MOS=$<BOOL:${FO_IMAGE_MOS}>
+	FO_IMAGE_BAM=$<BOOL:${FO_IMAGE_BAM}>
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
 	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
@@ -512,10 +551,10 @@ if(WIN32)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
 	endif()
 
-	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
+	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "bcrypt")
 
 	if(NOT FO_HEADLESS_ONLY)
-		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")
+		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "opengl32")
 	endif()
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")

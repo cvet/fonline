@@ -74,6 +74,25 @@ internal static class Program
                  ScriptFunc.Invoke("DispatchProbe::WriteInt", ref result);
                  Check(result == 42, "Converted result was lost");
              }),
+            ("color packing preserves all bytes in checked code",
+             () =>
+             {
+                 ucolor color = new ucolor(255, 128, 64);
+                 Check(color.value == 0xFF4080FFu, "Opaque color lost its packed channels");
+                 Check(color.red == 255 && color.green == 128 && color.blue == 64 && color.alpha == 255,
+                       "Packed color channels do not read back");
+                 Check(new ucolor(-1, 256, 257, -1).value == 0xFF0100FFu,
+                       "Color components must retain their low byte");
+             }),
+            ("checked arithmetic and narrowing reject overflow",
+             () =>
+             {
+                 int maximum = int.MaxValue;
+                 int outsideShort = short.MaxValue + 1;
+                 ExpectThrows<OverflowException>(() => _ = maximum + 1, "Integer overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = (short)outsideShort, "Narrowing overflow was accepted");
+                 Check(unchecked((short)outsideShort) == short.MinValue, "Explicit unchecked must retain wrapping");
+             }),
             ("managed return value populates ref result",
              () =>
              {
@@ -415,8 +434,45 @@ internal static class Program
             Console.WriteLine("FAIL awaited invocation: " + ex.Message);
         }
 
-        Console.WriteLine($"{cases.Length + 1 - failures}/{cases.Length + 1} passed");
+        try {
+            Check(await ExceptionScopeFollowsItsFlow(), "An exception scope lost or borrowed a fault across threads");
+            Console.WriteLine("PASS exception scope follows its logical flow");
+        }
+        catch (Exception ex) {
+            failures++;
+            Console.WriteLine("FAIL exception scope follows its logical flow: " + ex.Message);
+        }
+
+        Console.WriteLine($"{cases.Length + 2 - failures}/{cases.Length + 2} passed");
         return failures == 0 ? 0 : 1;
+    }
+
+    // A fault recorded by another flow must not reach a scope, and the scope's own faults must follow it wherever an
+    // await resumes the flow; a nested scope sees only what happened while it was open
+    private static async Task<bool> ExceptionScopeFollowsItsFlow()
+    {
+        using ScriptExceptions.Scope outer = ScriptExceptions.OpenScope();
+        var foreign = new System.Threading.Thread(
+            () => ScriptExceptions.RecordCaught(new InvalidOperationException("foreign flow")));
+
+        using (System.Threading.ExecutionContext.SuppressFlow())
+        {
+            foreign.Start();
+        }
+
+        foreign.Join();
+        await Task.Yield();
+        ScriptExceptions.RecordCaught(new InvalidOperationException("own flow"));
+        int innerCount;
+
+        using (ScriptExceptions.Scope inner = ScriptExceptions.OpenScope())
+        {
+            await Task.Delay(1);
+            ScriptExceptions.RecordCaught(new InvalidOperationException("nested flow"));
+            innerCount = inner.Count;
+        }
+
+        return innerCount == 1 && outer.Count == 2;
     }
 
     private static void Check(bool condition, string message)

@@ -49,8 +49,6 @@ namespace
 {
     static auto ContainsNetworkMessage(const_span<uint8_t> data, NetMessage expected_message) -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
         size_t offset = 0;
         bool found = false;

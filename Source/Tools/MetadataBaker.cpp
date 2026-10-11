@@ -48,17 +48,15 @@ static auto IsNativeScriptSource(string_view path) -> bool
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 MetadataBaker::~MetadataBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fometa-")) {
         return;
@@ -147,7 +145,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
 
 auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Read codegen tags
     unordered_set<string_view> valid_codegen_tags = {METADATA_ENTITY_SECTION, METADATA_ENTITY_HOLDER_SECTION, METADATA_FIXED_TYPE_SECTION, METADATA_VALUE_TYPE_SECTION, METADATA_REF_TYPE_SECTION, METADATA_ENUM_SECTION, METADATA_PROPERTY_SECTION, METADATA_EVENT_SECTION, METADATA_REMOTE_CALL_SECTION, METADATA_SETTING_SECTION, METADATA_MIGRATION_RULE_SECTION};
@@ -346,7 +344,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
 auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Every codegen tag takes part. These are the raw tags as parsed from the sources, before any target
     // filtering, so all three baked targets derive the same version and no kind of divergence stays invisible
@@ -387,7 +385,7 @@ auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> 
 
 void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     struct EnumDesc
     {
@@ -606,7 +604,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_entity;
 
@@ -661,7 +659,7 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_entity_holder;
 
@@ -737,7 +735,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_fixed_type;
 
@@ -781,7 +779,7 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_value_type;
 
@@ -895,7 +893,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     for (const auto& tag_desc : ctx.CodeGenTags[METADATA_REF_TYPE_SECTION]) {
         if (tag_desc.Tokens.size() < 2) {
@@ -933,7 +931,7 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_property;
     vector<vector<string>> result_tag_ref_type;
@@ -1331,7 +1329,7 @@ static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector
 
 void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_event;
 
@@ -1426,7 +1424,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_remote_call;
 
@@ -1569,7 +1567,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_setting;
 
@@ -1646,7 +1644,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_migration_rule;
 
@@ -1655,7 +1653,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        auto merge_dotted_tokens = [&](const auto tokens) -> string {
+        auto merge_name_tokens = [&](const auto tokens, bool allow_namespace = false) -> string {
             if (tokens.empty()) {
                 throw MetadataBakerException("Invalid MigrationRule codegen tag: empty rule argument", tag_desc.SourceFile, tag_desc.LineNumber);
             }
@@ -1663,7 +1661,20 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             string value;
             bool expect_token = true;
 
-            for (auto token : tokens) {
+            for (size_t i = 0; i < tokens.size(); i++) {
+                auto token = tokens[i];
+
+                if (token == ":") {
+                    if (!allow_namespace || expect_token || i + 1 == tokens.size() || tokens[i + 1] != ":") {
+                        throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed qualified function name", tag_desc.SourceFile, tag_desc.LineNumber);
+                    }
+
+                    value += "::";
+                    expect_token = true;
+                    i++;
+                    continue;
+                }
+
                 if (token == ".") {
                     if (expect_token) {
                         throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed dotted name", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -1689,26 +1700,80 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             return value;
         };
 
+        string rule_name = string(tag_desc.Tokens[0]);
+        string extra_info = string(tag_desc.Tokens[1]);
+        bool property_rule = rule_name == "Property";
+        bool proto_rule = rule_name == "Proto";
+        bool action_rule = property_rule || proto_rule;
+        string action = action_rule ? string(tag_desc.Tokens[2]) : string {};
+
+        if (action_rule && action == "Remove") {
+            string target = merge_name_tokens(span(tag_desc.Tokens).subspan(3));
+
+            if (ctx.OtherEntityTypes.contains(extra_info)) {
+                continue;
+            }
+
+            if (property_rule) {
+                ctx.Meta.RegisterPropertyMigrationRule(extra_info, action, target);
+            }
+            else {
+                ctx.Meta.RegisterProtoMigrationRule(extra_info, action, target);
+            }
+
+            result_tag_migration_rule.emplace_back(vector<string> {rule_name, extra_info, action, target});
+            continue;
+        }
+
         auto last_arg_begin = tag_desc.Tokens.size() - 1;
 
-        while (last_arg_begin > 2 && tag_desc.Tokens[last_arg_begin - 1] == ".") {
-            last_arg_begin -= 2;
+        while (last_arg_begin > 2) {
+            if (tag_desc.Tokens[last_arg_begin - 1] == ".") {
+                last_arg_begin -= 2;
+            }
+            else if (action == "Transform" && last_arg_begin > 3 && tag_desc.Tokens[last_arg_begin - 1] == ":" && tag_desc.Tokens[last_arg_begin - 2] == ":") {
+                last_arg_begin -= 3;
+            }
+            else {
+                break;
+            }
         }
 
         if (last_arg_begin <= 2) {
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        string rule_name = string(tag_desc.Tokens[0]);
-        string extra_info = string(tag_desc.Tokens[1]);
-        string target = merge_dotted_tokens(span(tag_desc.Tokens).subspan(2, last_arg_begin - 2));
-        string replacement = merge_dotted_tokens(span(tag_desc.Tokens).subspan(last_arg_begin));
+        size_t target_begin = action_rule ? 3 : 2;
 
-        ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
+        if (action_rule && (tag_desc.Tokens.size() < 5 || last_arg_begin <= target_begin)) {
+            throw MetadataBakerException("Invalid MigrationRule action codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
+        }
+
+        string target = merge_name_tokens(span(tag_desc.Tokens).subspan(target_begin, last_arg_begin - target_begin));
+        string replacement = merge_name_tokens(span(tag_desc.Tokens).subspan(last_arg_begin), action == "Transform");
+
+        if (action_rule && ctx.OtherEntityTypes.contains(extra_info)) {
+            continue;
+        }
+
+        if (property_rule) {
+            ctx.Meta.RegisterPropertyMigrationRule(extra_info, action, target, replacement);
+        }
+        else if (proto_rule) {
+            ctx.Meta.RegisterProtoMigrationRule(extra_info, action, target, replacement);
+        }
+        else {
+            ctx.Meta.RegisterMigrationRule(rule_name, extra_info, target, replacement);
+        }
 
         vector<string> tag_tokens;
         tag_tokens.emplace_back(rule_name);
         tag_tokens.emplace_back(extra_info);
+
+        if (action_rule) {
+            tag_tokens.emplace_back(action);
+        }
+
         tag_tokens.emplace_back(target);
         tag_tokens.emplace_back(replacement);
         result_tag_migration_rule.emplace_back(std::move(tag_tokens));

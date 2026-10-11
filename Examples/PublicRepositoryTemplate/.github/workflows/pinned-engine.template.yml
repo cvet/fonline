@@ -1,0 +1,83 @@
+name: Pinned Engine
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Prepare Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: Engine/BuildTools/prepare-workspace.sh linux-packages linux
+      - name: Prepare Content Showcase display and Web dependencies
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        shell: bash
+        run: Engine/BuildTools/prepare-workspace.sh showcase-display-packages web-packages web
+      - name: Install Content Showcase browser runtime
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        working-directory: WebTests
+        shell: bash
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify repository contract and exact Engine pin
+        run: python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pinned
+      - name: Run primary example check
+        run: "{{PRIMARY_CHECK_COMMAND}}"
+      - name: Validate Minimal Multiplayer package
+        if: runner.os == 'Windows' && '{{REPOSITORY_ID}}' == 'minimal-multiplayer'
+        run: cmake --build --preset windows-package
+      - name: Validate Minimal Multiplayer package
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'minimal-multiplayer'
+        run: cmake --build --preset linux-package
+      - name: Capture Content Showcase Direct3D 11
+        if: runner.os == 'Windows' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        run: cmake --build --preset windows-capture
+      - name: Capture Content Showcase OpenGL
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          SDL_VIDEODRIVER: x11
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x800x24" cmake --build --preset linux-capture
+      - name: Upload Content Showcase OpenGL evidence
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'content-showcase-linux-opengl-${{ github.sha }}-${{ github.run_attempt }}'
+          path: |
+            captures/linux-opengl.png
+            captures/capture-contract.json
+            Workspace/showcase-capture-report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Validate Content Showcase WebGL 2 runtime
+        if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
+        shell: bash
+        env:
+          FO_EMSDK: ${{ github.workspace }}/Workspace/emsdk
+        run: python3 validate.py --web-runtime
+      - name: Collect commit-addressed evidence
+        run: python collect-evidence.py --mode pinned
+      - name: Upload commit-addressed evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: '{{REPOSITORY_ID}}-pinned-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}'
+          path: Evidence/
+          if-no-files-found: error
+          retention-days: 30

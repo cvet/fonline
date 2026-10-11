@@ -49,12 +49,17 @@ CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<co
 MapManager::MapManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void MapManager::LoadFromResources()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
+
+    for (const auto& [setting_name, grid_type] : array<pair<string_view, string_view>, 2> {{{"Server.ProtoMapGridType", _engine->Settings->Server.ProtoMapGridType}, {"Server.MapInstanceGridType", _engine->Settings->Server.MapInstanceGridType}}}) {
+        if (grid_type != "Static" && grid_type != "Chunked" && grid_type != "Dynamic") {
+            throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", setting_name, grid_type);
+        }
+    }
 
     auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
     vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
@@ -68,6 +73,8 @@ void MapManager::LoadFromResources()
         }
 
         static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, map_file_header_copy = map_file_header.Copy()]() FO_DEFERRED {
+            FO_TRACE_ZONE_NAMED(Map, "MapManager::LoadStaticMap");
+
             ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header_copy);
@@ -76,7 +83,7 @@ void MapManager::LoadFromResources()
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
-            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapStaticGrid);
+            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapGridType);
 
             // Read hashes
             {
@@ -267,8 +274,6 @@ void MapManager::LoadFromResources()
 
 auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _staticMaps.find(proto);
     FO_VERIFY_AND_THROW(it != _staticMaps.end(), "Lookup failed in static maps");
     return it->second;
@@ -276,14 +281,12 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
 
 void MapManager::ClearStaticMaps() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _staticMaps.clear();
 }
 
 void MapManager::GenerateMapContent(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
@@ -365,7 +368,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
 
 void MapManager::DestroyMapContent(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(map);
 
@@ -398,7 +401,7 @@ void MapManager::DestroyMapContent(ptr<Map> map)
 
 auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, nptr<const Properties> props) -> ptr<Location>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto proto = _engine->GetProtoLocation(proto_id);
 
@@ -445,7 +448,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 
 auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(loc);
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
@@ -484,7 +487,7 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
 
 void MapManager::RegenerateMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
@@ -501,8 +504,6 @@ void MapManager::RegenerateMap(ptr<Map> map)
 
 auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<refcount_ptr<Location>> locations = _engine->EntityMngr.GetLocations();
 
     for (size_t i = 0; i < locations.size(); i++) {
@@ -520,8 +521,6 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept 
 
 auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<refcount_ptr<Map>> maps = _engine->EntityMngr.GetMaps();
 
     for (size_t i = 0; i < maps.size(); i++) {
@@ -539,7 +538,7 @@ auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> re
 
 void MapManager::DestroyLocation(ptr<Location> loc)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto loc_holder = loc.hold_ref();
     ignore_unused(loc_holder);
@@ -603,7 +602,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
 
 void MapManager::DestroyMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
@@ -633,7 +632,7 @@ void MapManager::DestroyMap(ptr<Map> map)
 
 void MapManager::DestroyMapInternal(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     EnsureEntitySynced(map);
 
@@ -679,7 +678,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
 
 auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, int32_t max_dist, float32_t angle, nptr<const Critter> find_cr, CritterFindType find_type, bool check_last_movable, bool collect_critters) const -> TraceResult
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(map);
 
@@ -746,11 +745,10 @@ auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, 
     return output;
 }
 
-auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback, int32_t max_length) const -> FindPathOutput
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(map);
+    FO_VERIFY_AND_THROW(max_length >= 0, "Path search length limit must not be negative", max_length);
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
     if (cut == 0) {
@@ -774,7 +772,9 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     settings.ToHex = to_hex;
     settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
-    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.MaxLength = max_length != 0 ? std::min(max_length, _engine->Settings->Geometry.MaxPathFindLength) : _engine->Settings->Geometry.MaxPathFindLength;
+    settings.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Cut = cut;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
@@ -800,8 +800,6 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
 
 auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, const_span<mpos> target_hexes, int32_t multihex, function<bool(ptr<const Item>)> gag_callback) const -> FindPathOutput
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(map);
 
     auto map_size = map->GetSize();
@@ -825,6 +823,7 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     settings.FromHexOffset = from_cr ? from_cr->GetHexOffset() : ipos16 {};
     settings.MapSize = map_size;
     settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
     settings.CheckTarget = [&target_hex_set](mpos hex) { return target_hex_set.contains(hex); };
@@ -847,23 +846,41 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     return PathFinding::FindPath(settings);
 }
 
+auto MapManager::FindReachableHexes(ptr<const Map> map, mpos from_hex, const_span<mpos> target_hexes, function<bool(ptr<const Item>)> gag_callback) const -> vector<mpos>
+{
+    ValidateEntityAccess(map);
+
+    FindReachableInput settings;
+    settings.FromHex = from_hex;
+    settings.MapSize = map->GetSize();
+    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.TargetHexes = target_hexes;
+
+    // A critter or a gag the callback lets through makes a route dearer, never impossible, so only blockers are asked
+    settings.CheckHex = [&](mpos hex) -> HexBlockResult {
+        if (map->IsHexMovable(hex) || map->CheckGagItem(hex, gag_callback)) {
+            return HexBlockResult::Passable;
+        }
+
+        return HexBlockResult::Blocked;
+    };
+
+    return PathFinding::FindReachable(settings);
+}
+
 void MapManager::TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius)
 {
-    FO_STACK_TRACE_ENTRY();
-
     Transfer(cr, map, hex, dir, safe_radius, {});
 }
 
 void MapManager::TransferToGlobal(ptr<Critter> cr, ident_t global_cr_id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     Transfer(cr, nullptr, {}, mdir {}, std::nullopt, global_cr_id);
 }
 
 void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     EnsureEntitySynced(cr);
     ValidateEntityAccess(map);
@@ -891,6 +908,9 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     }
 
     cr->StopMoving();
+
+    // A transfer places the critter on a hex; the sub-hex offset an interrupted step left belongs to the old position
+    cr->SetHexOffset({});
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
@@ -1095,7 +1115,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
 void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, ident_t global_cr_id)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(map);
@@ -1177,7 +1197,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
 void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(map);
@@ -1280,7 +1300,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
 void MapManager::ProcessVisibleCritters(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
@@ -1305,8 +1325,6 @@ void MapManager::ProcessVisibleCritters(ptr<Critter> cr)
 
 void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(map);
 
     auto map_holder = map.hold_ref();
@@ -1480,8 +1498,6 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
 
 auto MapManager::IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(map);
     ValidateEntityAccess(cr);
     ValidateEntityAccess(target);
@@ -1494,7 +1510,7 @@ auto MapManager::IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, 
 
 void MapManager::ProcessVisibleItems(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
@@ -1536,7 +1552,7 @@ void MapManager::ProcessVisibleItems(ptr<Critter> cr)
 
 void MapManager::ViewMap(ptr<Player> view_player, ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(view_player);
     ValidateEntityAccess(map);

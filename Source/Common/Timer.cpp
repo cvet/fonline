@@ -38,8 +38,6 @@ FO_BEGIN_NAMESPACE
 GameTimer::GameTimer(ptr<TimerSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
     nanotime start_time = nanotime::now();
     _frameTime.store(start_time, std::memory_order_relaxed);
     _fpsMeasureTime = start_time;
@@ -47,8 +45,6 @@ GameTimer::GameTimer(ptr<TimerSettings> settings) :
 
 auto GameTimer::IsTimeSynchronized() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     return !!_syncTimeBase;
@@ -56,8 +52,6 @@ auto GameTimer::IsTimeSynchronized() const -> bool
 
 void GameTimer::SetSynchronizedTime(synctime time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     _syncTimeBase = time;
@@ -67,8 +61,6 @@ void GameTimer::SetSynchronizedTime(synctime time)
 
 void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     auto frame_time = _frameTime.load(std::memory_order_relaxed);
@@ -91,8 +83,6 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
 
 void GameTimer::Pause()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_pauseLocker};
 
     FO_VERIFY_AND_THROW(!_paused.load(std::memory_order_relaxed), "Game timer is already paused");
@@ -103,8 +93,6 @@ void GameTimer::Pause()
 
 void GameTimer::Resume()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_pauseLocker};
 
     FO_VERIFY_AND_THROW(_paused.load(std::memory_order_relaxed), "Game timer is not paused");
@@ -118,8 +106,6 @@ void GameTimer::Resume()
 
 void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_paused.load(std::memory_order_acquire)) {
         _frameDeltaTime.store(timespan {}, std::memory_order_relaxed);
         return;
@@ -160,8 +146,6 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
 
 auto GameTimer::GetSynchronizedTime() const -> synctime
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_syncTimeLocker};
 
     if (!_syncTimeBase) {

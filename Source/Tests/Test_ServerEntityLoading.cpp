@@ -40,8 +40,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeEntityLoadingSettings() -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
-
     GlobalSettings settings(false);
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
@@ -56,8 +54,6 @@ static auto MakeEntityLoadingSettings() -> GlobalSettings
 
 static auto MakeEntityLoadingResources() -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A persistent holder entry on the critter, so custom inner entities travel with it to the database and back
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({
         {"Entity", {{"LoadingRecord"}}},
@@ -85,8 +81,6 @@ static auto MakeEntityLoadingResources() -> FileSystem
 
 static auto WaitForEntityLoadingStartup(ptr<ServerEngine> server) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nanotime deadline = nanotime::now() + std::chrono::seconds {30};
 
     while (nanotime::now() < deadline) {
@@ -105,15 +99,11 @@ static auto WaitForEntityLoadingStartup(ptr<ServerEngine> server) -> bool
 
 static auto CollectItemIds(const vector<ptr<Item>>& items) -> vector<ident_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return vec_transform(items, [](ptr<Item> item) -> ident_t { return item->GetId(); });
 }
 
 static auto CollectCustomEntityIds(ptr<Entity> holder, hstring entry) -> vector<ident_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto inner_entities = holder->GetInnerEntities(entry);
 
     if (!inner_entities) {
@@ -125,8 +115,6 @@ static auto CollectCustomEntityIds(ptr<Entity> holder, hstring entry) -> vector<
 
 static void DiscardLoadedCritter(ptr<ServerEngine> server, ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     cr->MarkAsDestroying();
     server->UnloadCritterInnerEntities(cr);
     cr->MarkAsDestroyed();

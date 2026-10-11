@@ -55,8 +55,6 @@ thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     FileSystem resources;
     resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
     return resources;
@@ -64,8 +62,6 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
 
 static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
         throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);
     }
@@ -94,8 +90,6 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     ItemMngr(make_ptr(this)),
     _restoreSnapshot {std::move(restore_snapshot)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Start server");
     logging::write("Updater version: {}", FO_UPDATER_VERSION);
     logging::write("Compatibility version: {}", Settings->Network.CompatibilityVersion);
@@ -145,8 +139,6 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 ServerEngine::~ServerEngine()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Engine-owned content whose billets are entities: released here, before the count below is taken, so that
     // data belonging to the engine does not read as a reference that escaped it
     MapMngr.ClearStaticMaps();
@@ -159,8 +151,6 @@ ServerEngine::~ServerEngine()
 
 auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx = GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     return ctx;
@@ -168,8 +158,6 @@ auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
 
 auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     ScopedSyncContext nested;
 
     callback();
@@ -178,8 +166,6 @@ auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespa
 
 auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
     }
@@ -217,8 +203,6 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 
 auto ServerEngine::WrapJobWithSync(work_thread::job body) -> work_thread::job
 {
-    FO_STACK_TRACE_ENTRY();
-
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         ScopedSyncContext sync_ctx;
 
@@ -228,43 +212,31 @@ auto ServerEngine::WrapJobWithSync(work_thread::job body) -> work_thread::job
 
 void ServerEngine::CountServerStatsJob() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _completedServerStatsJobs.fetch_add(1, std::memory_order_relaxed);
 }
 
 void ServerEngine::LockForPropertyAccess() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _entityLock->Acquire(NextSyncTicket());
 }
 
 void ServerEngine::UnlockForPropertyAccess() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _entityLock->Release();
 }
 
 void ServerEngine::LockForPropertyAccessShared() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _entityLock->AcquireShared(NextSyncTicket());
 }
 
 void ServerEngine::UnlockForPropertyAccessShared() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _entityLock->ReleaseShared();
 }
 
 void ServerEngine::FlushExactSyncTime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(GameTime.IsTimeSynchronized(), "Game time is not synchronized");
 
     _persistedSyncTimeMark = GameTime.GetSynchronizedTime();
@@ -275,8 +247,6 @@ void ServerEngine::FlushExactSyncTime()
 
 void ServerEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _workerPool->Submit(delay, [this, body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
@@ -287,7 +257,7 @@ void ServerEngine::ScheduleDelayedCallback(timespan delay, function<void()> body
 
 auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     if (!Settings->Server.WriteHealthFile) {
         return std::nullopt;
@@ -309,7 +279,7 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
 
 auto ServerEngine::HealthFileJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     if (_started && _healthWriter.get_jobs_count() == 0) {
         _healthWriter.add_job([this, health_info = GetHealthInfo()]() FO_DEFERRED { return HealthFileWriteJob(health_info); });
@@ -320,7 +290,7 @@ auto ServerEngine::HealthFileJob() -> std::optional<timespan>
 
 auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string buf;
     buf.reserve(health_info.size() + 128);
@@ -333,8 +303,6 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 
 auto ServerEngine::WriteHealthFile(string_view text) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::ofstream health_file {std::filesystem::path {fs::make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
 
     if (!health_file) {
@@ -351,7 +319,7 @@ auto ServerEngine::WriteHealthFile(string_view text) -> bool
 
 auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Initialize script system");
 
@@ -387,7 +355,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 
 auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Start networking");
 
@@ -396,8 +364,14 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
-    unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(interthread_server));
+    // Every connection runs the secure channel, so a server without its key must not accept anyone
+    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, "ServerNetwork.ChannelSecretKey"));
+    logging::write("Secure channel public key {}", crypto::format_key(_channelIdentity->GetPublicKey()));
+
+    if (!Settings->Network.DisableInterthreadCommunication) {
+        unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
+        _connectionServers.emplace_back(std::move(interthread_server));
+    }
 
     if (Settings->ServerNetwork.DisableNetworking) {
         logging::write("Skip remote networking startup");
@@ -422,7 +396,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
 
 auto ServerEngine::InitStorageJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     const auto& entity_types = GetEntityTypes();
 
@@ -501,7 +475,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
 
 auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Setup engine");
 
@@ -625,7 +599,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
 auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Load language data");
 
@@ -638,7 +612,7 @@ auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
 
 auto ServerEngine::InitMapsJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Load maps data");
 
@@ -649,7 +623,7 @@ auto ServerEngine::InitMapsJob() -> std::optional<timespan>
 
 auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     if (Settings->Common.Packaged) {
         logging::write("Initialize updater backend with client resources using {} storage", Settings->ServerNetwork.UpdateFilesInMemory ? "memory" : "disk");
@@ -666,7 +640,7 @@ auto ServerEngine::InitClientPacksJob() -> std::optional<timespan>
 
 auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Start game logic");
 
@@ -681,6 +655,13 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
         else {
+            AnyData::Document updates;
+            (void)PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
+
+            for (const auto& [key, value] : updates) {
+                DbStorage.Update(GameCollectionName, ident_t {1}, key, value);
+            }
+
             if (!PropertiesSerializer::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
                 throw ServerInitException("Failed to load globals document");
             }
@@ -778,7 +759,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
 auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     FO_VERIFY_AND_THROW(!_started, "Started is already set");
     FO_VERIFY_AND_THROW(_workerPool, "Missing required worker pool");
@@ -810,8 +791,6 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
 void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
 
     _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> { return TimeEventJob(entity_hold, event_id); });
@@ -819,7 +798,7 @@ void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t eve
 
 auto ServerEngine::TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     if (!entity->IsGlobal()) {
         auto ctx = RequireCurrentSyncContext();
@@ -837,15 +816,13 @@ auto ServerEngine::TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::o
 
 void ServerEngine::OnTimeEventCancel(uint32_t event_id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
     _workerPool->Cancel(key);
 }
 
 auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     SyncPoint();
 
@@ -865,7 +842,7 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
     UpdateJobStats(cur_time);
     UpdateCpuStats(cur_time);
 
-#if FO_TRACY
+#if FO_TRACE_ENABLED
     TracyPlot("Server jobs per second", numeric_cast<int64_t>(_stats.JobsPerSecond));
 #endif
 
@@ -874,8 +851,6 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FrameAdvance();
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
@@ -883,8 +858,6 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 
 void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
     ScopedSyncContext ctx;
 
@@ -908,7 +881,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
 
 auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
@@ -952,8 +925,6 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
 
 void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (not_logged_in_player) {
         auto not_logged_in_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
         _workerPool->Cancel(not_logged_in_key);
@@ -973,7 +944,7 @@ void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_
 
 auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
@@ -1007,8 +978,6 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t completed_jobs = GetCompletedServerJobsCount();
 
     _stats.JobsTotal = completed_jobs;
@@ -1044,8 +1013,6 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
 
 void ServerEngine::UpdateCpuStats(nanotime cur_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr timespan CPU_SAMPLE_INTERVAL = std::chrono::seconds {1};
 
     if (_stats.LastCpuUsageSampleTime && cur_time - _stats.LastCpuUsageSampleTime < CPU_SAMPLE_INTERVAL) {
@@ -1102,8 +1069,6 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
 
 auto ServerEngine::CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (current_total <= previous_total) {
         return 0.0f;
     }
@@ -1118,15 +1083,11 @@ auto ServerEngine::CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current
 
 auto ServerEngine::GetCompletedServerJobsCount() const -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _completedServerStatsJobs.load(std::memory_order_relaxed);
 }
 
 auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_connectionAdmissionLocker};
 
     return _connectionAdmissionOpen && _started && !IsShutdownInProgress();
@@ -1135,14 +1096,12 @@ auto ServerEngine::IsConnectionAdmissionOpen() const -> bool
 // Zero until the pool is created in InitMetadataJob, so an aborted startup reports no workers rather than faulting
 auto ServerEngine::GetWorkerThreadCount() const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _workerPool ? _workerPool->GetThreadCount() : 0;
 }
 
 void ServerEngine::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Server shutdown must be requested outside a server execution context");
 
@@ -1328,7 +1287,7 @@ void ServerEngine::Shutdown()
 
 auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     while (!_started) {
         std::this_thread::yield();
@@ -1366,7 +1325,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
 
 void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
@@ -1386,8 +1345,6 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Play
 
 void ServerEngine::Unlock()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
     ExternalLockSyncCtx->Release();
     ExternalLockSyncCtx->Deactivate();
@@ -1407,7 +1364,7 @@ void ServerEngine::Unlock()
 
 auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     if (!callback) {
         throw ServerQuiescenceException("Server quiescence requires a callback");
@@ -1469,7 +1426,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
 
 auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     FO_VERIFY_AND_THROW(GameTime.IsPaused(), "Snapshot eligibility requires a paused game timer");
     FO_VERIFY_AND_THROW(_workerPool, "Snapshot eligibility requires an initialized worker pool");
@@ -1523,7 +1480,7 @@ auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
 
 auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     ServerSnapshotCaptureResult result;
     result.ReachedQuiescence = RunInQuiescence(max_wait_time, [&](const ServerQuiescenceState& quiescence_state) {
@@ -1558,7 +1515,7 @@ auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSna
 
 void ServerEngine::SyncPoint()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     unique_lock locker {_syncLocker};
 
@@ -1589,7 +1546,7 @@ void ServerEngine::SyncPoint()
 
 void ServerEngine::DrawGui()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     if (!_started) {
         if (!_startingError) {
@@ -2068,8 +2025,6 @@ void ServerEngine::DrawGui()
 
 auto ServerEngine::GetHealthInfo() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string buf;
     buf.reserve(2048);
 
@@ -2099,8 +2054,6 @@ auto ServerEngine::GetHealthInfo() const -> string
 
 auto ServerEngine::ShouldAcceptConnection(size_t cur_connections, size_t cur_players, int32_t max_connections, int32_t max_players) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (max_connections > 0 && cur_connections >= numeric_cast<size_t>(max_connections)) {
         return false;
     }
@@ -2113,8 +2066,6 @@ auto ServerEngine::ShouldAcceptConnection(size_t cur_connections, size_t cur_pla
 
 auto ServerEngine::EvaluateConnectionRate(ConnRateState& state, int64_t now_sec, int32_t rate_per_sec) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (rate_per_sec <= 0) {
         return true;
     }
@@ -2131,7 +2082,7 @@ auto ServerEngine::EvaluateConnectionRate(ConnRateState& state, int64_t now_sec,
 
 void ServerEngine::StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     std::chrono::milliseconds retry_delay {std::max(Settings->ServerNetwork.ListenRetryDelay, 1)};
     nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ServerNetwork.ListenRetryTime, 0)};
@@ -2160,7 +2111,7 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 
 void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     unique_lock admission_locker {_connectionAdmissionLocker};
 
@@ -2220,12 +2171,11 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
 auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<Player> not_logged_in_player = [&]() -> ptr<Player> {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
-        auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection));
+        FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
+        auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value());
         auto new_player = safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection));
         _notLoggedInPlayers.emplace_back(std::move(new_player));
         return _notLoggedInPlayers.back();
@@ -2243,8 +2193,6 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
 
 void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = not_logged_in_player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
@@ -2334,8 +2282,6 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 
 void ServerEngine::ProcessPlayer(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
@@ -2344,7 +2290,16 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         logging::write("Disconnected player {}", player->GetName());
 
         ValidateEntityAccess(player);
-        ValidateEntityAccess(player->GetControlledCritter());
+
+        auto cr = player->GetControlledCritter();
+        ValidateEntityAccess(cr);
+
+        // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
+        // plan left waiting at its lease would wait there for good and the player would find it still under way on return
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
+            StopCritterMoving(cr);
+        }
+
         OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
@@ -2397,6 +2352,12 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         case NetMessage::SendStopCritterMove:
             Process_StopMove(player);
             break;
+        case NetMessage::SendCritterMoveLease:
+            Process_MoveLease(player);
+            break;
+        case NetMessage::SendCritterMoveFinished:
+            Process_MoveFinished(player);
+            break;
         case NetMessage::RemoteCall:
             Process_RemoteCall(player);
             break;
@@ -2421,18 +2382,16 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
 void ServerEngine::ProcessConnection(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         return;
     }
 
-    // The network thread can only latch an input overflow: it detects one inside the transport receive
-    // lock that a disconnect would take again, so the disconnect itself belongs to this worker pass
-    if (connection->IsInputOverflowed()) {
-        logging::write("Connection input buffer overflow from host '{}'", connection->GetHost());
+    // The network thread can only latch rejected input: it detects an overflow or a failed secure channel inside
+    // the transport receive lock that a disconnect would take again, so the disconnect belongs to this worker pass
+    if (connection->IsInputRejected()) {
+        logging::write("Connection input rejected from host '{}'", connection->GetHost());
         connection->HardDisconnect(DisconnectReason::ProtocolError);
         return;
     }
@@ -2447,11 +2406,19 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
         return;
     }
 
+    // Every connection is pinged for the round trip movement allowances are clamped by, but only a watchdog transport is
+    // dropped for a late answer; the others wait for it rather than re-ping, keeping each sample paired with its request
     if (connection->NeedPing(frame_time)) {
-        if (connection->HasPendingPing() && !is_run_in_debugger()) {
-            logging::write("Connection ping timeout from host '{}'", connection->GetHost());
-            connection->HardDisconnect(DisconnectReason::PingTimeout);
-            return;
+        if (connection->HasPendingPing()) {
+            if (!connection->NeedsPingWatchdog()) {
+                return;
+            }
+
+            if (!is_run_in_debugger()) {
+                logging::write("Connection ping timeout from host '{}'", connection->GetHost());
+                connection->HardDisconnect(DisconnectReason::PingTimeout);
+                return;
+            }
         }
 
         player->Send_Ping(false);
@@ -2462,8 +2429,6 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
 
 void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<Player> player;
     auto cr = caller.dyn_cast<Critter>();
 
@@ -2484,7 +2449,7 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
 
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Properties> props) -> ptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     logging::write(logging::type::info, "Create critter {}", pid);
 
@@ -2523,7 +2488,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
 
 auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
@@ -2576,7 +2541,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
 void ServerEngine::UnloadCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     EnsureEntitySynced(cr);
@@ -2622,8 +2587,6 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
 void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     function<void(ptr<Entity>)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](ptr<Entity> holder) {
@@ -2680,7 +2643,7 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
 
 void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
     EnsureEntitySynced(player);
@@ -2764,8 +2727,6 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 
 void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(cr_id, "Missing required critter id");
 
     if (EntityMngr.GetCritter(cr_id)) {
@@ -2784,7 +2745,7 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
 
 void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto cr_holder = cr.hold_ref();
     auto prev_cr_holder = prev_cr.try_hold_ref();
@@ -2917,7 +2878,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
 
 void ServerEngine::Process_Handshake(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -2935,26 +2896,9 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     // compare yet" - it still receives our version in the answer and verifies it once the sync is done
     bool metadata_outdated = !metadata_version.empty() && metadata_version != GetMetadataVersion();
 
-    // Begin data encrypting
-    auto in_encrypt_key = in_buf->Read<uint32_t>();
-
-    if (in_encrypt_key == 0) {
-        logging::write("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
-        return;
-    }
-
-    in_buf->SetEncryptKey(in_encrypt_key);
-
     in_buf.Unlock();
 
-    uint32_t out_encrypt_key = //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 24) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 16) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 0);
-
-    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, metadata_outdated, GetMetadataVersion(), out_encrypt_key);
+    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, metadata_outdated, GetMetadataVersion());
 
     if (updater_outdated) {
         logging::write("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
@@ -2988,7 +2932,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
 
 void ServerEngine::LoadReportedHashes()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     size_t resolved_count = 0;
     vector<string> loaded;
@@ -3020,8 +2964,6 @@ void ServerEngine::LoadReportedHashes()
 
 void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto in_buf = connection->ReadBuf();
 
     auto hash = in_buf->Read<hstring::hash_t>();
@@ -3033,8 +2975,6 @@ void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 
 void ServerEngine::ProcessPendingUnresolvedHash(ptr<ServerConnection> connection)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto in_buf = connection->ReadBuf();
 
     if (!in_buf->NeedProcess()) {
@@ -3056,7 +2996,7 @@ void ServerEngine::ProcessPendingUnresolvedHash(ptr<ServerConnection> connection
 
 void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (hash == 0) {
         return;
@@ -3105,8 +3045,6 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
 
 void ServerEngine::SendAllReportedHashes(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> snapshot;
 
     {
@@ -3124,8 +3062,6 @@ void ServerEngine::SendAllReportedHashes(ptr<Player> player)
 
 void ServerEngine::BroadcastReportedString(string_view reported_string)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> hash_strings {string(reported_string)};
 
     for (auto player : copy_hold_ref(EntityMngr.GetPlayers())) {
@@ -3143,14 +3079,17 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
 
 void ServerEngine::Process_Ping(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     bool answer = in_buf->Read<bool>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
+
+    // Pings keep the link's usual transit current while the player stands still, so the first move after a stall
+    // is measured against the link as it was, not against nothing
+    connection->RegisterSenderTime(sender_ms, nanotime::now());
 
     if (answer) {
         connection->RegisterPingAnswer(GameTime.GetFrameTime());
@@ -3162,7 +3101,7 @@ void ServerEngine::Process_Ping(ptr<Player> player)
 
 auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
@@ -3231,7 +3170,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
 auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player, ident_t player_id) -> ptr<Player>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
     FO_VERIFY_AND_THROW(player_id, "Missing required player id");
@@ -3281,6 +3220,14 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
         }
+
+        AnyData::Document updates;
+        (void)PropertiesSerializer::MigrateDocument(player->GetProperties()->GetRegistrar(), player_doc, &updates);
+
+        for (const auto& [key, value] : updates) {
+            DbStorage.Update(PlayersCollectionName, player_id, key, value);
+        }
+
         if (!PropertiesSerializer::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             throw GenericException("Invalid player data");
         }
@@ -3367,7 +3314,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
 auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
@@ -3423,7 +3370,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
 void ServerEngine::Process_Move(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -3450,9 +3397,18 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     auto end_hex_offset = in_buf->Read<ipos16>();
+    auto plan_seq = in_buf->Read<uint32_t>();
+    float32_t lease_distance = in_buf->Read<float32_t>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
 
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
+    mpos client_start_hex = start_hex;
+    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance >= 0.0f, "Movement lease must name a finite non-negative distance", lease_distance);
+    // The lease names progress in the player's path; a bridged or joined copy starts at a different distance
+    vector<mdir> client_steps = lease_distance > 0.0f ? steps : vector<mdir> {};
+    vector<uint16_t> client_control_steps = lease_distance > 0.0f ? control_steps : vector<uint16_t> {};
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3522,8 +3478,41 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    // Fix async errors
+    // The critter's steps advance once a movement period, so between them its hex lags where its plan has it by now;
+    // the plan is brought up to this frame first, or a continuation that arrives in that lag bridges a step it need not
+    if (cr->IsMoving()) {
+        ProcessCritterMovingBySteps(cr, map);
+
+        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+            return;
+        }
+        if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+            return;
+        }
+        if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+            return;
+        }
+    }
+
     auto cr_hex = cr->GetHex();
+    size_t joined_steps = 0;
+
+    // A plan sent from where the client stood often arrives after the server's critter has walked on along the same
+    // way, a transit's worth further: the plan is joined where the critter stands instead of walking back to its start
+    if (cr_hex != start_hex) {
+        joined_steps = FindPathPrefixSteps(start_hex, steps, cr_hex, map->GetSize(), numeric_cast<size_t>(Settings->Network.MovePlanJoinMaxSteps));
+
+        if (joined_steps != 0 && joined_steps < steps.size()) {
+            DropPathPrefix(steps, control_steps, joined_steps);
+            start_hex = cr_hex;
+        }
+        else {
+            joined_steps = 0;
+        }
+    }
+
+    // Fix async errors
+    size_t bridge_steps = 0;
 
     if (cr_hex != start_hex) {
         auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
@@ -3532,6 +3521,16 @@ void ServerEngine::Process_Move(ptr<Player> player)
             logging::write("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
             player->Send_Moving(cr);
             return;
+        }
+
+        bridge_steps = find_result.Steps.size();
+
+        // The bridge is the divergence the client walked while the message travelled, logged past a threshold so the
+        // one-hex skew of an ordinary chained move does not drown the live distribution
+        int32_t bridge_report_hexes = Settings->Server.MoveBridgeReportHexes;
+
+        if (bridge_report_hexes > 0 && find_result.Steps.size() >= numeric_cast<size_t>(bridge_report_hexes)) {
+            logging::write("Process_Move: async fix bridged a client/server divergence, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), bridge {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y, find_result.Steps.size(), connection->GetRoundTrip().milliseconds());
         }
 
         // Insert part of path to beginning of whole path
@@ -3602,8 +3601,27 @@ void ServerEngine::Process_Move(ptr<Player> player)
     int16_t clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
     int16_t clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
 
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} joined={} truncated={} speed={} late_ms={} rtt_ms={}", cr_id, player->GetName(), client_start_hex.x, client_start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, joined_steps, path_truncated ? 1 : 0, corrected_speed, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
+    }
+
+    // A plan a stall held back is played from where the player has walked it by now rather than from its start:
+    // the server then stands where the player does, instead of replaying the way seconds late
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+
+    auto server_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, GameTime.GetFrameTime(), catch_up_time, cr_hex, cr->GetHexOffset(), ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+    float32_t plan_distance_shift = 0.0f;
+
+    // A held direction runs on the server only as far as the player has confirmed holding it
+    // A corrected path replaces the client's held plan; it must finish without renewals for that retired plan
+    if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
+        auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+        plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
+        server_moving->SetLeaseTime(std::max((lease_distance + plan_distance_shift) * 1000.0f / numeric_cast<float32_t>(corrected_speed), 0.001f), GameTime.GetFrameTime());
+    }
+
     nptr<const Player> initiator = player;
-    StartCritterMoving(cr, numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
+    StartCritterMoving(cr, std::move(server_moving), initiator, plan_seq, plan_distance_shift);
 
     if (path_truncated) {
         player->Send_Moving(cr);
@@ -3613,9 +3631,78 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 }
 
+// The player confirms holding a direction further: the plan it started under this number may run on to the new lease,
+// and so may every other player's copy of it
+void ServerEngine::Process_MoveLease(ptr<Player> player)
+{
+    FO_TRACE_ZONE(Map);
+
+    auto connection = player->GetConnection();
+    auto in_buf = connection->ReadBuf();
+
+    auto map_id = in_buf->Read<ident_t>();
+    auto cr_id = in_buf->Read<ident_t>();
+    auto plan_seq = in_buf->Read<uint32_t>();
+    float32_t lease_distance = in_buf->Read<float32_t>();
+    auto sender_ms = in_buf->Read<int64_t>();
+
+    in_buf.Unlock();
+
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
+    auto map = EntityMngr.GetMap(map_id);
+    auto cr = EntityMngr.GetCritter(cr_id);
+
+    if (!map || !cr) {
+        return;
+    }
+
+    auto ctx = RequireCurrentSyncContext();
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    ctx->SyncEntities(sync_entities);
+
+    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || player->GetControlledCritter() != cr.get() || cr->GetMapId() != map_id) {
+        return;
+    }
+
+    auto moving = cr->GetPlayerPlanMoving(plan_seq);
+
+    if (!moving) {
+        return;
+    }
+
+    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
+
+    // An authoritative finite correction has retired this plan's lease, including renewals already in transit
+    if (moving->GetLeaseTime() == 0.0f) {
+        return;
+    }
+
+    float32_t server_lease_time = std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+
+    if (server_lease_time <= moving->GetLeaseTime()) {
+        return;
+    }
+
+    moving->SetLeaseTime(server_lease_time, GameTime.GetFrameTime());
+
+    // A renewal a stall held back finds the critter waiting at the old lease while the player walked on
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+
+    if (catch_up_time > timespan::zero) {
+        moving->FastForward(catch_up_time);
+    }
+
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime())).strv());
+    }
+
+    nptr<const Player> ignore_player = player;
+    cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_MovingLease(cr); });
+}
+
 void ServerEngine::Process_StopMove(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -3626,9 +3713,11 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto client_hex = in_buf->Read<mpos>();
     auto client_hex_offset = in_buf->Read<ipos16>();
     auto client_dir = in_buf->Read<mdir>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
 
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3670,7 +3759,9 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    if (!cr->IsMoving()) {
+    // A stop that reaches the server only after the player's own plan has run out there - a stalled uplink, most likely
+    // with the short plans a held direction is walked as - still names a point on that plan: walk back to it
+    if (!cr->IsMoving() && !cr->GetFinishedPlayerMoving()) {
         player->Send_Moving(cr);
         return;
     }
@@ -3697,9 +3788,28 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    uint32_t stop_moving_uid = cr->GetMovingUid();
+    bool was_moving = cr->IsMoving();
+    refcount_nptr<MovingContext> stop_moving = (was_moving ? cr->GetMoving() : cr->GetFinishedPlayerMoving()).try_hold_ref();
 
-    bool stop_position_reconciled = ReconcileCritterStopPosition(player, cr, map, client_hex, client_hex_offset, client_dir);
+    if (!stop_moving) {
+        player->Send_Moving(cr);
+        return;
+    }
+
+    uint32_t stop_moving_uid = cr->GetMovingUid();
+    mpos stop_server_hex = cr->GetHex();
+
+    if (!was_moving) {
+        cr->StopMoving();
+    }
+
+    bool stop_position_reconciled = ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir);
+
+    if (Settings->Network.MoveSyncTrace && !cr->IsDestroyed()) {
+        mpos reconciled_hex = cr->GetHex();
+
+        TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
+    }
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3710,8 +3820,16 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
-    if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
+    if (cr->IsMoving() != was_moving || cr->GetMovingUid() != stop_moving_uid) {
         player->Send_Moving(cr);
+        return;
+    }
+
+    // Nothing is left to stop after a finished plan: the others learn where the critter now stands, the player
+    // already stands there - or, when its point was not on the plan, is corrected like everyone else
+    if (!was_moving) {
+        nptr<const Player> ignore_player = stop_position_reconciled ? nptr<const Player> {player} : nptr<const Player> {};
+        cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); });
         return;
     }
 
@@ -3724,9 +3842,138 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
 }
 
+void ServerEngine::Process_MoveFinished(ptr<Player> player)
+{
+    FO_TRACE_ZONE(Map);
+
+    auto connection = player->GetConnection();
+    auto in_buf = connection->ReadBuf();
+
+    auto map_id = in_buf->Read<ident_t>();
+    auto cr_id = in_buf->Read<ident_t>();
+    auto reported_end_hex = in_buf->Read<mpos>();
+
+    auto client_hex = in_buf->Read<mpos>();
+    auto client_hex_offset = in_buf->Read<ipos16>();
+    auto client_dir = in_buf->Read<mdir>();
+
+    in_buf.Unlock();
+
+    auto map = EntityMngr.GetMap(map_id);
+
+    if (!map) {
+        return;
+    }
+
+    auto cr = EntityMngr.GetCritter(cr_id);
+    auto ctx = RequireCurrentSyncContext();
+
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
+
+    if (cr) {
+        sync_entities.emplace_back(cr);
+    }
+
+    ctx->SyncEntities(sync_entities);
+
+    if (player->IsDestroyed() || map->IsDestroyed() || !cr) {
+        return;
+    }
+
+    nptr<Critter> expected_cr = cr;
+
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || player->GetControlledCritter() != expected_cr) {
+        return;
+    }
+
+    int64_t trace_remaining_ms = -1;
+    int64_t trace_allowed_ms = -1;
+
+    // Every exit past this point is an outcome the analysis tooling counts, so each one says which it was
+    auto trace_finish = [&](string_view outcome) {
+        if (!Settings->Network.MoveSyncTrace || cr->IsDestroyed()) {
+            return;
+        }
+
+        mpos server_hex = cr->GetHex();
+
+        TraceMoveSync("finish_req", strex("cr={} reported_end={},{} client_hex={},{} server_hex={},{} remaining_ms={} allowed_ms={} rtt_ms={} outcome={}", cr_id, reported_end_hex.x, reported_end_hex.y, client_hex.x, client_hex.y, server_hex.x, server_hex.y, trace_remaining_ms, trace_allowed_ms, connection->GetRoundTrip().milliseconds(), outcome).strv());
+    };
+
+    // The server having finished first is the normal outcome rather than a divergence: nothing is left to
+    // reconcile, and answering here would snap a client that is already in the right place
+    if (!cr->IsMoving() || cr->GetIsAttached()) {
+        trace_finish(cr->GetIsAttached() ? "attached" : "not_moving");
+        return;
+    }
+
+    auto moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
+
+    // The initiator never receives its own CritterMove and has no movement id to echo, so a report names its plan by
+    // the end hex; one naming another plan is dropped and the movement plays out on its own
+    if (moving->GetEndHex() != reported_end_hex) {
+        trace_finish("stale_plan");
+        return;
+    }
+
+    float32_t remaining_time = moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime());
+
+    // A client may fast-forward only what transport plausibly cost it: half the measured round trip, capped, plus the
+    // movement job period by which the server's own arrival can lag; a larger claim is refused
+    int64_t allowed_catch_up_ms = std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs;
+
+    trace_remaining_ms = iround<int64_t>(remaining_time);
+    trace_allowed_ms = allowed_catch_up_ms;
+
+    if (remaining_time > numeric_cast<float32_t>(allowed_catch_up_ms)) {
+        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
+        trace_finish("too_early");
+        return;
+    }
+
+    uint32_t reported_moving_uid = cr->GetMovingUid();
+    bool position_reconciled = ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir);
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return;
+    }
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+        return;
+    }
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+        trace_finish("invalidated");
+        return;
+    }
+    if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
+        trace_finish("superseded");
+        return;
+    }
+
+    if (!position_reconciled) {
+        trace_finish("reconcile_failed");
+        StopCritterMoving(cr);
+        return;
+    }
+
+    auto reconciled_moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(reconciled_moving, "Missing active movement state");
+
+    trace_finish("accepted");
+
+    // Observers walk the same plan and reach its end by themselves, so a position broadcast is owed only when
+    // the reconciled hex is not the one the plan ends on
+    if (cr->GetHex() == reconciled_moving->GetEndHex()) {
+        StopCritterMoving(cr, MovingState::Success, [] { });
+    }
+    else {
+        StopCritterMoving(cr, MovingState::Success);
+    }
+}
+
 void ServerEngine::Process_Dir(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -3799,7 +4046,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
 void ServerEngine::Process_Property(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
@@ -3998,8 +4245,6 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
 void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto server_entity = entity.dyn_cast<ServerEntity>();
 
     ident_t entry_id;
@@ -4057,8 +4302,6 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
 
 void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Throttles DB writes by persisting `live + lead`, so the stored value carries headroom and the next write
     // waits until live crosses it; init-phase sets and the explicit flush write through
     FO_VERIFY_AND_THROW(entity == this, "Synchronized time post-setter received an entity different from the server engine", string_view {prop->GetName()}, entity->GetTypeName(), entity->GetId());
@@ -4084,8 +4327,6 @@ void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property
 
 void ServerEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(entity);
 
     if (prop->IsPublicSync()) {
@@ -4097,8 +4338,6 @@ void ServerEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> pro
 
 void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto player = entity.dyn_cast<Player>();
     FO_VERIFY_AND_THROW(player, "Missing player instance");
 
@@ -4107,8 +4346,6 @@ void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
 
 void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cr = entity.dyn_cast<Critter>();
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
@@ -4122,8 +4359,6 @@ void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> pr
 
 void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto item = entity.dyn_cast<Item>();
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
@@ -4163,8 +4398,6 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 
 void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsPublicSync()) {
         auto map = entity.dyn_cast<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
@@ -4175,8 +4408,6 @@ void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 
 void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsPublicSync()) {
         auto loc = entity.dyn_cast<Location>();
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
@@ -4189,8 +4420,6 @@ void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> p
 
 void ServerEngine::OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto custom_entity = entity.dyn_cast<CustomEntity>();
     FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
@@ -4203,8 +4432,6 @@ void ServerEngine::OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Propert
 
 void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cr = entity.dyn_cast<Critter>();
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
@@ -4218,8 +4445,6 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
 
 void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(prop);
 
     auto map = entity.dyn_cast<Map>();
@@ -4232,8 +4457,6 @@ void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Prop
 
 void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(prop);
 
     auto map = entity.dyn_cast<Map>();
@@ -4244,8 +4467,6 @@ void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const 
 
 void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(prop);
 
     auto item = entity.dyn_cast<Item>();
@@ -4271,8 +4492,6 @@ void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 
 void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
@@ -4282,13 +4501,19 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map = require_refcount_ptr(item->GetParent<Map>());
         map->RecacheHexFlags(item->GetHex());
+
+        // The item contributes flags at every registered footprint cell, not
+        // only its sprite origin. Opening a mesh door must clear them all
+        if (auto entries = item->GetMultihexEntries()) {
+            for (auto hex : *entries) {
+                map->RecacheHexFlags(hex);
+            }
+        }
     }
 }
 
 void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(prop);
 
     auto item = entity.dyn_cast<Item>();
@@ -4304,8 +4529,6 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 
 void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
@@ -4344,6 +4567,12 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     size_t max_hex_updates = moving->GetSteps().size() + 1;
 
     for (size_t i = 0; i < max_hex_updates; i++) {
+        // A step moves the critter out of the hex field and back in; neither side may be half-destroyed, or the add
+        // throws after the remove and leaves a critter on the map but outside its field, which destruction cannot finish
+        if (cr->IsDestroying() || map->IsDestroying()) {
+            return;
+        }
+
         auto old_hex = cr->GetHex();
 
         moving->UpdateCurrentTimeToNextHex(current_time, old_hex);
@@ -4363,6 +4592,10 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
                 map->AddCritterToField(cr);
 
                 FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+
+                if (Settings->Network.MoveSyncTrace) {
+                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time))).strv());
+                }
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
 
@@ -4452,21 +4685,15 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     }
 }
 
-auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
+auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
-
-    auto moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance = 2;
     constexpr int32_t max_stop_correction_hex_distance = 4;
 
     if (!map->GetSize().is_valid_pos(client_hex)) {
-        logging::write("Process_StopMove: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y);
+        logging::write("{}: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y);
         return false;
     }
 
@@ -4475,7 +4702,7 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
 
     // The guarded normalization below cannot report which of its two rules declined, so the off-map one is taken first
     if (!GeometryHelper::NormalizeHexOffset(on_map_hex, on_map_hex_offset, map->GetSize())) {
-        logging::write("Process_StopMove: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
+        logging::write("{}: client stop position is outside map after normalization, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), offset ({},{})", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y, client_hex_offset.x, client_hex_offset.y);
         return false;
     }
 
@@ -4541,7 +4768,7 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
         }
     }
 
-    if (cr->GetHex() != client_hex && !MoveCritterAlongStopCorrectionPath(player, cr, map, client_hex, max_stop_correction_hex_distance)) {
+    if (cr->GetHex() != client_hex && !MoveCritterAlongStopCorrectionPath(request_name, player, cr, map, client_hex, max_stop_correction_hex_distance)) {
         return false;
     }
 
@@ -4590,14 +4817,12 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
     return !cr->IsDestroyed() && !map->IsDestroyed();
 }
 
-auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool
+auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
 
     if (direct_distance > max_hex_distance) {
-        logging::write("Process_StopMove: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
+        logging::write("{}: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
         return false;
     }
 
@@ -4607,11 +4832,11 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
         return true;
     }
     if (find_result.Result != FindPathOutput::ResultType::Ok) {
-        logging::write("Process_StopMove: stop correction pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance);
+        logging::write("{}: stop correction pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance);
         return false;
     }
     if (find_result.Steps.size() > numeric_cast<size_t>(max_hex_distance)) {
-        logging::write("Process_StopMove: stop correction path is too long, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), path {}, limit {}", player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, find_result.Steps.size(), max_hex_distance);
+        logging::write("{}: stop correction path is too long, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), path {}, limit {}", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, find_result.Steps.size(), max_hex_distance);
         return false;
     }
 
@@ -4634,8 +4859,6 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Cr
 
 auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     ident_t expected_map_id = map->GetId();
     ident_t expected_cr_id = cr->GetId();
     uint32_t expected_moving_uid = cr->GetMovingUid();
@@ -4712,9 +4935,9 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     return validate_moved_critter();
 }
 
-void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator)
+void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator, uint32_t plan_seq, float32_t plan_distance_shift)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
@@ -4730,10 +4953,22 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     cr->StopMoving(MovingState::Stopped);
     cr->SetMoving(std::move(moving));
 
+    if (initiator) {
+        cr->MarkMovingStartedByPlayer(plan_seq, plan_distance_shift);
+    }
+
     auto moving_context = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
     moving_context->ValidateRuntimeState();
     cr->SetMovingSpeed(moving_context->GetSpeed());
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos start_hex = moving_context->GetStartHex();
+        mpos end_hex = moving_context->GetEndHex();
+        string_view initiator_name = initiator ? initiator->GetName() : string_view {"none"};
+
+        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), iround<int32_t>(moving_context->GetLeaseTime()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+    }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
 
@@ -4745,7 +4980,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
 
 auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
@@ -4797,27 +5032,32 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     return std::chrono::milliseconds {Settings->Server.CritterMovingPeriodMs};
 }
 
-void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator)
+void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator, timespan offset_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = require_refcount_ptr(cr->GetParent<Map>());
 
     auto start_hex = cr->GetHex();
 
-    StartCritterMoving(cr, safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+    StartCritterMoving(cr, safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), offset_time, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
 void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, function<void()> customSend)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     if (!cr->IsMoving()) {
+        cr->StopMoving(reason);
         return;
     }
 
     auto key = WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())};
     _workerPool->Cancel(key);
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos hex = cr->GetHex();
+
+        TraceMoveSync("stop", strex("cr={} uid={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingUid(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
+    }
 
     cr->StopMoving(reason);
 
@@ -4832,10 +5072,13 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     OnCritterStopMoving.Fire(cr);
 }
 
+void ServerEngine::TraceMoveSync(string_view event, string_view details)
+{
+    WriteMoveSyncTrace("srv", event, GameTime.GetSynchronizedTime(), details);
+}
+
 void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!cr->IsMoving()) {
         return;
     }
@@ -4853,8 +5096,20 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     }
 
     nanotime cur_time = GameTime.GetFrameTime();
+    uint16_t old_speed = moving_context->GetSpeed();
+    float32_t old_elapsed = moving_context->GetElapsedTime();
+    float32_t old_runtime = moving_context->GetRuntimeElapsedTime(cur_time);
+
     moving_context->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
+
+    // ChangeSpeed rebases the plan on the last stored progress, so the gap between that and the live runtime is
+    // progress the change discards; the clients rebase on theirs one delivery later
+    if (Settings->Network.MoveSyncTrace) {
+        mpos hex = cr->GetHex();
+
+        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(old_runtime), iround<int32_t>(moving_context->GetElapsedTime()), iround<int32_t>(moving_context->GetWholeTime())).strv());
+    }
 
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });
 
@@ -4864,7 +5119,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
 
 void ServerEngine::Process_RemoteCall(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();

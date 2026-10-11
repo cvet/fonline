@@ -113,13 +113,13 @@ def test_cmake_package_includes_reach_the_archive_written_by_the_packager(tmp_pa
         "    packager.pack_args = set(args.pack.split('+'))\n"
         "    packager.output_path = args.output\n"
         "    packager.target_output_path = str(Path(args.output) / 'Client')\n"
-        "    packager.zip_compress_level = 6\n"
+        "    packager.bundle_compress_level = 6\n"
         "    Path(packager.target_output_path).mkdir(parents=True)\n"
         "    (Path(packager.target_output_path) / 'LF_Client.exe').write_bytes(b'client')\n"
         "    packager.finalize_output()\n",
         encoding="utf-8",
     )
-    (tmp_path / "Test.fomain").write_text("Baking.ZipCompressLevel = 6\n", encoding="utf-8")
+    (tmp_path / "Test.fomain").write_text("Baking.BundleCompressLevel = 6\n", encoding="utf-8")
     cmake = '''cmake_minimum_required(VERSION 3.22)
 project(PackageInclude NONE)
 macro(StatusMessage)

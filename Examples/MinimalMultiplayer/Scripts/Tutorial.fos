@@ -1,0 +1,262 @@
+namespace Tutorial
+{
+
+///@ Property Critter Common int32 SuppliesCollected Mutable PublicSync Persistent
+///@ Property Player Server string TutorialAccount Mutable Persistent
+
+///@ RemoteCall Server EnterWorld()
+///@ RemoteCall Server CollectSupply()
+///@ RemoteCall Server FinishSmoke()
+///@ RemoteCall Client WorldReady(hstring supplyPid)
+///@ RemoteCall Client SupplyCollected(int32 count)
+///@ RemoteCall Client SmokeComplete()
+
+#if SERVER
+///@ Setting Server bool Tutorial.Automation
+///@ Setting Server bool Tutorial.ContentTest
+#endif
+
+#if CLIENT
+///@ Setting Client bool Tutorial.Automation
+#endif
+
+const hstring PlayerPid = "TutorialPlayer".hstr();
+const hstring GuidePid = "TutorialGuide".hstr();
+const hstring SupplyPid = "TutorialSupply".hstr();
+const hstring LocationPid = "TutorialLocation".hstr();
+const hstring MapPid = "TutorialMap".hstr();
+const int TimespanMillisecondsPlace = 2;
+
+timespan Milliseconds(int value)
+{
+    return timespan(value, TimespanMillisecondsPlace);
+}
+
+#if SERVER
+
+[[ModuleInit]]
+void InitServer()
+{
+    Game.OnStart.Subscribe(OnServerStart);
+}
+
+[[Event]]
+void OnServerStart()
+{
+    Game.Log("tutorial_server_started");
+
+    if (Settings.Tutorial.ContentTest) {
+        RunContentTest();
+    }
+}
+
+void RunContentTest()
+{
+    verify(Game.CheckProtoCritter(PlayerPid), "Tutorial player prototype is missing");
+    verify(Game.CheckProtoCritter(GuidePid), "Tutorial guide prototype is missing");
+    verify(Game.CheckProtoItem(SupplyPid), "Tutorial supply prototype is missing");
+    verify(Game.CheckProtoLocation(LocationPid), "Tutorial location prototype is missing");
+    verify(Game.CheckProtoMap(MapPid), "Tutorial map prototype is missing");
+
+    hstring[] mapPids = {MapPid};
+    Location location = Game.CreateLocation(LocationPid, mapPids);
+    Map map = location.GetMapByIndex(0);
+    verify(map.Size.width == 50 && map.Size.height == 50, "Tutorial map size changed unexpectedly");
+    verify(map.WorkHex == mpos(25, 25), "Tutorial map work hex changed unexpectedly");
+
+    map.AddCritter(GuidePid, mpos(27, 25), mdir(0));
+    map.AddItem(mpos(23, 25), SupplyPid, 1);
+    verify(map.GetCritters(GuidePid, CritterFindType::Any).length() == 1, "Tutorial guide spawn failed");
+    verify(map.GetItems(SupplyPid).length() == 1, "Tutorial supply spawn failed");
+
+    Game.Log("tutorial_content_test_passed");
+    Game.RequestQuit(true);
+}
+
+[[ServerRemoteCall]] [[Async]]
+void EnterWorld(Player unloginedPlayer)
+{
+    hstring[] mapPids = {MapPid};
+    Location location = Game.CreateLocation(LocationPid, mapPids);
+    Map map = location.GetMapByIndex(0);
+    Critter playerCritter = Game.CreateCritter(PlayerPid, true);
+
+    Game.Sync(array<Entity> = {unloginedPlayer, location, map, playerCritter});
+    playerCritter.TransferToMap(map, mpos(25, 25), mdir(0));
+    map.AddCritter(GuidePid, mpos(27, 25), mdir(0));
+    map.AddItem(mpos(23, 25), SupplyPid, 1);
+
+    unloginedPlayer.SetName("TutorialPlayer");
+    unloginedPlayer.TutorialAccount = "tutorial";
+    Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
+    Game.Sync(array<Entity> = {player, location, map, playerCritter});
+    player.SwitchCritter(playerCritter);
+    player.ClientCall.WorldReady(SupplyPid);
+
+    Game.Log("tutorial_server_world_ready");
+}
+
+[[ServerRemoteCall]]
+void CollectSupply(Player player)
+{
+    Critter? chosen = player.GetControlledCritter();
+    if (chosen == null) {
+        player.ClientCall.SupplyCollected(-1);
+        return;
+    }
+
+    chosen.AddItem(SupplyPid, 1);
+    int32 count = chosen.SuppliesCollected + 1;
+    chosen.SuppliesCollected = count;
+    player.ClientCall.SupplyCollected(count);
+    Game.Log("tutorial_server_supply_collected=" + count);
+}
+
+[[ServerRemoteCall]]
+void FinishSmoke(Player player)
+{
+    if (!Settings.Tutorial.Automation) {
+        return;
+    }
+
+    Game.Log("tutorial_server_smoke_passed");
+    player.ClientCall.SmokeComplete();
+    Game.StartTimeEvent(Milliseconds(250), QuitAfterSmoke);
+}
+
+[[TimeEvent]]
+void QuitAfterSmoke()
+{
+    Game.RequestQuit(true);
+}
+
+#endif
+
+#if CLIENT
+
+bool MapLoaded = false;
+bool AutomationRequested = false;
+hstring ReadySupplyPid;
+string SupplyName = "";
+string StatusText = "Connecting...";
+int CollectedCount = 0;
+
+[[ModuleInit]]
+void InitClient()
+{
+    Game.OnStart.Subscribe(OnClientStart);
+    Game.OnConnected.Subscribe(OnConnected);
+    Game.OnMapLoaded.Subscribe(OnMapLoaded);
+    Game.OnRenderIface.Subscribe(OnRenderIface);
+    Game.OnKeyDown.Subscribe(OnKeyDown);
+}
+
+[[Event]]
+void OnClientStart()
+{
+    Game.BindFont(FontType::Default, "Fonts/Default.fofnt");
+    Game.Connect();
+}
+
+[[Event]]
+void OnConnected()
+{
+    StatusText = "Connected. Entering the tutorial map...";
+    Game.Log("tutorial_client_connected");
+    CurPlayer.ServerCall.EnterWorld();
+}
+
+[[Event]]
+void OnMapLoaded()
+{
+    MapLoaded = true;
+    StatusText = "Map loaded. Press Space to collect the signal cache.";
+    Game.Log("tutorial_client_map_loaded");
+    MaybeRunAutomation();
+}
+
+[[ClientRemoteCall]]
+void WorldReady(hstring supplyPid)
+{
+    ReadySupplyPid = supplyPid;
+    SupplyName = Game.GetText(TextPackKey(TextPackName("Items".hstr()), supplyPid));
+    Game.Log("tutorial_client_content=" + SupplyName);
+    MaybeRunAutomation();
+}
+
+[[ClientRemoteCall]]
+void SupplyCollected(int32 count)
+{
+    CollectedCount = count;
+    StatusText = count >= 0 ? SupplyName + " collected. Persistent count: " + count : "No controlled critter.";
+    Game.Log("tutorial_client_supply_collected=" + count);
+
+    if (Settings.Tutorial.Automation && count == 1) {
+        CurPlayer.ServerCall.FinishSmoke();
+    }
+}
+
+[[ClientRemoteCall]]
+void SmokeComplete()
+{
+    Game.Log("tutorial_client_smoke_passed");
+    Game.RequestQuit(true);
+}
+
+void MaybeRunAutomation()
+{
+    if (Settings.Tutorial.Automation && MapLoaded && ReadySupplyPid != EMPTY_HSTRING && !AutomationRequested) {
+        AutomationRequested = true;
+        CurPlayer.ServerCall.CollectSupply();
+    }
+}
+
+[[Event]]
+void OnKeyDown(KeyCode key, string text)
+{
+    if (key == KeyCode::Space && MapLoaded && !Settings.Tutorial.Automation) {
+        CurPlayer.ServerCall.CollectSupply();
+    }
+}
+
+[[Event]]
+void OnRenderIface()
+{
+    if (HasCurMap) {
+        CurMap.DrawMap();
+    }
+
+    DrawFilledRect(20, 20, 620, 116, ucolor(17, 24, 28, 230));
+    DrawBorderRect(20, 20, 620, 116, ucolor(94, 196, 165, 255));
+    TextFormat titleFormat = TextFormat(FontType::Default, FontFlag::Bordered, 0);
+    Game.DrawText("FOnline Minimal Multiplayer", ipos(38, 34), isize(580, 24), ucolor(244, 204, 98, 255), titleFormat);
+    Game.DrawText(StatusText, ipos(38, 66), isize(580, 24), ucolor(235, 239, 232, 255), titleFormat);
+    Game.DrawText("Player  |  Guide  |  " + (SupplyName.isEmpty() ? "Supply" : SupplyName) + "  |  Count: " + CollectedCount,
+                  ipos(38, 98),
+                  isize(580, 22),
+                  ucolor(126, 214, 185, 255),
+                  titleFormat);
+}
+
+void DrawFilledRect(int x, int y, int width, int height, ucolor color)
+{
+    int packedColor = int(color.value);
+    int x2 = x + width;
+    int y2 = y + height;
+    int[] data = {x, y, packedColor, x, y2, packedColor, x2, y2, packedColor, x2, y2, packedColor, x2, y, packedColor, x, y, packedColor};
+    Game.DrawPrimitive(RenderPrimitiveType::TriangleList, data);
+}
+
+void DrawBorderRect(int x, int y, int width, int height, ucolor color)
+{
+    int packedColor = int(color.value);
+    int x2 = x + width;
+    int y2 = y + height;
+    int[] data = {x, y, packedColor, x2, y, packedColor, x2, y, packedColor, x2, y2, packedColor,
+                  x2, y2, packedColor, x, y2, packedColor, x, y2, packedColor, x, y, packedColor};
+    Game.DrawPrimitive(RenderPrimitiveType::LineList, data);
+}
+
+#endif
+
+}

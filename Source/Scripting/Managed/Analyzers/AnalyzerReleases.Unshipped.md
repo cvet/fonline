@@ -13,3 +13,4 @@ FOSYNC005 | Synchronization | Warning | A raw synchronization primitive is used 
 FOSYNC009 | Synchronization | Warning | Cover for a value is not re-proved after an await that released it.
 FOSYNC011 | Synchronization | Warning | A Sync helper changes the held cover -- through the primitive or another changing helper -- without declaring the effect it has.
 FOSYNC010 | Synchronization | Warning | The boolean answer of a cover acquisition is discarded instead of read.
+FOSYNC015 | Synchronization | Warning | A widening acquisition names only entities the caller already covers, with no snapshot able to observe the difference.

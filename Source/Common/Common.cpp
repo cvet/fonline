@@ -49,24 +49,40 @@ static auto ReadPackagedBuildName() -> string;
 static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
 
+ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
+{
+    optional<vector<string>> platform_args = platform::get_command_line_args();
+
+    if (platform_args.has_value()) {
+        _values = std::move(platform_args.value());
+    }
+    else {
+        CommandLineArgs narrow_args {argc, argv};
+
+        for (size_t i = 0; i < narrow_args.size(); i++) {
+            _values.emplace_back(narrow_args.Get(i));
+        }
+    }
+
+    _pointers.reserve(_values.size());
+
+    for (string& value : _values) {
+        _pointers.emplace_back(value.data());
+    }
+}
+
 auto IsPackaged() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !PackagedBuildName.empty();
 }
 
 auto GetPackagedRuntimeName() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return PackagedBuildName;
 }
 
 auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.emplace(port, std::move(listener)).second;
@@ -74,8 +90,6 @@ auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
 
 auto RemoveInterthreadListener(uint16_t port) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.erase(port) != 0;
@@ -83,8 +97,6 @@ auto RemoveInterthreadListener(uint16_t port) -> bool
 
 auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     auto it = Interthread->Listeners.find(port);
@@ -98,8 +110,6 @@ auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 
 auto HasInterthreadListener(uint16_t port) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.contains(port);
@@ -107,8 +117,6 @@ auto HasInterthreadListener(uint16_t port) -> bool
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsPrimitive || type.IsEnum) {
         FO_VERIFY_AND_THROW(type.Size != 0, "Remote call plain argument type has zero size", type.Name);
         return type.Size;
@@ -156,13 +164,10 @@ FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _sleep {sleep},
     _fixedFps {fixed_fps}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void FrameBalancer::StartLoop()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_enabled) {
         return;
     }
@@ -172,7 +177,7 @@ void FrameBalancer::StartLoop()
 
 void FrameBalancer::EndLoop()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!_enabled) {
         return;
@@ -180,15 +185,8 @@ void FrameBalancer::EndLoop()
 
     _loopDuration = nanotime::now() - _loopStart;
 
-    if (_sleep >= 0) {
-        if (_sleep == 0) {
-            std::this_thread::yield();
-        }
-        else {
-            coarse_sleep(std::chrono::milliseconds(_sleep));
-        }
-    }
-    else if (_fixedFps > 0) {
+    // A frame rate cap outranks the plain per-frame sleep, so a config that keeps Sleep 0 can still be capped
+    if (_fixedFps > 0) {
         timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
         timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
 
@@ -208,6 +206,12 @@ void FrameBalancer::EndLoop()
                 _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
             }
         }
+    }
+    else if (_sleep == 0) {
+        std::this_thread::yield();
+    }
+    else if (_sleep > 0) {
+        coarse_sleep(std::chrono::milliseconds(_sleep));
     }
 }
 

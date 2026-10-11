@@ -1,0 +1,33 @@
+<SPARK>
+  <System name="DocumentationParticle">
+    <attrib id="groups">
+      <Group name="DocumentationGroup">
+        <attrib id="capacity" value="8" />
+        <attrib id="life time" value="1;1" />
+        <attrib id="emitters">
+          <StaticEmitter>
+            <attrib id="tank" value="-1" />
+            <attrib id="flow" value="4" />
+            <attrib id="force" value="0" />
+            <attrib id="zone">
+              <Point>
+                <attrib id="position" value="(0,0,0)" />
+              </Point>
+            </attrib>
+            <attrib id="full" value="false" />
+          </StaticEmitter>
+        </attrib>
+        <attrib id="renderer">
+          <SparkQuadRenderer>
+            <attrib id="draw in scene" value="true" />
+            <attrib id="active" value="true" />
+            <attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+            <attrib id="texture" value="Radiation.png" />
+            <attrib id="scale" value="0.5;0.5" />
+            <attrib id="atlas dimensions" value="1;1" />
+          </SparkQuadRenderer>
+        </attrib>
+      </Group>
+    </attrib>
+  </System>
+</SPARK>

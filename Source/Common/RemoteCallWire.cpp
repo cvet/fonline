@@ -39,8 +39,6 @@ static void ReadRemoteCallStructFields(data_reader& reader, const BaseTypeDesc& 
 
 RemoteCallReadStorage::~RemoteCallReadStorage()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (ptr<hstring> value : _structHashes) {
         std::destroy_at(value.get());
     }
@@ -48,8 +46,6 @@ RemoteCallReadStorage::~RemoteCallReadStorage()
 
 auto RemoteCallReadStorage::StoreStructBytes(size_t size) -> ptr<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size != 0, "Remote-call struct size is zero");
     auto buffer = make_unique_del_ptr(safe_alloc::malloc_aligned_raw(size, alignof(std::max_align_t)).as_ptr(), [](nptr<void> data) noexcept { safe_alloc::free_aligned_raw(data); });
     ptr<uint8_t> bytes = make_ptr(buffer.get()).reinterpret_as<uint8_t>();
@@ -60,8 +56,6 @@ auto RemoteCallReadStorage::StoreStructBytes(size_t size) -> ptr<uint8_t>
 
 void RemoteCallReadStorage::StoreStructHash(ptr<uint8_t> address, hstring value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(address.as_uintptr() % alignof(hstring) == 0, "Remote-call hashed field is not aligned");
     ptr<hstring> field = new (address.get()) hstring(value);
     _structHashes.emplace_back(field);
@@ -69,8 +63,6 @@ void RemoteCallReadStorage::StoreStructHash(ptr<uint8_t> address, hstring value)
 
 void WriteRemoteCallSimple(data_writer& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsPrimitive) {
         VisitBaseTypePrimitive(value.get(), type, [&](auto&& v) {
             using t = std::decay_t<decltype(v)>;
@@ -111,8 +103,6 @@ void WriteRemoteCallSimple(data_writer& writer, ptr<void> value, const BaseTypeD
 
 auto ReadRemoteCallSimple(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Copy primitive/enum bytes out of the transient reader buffer into aligned per-call storage; the call site
     // dereferences the returned pointer as the primitive's type, which requires natural alignment
     auto read_plain = [&](size_t size) -> ptr<void> {
@@ -156,8 +146,6 @@ auto ReadRemoteCallSimple(data_reader& reader, const BaseTypeDesc& type, const h
 
 static void ReadRemoteCallStructFields(data_reader& reader, const BaseTypeDesc& type, const hash_resolver& hashes, RemoteCallReadStorage& storage, ptr<uint8_t> destination)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type.StructLayout, "Remote-call struct layout is missing", type.Name);
 
     for (const FieldDesc& field : type.StructLayout->Fields) {

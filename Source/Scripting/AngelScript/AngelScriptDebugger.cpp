@@ -122,8 +122,6 @@ private:
 
     static void AngelScriptLine(AngelScript::asIScriptContext* raw_ctx, void* param)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
         auto ctx = make_ptr(raw_ctx);
         auto debugger = cast_from_void<DebuggerEndpointServer::Impl*>(param);
@@ -166,7 +164,7 @@ private:
 
 DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _bindHost = "0.0.0.0";
 
@@ -229,15 +227,11 @@ DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 
 DebuggerEndpointServer::Impl::~Impl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Stop();
 }
 
 void DebuggerEndpointServer::Impl::RequestPause()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_paused.exchange(true)) {
         _pauseStartPending = true;
     }
@@ -245,15 +239,11 @@ void DebuggerEndpointServer::Impl::RequestPause()
 
 auto DebuggerEndpointServer::Impl::ConsumePauseStart() -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _pauseStartPending.exchange(false);
 }
 
 void DebuggerEndpointServer::Impl::RequestSingleStep(DebuggerStepMode mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _pauseStartPending = false;
     _paused = false;
     _singleStepMode = mode;
@@ -262,8 +252,6 @@ void DebuggerEndpointServer::Impl::RequestSingleStep(DebuggerStepMode mode)
 
 auto DebuggerEndpointServer::Impl::ConsumeSingleStepRequest() -> DebuggerStepMode
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     bool requested = _singleStepRequested.exchange(false);
 
     if (requested) {
@@ -275,8 +263,6 @@ auto DebuggerEndpointServer::Impl::ConsumeSingleStepRequest() -> DebuggerStepMod
 
 void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const vector<uint32_t>& lines)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string key = strvex(source_path).extract_file_name().str();
 
     scoped_lock locker {_breakpointsLocker};
@@ -298,8 +284,6 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
 
 void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
@@ -336,8 +320,6 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
 
 void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext> ctx)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IsLineProcessingNeeded()) {
         return;
     }
@@ -567,8 +549,6 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
 
 auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32_t line) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string key = strvex(source_path).extract_file_name().str();
 
     scoped_lock locker {_breakpointsLocker};
@@ -584,15 +564,13 @@ auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32
 
 void DebuggerEndpointServer::Impl::EmitEvent(string_view event_name, string_view body_json)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string message = MakeDebuggerEventMessage(event_name, body_json);
     SendToActiveClient(message);
 }
 
 void DebuggerEndpointServer::Impl::Stop() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (_stopped.exchange(true)) {
         return;
@@ -622,15 +600,11 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
 
 auto DebuggerEndpointServer::Impl::MakeAttachHandshakeMessage() const -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{{\"type\":\"attachAccepted\",\"protocolVersion\":1,\"enginePid\":{}}}\n", platform::get_current_process_id_str()).str();
 }
 
 auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -> optional<int32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto msg_json = nlohmann::json::parse(string {message});
 
@@ -647,8 +621,6 @@ auto DebuggerEndpointServer::Impl::ExtractRequestId(string_view message) const -
 
 auto DebuggerEndpointServer::Impl::ExtractRequestCommand(string_view message) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto msg_json = nlohmann::json::parse(string {message});
 
@@ -665,21 +637,17 @@ auto DebuggerEndpointServer::Impl::ExtractRequestCommand(string_view message) co
 
 auto DebuggerEndpointServer::Impl::MakeDebuggerResponse(int32_t request_id, string_view command, bool success, string_view body_json) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{{\"type\":\"response\",\"requestId\":{},\"success\":{},\"command\":\"{}\",\"body\":{}}}\n", request_id, success ? "true" : "false", command, body_json).str();
 }
 
 auto DebuggerEndpointServer::Impl::MakeDebuggerEventMessage(string_view event_name, string_view body_json) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{{\"type\":\"event\",\"event\":\"{}\",\"body\":{}}}\n", event_name, body_json).str();
 }
 
 auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     shared_lock locker {_clientIoLocker};
 
@@ -692,7 +660,7 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
 
 auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> RequestResult
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t request_id = ExtractRequestId(line).value_or(0);
     string command = ExtractRequestCommand(line);
@@ -952,15 +920,11 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
 
 void DebuggerEndpointServer::Impl::Run()
 {
-    FO_STACK_TRACE_ENTRY();
-
     RunTcp();
 }
 
 void DebuggerEndpointServer::Impl::RunTcp()
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("AngelScript debugger TCP endpoint: {}", _endpoint);
 
     while (!_stopped) {
@@ -980,8 +944,6 @@ void DebuggerEndpointServer::Impl::RunTcp()
 
 void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t buffer_size = 2048;
     array<uint8_t, buffer_size> read_buf {};
     string pending;
@@ -1081,8 +1043,6 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
 
 void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t buffer_size = 1024;
     array<uint8_t, buffer_size> read_buf {};
 
@@ -1120,41 +1080,30 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
 DebuggerEndpointServer::DebuggerEndpointServer(ptr<const AngelScriptBackend> backend) :
     _impl {safe_alloc::make_unique<Impl>(backend)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 DebuggerEndpointServer::~DebuggerEndpointServer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Stop();
 }
 
 auto DebuggerEndpointServer::IsPaused() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->IsPaused();
 }
 
 void DebuggerEndpointServer::SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _impl->SetupContext(ctx, reason);
 }
 
 void DebuggerEndpointServer::EmitEvent(string_view event_name, string_view body_json)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _impl->EmitEvent(event_name, body_json);
 }
 
 void DebuggerEndpointServer::Stop()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _impl->Stop();
 }
 

@@ -53,8 +53,6 @@ static auto GetStackOverflowRecursor() -> StackOverflowRecursor;
 
 void DiagnosticSelfTest::RunIfRequested()
 {
-    FO_STACK_TRACE_ENTRY();
-
     const char* env = std::getenv("FO_SELFTEST_CRASH");
 
     if (env == nullptr || env[0] == '\0') {
@@ -66,8 +64,6 @@ void DiagnosticSelfTest::RunIfRequested()
 
 static void RunSelfTestCrash(string_view mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write(logging::type::warning, "Diagnostic self-test: inducing crash '{}'", mode);
 
     // Raw std::thread models an unguarded engine-thread failure.
@@ -133,8 +129,6 @@ static void RunSelfTestCrash(string_view mode)
 
 static void CrashByBadPointerAccess(uintptr_t address, bool write)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Launder the address through volatile so the optimizer cannot fold the
     // access away as undefined behavior; the volatile-qualified access must be emitted
     volatile uintptr_t laundered = address;
@@ -154,8 +148,6 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
 
 static void CrashByBadCall()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // A function pointer read back through volatile cannot be proven null, so the call is emitted and faults on the
     // instruction fetch, leaving no frame of its own
     using CrashTarget = void (*)();
@@ -169,8 +161,6 @@ static void CrashByBadCall()
 
 static void CrashByStackOverflow()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t result = RecurseUntilStackOverflow(0);
     ignore_unused(result);
 
@@ -182,8 +172,6 @@ FO_CLANG_IGNORE_WARNINGS_PUSH("-Winfinite-recursion")
 FO_MSVC_IGNORE_WARNINGS_PUSH(4717)
 static auto RecurseUntilStackOverflow(int depth) -> int
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // A large volatile frame plus using it after the recursive call defeats both
     // tail-call optimization and register promotion, so each frame really grows the stack
     volatile char blocker[8192];
@@ -201,8 +189,6 @@ FO_GCC_IGNORE_WARNINGS_POP()
 
 static auto GetStackOverflowRecursor() -> StackOverflowRecursor
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static StackOverflowRecursor volatile recursor = RecurseUntilStackOverflow;
 
     return recursor;
@@ -210,8 +196,6 @@ static auto GetStackOverflowRecursor() -> StackOverflowRecursor
 
 static void CrashByIntegerDivideByZero()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     volatile int zero = 0;
     volatile int one = 1;
     volatile int result = one / zero;
@@ -222,16 +206,12 @@ static void CrashByIntegerDivideByZero()
 
 static void CrashByAbort()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::abort();
 }
 
 FO_MSVC_IGNORE_WARNINGS_PUSH(4702)
 static void CrashByNoexceptThrow() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Escaping a noexcept boundary invokes std::terminate.
     // The trailing abort is intentionally unreachable
     ThrowSelfTestException();
@@ -241,31 +221,23 @@ FO_MSVC_IGNORE_WARNINGS_POP()
 
 static void ThrowSelfTestException()
 {
-    FO_STACK_TRACE_ENTRY();
-
     throw GenericException("Self-test crash: exception escaping noexcept function");
 }
 
 static void CrashByThrow()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Propagates up to the application entry point's catch and the graceful exception reporter
     throw GenericException("Self-test crash: unhandled exception");
 }
 
 static void CrashByStrongAssert()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(false, "Self-test crash: strong assertion");
     std::abort();
 }
 
 static void CrashByBasicStrongAssert()
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool self_test_condition = false;
     FO_BASIC_STRONG_ASSERT(self_test_condition);
     std::abort();
@@ -273,8 +245,6 @@ static void CrashByBasicStrongAssert()
 
 static void CrashByFatalExit()
 {
-    FO_STACK_TRACE_ENTRY();
-
     fatal::report_and_exit("Self-test crash: fatal exit");
 }
 

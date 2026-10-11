@@ -9,11 +9,61 @@ import struct
 import sys
 
 
-FORBIDDEN_IMPORTS = frozenset({"CreateFile2"})
+# Exports gained after Windows 7 SP1, by lower-case library name. The loader resolves static imports before the process
+# runs, so one of these stops a Windows 7 start; code that needs one resolves it with GetProcAddress
+POST_WINDOWS7_IMPORTS: dict[str, frozenset[str]] = {
+    "kernel32.dll": frozenset({
+        # Windows 8
+        "AddDllDirectory", "CopyFile2", "CreateFile2", "CreateFileMappingFromApp", "DeleteSynchronizationBarrier",
+        "EnterSynchronizationBarrier", "GetApplicationUserModelId", "GetCurrentApplicationUserModelId",
+        "GetCurrentPackageFamilyName", "GetCurrentPackageFullName", "GetCurrentPackageId", "GetCurrentPackagePath",
+        "GetCurrentThreadStackLimits", "GetFirmwareEnvironmentVariableExA", "GetFirmwareEnvironmentVariableExW",
+        "GetFirmwareType", "GetMemoryErrorHandlingCapabilities", "GetOverlappedResultEx", "GetPackageFamilyName",
+        "GetPackageFullName", "GetPackageId", "GetPackagePath", "GetProcessInformation", "GetProcessMitigationPolicy",
+        "GetSystemTimePreciseAsFileTime", "GetThreadInformation", "InitializeSynchronizationBarrier",
+        "MapViewOfFileFromApp", "PrefetchVirtualMemory", "RegisterBadMemoryNotification", "RemoveDllDirectory",
+        "SetDefaultDllDirectories", "SetFirmwareEnvironmentVariableExA", "SetFirmwareEnvironmentVariableExW",
+        "SetProcessInformation", "SetProcessMitigationPolicy", "SetThreadInformation", "UnmapViewOfFileEx",
+        "UnregisterBadMemoryNotification",
+        # Windows 8.1
+        "DiscardVirtualMemory", "OfferVirtualMemory", "ReclaimVirtualMemory",
+        # Windows 10 and 11
+        "ClosePseudoConsole", "CreatePseudoConsole", "GetProcessDefaultCpuSets", "GetSystemCpuSetInformation",
+        "GetSystemLeapSecondInformation", "GetSystemTimeAdjustmentPrecise", "GetTempPath2A", "GetTempPath2W",
+        "GetThreadDescription", "GetThreadSelectedCpuSets", "IsWow64Process2", "ResizePseudoConsole",
+        "SetProcessDefaultCpuSets", "SetThreadDescription", "SetThreadSelectedCpuSets",
+    }),
+    "user32.dll": frozenset({
+        # Windows 8 and 8.1
+        "EnableMouseInPointer", "GetCurrentInputMessageSource", "GetDisplayAutoRotationPreferences", "GetPointerInfo",
+        "GetPointerPenInfo", "GetPointerTouchInfo", "GetPointerType", "IsImmersiveProcess",
+        "LogicalToPhysicalPointForPerMonitorDPI", "PhysicalToLogicalPointForPerMonitorDPI",
+        "SetDisplayAutoRotationPreferences",
+        # Windows 10
+        "AdjustWindowRectExForDpi", "AreDpiAwarenessContextsEqual", "EnableNonClientDpiScaling",
+        "GetAwarenessFromDpiAwarenessContext", "GetDpiForSystem", "GetDpiForWindow", "GetSystemMetricsForDpi",
+        "GetThreadDpiAwarenessContext", "GetWindowDpiAwarenessContext", "SetProcessDpiAwarenessContext",
+        "SetThreadDpiAwarenessContext", "SystemParametersInfoForDpi",
+    }),
+    "dxgi.dll": frozenset({"CreateDXGIFactory2", "DXGIGetDebugInterface1"}),
+    "d3d11.dll": frozenset({"D3D11On12CreateDevice"}),
+}
+
+# Libraries Windows 7 SP1 does not have at all; d3dcompiler_47.dll comes only with KB4019990, and effects are
+# baked to bytecode, so nothing imports it
+POST_WINDOWS7_LIBRARIES = frozenset({"combase.dll", "d3d12.dll", "d3dcompiler_47.dll", "dcomp.dll", "shcore.dll"})
+
+# Umbrella libraries (onecore.lib, mincore.lib) bind API-set contracts at their newest versions; only the Universal CRT
+# forwarders are redistributed down to Windows 7
+API_SET_PREFIXES = ("api-ms-win-", "ext-ms-win-")
+WINDOWS7_API_SET_PREFIXES = ("api-ms-win-crt-",)
 
 
 class PeFormatError(ValueError):
     pass
+
+
+IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x0020
 
 
 @dataclass(frozen=True)
@@ -116,14 +166,44 @@ def read_imports(binary: Path) -> set[ImportedSymbol]:
     return imports
 
 
+def is_unavailable_on_windows7(item: ImportedSymbol) -> bool:
+    library = item.library.lower()
+
+    if library in POST_WINDOWS7_LIBRARIES:
+        return True
+
+    if library.startswith(API_SET_PREFIXES) and not library.startswith(WINDOWS7_API_SET_PREFIXES):
+        return True
+
+    return item.name in POST_WINDOWS7_IMPORTS.get(library, frozenset())
+
+
 def check_binary(binary: Path) -> list[ImportedSymbol]:
-    return sorted((item for item in read_imports(binary) if item.name in FORBIDDEN_IMPORTS), key=lambda item: (item.library, item.name))
+    return sorted((item for item in read_imports(binary) if is_unavailable_on_windows7(item)), key=lambda item: (item.library, item.name))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Reject CreateFile2 from Windows 7-compatible PE binaries")
-    parser.add_argument("binaries", nargs="+", type=Path)
-    args = parser.parse_args()
+def is_large_address_aware(binary: Path) -> bool:
+    data = binary.read_bytes()
+    if len(data) < 0x40 or data[:2] != b"MZ":
+        raise PeFormatError("missing DOS header")
+
+    (pe_offset,) = _unpack_from("<I", data, 0x3C)
+    if data[pe_offset : pe_offset + 4] != b"PE\0\0":
+        raise PeFormatError("missing PE signature")
+
+    (characteristics,) = _unpack_from("<H", data, pe_offset + 4 + 18)
+    return bool(characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE)
+
+
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
+    parser.add_argument("--require-large-address-aware", action="store_true", help="Require the large-address flag on checked executables")
+    parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = create_parser().parse_args(argv)
 
     failed = False
     for binary in args.binaries:
@@ -140,6 +220,19 @@ def main() -> int:
             print(f"[Windows7Imports] {binary}: unsupported imports: {details}", file=sys.stderr)
         else:
             print(f"[Windows7Imports] {binary}: compatible")
+
+        if args.require_large_address_aware and binary.suffix.lower() == ".exe":
+            try:
+                large_address_aware = is_large_address_aware(binary)
+            except (OSError, PeFormatError) as error:
+                print(f"[Windows7Imports] {binary}: unable to inspect PE address flag: {error}", file=sys.stderr)
+                failed = True
+            else:
+                if not large_address_aware:
+                    print(f"[Windows7Imports] {binary}: missing IMAGE_FILE_LARGE_ADDRESS_AWARE", file=sys.stderr)
+                    failed = True
+                else:
+                    print(f"[Windows7Imports] {binary}: large-address aware")
 
     return 1 if failed else 0
 

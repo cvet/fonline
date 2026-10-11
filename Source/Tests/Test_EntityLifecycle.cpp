@@ -51,12 +51,17 @@ namespace
     class TestNetworkConnection final : public NetworkServerConnection
     {
     public:
+        // Plays the client half of the secure channel; the offer waits in the connection until a ServerConnection
+        // takes it over, whose answer then opens the channel before any message is written
         explicit TestNetworkConnection(ptr<ServerNetworkSettings> settings) :
-            NetworkServerConnection(settings)
+            NetworkServerConnection(settings),
+            _clientChannel {vector<crypto::key_bytes> {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")}}
         {
-            FO_STACK_TRACE_ENTRY();
-
             _host = "Test";
+
+            vector<uint8_t> offer;
+            _clientChannel.TakeHandshakeOutput(offer);
+            ReceiveCallback(offer);
         }
         TestNetworkConnection(const TestNetworkConnection&) = delete;
         TestNetworkConnection(TestNetworkConnection&&) noexcept = delete;
@@ -66,15 +71,19 @@ namespace
 
         void Receive(const_span<uint8_t> buf)
         {
-            FO_STACK_TRACE_ENTRY();
+            vector<uint8_t> sealed;
 
-            ReceiveCallback(buf);
+            {
+                scoped_lock locker {_clientChannelLocker};
+
+                _clientChannel.Seal(buf, sealed);
+            }
+
+            ReceiveCallback(sealed);
         }
 
         void ResetSentPacketCount() noexcept
         {
-            FO_NO_STACK_TRACE_ENTRY();
-
             _sentPacketCount.store(0, std::memory_order_relaxed);
             _sentAddCritterCount.store(0, std::memory_order_relaxed);
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
@@ -84,17 +93,10 @@ namespace
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
 
-        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _sentPacketCount.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
 
         [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
         {
-            FO_NO_STACK_TRACE_ENTRY();
-
             switch (msg) {
             case NetMessage::AddCritter:
                 return _sentAddCritterCount.load(std::memory_order_relaxed);
@@ -107,31 +109,14 @@ namespace
             }
         }
 
-        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
+        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
 
-            return _sentTrackedMessageCount.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
 
-        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _sentInfoMessageCount.load(std::memory_order_relaxed);
-        }
-
-        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _lastSentInfoMessage.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
 
         [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
         {
-            FO_STACK_TRACE_ENTRY();
-
             FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
             return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
         }
@@ -139,16 +124,22 @@ namespace
     protected:
         void DispatchImpl() override
         {
-            FO_NO_STACK_TRACE_ENTRY();
+            // Held across the pull and the decode, so frames are opened in the order the server sealed them
+            scoped_lock locker {_clientChannelLocker};
 
             vector<uint8_t> encoded_data = SendCallback();
+            _plainData.clear();
 
             if (!encoded_data.empty()) {
+                _clientChannel.Receive(encoded_data, _plainData);
+            }
+
+            if (!_plainData.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
-                const_span<uint8_t> data = encoded_data;
+                const_span<uint8_t> data = _plainData;
                 if (!_settings->Network.DisableZlibCompression) {
-                    _decompressor.decompress(encoded_data, _unpackedData);
+                    _decompressor.decompress(_plainData, _unpackedData);
                     data = _unpackedData;
                 }
 
@@ -201,7 +192,7 @@ namespace
             }
         }
 
-        void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+        void DisconnectImpl() override { }
 
     private:
         std::atomic<size_t> _sentPacketCount {};
@@ -210,6 +201,9 @@ namespace
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
         std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
+        mutex _clientChannelLocker {};
+        SecureChannel _clientChannel;
+        vector<uint8_t> _plainData {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
@@ -672,7 +666,7 @@ namespace EntityLifecycle
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
 
         return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }
@@ -699,8 +693,6 @@ namespace EntityLifecycle
 
     static void SendStopCritterMove(ptr<TestNetworkConnection> connection, ptr<ServerEngine> server, ident_t map_id, ident_t cr_id, mpos client_hex, ipos16 client_hex_offset, mdir client_dir)
     {
-        FO_STACK_TRACE_ENTRY();
-
         NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::SendStopCritterMove);
         packet.Write(map_id);
@@ -708,6 +700,7 @@ namespace EntityLifecycle
         packet.Write(client_hex);
         packet.Write(client_hex_offset);
         packet.Write(client_dir);
+        packet.Write(nanotime::now().milliseconds());
         packet.EndMsg();
 
         connection->Receive(packet.GetData());
@@ -1864,7 +1857,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
         ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
         auto candidate = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
 

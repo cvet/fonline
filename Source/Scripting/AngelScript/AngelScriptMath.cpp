@@ -43,29 +43,23 @@ FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32_t v) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t int_part;
     return std::modf(v, &int_part);
 }
 
 static auto CloseTo(float32_t a, float32_t b, float32_t epsilon) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return is_float_equal(a, b, epsilon);
 }
 
 static auto CloseTo(float64_t a, float64_t b, float64_t epsilon) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return is_float_equal(a, b, epsilon);
 }
 
 void RegisterAngelScriptMath(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("math"));

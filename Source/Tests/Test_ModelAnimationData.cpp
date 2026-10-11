@@ -62,8 +62,6 @@ struct ModelAnimationArchiveTestOffsets
 
 static auto MakeArchiveMetadata(ModelAnimationArchiveKind kind = ModelAnimationArchiveKind::Animation) -> ModelAnimationArchiveMetadata
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationArchiveMetadata metadata;
     metadata.Kind = kind;
     metadata.Flags = 0;
@@ -77,8 +75,6 @@ static auto MakeArchiveMetadata(ModelAnimationArchiveKind kind = ModelAnimationA
 
 static auto MakeArchiveOffsets(const ModelAnimationArchiveMetadata& metadata) -> ModelAnimationArchiveTestOffsets
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationArchiveTestOffsets offsets;
     offsets.Schema = MODEL_ANIMATION_ARCHIVE_MAGIC.size();
     offsets.Kind = offsets.Schema + sizeof(uint16_t);
@@ -101,8 +97,6 @@ static auto MakeArchiveOffsets(const ModelAnimationArchiveMetadata& metadata) ->
 template<typename T>
 static void OverwriteLittleEndian(vector<uint8_t>& data, size_t offset, T value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_unsigned_v<T>);
     REQUIRE(offset + sizeof(T) <= data.size());
 
@@ -113,8 +107,6 @@ static void OverwriteLittleEndian(vector<uint8_t>& data, size_t offset, T value)
 
 static auto GetReadError(const vector<uint8_t>& data, const ModelAnimationArchiveMetadata& metadata) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         (void)ReadModelAnimationArchive(data, metadata);
     }
@@ -127,8 +119,6 @@ static auto GetReadError(const vector<uint8_t>& data, const ModelAnimationArchiv
 
 static auto ErrorContains(const vector<uint8_t>& data, const ModelAnimationArchiveMetadata& metadata, string_view needle) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetReadError(data, metadata).find(needle) != string::npos;
 }
 
@@ -454,8 +444,6 @@ TEST_CASE("ModelAnimationArchive rejects every payload corruption boundary")
 
 static auto MakeRigArchiveData(ModelAnimationArchiveKind kind, string_view source_asset, string_view object_name, uint64_t source_signature, uint8_t payload_value) -> ModelAnimationRigArchiveData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationRigArchiveData result;
     result.Metadata.Kind = kind;
     result.Metadata.Flags = MODEL_ANIMATION_ARCHIVE_SUPPORTED_FLAGS;
@@ -470,8 +458,6 @@ static auto MakeRigArchiveData(ModelAnimationArchiveKind kind, string_view sourc
 
 static auto MakeRigData() -> ModelAnimationRigData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationRigData result;
     result.RigSignature = 0x1020304050607080ULL;
     result.CacheSignature = 0x8877665544332211ULL;

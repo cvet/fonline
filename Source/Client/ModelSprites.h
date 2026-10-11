@@ -48,6 +48,22 @@ class ModelInstance;
 class ModelManager;
 class ModelSpriteFactory;
 
+class ModelSpriteHitMask final
+{
+public:
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool;
+
+    void Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit);
+    void MarkStale() noexcept { _stale = true; }
+
+private:
+    vector<bool> _mask {};
+    isize32 _maskSize {};
+    unique_nptr<RenderTextureReadback> _readback {};
+    isize32 _readbackSize {};
+    bool _stale {true};
+};
+
 class ModelSprite final : public AtlasSprite
 {
     friend class ModelSpriteFactory;
@@ -92,6 +108,7 @@ private:
         optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
     };
 
+    void RefreshHitMask() const;
     void SetupFrame(isize32 frame_size);
     auto PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop;
     void CommitFrameCrop(PreparedFrameCrop&& prepared_crop);
@@ -105,6 +122,10 @@ private:
     optional<isize32> _requestedFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
+
+    // A hit test reads a mask of the drawn picture that arrives without waiting for the GPU. Picking is a query,
+    // so the cache it keeps is mutable
+    mutable ModelSpriteHitMask _hitMask {};
 };
 
 class ModelSpriteFactory : public SpriteFactory
@@ -123,13 +144,17 @@ public:
     [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager>;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    void ClenupCache() override;
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
+    void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;
     ptr<RenderSettings> _settings;
+    ptr<EffectManager> _effectMngr;
     unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};

@@ -64,8 +64,6 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ServerApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
@@ -111,8 +109,6 @@ int main(int argc, char** argv) // Handled by SDL
         });
 
         auto get_server = [&server]() -> ptr<ServerEngine> {
-            FO_STACK_TRACE_ENTRY();
-
             FO_VERIFY_AND_THROW(server, "Server engine is not created");
             return server;
         };

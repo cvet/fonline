@@ -90,8 +90,7 @@ NATIVE_FIXTURE = r'''
 #include <utility>
 #include <vector>
 #define FO_NO_INLINE
-#define FO_NO_STACK_TRACE_ENTRY()
-#define FO_STACK_TRACE_ENTRY()
+#define FO_TRACE_ZONE(category)
 #define FO_STRONG_ASSERT(condition, message) assert(condition)
 template<class T> using nptr = T*;
 template<class T> using vector = std::vector<T>;

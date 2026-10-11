@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 import re
+import shutil
 import sys
 import tarfile
 import urllib.error
@@ -14,6 +15,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools as _buildtools  # noqa: E402
+from managed_runtime_fixtures import published_runtime_files, write_published_runtime
 
 
 CACHE_URL = "https://ci.example/cache/workspaces"
@@ -48,12 +50,9 @@ class FakeRuntimeBuild:
         self.calls = 0
         self.reused_markers: list[str] = []
 
+    # Runs whenever it is called, like the real build: whether a published tree makes it unnecessary is setup_mono's call
     def __call__(self, os_name: str, arch: str, config: str, env: dict[str, str]) -> None:
         layout = _buildtools.resolve_mono_layout(os_name, arch, config, env)
-
-        if layout.ready_marker.exists():
-            return
-
         self.calls += 1
         self.reused_markers.extend(marker.name for marker in (layout.clone_marker, layout.built_marker) if marker.exists())
         make_published_tree(layout.output_dir, f"built by call {self.calls}")
@@ -82,13 +81,7 @@ def make_env(workspace: Path, **overrides: str) -> dict[str, str]:
 
 
 def make_published_tree(output_dir: Path, content: str) -> None:
-    headers = output_dir / "include" / "mono-2.0" / "mono" / "jit"
-    headers.mkdir(parents=True)
-    (headers / "jit.h").write_text("header", encoding="utf-8")
-    netcoreapp = output_dir / "lib" / "netcoreapp"
-    netcoreapp.mkdir(parents=True)
-    (netcoreapp / "System.Private.CoreLib.dll").write_text(content, encoding="utf-8")
-    (output_dir / "lib" / "libmonosgen-2.0.a").write_text(content, encoding="utf-8")
+    write_published_runtime(output_dir, "linux", content)
 
 
 def tree_files(root: Path) -> dict[str, str]:
@@ -131,6 +124,41 @@ def test_a_ready_workspace_neither_fetches_nor_publishes(tmp_path: Path, cache: 
     assert build.calls == 1
 
 
+def test_a_tree_restored_from_the_cache_is_not_rebuilt_by_another_build_directory(
+    tmp_path: Path, cache: FakeWorkspaceCache, build: FakeRuntimeBuild,
+) -> None:
+    # A restored tree carries its ready marker but none of the clone and build markers, and a second build directory
+    # sharing the workspace used to take that for an unfinished source build
+    _buildtools.setup_mono("linux", "x64", "Release", make_env(tmp_path / "first"))
+    env = make_env(tmp_path / "second")
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    layout = _buildtools.resolve_mono_layout("linux", "x64", "Release", env)
+    assert not layout.clone_marker.exists()
+    assert not layout.built_marker.exists()
+    cache.fetched.clear()
+
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+
+    assert build.calls == 1
+    assert cache.fetched == []
+
+
+def test_a_ready_marker_without_its_tree_is_published_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cache: FakeWorkspaceCache, build: FakeRuntimeBuild,
+) -> None:
+    monkeypatch.delenv(_buildtools.WORKSPACE_CACHE_VAR)
+    env = make_env(tmp_path / "workspace")
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    layout = _buildtools.resolve_mono_layout("linux", "x64", "Release", env)
+    shutil.rmtree(layout.output_dir)
+
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+
+    assert build.calls == 2
+    assert layout.ready_marker.is_file()
+    assert (layout.output_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll").read_text(encoding="utf-8") == "built by call 2"
+
+
 def test_an_incomplete_cached_tree_is_a_miss(tmp_path: Path, cache: FakeWorkspaceCache, build: FakeRuntimeBuild) -> None:
     env = make_env(tmp_path / "workspace")
     name = _buildtools.build_mono_workspace_cache_name("linux", "x64", "Release", env)
@@ -148,6 +176,30 @@ def test_an_incomplete_cached_tree_is_a_miss(tmp_path: Path, cache: FakeWorkspac
     assert build.calls == 1
     assert (layout.output_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll").read_text(encoding="utf-8") == "built by call 1"
     assert cache.archives[name] != archive_path.read_bytes()
+
+
+@pytest.mark.parametrize("relative", published_runtime_files("linux"))
+@pytest.mark.parametrize("damage", ("missing", "empty"))
+def test_a_cached_tree_missing_link_or_bake_inputs_is_rebuilt(
+    tmp_path: Path, cache: FakeWorkspaceCache, build: FakeRuntimeBuild, relative: str, damage: str,
+) -> None:
+    env = make_env(tmp_path / "workspace")
+    layout = _buildtools.resolve_mono_layout("linux", "x64", "Release", env)
+    name = _buildtools.build_mono_workspace_cache_name("linux", "x64", "Release", env)
+    incomplete = tmp_path / "cache-input" / layout.publish_triplet
+    make_published_tree(incomplete, "incomplete cache")
+    if damage == "missing":
+        (incomplete / relative).unlink()
+    else:
+        (incomplete / relative).write_bytes(b"")
+    archive_path = tmp_path / "incomplete.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as archive:
+        archive.add(incomplete, arcname=incomplete.name)
+    cache.archives[name] = archive_path.read_bytes()
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    assert build.calls == 1
+    assert (layout.output_dir / relative).read_text() == "built by call 1"
+    assert layout.ready_marker.is_file()
 
 
 @pytest.mark.parametrize("cache_enabled", [True, False])

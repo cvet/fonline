@@ -97,6 +97,7 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
 static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path;
 static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>;
 static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis;
+static auto CollectPatchPointWeaverInputs(const ManagedProjectAnalysis& analysis) -> vector<string>;
 static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>;
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>;
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
@@ -177,7 +178,7 @@ static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, m
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>;
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content);
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes);
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes, const EngineMetadata& meta);
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>;
 static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies);
 static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity;
@@ -191,17 +192,15 @@ static auto IsManagedProjectReference(string_view reference) -> bool;
 ManagedScriptBaker::ManagedScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ManagedScriptBaker::~ManagedScriptBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty()) {
         string normalized_target_path = strex(target_path).normalize_path_slashes().str();
@@ -429,10 +428,10 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 // ManagedScriptBaker generation steps
 void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, const std::filesystem::path& project_dir, string_view target_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ManagedAbiManifest abi = BuildManagedAbiManifest(meta, target_name);
-    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectManagedAbiWrapperClasses(meta));
+    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectManagedAbiWrapperClasses(meta), meta);
 
     unordered_map<string, ComplexTypeDesc> callbacks;
     CollectCallbacks(meta, callbacks);
@@ -1007,7 +1006,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
 void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::path& project_dir, string_view target_framework, const std::filesystem::path& source_file)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (target_framework.empty()) {
         throw ManagedScriptBakerException("ManagedScript.TargetFramework setting is empty");
@@ -1041,6 +1040,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     file << "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n";
     file << "    <ImplicitUsings>false</ImplicitUsings>\n";
     file << "    <Nullable>enable</Nullable>\n";
+    file << "    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
     // Runs the IDE* code-style analyzers during the build, at whatever severity `.editorconfig` assigns them
@@ -1059,7 +1059,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
 
 void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, string_view assemblies_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references, const ManagedProjectAnalysis& analysis)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
     auto proj_path = project_dir / fs::make_path(proj_name);
@@ -1090,6 +1090,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n";
     file << "    <ImplicitUsings>false</ImplicitUsings>\n";
     file << "    <Nullable>enable</Nullable>\n";
+    file << "    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
     // See the host-project emitter above: this is what makes the IDE* code-style analyzers run in the build
@@ -1225,6 +1226,32 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "  </ItemGroup>\n";
     }
 
+    // Weaving the intermediate assembly lets every later build step copy the woven one; the weaver is built here, not
+    // referenced, because a reference to an executable copies it into the output. The mapper never applies a patch
+    if (!analysis.PatchPointWeaver.empty()) {
+        string weaver_project = EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs::make_path(analysis.PatchPointWeaver)}));
+
+        // A woven assembly is left alone, so a changed weaver has to compile the scripts again
+        file << "  <ItemGroup Condition=\" '$(Configuration)' != 'Mapper' \">\n";
+
+        for (const string& input : CollectPatchPointWeaverInputs(analysis)) {
+            file << "    <CustomAdditionalCompileInputs Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs::make_path(input)})) << "\" />\n";
+        }
+
+        file << "  </ItemGroup>\n";
+        file << "  <Target Name=\"FOnlineWeavePatchPoints\" AfterTargets=\"CoreCompile\" Condition=\" '@(IntermediateAssembly)' != '' And '$(Configuration)' != 'Mapper' \">\n";
+        file << "    <MSBuild Projects=\"" << weaver_project << "\" Targets=\"Restore\" RemoveProperties=\"OutputPath;Configuration;Platform\" Properties=\"MSBuildRestoreSessionId=$([System.Guid]::NewGuid())\" />\n";
+        file << "    <MSBuild Projects=\"" << weaver_project << "\" Targets=\"Build\" RemoveProperties=\"OutputPath;Configuration;Platform\">\n";
+        file << "      <Output TaskParameter=\"TargetOutputs\" ItemName=\"FOnlinePatchPointWeaver\" />\n";
+        file << "    </MSBuild>\n";
+        file << "    <PropertyGroup>\n";
+        file << "      <FOnlineDotnetHost>$(DOTNET_HOST_PATH)</FOnlineDotnetHost>\n";
+        file << "      <FOnlineDotnetHost Condition=\" '$(FOnlineDotnetHost)' == '' \">dotnet</FOnlineDotnetHost>\n";
+        file << "    </PropertyGroup>\n";
+        file << "    <Exec Command=\"&quot;$(FOnlineDotnetHost)&quot; &quot;@(FOnlinePatchPointWeaver)&quot; &quot;@(IntermediateAssembly->'%(FullPath)')&quot;\" />\n";
+        file << "  </Target>\n";
+    }
+
     file << "</Project>\n";
     WriteTextFileIfChanged(proj_path, file.str(), "Can't create generated project file");
 
@@ -1234,7 +1261,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
 
 void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& project_dir, string_view solution_name, const vector<string>& project_names)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string sln_name = MakeGeneratedManagedSolutionFileName(solution_name);
     auto sln_path = project_dir / fs::make_path(sln_name);
@@ -1292,7 +1319,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
 
 auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& dir_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<std::filesystem::path> result;
     unordered_set<string> unique_paths;
@@ -1350,8 +1377,6 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
 
 auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
     unordered_set<string> unique_refs(result.begin(), result.end());
 
@@ -1374,8 +1399,6 @@ auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_reference
 
 auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const std::filesystem::path& config_dir) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Empty targets the build GeneratedSource tree (the same one native codegen writes to), so generated
     // managed scripts stay out of the authored source tree unless the project explicitly roots them there
     std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : ResolveManagedPath(config_dir, dir_override);
@@ -1393,7 +1416,7 @@ auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override, const 
 
 auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_message) -> void
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string pending_output;
 
@@ -1430,7 +1453,7 @@ auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_messag
 
 static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references, const std::filesystem::path& managed_host_source, const ManagedProjectAnalysis& analysis, const std::filesystem::path& generated_dir, string_view project_name) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     uint64_t stamp = 1;
 
@@ -1486,6 +1509,13 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
         merge_disk_file(additional_file);
     }
 
+    // The weaver rewrites the compiled assembly, so its sources decide the output as much as the scripts do
+    if (target_name != "Mapper") {
+        for (const string& input : CollectPatchPointWeaverInputs(analysis)) {
+            merge_disk_file(input);
+        }
+    }
+
     // The same covers .editorconfig, where severities live: the stamp walks up from each source file exactly
     // as Roslyn resolves it, because a severity is as much a compilation input as the analyzer reading it
     unordered_set<string> visited_dirs;
@@ -1526,8 +1556,6 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
 
 static auto FindManagedHostSource(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const string& source_dir_value : source_dirs) {
         std::filesystem::path source_dir = ResolveManagedPath(config_dir, source_dir_value);
         array candidates {
@@ -1552,8 +1580,6 @@ static auto FindManagedHostSource(const vector<string>& source_dirs, const std::
 
 static auto IsCsKeyword(string_view name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr string_view keywords[] = {
         "abstract",
         "as",
@@ -1639,22 +1665,16 @@ static auto IsCsKeyword(string_view name) -> bool
 
 static auto IsIdentifierStart(char c) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::isalpha(static_cast<unsigned char>(c)) != 0 || c == '_';
 }
 
 static auto IsIdentifierPart(char c) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '_';
 }
 
 static auto EscapeCsIdentifier(string_view name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(name.size() + 1);
 
@@ -1675,8 +1695,6 @@ static auto EscapeCsIdentifier(string_view name) -> string
 
 static auto MakeUniqueCsIdentifier(string_view name, unordered_set<string>& used_names) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = EscapeCsIdentifier(name);
 
     if (used_names.emplace(result).second) {
@@ -1694,8 +1712,6 @@ static auto MakeUniqueCsIdentifier(string_view name, unordered_set<string>& used
 
 static auto EscapeXml(string_view value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(value.size());
 
@@ -1727,8 +1743,6 @@ static auto EscapeXml(string_view value) -> string
 
 static auto EscapeCsStringLiteral(string_view value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(value.size());
 
@@ -1745,8 +1759,6 @@ static auto EscapeCsStringLiteral(string_view value) -> string
 
 static auto TrimString(string value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto is_space = [](char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; };
     value.erase(value.begin(), std::find_if_not(value.begin(), value.end(), is_space));
     value.erase(std::find_if_not(value.rbegin(), value.rend(), is_space).base(), value.end());
@@ -1755,16 +1767,12 @@ static auto TrimString(string value) -> string
 
 static auto ScopeMatches(string_view scope, string_view value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string lower_scope = strex(scope).lower().str();
     return scope.empty() || scope == "*" || lower_scope == "all" || scope == value;
 }
 
 static auto CollectScopedValues(const vector<string>& entries, string_view assembly_name, string_view target_name) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
 
     for (const string& raw_entry : entries) {
@@ -1796,8 +1804,6 @@ static auto CollectScopedValues(const vector<string>& entries, string_view assem
 
 static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (msbuild_path.empty()) {
         throw ManagedScriptBakerException("ManagedScript.MsBuild setting is empty");
     }
@@ -1821,8 +1827,6 @@ static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string
 
 static auto IsGeneratedManagedApiFile(const std::filesystem::path& path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (path.extension() != ".cs") {
         return false;
     }
@@ -1845,63 +1849,47 @@ static auto IsGeneratedManagedApiFile(const std::filesystem::path& path) -> bool
 
 static auto MakeGeneratedManagedApiFileName(string_view target_name, string_view suffix) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}{}.gen.cs", target_name, suffix).str();
 }
 
 static auto MakeGeneratedManagedUnifiedProjectFileName(string_view project_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}.gen.csproj", project_name).str();
 }
 
 static auto MakeGeneratedManagedSolutionFileName(string_view solution_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}.gen.sln", solution_name).str();
 }
 
 static auto MakeManagedAssemblyFileName(string_view pack_name, string_view target_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}.{}.dll", pack_name, target_name).str();
 }
 
 static auto MakeManagedEntryAssemblyResourcePath(string_view pack_name, string_view target_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeManagedOutputAssemblyResourcePath(target_name, MakeManagedAssemblyFileName(pack_name, target_name));
 }
 
 static auto MakeManagedOutputAssemblyResourcePath(string_view target_name, string_view assembly_file_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}/{}", MakeManagedOutputAssemblyResourceDir(target_name), assembly_file_name).str();
 }
 
 static auto MakeManagedOutputAssemblyResourceDir(string_view target_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeManagedAssemblyResourceDir(target_name);
 }
 
 static auto IsGeneratedManagedArtifactFileName(string_view file_name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return file_name.ends_with(".gen.csproj") || file_name.ends_with(".gen.sln");
 }
 
 static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& project_dir, const unordered_set<string>& expected_files)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     std::error_code ec;
 
@@ -1940,8 +1928,6 @@ static void RemoveStaleGeneratedManagedArtifacts(const std::filesystem::path& pr
 
 static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     std::filesystem::path config_dir = std::filesystem::current_path(ec);
 
@@ -1967,8 +1953,6 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
 
 static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::filesystem::path path {path_value};
 
     if (path.is_relative() && !config_dir.empty()) {
@@ -1982,8 +1966,6 @@ static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_v
 
 static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> paths;
     paths.reserve(path_values.size());
 
@@ -2001,7 +1983,7 @@ static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const v
 
 static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis
 {
-    FO_STACK_TRACE_ENTRY();
+    string patch_point_weaver = TrimString(settings.ManagedScript.PatchPointWeaver);
 
     return ManagedProjectAnalysis {
         .Level = TrimString(settings.ManagedScript.AnalysisLevel),
@@ -2009,13 +1991,37 @@ static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std
         .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScript.Analyzers),
         .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScript.AnalyzerPackages),
         .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScript.AdditionalFiles),
+        .PatchPointWeaver = patch_point_weaver.empty() ? string {} : fs::path_to_string(ResolveManagedPath(config_dir, patch_point_weaver)),
     };
+}
+
+// The weaver project and its sources: whatever changes how the scripts are woven
+static auto CollectPatchPointWeaverInputs(const ManagedProjectAnalysis& analysis) -> vector<string>
+{
+    vector<string> inputs;
+
+    if (analysis.PatchPointWeaver.empty()) {
+        return inputs;
+    }
+
+    inputs.emplace_back(analysis.PatchPointWeaver);
+    vector<string> sources;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(std::filesystem::path {fs::make_path(analysis.PatchPointWeaver)}.parent_path(), ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+        if (it->is_regular_file() && it->path().extension() == ".cs") {
+            sources.emplace_back(fs::path_to_string(it->path()));
+        }
+    }
+
+    // Directory order differs between file systems, and the stamp must not
+    std::ranges::sort(sources);
+    inputs.insert(inputs.end(), sources.begin(), sources.end());
+    return inputs;
 }
 
 static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A floating version makes the rule set depend on the day the build ran, which defeats the point of
     // gating on analyzer diagnostics at all, so it is rejected here rather than emitted
     constexpr string_view FLOATING_VERSION_CHARS = "*[]()<>=,";
@@ -2059,7 +2065,7 @@ static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vecto
 
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (source_dirs.empty()) {
         throw ManagedScriptBakerException("ManagedScript.Dirs setting is empty");
@@ -2103,8 +2109,6 @@ static auto CollectManagedDirSources(const vector<string>& source_dirs, const st
 
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto absolute_project_dir = std::filesystem::weakly_canonical(project_dir, ec).lexically_normal();
 
@@ -2124,8 +2128,6 @@ static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, co
 
 static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = MakeRelativeProjectPath(project_dir, path);
     std::ranges::replace(result, '/', '\\');
     return result;
@@ -2133,8 +2135,6 @@ static auto MakeSolutionProjectPath(const std::filesystem::path& project_dir, co
 
 static auto EscapeSolutionString(string_view value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(value.size());
 
@@ -2158,8 +2158,6 @@ static auto EscapeSolutionString(string_view value) -> string
 
 static auto HashManagedSolutionGuid(string_view value, uint64_t seed) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr uint64_t FNV_OFFSET = 14695981039346656037ull;
     constexpr uint64_t FNV_PRIME = 1099511628211ull;
 
@@ -2175,8 +2173,6 @@ static auto HashManagedSolutionGuid(string_view value, uint64_t seed) noexcept -
 
 static auto MakeManagedSolutionGuid(string_view value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t first = HashManagedSolutionGuid(value, 0x6D616E6167656401ull);
     uint64_t second = HashManagedSolutionGuid(value, 0x736F6C7574696F6Eull);
 
@@ -2200,8 +2196,6 @@ static auto MakeManagedSolutionGuid(string_view value) -> string
 
 static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto target_output_path = assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name));
     auto output_path = std::filesystem::absolute(target_output_path, ec).lexically_normal();
@@ -2216,8 +2210,6 @@ static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblie
 
 static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::filesystem::path
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
 
     std::error_code ec;
@@ -2227,8 +2219,6 @@ static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::
 
 static auto MakeCsTypeToken(string_view name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = EscapeCsIdentifier(name);
 
     if (!result.empty() && result.front() == '@') {
@@ -2240,8 +2230,6 @@ static auto MakeCsTypeToken(string_view name) -> string
 
 static auto MakeCsTypeName(const BaseTypeDesc& type) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         return "bool";
     }
@@ -2294,8 +2282,6 @@ static auto MakeCsTypeName(const BaseTypeDesc& type) -> string
 
 static auto MakeCallbackDelegateName(const ComplexTypeDesc& type) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type.Kind == ComplexTypeKind::Callback, "Type kind must be a callback to build a delegate name");
     FO_VERIFY_AND_THROW(type.CallbackArgs, "Callback type has no argument list");
 
@@ -2311,8 +2297,6 @@ static auto MakeCallbackDelegateName(const ComplexTypeDesc& type) -> string
 
 static auto MakeCsTypeName(const ComplexTypeDesc& type) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return "void";
     }
@@ -2339,8 +2323,6 @@ static auto MakeCsTypeName(const ComplexTypeDesc& type) -> string
 
 static auto MakeCsTypeName(const ComplexTypeDesc& type, bool nullable) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string name = MakeCsTypeName(type);
 
     // Nullability is tracked only on handle/reference types (entities, strings, ref-types), which map
@@ -2357,8 +2339,6 @@ static auto MakeCsTypeName(const ComplexTypeDesc& type, bool nullable) -> string
 
 static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return "void";
     }
@@ -2385,8 +2365,6 @@ static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string
 
 static auto MakeCsPropertyTypeName(ptr<const Property> prop) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsDict()) {
         if (prop->IsDictOfArray()) {
             return strex("Dictionary<{}, List<{}>>", MakeCsTypeName(prop->GetDictKeyType()), MakeCsTypeName(prop->GetBaseType())).str();
@@ -2403,8 +2381,6 @@ static auto MakeCsPropertyTypeName(ptr<const Property> prop) -> string
 
 static auto JoinCsCommaList(const vector<string>& values) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
 
     for (const string& value : values) {
@@ -2420,8 +2396,6 @@ static auto JoinCsCommaList(const vector<string>& values) -> string
 
 static auto ShouldUseMultilineCsArgumentList(const vector<string>& values, size_t single_line_prefix_length) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (values.size() > 4) {
         return true;
     }
@@ -2441,8 +2415,6 @@ static auto ShouldUseMultilineCsArgumentList(const vector<string>& values, size_
 
 static void AppendCsCallableDeclaration(ostringstream& out, string_view indent, string_view declaration_prefix, string_view name, const vector<string>& arg_declarations, string_view suffix)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string line_prefix = strex("{}{}{}", indent, declaration_prefix, name).str();
 
     if (ShouldUseMultilineCsArgumentList(arg_declarations, line_prefix.length() + suffix.length())) {
@@ -2461,8 +2433,6 @@ static void AppendCsCallableDeclaration(ostringstream& out, string_view indent, 
 
 static auto MakeCsArgumentNames(const_span<ArgDesc> args) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
     unordered_set<string> used_names;
     result.reserve(args.size());
@@ -2477,8 +2447,6 @@ static auto MakeCsArgumentNames(const_span<ArgDesc> args) -> vector<string>
 
 static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // C# method-parameter defaults must be compile-time constants. The runtime ArgDesc carries the normalized
     // C++/AngelScript default (ArgDesc.DefaultValue, e.g
     if (arg.DefaultValue.empty() || arg.Type.IsMutable) {
@@ -2510,8 +2478,6 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
 
 static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_callbacks) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
     auto arg_names = MakeCsArgumentNames(args);
     result.reserve(args.size());
@@ -2546,8 +2512,6 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_call
 
 static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is_global, const_span<ArgDesc> args) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
     unordered_set<string> used_names;
     result.reserve(args.size() + (!is_global ? 1u : 0u));
@@ -2581,8 +2545,6 @@ static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is
 
 static void AppendGeneratedHeader(ostringstream& out)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << GENERATED_CS_DISCLAIMER;
     out << "namespace FOnline;\n\n";
     out << "using System;\n";
@@ -2595,7 +2557,7 @@ static void AppendGeneratedHeader(ostringstream& out)
 // can register managed virtual-property callbacks the same way AngelScript does
 static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& meta, string_view target_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<ptr<const RemoteCallDesc>> cs_calls;
 
@@ -2655,7 +2617,7 @@ static void AppendRemoteCallerSurface(ostringstream& out, const EngineMetadata& 
 // invokes the delegate directly; a delegate shape it does not recognize takes the boxed Native.InvokeCallback path
 static void AppendCallbackAdapters(ostringstream& out, const EngineMetadata& meta, string_view target_name, const vector<pair<string, ComplexTypeDesc>>& callbacks)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     out << "internal static class CallbackAdapters\n";
     out << "{\n";
@@ -2699,8 +2661,6 @@ static void AppendCallbackAdapters(ostringstream& out, const EngineMetadata& met
 // means the signature has no generated delegate type, so only the System.Action / System.Func shapes are matched
 static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys, string_view delegate_name, const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedAbiCallbackLayout layout = BuildManagedAbiCallbackLayout(ret, args);
 
     // System.Action and System.Func stop at sixteen arguments
@@ -2819,7 +2779,7 @@ static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys,
 // the match from the supplied setter method group with no explicit type argument
 static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     unordered_set<string> enum_names;
 
@@ -2977,8 +2937,6 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
 
 static void AppendPropertyInfoAccessor(ostringstream& out, string_view type_name, ptr<const PropertyRegistrar> registrar, const map<int32_t, string>& enum_values)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string enum_type = EscapeCsIdentifier(strex("{}Property", type_name).str());
 
     out << CS_INDENT << "public static void GetPropertyInfo(" << enum_type << " property, out bool isDisabled, out bool isVirtual, out bool isDict, out bool isArray, out bool isStringLike, out string enumName, out bool isInt, out bool isFloat, out bool isBool, out int baseSize, out bool isSynced)\n";
@@ -3020,7 +2978,7 @@ static void AppendPropertyInfoAccessor(ostringstream& out, string_view type_name
 
 static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     map<string, map<int32_t, string>> enum_values_by_index;
 
@@ -3066,8 +3024,6 @@ static void AppendPropertyInfoAccessors(ostringstream& out, const EngineMetadata
 
 static void AppendHstringType(ostringstream& out)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << "[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 8)]\n";
     out << "public partial struct hstring\n";
     out << "{\n";
@@ -3120,8 +3076,6 @@ static void AppendHstringType(ostringstream& out)
 // A value type's `any` form is the one GenericType_AnyConv writes: its primitive fields, nested types flattened
 static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<pair<string, ptr<const BaseTypeDesc>>> leaves;
     CollectAnyFieldLeaves(type, "", leaves);
     string struct_name = EscapeCsIdentifier(type.Name);
@@ -3157,8 +3111,6 @@ static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type)
 
 static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, vector<pair<string, ptr<const BaseTypeDesc>>>& leaves)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsStruct) {
         FO_VERIFY_AND_THROW(type.StructLayout, "Value type has no layout", type.Name);
 
@@ -3174,8 +3126,6 @@ static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, 
 
 static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         return "FieldBool";
     }
@@ -3218,8 +3168,6 @@ static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view
 
 static void AppendEntityBaseClass(ostringstream& out)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << "public partial class Entity : System.IEquatable<Entity>\n";
     out << "{\n";
     out << CS_INDENT << "public ident Id\n";
@@ -3362,8 +3310,6 @@ static void AppendEntityBaseClass(ostringstream& out)
 
 static auto MakePropertyInitializer(const string& type_name, optional<string_view> explicit_initializer, bool is_ref_type) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (explicit_initializer.has_value()) {
         return string {*explicit_initializer};
     }
@@ -3383,22 +3329,16 @@ static auto MakePropertyInitializer(const string& type_name, optional<string_vie
 // A property of this type is a generated class the DTO owns, so it can hold an empty record instead of null
 static auto IsNonNullableRefType(const ComplexTypeDesc& type, bool nullable) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !nullable && type.Kind == ComplexTypeKind::Simple && type.BaseType.IsRefType;
 }
 
 static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.IsRefType && type.RefType && type.RefType->FieldsRegistrar;
 }
 
 static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsInComponent()) {
         return strex("{}{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str();
     }
@@ -3408,8 +3348,6 @@ static auto MakeManagedDynamicRefTypePropertyName(ptr<const Property> prop) -> s
 
 static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // A fixed type is a proto-reference value (stored as a proto-id hash, resolved to its proto entity on
     // both sides), so it crosses the bridge like an entity proto even though it is not flagged IsEntity
     return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsRefType;
@@ -3417,8 +3355,6 @@ static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool
 
 static auto CanUseManagedBridge(const ComplexTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return true;
     }
@@ -3442,22 +3378,16 @@ static auto CanUseManagedBridge(const ComplexTypeDesc& type) -> bool
 
 static auto CanUseManagedFixedDictionaryPropertyValueBridge(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.IsPrimitive || type.IsEnum || type.IsStruct || type.IsHashedString || type.IsFixedType || type.IsEntityProto;
 }
 
 static auto CanUseManagedDictionaryArrayPropertyValueBridge(const BaseTypeDesc& type) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.Name == "any" || type.IsString || CanUseManagedFixedDictionaryPropertyValueBridge(type);
 }
 
 static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const BaseTypeDesc& base_type = prop->GetBaseType();
 
     if (prop->IsDict()) {
@@ -3477,8 +3407,6 @@ static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool
 
 static auto IsManagedBridgeMethod(const MethodDesc& method) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (method.GlobalGetter || method.Getter || method.Setter) {
         return false;
     }
@@ -3491,8 +3419,6 @@ static auto IsManagedBridgeMethod(const MethodDesc& method) -> bool
 
 static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (is_static) {
         return "IntPtr.Zero";
     }
@@ -3502,22 +3428,16 @@ static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> s
 
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::ranges::any_of(args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 }
 
 static auto CountMutableArgs(const_span<ArgDesc> args) -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return static_cast<size_t>(std::ranges::count_if(args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
 }
 
 static void AppendObjectArrayDeclaration(ostringstream& out, string_view indent, string_view variable_name, const_span<ArgDesc> args)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << indent << "object?[] " << variable_name << " = ";
 
     if (args.empty()) {
@@ -3537,8 +3457,6 @@ static void AppendObjectArrayDeclaration(ostringstream& out, string_view indent,
 
 static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << indent << prefix << "global::FOnline.Native.CallMethodBoxed(\n";
     out << indent << "    " << method_id << ",\n";
     out << indent << "    " << entity_ptr << ",\n";
@@ -3549,8 +3467,6 @@ static void AppendNativeCallMethodExpression(ostringstream& out, string_view ind
 // whose accessor checks the wrapper's backend exactly as a boxed argument is checked
 static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const ComplexTypeDesc& type, string_view value_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (slot.Kind != ManagedAbiValueKind::Handle) {
         return string {value_name};
     }
@@ -3566,8 +3482,6 @@ static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const Complex
 
 static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> arg_names = MakeCsArgumentNames(args);
     out << indent << "global::FOnline.ScalarCallFrame __frame = default;\n";
 
@@ -3608,8 +3522,6 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
 
 static void AppendSingleMutableArgAssignment(ostringstream& out, const_span<ArgDesc> args, string_view source_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto arg_names = MakeCsArgumentNames(args);
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -3626,8 +3538,6 @@ static void AppendSingleMutableArgAssignment(ostringstream& out, const_span<ArgD
 
 static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name, size_t source_offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto arg_names = MakeCsArgumentNames(args);
     size_t source_index = source_offset;
 
@@ -3644,8 +3554,6 @@ static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> 
 
 static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto arg_names = MakeCsArgumentNames(args);
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -3661,15 +3569,11 @@ static void AppendMutableEventArgAssignments(ostringstream& out, const_span<ArgD
 // declared `new` to hide the base member without a CS0108 hiding warning
 static auto IsEntityBaseShadowName(string_view property_name) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return property_name == "Name" || property_name == "Id" || property_name == "ProtoId" || property_name == "IsDestroyed" || property_name == "IsDestroying";
 }
 
 static void AppendProperty(ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer = std::nullopt, bool is_ref_type = false)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!member_names.emplace(property_name).second) {
         return;
     }
@@ -3702,8 +3606,6 @@ static void AppendProperty(ostringstream& out, const string& type_name, const st
 
 static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string type_name = MakeCsPropertyTypeName(prop);
     string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
     string property_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
@@ -3772,8 +3674,6 @@ static void AppendNativeProperty(ostringstream& out, ptr<const Property> prop, b
 
 static void AppendSettingProperty(ostringstream& out, string_view indent, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names, nptr<const ManagedAbiSettingEntry> abi_setting)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!member_names.emplace(property_name).second) {
         return;
     }
@@ -3885,8 +3785,6 @@ static void AppendSettingProperty(ostringstream& out, string_view indent, const 
 
 static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, const unordered_set<string>& reserved_names, unordered_set<string>& signatures, bool async_callbacks, nptr<const ManagedAbiMethodEntry> abi_method)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (method.GlobalGetter || method.Getter || method.Setter) {
         return;
     }
@@ -4026,8 +3924,6 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
 
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const MethodDesc& method : methods) {
         if (method.GlobalGetter || method.Getter || method.Setter) {
             continue;
@@ -4064,8 +3960,6 @@ static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view me
 
 static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names, const ManagedAbiManifest& abi)
 {
-    FO_STACK_TRACE_ENTRY();
-
     struct MethodAccessors
     {
         nptr<const MethodDesc> Getter {};
@@ -4204,8 +4098,6 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
 
 static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names, const ManagedAbiManifest& abi)
 {
-    FO_STACK_TRACE_ENTRY();
-
     unordered_set<string> signatures;
 
     AppendMethodProperties(out, methods, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, abi);
@@ -4224,8 +4116,6 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
 
 static void AppendDynamicRefTypeProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view owner_type_name, unordered_set<string>& member_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
         auto prop = registrar->GetPropertyByIndexUnsafe(i);
 
@@ -4249,8 +4139,6 @@ static void AppendDynamicRefTypeProperties(ostringstream& out, ptr<const Propert
 
 static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistrar> registrar, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
         auto prop = registrar->GetPropertyByIndexUnsafe(i);
 
@@ -4280,8 +4168,6 @@ static void AppendEntityProperties(ostringstream& out, ptr<const PropertyRegistr
 
 static auto MakeSortedComponents(const EntityTypeDesc& desc) -> vector<pair<string, ptr<const Property>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(desc.PropRegistrar.as_nptr(), "Entity type has no property registrar");
 
     vector<pair<string, ptr<const Property>>> result;
@@ -4299,8 +4185,6 @@ static auto MakeSortedComponents(const EntityTypeDesc& desc) -> vector<pair<stri
 
 static void AppendComponentAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& [component_name, prop] : MakeSortedComponents(desc)) {
         string component_type = strex("{}{}Component", owner_type_name, component_name).str();
         string accessor_name = EscapeCsIdentifier(component_name);
@@ -4347,8 +4231,6 @@ static void AppendComponentAccessors(ostringstream& out, string_view owner_type_
 
 static void AppendEventAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const EntityEventDesc& event : desc.Events) {
         string event_type = strex("{}{}Event", owner_type_name, event.Name).str();
         string event_name = EscapeCsIdentifier(event.Name);
@@ -4375,8 +4257,6 @@ static void AppendEventAccessors(ostringstream& out, string_view owner_type_name
 
 static void AppendEntityClass(ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, const ManagedAbiManifest& abi, string_view native_owner_name, bool is_fixed_type, bool data_only)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool is_static = desc.IsGlobal && class_name == "Game";
     unordered_set<string> member_names;
 
@@ -4478,8 +4358,6 @@ static void AppendEntityClass(ostringstream& out, string_view class_name, string
 
 static void AppendComponentClasses(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& [component_name, prop] : MakeSortedComponents(desc)) {
         unordered_set<string> member_names;
         string component_type = strex("{}{}Component", owner_type_name, component_name).str();
@@ -4502,8 +4380,6 @@ static void AppendComponentClasses(ostringstream& out, string_view owner_type_na
 
 static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name, bool is_static, unordered_set<string>& member_names, const ManagedAbiManifest& abi)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (desc.HolderEntries.empty()) {
         return;
     }
@@ -4641,8 +4517,6 @@ static void AppendEntityHolderAccessors(ostringstream& out, string_view owner_ty
 
 static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name, string_view base_name, bool always_covered)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out << "public partial class " << EscapeCsIdentifier(class_name) << " : " << EscapeCsIdentifier(base_name) << "\n";
     out << "{\n";
     out << CS_INDENT << "public " << EscapeCsIdentifier(class_name) << "() : base()\n";
@@ -4670,7 +4544,7 @@ static void AppendEmptyDerivedEntity(ostringstream& out, string_view class_name,
 
 static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // AngelScript registers, per entity type, a `<Type>PropertyGroup` namespace with a getter per property group
     // returning `array<<Type>Property>` of the group's properties (AngelScriptGlobals.cpp's register loop)
@@ -4739,7 +4613,7 @@ static void AppendPropertyGroupGetters(ostringstream& out, const EngineMetadata&
 
 static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // The built-in (Exported) entities (Item/Critter/Location/Map) already have metadata-exported Game.GetProto*
     // accessors
@@ -4811,8 +4685,6 @@ static void AppendCustomEntityProtoGetters(ostringstream& out, const EngineMetad
 
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto underlying_type = enum_type.EnumUnderlyingType;
 
     if (!underlying_type) {
@@ -4824,8 +4696,6 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 
 static void CollectCallbacks(const ComplexTypeDesc& type, unordered_map<string, ComplexTypeDesc>& callbacks)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return;
     }
@@ -4841,8 +4711,6 @@ static void CollectCallbacks(const ComplexTypeDesc& type, unordered_map<string, 
 
 static void CollectCallbacks(const vector<ArgDesc>& args, unordered_map<string, ComplexTypeDesc>& callbacks)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const ArgDesc& arg : args) {
         CollectCallbacks(arg.Type, callbacks);
     }
@@ -4850,7 +4718,7 @@ static void CollectCallbacks(const vector<ArgDesc>& args, unordered_map<string, 
 
 static void CollectCallbacks(const EngineMetadata& meta, unordered_map<string, ComplexTypeDesc>& callbacks)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     for (const auto& [type_name, desc] : meta.GetEntityTypes()) {
         for (const MethodDesc& method : desc.Methods) {
@@ -4887,8 +4755,6 @@ static void CollectCallbacks(const EngineMetadata& meta, unordered_map<string, C
 
 static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<ptr<const BaseTypeDesc>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ptr<const BaseTypeDesc>> result;
     result.reserve(meta.GetBaseTypes().size());
 
@@ -4902,8 +4768,6 @@ static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<ptr<const 
 
 static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, map<string, int32_t>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<pair<string, map<string, int32_t>>> result;
     result.reserve(meta.GetAllEnums().size());
 
@@ -4923,8 +4787,6 @@ static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, m
 
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<pair<string, const EntityTypeDesc*>> result;
     result.reserve(types.size());
 
@@ -4938,7 +4800,7 @@ static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> 
 
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string new_content {content};
 
@@ -5004,10 +4866,8 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
     }
 }
 
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes)
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ostringstream out;
     AppendGeneratedHeader(out);
     out << "public static partial class Initializator\n";
@@ -5018,6 +4878,24 @@ static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, stri
 
     for (const string& class_name : wrapper_classes) {
         out << CS_INDENT << "    global::FOnline.Native.RegisterWrapperFactory<" << EscapeCsIdentifier(class_name) << ">(static nativePtr => new " << EscapeCsIdentifier(class_name) << "(nativePtr));\n";
+    }
+
+    if (target_name == "Server") {
+        for (const auto& [owner, functions] : meta.GetProtoMigrators()) {
+            for (const auto& [source, migrator] : functions) {
+                out << CS_INDENT << "    global::FOnline.Native.RegisterProtoMigrator(\"" << owner.as_str() << "\", \"" << source.as_str() << "\", \"" << migrator.Name << "\");\n";
+            }
+        }
+
+        for (const auto& [name, entity] : meta.GetEntityTypes()) {
+            for (size_t index = 1; index < entity.PropRegistrar->GetPropertiesCount(); index++) {
+                auto prop = entity.PropRegistrar->GetPropertyByIndexUnsafe(index);
+
+                if (!prop->GetMigratorName().empty() && !prop->IsDisabled()) {
+                    out << CS_INDENT << "    global::FOnline.Native.RegisterPropertyMigrator<" << MakeCsPropertyTypeName(prop) << ">(\"" << name.as_str() << "\", \"" << prop->GetName() << "\", \"" << prop->GetMigratorName() << "\");\n";
+                }
+            }
+        }
     }
 
     out << CS_INDENT << "}\n";
@@ -5036,8 +4914,6 @@ static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, stri
 
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string file_name = MakeGeneratedManagedApiFileName(target_name, suffix);
     auto file_path = project_dir / fs::make_path(file_name);
 
@@ -5054,8 +4930,6 @@ static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_
 
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string path_str = strex("{}", path.string()).str();
     auto data = fs::read_file(path_str);
 
@@ -5067,10 +4941,10 @@ static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
 }
 
 // The pack ships CoreLib plus the class libraries its assemblies reach by reference: Mono opens a class library
-// only when a reference names it, so the rest of the published runtime is dead weight (Docs/BakingPipeline.md)
+// only when a reference names it, so the rest of the published runtime is dead weight in the baked payload
 static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto runtime_dir = FindManagedRuntimeDirectory();
 
@@ -5171,8 +5045,6 @@ static void BakeManagedRuntimePayload(const BakingContext& context, const vector
 
 static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         ManagedAssemblyIdentity identity = ReadManagedAssemblyIdentity(image);
         string file_name = fs::path_to_string(std::filesystem::path {fs::make_path(assembly_path)}.stem());
@@ -5190,14 +5062,12 @@ static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_spa
 
 static auto CollectManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name) -> vector<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return CollectManagedAssemblyFiles(assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name)));
 }
 
 static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vector<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<std::filesystem::path> result;
 
@@ -5232,7 +5102,7 @@ static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vec
 
 static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto output_dir = assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name));
 
@@ -5265,7 +5135,7 @@ static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblie
 
 static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_output_dir, string_view target_name, string_view assembly_file_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto output_dir = assemblies_output_dir / fs::make_path(strex("{}Assemblies", target_name));
     string assembly_file_stem = strex(assembly_file_name).erase_file_extension().str();
@@ -5278,8 +5148,6 @@ static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_o
 
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (references.empty()) {
         return;
     }
@@ -5319,8 +5187,6 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
 
 static auto IsManagedProjectReference(string_view reference) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(reference).get_file_extension() == "csproj";
 }
 

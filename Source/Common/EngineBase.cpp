@@ -147,8 +147,6 @@ FO_GLOBAL_DATA(EngineBaseData, Data);
 EngineMetadata::EngineMetadata(const MetadataRegistrar& registrar) :
     _protoMngr(make_ptr(this))
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
 
     for (const auto& name : Data->BuiltinTypes | std::views::keys) {
@@ -160,8 +158,6 @@ EngineMetadata::EngineMetadata(const MetadataRegistrar& registrar) :
 
 void EngineMetadata::RegisterSide(EngineSideKind side)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_entityTypes.empty(), "Entity types must be empty before this operation");
 
@@ -170,8 +166,6 @@ void EngineMetadata::RegisterSide(EngineSideKind side)
 
 void EngineMetadata::RegisterMetadataVersion(string_view version)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!version.empty(), "Metadata version is empty");
     FO_VERIFY_AND_THROW(_metadataVersion.empty() || _metadataVersion == version, "Metadata version differs between metadata targets", _metadataVersion, version);
@@ -181,8 +175,6 @@ void EngineMetadata::RegisterMetadataVersion(string_view version)
 
 auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypes.find(Hashes.to_hashed_string(name));
@@ -243,8 +235,6 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
 auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _fixedTypes.find(Hashes.to_hashed_string(name));
@@ -277,8 +267,6 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
 void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsValidEntityType(target_type), "Invalid migration target entity type");
 
     auto it = _entityTypesByStr.find(holder_type);
@@ -296,8 +284,6 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
 
 void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(IsValidBaseType(underlying_type), "Invalid enum underlying base type");
     FO_VERIFY_AND_THROW(_enums.count(name) == 0, "Enum type is already registered", name);
@@ -329,8 +315,6 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
 
 void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     string name_str = string(name);
     FO_VERIFY_AND_THROW(name_str != "None" || entry_value <= 0, "Enum named None cannot register a positive entry value", name, entry_name, entry_value);
@@ -347,8 +331,6 @@ void EngineMetadata::RegisterEnumEntry(string_view name, string_view entry_name,
 
 void EngineMetadata::RegisterValueType(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_structLayouts.count(string(name)) == 0, "Value type is already registered", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Value type name conflicts with an already registered base type", name);
@@ -360,8 +342,6 @@ void EngineMetadata::RegisterValueType(string_view name)
 
 void EngineMetadata::RegisterValueType(string_view name, size_t native_size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(native_size != 0, "Native value type has zero size", name);
 
     RegisterValueType(name);
@@ -372,8 +352,6 @@ void EngineMetadata::RegisterValueType(string_view name, size_t native_size)
 
 void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_baseTypes.count(name) != 0, "Value type layout registration cannot find the base type entry", name, _baseTypes.size());
     FO_VERIFY_AND_THROW(_structLayouts.count(name) != 0, "Value type layout registration cannot find the struct layout entry", name, _structLayouts.size());
@@ -420,8 +398,6 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
 
 void EngineMetadata::RegisterRefType(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_refTypes.count(name) == 0, "RefType is already registered", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "RefType name conflicts with an already registered base type", name);
@@ -464,8 +440,6 @@ void EngineMetadata::SetRefTypeTarget(string_view name, string_view target)
 
 void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector<string_view>>& layout)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_refTypes.count(name) != 0, "RefType layout registration cannot find the RefType entry", name, _refTypes.size());
     FO_VERIFY_AND_THROW(!layout.empty(), "RefType layout registration received no fields", name);
@@ -499,8 +473,6 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
 
 void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>&& methods)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_refTypes.count(name) != 0, "RefType methods registration cannot find the RefType entry", name, _refTypes.size());
 
@@ -514,8 +486,6 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
 
 void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_refTypes.count(name) != 0, "RefType single-method registration cannot find the RefType entry", name, _refTypes.size());
 
@@ -529,8 +499,6 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
 
 void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& method)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypesByStr.find(entity_name);
@@ -542,8 +510,6 @@ void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& 
 
 void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<MethodDesc>&& methods)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypesByStr.find(entity_name);
@@ -556,8 +522,6 @@ void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<Metho
 
 void EngineMetadata::RegisterEntityEvents(string_view entity_name, vector<EntityEventDesc>&& events)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypesByStr.find(entity_name);
@@ -570,8 +534,6 @@ void EngineMetadata::RegisterEntityEvents(string_view entity_name, vector<Entity
 
 void EngineMetadata::RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypesByStr.find(entity_name);
@@ -583,8 +545,6 @@ void EngineMetadata::RegisterEntityEvent(string_view entity_name, EntityEventDes
 
 void EngineMetadata::RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_outboundRemoteCalls.contains(remote_call.Name), "Outbound remote call is already registered", remote_call.Name, remote_call.SubsystemHint);
 
@@ -593,8 +553,6 @@ void EngineMetadata::RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call)
 
 void EngineMetadata::RegisterInboundRemoteCall(RemoteCallDesc&& remote_call)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_inboundRemoteCalls.contains(remote_call.Name), "Inbound remote call is already registered", remote_call.Name, remote_call.SubsystemHint);
 
@@ -603,8 +561,6 @@ void EngineMetadata::RegisterInboundRemoteCall(RemoteCallDesc&& remote_call)
 
 void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_gameSettings.contains(name), "Game setting is already registered", name);
 
@@ -650,8 +606,6 @@ void EngineMetadata::MarkEnumAsExported(string_view name)
 
 void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_migrationRules.empty(), "Migration rules must be empty before this operation");
 
@@ -687,8 +641,6 @@ void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map
 
 void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     hstring hrule_name = Hashes.to_hashed_string(rule_name);
@@ -723,10 +675,103 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     rules.emplace(htarget, hreplacement);
 }
 
+void EngineMetadata::RegisterPropertyMigrationRule(string_view owner, string_view action, string_view target, string_view replacement)
+{
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+
+    if (action == "Rename" || action == "Remove") {
+        FO_VERIFY_AND_THROW(!target.empty(), "Property migration source is empty", owner, action);
+        FO_VERIFY_AND_THROW(action == "Remove" ? replacement.empty() : !replacement.empty() && replacement != "__remove__", "Invalid Property migration replacement", action, replacement);
+
+        RegisterMigrationRule("Property", owner, target, replacement);
+    }
+    else {
+        FO_VERIFY_AND_THROW(action == "Transform", "Unknown Property migration action", owner, action);
+
+        auto registrar = GetPropertyRegistrar(Hashes.to_hashed_string(owner));
+        FO_VERIFY_AND_THROW(registrar, "Property Transform migration owner does not exist", owner);
+
+        auto prop = registrar->FindProperty(target);
+        FO_VERIFY_AND_THROW(prop, "Property Transform migration target does not exist", owner, target);
+
+        prop->SetMigratorName(replacement);
+    }
+}
+
+void EngineMetadata::RegisterProtoMigrationRule(string_view owner, string_view action, string_view target, string_view replacement)
+{
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    FO_VERIFY_AND_THROW(!owner.empty() && !target.empty(), "Proto migration requires an owner and source");
+
+    hstring type = Hashes.to_hashed_string(owner);
+    hstring source = Hashes.to_hashed_string(target);
+    auto functions = _protoMigrators.find(type);
+    FO_VERIFY_AND_THROW(functions == _protoMigrators.end() || !functions->second.contains(source), "Proto migration source is already registered", owner, target);
+
+    if (action == "Rename" || action == "Remove") {
+        FO_VERIFY_AND_THROW(action == "Remove" ? replacement.empty() : !replacement.empty() && replacement != "__remove__", "Invalid Proto migration replacement", action, replacement);
+
+        RegisterMigrationRule("Proto", owner, target, replacement);
+    }
+    else {
+        FO_VERIFY_AND_THROW(action == "Transform", "Unknown Proto migration action", owner, action);
+        FO_VERIFY_AND_THROW(GetEntityType(type).HasProtos, "Proto Transform owner must have prototypes", owner);
+        FO_VERIFY_AND_THROW(!replacement.empty(), "Proto Transform requires a function", owner, target);
+        FO_VERIFY_AND_THROW(!CheckMigrationRule(Hashes.to_hashed_string("Proto"), type, source), "Proto migration source is already registered", owner, target);
+
+        _protoMigrators[type].emplace(source, ProtoMigrator {string {replacement}, {}});
+    }
+}
+
+void EngineMetadata::BindProtoMigrator(hstring owner, hstring target, function<optional<hstring>(hstring, const AnyData::Document&)> callback)
+{
+    auto& migrator = _protoMigrators.at(owner).at(target);
+    FO_VERIFY_AND_THROW(callback && !migrator.Callback, "Proto migrator is already bound or empty", owner, target);
+
+    migrator.Callback = std::move(callback);
+}
+
+auto EngineMetadata::ResolveDocumentProto(hstring owner, hstring target, const AnyData::Document& document) const -> hstring
+{
+    hstring rule = Hashes.to_hashed_string("Proto");
+    auto functions = _protoMigrators.find(owner);
+
+    if (!CheckMigrationRule(rule, owner, target).has_value() && (functions == _protoMigrators.end() || !functions->second.contains(target))) {
+        return target;
+    }
+
+    unordered_set<hstring> visited;
+
+    while (target) {
+        bool first_visit = visited.emplace(target).second;
+        FO_VERIFY_AND_THROW(first_visit, "Document Proto migration contains a cycle", owner, target);
+
+        if (auto renamed = CheckMigrationRule(rule, owner, target); renamed.has_value()) {
+            target = *renamed;
+            continue;
+        }
+
+        if (functions != _protoMigrators.end()) {
+            if (auto function = functions->second.find(target); function != functions->second.end()) {
+                FO_VERIFY_AND_THROW(function->second.Callback, "Proto migrator is not bound", owner, target, function->second.Name);
+
+                auto replacement = function->second.Callback(target, document);
+
+                if (replacement.has_value() && *replacement != target) {
+                    target = *replacement;
+                    continue;
+                }
+            }
+        }
+
+        break;
+    }
+
+    return target;
+}
+
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_baseTypes.contains(type_str), "Base type is already registered", type_str);
 
@@ -783,7 +828,7 @@ auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 
 void EngineMetadata::FinalizeRegistration()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
@@ -805,6 +850,10 @@ void EngineMetadata::FinalizeRegistration()
                     }
 
                     registered = registrar && registrar->FindProperty(target.as_str());
+
+                    auto replacement = rules.at(target);
+                    FO_VERIFY_AND_THROW(registrar, "Property migration owner does not exist", scope_name, target);
+                    FO_VERIFY_AND_THROW(!replacement || registrar->FindProperty(replacement.as_str()), "Property Rename migration destination does not exist", scope_name, target, replacement);
                 }
                 else if (rule_name.as_str() == "Proto") {
                     // Prototype lookup always applies the rule, so a registered prototype under the old id would be unreachable
@@ -828,8 +877,6 @@ void EngineMetadata::FinalizeRegistration()
 
 auto EngineMetadata::GetPropertyRegistrar(hstring type_name) const noexcept -> nptr<const PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _entityTypes.find(type_name);
 
     if (it != _entityTypes.end()) {
@@ -847,8 +894,6 @@ auto EngineMetadata::GetPropertyRegistrar(hstring type_name) const noexcept -> n
 
 auto EngineMetadata::GetPropertyRegistrar(string_view type_name) const noexcept -> nptr<const PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     hstring type_name_hashed = Hashes.to_hashed_string(type_name);
 
     return GetPropertyRegistrar(type_name_hashed);
@@ -856,8 +901,6 @@ auto EngineMetadata::GetPropertyRegistrar(string_view type_name) const noexcept 
 
 auto EngineMetadata::GetPropertyRegistrarForEdit(string_view type_name) -> ptr<PropertyRegistrar>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     auto it = _entityTypesByStr.find(type_name);
@@ -873,29 +916,21 @@ auto EngineMetadata::GetPropertyRegistrarForEdit(string_view type_name) -> ptr<P
 
 auto EngineMetadata::IsValidBaseType(string_view type_str) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _baseTypes.contains(type_str);
 }
 
 auto EngineMetadata::IsValidEntityType(hstring type_name) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _entityTypes.contains(type_name);
 }
 
 auto EngineMetadata::IsValidEntityType(string_view type_name) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _entityTypesByStr.contains(type_name);
 }
 
 auto EngineMetadata::GetEntityType(hstring type_name) const -> const EntityTypeDesc&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto it = _entityTypes.find(type_name);
     FO_VERIFY_AND_THROW(it != _entityTypes.end(), "Lookup failed in entity types");
 
@@ -904,29 +939,21 @@ auto EngineMetadata::GetEntityType(hstring type_name) const -> const EntityTypeD
 
 auto EngineMetadata::GetEntityTypes() const noexcept -> const map<hstring, EntityTypeDesc>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _entityTypes;
 }
 
 auto EngineMetadata::IsFixedType(hstring type_name) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _fixedTypes.contains(type_name);
 }
 
 auto EngineMetadata::IsFixedType(string_view type_name) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _fixedTypesByStr.contains(type_name);
 }
 
 auto EngineMetadata::GetFixedType(hstring type_name) const -> const EntityTypeDesc&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto it = _fixedTypes.find(type_name);
     FO_VERIFY_AND_THROW(it != _fixedTypes.end(), "Lookup failed in fixed types");
 
@@ -935,15 +962,11 @@ auto EngineMetadata::GetFixedType(hstring type_name) const -> const EntityTypeDe
 
 auto EngineMetadata::GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _fixedTypes;
 }
 
 auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) const -> ptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     hstring prop_name = Hashes.to_hashed_string(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrar()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
@@ -953,8 +976,6 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 
 auto EngineMetadata::GetBaseType(string_view type_str) const -> const BaseTypeDesc&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _baseTypes.find(type_str);
 
     if (it == _baseTypes.end()) {
@@ -966,8 +987,6 @@ auto EngineMetadata::GetBaseType(string_view type_str) const -> const BaseTypeDe
 
 auto EngineMetadata::ResolveComplexType(string_view type_str) const -> ComplexTypeDesc
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto tokens = strvex(type_str).tokenize();
     const auto& [type, tokens_len] = ResolveComplexType(tokens);
 
@@ -980,8 +999,6 @@ auto EngineMetadata::ResolveComplexType(string_view type_str) const -> ComplexTy
 
 auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const -> pair<ComplexTypeDesc, size_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (tokens.empty()) {
         throw TypeResolveException("Invalid complex type syntax, no tokens provided", strex(" ").join(tokens));
     }
@@ -1090,8 +1107,6 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
 
 auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, nptr<bool> failed) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _enumsFullName.find(enum_value_name);
 
     if (it == _enumsFullName.end()) {
@@ -1108,8 +1123,6 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_value_name, nptr<bool> fa
 
 auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_name, nptr<bool> failed) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto enum_it = _enums.find(enum_name);
 
     if (enum_it == _enums.end()) {
@@ -1137,8 +1150,6 @@ auto EngineMetadata::ResolveEnumValue(string_view enum_name, string_view value_n
 
 auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto enum_it = _enumsRev.find(enum_name);
 
     if (enum_it == _enumsRev.end()) {
@@ -1166,8 +1177,6 @@ auto EngineMetadata::ResolveEnumValueName(string_view enum_name, int32_t value, 
 
 auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDesc&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _gameSettings.find(name);
 
     if (it == _gameSettings.end()) {
@@ -1179,8 +1188,6 @@ auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDes
 
 auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_migrationRules.empty()) {
         return std::nullopt;
     }
@@ -1215,41 +1222,31 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
         result = it_target2->second;
     }
 
-    return result.as_str() != "__remove__" ? result : hstring {};
+    return result;
 }
 
 auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _protoMngr.GetProtoItem(proto_id);
 }
 
 auto EngineMetadata::GetProtoCritter(hstring proto_id) const noexcept -> nptr<const ProtoCritter>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _protoMngr.GetProtoCritter(proto_id);
 }
 
 auto EngineMetadata::GetProtoMap(hstring proto_id) const noexcept -> nptr<const ProtoMap>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _protoMngr.GetProtoMap(proto_id);
 }
 
 auto EngineMetadata::GetProtoLocation(hstring proto_id) const noexcept -> nptr<const ProtoLocation>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _protoMngr.GetProtoLocation(proto_id);
 }
 
 auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
         type_name = it->second->PropRegistrar->GetTypeName();
     }
@@ -1259,8 +1256,6 @@ auto EngineMetadata::GetProtoEntity(hstring type_name, hstring proto_id) const n
 
 auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (auto it = _entityRelatives.find(type_name.as_str()); it != _entityRelatives.end()) {
         type_name = it->second->PropRegistrar->GetTypeName();
     }
@@ -1270,8 +1265,6 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
 
 auto EngineMetadata::GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto anim_it = _animationInfos.find(resource_name);
 
     if (anim_it == _animationInfos.end()) {
@@ -1283,8 +1276,6 @@ auto EngineMetadata::GetAnimationInfo(hstring resource_name) const noexcept -> n
 
 void EngineMetadata::RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     _protoMngr.AddProto(type_name, std::move(proto));
@@ -1292,8 +1283,6 @@ void EngineMetadata::RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> 
 
 void EngineMetadata::RegisterProtos(const FileSystem& resources)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     _protoMngr.LoadFromResources(resources);
@@ -1301,8 +1290,6 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
 
 void EngineMetadata::RegisterAnimationInfo(const FileSystem& resources)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
     _animationInfos = ReadAnimationInfo(resources, Hashes);
@@ -1319,7 +1306,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     TimeEventMngr(make_ptr(this)),
     _imgui {safe_alloc::make_refcounted<ScriptImGui>(make_ptr(this))}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     // Metadata is the baseline for game settings: it fills only what the applied configuration never set,
     // so a config, sub-config or command-line override, all applied before the engine exists, still wins.
@@ -1338,8 +1325,6 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
 
 void BaseEngine::FinishStartingUp()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_startingUp, "Engine start-up is already finished");
 
     _startingUp = false;
@@ -1347,8 +1332,6 @@ void BaseEngine::FinishStartingUp()
 
 void BaseEngine::FrameAdvance()
 {
-    FO_STACK_TRACE_ENTRY();
-
     GameTime.FrameAdvance(is_run_in_debugger() || Settings->ServerNetwork.DisableNetworking);
 
     {
@@ -1369,8 +1352,6 @@ void BaseEngine::FrameAdvance()
 
 void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t max_distinct_entries = 32;
 
     scoped_lock locker {_scriptOverrunLocker};
@@ -1393,8 +1374,6 @@ void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, ti
 
 auto BaseEngine::TakeScriptOverruns() -> vector<ScriptOverrunRecord>
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_scriptOverrunLocker};
 
     return std::exchange(_scriptOverruns, {});
@@ -1402,8 +1381,6 @@ auto BaseEngine::TakeScriptOverruns() -> vector<ScriptOverrunRecord>
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(min_value <= max_value, "Engine random integer range has an inverted min/max", min_value, max_value);
 
     scoped_lock locker {_randomGeneratorLocker};
@@ -1413,8 +1390,6 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 
 auto BaseEngine::CaptureRandomState() const -> random_generator::state_data
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_randomGeneratorLocker};
 
     return _randomGenerator.capture_state();
@@ -1422,8 +1397,6 @@ auto BaseEngine::CaptureRandomState() const -> random_generator::state_data
 
 void BaseEngine::RestoreRandomState(const random_generator::state_data& state)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_randomGeneratorLocker};
 
     _randomGenerator.restore_state(state);
@@ -1431,8 +1404,6 @@ void BaseEngine::RestoreRandomState(const random_generator::state_data& state)
 
 void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(delay, body);
 
     throw InvalidCallException("ScheduleDelayedCallback not supported on this engine");
@@ -1440,16 +1411,12 @@ void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
 
 auto BaseEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     callback();
     return timespan::zero;
 }
 
 void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(caller.get(), "Remote call requires a non-null caller entity");
 
     HandleOutboundRemoteCall(name, caller, data);
@@ -1457,48 +1424,42 @@ void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uin
 
 auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _inboundRemoteCallHandlers.contains(name);
 }
 
 void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(handler, "Inbound remote call handler is empty", name);
 
-    const auto it = _inboundRemoteCallHandlers.find(name);
+    auto it = _inboundRemoteCallHandlers.find(name);
 
     if (mode == RemoteCallHandlerMode::OverrideFallback && it != _inboundRemoteCallHandlers.end()) {
         FO_VERIFY_AND_THROW(_fallbackInboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already authoritative", name);
-        const size_t erased = _fallbackInboundRemoteCallHandlers.erase(name);
+        size_t erased = _fallbackInboundRemoteCallHandlers.erase(name);
         FO_STRONG_ASSERT(erased == 1, "Fallback inbound remote call handler bookkeeping is inconsistent", name);
         it->second = std::move(handler);
         return;
     }
 
     FO_VERIFY_AND_THROW(it == _inboundRemoteCallHandlers.end(), "Inbound remote call handler is already registered", name);
-    const bool inserted = _inboundRemoteCallHandlers.emplace(name, std::move(handler)).second;
+    bool inserted = _inboundRemoteCallHandlers.emplace(name, std::move(handler)).second;
     FO_STRONG_ASSERT(inserted, "Inbound remote call handler insertion failed", name);
 
     if (mode == RemoteCallHandlerMode::Fallback) {
-        const bool fallback_inserted = _fallbackInboundRemoteCallHandlers.emplace(name).second;
+        bool fallback_inserted = _fallbackInboundRemoteCallHandlers.emplace(name).second;
         FO_STRONG_ASSERT(fallback_inserted, "Fallback inbound remote call handler insertion failed", name);
     }
 }
 
 void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls()->size(), "Inbound remote call handler table does not cover every registered remote call", _inboundRemoteCallHandlers.size(), GetInboundRemoteCalls()->size());
     FO_VERIFY_AND_THROW(std::ranges::all_of(_fallbackInboundRemoteCallHandlers, [this](hstring name) { return _inboundRemoteCallHandlers.contains(name); }), "Fallback inbound remote call handler table contains an unknown call");
 }
 
 void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto it = _inboundRemoteCallHandlers.find(name);
     FO_VERIFY_AND_THROW(it != _inboundRemoteCallHandlers.end(), "Lookup failed in inbound remote call handlers");

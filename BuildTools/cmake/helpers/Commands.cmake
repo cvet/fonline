@@ -1,5 +1,13 @@
 include_guard()
 
+# temporary_compat.py owns expiry checks, including markers in inactive branches
+function(TemporaryCompat id until)
+	if(NOT ARGC EQUAL 2 OR NOT "${id}" MATCHES "^[A-Za-z][A-Za-z0-9_]*$" OR
+		NOT "${until}" MATCHES "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$")
+		message(FATAL_ERROR "TemporaryCompat requires an identifier and a YYYY-MM-DD date")
+	endif()
+endfunction()
+
 macro(AppendList outputVar)
 	list(APPEND ${outputVar} ${ARGN})
 endmacro()
@@ -84,7 +92,7 @@ macro(FileGlob outputVar)
 endmacro()
 
 macro(FileReadStrings inputFile outputVar)
-	file(STRINGS "${inputFile}" ${outputVar})
+	file(STRINGS "${inputFile}" ${outputVar} ${ARGN})
 endmacro()
 
 macro(FileMakeDirectory)

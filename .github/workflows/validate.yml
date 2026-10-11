@@ -9,7 +9,7 @@ concurrency:
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release/**']
   pull_request:
   workflow_dispatch:
     inputs:
@@ -22,6 +22,56 @@ on:
           - managed-apple
 
 jobs:
+  engine-update:
+    name: Validate Engine update versions and migration notes
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - name: Install codegen regression dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pytest
+    - name: Check generated configuration and default arguments
+      run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
+    - name: Check managed runtime preparation and recovery
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_managed_runtime_ready_validation.py
+        BuildTools/tests/test_managed_runtime_workspace_cache.py
+        BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py
+        BuildTools/tests/test_managed_runtime_byproducts.py
+    - run: python3 BuildTools/tests/test_engine_version.py
+    - name: Check the exact publication range
+      env:
+        VERSION_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        VERSION_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        VERSION_TARGET_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        VERSION_EVENT: ${{ github.event_name }}
+      run: |
+        python3 - <<'PY'
+        import os
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, 'BuildTools')
+        from docs_engine_version import git, validate_committed_update, validate_history
+        root = Path('.')
+        target = os.environ['VERSION_TARGET_REF']
+        baseline = os.environ['VERSION_BASE_REF']
+        branch = os.environ['VERSION_BRANCH']
+        if not baseline or set(baseline) == {'0'}:
+            baseline = git(root, 'rev-parse', '--verify', f'{target}^')
+        if os.environ['VERSION_EVENT'] == 'push':
+            count = validate_history(root, baseline, target, branch)
+        else:
+            validate_committed_update(root, baseline, target, branch)
+            count = 1
+        print(f'Engine update contract passed: {count} publication step(s) on {branch}')
+        PY
   check-formatting:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Check formatting
@@ -34,6 +84,254 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
+  temporary-compat:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
+    name: Check temporary compatibility dates
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - run: python3 BuildTools/tests/test_temporary_compat.py
+    - run: python3 BuildTools/temporary_compat.py
+  documentation:
+    name: Validate documentation
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - name: Prepare documentation build outputs
+      run: python3 BuildTools/docs_prepare.py
+    - run: python3 BuildTools/tests/test_docs_api.py
+    - run: python3 BuildTools/tests/test_engine_version.py
+    - run: python3 BuildTools/tests/test_docs_api_diff.py
+    - run: python3 BuildTools/tests/test_docs_ai_delivery.py
+    - run: python3 BuildTools/tests/test_docs_ai_eval.py
+    - run: python3 BuildTools/tests/test_docs_ai_model_eval.py
+    - run: python3 BuildTools/tests/test_docs_ai_model_review.py
+    - run: python3 BuildTools/tests/test_docs_snippets.py
+    - run: python3 BuildTools/tests/test_docs_documentation_quality_foundations.py
+    - run: python3 BuildTools/tests/test_docs_documentation_operations_foundations.py
+    - run: python3 BuildTools/tests/test_docs_governance_foundations.py
+    - run: python3 BuildTools/tests/test_docs_site.py
+    - run: python3 BuildTools/tests/test_docs_site_layout.py
+    - run: python3 BuildTools/tests/test_docs_site_artifact.py
+    - run: python3 BuildTools/tests/test_docs_site_build.py
+    - run: python3 BuildTools/tests/test_docs_browser.py
+    - run: python3 BuildTools/tests/test_docs_testing_foundations.py
+    - run: python3 BuildTools/tests/test_docs_build_foundations.py
+    - run: python3 BuildTools/tests/test_docs_build_release_foundations.py
+    - run: python3 BuildTools/tests/test_docs_profiling.py
+    - run: python3 BuildTools/tests/test_docs_viewer_tools.py
+    - run: python3 BuildTools/tests/test_docs_mapper_tools.py
+    - run: python3 BuildTools/tests/test_docs_contract_diff.py
+    - run: python3 BuildTools/tests/test_docs_cli.py
+    - run: python3 BuildTools/tests/test_docs_helper_cli.py
+    - run: python3 BuildTools/tests/test_docs_native_extension.py
+    - run: python3 BuildTools/tests/test_docs_project_dependencies.py
+    - run: python3 BuildTools/tests/test_gameplay_test_runner.py
+    - run: python3 BuildTools/tests/test_docs_gameplay_testing.py
+    - run: python3 BuildTools/tests/test_minimal_multiplayer_package.py
+    - run: python3 BuildTools/tests/test_docs_angelscript_style.py
+    - run: python3 BuildTools/tests/test_docs_managed_csharp.py
+    - run: python3 BuildTools/tests/test_docs_prototype_format.py
+    - run: python3 BuildTools/tests/test_docs_map_format.py
+    - run: python3 BuildTools/tests/test_docs_model_format.py
+    - run: python3 BuildTools/tests/test_docs_text_format.py
+    - run: python3 BuildTools/tests/test_docs_effect_format.py
+    - run: python3 BuildTools/tests/test_docs_image_format.py
+    - run: python3 BuildTools/tests/test_docs_particle_format.py
+    - run: python3 BuildTools/tests/test_docs_font_format.py
+    - run: python3 BuildTools/tests/test_docs_audio.py
+    - run: python3 BuildTools/tests/test_docs_video.py
+    - run: python3 BuildTools/tests/test_ai_control_protocol.py
+    - run: python3 BuildTools/tests/test_docs_ai_control_protocol.py
+    - run: python3 BuildTools/tests/test_docs_package.py
+    - run: python3 BuildTools/tests/test_package_security.py
+    - run: python3 BuildTools/tests/test_docs_security_and_secrets.py
+    - run: python3 BuildTools/tests/test_docs_release_operations.py
+    - run: python3 BuildTools/tests/test_docs_backup_recovery.py
+    - run: python3 BuildTools/tests/test_docs_release_safety_foundations.py
+    - run: python3 BuildTools/tests/test_docs_examples.py
+    - run: python3 BuildTools/tests/test_docs_support_matrix.py
+    - run: python3 BuildTools/tests/test_docs_public_api.py
+    - run: python3 BuildTools/tests/test_docs_external_evidence.py
+    - run: python3 BuildTools/tests/test_docs_diagrams.py
+    - run: python3 BuildTools/tests/test_docs_screenshots.py
+    - run: python3 BuildTools/tests/test_docs_localization.py
+    - run: python3 BuildTools/tests/test_docs_description_translations.py
+    - run: python3 BuildTools/tests/test_docs_configuration_tools.py
+    - run: python3 BuildTools/tests/test_docs_metadata_essentials.py
+    - run: python3 BuildTools/tests/test_docs_cmake.py
+    - run: python3 BuildTools/tests/test_angelscript_cmake.py
+    - run: python3 BuildTools/tests/test_docs_reference.py
+    - run: python3 BuildTools/tests/test_docs_script_lifecycle.py
+    - run: python3 BuildTools/tests/test_docs_model_animation.py
+    - run: python3 BuildTools/tests/test_docs_sprite_root_motion.py
+    - run: python3 BuildTools/tests/test_docs_web_debugging.py
+    - run: python3 BuildTools/tests/test_docs_android_debugging.py
+    - run: python3 BuildTools/tests/test_docs_debugging.py
+    - run: python3 BuildTools/tests/test_docs_metadata.py
+    - run: python3 BuildTools/tests/test_docs_inventory.py
+    - run: python3 BuildTools/tests/test_docs_validate.py
+    - run: cmake -P BuildTools/tests/validate_project_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_package_interface.cmake
+    - run: cmake -P BuildTools/tests/validate_native_extension_interface.cmake
+    - run: python3 BuildTools/docs_api.py --check
+    - run: python3 BuildTools/docs_cli.py --check
+    - run: python3 BuildTools/docs_helper_cli.py --check
+    - run: python3 BuildTools/docs_native_extension.py --check
+    - run: python3 BuildTools/docs_prototype_format.py --check
+    - run: python3 BuildTools/docs_map_format.py --check
+    - run: python3 BuildTools/docs_model_format.py --check
+    - run: python3 BuildTools/docs_text_format.py --check
+    - run: python3 BuildTools/docs_effect_format.py --check
+    - run: python3 BuildTools/docs_image_format.py --check
+    - run: python3 BuildTools/docs_particle_format.py --check
+    - run: python3 BuildTools/docs_font_format.py --check
+    - run: python3 BuildTools/docs_audio.py --check
+    - run: python3 BuildTools/docs_video.py --check
+    - run: python3 BuildTools/docs_ai_control_protocol.py --check
+    - run: python3 BuildTools/docs_package.py --check
+    - run: python3 BuildTools/docs_examples.py --check
+    - run: python3 BuildTools/docs_support_matrix.py --check
+    - run: python3 BuildTools/docs_public_api.py --check
+    - run: python3 BuildTools/docs_external_evidence.py --check
+    - run: python3 BuildTools/docs_diagrams.py --check
+    - run: python3 BuildTools/docs_screenshots.py --check
+    - run: python3 BuildTools/docs_localization.py --check --enforce-complete
+    - run: python3 BuildTools/docs_description_translations.py --check --enforce-complete
+    - run: python3 BuildTools/docs_cmake.py --check
+    - run: python3 BuildTools/docs_reference.py --check
+    - run: python3 BuildTools/docs_inventory.py --check
+    - run: python3 BuildTools/docs_snippets.py --check
+    - run: python3 BuildTools/docs_site.py --check
+    - run: python3 BuildTools/docs_ai_eval.py --check
+    - run: python3 BuildTools/docs_ai_delivery.py --check
+    - run: python3 BuildTools/docs_validate.py
+    - name: Classify generated contract changes against the base revision
+      env:
+        CONTRACT_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      run: |
+        python3 BuildTools/docs_contract_diff.py \
+          --baseline-git-ref "$CONTRACT_BASE_REF" \
+          --current-dir Docs/generated \
+          --dispositions Docs/contract-change-dispositions.json \
+          --json-output Workspace/contract-diff.json \
+          --markdown-output Workspace/contract-diff.md \
+          --allow-missing-baseline \
+          --write \
+          --enforce
+    - name: Upload generated contract diff report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: contract-diff-${{ github.sha }}
+        path: Workspace/contract-diff.*
+        if-no-files-found: ignore
+        retention-days: 14
+  documentation-snippets:
+    name: Parse documentation snippets
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - run: python3 BuildTools/docs_snippets.py --write
+    - run: python3 BuildTools/docs_snippets.py --check --external
+  documentation-site:
+    name: Build documentation site
+    needs: [documentation, documentation-snippets]
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Prepare documentation build outputs
+      run: python3 BuildTools/docs_prepare.py
+    - name: Use pinned Ruby and install site dependencies
+      uses: ruby/setup-ruby@v1
+      with:
+        working-directory: Workspace/Documentation
+        bundler-cache: true
+    - name: Build and export GitHub Pages-compatible site
+      run: python3 BuildTools/docs_site_build.py --site-dir Workspace/DocumentationSite
+    - name: Validate rendered documentation site
+      run: >-
+        python3 BuildTools/docs_site_artifact.py
+        --site-dir Workspace/DocumentationSite
+        --json-output Workspace/docs-site-artifact-report.json
+    - name: Use pinned Node.js for browser validation
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24.16.0
+        cache: npm
+        cache-dependency-path: BuildTools/docs-browser/package-lock.json
+    - name: Install pinned browser-audit dependencies
+      working-directory: BuildTools/docs-browser
+      run: npm ci
+    - name: Install pinned Chromium and host dependencies
+      working-directory: BuildTools/docs-browser
+      run: npx playwright install --with-deps chromium
+    - name: Check lazy and missing diagrams in every browser profile
+      working-directory: BuildTools/docs-browser
+      run: npm run test:diagram
+    - name: Validate rendered site in desktop and mobile Chromium
+      working-directory: BuildTools/docs-browser
+      run: npm run audit
+    - name: Upload rendered-site validation report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site-validation-${{ github.sha }}
+        path: Workspace/docs-site-artifact-report.json
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload browser validation report and screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-browser-validation-${{ github.sha }}
+        path: |
+          Workspace/docs-browser-audit-report.json
+          Workspace/docs-browser-screenshots/
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload rendered site
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site-${{ github.sha }}
+        path: Workspace/DocumentationSite/
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload validated Pages artifact
+      if: github.repository == 'cvet/fonline' && github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: Workspace/DocumentationSite/
+  documentation-publish:
+    name: Publish validated documentation
+    if: github.repository == 'cvet/fonline' && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [engine-update, documentation-site]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: documentation-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy validated artifact to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
   unit-tests:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run unit tests

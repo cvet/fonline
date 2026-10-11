@@ -64,6 +64,10 @@ namespace platform
     // Windows: GetModuleFileNameW; Linux: /proc/self/exe; macOS: proc_pidpath; other: nullopt
     auto get_exe_path() noexcept -> optional<string>;
 
+    // Windows: the wide command line split into UTF-8 arguments, since a console entry point receives argv in the
+    // ANSI code page; other: nullopt, argv is already UTF-8
+    auto get_command_line_args() -> optional<vector<string>>;
+
     // Per-user writable data root from environment only: LOCALAPPDATA/APPDATA, Library/Application Support, or XDG_DATA_HOME.
     // Return an empty string when no platform path is available
     auto get_user_data_base() noexcept -> string;
@@ -101,6 +105,9 @@ namespace platform
     // logical_core_count is always populated for normalization
     auto get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot;
 
+    // Windows: BCryptGenRandom; Linux and web: getentropy; macOS, iOS and Android: arc4random_buf
+    auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
+
     // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
     auto load_module(const string& module_name) noexcept -> nptr<void>;
     // For a module that must never be unmapped, such as an engine library: statically linked runtimes install
@@ -108,11 +115,16 @@ namespace platform
     auto load_pinned_module(const string& module_name) noexcept -> nptr<void>;
     void unload_module(nptr<void> module_handle) noexcept;
     auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
+    // The loader's reason for the last failed load_module or get_func_addr on this thread, read right after it
+    auto get_last_module_error() noexcept -> string;
     template<typename T>
     auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> T
     {
         return reinterpret_cast<T>(get_func_addr(module_handle, func_name));
     }
+
+    // Operating system name and version, for diagnostics
+    auto get_os_version() noexcept -> string;
 }
 
 FO_END_NAMESPACE

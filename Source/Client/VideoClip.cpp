@@ -78,7 +78,7 @@ VideoClip::VideoClip(VideoClip&&) noexcept = default;
 VideoClip::VideoClip(vector<uint8_t> video_data) :
     _impl {safe_alloc::make_unique<Impl>()}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     _impl->SetupInfo = make_unique_del_ptr(nptr<th_setup_info> {}, [](th_setup_info* raw_setup_info) noexcept {
         if (raw_setup_info != nullptr) {
@@ -139,41 +139,30 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
 
 VideoClip::~VideoClip()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto VideoClip::IsPlaying() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !_impl->Stopped && !_impl->Paused;
 }
 
 auto VideoClip::IsStopped() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Stopped;
 }
 
 auto VideoClip::IsPaused() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Paused;
 }
 
 auto VideoClip::IsLooped() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _impl->Looped;
 }
 
 auto VideoClip::GetTime() const -> timespan
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_impl->Stopped) {
         return std::chrono::milliseconds {0};
     }
@@ -187,30 +176,22 @@ auto VideoClip::GetTime() const -> timespan
 
 auto VideoClip::GetSize() const -> isize32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return {numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width), numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height)};
 }
 
 void VideoClip::Stop()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->Stopped = true;
 }
 
 void VideoClip::Pause()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->Paused = true;
     _impl->PauseTime = nanotime::now();
 }
 
 void VideoClip::Resume()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_impl->Stopped) {
         _impl->StartTime = nanotime::now();
     }
@@ -224,21 +205,17 @@ void VideoClip::Resume()
 
 void VideoClip::SetLooped(bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->Looped = enabled;
 }
 
 void VideoClip::SetTime(timespan time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->StartTime = nanotime::now() - time;
 }
 
 auto VideoClip::RenderFrame() -> const vector<ucolor>&
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (_impl->Stopped) {
         return _impl->RenderedTextureData;
@@ -273,7 +250,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
         if (r != TH_DUPFRAME) {
             if (r != 0) {
-                logging::write("Frame does not contain encoded video data, error {}", r);
+                logging::write(logging::type::warning, "Frame does not contain encoded video data, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -282,7 +259,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             r = th_decode_ycbcr_out(_impl->DecoderContext.get(), _impl->ColorBuffer);
 
             if (r != 0) {
-                logging::write("th_decode_ycbcr_out() failed, error {}", r);
+                logging::write(logging::type::warning, "th_decode_ycbcr_out() failed, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -321,7 +298,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         dj = 1;
         break;
     default:
-        logging::write("Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
+        logging::write(logging::type::warning, "Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
         Stop();
         return _impl->RenderedTextureData;
     }
@@ -374,8 +351,6 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
 int32_t VideoClip::DecodePacket()
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t b = 0;
     int32_t rv = 0;
 

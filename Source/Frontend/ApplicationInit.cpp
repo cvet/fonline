@@ -58,43 +58,33 @@ static void SetupSignals();
 
 auto IsAppInitialized() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !!App;
 }
 
 auto GetApp() noexcept -> ptr<Application>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(IsAppInitialized(), "Application accessed before initialization");
     return App;
 }
 
 void ResetApp() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     App.reset();
 }
 
 void InitApp(CommandLineArgs args, AppInitFlags flags)
 {
-    FO_STACK_TRACE_ENTRY();
-
     InitAppImpl(args, flags, false);
 }
 
 void InitAppForTesting(AppInitFlags flags)
 {
-    FO_STACK_TRACE_ENTRY();
-
     InitAppImpl({}, flags, true);
 }
 
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     // Ensure that we call init only once
     static std::once_flag once;
@@ -114,7 +104,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     SetupExceptionCallback(is_enum_set(flags, AppInitFlags::ShowMessageOnException));
 
     // Tracy
-#if FO_TRACY
+#if FO_TRACE_ENABLED
     TracySetProgramName(FO_NICE_NAME);
 #endif
 
@@ -131,6 +121,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
     logging::write("Version: {}", settings.Common.GameVersion);
+    logging::write("Engine: {} (revision {})", FO_ENGINE_VERSION, FO_ENGINE_REVISION);
 
     // Disable message box on exception if headless window is used
     if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.Render.HeadlessWindow) {
@@ -149,10 +140,16 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Project-side early init (before App frontend, after settings + exception/log callbacks)
     ApplicationInitHook(flags, settings);
 
-    // Prebake resources
+    // Prebake resources. Several processes launched from one checkout would each re-validate every pack for
+    // minutes, so a launcher that has just baked may start them on the existing output instead
     if (!settings.Common.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
-        logging::write("Prebake resources");
-        PrebakeResources(settings);
+        if (settings.Baking.PrebakeOnStartup) {
+            logging::write("Prebake resources");
+            PrebakeResources(settings);
+        }
+        else {
+            logging::write("Prebake skipped by Baking.PrebakeOnStartup, starting on the resources already baked");
+        }
     }
 
     // Application frontend initialization
@@ -170,8 +167,6 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
 static void SetupExceptionCallback(bool show_message_on_exception)
 {
-    FO_STACK_TRACE_ENTRY();
-
     exceptions::set_callback([show_message_on_exception](string_view message, const stack_trace::catched_data& st, bool fatal_error) FO_DEFERRED {
         logging::write_message(logging::type::error, message, &st);
 
@@ -193,8 +188,6 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 
 static auto LoadTestingAppSettings() -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto settings = GlobalSettings(false);
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
@@ -203,9 +196,10 @@ static auto LoadTestingAppSettings() -> GlobalSettings
 
 auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto settings = GlobalSettings(false);
+    settings.ApplyDefaultSettings();
 
     if (!IsPackaged()) {
         // Apply config
@@ -243,7 +237,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
                 if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
-                    config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
+                    config_to_apply_dir = fs::path_to_string(dir);
                     break;
                 }
                 else {
@@ -295,6 +289,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         }
     }
     else {
+        // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
+        // honoured; refusing it keeps a launch from silently running with settings the caller did not get
+        for (size_t i = 0; i < args.size(); i++) {
+            string_view arg_view = strex(args.Get(i)).trim().strv();
+
+            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
+                throw AppInitException("Sub configs are not available in a packaged build", i + 1 < args.size() ? args.Get(i + 1) : string_view {});
+            }
+        }
+
         settings.ApplyInternalConfig();
     }
 
@@ -306,7 +310,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
         fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
-        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources));
+        fs::create_directories(GetClientWritableResourceDir(settings));
         logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 
@@ -328,7 +332,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
 auto ResolveWritableRoot(CommandLineArgs args) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // Deliberately settings-free: the log, the cache and the local config all live under this root, so
     // nothing that is read from disk may decide where it is. Only the command line and the marker do
@@ -371,8 +375,6 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
 
 static auto FindWritablePathArg(CommandLineArgs args) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Scanned by hand rather than through the settings parser, which runs far later
     for (size_t i = 0; i + 1 < args.size(); i++) {
         string_view arg = strex(args.Get(i)).trim().strv();
@@ -391,7 +393,7 @@ static auto FindWritablePathArg(CommandLineArgs args) -> string
 
 static void PrebakeResources(BakingSettings& settings)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     using BakeResourcesFunc = bool (*)(void*);
     auto bake_resources = platform::get_func_addr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
@@ -432,13 +434,16 @@ static void PrebakeResources(BakingSettings& settings)
 
 auto GetExeLogFileName() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto exe_path = platform::get_exe_path()) {
         return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
     }
 
     return strex("{}.log", FO_DEV_NAME);
+}
+
+auto GetExePreviousLogFileName() -> string
+{
+    return strex("{}.prev.log", strex(GetExeLogFileName()).erase_file_extension());
 }
 
 #if FO_LINUX || FO_MAC
@@ -456,8 +461,6 @@ static void SignalHandler(int sig)
 
 auto IsQuitSignalReceived() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC
     return QuitSignalReceived.load(std::memory_order_acquire);
 #else
@@ -467,8 +470,6 @@ auto IsQuitSignalReceived() noexcept -> bool
 
 static void SetupSignals()
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);

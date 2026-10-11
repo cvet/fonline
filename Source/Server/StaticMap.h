@@ -63,7 +63,7 @@ public:
     using ItemBillet = pair<ident_t, ptr<StaticItem>>;
 
     StaticMap() = delete;
-    StaticMap(msize map_size, bool static_grid);
+    StaticMap(msize map_size, string_view grid_type);
     StaticMap(const StaticMap&) = delete;
     StaticMap(StaticMap&&) noexcept = delete;
     auto operator=(const StaticMap&) = delete;
@@ -96,7 +96,7 @@ public:
     void ShrinkToFit();
 
 private:
-    static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
+    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     static void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
 
     void ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const;

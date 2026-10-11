@@ -51,16 +51,12 @@ FO_BEGIN_NAMESPACE
 template<size_t Size>
 static auto SparkInputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto end = std::find(buffer.begin(), buffer.end(), '\0');
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
 static auto SparkPathContainsCaseInsensitive(string_view text, string_view filter) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filter.empty()) {
         return true;
     }
@@ -76,22 +72,14 @@ public:
     explicit SparkParticleSubEditor(ptr<MapperEngine> mapper) :
         _mapper {mapper}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    ~SparkParticleSubEditor() override { FO_STACK_TRACE_ENTRY(); }
+    ~SparkParticleSubEditor() override { }
 
-    void Shutdown() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _editors.clear();
-    }
+    void Shutdown() override { _editors.clear(); }
 
     void ResetLayout() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         _browserWindowVisible = false;
 
         for (auto& editor : _editors) {
@@ -101,24 +89,15 @@ public:
 
     void OnFocusGained() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_resourcesIndexed) {
             RefreshResources();
         }
     }
 
-    void DrawMenuItem() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ImGui::MenuItem("SPARK particle editor", nullptr, &_browserWindowVisible);
-    }
+    void DrawMenuItem() override { ImGui::MenuItem("SPARK particle editor", nullptr, &_browserWindowVisible); }
 
     void DrawWindows() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         DrawBrowserWindow();
 
         for (auto it = _editors.begin(); it != _editors.end();) {
@@ -140,7 +119,7 @@ public:
 private:
     void DrawBrowserWindow()
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Editor);
 
         if (!_browserWindowVisible) {
             return;
@@ -185,7 +164,7 @@ private:
 
     void OpenEditor(string_view asset_path)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Editor);
 
         auto existing_editor = std::ranges::find_if(_editors, [asset_path](const unique_ptr<SparkParticleEditor>& editor) { return editor->GetAssetPath() == asset_path; });
 
@@ -203,7 +182,7 @@ private:
 
     void RefreshResources()
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Editor);
 
         vector<string> resource_paths;
         FileCollection particle_files = _mapper->MapsFileSys.FilterFiles("spark");
@@ -230,15 +209,11 @@ private:
 
 auto CreateSparkParticleSubEditor(ptr<MapperEngine> mapper) -> unique_ptr<ParticleSubEditor>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<SparkParticleSubEditor>(mapper);
 }
 
 static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resources, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleTextureLoader
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<vector<unique_ptr<RenderTexture>>> loaded_textures_ptr {&loaded_textures};
 
     return [baked_resources, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
@@ -288,8 +263,6 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
 
 static auto GetSparkParticleRuntimeSystem(ptr<ParticleSystem> particle) -> ptr<SparkParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto runtime_system = particle->GetRuntimeSystem().dyn_cast<SparkParticleRuntimeSystem>();
     FO_VERIFY_AND_THROW(runtime_system, "SPARK particle editor received a non-SPARK runtime system");
     return runtime_system.as_ptr();
@@ -394,8 +367,6 @@ SparkParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> sett
     ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateSparkParticleEditorTextureLoader(baked_resources, LoadedTextures), [settings]() FO_DEFERRED { return settings->Render.DrawWireframe; }},
     Particle {ParticleMngr.CreateParticle(strex(asset_path).change_file_extension("spk"))}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (Particle.has_value()) {
         SystemBackup = SPK::SPKObject::copy(GetSparkParticleRuntimeSystem(&Particle.value())->GetEditableBaseSystem());
     }
@@ -414,8 +385,6 @@ SparkParticleEditor::SparkParticleEditor(string_view asset_path, ptr<GlobalSetti
     _closePopupTitle {strex("Unsaved SPARK particle changes###SparkParticleEditorClose_{}", asset_path)},
     _onSaved {std::move(on_saved)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto fofx_files = raw_resources->FilterFiles("fofx");
 
     for (const auto& file_header : fofx_files) {
@@ -433,15 +402,13 @@ SparkParticleEditor::~SparkParticleEditor() = default;
 
 void SparkParticleEditor::BringToFront() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _visible = true;
     _bringToFront = true;
 }
 
 auto SparkParticleEditor::Draw() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_visible) {
         return true;
@@ -503,7 +470,7 @@ auto SparkParticleEditor::Draw() -> bool
 
 void SparkParticleEditor::DrawContent()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     _impl->GameTime.FrameAdvance(true);
 
@@ -617,7 +584,7 @@ void SparkParticleEditor::DrawContent()
 
 void SparkParticleEditor::DiscardChanges()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "SPARK particle editor has no particle to discard", _assetPath);
 
@@ -628,7 +595,7 @@ void SparkParticleEditor::DiscardChanges()
 
 auto SparkParticleEditor::SaveChanges() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (strex(_assetPath).get_file_extension() != "spark") {
         _saveError = "Save is unavailable for this source format";
@@ -786,8 +753,6 @@ auto SparkParticleEditor::SaveChanges() -> bool
 // Generic
 void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (NamingMode) {
         char buf[1000];
         strcpy(buf, obj->getName().c_str());
@@ -861,8 +826,6 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
 // Core
 void SparkParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transformable>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool is_custom_transform = !obj->getTransform().isLocalIdentity();
 
     if (is_custom_transform) {
@@ -900,8 +863,6 @@ void SparkParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Trans
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkTransformable(obj);
 
     DrawSparkArray(
@@ -918,8 +879,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto&& renderer = obj->getRenderer()) {
         bool val = renderer->isActive();
         Changed |= ImGui::Checkbox("Active", &val);
@@ -1042,66 +1001,48 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
 // Interpolators
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatDefaultInitializer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_FLOAT("Default value", getDefaultValue, setDefaultValue);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorDefaultInitializer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_COLOR("Default color", getDefaultValue, setDefaultValue);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInitializer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_FLOAT_FLOAT("Min value", "Max value", getMinValue, getMaxValue, setValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInitializer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_COLOR_COLOR("Min color", "Max color", getMinValue, getMaxValue, setValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatSimpleInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_FLOAT_FLOAT("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorSimpleInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_COLOR_COLOR("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_FLOAT_FLOAT("Birth min value", "Birth max value", getMinBirthValue, getMaxBirthValue, setBirthValues);
     DRAW_SPK_FLOAT_FLOAT("Death min value", "Death max value", getMinDeathValue, getMaxDeathValue, setDeathValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_COLOR_COLOR("Birth min color", "Birth max color", getMinBirthValue, getMaxBirthValue, setBirthValues);
     DRAW_SPK_COLOR_COLOR("Death min color", "Death max color", getMinDeathValue, getMaxDeathValue, setDeathValues);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto&& graph = obj->getGraph();
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
         int32_t delIndex = -1;
@@ -1158,8 +1099,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto&& graph = obj->getGraph();
     if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
         int32_t delIndex = -1;
@@ -1227,8 +1166,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphIn
 // Zones
 void SparkParticleEditor::Impl::DrawSparkInnerZone(const char* name, const function<SPK::Ref<SPK::Zone>()>& get, const function<void(const SPK::Ref<SPK::Zone>&)>& set)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ImGui::TreeNodeEx(name)) {
         if (get()) {
             DrawGenericSparkObject(get());
@@ -1275,39 +1212,29 @@ void SparkParticleEditor::Impl::DrawSparkInnerZone(const char* name, const funct
 
 void SparkParticleEditor::Impl::DrawSparkZone(const SPK::Ref<SPK::Zone>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkTransformable(obj);
     DRAW_SPK_VECTOR("Position", getPosition, setPosition);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Point>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
     DRAW_SPK_FLOAT("Sphere Radius", getRadius, setRadius);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Plane>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Plane Normal", getNormal, setNormal);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Ring>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Ring Normal", getNormal, setNormal);
     DRAW_SPK_FLOAT_FLOAT("Ring MinRadius", "Ring MaxRadius", getMinRadius, getMaxRadius, setRadius);
@@ -1315,8 +1242,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Ring>& obj)
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Box>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
     DRAW_SPK_VECTOR("Box Dimension", getDimensions, setDimensions);
     DRAW_SPK_VECTOR_VECTOR("Box FrontAxis", "Box UpAxis", getZAxis, getYAxis, setAxis);
@@ -1324,8 +1249,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Box>& obj)
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Cylinder>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZone(obj);
     DRAW_SPK_FLOAT_FLOAT("Cylinder Height", "Cylinder Radius", getHeight, getRadius, setDimensions);
     DRAW_SPK_VECTOR("Cylinder Axis", getAxis, setAxis);
@@ -1334,8 +1257,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Cylinder>& o
 // Emitters
 void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkTransformable(obj);
     DRAW_SPK_BOOL("Active", isActive, setActive);
 
@@ -1361,30 +1282,22 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkEmitter(obj);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomEmitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkEmitter(obj);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StraightEmitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkEmitter(obj);
     DRAW_SPK_VECTOR("StraightEmitter Direction", getDirection, setDirection);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SphericEmitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkEmitter(obj);
     DRAW_SPK_VECTOR("SphericEmitter Direction", getDirection, setDirection);
     DRAW_SPK_FLOAT_FLOAT("SphericEmitter MinAngle", "SphericEmitter MaxAngle", getAngleMin, getAngleMax, setAngles);
@@ -1392,8 +1305,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SphericEmitt
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkEmitter(obj);
     DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto&& zone) { obj->setNormalZone(zone); });
     DRAW_SPK_BOOL("NormalEmitter InvertedNormals", isInverted, setInverted);
@@ -1402,8 +1313,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitte
 // Modifiers
 void SparkParticleEditor::Impl::DrawSparkModifier(const SPK::Ref<SPK::Modifier>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkTransformable(obj);
     DRAW_SPK_BOOL("Active", isActive, setActive);
     DRAW_SPK_BOOL("LocalToSystem", isLocalToSystem, setLocalToSystem);
@@ -1411,8 +1320,6 @@ void SparkParticleEditor::Impl::DrawSparkModifier(const SPK::Ref<SPK::Modifier>&
 
 void SparkParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModifier>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
     DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto&& zone) { obj->setZone(zone); });
     DRAW_SPK_COMBO("ZoneTest", getZoneTest, setZoneTest, "ZONE_TEST_INSIDE", "ZONE_TEST_OUTSIDE", "ZONE_TEST_INTERSECT", "ZONE_TEST_ENTER", "ZONE_TEST_LEAVE", "ZONE_TEST_ALWAYS");
@@ -1420,16 +1327,12 @@ void SparkParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::Zoned
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Gravity>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
     DRAW_SPK_VECTOR("Gravity Value", getValue, setValue);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
 
     float32_t value = obj->value;
@@ -1439,8 +1342,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& o
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Obstacle>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZonedModifier(obj);
     DRAW_SPK_FLOAT("Obstacle BouncingRatio", getBouncingRatio, setBouncingRatio);
     DRAW_SPK_FLOAT("Obstacle Friction", getFriction, setFriction);
@@ -1448,30 +1349,22 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Obstacle>& o
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Rotator>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Collider>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
     DRAW_SPK_FLOAT("Collider Elasticity", getElasticity, setElasticity);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Destroyer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZonedModifier(obj);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
 
     DRAW_SPK_VECTOR("Vortex Position", getPosition, setPosition);
@@ -1484,8 +1377,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
 
     DrawSparkEmitterRef("EmitterAttacher BaseEmitter", obj->getEmitter(), [obj](const SPK::Ref<SPK::Emitter>& emitter) { obj->setEmitter(emitter); });
@@ -1495,8 +1386,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttac
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
 
     DRAW_SPK_VECTOR("PointMass Position", getPosition, setPosition);
@@ -1506,8 +1395,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& 
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomForce>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkModifier(obj);
     DRAW_SPK_VECTOR_VECTOR("RandomForce MinVector", "RandomForce MaxVector", getMinVector, getMaxVector, setVectors);
     DRAW_SPK_FLOAT_FLOAT("RandomForce MinPeriod", "RandomForce MaxPeriod", getMinPeriod, getMaxPeriod, setPeriods);
@@ -1515,8 +1402,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomForce>
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkZonedModifier(obj);
     DRAW_SPK_VECTOR("LinearForce Value", getValue, setValue);
     DRAW_SPK_BOOL_BOOL("LinearForce Relative", "LinearForce RelativeSquaredSpeedUsed", isRelative, isSquaredSpeedUsed, setRelative);
@@ -1529,15 +1414,11 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>
 // Actions
 void SparkParticleEditor::Impl::DrawSparkAction(const SPK::Ref<SPK::Action>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DRAW_SPK_BOOL("Active", isActive, setActive);
 }
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkAction(obj);
 
     DrawSparkArray(
@@ -1548,8 +1429,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& 
 
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSparkAction(obj);
 
     int32_t min_nb = numeric_cast<int32_t>(obj->getMinNb());
@@ -1578,8 +1457,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticl
 // Renderers
 void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& obj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SPK::FO::SparkQuadRendererData data = SPK::FO::GetSparkQuadRendererData(*obj);
     bool renderer_changed = false;
 
@@ -1668,8 +1545,6 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Renderer>& o
 // Helpers
 void SparkParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::Ref<SPK::Group>& current, const function<void(const SPK::Ref<SPK::Group>&)>& set)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<SPK::Ref<SPK::Group>> refs {SPK::Ref<SPK::Group>()};
     vector<string> names {"None"};
 
@@ -1713,8 +1588,6 @@ void SparkParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::
 
 void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<SPK::Ref<SPK::Emitter>> refs {SPK::Ref<SPK::Emitter>()};
     vector<string> names {"None"};
 
@@ -1765,8 +1638,6 @@ void SparkParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK
 
 void SparkParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto target_group = GetSparkFallbackGroup(preferred_group);
 
     if (ImGui::Button("Add SpawnParticlesAction")) {
@@ -1779,8 +1650,6 @@ void SparkParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(co
 
 auto SparkParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!Particle.has_value()) {
         return {};
     }
@@ -1790,8 +1659,6 @@ auto SparkParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
 
 auto SparkParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<SPK::Ref<SPK::Group>> groups;
 
     if (auto&& system = GetEditedSparkSystem()) {
@@ -1807,8 +1674,6 @@ auto SparkParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>
 
 auto SparkParticleEditor::Impl::GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (preferred_group) {
         return preferred_group;
     }
@@ -1819,8 +1684,6 @@ auto SparkParticleEditor::Impl::GetSparkFallbackGroup(const SPK::Ref<SPK::Group>
 
 auto SparkParticleEditor::Impl::GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (preferred_group && preferred_group->getNbEmitters() != 0) {
         return preferred_group->getEmitter(0);
     }
@@ -1836,8 +1699,6 @@ auto SparkParticleEditor::Impl::GetFirstSparkEmitter(const SPK::Ref<SPK::Group>&
 
 auto SparkParticleEditor::Impl::GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!obj) {
         return "None";
     }
@@ -1847,8 +1708,6 @@ auto SparkParticleEditor::Impl::GetSparkObjectLabel(const SPK::Ref<SPK::SPKObjec
 
 void SparkParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32_t>(get_size()))) {
         int32_t delIndex = -1;
 
@@ -1885,8 +1744,6 @@ void SparkParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, c
 
 void SparkParticleEditor::Impl::DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ImGui::TreeNodeEx(label, 0, "%s (%s)", label, get() ? get()->getClassName().c_str() : "Not assigned")) {
         if (get()) {
             DrawGenericSparkObject(get());
