@@ -431,9 +431,15 @@ auto winapi::open_exclusive_file(const string& path) noexcept -> int32_t
 {
     FO_TRACE_ZONE(FileSystem);
 
+    wstring wide_path = strex(path).to_wide_char();
+
+    if (wide_path.empty()) {
+        return -1;
+    }
+
     int32_t fd = -1;
 
-    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
+    if (::_wsopen_s(&fd, wide_path.c_str(), _O_BINARY | _O_RDWR | _O_CREAT | _O_NOINHERIT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
         return -1;
     }
 

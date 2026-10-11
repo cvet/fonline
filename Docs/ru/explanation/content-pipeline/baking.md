@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"b8c5e6f59746a0c88db32dd3e95acd621ba8ff483ce8c21d9f9bc3d2a93306c3"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"ade29d421492f2373aa9456ea41f6a6362d99a64a110613ce7d93f02051a3703"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -127,6 +127,53 @@ Bake выдаёт loose outputs для каждого target. Затем packagi
 
 Согласование выполняется один раз за bake по уже созданным output, не добавляет работу к каждой записи, не удаляет и не пересоздаёт содержимое и исправляет даже пропущенные как up-to-date artifacts. На case-sensitive файловой системе старое имя удаляет обычный sweep. Контракт закреплён тестами `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` и `DiskFileSystemNameCase`.
 
+## Владение выходным каталогом и конкурирующие процессы
+
+`MasterBaker::BakeAll` захватывает исключительную блокировку
+`<output-directory>.lock` до создания отчёта и удаления прежнего отчёта,
+маркера успеха или ресурсов. Существующие компоненты пути канонизируются:
+относительные пути, конечный разделитель и псевдонимы каталогов используют
+один lock. Выходной каталог должен находиться ниже корня файловой системы.
+Владелец удерживает lock при обработке ошибок и записи обоих отчётов; RAII
+освобождает его при возврате, включая неудачное запекание.
+
+Соседний файл переживает принудительную пересборку выходного каталога.
+Оставляйте его на месте: наличие файла не означает, что bake запущен. Удаление
+удерживаемого lock-файла POSIX позволяет другому процессу заблокировать новый
+inode по тому же имени. Занятая или недоступная блокировка сразу завершает
+запуск с `Resource baking output lock is unavailable`, сохраняя прежние
+отчёты, hash и ресурсы, в том числе при повторном вызове использованного
+`MasterBaker`. Проверьте процесс-владелец и права каталога, затем повторите
+запуск после его завершения. Родительские каталоги и пустой соседний lock-файл
+могут создаваться и при отказе захвата.
+
+Только native baker записывает `Resources.build-hash` со своим скомпилированным
+`FO_BUILD_HASH` до освобождения блокировки. У `AddBakingTarget` нет записи
+resource marker после завершения процесса: такая незаблокированная запись
+CMake могла бы объявить успешной незавершённую пересборку другого процесса.
+Маркеры native binaries по-прежнему используют helper настроенного hash.
+При смене revision повторите конфигурацию и сборку.
+
+В сборках с `AS_DEBUG` пакет AngelScript также требует `AS_DEBUG.lock` в
+рабочем каталоге до изменения outputs. Baker-процессы с общим рабочим
+каталогом не допускают одновременную debug-компиляцию даже для разных
+выходных каталогов. Компиляторы ролей AngelScript и пакеты на порядке
+запекания скриптов выполняются последовательно: имена файлов диагностики
+байткода общие. Другие порядки пакетов сохраняют заданный режим. Release
+сохраняет обычный параллелизм пакетов и ролей и не захватывает diagnostic
+lock. Для независимых debug-bake используйте разные рабочие каталоги; эта
+блокировка не управляет произвольными внешними компиляторами AngelScript.
+Оба lock-файла принадлежат открытым дескрипторам процесса; ОС освобождает их
+при завершении процесса. Это не PID-маркеры.
+
+Границы покрывают тесты lock/move/Unicode `DiskFileSystem`,
+`BakerMasterRawCopy`, случаи отказа и принудительной пересборки,
+`BakerMasterAngelScriptMultiplePacks`. Процессная проверка дополнительно
+подтверждает отказ второго владельца, побайтовую сохранность защищённых
+outputs и успешное повторное использование после обычного или аварийного
+завершения владельца. Lock защищает сотрудничающие baker-процессы, но не
+создаёт транзакцию над всем набором ресурсов.
+
 ## Точки входа CMake
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` определяет `AddBakingTarget` как проверяемый helper project interface и использует его для создания стандартных команд запекания после появления application targets.
@@ -134,7 +181,7 @@ Bake выдаёт loose outputs для каждого target. Затем packagi
 - `BakeResources` создаётся вызовом `AddBakingTarget(BakeResources)` и запускает baker с `-Baking.ForceBaking False`.
 - `ForceBakeResources` создаётся вызовом `AddBakingTarget(ForceBakeResources FORCE)` и запускает его с `-Baking.ForceBaking True`.
 - Обе стандартные цели передают главный конфигурационный файл проекта через `-ApplyConfig <FO_MAIN_CONFIG>` и используют subconfig `NONE` по умолчанию.
-- Каждая цель, созданная через `AddBakingTarget`, работает из `FO_OUTPUT_PATH`, зависит от `ForceCodeGeneration` и записывает `Baking/Resources.build-hash` через `BuildTools/cmake/helpers/WriteBuildHash.cmake`. Маркер использует тот же настроенный `FO_BUILD_HASH`, что и native baker и приложения; последующая смена Git HEAD не может переименовать идентичность завершённого bake. При смене revision исходников нужно повторить конфигурацию, сборку и baking.
+- Каждая цель, созданная через `AddBakingTarget`, работает из `FO_OUTPUT_PATH`, зависит от `ForceCodeGeneration` и поручает native baker записать `Baking/Resources.build-hash` под блокировкой выходного каталога. Маркер использует тот же настроенный `FO_BUILD_HASH`, что и native baker и приложения; последующая смена Git HEAD не может переименовать идентичность завершённого bake. При смене revision исходников нужно повторить конфигурацию, сборку и baking.
 - `CompileAngelScript` и `CompileManagedScripts` зависят от `ForceCodeGeneration`, поэтому metadata и generated code не могут отстать от любого скриптового backend или запуска baker-а.
 
 После выполнения `SetupScriptsAndBaking()` встраивающий проект может добавить цель для собственного subconfig, не копируя команду запуска baker-а:
@@ -520,7 +567,7 @@ Focused coverage находится в `Source/Tests/`:
 
 - Новый baker: изменить `Source/Tools/*Baker.*`, зарегистрировать в `BaseBaker::SetupBakers()` или `SetupBakersHook()`, добавить focused tests.
 - Аргументы команд: обновить `ScriptsAndBaking.cmake`.
-- Resource build hash: обновить `WriteBuildHash.cmake` и build tests.
+- Resource build hash: обновить `MasterBaker::BakeAllInternal` в `Source/Tools/Baker.cpp` и build tests; запись marker должна оставаться внутри output lock.
 - Metadata: обновить `MetadataBaker.*` и [Generated API and Metadata](../../reference/metadata/index.md).
 - Prototype: обновить `PrototypeFormatInterface.json`, [Prototype Format](../../how-to/content/prototype-format.md), model/reference, focused test и aggregate contract diff.
 - Map: обновить `MapFormatInterface.json`, [Map Format](../../how-to/content/map-format.md), reference, focused/native tests и project rebake.

@@ -2,6 +2,42 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-11 - Restore Baker ownership on updated master
+
+- Integrate published `cfa468f17bd5dff82cebc6f05b568620fc34163c` through
+  `1f56dafc48504da2e2b12736a7bf5fbf10b45de2` by fast-forward, preserving
+  all five migration entries and the unpublished file-lock/Baker work.
+  Recalculate its draft version to `2026.1.27-dev` from published minor 26.
+- Reconcile grid selectors/client blocks, display queries, attachment teardown,
+  optional archive/image/database modules and the baking fingerprint against
+  their source, tests, owning guides and generated models. The configuration
+  fingerprint remains written by native Baker while its output lock is held.
+  Network marker 70 and the JSON/SQLite encoding boundary belong to the
+  published update; the restored ownership block adds no serialization change.
+- Review full-context delivery after merging both documentation sets: the
+  complete eligible bundle is 2,271,194 bytes, 6,106 over the preceding budget.
+  Raise the explicit manifest budget to the next 32 KiB boundary, 2,293,760 bytes,
+  retaining indexes-only generated delivery and all reviewed exclusions.
+  Synchronize its repository-budget regression with the manifest; retain the
+  independent oversize-rejection fixture. No document truncation or omitted
+  current migration record is used to satisfy the limit.
+- Rebuild the Engine test applications and Baker without compiler warnings.
+  The full embedding Release suite passes 548 cases and 664,111 assertions;
+  the focused AngelScript Debug suite passes 80 cases and 67,289 assertions,
+  including enabled archive and JSON/SQLite provider checks. Native process
+  exclusion passes three Debug cases and two Release cases; the Release
+  diagnostic-only case is skipped for its non-AngelScript configuration.
+- Affected Python suites pass 189 tests and 100 subtests. API/CMake/image/map
+  models, 57-option CMake validation, temporary compatibility and draft/published
+  version-history checks pass. The complete incoming contract diff passes 80
+  changes across seventeen domains with 61 required dispositions and none
+  missing; the restored local block has no additional model delta.
+- Documentation preparation, 411-page source validation, complete translation,
+  site/search data and AI delivery pass. Retrieval retains 28 tasks, 67 checks,
+  100% success and 0.930 MRR. Ruby/Bundler are unavailable for rendered-site
+  acceptance. Full content/runtime acceptance is still running; prior entries
+  remain historical evidence and no publication or platform-wide result is implied.
+
 ## 2026-10-10 - Reconcile window display queries with rebased attachment teardown
 
 - Audit the complete published range from `e08ca424e4f24561d6610686b2b9f9548b9365db`

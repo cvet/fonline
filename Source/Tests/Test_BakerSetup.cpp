@@ -699,6 +699,27 @@ Bakers = {}
     CHECK(first_core.at("outputs").at("changed").at("count") == 1);
     CHECK(FindBakerSetupReportEntry(first_core.at("bakers"), RawCopyBaker::NAME).at("status") == "success");
 
+    string lock_path = output_dir + ".lock";
+    auto output_lock = fs::try_lock_file(lock_path);
+    REQUIRE(output_lock.owns_lock());
+    auto protected_hash = fs::read_file(build_hash_path);
+    auto protected_report = fs::read_file(report_path);
+    CHECK_FALSE(first_baker.BakeAll());
+    CHECK(fs::read_file(build_hash_path) == protected_hash);
+    CHECK(fs::read_file(report_path) == protected_report);
+    CHECK(fs::read_file(full_report_path) == full_report_data);
+    CHECK(fs::read_file(output_path) == optional<string> {"raw-copy"});
+    BakerTests::OverrideSetting(settings.Baking.ForceBaking, true);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, output_dir + "/./");
+    MasterBaker contending_baker {&settings};
+    CHECK_FALSE(contending_baker.BakeAll());
+    CHECK(fs::read_file(build_hash_path) == protected_hash);
+    CHECK(fs::read_file(report_path) == protected_report);
+    CHECK(fs::read_file(output_path) == optional<string> {"raw-copy"});
+    BakerTests::OverrideSetting(settings.Baking.ForceBaking, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, output_dir);
+    output_lock.reset();
+
     MasterBaker incremental_baker {&settings};
     REQUIRE(incremental_baker.BakeAll());
     CHECK(fs::read_file(full_report_path) == full_report_data);
@@ -922,6 +943,58 @@ Bakers = {}
     CHECK(fs::remove_dir_tree(temp_dir));
 }
 
+#if FO_ANGELSCRIPT_SCRIPTING
+TEST_CASE("BakerMasterAngelScriptMultiplePacks")
+{
+    string temp_dir = MakeTempBakerSetupDir("as_debug_packs");
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("scripts/Shared.fos").str(), "namespace SharedDiagnostics { int Value() { return 42; } }\n"));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+    auto config = ConfigFile(strex(R"(Baking.BakeOutput = {}
+Baking.ForceBaking = true
+Baking.SingleThreadBaking = false
+[ResourcePack]
+Name = Metadata
+InputDirs = scripts
+Bakers = Metadata
+[ResourcePack]
+Name = ScriptsA
+InputDirs = scripts
+Bakers = AngelScript
+[ResourcePack]
+Name = ScriptsB
+InputDirs = scripts
+Bakers = AngelScript
+)",
+        output_dir)
+            .str());
+    settings.ApplyConfigFile(config, temp_dir);
+    MasterBaker baker {&settings};
+#if defined(AS_DEBUG)
+    auto diagnostics_lock = fs::try_lock_file("AS_DEBUG.lock");
+    REQUIRE(diagnostics_lock.owns_lock());
+    CHECK_FALSE(baker.BakeAll());
+    CHECK_FALSE(fs::exists(output_dir));
+    diagnostics_lock.reset();
+#endif
+    REQUIRE(baker.BakeAll());
+    for (string_view pack : {"ScriptsA", "ScriptsB"}) {
+        for (string_view side : {"server", "client", "mapper"}) {
+            string path = strex(output_dir).combine_path(pack).combine_path(strex("{}.fos-bin-{}", pack, side)).str();
+            REQUIRE(fs::file_size(path).has_value());
+            CHECK(*fs::file_size(path) > 0);
+        }
+    }
+    CHECK(fs::try_lock_file(output_dir + ".lock").owns_lock());
+#if defined(AS_DEBUG)
+    CHECK(fs::try_lock_file("AS_DEBUG.lock").owns_lock());
+#endif
+}
+#endif
+
 TEST_CASE("BakerMasterImageReport")
 {
     string temp_dir = MakeTempBakerSetupDir("master_baker_image_report");
@@ -1098,6 +1171,13 @@ Bakers = {}
         CHECK_FALSE(fs::exists(outdated_path));
         CHECK(fs::read_file(build_hash_path).has_value());
 
+        auto output_lock = fs::try_lock_file(output_dir + ".lock");
+        REQUIRE(output_lock.owns_lock());
+        CHECK_FALSE(baker.BakeAll());
+        output_lock.reset();
+        REQUIRE(baker.BakeAll());
+        CHECK(fs::try_lock_file(output_dir + ".lock").owns_lock());
+
         CHECK(fs::remove_dir_tree(temp_dir));
     }
 
@@ -1171,6 +1251,7 @@ Bakers = {}
         MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
         CHECK_FALSE(fs::read_file(build_hash_path).has_value());
+        CHECK(fs::try_lock_file(output_dir + ".lock").owns_lock());
 
         string report_path = MakeBakerSetupReportPath(output_dir);
         REQUIRE(fs::exists(report_path));

@@ -7,12 +7,32 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"87c64c15aa342c7a542c4aeeb41f9006de05aabcd8f67b580f9d45d1483aa6e7"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7101a4f3ce8cf7d84ce7ebc3d364c122059b7b90f6dabf7acb19389463f24102"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-11
+
+### Добавлено
+
+- Перемещаемый `fs::exclusive_file_lock` и неблокирующий `fs::try_lock_file`: захват без усечения, Unicode/long paths, явное освобождение, передача владения и ненаследуемые native-дескрипторы. Web возвращает недоступную блокировку.
+
+### Исправлено
+
+- Канонический выходной каталог запекания защищён соседним file lock до удаления report/hash и до завершения записи отчётов. Отказ сохраняет прежние outputs даже при повторном использовании MasterBaker. Принудительная пересборка не удаляет inode блокировки.
+- Компиляция ролей AngelScript и пакетов на порядке скриптов последовательна только при `AS_DEBUG`; diagnostic lock рабочего каталога защищает между Baker-процессами. Release сохраняет заданный параллелизм.
+- Только native baker записывает скомпилированный resource build hash под output lock. Убрана незаблокированная запись CMake после завершения baker; генерация hash native binaries прежняя.
+
+### Миграция
+
+- Версия Engine — `2026.1.27-dev`, следующая minor после опубликованного master `2026.1.26-dev`. Повторите конфигурацию и сборку native bakers и метаданных версии, затем штатное запекание. Script bindings, network marker, sprite format, БД и сохранения не требуют конверсии.
+- Оставляйте `<BakeOutput>.lock` рядом с выходным каталогом и `AS_DEBUG.lock` в рабочем каталоге. Игнорируйте эти производные файлы в проектах: наличие файла безопасно. Не удаляйте их для снятия contention; остановите или дождитесь владельца, проверьте права и повторите запуск. Отказы lock предшествуют изменениям outputs/report/hash; корни файловых систем запрещены как BakeOutput.
+- `fs::try_lock_file` не создаёт родителей, не усекает содержимое и не ожидает. Незахваченный lock также означает недоступный путь или неподдерживаемый Web, а не только другого владельца. В POSIX exclusion advisory: участники должны использовать один inode. Держите владельца lock до завершения защищённой работы и отчётов.
+- Debug-bake с AngelScript требует доступного для записи diagnostic lock; разные рабочие каталоги допускают независимое debug-запекание. Обычная Release-компиляция остаётся параллельной. Защита относится к MasterBaker, а не произвольным внешним процессам AngelScript.
+- Пользовательские CMake wrappers не должны писать Resources.build-hash после возврата native Baker. Скомпилированный baker записывает его до освобождения lock; сохраняйте WriteBuildHash только для native binary markers. Контракт revision/hash остаётся привязанным к скомпилированным исходникам. При rollback возвращайте старый baker и build glue вместе и завершайте запекание до использования outputs.
+
+## 2026.1.26-dev - 2026-10-11
 
 ### Изменено
 

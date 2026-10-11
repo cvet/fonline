@@ -432,6 +432,19 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [Configuration and Data Sources](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking](../../explanation/authority-and-networking/).
 
+
+
+`fs::try_lock_file(path)` returns a move-only `fs::exclusive_file_lock` with
+`owns_lock()` and idempotent `reset()`. It opens or creates without truncation,
+never waits, and returns a closed owner for busy/invalid/unavailable paths or
+Web builds. Parent directories must already exist. Windows uses wide paths,
+long-path normalization and denied sharing; POSIX uses an advisory exclusive
+`flock`. Moves transfer ownership, replacement releases the previous lock,
+and destruction/process exit releases it. Descriptors are not inherited by
+child executions. The lock file stays on disk; never unlink it while a
+participant can still hold it. Baker ownership is described in
+[the baking guide](../../explanation/content-pipeline/baking.md#output-ownership-and-competing-processes).
+
 ## Validation checklist
 
 1. Confirm the change does not introduce a dependency from essentials back into higher engine layers.

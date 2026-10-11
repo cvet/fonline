@@ -8832,6 +8832,54 @@
       "release_note": "Docs/en/reference/changelog.md Current and its Russian mirror; Docs/en/how-to/build/project-configuration.md#baking-configuration-fingerprint.",
       "compatibility": "Baking cache/report metadata only: FO_BAKING_CONFIG_HASH, Resources.baking-config-hash and bakingConfigHash. No additional network, persisted-data, sprite-format or runtime ABI change beyond the existing optional-components update.",
       "owner": "cmake-project-interface"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.532e5d3d8da0c71d",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "classification": "breaking",
+      "rationale": "The complete update replaces two boolean grid settings with two named string settings and adds client display-size/mode queries. The native-codegen inventory rises from 2569 to 2571 symbols and records the compatibility marker update.",
+      "migration": "Follow the ordered 2026.1.22-dev through 2026.1.26-dev migrations in Docs/en/reference/changelog.md. Regenerate bindings and metadata, migrate grid settings and optional native component selections, rebuild affected roles and fully rebake. Existing display/logical-size methods retain their meaning; the two display queries are additive.",
+      "release_note": "Docs/en/reference/changelog.md records published 2026.1.22-dev through 2026.1.26-dev and their Russian equivalents; owning server/client, component-selection and persistence guides describe the current contracts.",
+      "compatibility": "The complete incoming range reaches network compatibility 0.0.70. Rebuild expanded IAppWindow and MapView consumers together, deploy matching client/server metadata from one bake, and roll back complete binaries/resources/storage sets. Host/runtime ABI identifier, updater protocol and baked sprite version are unchanged.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.9d8f630969218ae4",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "classification": "breaking",
+      "rationale": "Published 2026.1.26-dev advances the central compatibility marker from 0.0.69 to 0.0.70 for the native component and storage-encoding boundary; the restored Baker ownership block does not change it.",
+      "migration": "Follow the 2026.1.26-dev migration in Docs/en/reference/changelog.md and Docs/en/explanation/persistence/index.md: configure positive FO_DATABASE/FO_DATA_SOURCE/FO_IMAGE options, rebuild affected roles and fully rebake matching metadata/resources. Use new empty JSON/SQLite directories; old Extended JSON/BSON BLOBs have no current reader. Mongo representation remains unchanged.",
+      "release_note": "Docs/en/reference/changelog.md records published 2026.1.22-dev through 2026.1.26-dev and their Russian equivalents; owning server/client, component-selection and persistence guides describe the current contracts.",
+      "compatibility": "The complete incoming range reaches network compatibility 0.0.70. Rebuild expanded IAppWindow and MapView consumers together, deploy matching client/server metadata from one bake, and roll back complete binaries/resources/storage sets. Host/runtime ABI identifier, updater protocol and baked sprite version are unchanged.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.230f93cb20b2407c",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "classification": "breaking",
+      "rationale": "Replace boolean grid selectors with explicit independent Static, Chunked or Dynamic selectors; valid existing geometry and field semantics remain unchanged.",
+      "migration": "Follow the 2026.1.22-dev migration in Docs/en/reference/changelog.md: replace Server.ProtoMapStaticGrid and Server.MapInstanceStaticGrid with Server.ProtoMapGridType and Server.MapInstanceGridType. A former false maps to Dynamic; true maps to Static unless the old chunk flag was also true, in which case use Chunked. No retired setting alias remains. StaticMap takes (size, grid_type); invalid selectors throw before ordinary startup.",
+      "release_note": "Docs/en/reference/changelog.md records published 2026.1.22-dev through 2026.1.26-dev and their Russian equivalents; owning server/client, component-selection and persistence guides describe the current contracts.",
+      "compatibility": "The complete incoming range reaches network compatibility 0.0.70. Rebuild expanded IAppWindow and MapView consumers together, deploy matching client/server metadata from one bake, and roll back complete binaries/resources/storage sets. Host/runtime ABI identifier, updater protocol and baked sprite version are unchanged.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.13f1a8f798cd0814",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "classification": "breaking",
+      "rationale": "Replace boolean grid selectors with explicit independent Static, Chunked or Dynamic selectors; valid existing geometry and field semantics remain unchanged.",
+      "migration": "Follow the 2026.1.22-dev migration in Docs/en/reference/changelog.md: replace Server.ProtoMapStaticGrid and Server.MapInstanceStaticGrid with Server.ProtoMapGridType and Server.MapInstanceGridType. A former false maps to Dynamic; true maps to Static unless the old chunk flag was also true, in which case use Chunked. No retired setting alias remains. StaticMap takes (size, grid_type); invalid selectors throw before ordinary startup.",
+      "release_note": "Docs/en/reference/changelog.md records published 2026.1.22-dev through 2026.1.26-dev and their Russian equivalents; owning server/client, component-selection and persistence guides describe the current contracts.",
+      "compatibility": "The complete incoming range reaches network compatibility 0.0.70. Rebuild expanded IAppWindow and MapView consumers together, deploy matching client/server metadata from one bake, and roll back complete binaries/resources/storage sets. Host/runtime ABI identifier, updater protocol and baked sprite version are unchanged.",
+      "owner": "native-api"
     }
   ]
 }

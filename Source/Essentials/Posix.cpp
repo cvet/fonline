@@ -580,7 +580,7 @@ auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 {
     FO_TRACE_ZONE(FileSystem);
 
-    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
+    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666);
 
     if (fd < 0) {
         return -1;

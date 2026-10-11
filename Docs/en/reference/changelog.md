@@ -14,6 +14,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-11
 
+### Added
+
+- Add move-only `fs::exclusive_file_lock` and non-blocking `fs::try_lock_file`, with non-truncating acquisition, Unicode/long paths, explicit release, move transfer and non-inherited native descriptors. Web returns an unavailable lock.
+
+### Fixed
+
+- Own the canonical baking output with a sibling file lock before report/hash deletion and through final reporting. A refused run preserves the previous output, even when reusing a MasterBaker. Forced rebuilds leave the lock inode in place.
+- Serialize AngelScript role and script-order pack compilation only under `AS_DEBUG`; acquire the working directory's diagnostic lock across Baker processes. Release keeps configured parallelism.
+- Let the native baker alone write the compiled resource build hash inside the output lock. Remove the unlocked CMake write after the baker exits; native binary hash generation is unchanged.
+
+### Migration
+
+- Engine version is `2026.1.27-dev`, the next minor after published master `2026.1.26-dev`. Reconfigure and rebuild native bakers and version metadata, then run the normal bake. No script binding, network marker, sprite format, database or save conversion changes.
+- Leave `<BakeOutput>.lock` beside the output directory and `AS_DEBUG.lock` in the working directory. Ignore these generated files in embedding repositories; their existence is harmless. Do not delete them to recover contention. Stop or wait for the owner, check permissions and retry. Lock failures occur before output/report/hash mutation; filesystem roots are rejected as BakeOutput.
+- `fs::try_lock_file` does not create parents, truncate content or wait. A closed lock also represents unavailable paths and unsupported Web, not only another owner. On POSIX the exclusion is advisory and requires participants to use the same file inode. Keep the lock owner alive until protected work and reporting finish.
+- Debug bakes with AngelScript need a writable diagnostic-lock location; separate working directories permit independent debug bakes. Ordinary Release compilation remains parallel. This guard applies to MasterBaker, not arbitrary external AngelScript processes.
+- Custom CMake bake wrappers must not write Resources.build-hash after native Baker returns. The compiled baker writes it before lock release; retain WriteBuildHash only for native binary markers. The revision/hash contract stays compiled-source based. On rollback restore the old baker and build glue together, and complete a bake before consuming its outputs.
+
+## 2026.1.26-dev - 2026-10-11
+
 ### Changed
 
 - CMake `TemporaryCompat` dates restrictions, including inactive branches. Database selection has no Web veto.

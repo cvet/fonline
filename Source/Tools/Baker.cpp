@@ -229,8 +229,39 @@ auto MasterBaker::BakeAll() noexcept -> bool
     bool success = false;
     string failure_message;
     string report_path;
+    fs::exclusive_file_lock output_lock;
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+    fs::exclusive_file_lock diagnostics_lock;
+#endif
+    _report.reset();
 
     try {
+        FO_VERIFY_AND_THROW(!_settings->Baking.BakeOutput.empty(), "Resource baker cannot lock an empty output path");
+        std::error_code path_error;
+        auto output_path = std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(fs::resolve_path(_settings->Baking.BakeOutput))}, path_error);
+        FO_VERIFY_AND_THROW(!path_error, "Unable to resolve resource baking output", _settings->Baking.BakeOutput, path_error.message());
+
+        if (output_path.filename().empty()) {
+            output_path = output_path.parent_path();
+        }
+
+        FO_VERIFY_AND_THROW(!output_path.filename().empty(), "Resource baking output must be below a filesystem root");
+        string parent_path = fs::path_to_string(output_path.parent_path());
+        bool parent_created = fs::create_directories(parent_path);
+        FO_VERIFY_AND_THROW(parent_created, "Unable to create resource baking output parent", parent_path);
+        auto lock_path = output_path;
+        lock_path += ".lock";
+        string lock_name = fs::path_to_string(lock_path);
+        output_lock = fs::try_lock_file(lock_name);
+        FO_VERIFY_AND_THROW(output_lock.owns_lock(), "Resource baking output lock is unavailable", lock_name);
+
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+        if (std::ranges::any_of(_settings->GetResourcePacks(), [](const auto& pack) { return vec_exists(pack.Bakers, AngelScriptBaker::NAME); })) {
+            diagnostics_lock = fs::try_lock_file("AS_DEBUG.lock");
+            FO_VERIFY_AND_THROW(diagnostics_lock.owns_lock(), "AngelScript debug output lock is unavailable", fs::resolve_path("AS_DEBUG.lock"));
+        }
+#endif
+
         _report = safe_alloc::make_shared<BakingReport>(_settings);
         report_path = GetBakingReportPath(_settings->Baking.BakeOutput);
 
@@ -576,7 +607,14 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
         for (auto& bake_context_holder : pack_bake_contexts) {
             if (!bake_context_holder->Done) {
                 auto bake_context = bake_context_holder.as_ptr();
-                res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [bake_context, bake_order]() FO_DEFERRED { BakePackOrder(bake_context, bake_order); }));
+                async_launch_mode pack_async_mode = async_mode;
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+                // AS_DEBUG diagnostics use shared filenames across roles and packs
+                if (std::ranges::any_of(bake_context->Bakers, [bake_order](const auto& baker) { return baker->GetOrder() == bake_order && baker->GetName() == AngelScriptBaker::NAME; })) {
+                    pack_async_mode = launch_deferred_only;
+                }
+#endif
+                res_bakings.emplace_back(run_async(pack_async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [bake_context, bake_order]() FO_DEFERRED { BakePackOrder(bake_context, bake_order); }));
             }
         }
 

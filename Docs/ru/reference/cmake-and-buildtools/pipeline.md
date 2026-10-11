@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"4048b63e7bc7ff1c9f898fba37ac5b8378ce1283260a59758c2eea96cc9477ed"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -450,7 +450,8 @@ diagnostics, а не для source ownership или проверки build featu
   output и передающий exit code.
 - `State.cmake` — поддержка состояния и hooks поэтапного pipeline.
 - `WriteBuildHash.cmake` — записывает настроенный `FO_BUILD_HASH`, переданный
-  как `BUILD_HASH`, в маркеры native binaries и ресурсов. При записи он не
+  как `BUILD_HASH`, в маркеры native binaries. Resource marker записывает
+  native baker под блокировкой выходного каталога. При записи он не
   перечитывает Git HEAD и не выбирает новую случайную идентичность. Поэтому
   маркеры совпадают с идентичностью, встроенной в native applications при
   конфигурации, в том числе для исходных архивов без Git и путей с пробелами.

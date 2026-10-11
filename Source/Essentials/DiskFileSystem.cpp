@@ -40,6 +40,67 @@ FO_BEGIN_NAMESPACE
 
 static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended = false) -> std::filesystem::path;
 
+fs::exclusive_file_lock::exclusive_file_lock(exclusive_file_lock&& other) noexcept :
+    _descriptor {std::exchange(other._descriptor, -1)}
+{
+}
+
+auto fs::exclusive_file_lock::operator=(exclusive_file_lock&& other) noexcept -> exclusive_file_lock&
+{
+    if (this != &other) {
+        reset();
+        _descriptor = std::exchange(other._descriptor, -1);
+    }
+
+    return *this;
+}
+
+fs::exclusive_file_lock::~exclusive_file_lock() noexcept
+{
+    reset();
+}
+
+void fs::exclusive_file_lock::reset() noexcept
+{
+    if (_descriptor >= 0) {
+#if FO_WINDOWS
+        winapi::close_exclusive_file(_descriptor);
+#elif !FO_WEB
+        posix::close_exclusive_file(_descriptor);
+#endif
+        _descriptor = -1;
+    }
+}
+
+auto fs::try_lock_file(string_view path) noexcept -> exclusive_file_lock
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    if (path.empty() || path.find('\0') != string_view::npos || path.ends_with('/') || path.ends_with('\\')) {
+        return {};
+    }
+
+#if FO_WEB
+    return {};
+#else
+    std::error_code ec;
+    auto fs_path = fs_make_io_path(path, ec, true);
+
+    if (ec) {
+        return {};
+    }
+
+    auto native_path = fs_path.u8string();
+    string lock_path {native_path.begin(), native_path.end()};
+#if FO_WINDOWS
+    int32_t descriptor = winapi::open_exclusive_file(lock_path);
+#else
+    int32_t descriptor = posix::open_exclusive_file(lock_path);
+#endif
+    return exclusive_file_lock {descriptor};
+#endif
+}
+
 auto fs::make_path(string_view path) -> std::u8string
 {
     return {path.begin(), path.end()};

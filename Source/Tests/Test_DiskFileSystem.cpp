@@ -33,9 +33,10 @@
 
 #include "catch_amalgamated.hpp"
 
-#include "CommonHelpers.h"
-#include "DiskFileSystem.h"
-#include "SafeArithmetics.h"
+#include "Common.h"
+#if FO_WINDOWS
+#include "WinApi.h"
+#endif
 
 FO_BEGIN_NAMESPACE
 
@@ -47,6 +48,74 @@ static auto MakeTempTestDir(string_view name) -> string
 
 TEST_CASE("DiskFileSystem")
 {
+    SECTION("ExclusiveFileLockPreservesBytesAndTransfersOwnership")
+    {
+#if !FO_WEB
+        string temp_dir = MakeTempTestDir("exclusive_lock");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string lock_path = strex(temp_dir).combine_path("owner.lock").str();
+        string other_path = strex(temp_dir).combine_path("other.lock").str();
+        REQUIRE(fs::write_file(lock_path, "sentinel"));
+
+        auto first = fs::try_lock_file(lock_path);
+        REQUIRE(first.owns_lock());
+        CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());
+        auto moved = std::move(first);
+        CHECK_FALSE(first.owns_lock());
+        CHECK(moved.owns_lock());
+        CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());
+
+        auto assigned = fs::try_lock_file(other_path);
+        REQUIRE(assigned.owns_lock());
+        assigned = std::move(moved);
+        CHECK_FALSE(moved.owns_lock());
+        CHECK(assigned.owns_lock());
+        CHECK(fs::try_lock_file(other_path).owns_lock());
+        CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());
+        assigned.reset();
+        assigned.reset();
+        CHECK_FALSE(assigned.owns_lock());
+        CHECK(fs::read_file(lock_path) == optional<string> {"sentinel"});
+        {
+            auto scoped = fs::try_lock_file(lock_path);
+            REQUIRE(scoped.owns_lock());
+        }
+        CHECK(fs::try_lock_file(lock_path).owns_lock());
+#else
+        CHECK_FALSE(fs::try_lock_file("owner.lock").owns_lock());
+#endif
+    }
+
+    SECTION("ExclusiveFileLockRejectsInvalidAndMissingParentPaths")
+    {
+        CHECK_FALSE(fs::try_lock_file("").owns_lock());
+        CHECK_FALSE(fs::try_lock_file("dir/").owns_lock());
+        CHECK_FALSE(fs::try_lock_file("dir\\").owns_lock());
+        CHECK_FALSE(fs::try_lock_file(string_view {"lock\0suffix", 11}).owns_lock());
+        string missing = strex(MakeTempTestDir("missing_lock_parent")).combine_path("child/owner.lock").str();
+        CHECK_FALSE(fs::try_lock_file(missing).owns_lock());
+    }
+
+    SECTION("ExclusiveFileLockSupportsLongUnicodePaths")
+    {
+#if !FO_WEB
+        string temp_dir = MakeTempTestDir("unicode_lock");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string dir = temp_dir;
+        for (int32_t i = 0; i != 18; i++) {
+            dir = strex(dir).combine_path("long-directory-segment").str();
+        }
+        REQUIRE(fs::create_directories(dir));
+        string path = strex(dir).combine_path("блокировка.lock").str();
+        REQUIRE(path.size() > 320);
+        auto lock = fs::try_lock_file(path);
+        REQUIRE(lock.owns_lock());
+        CHECK_FALSE(fs::try_lock_file(path).owns_lock());
+        lock.reset();
+        CHECK(fs::try_lock_file(path).owns_lock());
+#endif
+    }
+
     SECTION("ReadWriteRenameAndRemoveRoundtrip")
     {
         string temp_dir = MakeTempTestDir("diskfs_roundtrip");
@@ -592,6 +661,34 @@ TEST_CASE("DiskFilePrimitives")
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+}
+
+TEST_CASE("ExclusiveFileLockProcessProbe", "[.process]")
+{
+#if !FO_WEB
+    auto get_probe_path = [](const string& name) -> optional<string> {
+#if FO_WINDOWS
+        return winapi::get_environment_variable(name);
+#else
+        auto value = make_nptr(std::getenv(name.c_str()));
+        return value ? optional<string> {value.get()} : std::nullopt;
+#endif
+    };
+    auto path = get_probe_path("FO_LOCK_PROBE_PATH");
+    auto ready = get_probe_path("FO_LOCK_PROBE_READY");
+    auto release = get_probe_path("FO_LOCK_PROBE_RELEASE");
+    REQUIRE(path.has_value());
+    REQUIRE(ready.has_value());
+    REQUIRE(release.has_value());
+    auto lock = fs::try_lock_file(*path);
+    REQUIRE(lock.owns_lock());
+    REQUIRE(fs::write_file(*ready, "held"));
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+    while (!fs::exists(*release) && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {10});
+    }
+    REQUIRE(fs::exists(*release));
+#endif
 }
 
 FO_END_NAMESPACE

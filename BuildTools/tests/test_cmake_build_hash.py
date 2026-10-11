@@ -47,6 +47,7 @@ int main(int argc, char**)
     if (argc > 1) {
         std::filesystem::create_directories("Baking");
         std::ofstream("Baking/artifact.build-hash") << FO_BUILD_HASH;
+        std::ofstream("Baking/Resources.build-hash") << FO_BUILD_HASH;
     }
     return 0;
 }

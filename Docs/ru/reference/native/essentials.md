@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"69cb081a52aeca7ea1d2429ac608b83cb468567eb709ab3375ea28e919bb8e1e"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3a17c5e29bc01d94a6db042f38558a86d7482053979829011067f4d59b375606"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -442,6 +442,20 @@ standard stream копируется через `make_stream_string`,
 - Cross-platform random sequences: `Source/Essentials/RandomGenerator.*`; coarse/precise waits: `Threading.*`.
 - Байты файлов и низкоуровневая сборка writable path на диске: `Source/Essentials/DiskFileSystem.*`; смонтированные ресурсы движка и overlays установленного клиента: [Конфигурация и источники данных](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol, command и network runtime: [Сеть](../../explanation/authority-and-networking/).
+
+
+
+`fs::try_lock_file(path)` возвращает перемещаемый `fs::exclusive_file_lock`
+с `owns_lock()` и идемпотентным `reset()`. Открывает или создаёт файл без
+усечения, не ожидает и возвращает незахваченного владельца для занятых,
+некорректных или недоступных путей и в Web. Родительские каталоги уже должны
+существовать. Windows использует wide paths, нормализацию длинных путей и
+запрет совместного открытия; POSIX — advisory exclusive `flock`. Перемещение
+передаёт владение, присваивание освобождает прежний lock, деструктор и выход
+процесса освобождают захват. Дескрипторы не наследуются при запуске дочерних
+исполняемых программ. Файл остаётся на диске; не удаляйте его, пока участник
+может удерживать захват. Владение Baker описано в
+[руководстве по запеканию](../../explanation/content-pipeline/baking.md#владение-выходным-каталогом-и-конкурирующие-процессы).
 
 ## Контрольный список проверки
 

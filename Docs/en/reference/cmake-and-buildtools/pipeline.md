@@ -293,7 +293,8 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
 - `WriteBuildHash.cmake` — writes the configured `FO_BUILD_HASH` supplied as `BUILD_HASH`
-  into native and resource markers. It does not reread Git HEAD or choose a new
+  into native binary markers. The native baker writes the resource marker
+  while holding its output lock. It does not reread Git HEAD or choose a new
   random identity when the marker is written. Markers therefore match the build
   identity embedded in the configured native applications, including source
   archives without Git and output paths containing spaces.
