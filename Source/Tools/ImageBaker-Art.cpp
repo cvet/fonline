@@ -57,6 +57,7 @@ namespace ImageBakerArt
         bool mirror_ver = false;
         int32_t frm_from = 0;
         int32_t frm_to = 100000;
+        int32_t forced_rotation = -1;
 
         for (size_t i = 0; i < opt.length(); i++) {
             switch (opt[i]) {
@@ -71,6 +72,15 @@ namespace ImageBakerArt
                 break;
             case '3':
                 palette_index = 3;
+                break;
+            case 'R':
+            case 'r':
+                if (i + 1 < opt.length() && opt[i + 1] == '=') {
+                    FO_VERIFY_AND_THROW(i + 2 < opt.length() && opt[i + 2] >= '0' && opt[i + 2] <= '7', "ART rotation must be a digit from 0 to 7", fname, opt);
+                    forced_rotation = opt[i + 2] - '0';
+                    i += 2;
+                    FO_VERIFY_AND_THROW(i + 1 == opt.length() || string_view {"TtHhVvFfRr"}.find(opt[i + 1]) != string_view::npos, "Invalid ART option after rotation", fname, opt);
+                }
                 break;
             case 'T':
             case 't':
@@ -120,57 +130,121 @@ namespace ImageBakerArt
             }
         }
 
+        // ART stores all rotation-major frame tables before the rotation-major pixel data
         struct ArtHeader
         {
-            int32_t Flags {};
-            // Flags: 0x01 static, 0x02 critter delta, 0x04 font advance, 0x08 facade walk data, 0x10 eye-candy extension
+            uint32_t Flags {}; // 0x01 single rotation, 0x02 critter delta, 0x04 font advance, 0x08 facade walk data, 0x10 eye candy
             int32_t FrameRate {};
-            int32_t RotationCount {};
-            uint32_t PaletteList[4] {};
+            int32_t Bpp {};
+            uint32_t PaletteList[4] {}; // Non-zero when the palette slot is present
             int32_t ActionFrame {};
             int32_t FrameCount {};
-            int32_t InfoList[8] {};
-            int32_t SizeList[8] {};
-            int32_t DataList[8] {};
+            int32_t FrameTables[8] {}; // Runtime pointers, ignored
+            int32_t DataSize[8] {};
+            int32_t PixelTables[8] {}; // Runtime pointers, ignored
         };
-        ArtHeader header;
+        static_assert(sizeof(ArtHeader) == 132);
 
         struct ArtFrameInfo
         {
-            int32_t FrameWidth {};
-            int32_t FrameHeight {};
-            int32_t FrameSize {};
-            int32_t OffsetX {};
-            int32_t OffsetY {};
+            int32_t Width {};
+            int32_t Height {};
+            int32_t DataSize {};
+            int32_t HotX {};
+            int32_t HotY {};
             int32_t DeltaX {};
             int32_t DeltaY {};
-        } frame_info;
+        };
+        static_assert(sizeof(ArtFrameInfo) == 28);
 
-        using ArtPalette = uint32_t[256];
-        ArtPalette palette[4];
+        constexpr int32_t art_rotations = 8;
 
+        ArtHeader header;
         reader.ReadObject(header);
 
-        if ((header.Flags & 0x00000001) != 0) {
-            header.RotationCount = 1;
-        }
+        FO_VERIFY_AND_THROW(header.Bpp == 8, "Unsupported ART bit depth", fname, header.Bpp);
+        FO_VERIFY_AND_THROW(header.FrameCount > 0, "Invalid ART frame count", fname, header.FrameCount);
+        FO_VERIFY_AND_THROW(header.FrameRate >= 0, "Invalid ART frame rate", fname, header.FrameRate);
 
-        // Load palettes
-        int32_t palette_count = 0;
+        int32_t stored_rotations = (header.Flags & 0x1) != 0 ? 1 : art_rotations;
+        int32_t frm_count = header.FrameCount;
+
+        // Palettes are stored only for present slots, in slot order
+        using ArtPalette = array<uint32_t, 256>;
+        array<ArtPalette, 4> palettes {};
+        array<bool, 4> palette_present {};
+        int32_t first_palette = -1;
 
         for (int32_t i = 0; i < 4; i++) {
             if (header.PaletteList[i] != 0) {
-                reader.ReadObjectArray<uint32_t>(palette[i]);
-                palette_count++;
+                reader.ReadObjectArray<uint32_t>(span {palettes[i]});
+                palette_present[i] = true;
+
+                if (first_palette == -1) {
+                    first_palette = i;
+                }
             }
         }
-        if (palette_index >= palette_count) {
-            palette_index = 0;
+
+        FO_VERIFY_AND_THROW(first_palette != -1, "ART file has no palette", fname);
+
+        if (!palette_present[palette_index]) {
+            palette_index = first_palette;
         }
 
-        int32_t frm_fps = header.FrameRate;
-        int32_t frm_count = header.FrameCount;
-        FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
+        size_t frame_table_count = numeric_cast<size_t>(numeric_cast<uint64_t>(stored_rotations) * numeric_cast<uint64_t>(frm_count));
+        FO_VERIFY_AND_THROW(frame_table_count <= (reader.GetSize() - reader.GetCurPos()) / sizeof(ArtFrameInfo), "Truncated ART frame table", fname, frm_count, stored_rotations);
+
+        vector<ArtFrameInfo> frame_infos(frame_table_count);
+        reader.ReadObjectArray<ArtFrameInfo>(span {frame_infos});
+
+        // Decode every stored frame into palette indices
+        vector<vector<uint8_t>> frame_indices(frame_infos.size());
+
+        for (size_t fi = 0; fi < frame_infos.size(); fi++) {
+            const ArtFrameInfo& info = frame_infos[fi];
+            FO_VERIFY_AND_THROW(info.Width >= 0 && info.Height >= 0 && info.Width <= std::numeric_limits<uint16_t>::max() && info.Height <= std::numeric_limits<uint16_t>::max(), "Invalid ART frame size", fname, fi, info.Width, info.Height);
+            FO_VERIFY_AND_THROW(info.DataSize >= 0, "Invalid ART frame data size", fname, fi, info.DataSize);
+
+            FileReader frame_reader {reader.GetCurDataSpan(numeric_cast<size_t>(info.DataSize))};
+            reader.GoForward(numeric_cast<size_t>(info.DataSize));
+
+            size_t pixel_count = numeric_cast<size_t>(info.Width) * numeric_cast<size_t>(info.Height);
+            vector<uint8_t>& indices = frame_indices[fi];
+            indices.assign(pixel_count, 0);
+
+            if (numeric_cast<size_t>(info.DataSize) == pixel_count) {
+                frame_reader.ReadObjectArray<uint8_t>(span {indices});
+            }
+            else if (info.DataSize > 0) {
+                size_t written = 0;
+
+                while (frame_reader.GetCurPos() < frame_reader.GetSize()) {
+                    uint8_t value = frame_reader.GetUInt8();
+                    size_t len = value & 0x7F;
+
+                    FO_VERIFY_AND_THROW(written + len <= pixel_count, "ART RLE run overflows its frame", fname, fi);
+
+                    if ((value & 0x80) != 0) {
+                        frame_reader.ReadObjectArray<uint8_t>(span {indices}.subspan(written, len));
+                    }
+                    else {
+                        uint8_t color_index = frame_reader.GetUInt8();
+                        std::fill_n(indices.begin() + numeric_cast<ptrdiff_t>(written), len, color_index);
+                    }
+
+                    written += len;
+                }
+
+                FO_VERIFY_AND_THROW(written == pixel_count, "ART RLE data does not fill its frame", fname, fi, written, pixel_count);
+            }
+        }
+
+        // Path categories identify the placement rules of the original ART renderer
+        string lower_name = strex(fname).lower().str();
+        bool critter_like = lower_name.starts_with("art/critter/") || lower_name.starts_with("art/monster/") || lower_name.starts_with("art/unique_npc/");
+        bool wall_like = lower_name.starts_with("art/wall/") || lower_name.starts_with("art/portal/");
+        bool roof = lower_name.starts_with("art/roof/");
 
         if (frm_from >= frm_count) {
             frm_from = frm_count - 1;
@@ -181,150 +255,162 @@ namespace ImageBakerArt
 
         int32_t frm_count_target = std::max(frm_from, frm_to) - std::min(frm_from, frm_to) + 1;
 
-        // Create animation
         FrameCollection collection;
         collection.SequenceSize = numeric_cast<uint16_t>(frm_count_target);
-        collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 / frm_fps * frm_count_target : 0);
-        collection.HaveDirs = header.RotationCount == 8;
+        // Frame-indexed ART can exceed the baked 16-bit duration
+        int64_t anim_ticks = header.FrameRate > 0 ? numeric_cast<int64_t>(1000 / header.FrameRate) * frm_count_target : 0;
+        collection.AnimTicks = numeric_cast<uint16_t>(std::min(anim_ticks, numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())));
+        collection.HaveDirs = stored_rotations == art_rotations && forced_rotation < 0;
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        int32_t dir_count = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
+
+        for (int32_t dir = 0; dir < dir_count; dir++) {
+            FrameSequence& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
             sequence.Frames.resize(collection.SequenceSize);
 
-            int32_t dir_art = dir;
+            // ART rotations run clockwise from north; square Engine directions start north-east
+            int32_t rotation = 0;
 
-            if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-                switch (dir_art) {
-                case 0:
-                    dir_art = 1;
-                    break;
-                case 1:
-                    dir_art = 2;
-                    break;
-                case 2:
-                    dir_art = 3;
-                    break;
-                case 3:
-                    dir_art = 5;
-                    break;
-                case 4:
-                    dir_art = 6;
-                    break;
-                case 5:
-                    dir_art = 7;
-                    break;
-                default:
-                    throw ImageBakerException("Invalid ART direction", fname);
-                }
+            if (forced_rotation >= 0) {
+                rotation = stored_rotations == art_rotations ? forced_rotation : 0;
             }
-            else {
-                dir_art = (dir + 1) % 8;
-            }
-
-            // Read data
-            int32_t frm_read = frm_from;
-            int32_t frm_write = 0;
-
-            while (true) {
-                reader.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
-
-                reader.ReadObject(frame_info);
-
-                int32_t w = frame_info.FrameWidth;
-                int32_t h = frame_info.FrameHeight;
-                vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-                span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
-
-                auto& shot = sequence.Frames[frm_write];
-                shot.Width = numeric_cast<uint16_t>(w);
-                shot.Height = numeric_cast<uint16_t>(h);
-                shot.NextX = numeric_cast<int16_t>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
-                shot.NextY = numeric_cast<int16_t>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
-
-                uint32_t color = 0;
-
-                auto art_get_color = [&color, &reader, &palette, &palette_index, &transparent]() {
-                    uint8_t index = reader.GetUInt8();
-                    color = palette[palette_index][index];
-                    swap_object_bytes(color, 0, 2);
-
-                    if (index == 0) {
-                        color = 0;
-                    }
-                    else if (transparent) {
-                        color |= std::max((color >> 16) & 0xFF, std::max((color >> 8) & 0xFF, color & 0xFF)) << 24;
-                    }
-                    else {
-                        color |= 0xFF000000;
-                    }
-                };
-
-                int32_t pos = 0;
-                int32_t x = 0;
-                int32_t y = 0;
-                bool mirror = mirror_hor || mirror_ver;
-
-                auto art_write_color = [&color, &pos, &x, &y, &w, &h, &pixels, &mirror, &mirror_hor, &mirror_ver]() {
-                    if (mirror) {
-                        pixels[(mirror_ver ? h - y - 1 : y) * w + (mirror_hor ? w - x - 1 : x)] = color;
-                        x++;
-                        if (x >= w) {
-                            x = 0;
-                            y++;
-                        }
-                    }
-                    else {
-                        pixels[pos] = color;
-                        pos++;
-                    }
-                };
-
-                if (w * h == frame_info.FrameSize) {
-                    for (int32_t i = 0; i < frame_info.FrameSize; i++) {
-                        art_get_color();
-                        art_write_color();
-                    }
+            else if (collection.HaveDirs) {
+                if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                    constexpr int32_t hex_dir_to_rotation[6] = {1, 2, 3, 5, 6, 7};
+                    rotation = hex_dir_to_rotation[dir];
                 }
                 else {
-                    for (int32_t i = 0; i < frame_info.FrameSize; i++) {
-                        uint8_t cmd = reader.GetUInt8();
+                    rotation = (dir + 1) % art_rotations;
+                }
+            }
 
-                        if (cmd > 128) {
-                            cmd -= 128;
-                            i += cmd;
-                            for (; cmd > 0; cmd--) {
-                                art_get_color();
-                                art_write_color();
-                            }
-                        }
-                        else {
-                            art_get_color();
-                            for (; cmd > 0; cmd--) {
-                                art_write_color();
-                            }
-                            i++;
-                        }
-                    }
+            // Critter-like art draws rotations 1..3 as mirrored rotations 7..5
+            bool rotation_mirrored = false;
+
+            if (critter_like && stored_rotations == art_rotations && rotation > 0 && rotation < 4) {
+                rotation = art_rotations - rotation;
+                rotation_mirrored = true;
+            }
+
+            bool flip_hor = rotation_mirrored != mirror_hor;
+
+            struct PlacedFrame
+            {
+                size_t Index {};
+                int64_t HotX {};
+                int64_t HotY {};
+                int64_t DeltaX {};
+                int64_t DeltaY {};
+            };
+
+            vector<PlacedFrame> placed;
+            placed.reserve(numeric_cast<size_t>(frm_count_target));
+
+            for (int32_t frm_read = frm_from;; frm_read += frm_to >= frm_from ? 1 : -1) {
+                size_t index = numeric_cast<size_t>(rotation) * numeric_cast<size_t>(frm_count) + numeric_cast<size_t>(frm_read);
+                const ArtFrameInfo& info = frame_infos[index];
+
+                PlacedFrame frame {.Index = index, .HotX = info.HotX, .HotY = info.HotY, .DeltaX = info.DeltaX, .DeltaY = info.DeltaY};
+
+                // Single-rotation walls still use the explicitly placed rotation for their hot spot shift
+                int32_t placed_rotation = forced_rotation >= 0 ? forced_rotation : rotation;
+
+                if (wall_like && (placed_rotation < 2 || placed_rotation > 5)) {
+                    frame.HotX -= 40;
+                    frame.HotY += 20;
                 }
 
-                shot.Data = std::move(data);
+                if (rotation_mirrored) {
+                    frame.HotX = info.Width - frame.HotX - 1;
+                    frame.DeltaX = -frame.DeltaX;
+                }
+
+                if (mirror_hor) {
+                    // Flipped art ids (flag 0x1): roofs anchor at their left edge, everything else mirrors around the tile
+                    frame.HotX = roof ? 0 : info.Width - frame.HotX - 2;
+                    frame.DeltaX = -frame.DeltaX;
+                }
+
+                if (mirror_ver) {
+                    frame.HotY = info.Height - frame.HotY - 1;
+                    frame.DeltaY = -frame.DeltaY;
+                }
+
+                placed.emplace_back(frame);
 
                 if (frm_read == frm_to) {
                     break;
                 }
-
-                if (frm_to > frm_from) {
-                    frm_read++;
-                }
-                else {
-                    frm_read--;
-                }
-
-                frm_write++;
             }
 
-            if (header.RotationCount != 8) {
-                break;
+            // Frames carry individual hot spots, the engine sequence has one offset: place every frame on a shared
+            // canvas where all hot spots coincide, then anchor the canvas at that point
+            int64_t left = 0;
+            int64_t top = 0;
+            int64_t right = 0;
+            int64_t bottom = 0;
+
+            for (const PlacedFrame& frame : placed) {
+                const ArtFrameInfo& info = frame_infos[frame.Index];
+                left = std::max(left, frame.HotX);
+                top = std::max(top, frame.HotY);
+                right = std::max(right, info.Width - frame.HotX);
+                bottom = std::max(bottom, info.Height - frame.HotY);
+            }
+
+            uint16_t canvas_w = numeric_cast<uint16_t>(std::max(left + right, int64_t {1}));
+            uint16_t canvas_h = numeric_cast<uint16_t>(std::max(top + bottom, int64_t {1}));
+
+            sequence.OffsX = numeric_cast<int16_t>(canvas_w / 2 - left);
+            sequence.OffsY = numeric_cast<int16_t>(canvas_h - top);
+
+            const ArtPalette& palette = palettes[palette_index];
+
+            for (size_t frm_write = 0; frm_write < placed.size(); frm_write++) {
+                const PlacedFrame& frame = placed[frm_write];
+                const ArtFrameInfo& info = frame_infos[frame.Index];
+                const vector<uint8_t>& indices = frame_indices[frame.Index];
+
+                FrameShot& shot = sequence.Frames[frm_write];
+                shot.Width = numeric_cast<uint16_t>(canvas_w);
+                shot.Height = numeric_cast<uint16_t>(canvas_h);
+                shot.NextX = numeric_cast<int16_t>(frame.DeltaX);
+                shot.NextY = numeric_cast<int16_t>(frame.DeltaY);
+
+                vector<uint8_t> data(numeric_cast<size_t>(numeric_cast<uint64_t>(canvas_w) * canvas_h * 4));
+                span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
+
+                int64_t origin_x = left - frame.HotX;
+                int64_t origin_y = top - frame.HotY;
+
+                for (int32_t y = 0; y < info.Height; y++) {
+                    for (int32_t x = 0; x < info.Width; x++) {
+                        uint8_t index = indices[numeric_cast<size_t>(y) * numeric_cast<size_t>(info.Width) + numeric_cast<size_t>(x)];
+
+                        if (index == 0) {
+                            continue;
+                        }
+
+                        uint32_t color = palette[index];
+                        swap_object_bytes(color, 0, 2);
+
+                        if (transparent) {
+                            color |= std::max((color >> 16) & 0xFF, std::max((color >> 8) & 0xFF, color & 0xFF)) << 24;
+                        }
+                        else {
+                            color |= 0xFF000000;
+                        }
+
+                        int32_t src_x = flip_hor ? info.Width - x - 1 : x;
+                        int32_t src_y = mirror_ver ? info.Height - y - 1 : y;
+                        int64_t dst_x = origin_x + src_x;
+                        int64_t dst_y = origin_y + src_y;
+
+                        pixels[numeric_cast<size_t>(dst_y) * numeric_cast<size_t>(canvas_w) + numeric_cast<size_t>(dst_x)] = color;
+                    }
+                }
+
+                shot.Data = std::move(data);
             }
         }
 

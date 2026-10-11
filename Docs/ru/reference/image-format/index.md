@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"e35947c3d4469d33a0f8df523b2b28900b0f7b282650fc6892ee4bd38729bee2"} -->
+<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"7dad33a1a3ed407e9c8e518e1b36769f8da172720c8db27d91aaf120a6d26ae2"} -->
 
 # Сгенерированный справочник форматов изображений
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт создаётся для закреплённой ревизии Engine. Проекты владеют каталогами ресурсов, лицензированием источников, визуальным стилем, политикой сжатия, приоритетом resource pack, подстановками анимаций, настройкой движения и видимой приёмкой. |
 | Исходный manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Digest контракта | <code>ad73a7abae47126f7e27c8ed0fac3b546c50b42b2765f55a8f688cbda6c2e1fc</code> |
+| Digest контракта | <code>95be56c87174c2671abb324888ef809ad52bfa038bac2367dcff0e89845d3ce7</code> |
 | Baker | <code>Image</code>, порядок 4 |
 | Запечённые pixels | <code>RGBA8</code> |
 | Сторона runtime | <code>client</code> |
@@ -30,8 +30,8 @@ generated: true
 | Справочник | Записей | Назначение |
 | --- | --- | --- |
 | [Форматы](formats.md) | 12 | Принимаемые исходные форматы и текущее поведение импорта. |
-| [FOFRM](fofrm.md) | 9 | Поля descriptor, aliases, направления, flattening и timing. |
-| [Параметры](options.md) | 3 | Selectors имени файла ART, SPR и BAM. |
+| [FOFRM](fofrm.md) | 10 | Поля descriptor, aliases, направления, flattening и timing. |
+| [Параметры](options.md) | 4 | Selectors имени файла ART, SPR и BAM. |
 | [Запекание](baking.md) | 10 | Обнаружение, имена выходов, записи контейнера и отказы. |
 | [Runtime](runtime.md) | 8 | Покрытие factory, sprite sheets, загрузка в atlas и caches. |
 | [Проверка](validation.md) | 9 | Ограничения источников и исполняемые проверки. |

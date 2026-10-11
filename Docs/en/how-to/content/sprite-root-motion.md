@@ -22,7 +22,8 @@ This is a 2D movement-presentation contract. General PNG/TGA and legacy import, 
 
 The owning sources are:
 
-- `Source/Tools/ImageBaker.*` for `FrameShot::NextX` / `NextY`, source-format import, transformations, and baked sprite serialization;
+- `Source/Tools/ImageImport.*` for `FrameShot::NextX` / `NextY` and the shared loader context;
+- `Source/Tools/ImageBaker.*` for coordination, transformations, and baked sprite serialization; adjacent `ImageBaker-*.h/.cpp` pairs own source-format import;
 - `Source/Common/SpriteResource.*` for the shared SpriteResource v2 frame decoder and `NextOffset` transport;
 - `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset`, baked loading, shared frames, and per-direction sheets;
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
@@ -73,6 +74,13 @@ NextY_1 = -1
 ```
 
 Nested FOFRM references add the referencing frame's offset to the selected nested frame. Other supported formats carry or derive offsets according to their own importer. Missing values normally become zero; inspect the format-specific `ImageBaker` loader instead of assuming that every source format exposes the same authored fields.
+
+The optional Arcanum ART importer preserves `DeltaX`/`DeltaY` as `NextX`/`NextY`,
+including the corresponding signs after mirroring. Per-frame hot spots instead
+align frames on a common canvas and determine sequence placement; they are not
+frame displacement. FOFRM `Alias` retains both kinds of offset, while ordinary
+composition copies only child frames and adds authored frame deltas. See the
+[ART import contract](image-format.md#art) for rotation and placement rules.
 
 Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. That merge path is private Engine behavior and has no focused per-axis regression in the current native suite; do not treat offset preservation across the splice as a public guarantee. Validate the selected baked sheet on both axes rather than editing the baked stream.
 

@@ -1116,8 +1116,8 @@
           "translation": "Полный scan сообщает обо всех независимо сломанных image resources за один запуск и не завершается молча."
         },
         "/baking_rules/@id=image-format.baking.error-aggregation/requirement": {
-          "source_sha256": "c06e02b392db350e6e5c86ebf6e551e55a27359efc725f18ad9d73c3d48d2ea6",
-          "translation": "Выбранные файлы запекаются асинхронно; каждое исключение журналируется, а ненулевое число ошибок завершает Image baker исключением ImageBakerException."
+          "source_sha256": "d810a217bb33c073b10bcb2296d8eca6a08f0ba6d888479cb35be68e4ce7a042",
+          "translation": "Каждый зарегистрированный image importer сохраняет путь источника, параметры имени, размер входа и исходное исключение в ImageBakerException, включая вложенные источники FOFRM. Выбранные файлы запекаются асинхронно; ошибки журналируются на границе обработки, а ненулевое число ошибок завершает Image baker агрегированным исключением."
         },
         "/baking_rules/@id=image-format.baking.extension-case/name": {
           "source_sha256": "fd5fe2efd73716f13a492f3501a3072814605a8001d1d87355632ff37cd80908",
@@ -1340,8 +1340,8 @@
           "translation": "Нумерация направлений и метаданные кадров ART требуют специального remapping перед использованием в runtime."
         },
         "/formats/@id=image-format.format.art/requirement": {
-          "source_sha256": "55d0d492e2fd104dcf255e0ec7344ed50371cee655f3ffe6abbac7115d33293b",
-          "translation": "ART импортирует raw/RLE frames, palettes, offsets, frame rate, static или eight-rotation данные и filename options палитры/alpha/mirror/frame."
+          "source_sha256": "f9c8010aaa44337a9a23337b70d9915f58216a2303c26b239dd175f46eccb65c",
+          "translation": "ART импортирует 8-битные кадры raw или ограниченного RLE после всех таблиц по ротациям, использует присутствующие слоты палитры, выравнивает точки привязки на общем холсте, сохраняет смещения кадров и преобразует одну или восемь ротаций с отражением и привязкой по категории. Полная длительность ограничена 65535 миллисекундами; fps ноль сохраняет явный выбор кадров."
         },
         "/formats/@id=image-format.format.bam/availability": {
           "source_sha256": "f84b155dd67a552d6ab93def8ae12da8999013a6db0a5fa32b8ed9b9e55f61b0",
@@ -1701,6 +1701,26 @@
         "/validation_rules/@id=image-format.validation.tga-subset/requirement": {
           "source_sha256": "9ce469e38d6205f06c9b6b23785f44c8a071925ed5c1e1db273257e79f1684c8",
           "translation": "Не используйте image ID; задавайте bottom-left orientation, TrueColor type 2 или 10 и 24 либо 32 bpp. Indexed/grayscale/другие входы отклоняются или не соответствуют реализованным допущениям orientation."
+        },
+        "/descriptor_fields/@id=image-format.field.alias/name": {
+          "source_sha256": "eace8c2f1ff12e69ab728b047d9df6d6a354b9300510bbc3f3188c6d4bac4b36",
+          "translation": "Псевдоним целого источника"
+        },
+        "/descriptor_fields/@id=image-format.field.alias/rationale": {
+          "source_sha256": "60b14bec4e81268206246d549a9e561214c01e15627bce1284b10ff28aa9ef27",
+          "translation": "Обычные ссылки frm разворачивают только дочерние кадры Main и теряют смещения дочерней последовательности."
+        },
+        "/descriptor_fields/@id=image-format.field.alias/requirement": {
+          "source_sha256": "54afa80e1211cc0e01c1108c73f19fbf79b9f2beb91dea166a6e3790bcc61e8c",
+          "translation": "Непустой корневой Alias передаёт один бинарный источник с сохранением направлений, смещений последовательностей, времени и смещений кадров под путём дескриптора. Остальные ключи композиции игнорируются; Alias не может ссылаться на другой FOFRM."
+        },
+        "/filename_options/@id=image-format.option.art-rotation/requirement": {
+          "source_sha256": "99259fa4030e1899002d73271b33809c78c03e0e2f4f322e921559d939aff8de",
+          "translation": "Загрузчик ART разбирает r= или R= с ровно одной цифрой 0..7 как ротацию по часовой стрелке от севера и создаёт одно направление. Выбор палитры предшествует r=; параметры отражения, alpha и кадров могут идти следом. Неверные значения и последующие символы вне этих параметров отклоняются при запекании. Источник с одной ротацией повторно использует свой кадр с привязкой для выбранной ротации. Без знака равенства r/R игнорируется, а следующая цифра 0..3 по-прежнему выбирает палитру."
+        },
+        "/filename_options/@id=image-format.option.art-rotation/rationale": {
+          "source_sha256": "03744309572efb44cdba0e8acf678918ce3fe7ff5388b45353e50513d7686039",
+          "translation": "Параметры имени источника одинаково работают через Alias и обычные ссылки frm; FOFRM и общая диспетчеризация не разбирают параметры ART и не обходят зарегистрированный загрузчик."
         }
       }
     },

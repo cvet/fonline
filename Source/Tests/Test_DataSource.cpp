@@ -342,7 +342,7 @@ static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> 
     return dat;
 }
 
-[[maybe_unused]] static auto MakeArcanumDat(string_view file_name, string_view file_content) -> string
+[[maybe_unused]] static auto MakeArcanumDat(string_view file_name, string_view file_content, uint32_t flags = 2, bool terminated = true) -> string
 {
     vector<uint8_t> plain_content;
     plain_content.reserve(file_content.size());
@@ -351,23 +351,27 @@ static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> 
         plain_content.emplace_back(numeric_cast<uint8_t>(ch));
     }
 
-    auto packed_content = compressor::compress(plain_content);
+    auto packed_content = (flags & 2) != 0 ? compressor::compress(plain_content) : std::move(plain_content);
     string dat {reinterpret_cast<const char*>(packed_content.data()), packed_content.size()};
     string tree;
-    auto name_size = numeric_cast<uint32_t>(file_name.size());
-    auto real_size = numeric_cast<uint32_t>(file_content.size());
-    auto packed_size = numeric_cast<uint32_t>(packed_content.size());
+    // Real Arcanum archives count the C string terminator in the stored name length
+    uint32_t name_size = numeric_cast<uint32_t>(file_name.size() + (terminated ? 1 : 0));
+    uint32_t real_size = numeric_cast<uint32_t>(file_content.size());
+    uint32_t packed_size = numeric_cast<uint32_t>(packed_content.size());
 
     AppendLe32(tree, 1);
     AppendLe32(tree, name_size);
     tree.append(file_name);
+    if (terminated) {
+        tree.push_back('\0');
+    }
     AppendLe32(tree, 0);
-    AppendLe32(tree, 2);
+    AppendLe32(tree, flags);
     AppendLe32(tree, real_size);
     AppendLe32(tree, packed_size);
     AppendLe32(tree, 0);
 
-    auto tree_size = numeric_cast<uint32_t>(tree.size() + 28);
+    uint32_t tree_size = numeric_cast<uint32_t>(tree.size() + 28);
     string info_block;
     AppendLe32(info_block, 0);
     AppendLe32(info_block, 0);
@@ -385,6 +389,102 @@ static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> 
 
 TEST_CASE("DataSource")
 {
+#if FO_DATA_SOURCE_DAT
+    SECTION("ArcanumDatUsesEntryFlagsAndNormalizesNames")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_arcanum_flags");
+        (void)fs::remove_dir_tree(temp_dir);
+        REQUIRE(fs::create_directories(temp_dir));
+
+        for (uint32_t flags : {uint32_t {1}, uint32_t {0x12}, uint32_t {0x401}, uint32_t {0x802}}) {
+            for (bool terminated : {false, true}) {
+                string path = strex(temp_dir).combine_path("Flags.dat").str();
+                REQUIRE(fs::write_file(path, MakeArcanumDat("Deep\\Flags.TXT", "payload", flags, terminated)));
+
+                auto pack = DataSource::MountPack(temp_dir, "Flags", false);
+                bool visible = (flags & 0xC00) == 0;
+                CHECK(pack->IsFileExists("deep/flags.txt") == visible);
+
+                if (visible) {
+                    FileSystem files;
+                    files.AddCustomSource(std::move(pack));
+                    CHECK(files.ReadFileText("deep/flags.txt") == "payload");
+                }
+                else {
+                    CHECK(pack->GetFileNames("", true, "").empty());
+                }
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_ZIP
+    SECTION("ZipTreeFailuresPreserveSourceAndReason")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_zip_diagnostics");
+        REQUIRE(fs::create_directories(temp_dir));
+        string empty_path = strex(temp_dir).combine_path("Empty.zip").str();
+        REQUIRE(fs::write_file(empty_path, MakeEmptyZip()));
+        CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Empty", false), Catch::Matchers::ContainsSubstring("ZIP archive has no entries"));
+
+        string long_name(4096, 'a');
+        string long_path = strex(temp_dir).combine_path("Long.zip").str();
+        REQUIRE(fs::write_file(long_path, MakeStoredZip(long_name, "payload")));
+        string huge_path = strex(temp_dir).combine_path("Huge.zip").str();
+        REQUIRE(fs::write_file(huge_path, MakeStoredZipWithDeclaredSize("entry.txt", "payload", 0x80000000)));
+        CHECK_THROWS_WITH(DataSource::MountPack(temp_dir, "Huge", false), Catch::Matchers::ContainsSubstring("ZIP entry exceeds the supported decoded size"));
+
+        try {
+            (void)DataSource::MountPack(temp_dir, "Long", false);
+            FAIL("ZIP with an unrepresentable file name mounted without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "ZIP file name exceeds the supported length");
+            REQUIRE(ex.params().size() == 4);
+            CHECK(ex.params()[0] == long_path);
+            CHECK(ex.params()[2] == "4096");
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("ArcanumDatRejectsMalformedEntryNamesAndLengths")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_arcanum_invalid_entries");
+        (void)fs::remove_dir_tree(temp_dir);
+        REQUIRE(fs::create_directories(temp_dir));
+
+        vector<string> invalid;
+        invalid.emplace_back(MakeArcanumDat("", "payload", 1));
+        invalid.emplace_back(MakeArcanumDat("", "payload", 1, false));
+        invalid.emplace_back(MakeArcanumDat(string_view {"a\0b", 3}, "payload", 1));
+
+        string oversized_name = MakeArcanumDat("x", "payload", 1);
+        string invalid_length;
+        AppendLe32(invalid_length, std::numeric_limits<uint32_t>::max());
+        oversized_name.replace(string_view {"payload"}.size() + 4, 4, invalid_length);
+        invalid.emplace_back(std::move(oversized_name));
+
+        string truncated_entry = MakeArcanumDat("x", "payload", 1);
+        truncated_entry.erase(truncated_entry.size() - 28 - 3, 3);
+        string shortened_tree_size;
+        AppendLe32(shortened_tree_size, numeric_cast<uint32_t>(truncated_entry.size() - string_view {"payload"}.size()));
+        truncated_entry.replace(truncated_entry.size() - 4, 4, shortened_tree_size);
+        invalid.emplace_back(std::move(truncated_entry));
+
+        for (const string& data : invalid) {
+            REQUIRE(fs::write_file(strex(temp_dir).combine_path("Invalid.dat").str(), data));
+            CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "Invalid", false), DataSourceException);
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
     SECTION("MountDirSupportsRecursiveAndNonRecursiveAccess")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_mount");
@@ -491,7 +591,16 @@ TEST_CASE("DataSource")
         uint64_t write_time = 0;
 
         CHECK_THROWS_AS(cached->OpenFile("removed.txt", size, write_time), DataSourceException);
-        CHECK_FALSE(cached->OpenFile("truncated.txt", size, write_time));
+        try {
+            (void)cached->OpenFile("truncated.txt", size, write_time);
+            FAIL("Truncated cached file was read without an error");
+        }
+        catch (const DataSourceException& ex) {
+            CHECK(ex.message() == "Can't read complete file from cached dir");
+            REQUIRE(ex.params().size() == 3);
+            CHECK(ex.params()[0] == cached->GetPackName());
+            CHECK(ex.params()[1] == "truncated.txt");
+        }
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
@@ -701,6 +810,130 @@ TEST_CASE("DataSource")
 #endif
 
 #if FO_DATA_SOURCE_DAT
+    SECTION("DatFailuresPreserveSourceAndReason")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_dat_diagnostics");
+        REQUIRE(fs::create_directories(temp_dir));
+
+        struct InvalidDat
+        {
+            string Name;
+            string Data;
+            string_view Reason;
+        };
+
+        vector<InvalidDat> invalid {
+            {"Short", "bad", "Fallout DAT file is too short to contain a footer"},
+            {"Fallout1", MakeFallout1LikeDat(), "Fallout DAT 1.0 is not supported"},
+            {"WrongSize", MakeFallout2HeaderOnlyDat(4, 4096), "Fallout DAT 2.0 file size does not match its footer"},
+            {"SmallTree", MakeFallout2HeaderOnlyDat(3, 12), "Fallout DAT 2.0 tree size is invalid"},
+            {"LargeTree", MakeFallout2HeaderOnlyDat(128, 12), "Fallout DAT 2.0 tree size is invalid"},
+            {"NameSize", MakeFallout2DatWithInvalidNameSize(), "Fallout DAT 2.0 tree entry is truncated"},
+            {"ArcanumTree", MakeArcanumMalformedDat(2), "Arcanum DAT 2.1 tree size is invalid"},
+            {"ArcanumLargeTree", MakeArcanumMalformedDat(4096), "Arcanum DAT 2.1 tree size is invalid"},
+            {"ArcanumEmptyName", MakeArcanumDat("", "payload", 1), "Arcanum DAT 2.1 file name is empty or contains an embedded terminator"},
+        };
+
+        for (const auto& entry : invalid) {
+            string path = strex(temp_dir).combine_path(strex("{}.dat", entry.Name)).str();
+            REQUIRE(fs::write_file(path, entry.Data));
+
+            try {
+                (void)DataSource::MountPack(temp_dir, entry.Name, false);
+                FAIL("Malformed DAT mounted without an error");
+            }
+            catch (const DataSourceException& ex) {
+                CHECK(ex.message() == entry.Reason);
+                REQUIRE_FALSE(ex.params().empty());
+                CHECK(ex.params()[0] == path);
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("DatReadFailuresPreserveEntryAndDecoderError")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_dat_read_diagnostics");
+        REQUIRE(fs::create_directories(temp_dir));
+        vector<uint8_t> plain {'o', 'k'};
+        vector<uint8_t> compressed = compressor::compress(plain);
+        string payload {reinterpret_cast<const char*>(compressed.data()), compressed.size()};
+
+        struct InvalidDatEntry
+        {
+            string Name;
+            string Payload;
+            uint32_t Size;
+            string_view Reason;
+        };
+
+        vector<InvalidDatEntry> invalid {
+            {"BadStream", "not-deflated", 32, "Can't decompress file from fallout dat"},
+            {"ShortOutput", payload, 3, "Fallout DAT decompressed size does not match the tree entry"},
+            {"LongOutput", payload, 1, "Fallout DAT decompressed size exceeds the tree entry"},
+        };
+        string bad_checksum = payload;
+        bad_checksum.back() = bad_checksum.back() == 'a' ? 'b' : 'a';
+        invalid.emplace_back(InvalidDatEntry {"BadChecksum", bad_checksum, 2, "Can't decompress file from fallout dat"});
+
+        for (const auto& entry : invalid) {
+            string path = strex(temp_dir).combine_path(strex("{}.dat", entry.Name)).str();
+            REQUIRE(fs::write_file(path, MakeFallout2DatEntry("entry.txt", entry.Payload, 1, entry.Size, numeric_cast<uint32_t>(entry.Payload.size()), 0)));
+            auto pack = DataSource::MountPack(temp_dir, entry.Name, false);
+            size_t size = 0;
+            uint64_t write_time = 0;
+
+            try {
+                (void)pack->OpenFile("entry.txt", size, write_time);
+                FAIL("Malformed DAT entry was read without an error");
+            }
+            catch (const DataSourceException& ex) {
+                CHECK(ex.message() == entry.Reason);
+                REQUIRE(ex.params().size() >= 3);
+                CHECK(ex.params()[0] == path);
+                CHECK(ex.params()[1] == "entry.txt");
+            }
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
+    SECTION("DatCompressedPayloadSupportsEmptyAndChunkedOutput")
+    {
+        string temp_dir = MakeTempDataSourceDir("data_source_dat_compressed_output");
+        REQUIRE(fs::create_directories(temp_dir));
+
+        for (size_t length : {size_t {0}, size_t {2}, size_t {0x40001}}) {
+            vector<uint8_t> plain(length);
+
+            for (size_t i = 0; i < plain.size(); i++) {
+                plain[i] = numeric_cast<uint8_t>(i % 251);
+            }
+
+            vector<uint8_t> compressed = compressor::compress(plain);
+            string payload {reinterpret_cast<const char*>(compressed.data()), compressed.size()};
+            string path = strex(temp_dir).combine_path("Compressed.dat").str();
+            REQUIRE(fs::write_file(path, MakeFallout2DatEntry("entry.txt", payload, 1, numeric_cast<uint32_t>(length), numeric_cast<uint32_t>(payload.size()), 0)));
+            auto pack = DataSource::MountPack(temp_dir, "Compressed", false);
+            size_t size = 0;
+            uint64_t write_time = 0;
+            auto buffer = pack->OpenFile("entry.txt", size, write_time);
+            REQUIRE(buffer);
+            ptr<const uint8_t> buffer_data = buffer;
+            CHECK(size == length);
+            CHECK(std::ranges::equal(make_span(buffer_data, size), plain));
+        }
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+#endif
+
+#if FO_DATA_SOURCE_DAT
     SECTION("DatPackLoadsPlainEntries")
     {
         string temp_dir = MakeTempDataSourceDir("data_source_dat_pack");
@@ -832,7 +1065,8 @@ TEST_CASE("DataSource")
         constexpr string_view content = "compressed-dat-data";
         string dat_path = strex(temp_dir).combine_path("ArcanumPack.dat").str();
         REQUIRE(fs::create_directories(temp_dir));
-        REQUIRE(fs::write_file(dat_path, MakeArcanumDat("deep\\packed.txt", content)));
+        // Mixed case as in the shipped archives; the original file system is case-insensitive
+        REQUIRE(fs::write_file(dat_path, MakeArcanumDat("Deep\\Packed.TXT", content)));
 
         auto dat_pack = DataSource::MountPack(temp_dir, "ArcanumPack", false);
 

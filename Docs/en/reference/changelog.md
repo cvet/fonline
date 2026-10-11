@@ -14,6 +14,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-12
 
+### Added
+
+- FOFRM `Alias` retains a binary sheet's directions, anchors, deltas and timing; ART `$r=0..7` selects one rotation.
+
+### Fixed
+
+- Correct DAT 2.1 names/case/slashes/flags and ART header, palettes, rotation-major tables, bounded raw/RLE streams and placement.
+- Preserve DAT/ZIP/embedded/cached-directory/nested-image exception context; diagnose byte bounds, truncated records, decoded lengths and compression trailers.
+- Exclude empty HTML anchors from search outside code; preserve visible text, IDs and literal examples within existing byte limits.
+
+### Migration
+
+- Base `6875e109534e94657c37fed55c559550901e9313` (`2026.1.32-dev`); update `2026.1.33-dev`. Enable `FO_DATA_SOURCE_DAT`/`FO_IMAGE_ART` only when needed (defaults OFF); disabled inputs name the option. `DataSource-Dat`/`ImageBaker-Art` own decoding; FOFRM delegates to `ImageImport::Context::Resolve`. Other formats, callbacks and options retain meaning.
+- `$r3`/`$R3` remains palette 3: replace donor `Alias = Actor$r3.art` with `Alias = Actor$r=3.art`. Ordinary `frm` accepts the selector; `Alias` retains the whole sheet and rejects another FOFRM. Follow the [ART guide](../how-to/content/image-format.md#art) for selector validation, palette fallback, limits, timing and category-dependent placement; preserve its source-directory categories.
+- Detect inputs with `rg --files -g '*.art' -g '*.dat' -g '*.fofrm'` and `rg -n 'Alias|\$[rR]=?[0-7]' <source-roots>`. Reconfigure/rebuild baker, runtime and metadata; force-rebake affected packs with `BakeResources`. Restart and visually check palettes, anchors, deltas, aliases and both map geometries.
+- Handle cached short reads as `DataSourceException`; repair named archives and refresh directory indices. Missing lookups/log ownership remain unchanged. Sprite container v2, runtime `0.0.72`, ABI identity 9, updater/package schemas and persisted data stay unchanged from the base. Deploy resources/binaries together; rollback restores both. No save/database conversion or proprietary assets are required.
+
+
+## 2026.1.32-dev - 2026-10-12
+
 ### Fixed
 
 - Normalize native RefType lifetime/binding comments; runtime tokens and generated API stay unchanged.

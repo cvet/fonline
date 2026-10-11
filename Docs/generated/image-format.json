@@ -186,19 +186,20 @@
     },
     {
       "id": "image-format.format.art",
-      "name": "Fallout Tactics ART",
+      "name": "Arcanum ART",
       "extension": "art",
       "availability": "baker and default runtime; importer requires FO_IMAGE_ART=ON",
       "stability": "experimental",
-      "requirement": "ART imports raw or RLE frames, palettes, offsets, frame rate, static or eight-rotation data, and the palette/alpha/mirror/frame filename options.",
+      "requirement": "ART imports 8-bit raw or bounded RLE frames after all rotation-major tables, uses present palette slots, aligns frame hot spots on a common canvas, preserves frame deltas, and remaps one or eight rotations with category-specific mirroring and placement. Whole duration saturates at 65535 milliseconds; zero fps stays frame-indexed.",
       "rationale": "ART direction numbering and frame metadata require format-specific remapping before runtime use.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Art.cpp",
           "anchors": [
             "auto Load",
-            "header.RotationCount == 8",
-            "if (w * h == frame_info.FrameSize)"
+            "header.Bpp == 8",
+            "stored_rotations == art_rotations",
+            "numeric_cast<size_t>(info.DataSize) == pixel_count"
           ]
         },
         {
@@ -509,7 +510,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "sub_collection = context.Resolve(strex(\"{}/{}\", frm_dir, frm_name));"
+            "sub_collection = context.Resolve(strex(frm_dir).combine_path(frm_name).str());"
           ]
         }
       ]
@@ -561,6 +562,24 @@
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "1000 * frm_count / frm_fps : 0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.alias",
+      "name": "Whole-source alias",
+      "syntax": "Alias = Relative$Options.ext",
+      "default": "empty; ordinary composition",
+      "stability": "experimental",
+      "requirement": "A nonempty root Alias forwards one binary image source, preserving its directions, sequence offsets, timing and frame deltas under the descriptor output path. Other composition fields are ignored; Alias cannot reference another FOFRM.",
+      "rationale": "Ordinary frm references flatten only the child Main frames and discard child sequence offsets.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "fofrm.GetAsStr(\"\", \"Alias\")",
+            "aliased.NewName = string {fname};"
           ]
         }
       ]
@@ -619,6 +638,24 @@
             "Format: fileName$5-6.bam",
             "if (need_cycle >= cycles_count)",
             "specific_frame = 0;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.option.art-rotation",
+      "name": "ART rotation selection",
+      "syntax": "Name$[0-3]r=<digit 0..7>[T][H][V][Fframe|Ffrom-to].art",
+      "stability": "experimental",
+      "requirement": "The ART loader interprets r= or R= followed by exactly one digit 0..7 as a clockwise rotation from north and emits one direction. Palette selection precedes r=; mirror, alpha and frame options may follow. Invalid values or trailing characters outside those options fail baking. Single-rotation sources reuse their stored frame with placement for the requested rotation. Without the equals sign, r/R remains ignored and a following 0..3 still selects a palette.",
+      "rationale": "Source filename options work identically through Alias and ordinary frm references; FOFRM and generic dispatch do not interpret ART-specific options or bypass a registered loader.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Art.cpp",
+          "anchors": [
+            "case 'R':",
+            "opt[i + 1] == '='",
+            "forced_rotation = opt[i + 2] - '0'"
           ]
         }
       ]
@@ -681,7 +718,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "return it->second.Load(fname, opt"
+            "return LoadImage(it->second, fname, opt"
           ]
         }
       ]
@@ -825,7 +862,7 @@
       "id": "image-format.baking.error-aggregation",
       "name": "Per-file work and aggregate failure",
       "stability": "experimental",
-      "requirement": "Selected files bake asynchronously; each exception is logged, and any nonzero error count ends the Image baker with ImageBakerException.",
+      "requirement": "Every registered image importer preserves its source path, filename options, input size and original exception in ImageBakerException, including nested FOFRM sources. Selected files bake asynchronously; failures are logged at the reporting boundary and any error count ends the Image baker with an aggregate exception.",
       "rationale": "A full scan reports all independently failing image resources in one run without silently succeeding.",
       "source": [
         {
@@ -834,7 +871,8 @@
             "run_async(GetAsyncMode(), task_name",
             "logging::write(\"Image baking error for '{}': {}\"",
             "files_to_bake[file_index].first.GetPath()",
-            "throw ImageBakerException(\"Errors during images baking\", errors, first_error)"
+            "throw ImageBakerException(\"Errors during images baking\", errors, first_error)",
+            "throw ImageBakerException(\"Image import failed\", fname, opt, input_size, ex.what())"
           ]
         }
       ]
@@ -1179,10 +1217,10 @@
     }
   ],
   "summary": {
-    "entry_count": 51,
+    "entry_count": 53,
     "format_count": 12,
-    "descriptor_field_count": 9,
-    "filename_option_count": 3,
+    "descriptor_field_count": 10,
+    "filename_option_count": 4,
     "baking_rule_count": 10,
     "runtime_rule_count": 8,
     "validation_rule_count": 9,
@@ -1190,9 +1228,9 @@
     "runtime_extension_count": 11,
     "entries_by_stability": {
       "deprecated": 1,
-      "experimental": 43,
+      "experimental": 45,
       "internal": 7
     }
   },
-  "contract_digest": "ad73a7abae47126f7e27c8ed0fac3b546c50b42b2765f55a8f688cbda6c2e1fc"
+  "contract_digest": "95be56c87174c2671abb324888ef809ad52bfa038bac2367dcff0e89845d3ce7"
 }

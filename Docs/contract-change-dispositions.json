@@ -9372,6 +9372,30 @@
       "release_note": "The dated 2026.1.31-dev entry in Docs/en/reference/changelog.md and its Russian mirror own the rebased bounded-view migration.",
       "compatibility": "Advance from published 0.0.71 to 0.0.72; reject mixed peers and deploy matching binaries/resources. Managed ABI generator identity remains 9; host/runtime ABI and resource schema identifiers do not change.",
       "owner": "networking"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.616eaa346abef2ac",
+      "baseline_contract_sha256": "ea2c03a9363fdffc058014b47874992b283fc4222104c4f91281348c29f7c099",
+      "current_contract_sha256": "305f52e348475ce6ca90110e7cac46f2c4d724185e295131fa4aba25eea560f3",
+      "classification": "breaking",
+      "rationale": "Add generic FOFRM Alias and explicit ART rotation, correct modular ART/DAT import, and preserve image source/options/original failure context through exceptions at every registered loader boundary.",
+      "migration": "Follow the 2026.1.33-dev migration in Docs/en/reference/changelog.md and the image-format guide. Enable needed importers, rebuild tools/runtime and rebake affected ART/DAT/Alias packs. Donor rotation wrappers use $r=N; preserve $rN palette meaning. Repair invalid DAT/ZIP entries and refresh edited directory indices; cached short reads now raise DataSourceException.",
+      "release_note": "Docs/en/reference/changelog.md and its Russian mirror record the import corrections and diagnostics in 2026.1.33-dev.",
+      "compatibility": "Rebuild import tools and rebake affected resource packs. Sprite container v2, script ABI identity 9, runtime compatibility 0.0.72 and persisted data remain unchanged relative to the published 2026.1.32-dev base. Deploy matching baked resources and binaries; no database conversion is required.",
+      "owner": "image-format"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.cacf8a7675d66eb3",
+      "baseline_contract_sha256": "ea2c03a9363fdffc058014b47874992b283fc4222104c4f91281348c29f7c099",
+      "current_contract_sha256": "305f52e348475ce6ca90110e7cac46f2c4d724185e295131fa4aba25eea560f3",
+      "classification": "breaking",
+      "rationale": "Preserve the specific loader failure and source/options context through nested image resolution instead of reporting a generic decode failure or treating a failed read as an absent resource.",
+      "migration": "Handle DataSourceException for failed archive and cached-directory reads; normal absent lookups keep their optional result. Let the existing image-baking/reporting boundary consume enriched exceptions without duplicate loader logging. Repair the named input or refresh its directory index as described in the image-format and data-source guides.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.33-dev and its Russian mirror document archive, decoder and nested image diagnostics.",
+      "compatibility": "The exception contract for invalid inputs becomes explicit; successful input and ordinary absence retain their existing results. Rebuild native consumers and rebake affected packs. Runtime compatibility 0.0.72, script ABI identity 9, sprite container v2 and persisted data are unchanged relative to the published 2026.1.32-dev base.",
+      "owner": "image-format"
     }
   ]
 }

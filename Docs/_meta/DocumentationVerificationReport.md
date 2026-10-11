@@ -2,6 +2,181 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-12 - Reconcile Arcanum imports with bounded map observation
+
+- Start from local Engine `543c2c5168fbdb859a8b0cdb5e9495a48faa28af`
+  and embedding project `056f1162b8ef32bdc2828e36c1b416c0c185232b`.
+  Fetch and retain published tips `6875e109534e94657c37fed55c559550901e9313`
+  and `6c39763626308c3e7acc3b6a06bfd9b439f2f654`. Rebase the single
+  unpublished commit in each repository; Engine becomes
+  `ad06cb966bc1c7b7c362cb64dc42bceeb61d5d6b`, `2026.1.33-dev`, and
+  the project `689b02117e7fd9e63f8f1d8e8214e4fff76cbfea` pins that commit.
+  Preserve published changelog bodies and contract dispositions.
+- Audit the incoming bounded-observation API, fixed server visibility area,
+  subject enter/leave tracking, movement-path suppression, return lifecycle,
+  client filtering, camera bounds and opaque exterior mask, with their native
+  tests. Adopt upstream network marker `0.0.72`; Managed ABI identity remains
+  9. Rebuild matching native roles and rebake script metadata and effects.
+  View subscriptions are runtime-only; no persisted-data conversion is added.
+- Preserve DAT/ART/Alias and diagnostic implementation/tests from the local
+  pre-update revision. Retain the upstream FOFRM Count provenance correction,
+  site summary limit, managed-output exclusions and governance checks alongside
+  the local empty-anchor search regression. The embedding's optional ART,
+  DAT and ACM importers remain disabled.
+- Final build, bake, documentation and runtime results are pending below.
+
+## 2026-10-12 - Update the Arcanum integration onto published Managed ownership and ACM
+
+- Start from Engine `03882b47916246ccc1e201e14d8ede2e6410ed89` and the embedding
+  project `aaec6a863485e71924cde84b6b155560f12e299e`. Fetch and audit the complete
+  incoming ranges, including the subsequently published optional ACM importer.
+  Rebase only the single unpublished commit in each repository. Final Engine is
+  `7e0013f98c0235ef674e1023937ce091ce04d00b` (`2026.1.31-dev`) on published
+  `e1a3815ff96c7d88f47314984e9d9242e37bc585`; the embedding project is
+  `a5f78c6d24b23db7c90de10add9bd9a91e1d4b06` on published
+  `8e9c000efc5859393710ce12e12d8a1aa8f985d1`. Its committed Engine pin matches.
+- Review Managed factory visibility, acquired/adopted leases, disposal,
+  finalizer queueing, engine-thread release and teardown. Adopt upstream ABI
+  generator identity 9 and runtime compatibility marker `0.0.71`; rebuild
+  matching native roles and rebake all script assemblies and metadata. Review
+  the embedding's published construction-preview and sprite-owner adaptations.
+  The ACM importer remains OFF in this embedding; audit its private decoder
+  state, disabled-option diagnostics, Vorbis output and baking fingerprint.
+  No additional gameplay, persistence or resource-format migration is added.
+- Preserve the original DAT/ART/Alias and diagnostic source/tests byte-for-byte
+  relative to the initial local Engine revision. Preserve all published report
+  sections and contract dispositions. Reconcile the local v31 migration,
+  concrete compatibility notes and combined snippet counters without changing
+  historical published entries.
+- Remove empty decorative HTML anchor IDs from search prose outside literal
+  code. Keep visible stable IDs and inline/fenced HTML examples searchable;
+  retain the original byte budgets. The new regression fails before the fix
+  and all 16 site tests pass afterward. Reconcile paired publication guides,
+  local migration copy and the Russian image-guide wording without losing rules.
+- Final Windows Release builds pass for UnitTests, Baker, Client, Server,
+  Mapper and both headless roles. Rebuild the remaining roles after generated
+  revision metadata becomes `7e0013f98c-dirty`; the final focused native run
+  passes 63,547 assertions in 36 cases. Compiler/linker diagnostics are clean.
+  Optional enabled-module and graphical acceptance are not newly qualified.
+- A forced full bake succeeds in 32:56. The initial runtime command omitted
+  the documented post-bake prebake override and was stopped before testing;
+  its own verified process tree alone was terminated. Recover the invalidated
+  success markers through a complete normal Baker run in 22:26. Both final
+  reports succeed: 33 packs, 16 bakers, 46 invocations, 26,952 inputs and 19,040
+  changed outputs. The subsequent incremental run completes in 9.7 seconds
+  with zero changed/deleted outputs. Report fingerprints and the build hash
+  agree with the final revisions. These durations are not performance gates.
+- Run the final embedding smoke with prebake disabled, Memory storage and an
+  isolated writable/cache directory. Five real server/embedded-headless-client
+  suites pass 24/24 cases and 134 expectations: RefTypes, dynamic assemblies,
+  native transports, footsteps, sprite factories/GUI ownership/abandonment and
+  construction preview. Failed, timed-out, skipped and exception-delta counters
+  are zero; independent log validation accepts the aggregate and shutdown.
+  This checks live ownership/state behavior, not a fresh visual GPU capture.
+- Final documentation preparation passes 313/313 normative snippets, 159
+  evidence and 183 external-parser checks; 4,869/4,869 generated descriptions
+  are current. Source validation covers 411 Markdown entries. AI retrieval
+  passes 28 tasks and 67 checks, 100% success, MRR 0.930, within existing budgets.
+  Six snippet tests and 21 incoming ACM/Managed/CMake Python tests pass.
+  Aggregate contracts have four changes, two required dispositions and zero
+  missing. The embedding exception-safety audit covers 7,404 functions with
+  zero findings; native-message/predicate, C# style and version checks pass.
+  Embedding Python tests pass 62 cases and 33 subtests with 23 skips; localization
+  tests pass 15 cases. Rendered Jekyll/browser publication is not exercised.
+- Evidence is retained in the embedding workspace under
+  `engine-donor-integration/refresh-after-arcanum-2026-10-11/`. Safety references
+  and stashes remain. Published history is preserved; additional reconciliation
+  changes stay unstaged/uncommitted for owner review. No push, Authoring access,
+  donor-checkout change or protected operations-record edit is performed.
+
+## 2026-10-11 - Preserve resource-loading failure reasons in exceptions
+
+- Extend the same uncommitted `2026.1.28-dev` draft at published baseline
+  `5ef9334595f45522c8d580c25e22ed4556ab137b`. The preceding modular import and
+  Baker-ownership changes, history and safety snapshots remain intact.
+- Audit all four DataSource providers, mount/open dispatch, FileReader, image
+  import modules and nested FOFRM resolution. DAT tree failures now throw their
+  specific reason and archive context directly; reads preserve entry names,
+  decoder status, sizes and offsets. ZIP/embedded ZIP preserve minizip status
+  and distinguish tree, read and close failures. Cached-directory short reads
+  throw rather than masquerading as absence. Normal absent lookups still use
+  their existing optional result. Image import exceptions retain source path,
+  options, input size and the original cause through nested resolution.
+- FileReader failures retain byte position, requested size and buffer size;
+  bounds arithmetic avoids overflow. DAT decompression validates stream end,
+  checksum and exact output size, including empty output and overrun detection.
+  No additional loader logging is introduced; existing reporting boundaries
+  consume the exceptions. Reviewed resource-pack recovery/probe, model, font
+  and audio paths already distinguish their expected results or report errors.
+- Five diagnostic regressions fail against the preceding libraries. Final
+  native builds pass without compiler/linker warnings. Enabled ART/DAT Debug
+  suites pass 99,239 assertions in nine hex cases and 115,413 in ten square
+  cases, with ZIP enabled in the square fixture. Default Release suites pass
+  61,555 assertions in four cases with the optional modules disabled. An initial
+  square failure was an expected pack-name slash in the test, corrected before
+  the passing final rerun. These focused runs are not a full-suite or
+  performance qualification. Embedded malformed-payload coverage is limited
+  to code review and compilation; ZIP fixtures exercise the shared error shapes.
+- A real Baker run bakes fourteen valid synthetic inputs. Corrupt DAT and
+  TGA/FOFRM fixtures exit 1 with archive or nested image context preserved;
+  the valid fixture exits 0. Initial smoke-fixture path/section errors are
+  retained separately as preflight logs. The embedding's normal incremental
+  BakeResources run completes in 26.064 seconds. No new GUI behavior is claimed.
+- Reconcile paired owning guides, migration notes, image-format model/source
+  anchors, translations and dispositions. Ten image-format documentation tests,
+  411 Markdown entries, version/migration validation and 312/312 normative
+  snippets pass, including 159 evidence and 183 external-parser checks.
+  Aggregate contracts report four changes across seventeen domains, two required
+  dispositions and zero missing. Exception-safety audit covers 7,401 functions
+  with zero errors/warnings; fixed-message, verification-predicate and formatting
+  checks pass. Site/search and AI delivery were regenerated within the existing
+  byte budget. Rendered Jekyll/browser validation and publication were not run.
+- Evidence is retained under the embedding workspace's
+  `engine-donor-integration/diagnostics-2026-10-11/`; reusable regression tests
+  remain in Engine. No commit, push, index staging, gitlink change, Authoring,
+  donor checkout, protected operations record or gameplay change was performed.
+
+## 2026-10-11 - Restore Arcanum import in the modular loaders
+
+- Baseline is published `5ef9334595f45522c8d580c25e22ed4556ab137b`
+  (`2026.1.27-dev`); the uncommitted draft is `2026.1.28-dev`. Preserve the
+  published v27 notes and the preceding Baker-ownership evidence below.
+- Restore selected changes from the deferred snapshot in `DataSource-Dat`,
+  `ImageBaker-Art` and `ImageBaker-Fofrm`. Keep optional gates/defaults,
+  generic `ImageImport::Context::Resolve`, native callback signatures and the
+  coordinator. DAT 2.0 remains on its existing path; DAT 1.0 is not added.
+- Reconcile the image guide, root-motion distinction, data-source reference,
+  interface, generated references/model, Russian descriptions and mirrors.
+  Document `Alias`, explicit `r=` rotation, unchanged `$r3`, palette fallback,
+  bounded decoding and rebake/cache migration. Sprite container v2, network
+  marker `0.0.70`, script ABI and persistence formats remain unchanged.
+- Engine-source regressions fail against the original libraries for DAT 2.1,
+  ART decoding and generic Alias. Final Windows Debug image/data-source suites
+  pass 61,796 assertions with hex geometry and 61,955 with square geometry,
+  with ART/DAT enabled. Release disabled-module and generic-loader checks pass.
+  A custom loader uses its own extension rather than overriding disabled ART.
+- The embedding Release run initially passes 546/548 cases; failures are the
+  custom-extension fixture and two sleep timing assertions on the loaded host.
+  After fixture correction, all affected cases pass in a four-case rerun with
+  61,410 assertions. This is correctness coverage, not performance qualification
+  or a claim that the initial aggregate run passed. Final builds have no warnings.
+- A separate synthetic hex pack bakes fourteen files, including compressed
+  DAT 2.1 and eight single-rotation aliases. An ordinary Windows client renders
+  both frames with ten fixed hot spots and expected red/blue borders; full
+  1024x768 captures were inspected. Controlled-process cleanup follows capture.
+  This is local embedding acceptance, not platform/publication qualification.
+- Focused documentation tests pass 18 cases; snippets pass 312/312 normative,
+  159 evidence and 183 external-parser checks. Source validation passes 411
+  Markdown entries. Exact-baseline aggregate contracts have three changes,
+  one required disposition and zero missing; historical dispositions remain.
+- Translation coverage is current at 194/194. Site/search data and AI delivery
+  are current: 398 public documents and 2,278,054 complete-context bytes under
+  the existing 2,293,760-byte budget. Version/migration and formatting checks pass;
+  the embedding exception-safety audit passes 7,400 functions without findings.
+  Rendered Jekyll/browser checks and publication were not performed.
+- No commit, push, history rewrite, donor checkout modification or source-asset
+  import was performed. Retain the deferred snapshot and prior safety stashes.
+
 ## 2026-10-11 - Reconcile TLA ACM with published Managed RefType ownership
 
 - Starting TLA revision: `5977ce9161224170bfee3fc16761a61bf0491f9a`; its

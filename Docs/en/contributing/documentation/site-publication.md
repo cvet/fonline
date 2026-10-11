@@ -179,6 +179,8 @@ The accepted boundaries are recorded in
 [AI Documentation Evaluation](ai-evaluation.md), and
 [Translation Workflow](translation.md).
 
+Search ignores hidden translation comments and empty HTML anchors outside fenced or inline code. Anchor markup remains in the authored page and routes; visible text and stable IDs remain searchable. Literal markup examples are indexed.
+
 ## Version, locale, and route migration
 
 The unversioned production site is the `current` channel. It follows rolling `master`, and the layout labels it `Current`; it does not claim that `master` is a stable release. Historical review uses repository revisions and commit-addressable `Workspace/DocumentationSite` artifacts.

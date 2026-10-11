@@ -180,13 +180,18 @@ EmbeddedFile::EmbeddedFile()
     });
 
     if (!zip_handle) {
-        throw DataSourceException("Can't read embedded file");
+        throw DataSourceException("Can't read embedded ZIP archive", EMBEDDED_PACK_NAME);
     }
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
-        throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)");
+    int32_t global_info_result = unzGetGlobalInfo(zip_handle.get(), &gi);
+
+    if (global_info_result != UNZ_OK) {
+        throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)", EMBEDDED_PACK_NAME, global_info_result);
+    }
+    if (gi.number_entry == 0) {
+        throw DataSourceException("Embedded ZIP archive has no entries", EMBEDDED_PACK_NAME);
     }
 
     EmbeddedFileInfo zip_info;
@@ -195,16 +200,27 @@ EmbeddedFile::EmbeddedFile()
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
-            throw DataSourceException("Read embedded file tree failed (unzGetFilePos)");
+        int32_t file_pos_result = unzGetFilePos(zip_handle.get(), &pos);
+
+        if (file_pos_result != UNZ_OK) {
+            throw DataSourceException("Read embedded file tree failed (unzGetFilePos)", EMBEDDED_PACK_NAME, i, file_pos_result);
         }
 
-        if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
-            throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)");
+        int32_t file_info_result = unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0);
+
+        if (file_info_result != UNZ_OK) {
+            throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)", EMBEDDED_PACK_NAME, i, file_info_result);
+        }
+        if (info.size_filename >= sizeof(name_buf)) {
+            throw DataSourceException("Embedded ZIP file name exceeds the supported length", EMBEDDED_PACK_NAME, i, info.size_filename, sizeof(name_buf));
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
             string name = strex(name_buf).normalize_path_slashes();
+
+            if (info.uncompressed_size > numeric_cast<uLong>(std::numeric_limits<int32_t>::max())) {
+                throw DataSourceException("Embedded ZIP entry exceeds the supported decoded size", EMBEDDED_PACK_NAME, name, info.uncompressed_size);
+            }
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32_t>(info.uncompressed_size);
@@ -212,8 +228,12 @@ EmbeddedFile::EmbeddedFile()
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
-            throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)");
+        if (i + 1 < gi.number_entry) {
+            int32_t next_result = unzGoToNextFile(zip_handle.get());
+
+            if (next_result != UNZ_OK) {
+                throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)", EMBEDDED_PACK_NAME, i, next_result);
+            }
         }
     }
 
@@ -305,18 +325,27 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
     const auto& info = it->second;
     unz_file_pos pos = info.Pos;
 
-    if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
-        throw DataSourceException("Can't read embedded file (unzGoToFilePos)", path);
+    int32_t file_pos_result = unzGoToFilePos(_zipHandle.get(), &pos);
+
+    if (file_pos_result != UNZ_OK) {
+        throw DataSourceException("Can't read embedded file (unzGoToFilePos)", EMBEDDED_PACK_NAME, path, file_pos_result);
     }
-    if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
-        throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", path);
+
+    int32_t open_result = unzOpenCurrentFile(_zipHandle.get());
+
+    if (open_result != UNZ_OK) {
+        throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", EMBEDDED_PACK_NAME, path, open_result);
     }
 
     auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
+    int32_t close_result = unzCloseCurrentFile(_zipHandle.get());
 
-    if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
-        throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", path);
+    if (read != info.UncompressedSize) {
+        throw DataSourceException("Can't read embedded file (unzReadCurrentFile)", EMBEDDED_PACK_NAME, path, info.UncompressedSize, read, close_result);
+    }
+    if (close_result != UNZ_OK) {
+        throw DataSourceException("Can't read embedded file (unzCloseCurrentFile)", EMBEDDED_PACK_NAME, path, close_result);
     }
 
     write_time = _writeTime;

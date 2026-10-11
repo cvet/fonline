@@ -54,6 +54,14 @@ namespace ImageBakerFofrm
 
         ConfigFile fofrm(reader.GetStr());
 
+        if (string alias {fofrm.GetAsStr("", "Alias")}; !alias.empty()) {
+            FO_VERIFY_AND_THROW(strex(alias).get_file_extension() != "fofrm", "FOFRM Alias must reference an image source", fname, alias);
+
+            FrameCollection aliased = context.Resolve(strex(fname).extract_dir().combine_path(alias).str());
+            aliased.NewName = string {fname};
+            return aliased;
+        }
+
         int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
         frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
         int32_t frm_count = fofrm.GetAsInt("", "count", 1);
@@ -127,7 +135,7 @@ namespace ImageBakerFofrm
                 FrameCollection sub_collection;
 
                 try {
-                    sub_collection = context.Resolve(strex("{}/{}", frm_dir, frm_name));
+                    sub_collection = context.Resolve(strex(frm_dir).combine_path(frm_name).str());
                 }
                 catch (const std::exception& ex) {
                     throw ImageBakerException("FOFRM nested image loading failed", fname, frm_name, ex.what());

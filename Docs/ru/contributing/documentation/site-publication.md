@@ -5,7 +5,9 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"a5487a68441123b742b9e8ad00f704a088c8c6969c2eceadedc0cc464eac58bf"} -->
+
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"fa5d76146b88a2c39bd0fcaf49595cf1759e280b7bc59998290da8d97070fbaf"} -->
+
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -165,6 +167,8 @@ python BuildTools/docs_site.py --check
 ```
 
 При изменении visual, fenced или delivery layers сначала создайте diagrams и screenshot catalog, затем snippet report, translation status, site data, AI evaluation report и в конце AI delivery. Evaluation использует site search model, а public `docs-manifest.json` записывает hashes diagram, screenshot, snippet, machine model, evaluation, navigation, search и route catalog. Generated delivery data нельзя редактировать вручную. Presentation меняется в layout или local assets; ownership navigation/search/routing меняется в source manifest. Принятые границы описаны в [проверке snippets](snippets.md), [ADR-0004](../decisions/0004-manifest-backed-site-navigation-search.md), [ADR-0006](../decisions/0006-documentation-version-locale-routing.md), [оценке документации для ИИ](ai-evaluation.md) и [процессе перевода](translation.md).
+
+Поиск игнорирует скрытые комментарии перевода и пустые HTML-якоря вне блоков и строк кода. Разметка якорей остаётся в исходной странице и маршрутах; видимый текст и стабильные ID доступны для поиска. Примеры самой разметки индексируются.
 
 ## Миграция версий, локалей и маршрутов
 

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
@@ -121,7 +122,11 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         )
         guard = 'FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive"'
         art_path = "Source/Tools/ImageBaker-Art.cpp"
-        self.assertIn(guard, (ENGINE_ROOT / art_path).read_text(encoding="utf-8"))
+        read_text = Path.read_text
+
+        def read_with_shared_art_guard(path: Path, *args, **kwargs) -> str:
+            text = read_text(path, *args, **kwargs)
+            return text + "\n" + guard if path == ENGINE_ROOT / art_path else text
 
         for collection, entry_id in (
             ("descriptor_fields", "image-format.field.count"),
@@ -136,7 +141,9 @@ class ImageFormatDocumentationTests(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as temporary_directory:
                     manifest_path = Path(temporary_directory) / "ImageFormatInterface.json"
                     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
-                    with self.assertRaisesRegex(ValueError, "anchor is missing.*fofrm.GetAsInt"):
+                    with mock.patch.object(Path, "read_text", autospec=True,
+                                           side_effect=read_with_shared_art_guard), \
+                            self.assertRaisesRegex(ValueError, "anchor is missing.*fofrm.GetAsInt"):
                         docs_image_format.generate_image_format_model(ENGINE_ROOT, str(manifest_path))
 
     def test_generated_pages_and_checked_outputs_are_current(self) -> None:

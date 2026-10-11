@@ -332,7 +332,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     ptr<uint8_t> buf_data = buf.get();
 
     if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
-        return nullptr;
+        throw DataSourceException("Can't read complete file from cached dir", _baseDir, path, size);
     }
 
     write_time = fe.WriteTime;

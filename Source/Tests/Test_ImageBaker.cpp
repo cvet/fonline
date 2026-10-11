@@ -606,137 +606,102 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     return data;
 }
 
-static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t height, int32_t frame_size, int32_t offset_x, int32_t offset_y)
+#if FO_IMAGE_ART
+// Arcanum ART layout (arcanum-ce first_party/tig/src/art.c): 132-byte header, one 256-entry palette per present
+// slot, the 28-byte frame headers of all stored rotations, then the pixel data of all stored rotations and frames
+struct ArtFrameSpec
 {
-    AppendLeInt32(data, width);
-    AppendLeInt32(data, height);
-    AppendLeInt32(data, frame_size);
-    AppendLeInt32(data, offset_x);
-    AppendLeInt32(data, offset_y);
-    AppendLeInt32(data, 0);
-    AppendLeInt32(data, 0);
+    int32_t Width {};
+    int32_t Height {};
+    int32_t HotX {};
+    int32_t HotY {};
+    int32_t DeltaX {};
+    int32_t DeltaY {};
+    vector<uint8_t> Indices {};
+    vector<uint8_t> Stored {}; // Explicit stored bytes (RLE); empty means raw indices
+};
+
+// Palette slot s maps color index i to 0x00RRGGBB with RR = s * 64 + i * 4, GG = i * 4 + 1, BB = i * 4 + 2
+[[nodiscard]] static auto ArtTestColor(int32_t slot, int32_t index) -> vector<uint8_t>
+{
+    return {numeric_cast<uint8_t>(slot * 64 + index * 4), numeric_cast<uint8_t>(index * 4 + 1), numeric_cast<uint8_t>(index * 4 + 2)};
 }
 
-[[nodiscard]] static auto MakeArtWithFrameIndices(int32_t flags, const vector<uint8_t>& indices) -> vector<uint8_t>
+[[nodiscard]] static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes, int32_t frame_count, const vector<ArtFrameSpec>& frames) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    AppendLeInt32(data, flags);
-    AppendLeInt32(data, 10); // FrameRate
-    AppendLeInt32(data, 1); // RotationCount
-    AppendLe32(data, 1);
-    AppendLe32(data, 1);
-    AppendLe32(data, 0);
-    AppendLe32(data, 0);
-    AppendLeInt32(data, 0); // ActionFrame
-    AppendLeInt32(data, 1); // FrameCount
+    AppendLe32(data, flags);
+    AppendLeInt32(data, fps);
+    AppendLeInt32(data, 8); // Bits per pixel
+
+    for (bool present : palettes) {
+        AppendLe32(data, present ? 1 : 0);
+    }
+
+    AppendLeInt32(data, 0); // Action frame
+    AppendLeInt32(data, frame_count);
 
     for (int32_t i = 0; i < 24; i++) {
-        AppendLeInt32(data, 0);
+        AppendLeInt32(data, 0); // Frame table pointers, data sizes, pixel table pointers
     }
 
-    for (uint32_t i = 0; i < 256; i++) {
-        AppendLe32(data, 0);
-    }
-
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t color = 0;
-
-        if (i == 1) {
-            color = 0x001E140A;
-        }
-        else if (i == 2) {
-            color = 0x00463228;
-        }
-
-        AppendLe32(data, color);
-    }
-
-    AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
-    AppendArtFrameInfo(data, numeric_cast<int32_t>(indices.size()), 1, numeric_cast<int32_t>(indices.size()), 5, 7);
-    data.insert(data.end(), indices.begin(), indices.end());
-    return data;
-}
-
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
-{
-    return MakeArtWithFrameIndices(0, {1, 2});
-}
-
-[[maybe_unused]] [[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<uint8_t>
-{
-    vector<uint8_t> data;
-    AppendLeInt32(data, 0); // Flags
-    AppendLeInt32(data, 10); // FrameRate
-    AppendLeInt32(data, 1); // RotationCount
-    AppendLe32(data, 1);
-    AppendLe32(data, 0);
-    AppendLe32(data, 0);
-    AppendLe32(data, 0);
-    AppendLeInt32(data, 0); // ActionFrame
-    AppendLeInt32(data, 2); // FrameCount
-
-    for (int32_t i = 0; i < 24; i++) {
-        AppendLeInt32(data, 0);
-    }
-
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t color = 0;
-
-        if (i == 1) {
-            color = 0x00332211;
-        }
-        else if (i == 2) {
-            color = 0x00665544;
-        }
-
-        AppendLe32(data, color);
-    }
-
-    AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
-    AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
-    AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
-    AppendArtFrameInfo(data, 3, 1, 4, 1, 2);
-    data.emplace_back(2);
-    data.emplace_back(1);
-    data.emplace_back(129);
-    data.emplace_back(2);
-    return data;
-}
-
-[[maybe_unused]] [[nodiscard]] static auto MakeDirectionalEmptyArt() -> vector<uint8_t>
-{
-    vector<uint8_t> data;
-    AppendLeInt32(data, 0); // Flags
-    AppendLeInt32(data, 5); // FrameRate
-    AppendLeInt32(data, 8); // RotationCount
-    AppendLe32(data, 1);
-    AppendLe32(data, 0);
-    AppendLe32(data, 0);
-    AppendLe32(data, 0);
-    AppendLeInt32(data, 0); // ActionFrame
-    AppendLeInt32(data, 2); // FrameCount
-
-    for (int32_t i = 0; i < 24; i++) {
-        AppendLeInt32(data, 0);
-    }
-
-    for (uint32_t i = 0; i < 256; i++) {
-        AppendLe32(data, 0);
-    }
-
-    for (int32_t dir = 0; dir < 8; dir++) {
-        for (int32_t frame = 0; frame < 2; frame++) {
-            if (dir == 1 && frame == 1) {
-                AppendArtFrameInfo(data, 0, 0, 0, 7, 11);
-            }
-            else {
-                AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
+    for (int32_t slot = 0; slot < 4; slot++) {
+        if (palettes[numeric_cast<size_t>(slot)]) {
+            for (int32_t i = 0; i < 256; i++) {
+                uint32_t rr = numeric_cast<uint32_t>((slot * 64 + i * 4) & 0xFF);
+                uint32_t gg = numeric_cast<uint32_t>((i * 4 + 1) & 0xFF);
+                uint32_t bb = numeric_cast<uint32_t>((i * 4 + 2) & 0xFF);
+                AppendLe32(data, (rr << 16) | (gg << 8) | bb);
             }
         }
     }
 
+    for (const ArtFrameSpec& frame : frames) {
+        int32_t stored_size = numeric_cast<int32_t>(frame.Stored.empty() ? frame.Indices.size() : frame.Stored.size());
+        AppendLeInt32(data, frame.Width);
+        AppendLeInt32(data, frame.Height);
+        AppendLeInt32(data, stored_size);
+        AppendLeInt32(data, frame.HotX);
+        AppendLeInt32(data, frame.HotY);
+        AppendLeInt32(data, frame.DeltaX);
+        AppendLeInt32(data, frame.DeltaY);
+    }
+
+    for (const ArtFrameSpec& frame : frames) {
+        const vector<uint8_t>& bytes = frame.Stored.empty() ? frame.Indices : frame.Stored;
+        data.insert(data.end(), bytes.begin(), bytes.end());
+    }
+
     return data;
 }
+
+[[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
+{
+    return MakeArt(0x1, 10, {true, true, false, false}, 1, {ArtFrameSpec {.Width = 2, .Height = 1, .HotX = 0, .HotY = 1, .DeltaX = 3, .DeltaY = -2, .Indices = {1, 2}}});
+}
+
+[[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<uint8_t>
+{
+    // Frame 1 RLE: run of two index 1, then a one-byte literal of index 2
+    return MakeArt(0x1, 10, {true, false, false, false}, 2,
+        {
+            ArtFrameSpec {},
+            ArtFrameSpec {.Width = 3, .Height = 1, .HotX = 1, .HotY = 1, .DeltaX = 2, .DeltaY = -1, .Stored = {0x02, 0x01, 0x81, 0x02}},
+        });
+}
+
+[[nodiscard]] static auto MakeRotationArt() -> vector<uint8_t>
+{
+    vector<ArtFrameSpec> frames;
+
+    for (int32_t rotation = 0; rotation < 8; rotation++) {
+        frames.emplace_back(ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = rotation, .DeltaY = -rotation, .Indices = {numeric_cast<uint8_t>(rotation + 1)}});
+    }
+
+    return MakeArt(0, 5, {true, false, false, false}, 1, frames);
+}
+
+#endif
 
 static void AppendSprPalette(vector<uint8_t>& data, uint32_t color)
 {
@@ -1053,6 +1018,365 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
 TEST_CASE("ImageBaker")
 {
     using namespace BakerTests;
+
+#if FO_IMAGE_ART
+    SECTION("BakesStaticArtHotSpotAsSequenceOffset")
+    {
+        // A frame's hot spot is the map anchor: the engine draws the sprite bottom-centre at hex + offset
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/static.art", MakeSimpleArt());
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static.art");
+
+        REQUIRE(rig.Outputs.contains("gfx/static.art"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static.art"));
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {1, 0});
+        CHECK(sequence.Frames[0].Width == 2);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].NextX == 3);
+        CHECK(sequence.Frames[0].NextY == -2);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x04, 0x05, 0x06, 0xFF, 0x08, 0x09, 0x0A, 0xFF});
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("RejectsArtRleOverrunningItsFrame")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/broken.art", MakeArt(0x1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 2, .Height = 1, .Stored = {0x05, 0x01, 0x00}}}));
+
+        ImageBaker baker {rig.MakeContext()};
+        CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("BakesFofrmAliasOfSingleArtRotation")
+    {
+        for (string_view dir : {string_view {"gfx"}, string_view {"art/critter"}}) {
+            bool critter = dir == "art/critter";
+            string fofrm_path = strex("{}/dirs_r3.fofrm", dir).str();
+
+            TestRig rig;
+            rig.AddSourceFile(fofrm_path, "Alias = dirs$r=3.art\n");
+            AddSourceBinaryFile(rig, strex("{}/dirs.art", dir).str(), MakeRotationArt());
+
+            ImageBaker baker {rig.MakeContext()};
+            baker.BakeFiles(rig.GetAllSourceFiles(), fofrm_path);
+
+            REQUIRE(rig.Outputs.contains(fofrm_path));
+            auto sequence = ReadSingleDirSequence(rig.Outputs.at(fofrm_path));
+            int32_t source = critter ? 5 : 3;
+
+            CHECK(sequence.SequenceSize == 1);
+            CHECK(sequence.AnimTicks == 200);
+            REQUIRE(sequence.Frames.size() == 1);
+            CHECK(sequence.Frames[0].Offset == ipos32 {0, 1});
+            CHECK(sequence.Frames[0].NextX == (critter ? -source : source));
+            CHECK(sequence.Frames[0].NextY == -source);
+
+            vector<uint8_t> expected = ArtTestColor(0, source + 1);
+            expected.emplace_back(255);
+            CHECK(sequence.Frames[0].Data == expected);
+        }
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("SelectsArtRotationInOrdinaryFofrmFrameOptions")
+    {
+        vector<ArtFrameSpec> frames;
+
+        for (int32_t rotation = 0; rotation < 8; rotation++) {
+            frames.emplace_back(ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = rotation, .DeltaY = -rotation, .Indices = {numeric_cast<uint8_t>(rotation + 1)}});
+        }
+
+        TestRig rig;
+        rig.AddSourceFile("gfx/options.fofrm", "Frm = dirs$3R=3Hf0.art\n");
+        AddSourceBinaryFile(rig, "gfx/dirs.art", MakeArt(0, 10, {true, true, true, true}, 1, frames));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/options.fofrm");
+
+        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/options.fofrm"));
+        vector<uint8_t> expected = ArtTestColor(3, 4);
+        expected.emplace_back(255);
+        expected.insert(expected.begin(), 4, 0);
+        CHECK(frame.Width == 2);
+        CHECK(frame.Height == 1);
+        CHECK(frame.Data == expected);
+        CHECK(frame.NextX == -3);
+        CHECK(frame.NextY == -3);
+    }
+#endif
+
+    SECTION("ForwardsAliasOptionsThroughRegisteredLoader")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/custom.fofrm", "Alias = custom$r=3.toy\n");
+        rig.AddSourceFile("gfx/custom.toy", "Custom source");
+        ImageBaker baker {rig.MakeContext()};
+        string observed_name;
+        string observed_options;
+        baker.AddLoader(
+            [&observed_name, &observed_options](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
+                ignore_unused(reader, files);
+                observed_name = fname;
+                observed_options = opt;
+                ImageImport::FrameCollection collection;
+                collection.SequenceSize = 1;
+                collection.AnimTicks = 123;
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}});
+                return collection;
+            },
+            {"toy"});
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/custom.fofrm");
+
+        CHECK(observed_name == "gfx/custom.toy");
+        CHECK(observed_options == "r=3");
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/custom.fofrm"));
+        CHECK(sequence.AnimTicks == 123);
+        CHECK(sequence.Frames.at(0).Data == vector<uint8_t> {1, 2, 3, 255});
+    }
+
+#if FO_IMAGE_ART
+    SECTION("PreservesLegacyUnknownRAndPaletteSelection")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/palette.fofrm", "Alias = palette$r3.art\n");
+        AddSourceBinaryFile(rig, "gfx/palette.art", MakeArt(1, 10, {true, true, true, true}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/palette.fofrm");
+
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/palette.fofrm"));
+        vector<uint8_t> expected = ArtTestColor(3, 1);
+        expected.emplace_back(255);
+        CHECK(sequence.Frames.at(0).Data == expected);
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("PreservesWholeArtAliasAndItsOutputName")
+    {
+        TestRig rig;
+        rig.AddSourceFile("whole.fofrm", "Alias=dirs.art\nfps=1\ncount=99\noffs_x=100\n");
+        AddSourceBinaryFile(rig, "dirs.art", MakeRotationArt());
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "whole.fofrm");
+        auto sprite = ReadSpriteResource(rig.Outputs.at("whole.fofrm"));
+        REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
+        REQUIRE(sprite.Animation.Sprite);
+        CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {200});
+        CHECK(sprite.Directions.front().Frames.size() == 1);
+        CHECK(sprite.Directions.front().Frames.front().Offset == ipos32 {0, 1});
+    }
+#endif
+
+    SECTION("ResolvesOrdinaryFofrmFramesAtPackRoot")
+    {
+        TestRig rig;
+        rig.AddSourceFile("root.fofrm", "frm=frame.tga\n");
+        AddSourceBinaryFile(rig, "frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+        auto frame = ReadSingleFrame(rig.Outputs.at("root.fofrm"));
+        CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 255});
+    }
+
+#if FO_IMAGE_ART
+    SECTION("AlignsChangingArtHotSpotsWithoutLosingFrameDeltas")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "anchor.art",
+            MakeArt(1, 10, {true, false, false, false}, 2,
+                {
+                    ArtFrameSpec {.Width = 2, .Height = 1, .HotY = 1, .DeltaX = 3, .Indices = {1, 2}},
+                    ArtFrameSpec {.Width = 2, .Height = 1, .HotX = 1, .HotY = 1, .DeltaX = -1, .Indices = {2, 1}},
+                }));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "anchor.art");
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("anchor.art"));
+        REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Offset == ipos32 {0, 0});
+        CHECK(sequence.Frames[1].Offset == sequence.Frames[0].Offset);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].NextX == 3);
+        CHECK(sequence.Frames[1].NextX == -1);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 4, 5, 6, 255, 8, 9, 10, 255});
+        CHECK(sequence.Frames[1].Data == vector<uint8_t> {8, 9, 10, 255, 4, 5, 6, 255, 0, 0, 0, 0});
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("SupportsLongFrameIndexedArtAndSparsePalettes")
+    {
+        TestRig rig;
+        vector<ArtFrameSpec> frames(10001, ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}});
+        frames.back().Indices = {2};
+        AddSourceBinaryFile(rig, "long.art", MakeArt(1, 1, {false, false, true, false}, 10001, frames));
+        rig.AddSourceFile("last.fofrm", "Alias=long$F10000.art\n");
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "last.fofrm");
+        auto selected = ReadSingleDirSequence(rig.Outputs.at("last.fofrm"));
+        CHECK(selected.SequenceSize == 1);
+        CHECK(selected.AnimTicks == 1000);
+        CHECK(selected.Frames.at(0).Data == vector<uint8_t> {136, 9, 10, 255});
+
+        baker.BakeFiles(rig.GetAllSourceFiles(), "long.art");
+        auto sprite = ReadSpriteResource(rig.Outputs.at("long.art"));
+        REQUIRE(sprite.Animation.Sprite);
+        CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {65535});
+        CHECK(sprite.Directions.at(0).Frames.size() == 10001);
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("RejectsInvalidArtRotationOptions")
+    {
+        for (string_view rotation : {"", "8", "-1", "3x", "33"}) {
+            TestRig rig;
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Alias = source$r={}.art\n", rotation).str());
+            AddSourceBinaryFile(rig, "gfx/source.art", MakeSimpleArt());
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"));
+        }
+    }
+#endif
+
+    SECTION("RejectsRecursiveAndMissingFofrmAliases")
+    {
+        for (string_view source : {"loop.fofrm", "missing.art"}) {
+            TestRig rig;
+            rig.AddSourceFile("gfx/loop.fofrm", strex("Alias = {}\n", source).str());
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/loop.fofrm"));
+        }
+    }
+
+#if FO_IMAGE_ART
+    SECTION("RejectsTruncatedArtTablesAndPixelStreams")
+    {
+        vector<uint8_t> truncated_table = MakeArt(1, 10, {true, false, false, false}, std::numeric_limits<int32_t>::max(), {});
+        vector<uint8_t> truncated_pixels = MakeSimpleArt();
+        truncated_pixels.pop_back();
+        vector<uint8_t> truncated_rle = MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {0x82, 1}}});
+        vector<uint8_t> short_rle = MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {1, 1}}});
+
+        for (const auto& data : {truncated_table, truncated_pixels, truncated_rle, short_rle}) {
+            TestRig rig;
+            AddSourceBinaryFile(rig, "gfx/broken.art", data);
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
+        }
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("RejectsArtHotSpotsOutsideBakedRange")
+    {
+        for (int32_t hot_x : {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}) {
+            TestRig rig;
+            AddSourceBinaryFile(rig, "gfx/broken.art", MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .HotX = hot_x, .Indices = {1}}}));
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
+        }
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("BakesWallHotSpotShiftForPlacedRotation")
+    {
+        // Wall rotations 0/1/6/7 use the original renderer hot spot shift even with one stored rotation
+        TestRig rig;
+        rig.AddSourceFile("art/wall/w_r0.fofrm", "Alias = w$r=0.art\n");
+        rig.AddSourceFile("art/wall/w_r2.fofrm", "Alias = w$r=2.art\n");
+        AddSourceBinaryFile(rig, "art/wall/w.art", MakeArt(0x1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "art/wall/w_r0.fofrm");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "art/wall/w_r2.fofrm");
+
+        REQUIRE(rig.Outputs.contains("art/wall/w_r0.fofrm"));
+        REQUIRE(rig.Outputs.contains("art/wall/w_r2.fofrm"));
+        auto shifted = ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r0.fofrm"));
+        auto plain = ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r2.fofrm"));
+
+        REQUIRE(shifted.Frames.size() == 1);
+        REQUIRE(plain.Frames.size() == 1);
+        CHECK(plain.Frames[0].Width == 1);
+        CHECK(plain.Frames[0].Height == 1);
+        CHECK(plain.Frames[0].Offset == ipos32 {0, 1});
+        CHECK(shifted.Frames[0].Width == 41);
+        CHECK(shifted.Frames[0].Height == 20);
+        CHECK(shifted.Frames[0].Offset == ipos32 {20, 0});
+    }
+#endif
+
+#if FO_IMAGE_ART
+    SECTION("BakesArtRotationsAndMirrorsCritterRotations")
+    {
+        // ART rotation 0 faces screen north and goes clockwise; square direction 0 is north-east. Critter-like art
+        // draws rotations 1..3 as mirrored rotations 7..5 (art.c tig_art_frame_data)
+        for (string_view path : {string_view {"gfx/dirs.art"}, string_view {"art/critter/dirs.art"}}) {
+            bool critter = path.starts_with("art/critter/");
+
+            TestRig rig;
+            AddSourceBinaryFile(rig, path, MakeRotationArt());
+
+            ImageBaker baker {rig.MakeContext()};
+            baker.BakeFiles(rig.GetAllSourceFiles(), path);
+
+            REQUIRE(rig.Outputs.contains(string(path)));
+            data_reader reader {rig.Outputs.at(string(path))};
+            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+            CHECK(reader.read<uint16_t>() == 1);
+            CHECK(reader.read<uint16_t>() == 200);
+            REQUIRE(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+
+            for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+                int32_t rotation = 0;
+
+                if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+                    constexpr int32_t hex_dir_to_rotation[6] = {1, 2, 3, 5, 6, 7};
+                    rotation = hex_dir_to_rotation[dir];
+                }
+                else {
+                    rotation = (dir + 1) % 8;
+                }
+
+                bool mirrored = critter && rotation > 0 && rotation < 4;
+                int32_t source = mirrored ? 8 - rotation : rotation;
+
+                CHECK_FALSE(reader.read<bool>());
+                CHECK(reader.read<int16_t>() == 0); // Offset x: canvas 1 / 2 - hot x 0
+                CHECK(reader.read<int16_t>() == 1); // Offset y: canvas 1 - hot y 0
+                CHECK(reader.read<uint16_t>() == 1);
+                CHECK(reader.read<uint16_t>() == 1);
+                CHECK(reader.read<int16_t>() == (mirrored ? -source : source));
+                CHECK(reader.read<int16_t>() == -source);
+
+                const_span<uint8_t> pixel = reader.read_bytes(4);
+                vector<uint8_t> expected = ArtTestColor(0, source + 1);
+                expected.emplace_back(255);
+                CHECK(vector<uint8_t>(pixel.begin(), pixel.end()) == expected);
+                SkipSpriteMesh(reader);
+            }
+
+            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+            CHECK_NOTHROW(reader.verify_end());
+        }
+    }
+#endif
 
     SECTION("Setup")
     {
@@ -2077,6 +2401,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("BakesArtFrameOptionsThroughFofrm")
     {
+        // Palette 1, transparency from color, flipped (hot x = w - hot x - 2) and vertically mirrored
         TestRig rig;
         rig.AddSourceFile("gfx/art.fofrm", "Frm=marker$1thv.art\n");
         AddSourceBinaryFile(rig, "gfx/marker.art", MakeSimpleArt());
@@ -2091,34 +2416,10 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.AnimTicks == 100);
         REQUIRE(sequence.Frames.size() == 1);
         CHECK(sequence.Frames[0].Width == 2);
-        CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 4);
-        CHECK(sequence.Frames[0].NextY == 6);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x46, 0x32, 0x28, 0x46, 0x1E, 0x14, 0x0A, 0x1E});
-    }
-#endif
-
-#if FO_IMAGE_ART
-    SECTION("BakesStaticArtFlagZeroPixelsAndOptionEdgesThroughFofrm")
-    {
-        TestRig rig;
-        rig.AddSourceFile("gfx/static-art.fofrm", "Frm=static$1f0x.art\n");
-        AddSourceBinaryFile(rig, "gfx/static.art", MakeArtWithFrameIndices(1, {0, 1}));
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static-art.fofrm");
-
-        REQUIRE(rig.Outputs.contains("gfx/static-art.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
-
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 2);
-        CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == -4);
-        CHECK(sequence.Frames[0].NextY == -6);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 0x1E, 0x14, 0x0A, 0xFF});
+        CHECK(sequence.Frames[0].Height == 2);
+        CHECK(sequence.Frames[0].NextX == -3);
+        CHECK(sequence.Frames[0].NextY == 2);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0x48, 0x09, 0x0A, 0x48, 0x44, 0x05, 0x06, 0x44});
     }
 #endif
 
@@ -2168,6 +2469,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("BakesArtFrameRangeAndRleThroughFofrm")
     {
+        // Missing palette 3 falls back to the first present palette; frames share one canvas around their hot spots
         TestRig rig;
         rig.AddSourceFile("gfx/art-range.fofrm", "Frm=range$3F1-0.art\n");
         AddSourceBinaryFile(rig, "gfx/range.art", MakeRleFrameRangeArt());
@@ -2183,12 +2485,12 @@ TEST_CASE("ImageBaker")
         REQUIRE(sequence.Frames.size() == 2);
         CHECK(sequence.Frames[0].Width == 3);
         CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextX == 2);
         CHECK(sequence.Frames[0].NextY == -1);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x33, 0x22, 0x11, 0xFF, 0x66, 0x55, 0x44, 0xFF});
-        CHECK(sequence.Frames[1].Width == 0);
-        CHECK(sequence.Frames[1].Height == 0);
-        CHECK(sequence.Frames[1].Data.empty());
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x04, 0x05, 0x06, 0xFF, 0x04, 0x05, 0x06, 0xFF, 0x08, 0x09, 0x0A, 0xFF});
+        CHECK(sequence.Frames[1].Width == 3);
+        CHECK(sequence.Frames[1].Height == 1);
+        CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
 
         TestRig forward;
         forward.AddSourceFile("gfx/art-forward.fofrm", "Frm=range$1F0-1.art\n");
@@ -2201,40 +2503,11 @@ TEST_CASE("ImageBaker")
         auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
 
         CHECK(forward_sequence.SequenceSize == 2);
-        CHECK(forward_sequence.AnimTicks == 100);
         REQUIRE(forward_sequence.Frames.size() == 2);
-        CHECK(forward_sequence.Frames[0].Width == 0);
-        CHECK(forward_sequence.Frames[0].Height == 0);
-        CHECK(forward_sequence.Frames[0].Data.empty());
-        CHECK(forward_sequence.Frames[1].Width == 3);
-        CHECK(forward_sequence.Frames[1].Height == 1);
-        CHECK(forward_sequence.Frames[1].NextX == 0);
+        CHECK(forward_sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+        CHECK(forward_sequence.Frames[1].NextX == 2);
         CHECK(forward_sequence.Frames[1].NextY == -1);
-        CHECK(forward_sequence.Frames[1].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x33, 0x22, 0x11, 0xFF, 0x66, 0x55, 0x44, 0xFF});
-    }
-#endif
-
-#if FO_IMAGE_ART
-    SECTION("BakesDirectionalArtOptionEdgesThroughFofrm")
-    {
-        TestRig rig;
-        rig.AddSourceFile("gfx/art-dirs.fofrm", "Frm=dirs$02THVf5.art\n");
-        AddSourceBinaryFile(rig, "gfx/dirs.art", MakeDirectionalEmptyArt());
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-dirs.fofrm");
-
-        REQUIRE(rig.Outputs.contains("gfx/art-dirs.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-dirs.fofrm"));
-
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 0);
-        CHECK(sequence.Frames[0].Height == 0);
-        CHECK(sequence.Frames[0].NextX == 7);
-        CHECK(sequence.Frames[0].NextY == 11);
-        CHECK(sequence.Frames[0].Data.empty());
+        CHECK(forward_sequence.Frames[1].Data == vector<uint8_t> {0x04, 0x05, 0x06, 0xFF, 0x04, 0x05, 0x06, 0xFF, 0x08, 0x09, 0x0A, 0xFF});
     }
 #endif
 
@@ -2472,6 +2745,41 @@ Frm=one.toy
         add_toy_loader(shared_nested_frame_baker);
         CHECK_THROWS_AS(shared_nested_frame_baker.BakeFiles(shared_nested_frame.GetAllSourceFiles(), "gfx/shared.fofrm"), ImageBakerException);
         CHECK(shared_nested_frame.Outputs.empty());
+    }
+
+    SECTION("ImageImportFailuresPreserveSourceAndNestedContext")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/broken.toy", "x");
+        rig.AddSourceFile("gfx/alias.fofrm", "Alias=broken$probe.toy\n");
+        rig.AddSourceFile("gfx/composed.fofrm", "Frm=broken$probe.toy\n");
+        ImageBaker baker {rig.MakeContext()};
+        baker.AddLoader(
+            [](string_view, string_view, FileReader reader, const ImageImport::Context&) -> ImageImport::FrameCollection {
+                (void)reader.GetLEUInt32();
+                return {};
+            },
+            {"toy"});
+
+        for (string_view path : {"gfx/broken.toy", "gfx/alias.fofrm", "gfx/composed.fofrm"}) {
+            try {
+                baker.BakeFiles(rig.GetAllSourceFiles(), path);
+                FAIL("Truncated image imported without an error");
+            }
+            catch (const ImageBakerException& ex) {
+                string_view message = ex.what();
+                CHECK(message.find("Image import failed") != string_view::npos);
+                CHECK(message.find(path) != string_view::npos);
+                CHECK(message.find("gfx/broken.toy") != string_view::npos);
+                CHECK(message.find("Invalid read size") != string_view::npos);
+            }
+
+            CHECK(rig.Outputs.empty());
+        }
+
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/alias.fofrm"), Catch::Matchers::ContainsSubstring("probe"));
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("gfx/broken.toy"));
+        CHECK(rig.Outputs.empty());
     }
 
     SECTION("CustomLoaderBakesDirsSharedFramesAndNewName")
@@ -2806,6 +3114,13 @@ TEST_CASE("DisabledImageImportersIdentifyTheirRequiredOptions")
 #endif
 #if !FO_IMAGE_ART
     CHECK_THROWS_WITH(ImageImport::CheckEnabled("gfx/image.art"), Catch::Matchers::ContainsSubstring("FO_IMAGE_ART"));
+
+    BakerTests::TestRig alias;
+    alias.AddSourceFile("gfx/alias.fofrm", "Alias=image$r=3.art\n");
+    alias.AddSourceFile("gfx/image.art", "payload");
+    ImageBaker alias_baker {alias.MakeContext()};
+    CHECK_THROWS_WITH(alias_baker.BakeFiles(alias.GetAllSourceFiles(), "gfx/alias.fofrm"), Catch::Matchers::ContainsSubstring("FO_IMAGE_ART"));
+    CHECK(alias.Outputs.empty());
 #endif
 #if !FO_IMAGE_SPR
     CHECK_THROWS_WITH(ImageImport::CheckEnabled("gfx/image.spr"), Catch::Matchers::ContainsSubstring("FO_IMAGE_SPR"));
