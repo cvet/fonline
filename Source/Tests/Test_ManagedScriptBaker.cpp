@@ -962,9 +962,10 @@ TEST_CASE("ManagedScriptBaker")
     // A project among the extra references builds as itself, and only the target naming it copies its package assemblies
     CHECK(unified_project.find("<ProjectReference Include=\"../../ManagedSupport/Compiler/UnitCompiler.csproj\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />") != string::npos);
     CHECK(unified_project.find("<Reference Include=\"UnitCompiler\">") == string::npos);
-    CHECK(unified_project.find("<DefineConstants>TRACE;SERVER</DefineConstants>\n    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>") != string::npos);
-    CHECK(unified_project.find("<DefineConstants>TRACE;CLIENT</DefineConstants>\n  </PropertyGroup>") != string::npos);
-    CHECK(unified_project.find("<DefineConstants>TRACE;MAPPER</DefineConstants>\n  </PropertyGroup>") != string::npos);
+    string_view native_define = FO_NATIVE_SCRIPTING ? ";NATIVE_SCRIPTING" : "";
+    CHECK(unified_project.find(strex("<DefineConstants>TRACE;SERVER{}</DefineConstants>\n    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>", native_define).str()) != string::npos);
+    CHECK(unified_project.find(strex("<DefineConstants>TRACE;CLIENT{}</DefineConstants>\n  </PropertyGroup>", native_define).str()) != string::npos);
+    CHECK(unified_project.find(strex("<DefineConstants>TRACE;MAPPER{}</DefineConstants>\n  </PropertyGroup>", native_define).str()) != string::npos);
 
     // Every target keeps its portable PDB inside the assembly, so script frames carry file and line wherever it runs
     for (string_view target : {"Server", "Client", "Mapper"}) {

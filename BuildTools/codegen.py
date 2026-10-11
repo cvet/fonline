@@ -958,6 +958,7 @@ def reset_metadata_parse_state() -> None:
     global codegen_tags
     global codegen_tag_sources
     global tag_metas
+    global user_tag_metas
     global ref_types
     global engine_enums
     global custom_types
@@ -972,6 +973,7 @@ def reset_metadata_parse_state() -> None:
     codegen_tags = create_codegen_tag_store()
     codegen_tag_sources = create_codegen_tag_source_store()
     tag_metas = create_tag_meta_store()
+    user_tag_metas = {}
     ref_types = set()
     engine_enums = set()
     custom_types = set()
@@ -2175,7 +2177,7 @@ def parse_user_tags(valid_types: set[str]) -> None:
         hash_recursive(compatibility_hasher, (rt_target, rt_name, 'user_ref_type'))
 
     # ---- ///@ Enum aggregation -------------------------------------------
-    enum_groups: dict[str, list[tuple[str, str | None, CommentLines]]] = {}
+    enum_groups: dict[str, list[tuple[str, str | None, TagMetaRecord]]] = {}
     for tag_meta in user_tag_metas.get('Enum', []):
         tag_info = (tag_meta.tag_info or '').strip()
         location = tag_meta.abs_path + ' (' + str(tag_meta.line_index + 1) + ')'
@@ -2196,16 +2198,20 @@ def parse_user_tags(valid_types: set[str]) -> None:
             continue
 
         group_name, key = left[0], left[1]
-        enum_groups.setdefault(group_name, []).append((key, value, tag_meta.comment))
+        enum_groups.setdefault(group_name, []).append((key, value, tag_meta))
 
     for group_name, entries in enum_groups.items():
         if group_name in valid_types:
             show_error('User ///@ Enum group ' + group_name + ' clashes with an existing type')
             continue
         # AngelScript baker uses uint32 as the default underlying type.
-        key_values = [EnumKeyValue(key, value, comment) for key, value, comment in entries]
-        register_export_enum(group_name, 'uint32', key_values, [], [], valid_types, user_origin=True)
-        hash_recursive(compatibility_hasher, (group_name, 'user_enum', key_values))
+        key_values = [EnumKeyValue(key, value, tag_meta.comment) for key, value, tag_meta in entries]
+        register_export_enum(group_name, 'uint32', key_values, [], [], valid_types, get_tag_source(entries[0][2]), user_origin=True)
+        codegen_tags['ExportEnum'][-1].value_docs = {
+            key: EnumValueDocumentation(list(tag_meta.comment), get_tag_source(tag_meta))
+            for key, _value, tag_meta in entries
+        }
+        hash_recursive(compatibility_hasher, (group_name, 'user_enum', [(value.key, value.value) for value in key_values]))
 
     # ---- ///@ Property runtime-property registration ---------------------
     # Format: `///@ Property <Entity> <Access> <Type> <Name> [Flags...]`

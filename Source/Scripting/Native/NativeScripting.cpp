@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 void InitNativeScripting(ptr<EngineMetadata> meta, const FileSystem& resources, NativeScripts::Detail::RegisterModulesFn registerModules, bool isBaker)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     ignore_unused(resources);
 

@@ -409,7 +409,7 @@ void EngineMetadata::RegisterRefType(string_view name)
 
 void EngineMetadata::SetValueTypeNativeType(string_view name, string_view native_type)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     const auto it = _structLayouts.find(string(name));
@@ -419,7 +419,7 @@ void EngineMetadata::SetValueTypeNativeType(string_view name, string_view native
 
 void EngineMetadata::SetEntityClassNames(string_view name, string_view server_class, string_view client_class)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     const auto it = _entityTypes.find(Hashes.to_hashed_string(name));
@@ -430,7 +430,7 @@ void EngineMetadata::SetEntityClassNames(string_view name, string_view server_cl
 
 void EngineMetadata::SetRefTypeTarget(string_view name, string_view target)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     const auto it = _refTypes.find(string(name));
@@ -570,7 +570,7 @@ void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& t
 
 void EngineMetadata::MarkGameSettingAsExported(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export a game setting after metadata registration is finalized", name);
     _exportedGameSettings.emplace(name);
@@ -578,7 +578,7 @@ void EngineMetadata::MarkGameSettingAsExported(string_view name)
 
 void EngineMetadata::SetExportedGameSettingType(string_view name, const BaseTypeDesc& type)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type after metadata registration is finalized", name);
     FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type", name);
@@ -587,7 +587,7 @@ void EngineMetadata::SetExportedGameSettingType(string_view name, const BaseType
 
 void EngineMetadata::SetExportedGameSettingTypeName(string_view name, string_view type_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_STRONG_ASSERT(!_registrationFinalized, "Cannot set an exported game setting type name after metadata registration is finalized", name);
     FO_STRONG_ASSERT(_exportedGameSettings.contains(string(name)), "Game setting must be exported before assigning its type name", name);
@@ -596,7 +596,7 @@ void EngineMetadata::SetExportedGameSettingTypeName(string_view name, string_vie
 
 void EngineMetadata::MarkEnumAsExported(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_STRONG_ASSERT(!_registrationFinalized, "Cannot export an enum after metadata registration is finalized", name);
     FO_STRONG_ASSERT(_enums.contains(name), "Enum must be registered before it is exported", name);

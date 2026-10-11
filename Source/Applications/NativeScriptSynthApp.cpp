@@ -79,7 +79,7 @@ FO_USING_NAMESPACE();
 // `BakerApp`.
 static void WriteOutput(string_view output_dir, string_view file_name, string_view body)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     const string path = strex(output_dir).combine_path(file_name).str();
     const string dir = strex(path).extract_dir().str();
@@ -136,7 +136,7 @@ public:
 
 static auto BuildMetadata(string_view target) -> unique_ptr<EngineMetadata>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (target == "Client") {
         return safe_alloc::make_unique<StandaloneClientMetadata>();
@@ -162,7 +162,7 @@ static auto BuildMetadata(string_view target) -> unique_ptr<EngineMetadata>
 // see the unfiltered per-bin metadata.
 static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetadata& client) -> unordered_map<string, unordered_set<string>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     unordered_map<string, unordered_set<string>> result;
     for (const auto& [srv_hname, srv_desc] : server.GetEntityTypes()) {
@@ -228,7 +228,7 @@ static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetad
 // which emits the union from its Python-side metadata.
 static void MergeSettings(EngineMetadata& recipient, const EngineMetadata& donor)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     const auto& donor_initial_values = donor.GetGameSettingsInitialValues();
 
@@ -267,7 +267,7 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto NativeScriptSynthApp(int argc, char** argv) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     try {
         CommandLineArgs args {numeric_cast<int32_t>(argc), argv};

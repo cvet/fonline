@@ -72,15 +72,13 @@ static auto DetectRoleFromModuleName(string_view module_name) -> string;
 
 auto GetNativeScriptRoles() -> const vector<string>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static const vector<string> roles {"Common", "Server", "Client", "Mapper", "Baker"};
     return roles;
 }
 
 auto ScanNativeScriptModuleSource(string_view source, string_view source_path, string_view file_name, string_view expected_role) -> NativeScriptModuleScan
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     const string clean = StripComments(source);
     string module_name;
@@ -136,7 +134,7 @@ auto ScanNativeScriptModuleSource(string_view source, string_view source_path, s
 
 auto ScanNativeScriptModules(const std::filesystem::path& native_scripts_dir) -> unordered_map<string, vector<NativeScriptModuleInit>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     unordered_map<string, vector<NativeScriptModuleInit>> result;
 
@@ -211,8 +209,6 @@ auto ScanNativeScriptModules(const std::filesystem::path& native_scripts_dir) ->
 // does not pollute the scan
 static auto StripComments(string_view src) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     string out;
     out.reserve(src.size());
     bool in_line = false;
@@ -262,8 +258,6 @@ static auto StripComments(string_view src) -> string
 // `NativeScripts.User.<Role>.<Name>` → "<Role>" (empty when the module name doesn't fit the shape)
 static auto DetectRoleFromModuleName(string_view module_name) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr string_view PREFIX = "NativeScripts.User.";
 
     if (!module_name.starts_with(PREFIX)) {

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"b70e2d3bf50eb338be408ceff35c4dfd3d2637a325206f156db6d4f39f83c425"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"90bdc724359320fb006c8d7a2119b641d45aa0a1ee15136b04fc11c42488ed2b"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -263,7 +263,7 @@ wrapper той же entity.
 
 `Source/Scripting/Managed/` — реализованный backend C#; его полный operational contract описан в [Скриптах Managed C#](../../how-to/scripting/managed-csharp.md). Устаревшие интерфейсы `Source/Scripting/Mono/`, `FO_MONO_SCRIPTING`, `CompileMonoScripts` и `BuildTools/compile-mono-scripts.py` больше не существуют.
 
-`Source/Scripting/Native/` реализует опциональный backend на модулях C++20 под `FO_NATIVE_SCRIPTING`. `NativeScriptCore.h` содержит wrappers, event proxies, callback factories, remote-call codecs и независимый от роли `ModuleInitContextBase`. `NativeScriptBackend` регистрируется с индексом `ScriptSystemBackend::NATIVE_BACKEND_INDEX`. Startup вызывает Common initialization, затем роль runtime; Baker вызывает Common и Baker один раз за baking session, без указателя `BaseEngine`.
+`Source/Scripting/Native/` реализует опциональный backend на модулях C++20 под `FO_NATIVE_SCRIPTING`. `NativeScriptCore.h` содержит wrappers, event proxies, callback factories, remote-call codecs и независимый от роли `ModuleInitContextBase`. `NativeScriptBackend` регистрируется с индексом `ScriptSystemBackend::NATIVE_BACKEND_INDEX`. Startup вызывает Common initialization, затем роль runtime; baking session с Metadata baker вызывает Common и Baker один раз, без указателя `BaseEngine`. Пайплайны без Metadata, например отдельное копирование файлов или конвертация изображений, не инициализируют native scripting.
 
 `<FO_DEV_NAME>_NativeScriptSynth` генерирует пять интерфейсов `NativeApi.<Role>` и role dispatchers из зарегистрированных метаданных. Модули проекта лежат в `FO_NATIVE_SCRIPTS_DIR/<Role>/` как `.cppm` или `.ixx`, объявляют `export module NativeScripts.User.<Role>.<Name>;`, импортируют `NativeApi.<Role>` и экспортируют `void <Name>Init(const NativeScripts::ModuleInitContext&)`. Generated role contexts наследуют общий base и добавляют wrapper `GetGame()` своей роли. Module libraries линкуются в соответствующую runtime library. Публичного generated `NativeApi.h` и горячей перезагрузки нет.
 

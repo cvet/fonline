@@ -13,8 +13,25 @@ This report records source-grounded documentation verification passes for the en
   are the basis for the description, rather than an embedding project's historical logs.
 - Reconcile native user tags with the new codegen source-location table and enum documentation fields.
   Preserve runtime-only enum compatibility hashing and authoritative/fallback remote-handler ownership.
-- Fresh enabled-backend builds, generated-model reconciliation and runtime validation are pending.
-  Historical gameplay results are not acceptance of this update; Linux module CI remains unverified.
+- Reconcile source-line changes in API and map references, the native codegen CLI argument and its
+  Russian description. Codegen/API regressions pass 40 tests and 17 subtests; dependency fixtures
+  pass 15 tests, with 10 unavailable Unix cases skipped. Use an owned Workspace test directory on
+  Windows because Visual Studio warns that system TEMP outputs can break incremental builds.
+- Affected documentation regressions pass 35 tests; the two reconciled inventory suites pass a
+  final 12 tests and 46 subtests. Documentation preparation and 411-page source validation pass,
+  with 4,857 of 4,857 generated descriptions translated, 311 normative snippets, 159 evidence checks
+  and 183 external-parser checks. Retrieval retains 28 tasks, 67 checks, 100% success and 0.930 MRR.
+- Build all five native role libraries and the enabled-backend server/test applications with MSVC
+  RelWithDebInfo without compiler warnings. The final Engine unit suite passes 559 cases and
+  664,140 assertions, including the unchanged precise-sleep timing gate. The native subset passes
+  13 cases and 53 assertions; the corrected Baker/Managed/Native subset passes 25 cases and
+  837 assertions before the final aggregate run.
+- Restrict the session-owned Common/Baker context to sessions containing the Metadata baker.
+  Existing raw-copy and image-pipeline tests now pass with Native enabled without depending on
+  script metadata. Reconcile the ManagedScriptBaker define assertions with the optional backend.
+  Fresh full and incremental resource bakes succeed; each invokes the Baker smoke initializer once.
+  Engine acceptance is grounded in its source and unit fixtures, while embedding gameplay evidence
+  remains owned by the embedding project. Linux module CI and rendered-site acceptance remain unverified.
 
 ## 2026-10-11 - Restore Baker ownership on updated master
 

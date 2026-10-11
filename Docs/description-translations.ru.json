@@ -947,6 +947,10 @@
           "source_sha256": "772b07002bc0dd20a373f7cb7363a84532cef98d78599a5ee9a98342b00468b1",
           "translation": "Путь к метаданным Script API, то есть тегам ///@."
         },
+        "/helpers/@id=helper-cli.codegen/global_arguments/@id=helper-cli.codegen.argument.nativescriptsdir/description": {
+          "source_sha256": "11eadf11cb3a94169dd2be80f5b419cba5354604bff5feb1ec3f921e3f22dd12",
+          "translation": "Корневой каталог пользовательских нативных скриптов (FO_NATIVE_SCRIPTS_DIR)"
+        },
         "/helpers/@id=helper-cli.codegen/global_arguments/@id=helper-cli.codegen.argument.nicename/description": {
           "source_sha256": "edb6b7b6fbfb4a1a906e767d8809d17b23ad50c2a9c53f6397de6feeebacdd87",
           "translation": "Читаемое имя игры."

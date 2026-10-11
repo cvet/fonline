@@ -21,13 +21,13 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>346c42d340cb39623bfca5120856f5ae2d9198368758ea39ca7e672baeeb85e6</code> |
+| Contract digest | <code>f75b64a4ae166312cb4516e068cfca4807d8005f691081499b4e0a3fbce25132</code> |
 
 ## Inventory
 
 | Stable ID | Helper | Owner | Invocation owner | Parser source | Commands / global args |
 | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 10 |
+| <a id="entry-helper-cli-codegen-60abdf415d"></a><code>helper-cli.codegen</code> | [Code generation](commands.md#entry-helper-cli-codegen-60abdf415d) | <code>build-release</code> | BuildTools/cmake/stages/Codegen.cmake | [BuildTools/codegen.py](https://github.com/cvet/fonline/blob/master/BuildTools/codegen.py) | 0 / 11 |
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Code coverage](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Gameplay test runner](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | embedding-project CMake targets and CI gameplay smoke jobs | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
 | <a id="entry-helper-cli-ai-control-client-35184e9731"></a><code>helper-cli.ai-control-client</code> | [AiControl protocol client](commands.md#entry-helper-cli-ai-control-client-35184e9731) | <code>tooling</code> | embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) | 5 / 5 |
@@ -38,7 +38,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 
 ## Coverage
 
-The model contains 8 helpers, 16 subcommands, 25 global arguments, and 52 subcommand arguments.
+The model contains 8 helpers, 16 subcommands, 26 global arguments, and 52 subcommand arguments.
 
 Included:
 

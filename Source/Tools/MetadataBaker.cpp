@@ -40,8 +40,6 @@ FO_BEGIN_NAMESPACE
 // whose whole metadata surface belongs to the baker, so they are never native sources here
 static auto IsNativeScriptSource(string_view path) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return path.ends_with(".cppm") || path.ends_with(".ixx");
 }
 

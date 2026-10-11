@@ -601,6 +601,7 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
     int32_t bake_order = -10;
 
 #if FO_NATIVE_SCRIPTING
+    bool native_metadata_requested = std::ranges::any_of(pack_bake_contexts, [](const auto& context) { return std::ranges::any_of(context->Bakers, [](const auto& baker) { return baker->GetName() == MetadataBaker::NAME; }); });
     // Owns the one native scripting context of this bake session; it stays alive for the whole pack loop
     unique_nptr<BakerServerEngine> native_script_engine;
 #endif
@@ -660,12 +661,9 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
         }
 
 #if FO_NATIVE_SCRIPTING
-        if (!native_script_engine && bake_order == MetadataBaker::ORDER) {
-            // Keep one native scripting context alive for the rest of the bake
-            // session. Individual bakers create short-lived BakerServerEngine
-            // instances; dispatching from those would run Common/Baker
-            // initializers repeatedly and concurrently. Wait until the metadata
-            // pack is baked and mounted so dynamic user types are available.
+        if (native_metadata_requested && !native_script_engine && bake_order == MetadataBaker::ORDER) {
+            // The session context outlives every pack; starting it after metadata is mounted avoids
+            // repeated concurrent initialization and leaves metadata-free pipelines independent of scripts
             native_script_engine = safe_alloc::make_unique<BakerServerEngine>(baking_output);
             native_script_engine->MapScriptTypes(native_script_engine);
 
@@ -689,7 +687,7 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
     }
 
 #if FO_NATIVE_SCRIPTING
-    FO_STRONG_ASSERT(native_script_engine, "Native scripting metadata context was not initialized during resource baking");
+    FO_STRONG_ASSERT(!native_metadata_requested || native_script_engine, "Native scripting metadata context was not initialized during resource baking");
 #endif
 }
 

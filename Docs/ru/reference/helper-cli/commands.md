@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"b63efd6c3fcb58420d4fb7e488e55dce6fe6ef406a06caed62c68fda9a80ae3e"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"0045331c21fc90bd855e193d538df8ae56a4771f9f956d9305558abf50ee39ab"} -->
 
 # Команды вспомогательных CLI
 
@@ -40,12 +40,14 @@ generated: true
 | <a id="entry-helper-cli-codegen-argument-meta-467f731eb8"></a><code>helper-cli.codegen.argument.meta</code> | <code>-meta</code> | <code>option</code> | да | <code>1</code> | - | - | Путь к метаданным Script API, то есть тегам ///@. |
 | <a id="entry-helper-cli-codegen-argument-commonheader-888570e588"></a><code>helper-cli.codegen.argument.commonheader</code> | <code>-commonheader</code> | <code>option</code> | нет | <code>1</code> | - | - | Путь к общему header-файлу. |
 | <a id="entry-helper-cli-codegen-argument-genoutput-b6e5ab6468"></a><code>helper-cli.codegen.argument.genoutput</code> | <code>-genoutput</code> | <code>option</code> | да | <code>1</code> | - | - | Каталог выходного сгенерированного кода. |
+| <a id="entry-helper-cli-codegen-argument-nativescriptsdir-bb67958ce8"></a><code>helper-cli.codegen.argument.nativescriptsdir</code> | <code>-nativescriptsdir</code> | <code>option</code> | нет | <code>1</code> | - | <code>-</code> | Корневой каталог пользовательских нативных скриптов (FO_NATIVE_SCRIPTS_DIR) |
 | <a id="entry-helper-cli-codegen-argument-verbose-1ae6caa3b7"></a><code>helper-cli.codegen.argument.verbose</code> | <code>-verbose</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Подробный режим. |
 
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT [-verbose]
+usage: codegen.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -embedded EMBEDDED [-enginedefine ENGINEDEFINE] -meta META [-commonheader COMMONHEADER] -genoutput GENOUTPUT
+                  [-nativescriptsdir NATIVESCRIPTSDIR] [-verbose]
 
 FOnline code generator
 
@@ -62,6 +64,8 @@ options:
   -commonheader COMMONHEADER
                         path to common header file
   -genoutput GENOUTPUT  generated code output dir
+  -nativescriptsdir NATIVESCRIPTSDIR
+                        root of user-provided native scripts (FO_NATIVE_SCRIPTS_DIR)
   -verbose              verbose mode
 ```
 

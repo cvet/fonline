@@ -41,12 +41,11 @@ FO_BEGIN_NAMESPACE
 
 NativeScriptBackend::~NativeScriptBackend()
 {
-    FO_NO_STACK_TRACE_ENTRY();
 }
 
 void NativeScriptBackend::Attach(ptr<EngineMetadata> meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     _meta = meta;
     _engine = meta.dyn_cast<BaseEngine>();
@@ -55,8 +54,6 @@ void NativeScriptBackend::Attach(ptr<EngineMetadata> meta)
 
 auto NativeScriptBackend::MakeContext(bool isBaker) noexcept -> NativeScripts::ModuleInitContextBase
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     NativeScripts::ModuleInitContextBase ctx {};
     ctx.Engine = _engine.get();
     ctx.ScriptSys = _scriptSys.get();
