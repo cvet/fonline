@@ -28,16 +28,16 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 57,
+    "option_count": 58,
     "required_option_count": 9,
-    "optional_option_count": 48,
+    "optional_option_count": 49,
     "options_by_cache_type": {
-      "BOOL": 34,
+      "BOOL": 35,
       "STRING": 23
     },
     "options_by_category": {
       "capacity": 2,
-      "dependency": 16,
+      "dependency": 17,
       "diagnostics": 1,
       "feature": 3,
       "geometry": 4,
@@ -545,6 +545,17 @@
       "description": "Enable the BAM image importer.",
       "affects_baking": true,
       "id": "cmake.option.FO_IMAGE_BAM"
+    },
+    {
+      "name": "FO_AUDIO_ACM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ACM audio importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_AUDIO_ACM"
     },
     {
       "name": "FO_DISABLE_ASIO",

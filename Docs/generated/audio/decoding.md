@@ -26,3 +26,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-audio-decoding-unsupported-extension-a56ebf6594"></a>
 - [`entry-audio-decoding-unsupported-extension-a56ebf6594`](../../en/reference/audio/decoding.md#entry-audio-decoding-unsupported-extension-a56ebf6594)
+
+<a id="entry-audio-decoding-acm-channels-6309440d13"></a>
+- [`entry-audio-decoding-acm-channels-6309440d13`](../../en/reference/audio/decoding.md#entry-audio-decoding-acm-channels-6309440d13)

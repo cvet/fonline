@@ -7,12 +7,26 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"548db28170904c5e7dfe7b8008daf550f2a0df8551ac1cf1d5f1857660174e5b"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7f7ab9211fa2271efc898f41c05a5ccdd3dbc8ac0c832832049f9a63d293dc3f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-11
+
+### Добавлено
+
+- Опциональный встроенный импортёр Interplay ACM под `FO_AUDIO_ACM`, по умолчанию OFF. `AudioBaker-Acm.*` владеет состоянием unpacker на каждый декодер и соглашением Fallout о каналах; `AudioBaker` регистрирует загрузчик только при включённой опции. Регрессионные фикстуры декодера перенесены в Engine; проверяются автоматическое запекание Vorbis и запросы при выключенной опции.
+
+### Миграция
+
+- База: `2026.1.29-dev`, `3a366761742204d15aa86726cc23168c9b7ec81d`; версия этого изменения — `2026.1.30-dev`. Defaults WAV/Ogg, точные пути, воспроизведение, громкость и значения существующих исходников сохраняются. Импортёр относится только к Baker и не зависит от backend/platform; новая сторонняя библиотека не требуется.
+- Проекты с локальным ACM-загрузчиком задают `SetOptionValues(FO_AUDIO_ACM ON)` перед `StartProjectGeneration`, удаляют его исходники/тесты из `AddEngineSources`, include и регистрацию `audio_baker->AddLoader(LoadAcmAudio, {"acm"})` из `SetupBakersHook`. Остальные проектные bakers/hooks сохраняются. Прямые пользователи декодера включают `AudioBaker-Acm.h` и используют `AudioBakerAcm::Decoder`, `AudioBakerAcm::DecoderException` и `AudioBakerAcm::Load(string_view, FileReader)`; объявления доступны только при включённой опции. Перед миграцией ищите `AcmDecoder`, `LoadAcmAudio`, `.acm` и `FO_AUDIO_ACM` в CMake, presets, окружении и нативных расширениях. Проекты только с WAV/Ogg оставляют OFF; миграция их исходников не требуется.
+- Сохраните префикс `sound/music/` без учёта регистра для стерео ACM; остальные ACM-пути означают моно даже при стерео-заголовке. Частота исходника положительна, число PCM-сэмплов образует полные непустые кадры. Unpacker сохраняет исходную арифметику переполнения/дополнения; выход остаётся Vorbis по авторскому пути. Добавляйте `acm` в проектный `Audio.SoundFileExtensions`, только когда нужен каталог инспекции; default Engine остаётся `wav ogg`.
+- Выполните реконфигурацию, пересоберите baker и затронутые нативные цели, затем запеките все пакеты с `Audio`. `FO_AUDIO_ACM` участвует в `FO_BAKING_CONFIG_HASH`: отсутствующий/изменённый fingerprint вызывает полное запекание и записывается только после успеха. При OFF запросы ACM для коллекции и отдельного пути падают до incremental skipping с `Audio importer is disabled; enable FO_AUDIO_ACM` и путём. Проверяйте тесты декодера, enabled/disabled bake, счётчики/пути/каналы реальных ACM-пакетов и воспроизведение в клиенте с активным устройством.
+- Конвертации сохранённых сущностей/БД, migration rule, изменений сетевого marker (upstream `0.0.71`), схемы sprite/resource и host/runtime ABI нет. Поставляйте запечённый Vorbis по прежним путям. Откат восстанавливает прежний baker и проектные исходники/регистрацию загрузчика вместе, затем выполняет полное запекание; не смешивайте регистрации двух владельцев.
+
+## 2026.1.29-dev - 2026-10-11
 
 ### Исправлено
 

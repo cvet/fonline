@@ -32,6 +32,7 @@ class AudioDocumentationTests(unittest.TestCase):
         outputs = self.model["outputs"]
         self.assertEqual(outputs["indexed_extensions"], ["wav", "ogg"])
         self.assertEqual(outputs["baker_extensions"], ["wav", "ogg"])
+        self.assertEqual(outputs["optional_baker_extensions"], {"FO_AUDIO_ACM": ["acm"]})
         self.assertEqual(outputs["decoder_extensions"], ["ogg"])
         self.assertFalse(outputs["missing_suffix_fallback"])
         self.assertEqual(outputs["wav"]["format_tags"], [1, 3])
@@ -48,10 +49,11 @@ class AudioDocumentationTests(unittest.TestCase):
             outputs["native_test_files"],
             [
                 "Source/Tests/Test_AudioBaker.cpp",
+                "Source/Tests/Test_AudioBakerAcm.cpp",
                 "Source/Tests/Test_AudioManager.cpp",
             ],
         )
-        self.assertEqual(self.model["summary"]["entry_count"], 31)
+        self.assertEqual(self.model["summary"]["entry_count"], 33)
 
     def test_audio_uses_the_audio_baker_instead_of_raw_copy(self) -> None:
         outputs = self.model["outputs"]

@@ -9276,6 +9276,42 @@
       "release_note": "Docs/en/reference/changelog.md Current (2026.1.29-dev, 2026-10-11) and its Russian mirror; baseline 6a1f03880a84e097cfedee6d331178aad89e390d (2026.1.28-dev).",
       "compatibility": "Rebuild native components and rebake every managed role with ABI generator identity 9 and runtime 0.0.71. The preceding unpublished ABI 8/runtime 0.0.70 also requires rebuilding. Upgrade matching client/server binaries and resources together. Native/AngelScript signatures, method IDs, host/updater layout, resource schemas and persisted properties remain unchanged; no database conversion is needed. Rollback rebuilds and rebakes matching previous sources for all sides.",
       "owner": "managed-scripting"
+    },
+    {
+      "domain": "audio",
+      "change_id": "audio-change.model-contract.7fffbc5049436082",
+      "baseline_contract_sha256": "d711eeb66a7f54e9339d92647ea68be3bc69694daccbfd52c92906f0283843d6",
+      "current_contract_sha256": "948cc5a651a28feccb375cf17c8eb8a7274bd9b1d955a6a1f4497c28c0510f15",
+      "classification": "compatible",
+      "rationale": "Extend the authoring contract with an optional ACM importer; mandatory WAV/Ogg defaults, exact paths, PCM/Vorbis encoding and runtime behavior retain their existing meanings. Model sources/outputs and validation inventory now include the guarded importer.",
+      "migration": "Engine 2026.1.30-dev: projects using local ACM decoding enable FO_AUDIO_ACM before StartProjectGeneration and remove local source/test entries and SetupBakersHook loader registration. Keep sound/music/ stereo and other paths mono. Reconfigure, rebuild and rebake; disabled ACM inputs fail explicitly. WAV/Ogg-only projects retain OFF with no source migration. See Docs/en/reference/changelog.md Current and Docs/en/how-to/content/audio.md Optional ACM authoring.",
+      "release_note": "Docs/en/reference/changelog.md Current and its Russian mirror describe the built-in ACM owner, channel semantics, opt-in, diagnostics, baking fingerprint and complete project migration.",
+      "compatibility": "No additional network marker change (upstream 0.0.71), persisted entity/database migration, sprite/resource schema change or host/runtime ABI change. Existing runtime reads the same Vorbis payload at the preserved authored path. FO_AUDIO_ACM is baking-impacting and requires reconfiguration/rebaking on changes.",
+      "owner": "audio-baking"
+    },
+    {
+      "domain": "audio",
+      "change_id": "audio-change.modified.fa359bf56f66161a",
+      "baseline_contract_sha256": "d711eeb66a7f54e9339d92647ea68be3bc69694daccbfd52c92906f0283843d6",
+      "current_contract_sha256": "948cc5a651a28feccb375cf17c8eb8a7274bd9b1d955a6a1f4497c28c0510f15",
+      "classification": "compatible",
+      "rationale": "Extend the authoring contract with an optional ACM importer; mandatory WAV/Ogg defaults, exact paths, PCM/Vorbis encoding and runtime behavior retain their existing meanings. Model sources/outputs and validation inventory now include the guarded importer.",
+      "migration": "Engine 2026.1.30-dev: projects using local ACM decoding enable FO_AUDIO_ACM before StartProjectGeneration and remove local source/test entries and SetupBakersHook loader registration. Keep sound/music/ stereo and other paths mono. Reconfigure, rebuild and rebake; disabled ACM inputs fail explicitly. WAV/Ogg-only projects retain OFF with no source migration. See Docs/en/reference/changelog.md Current and Docs/en/how-to/content/audio.md Optional ACM authoring.",
+      "release_note": "Docs/en/reference/changelog.md Current and its Russian mirror describe the built-in ACM owner, channel semantics, opt-in, diagnostics, baking fingerprint and complete project migration.",
+      "compatibility": "No additional network marker change (upstream 0.0.71), persisted entity/database migration, sprite/resource schema change or host/runtime ABI change. Existing runtime reads the same Vorbis payload at the preserved authored path. FO_AUDIO_ACM is baking-impacting and requires reconfiguration/rebaking on changes.",
+      "owner": "audio-baking"
+    },
+    {
+      "domain": "audio",
+      "change_id": "audio-change.modified.7e88831ed9ef5f37",
+      "baseline_contract_sha256": "d711eeb66a7f54e9339d92647ea68be3bc69694daccbfd52c92906f0283843d6",
+      "current_contract_sha256": "948cc5a651a28feccb375cf17c8eb8a7274bd9b1d955a6a1f4497c28c0510f15",
+      "classification": "compatible",
+      "rationale": "Extend the authoring contract with an optional ACM importer; mandatory WAV/Ogg defaults, exact paths, PCM/Vorbis encoding and runtime behavior retain their existing meanings. Model sources/outputs and validation inventory now include the guarded importer.",
+      "migration": "Engine 2026.1.30-dev: projects using local ACM decoding enable FO_AUDIO_ACM before StartProjectGeneration and remove local source/test entries and SetupBakersHook loader registration. Keep sound/music/ stereo and other paths mono. Reconfigure, rebuild and rebake; disabled ACM inputs fail explicitly. WAV/Ogg-only projects retain OFF with no source migration. See Docs/en/reference/changelog.md Current and Docs/en/how-to/content/audio.md Optional ACM authoring.",
+      "release_note": "Docs/en/reference/changelog.md Current and its Russian mirror describe the built-in ACM owner, channel semantics, opt-in, diagnostics, baking fingerprint and complete project migration.",
+      "compatibility": "No additional network marker change (upstream 0.0.71), persisted entity/database migration, sprite/resource schema change or host/runtime ABI change. Existing runtime reads the same Vorbis payload at the preserved authored path. FO_AUDIO_ACM is baking-impacting and requires reconfiguration/rebaking on changes.",
+      "owner": "audio-baking"
     }
   ]
 }

@@ -270,6 +270,36 @@ TEST_CASE("AudioBaker")
     constexpr int32_t sample_rate = 22050;
     constexpr size_t frame_count = 4410;
 
+    SECTION("OptionalAcmImporter")
+    {
+        // The stereo header deliberately describes mono effect data, as Fallout assets commonly do
+        const std::array<uint8_t, 18> acm = {0x97, 0x28, 0x03, 0x01, 0x20, 0, 0, 0, 2, 0, 0x22, 0x56, 0, 2, 0, 0, 0, 0};
+        TestRig rig;
+        rig.AddSourceFile("sound/SFX/Synthetic.ACM", vector<uint8_t>(acm.begin(), acm.end()));
+        rig.AddSourceFile("Sound/Music/Synthetic.acm", vector<uint8_t>(acm.begin(), acm.end()));
+        AudioBaker baker(rig.MakeContext());
+
+#if FO_AUDIO_ACM
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+        REQUIRE(rig.Outputs.size() == 2);
+        for (const auto& [path, channels] : vector<std::pair<string, int32_t>> {{"sound/SFX/Synthetic.ACM", 1}, {"Sound/Music/Synthetic.acm", 2}}) {
+            REQUIRE(rig.Outputs.contains(path));
+            DecodedAudio decoded = DecodeVorbis(rig.Outputs.at(path));
+            CHECK(decoded.Channels == channels);
+            CHECK(decoded.SampleRate == sample_rate);
+            CHECK(decoded.Samples.size() == acm[4]);
+        }
+        rig.Outputs.clear();
+        baker.BakeFiles(rig.GetAllSourceFiles(), "sound/SFX/Synthetic.ACM");
+        REQUIRE(rig.Outputs.size() == 1);
+        CHECK(rig.Outputs.contains("sound/SFX/Synthetic.ACM"));
+#else
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("enable FO_AUDIO_ACM"));
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), "sound/SFX/Synthetic.ACM"), Catch::Matchers::ContainsSubstring("sound/SFX/Synthetic.ACM"));
+        CHECK(rig.Outputs.empty());
+#endif
+    }
+
     SECTION("EncodesWavToVorbisUnderTheAuthoredPath")
     {
         vector<int16_t> samples = MakeSineFrames(frame_count, 1, sample_rate);

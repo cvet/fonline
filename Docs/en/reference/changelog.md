@@ -14,6 +14,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-11
 
+### Added
+
+- Add the optional built-in Interplay ACM audio importer as `FO_AUDIO_ACM`, OFF by default. `AudioBaker-Acm.*` owns the per-decoder unpacker state and Fallout channel convention; `AudioBaker` registers it only when enabled. Move the decoder regression fixtures into Engine and test automatic Vorbis baking plus disabled requests.
+
+### Migration
+
+- Base: `2026.1.29-dev`, `3a366761742204d15aa86726cc23168c9b7ec81d`; this update is `2026.1.30-dev`. WAV/Ogg defaults, exact paths, playback, volumes and existing source meanings stay unchanged. The new importer is Baker-only and backend/platform independent; no new third-party library is required.
+- Projects using a local ACM loader must set `SetOptionValues(FO_AUDIO_ACM ON)` before `StartProjectGeneration`, remove their ACM source/test entries from `AddEngineSources`, and remove the loader include and `audio_baker->AddLoader(LoadAcmAudio, {"acm"})` registration from `SetupBakersHook`. Keep other project bakers/hooks. Direct decoder users include `AudioBaker-Acm.h` and use `AudioBakerAcm::Decoder`, `AudioBakerAcm::DecoderException` and `AudioBakerAcm::Load(string_view, FileReader)`; their declarations exist only when enabled. Search CMake, presets, environment and native extensions for `AcmDecoder`, `LoadAcmAudio`, `.acm` and `FO_AUDIO_ACM` before migration. Projects using only WAV/Ogg need no source migration and leave the option OFF.
+- Preserve a case-insensitive `sound/music/` prefix for stereo ACM; all other ACM paths are mono even if the header says stereo. Keep positive source sample rates and complete non-empty PCM frames. The unpacker retains the original wrap/padding arithmetic; encoded output retains the authored path and uses the existing Vorbis payload. Add `acm` to project `Audio.SoundFileExtensions` only when the inspection catalog needs it; the Engine default remains `wav ogg`.
+- Reconfigure, rebuild bakers/affected native targets, then bake all resource packs with `Audio`. `FO_AUDIO_ACM` participates in `FO_BAKING_CONFIG_HASH`, so missing/changed fingerprints force a full bake and are written only on success. Disabled collection and targeted ACM requests fail before incremental skipping with `Audio importer is disabled; enable FO_AUDIO_ACM` and the path. Confirm focused decoder tests, enabled/disabled bake tests, real ACM pack counters/paths/channel shapes and active-device client playback.
+- No persisted entity/database conversion, migration rule, network marker (upstream `0.0.71`), sprite/resource schema or host/runtime ABI change. Ship the newly baked Vorbis resources at their existing paths. Rollback restores the previous baker and the project's local loader/build entries together, followed by a full bake; do not mix loader registrations from both owners.
+
+## 2026.1.29-dev - 2026-10-11
+
 ### Fixed
 
 - Factory-backed Managed C# constructors create usable native objects and share their factory lease. Native types without a factory have no public default constructor; dynamic DTOs keep ordinary construction.

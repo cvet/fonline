@@ -208,7 +208,6 @@ Use the `win64-` equivalents on Windows.
 
 On Engine/project updates, inspect `Settings.inc`, `Settings.cpp`, `ApplicationInit.cpp`, BuildTools options/baking stages and project `.fomain`. Reconcile this guide, project config, tests and generated references in the same change when precedence, fields/defaults, pack routing or launch profiles change.
 
-<a id="optional-native-components"></a>
 ## Optional native components
 
 Select components with `SetOptionValues` before `StartProjectGeneration`: BOOL, OFF by default, numeric 0/1 definitions, no aggregate selector. Register/include all Engine sources/headers unconditionally; files guard optional contents.
@@ -231,17 +230,17 @@ SetOptionValues(
 | `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; individual legacy importers |
 | `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; independent importers and a shared guarded decoder |
 | `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; individual legacy importers |
+| `FO_AUDIO_ACM` | Baker; Interplay ACM decoder, built-in Ogg Vorbis encoder |
 
-Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites without importers/database drivers.
+Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng, plus WAV/Ogg and Vorbis/Ogg for audio. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites and Vorbis audio without source importers/database drivers.
 
 Retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` inputs fail; clear their cache/environment and choose positive options.
 
-<a id="baking-configuration-fingerprint"></a>
 ## Baking configuration fingerprint
 
 Declarations register type and baking impact. Mark `DeclareBoolOption`/`DeclareValueOption`, or a leading plural `Declare*Options` argument, with `BAKING` for inclusion in `FO_BAKING_CONFIG_HASH`. Unmarked options are excluded; [option reference](../../reference/cmake/options.md) lists each decision.
 
-Hash inputs: project identity/config, geometry, model/effect limits, 3D, particles, scripting and archive/image importers. Database providers, diagnostics, allocators, output paths and native targets are excluded.
+Hash inputs: project identity/config, geometry, model/effect limits, 3D, particles, scripting and archive/image/audio importers. Database providers, diagnostics, allocators, output paths and native targets are excluded.
 
 CMake computes SHA-256 just before codegen, after preceding stages and Codegen Pre. Registered names are sorted, BOOLs become 0/1 and string boundaries remain distinct. Marked project options join automatically; finalize values before `SetupCodeGeneration`.
 

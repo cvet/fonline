@@ -2,6 +2,57 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-11 - Reconcile TLA ACM with published Managed RefType ownership
+
+- Starting TLA revision: `5977ce9161224170bfee3fc16761a61bf0491f9a`; its
+  recorded Engine pin and clean local master are
+  `27b8d95fc34635b0e1d1da062dd3efb79d09b330` (`2026.1.29-dev`, ACM).
+  Fetch Engine upstream master
+  `3a366761742204d15aa86726cc23168c9b7ec81d` (`2026.1.29-dev`, Managed).
+  Retain the original local commit under
+  `safety/tla-acm-before-update-20261011` while preparing its rebase onto the
+  published tip. No remote publication is authorized.
+- Audit every incoming native source, C# lease, generator, regression fixture
+  and documentation change from common baseline
+  `6a1f03880a84e097cfedee6d331178aad89e390d`. Preserve factory adoption,
+  borrowed-wrapper acquisition, disposal validation, engine-thread cleanup,
+  shutdown ownership, and ABI generator identity 9. The upstream runtime
+  compatibility marker advances from `0.0.70` to `0.0.71`.
+- Native ACM sources and tests combine without conflicts. Reconcile both
+  report histories and all contract dispositions; retain the published Managed
+  entry as `2026.1.29-dev` and recalculate the local ACM entry to
+  `2026.1.30-dev` from that published base. ACM adds no further compatibility
+  marker, storage, resource-format or host/updater ABI change. Refresh the
+  reviewed Russian changelog source hash.
+- TLA remains AngelScript-only (`FO_MANAGED_SCRIPTING=OFF`), with the ACM
+  importer enabled and both map grid selectors `Dynamic`. No gameplay source,
+  authored resource or project configuration migration is required. Rebuild
+  matching client/server/baker components and rebake role metadata for the
+  upstream compatibility boundary; no persisted-data conversion is required.
+- Validate the reconciled source before completing the rebase: TLA's full
+  `Verify :: All` passes all native targets, 578 native cases
+  (729026 assertions), 106 script harness cases, Python tooling,
+  validators and formatters. Focused Managed lifetime/version/audio/CMake
+  checks pass 60 tests and 71 subtests. Source version and generated
+  audio/CMake checks pass; the previous-pin-to-working-source aggregate diff
+  reports one compatibility change across 17 domains, one required disposition
+  and zero missing dispositions.
+- Preserve the initial unsuccessful attempt and its environmental limit:
+  The first full native attempt passes 577 cases and fails one existing
+  sleep timing bound (17.3 ms versus less than 8 ms) on a saturated host;
+  the isolated unchanged Threading case passes all 11 assertions, followed
+  by this clean full-chain retry. The original failing log is retained.
+- Documentation preparation and validation pass 411 source pages, 312
+  normative snippets, 159 evidence samples and 183 external-parser checks;
+  all 4864 translated descriptions are current. Build the rendered site from
+  the reconciled sources: artifact validation passes 592 routes, 41 static
+  endpoints and 85620 local references; the browser audit passes 1776 page
+  checks, 15 interaction profiles and 23 screenshots, with zero findings.
+  Inspect the Russian 200-percent zoom screenshot and the current version
+  badge. Final-commit builds and the ordinary isolated player runtime smoke
+  are verified by the embedding checkout after rebase completion; the checks
+  recorded here are source validation before that commit exists.
+
 ## 2026-10-11 - Reconcile IDisposable ownership with published master 28
 
 - Audit all three published steps from `16f1608794eafeb6c05001b997071105dbc403b9`
@@ -74,6 +125,66 @@ This report records source-grounded documentation verification passes for the en
   is a working-tree test-only change; native Engine sources remain identical
   to the compiled revision. No publication, real database migration,
   AngelScript, other renderer or non-Windows platform qualification is implied.
+
+## 2026-10-11 - Move the optional ACM importer into Engine
+
+- Fast-forward the clean embedding Engine from published
+  `1f56dafc48504da2e2b12736a7bf5fbf10b45de2` (`2026.1.26-dev`) to
+  `6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.28-dev`). Audit the
+  incoming output-lock, diagnostic-lock, hash ownership and normalization
+  source/tests; preserve their published migration records. Ignore the two
+  generated lock files in TLA. The uncommitted ACM block is `2026.1.29-dev`.
+- Move the per-instance decoder, loader and existing regression fixtures into
+  unconditional Engine source inventories with guarded contents. Add
+  `FO_AUDIO_ACM`, OFF by default and marked for the baking fingerprint; TLA
+  enables it and removes its duplicate sources and hook registration. Preserve
+  authored paths, PCM arithmetic, sample rates and the Fallout channel convention.
+  No save, network, resource-container or host/runtime ABI conversion is required.
+- Reconcile the owning audio/build/source-tree guides, English/Russian changelog,
+  stable description translations and generated audio/CMake models. The exact
+  published-base/current contract diff passes six changes across seventeen
+  domains, three required dispositions and none missing; native API has no delta.
+  CMake structural fixtures now account for 58 options. Focused documentation
+  tests pass after updating the previous 57-option expectation.
+- Reconfigure and complete TLA's authoritative `Verify :: All`: full resource bake,
+  all native targets, 578 native cases / 729001 assertions, 106/106 script cases,
+  156 Python tests / 82 subtests, quality/nullability gates and formatters. Native
+  builds and script compilation finish without warnings. A separate native
+  `FO_AUDIO_ACM=0` binary passes 186 AudioBaker assertions, including explicit
+  collection/targeted ACM rejection and unchanged WAV/Ogg behavior.
+- Compare every shipped ACM-derived payload before/after the full bake: all 1385
+  files are byte-identical (1361 mono effects, 24 stereo tracks, all 22050 Hz).
+  The full bake processes 19 packs, 33978 inputs and 18672 submitted outputs;
+  Audio counters record 1518 encodes and 21 native-Ogg passthroughs. Preserve the
+  full-bake report before incremental startup runs overwrite the canonical report.
+- Rendered-site validation exposes three duplicate English fragment IDs from
+  published version 26: explicit anchors repeat automatic heading IDs in project
+  configuration and persistence. Remove only the repeated anchors, retain all
+  public fragment addresses and Russian anchors, and refresh translation hashes.
+- Source documentation validation passes 411 Markdown entries; preparation checks
+  312 normative snippets, 159 evidence snippets and 183 external parser cases.
+  All 4864 generated description translations are current. AI delivery contains
+  398 public documents and 2277047 full-context bytes; retrieval retains 28 tasks,
+  67 checks, 100% success and 0.930 MRR.
+- Render the unchanged source, layout and navigation inputs through the pinned
+  Ruby/GitHub Pages toolchain on a verified Linux mirror to avoid slow WSL/Windows
+  filesystem traversal. All 1514 input hashes match the current checkout. Import
+  the rendered tree and current public endpoints into the canonical ignored site
+  directory. Artifact validation passes 592 routes, 41 static endpoints and 85616
+  local references. Earlier incomplete-mirror attempts fail their gates and are
+  retained as failed evidence, not rendered-site acceptance.
+- The final pinned Chromium audit passes all 1776 rendered page checks across
+  desktop, mobile and 200-percent profiles, fifteen interaction profiles and
+  twenty-three screenshots, with zero findings.
+  Review the retained Russian 200-percent view and the normal TLA player
+  screenshot; navigation, readable text, current version and the ordinary map
+  state are visible.
+- Isolated normal-client runs register a player, enter the ordinary map and move.
+  With music muted, the client's own active output-device session has a nonzero
+  peak during ordinary ACM ambience; user cache hashes remain unchanged. All three
+  runs record script/rendering overruns on the saturated shared host, including
+  the final 30-FPS run. Their functional/audio evidence does not certify a
+  warning-free or performance result; the diagnostic gate remains failed.
 
 ## 2026-10-11 - Restore Baker ownership on updated master
 

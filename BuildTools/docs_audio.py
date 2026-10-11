@@ -142,6 +142,7 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
         "audio_manager_header",
         "audio_baker",
         "audio_baker_header",
+        "audio_baker_acm",
         "client_global_scripts",
         "settings",
         "application",
@@ -252,6 +253,14 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     if indexed_extensions != baker_extensions:
         raise ValueError("Audio.SoundFileExtensions and AudioBaker extensions differ")
 
+    optional_baker_extensions = {
+        option: _quoted_values(extensions)
+        for option, extensions in re.findall(
+            r"#if (FO_AUDIO_[A-Z0-9_]+)\s+AddLoader\([^;]+\{([^}]+)\}\);\s+#endif",
+            baker_text,
+        )
+    }
+
     native_test_root = root / str(sources["native_test_directory"])
     native_test_files = sorted(
         path.relative_to(root).as_posix()
@@ -267,6 +276,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     return {
         "indexed_extensions": indexed_extensions,
         "baker_extensions": baker_extensions,
+        "optional_baker_extensions": optional_baker_extensions,
         "decoder_extensions": [native_extension.group(1)],
         "raw_copy_extensions": raw_copy_extensions,
         "missing_suffix_fallback": False,

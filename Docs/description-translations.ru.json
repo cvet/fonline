@@ -2889,8 +2889,8 @@
           "translation": "Аудиоресурсы больше не используют RawCopy: WAV нормализуется и кодируется, а уже нативный Ogg проверяется и копируется без дополнительного прохода с потерями."
         },
         "/delivery_rules/@id=audio.delivery.raw-copy/requirement": {
-          "source_sha256": "ffc71600f6d1106e5517a1057446a88198ed999a6f8712ed38f65f2147ffb66d",
-          "translation": "Включайте Audio baker в каждый ресурсный пакет, владеющий runtime-аудио: он принимает настроенные входы wav и ogg и записывает проверенный payload Ogg Vorbis."
+          "source_sha256": "e1adbfbf2275befdeb865ad42af5ac4a538d8573d87bac7d99b54eb467fbabf6",
+          "translation": "Включайте baker Audio в каждый пакет с runtime-аудио; он принимает WAV и Ogg, а при FO_AUDIO_ACM ещё и ACM, и выдаёт проверенный payload Ogg Vorbis."
         },
         "/description": {
           "source_sha256": "0f5a2ac07cca4b7711523b5970448354471a09551ce56079a20c3db85f756137",
@@ -3145,8 +3145,8 @@
           "translation": "Сфокусированные тесты доказывают преобразование и passthrough, а запекание во встраиваемом проекте доказывает, что его пакет действительно выбирает Audio и поставляет ресурсы, используемые скриптами."
         },
         "/validation_rules/@id=audio.validation.raw-copy/requirement": {
-          "source_sha256": "d658f335199dc52da465788f24b5b17eb0b62ab470c62574076059da8bdfc191",
-          "translation": "Запеките репрезентативные входы PCM/float WAV и нативного Ogg, убедитесь в сохранении авторских путей, проверьте счётчики аудио и откройте каждый результат как Vorbis."
+          "source_sha256": "a4c21e2ae6a5f60f23384058023ba20f641d486fa6526db0d1eb3aff2d76a066",
+          "translation": "Запеките типичные PCM/float WAV, нативный Ogg и ACM при включённой опции, проверьте авторские пути, моно/стерео каналы ACM, счётчики и открытие всех результатов как Vorbis. При выключенном FO_AUDIO_ACM запросы ACM для коллекции и отдельного пути должны явно падать."
         },
         "/validation_rules/@id=audio.validation.visible-client/name": {
           "source_sha256": "54306279de0fa8e5ba8e6f6c742d480f877b1501877252f1d1f614283d669dfd",
@@ -3159,6 +3159,34 @@
         "/validation_rules/@id=audio.validation.visible-client/requirement": {
           "source_sha256": "9dd60203010a2d9a841e7559991e7e5f0732c46160b72bd1014e4ff696d3a3b3",
           "translation": "На каждой заявленной платформе используйте видимый клиент с включённым аудио: воспроизведите запечённый ресурс с WAV-путём и ресурс с нативным Ogg-путём, переместите позиционированный звук, замените музыку, проверьте отложенный и немедленный повтор и крайние значения громкости."
+        },
+        "/formats/@id=audio.format.acm/name": {
+          "source_sha256": "1eee5c8e9635a388cfa900386a209c816c9e23b4a00b58f52120a124f7a4b6be",
+          "translation": "Формат Interplay ACM"
+        },
+        "/formats/@id=audio.format.acm/role": {
+          "source_sha256": "06d276f5ce04096942b0a2516868b2b19031a4af700cfb289229487bd55443c5",
+          "translation": "Опциональный авторский вход"
+        },
+        "/formats/@id=audio.format.acm/requirement": {
+          "source_sha256": "8eb6529ad003049d66290291b496b51e491c061ffce4476beb655ef39b54f3e3",
+          "translation": "Включите FO_AUDIO_ACM перед запеканием Interplay ACM версии 1 через baker Audio; по умолчанию опция OFF, запросы при выключенном импортёре падают с авторским путём."
+        },
+        "/formats/@id=audio.format.acm/rationale": {
+          "source_sha256": "fb141f4f86aeca0c9f18e2f238c15a72ce085e2ced51d3e2be7172a263fe2aba",
+          "translation": "Импортёр Engine под guard декодирует ACM в signed 16-bit PCM и использует общий проверяемый кодировщик Vorbis, сохраняя авторский путь как для WAV. Runtime-декодера ACM нет."
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/name": {
+          "source_sha256": "a160c295afcf0dcf11bb90fb285d3565169eb351460056e78667b7a975ee4b53",
+          "translation": "Соглашение Fallout о каналах ACM"
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/requirement": {
+          "source_sha256": "ec8d5dd007521da728bafdbc02f5dab13bc4a45df849371d2c13e8a43ac16ff6",
+          "translation": "Для ACM трактуйте путь sound/music/ без учёта регистра как стерео, остальные пути как моно независимо от поля каналов в заголовке; сохраняйте положительную частоту и требуйте полные кадры при кодировании."
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/rationale": {
+          "source_sha256": "dc1d53b86fc91566cc14b24dda6aa3a3c29ca71775c48299578ca96bd9f7fb98",
+          "translation": "Заголовки эффектов Fallout могут заявлять стерео поверх моно-сэмплов. Декодер сохраняет арифметику оригинального unpacker и нулевое дополнение после усечённого тела; отдельные таблицы амплитуд разрешают параллельное запекание."
         }
       }
     },
@@ -3668,6 +3696,10 @@
         "/helpers/@id=cmake.helper.TemporaryCompat/description": {
           "source_sha256": "d0255ca6a9ec191b5990343734d320439e6094f6baae721a6cc0f9621a30a6bd",
           "translation": "Помечает временные отказы сборки или платформенные ограничения общей датой удаления совместимости; temporary_compat.py проверяет истечение срока, включая неактивные ветки."
+        },
+        "/options/@id=cmake.option.FO_AUDIO_ACM/description": {
+          "source_sha256": "ead2313fdc27b0f5d6ae192ceb6070ff069512726f5f2f286e9d636bd1679c76",
+          "translation": "Включить импортёр аудио ACM."
         }
       }
     },

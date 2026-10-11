@@ -30,6 +30,7 @@
     "audio_manager_header": "Source/Client/AudioManager.h",
     "audio_baker": "Source/Tools/AudioBaker.cpp",
     "audio_baker_header": "Source/Tools/AudioBaker.h",
+    "audio_baker_acm": "Source/Tools/AudioBaker-Acm.cpp",
     "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "settings": "Source/Common/Settings.inc",
     "application": "Source/Frontend/Application.cpp",
@@ -94,8 +95,14 @@
     "authored_extension_preserved": true,
     "native_test_files": [
       "Source/Tests/Test_AudioBaker.cpp",
+      "Source/Tests/Test_AudioBakerAcm.cpp",
       "Source/Tests/Test_AudioManager.cpp"
-    ]
+    ],
+    "optional_baker_extensions": {
+      "FO_AUDIO_ACM": [
+        "acm"
+      ]
+    }
   },
   "formats": [
     {
@@ -147,6 +154,31 @@
           ]
         }
       ]
+    },
+    {
+      "id": "audio.format.acm",
+      "name": "Interplay ACM",
+      "extension": ".acm",
+      "role": "Optional authoring input",
+      "stability": "experimental",
+      "requirement": "Enable FO_AUDIO_ACM before baking Interplay ACM version 1 inputs through the Audio baker; the option defaults to OFF, and disabled requests fail with the authored path.",
+      "rationale": "The guarded Engine importer decodes ACM to signed 16-bit PCM and uses the same checked Vorbis encoder and preserved resource path as WAV. There is no ACM runtime decoder.",
+      "source": [
+        {
+          "path": "BuildTools/cmake/stages/Init.cmake",
+          "anchors": [
+            "FO_AUDIO_ACM \"Enable the ACM audio importer\" OFF",
+            "FO_AUDIO_ACM=$<BOOL:${FO_AUDIO_ACM}>"
+          ]
+        },
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "AddLoader(AudioBakerAcm::Load, {\"acm\"})",
+            "Audio importer is disabled; enable FO_AUDIO_ACM"
+          ]
+        }
+      ]
     }
   ],
   "delivery_rules": [
@@ -154,7 +186,7 @@
       "id": "audio.delivery.raw-copy",
       "name": "AudioBaker delivery",
       "stability": "experimental",
-      "requirement": "Include the Audio baker in each resource pack that owns runtime audio; it accepts the configured wav and ogg inputs and writes a verified Ogg Vorbis payload.",
+      "requirement": "Include the Audio baker in each resource pack that owns runtime audio; it accepts WAV and Ogg, plus ACM with FO_AUDIO_ACM enabled, and writes a verified Ogg Vorbis payload.",
       "rationale": "Audio resources no longer use RawCopy: WAV is normalized and encoded while an already-native Ogg is verified and copied without another lossy pass.",
       "source": [
         {
@@ -385,6 +417,32 @@
           ]
         }
       ]
+    },
+    {
+      "id": "audio.decoding.acm-channels",
+      "name": "Fallout ACM channel convention",
+      "stability": "experimental",
+      "requirement": "For ACM, interpret a case-insensitive sound/music/ path as stereo and every other path as mono, regardless of the header channel field; preserve the declared positive sample rate and require complete frames when encoding.",
+      "rationale": "Fallout effect headers can claim stereo over mono samples. The decoder retains the original unpacker arithmetic and zero-bit padding past a truncated body, while per-instance amplitude tables permit concurrent baking.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker-Acm.cpp",
+          "anchors": [
+            "MUSIC_DIR = \"sound/music/\"",
+            "pcm.Channels = is_music ? 2 : 1",
+            "pcm.SampleRate = decoder.GetSampleRate()",
+            "ACM stream declares no sample rate",
+            "_amplitudes.resize(AMPLITUDE_TABLE_SIZE)",
+            "if (_dataPos >= _data.size())"
+          ]
+        },
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "Interleaved sample count is not a whole number of frames"
+          ]
+        }
+      ]
     }
   ],
   "playback_rules": [
@@ -596,7 +654,7 @@
       "id": "audio.validation.raw-copy",
       "name": "Audio baking gate",
       "stability": "experimental",
-      "requirement": "Bake representative PCM/float WAV and native Ogg inputs, verify authored paths are preserved, inspect the audio counters, and open every output as Vorbis.",
+      "requirement": "Bake representative PCM/float WAV, native Ogg and enabled ACM inputs, verify authored paths and ACM mono/stereo channels, inspect the audio counters, and open every output as Vorbis. With FO_AUDIO_ACM disabled, both collection and targeted ACM bakes must fail explicitly.",
       "rationale": "Focused tests prove conversion and passthrough, while an embedding-project bake proves that its pack actually selects Audio and ships the resources consumed by its scripts.",
       "source": [
         {
@@ -727,16 +785,16 @@
     }
   ],
   "summary": {
-    "entry_count": 31,
-    "format_count": 2,
+    "entry_count": 33,
+    "format_count": 3,
     "delivery_rule_count": 5,
-    "decoding_rule_count": 7,
+    "decoding_rule_count": 8,
     "playback_rule_count": 10,
     "validation_rule_count": 7,
     "entries_by_stability": {
-      "experimental": 29,
+      "experimental": 31,
       "internal": 2
     }
   },
-  "contract_digest": "a5b3cb18613c5f67a6be38634f1e162fc652de55e57bf8b14482015ca92c9205"
+  "contract_digest": "394916f497737c02d26fe04fa27ac697add44812653a7f6a884d4fc9ee0ced5b"
 }

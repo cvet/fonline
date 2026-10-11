@@ -114,4 +114,4 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 
 ## Adjacent optional modules
 
-`Common/DataSource-*`, `Server/DataBase-*` and `Tools/ImageBaker-*` are adjacent `.h/.cpp` pairs with internal numeric guards and unconditional registration/includes. Coordinators retain dispatch; `ImageImport` owns frames/context, `DataBaseSerialization` owns JSON/CBOR, and Mongo owns BSON. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) lists modules, roles and dependencies.
+`Common/DataSource-*`, `Server/DataBase-*`, `Tools/ImageBaker-*` and `Tools/AudioBaker-*` are adjacent `.h/.cpp` pairs with internal numeric guards and unconditional registration/includes. Coordinators retain dispatch; `ImageImport` owns frames/context, `DataBaseSerialization` owns JSON/CBOR, and Mongo owns BSON. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) lists modules, roles and dependencies.

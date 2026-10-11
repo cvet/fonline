@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"d873f5702064e5d6e8ff9bab19eac3e2133c36492a2a26ef4e0fc65adb6d9394"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"49a8653055a51a5d40b29594769050eba87426b1296ed00a03f121ead56c4e22"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -115,4 +115,4 @@ Particle authoring имеет отдельный `ParticleBaker`: работу �
 
 ## Соседние опциональные модули
 
-`Common/DataSource-*`, `Server/DataBase-*`, `Tools/ImageBaker-*` — соседние `.h/.cpp` под внутренними числовыми guards, с безусловной регистрацией/includes. Координаторы сохраняют dispatch; `ImageImport` владеет frames/context, `DataBaseSerialization` — JSON/CBOR, Mongo — BSON. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) перечисляет модули, роли и зависимости.
+`Common/DataSource-*`, `Server/DataBase-*`, `Tools/ImageBaker-*` и `Tools/AudioBaker-*` — соседние `.h/.cpp` под внутренними числовыми guards, с безусловной регистрацией/includes. Координаторы сохраняют dispatch; `ImageImport` владеет frames/context, `DataBaseSerialization` — JSON/CBOR, Mongo — BSON. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) перечисляет модули, роли и зависимости.

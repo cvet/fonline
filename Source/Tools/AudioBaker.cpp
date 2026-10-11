@@ -32,6 +32,7 @@
 //
 
 #include "AudioBaker.h"
+#include "AudioBaker-Acm.h"
 #include "FileSystem.h"
 #include "Settings.h"
 
@@ -70,6 +71,9 @@ AudioBaker::AudioBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
     AddLoader(std::bind(&AudioBaker::LoadWav, this, std::placeholders::_1, std::placeholders::_2), {"wav"});
+#if FO_AUDIO_ACM
+    AddLoader(AudioBakerAcm::Load, {"acm"});
+#endif
 }
 
 void AudioBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_extensions)
@@ -90,9 +94,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            string ext = strex(file_header.GetPath()).get_file_extension();
-
-            if (!IsBakeableExtension(ext)) {
+            if (!IsBakeableExtension(file_header.GetPath())) {
                 continue;
             }
             if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
@@ -103,9 +105,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
     }
     else {
-        string ext = strex(target_path).get_file_extension();
-
-        if (!IsBakeableExtension(ext)) {
+        if (!IsBakeableExtension(target_path)) {
             return;
         }
 
@@ -165,8 +165,16 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto AudioBaker::IsBakeableExtension(string_view ext) const -> bool
+auto AudioBaker::IsBakeableExtension(string_view path) const -> bool
 {
+    string ext = strex(path).get_file_extension();
+
+#if !FO_AUDIO_ACM
+    if (ext == "acm") {
+        throw AudioBakerException("Audio importer is disabled; enable FO_AUDIO_ACM", path);
+    }
+#endif
+
     return ext == NATIVE_EXTENSION || _fileLoaders.contains(string(ext));
 }
 

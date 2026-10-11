@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dc9520bda1fe39fda1afce0b4d30edd4bf23f4b13ce8dd191871648c96fa511d"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"c80a2b5bbc5acb08c7a94d2685e61aea709301fa510ddc3d156270e700021d0c"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -292,8 +292,9 @@ SetOptionValues(
 | `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; отдельные legacy importers |
 | `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; независимые importers и общий decoder под guard |
 | `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; отдельные legacy importers |
+| `FO_AUDIO_ACM` | Baker; декодер Interplay ACM, встроенный кодировщик Ogg Vorbis |
 
-Memory обязательна в Server; PNG/TGA/FOFRM и libpng принадлежат Baker. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites без importers и драйверов БД.
+Memory обязательна в Server; для Baker обязательны PNG/TGA/FOFRM и libpng, а для аудио — WAV/Ogg и Vorbis/Ogg. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites и Vorbis-аудио без импортёров исходников и драйверов БД.
 
 Старые `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` завершаются ошибкой; удалите их из кеша/окружения и выберите положительные опции.
 
@@ -302,7 +303,7 @@ Memory обязательна в Server; PNG/TGA/FOFRM и libpng принадл�
 
 Объявление опции регистрирует её тип и влияние на бейкинг. `BAKING` в `DeclareBoolOption`/`DeclareValueOption` или в начале группы `Declare*Options` включает опции в `FO_BAKING_CONFIG_HASH`. Опции без отметки исключаются; [справочник опций](../../reference/cmake/options.md) показывает каждое решение.
 
-Хеш учитывает идентичность проекта и выбор конфига, геометрию, лимиты моделей/эффектов, 3D, частицы, scripting backend и импортеры архивов/изображений. Провайдеры БД, диагностика, allocator, пути вывода и выбор native-целей не инвалидируют ресурсы.
+Хеш учитывает идентичность проекта и выбор конфига, геометрию, лимиты моделей/эффектов, 3D, частицы, scripting backend и импортеры архивов/изображений/аудио. Провайдеры БД, диагностика, allocator, пути вывода и выбор native-целей не инвалидируют ресурсы.
 
 CMake считает SHA-256 непосредственно перед генерацией кода, после предыдущих стадий и Codegen Pre hook. Имена сортируются, BOOL нормализуются в 0/1, границы строк сохраняются. Новые отмеченные проектные опции включаются автоматически; завершите их настройку до потребления значений в `SetupCodeGeneration`.
 
