@@ -666,7 +666,7 @@ void EngineMetadata::BindProtoMigrator(hstring owner, hstring target, function<o
 
 auto EngineMetadata::ResolveDocumentProto(hstring owner, hstring target, const AnyData::Document& document) const -> hstring
 {
-    const auto rule = Hashes.to_hashed_string("Proto");
+    hstring rule = Hashes.to_hashed_string("Proto");
     auto functions = _protoMigrators.find(owner);
 
     if (!CheckMigrationRule(rule, owner, target).has_value() && (functions == _protoMigrators.end() || !functions->second.contains(target))) {

@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-11
 
+### Fixed
+
+- Normalize six display-query EOFs and make metadata `hstring` locals explicit; keep both read-only proxy const containers and analyzer reasons.
+- Sync the snippet regression with the reviewed 470-example/311-normative corpus; condense config prose and normalize four CMake comments. Full normative coverage and rejection tests remain enabled.
+- Reconcile image-import source ownership and native custom-loader migration guidance with the extracted modules.
+
+### Migration
+
+- Base: `2026.1.27-dev`, `5ef9334595f45522c8d580c25e22ed4556ab137b`; apply its locking/build-glue migration first. No runtime/API/options/ABI/resource/save change; compatibility stays `0.0.70`. For `2026.1.28-dev`, reconfigure/rebuild matching hosts and rebake role metadata/scripts; regenerate EN/RU, snippets, site/routes and AI delivery. Check formatting, native/process-lock tests and versioning.
+
+## 2026.1.27-dev - 2026-10-11
+
 ### Added
 
 - Add move-only `fs::exclusive_file_lock` and non-blocking `fs::try_lock_file`, with non-truncating acquisition, Unicode/long paths, explicit release, move transfer and non-inherited native descriptors. Web returns an unavailable lock.

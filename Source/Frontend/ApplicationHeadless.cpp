@@ -837,4 +837,3 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 }
 
 FO_END_NAMESPACE
-

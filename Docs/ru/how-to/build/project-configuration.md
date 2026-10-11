@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"f7e48ae12c282aa027580872a3c425c08965a299459321545b305f743b084b96"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dc9520bda1fe39fda1afce0b4d30edd4bf23f4b13ce8dd191871648c96fa511d"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а

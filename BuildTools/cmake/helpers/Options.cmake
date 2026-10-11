@@ -1,6 +1,6 @@
 include_guard()
 
-# Every declaration records its type and whether its final value affects baked resources.
+# Every declaration records its type and whether its final value affects baked resources
 function(RegisterDeclaredOption var optionType affectsBaking)
 	get_property(registeredType GLOBAL PROPERTY _FO_OPTION_${var}_TYPE)
 	get_property(registeredImpact GLOBAL PROPERTY _FO_OPTION_${var}_BAKING)
@@ -12,7 +12,7 @@ function(RegisterDeclaredOption var optionType affectsBaking)
 	set_property(GLOBAL PROPERTY _FO_OPTION_${var}_BAKING "${affectsBaking}")
 endfunction()
 
-# Run immediately before code generation, after option overrides and preceding stage hooks.
+# Run immediately before code generation, after option overrides and preceding stage hooks
 function(ComputeBakingConfigHash outputVar)
 	get_property(optionNames GLOBAL PROPERTY _FO_DECLARED_OPTIONS)
 	list(REMOVE_DUPLICATES optionNames)
@@ -32,7 +32,7 @@ function(ComputeBakingConfigHash outputVar)
 				set(optionValue 0)
 			endif()
 		endif()
-		# Length prefixes preserve strings containing separators, semicolons or newlines.
+		# Length prefixes preserve strings containing separators, semicolons or newlines
 		string(LENGTH "${optionName}" nameLength)
 		string(LENGTH "${optionValue}" valueLength)
 		string(APPEND configuration "${nameLength}:${optionName}${optionType}${valueLength}:${optionValue}\n")

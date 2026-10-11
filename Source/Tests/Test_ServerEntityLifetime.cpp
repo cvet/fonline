@@ -474,8 +474,8 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
     vector<int32_t> iterations;
     vector<uint64_t> reference_hashes;
     vector<string> report;
-    const std::array<string_view, 3> modes {"dense", "chunked", "hash"};
-    const array<string, 3> grid_types {"Static", "Chunked", "Dynamic"};
+    std::array<string_view, 3> modes {"dense", "chunked", "hash"};
+    array<string, 3> grid_types {"Static", "Chunked", "Dynamic"};
     for (int32_t sample = 0; sample < samples; sample++) {
         for (int32_t order = 0; order < 9; order++) {
             // Rotate and reverse the matrix so host load and cache history cannot always favour one mode
@@ -557,7 +557,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                     function<uint64_t()> Run;
                 };
                 vector<Workload> workloads;
-                const std::array<string_view, 5> names {"path_near", "path_medium", "path_long", "path_multihex", "path_sealed"};
+                std::array<string_view, 5> names {"path_near", "path_medium", "path_long", "path_multihex", "path_sealed"};
                 for (size_t index = 0; index < routes.size(); index++) {
                     workloads.emplace_back(Workload {string {names[index]}, routes[index].size(), [&, index] {
                                                          uint64_t hash = 14695981039346656037ull;

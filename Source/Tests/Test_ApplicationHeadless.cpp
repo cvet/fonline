@@ -346,4 +346,3 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 }
 
 FO_END_NAMESPACE
-

@@ -60,7 +60,7 @@ if(NOT "${_manifestStages}" STREQUAL "${FO_KNOWN_STAGES}")
 endif()
 
 file(READ "${_engineSourceRoot}/BuildTools/cmake/stages/Init.cmake" _initStageSource)
-# Evaluate the real declarations without compiler/platform/third-party setup.
+# Evaluate the real declarations without compiler/platform/third-party setup
 string(FIND "${_initStageSource}" "# Options" _declarationsBegin)
 string(FIND "${_initStageSource}" "# Quiet all non-error" _declarationsEnd)
 math(EXPR _declarationsLength "${_declarationsEnd} - ${_declarationsBegin}")

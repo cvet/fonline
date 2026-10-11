@@ -873,4 +873,3 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 auto IsQuitSignalReceived() noexcept -> bool;
 
 FO_END_NAMESPACE
-

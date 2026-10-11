@@ -737,9 +737,9 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEntityType("Item", true, false, true, true, true);
     meta.RegisterEntityType("Player", true, false, false, false, true);
-    const auto type = meta.Hashes.to_hashed_string("Item");
-    const auto legacy = meta.Hashes.to_hashed_string("Legacy");
-    const auto replacement = meta.Hashes.to_hashed_string("Replacement");
+    hstring type = meta.Hashes.to_hashed_string("Item");
+    hstring legacy = meta.Hashes.to_hashed_string("Legacy");
+    hstring replacement = meta.Hashes.to_hashed_string("Replacement");
     AnyData::Document original;
     original.Emplace("_Proto", string {"Legacy"});
     original.Emplace("Kind", string {"medical"});
@@ -773,7 +773,7 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
 
     SECTION("UnchangedFunctionStops")
     {
-        const auto unchanged = meta.Hashes.to_hashed_string("Unchanged");
+        hstring unchanged = meta.Hashes.to_hashed_string("Unchanged");
         meta.RegisterProtoMigrationRule("Item", "Transform", "Unchanged", "Keep");
         meta.BindProtoMigrator(type, unchanged, [](hstring, const AnyData::Document&) -> optional<hstring> { return std::nullopt; });
 
@@ -782,7 +782,7 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
 
     SECTION("ConditionalCyclesReject")
     {
-        const auto cycle = meta.Hashes.to_hashed_string("Cycle");
+        hstring cycle = meta.Hashes.to_hashed_string("Cycle");
         meta.RegisterProtoMigrationRule("Item", "Transform", "Cycle", "CycleFunc");
         meta.RegisterProtoMigrationRule("Item", "Rename", "CycleAlias", "Cycle");
         meta.BindProtoMigrator(type, cycle, [&](hstring, const AnyData::Document&) -> optional<hstring> { return meta.Hashes.to_hashed_string("CycleAlias"); });
@@ -864,8 +864,8 @@ TEST_CASE("Native dictionary proxies expose stored keys and current iteration or
 
 TEST_CASE("Const native collection proxies reject writes without changing their views")
 {
-    const vector<int32_t> array {7};
-    const map<int32_t, int32_t> dict {{7, 9}};
+    const vector<int32_t> array {7}; // FO_REDUNDANT_CONST_SUPPRESS: const container selects the read-only proxy constructor
+    const map<int32_t, int32_t> dict {{7, 9}}; // FO_REDUNDANT_CONST_SUPPRESS: const container selects the read-only proxy constructor
     NativeDataProvider::ArrayDataProxy array_proxy {array};
     NativeDataProvider::DictDataProxy dict_proxy {dict};
     int32_t replacement = 42;

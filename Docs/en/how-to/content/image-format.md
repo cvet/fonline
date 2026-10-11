@@ -32,8 +32,17 @@ current-revision contract.
 The owning sources are:
 
 - `Source/Tools/ImageBaker.cpp` and `ImageBaker.h` for source discovery,
-  format decoding, FOFRM composition, output naming, per-pack `SpriteInfo`,
-  mesh integration, and serialization;
+  importer dispatch, output naming, per-pack `SpriteInfo`, mesh integration,
+  and serialization;
+- `Source/Tools/ImageImport.cpp` and `ImageImport.h` for common frame/context
+  types and disabled-importer diagnostics;
+- `Source/Tools/ImageBaker-Fofrm.cpp`, `ImageBaker-Png.cpp`, and
+  `ImageBaker-Tga.cpp` for mandatory composition and RGBA import;
+- adjacent `ImageBaker-Art.cpp`, `ImageBaker-Bam.cpp`, `ImageBaker-Frm.cpp`,
+  `ImageBaker-Mos.cpp`, `ImageBaker-Rix.cpp`, `ImageBaker-Spr.cpp`,
+  `ImageBaker-Til.cpp`, and `ImageBaker-Zar.cpp` for optional importers;
+  `ImageBaker-ZarDecoder.cpp` shares their ZAR/TIL decoder while retaining
+  the format-specific red/blue channel order;
 - `Source/Tools/SpriteMeshing.cpp` and `SpriteMeshing.h` for mask construction,
   candidate generation, scoring, triangulation, and coverage validation;
 - `Source/Common/SpriteResource.cpp` and `SpriteResource.h` for the versioned
@@ -51,6 +60,15 @@ anchor, derives the live baker and runtime extension lists, verifies that the
 legacy FOFRM `Effect` field is still absent from serialized output, and renders
 the generated reference. Importer, descriptor, container, factory, atlas, or
 cache drift must update that model in the same change.
+
+Native custom loaders passed to `ImageBaker::AddLoader` receive
+`const ImageImport::Context&`. Read the current pack through `*context.Files`
+and resolve nested images through `context.Resolve(path)` so the configured
+importer checks and filename options still apply. `FrameShot`, `FrameSequence`,
+`FrameCollection`, and `MAX_DIRS_MINUS_ONE` belong to `ImageImport`; migrate
+former `ImageBaker` type references and `FileCollection` loader parameters
+when adopting the extracted modules. The frame fields and baked container
+retain their meaning.
 
 This page is reusable Engine documentation. An embedding project owns its
 concrete asset catalog, licenses, resource-pack precedence, source-file policy,

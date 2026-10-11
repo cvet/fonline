@@ -263,4 +263,3 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 }
 
 FO_END_NAMESPACE
-
