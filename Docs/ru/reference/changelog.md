@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"be213429d4319822cc627f789b4f69f0cf4c40a4500351f0772e13b38b332a22"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7466d7533e8ab948676d4b52f2710d8cba0faa2a0c5e0486fef0caddd5008cf0"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
@@ -17,6 +17,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Изменено
 
+- Полные конфигурации MinimalMultiplayer, ContentShowcase и PackagingMatrix пересозданы со всеми пятью настройками клиентских пакетов. Последовательный режим по умолчанию и пределы workers совпадают с Settings.inc.
 - Опубликованная ветка клиентских workers согласована с master 2026.1.27-dev; сохранены все пять настроек клиентских пакетов и 2576 классифицированных символов native-codegen. Проверенная ёмкость поиска полного корпуса увеличена на 32 KiB до 1 900 544 байт на локаль; правила поиска и отказ при переполнении не меняются.
 
 - Проверен полный AI-контекст после объединения веток; жёсткая ёмкость увеличена на 32 KiB до 2 326 528 байт. Состав целых документов и отказ при превышении сохраняются.

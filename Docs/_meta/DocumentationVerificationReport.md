@@ -2,6 +2,11 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-11 - Refresh complete example configs after worker reconciliation
+
+- Regenerate MinimalMultiplayer, ContentShowcase and PackagingMatrix from the combined Settings.inc. Each was missing exactly five optional worker settings; retain serial mode, caps 8/2, headroom 4 and minimum batch 4. No source/runtime default changes.
+- All three generated-config freshness checks and 13 public-example documentation tests pass. External repository staging/publication is not performed: the integrated Engine is unpublished and this task does not authorize external pushes or visibility changes.
+
 ## 2026-10-11 - Reconcile published client workers with master
 
 - Merge published client tip `775c3a8cff2d2e8e4d7def6c3cf56db60ffa3ea6` with master `5ef9334595f45522c8d580c25e22ed4556ab137b`, preserving both ancestries and all five optional client batching settings. Adopt master version `2026.1.27-dev`; this feature-branch integration is not a new published master step.
