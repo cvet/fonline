@@ -219,3 +219,42 @@ Use the `win64-` equivalents on Windows.
 ## Update discipline
 
 When Engine or the embedding project is updated, inspect changes to `Settings.inc`, `Settings.cpp`, `ApplicationInit.cpp`, BuildTools project options, baking stages, and the project's `.fomain` range. Update this guide, the project config, tests, and generated references in the same change when precedence, fields, defaults, pack routing, or launch profiles change.
+
+<a id="optional-native-components"></a>
+## Optional native components
+
+Declare the components the project uses through `SetOptionValues` before `StartProjectGeneration`. Each is a BOOL, defaults OFF and emits a numeric 0/1 compile definition. There is no aggregate component selector. Sources and Engine-owned headers stay unconditionally registered/included; optional contents are guarded internally.
+
+```cmake
+SetOptionValues(
+    FO_DATABASE_SQLITE ON
+    FO_DATA_SOURCE_DAT ON
+    FO_IMAGE_FRM ON)
+```
+
+| Option | Owning role and dependency |
+| --- | --- |
+| `FO_DATA_SOURCE_DAT` | Common; DAT 2.0/2.1 and zlib |
+| `FO_DATA_SOURCE_ZIP` | Common; external ZIP/BOS and bundled minizip |
+| `FO_DATABASE_JSON` | Server; plain JSON, existing JSON dependency |
+| `FO_DATABASE_SQLITE` | Server; SQLite and CBOR, no BSON |
+| `FO_DATABASE_MONGO` | Server; mongoc and libbson |
+| `FO_IMAGE_FRM` | Baker; FRM and split FRx, guarded Fallout palette |
+| `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; individual legacy importers |
+| `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; independent importers and a shared guarded decoder |
+| `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; individual legacy importers |
+
+Memory is mandatory in Server; PNG/TGA/FOFRM and libpng belong to Baker. Embedded/APK retain minizip with external ZIP OFF. Stock clients read baked sprites without importers or database drivers.
+
+Retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` inputs fail; clear their cache/environment and choose positive options.
+
+<a id="baking-configuration-fingerprint"></a>
+## Baking configuration fingerprint
+
+Option declarations register their type and baking impact. `BAKING` on `DeclareBoolOption`/`DeclareValueOption`, or at the start of a plural `Declare*Options` group, includes those options in `FO_BAKING_CONFIG_HASH`. Unmarked options are excluded; the [option reference](../../reference/cmake/options.md) lists every decision.
+
+The hash covers project identity/config selection, geometry, model/effect limits, 3D, particles, scripting backends and archive/image importers. Database providers, diagnostics, allocators, output paths and native target selection do not invalidate resources.
+
+CMake computes SHA-256 immediately before code generation, after preceding stages and the Codegen Pre hook. It sorts registered names, normalizes BOOL to 0/1 and preserves string boundaries. New marked project options join automatically; finalize their values before `SetupCodeGeneration` consumes them.
+
+Baker writes `Resources.baking-config-hash` and report `bakingConfigHash`. A missing/changed fingerprint clears stale outputs and forces full bake independently of `FO_BUILD_HASH`; unchanged values permit incremental bake. Both markers are removed before work and written only after successful resource baking. Reconfigure/rebuild/rebake before packaging.

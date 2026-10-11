@@ -23,3 +23,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-helper-addbakingtarget-5d644391c3"></a>
 - [`entry-cmake-helper-addbakingtarget-5d644391c3`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addbakingtarget-5d644391c3)
+
+<a id="entry-cmake-helper-temporarycompat-7b9b14f99a"></a>
+- [`entry-cmake-helper-temporarycompat-7b9b14f99a`](../../en/reference/cmake/helpers.md#entry-cmake-helper-temporarycompat-7b9b14f99a)

@@ -58,20 +58,25 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 45)
+        self.assertEqual(model["summary"]["option_count"], 57)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
-        self.assertEqual(model["summary"]["helper_count"], 6)
+        self.assertEqual(model["summary"]["helper_count"], 7)
         self.assertEqual(model["stages"][0]["id"], "cmake.stage.Init")
         self.assertEqual(model["stages"][-1]["entrypoint"], "FinalizeProjectGeneration")
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
         self.assertEqual(model["helpers"][0]["id"], "cmake.helper.SetOption")
         options = {entry["name"]: entry for entry in model["options"]}
+        self.assertTrue(options["FO_GEOMETRY"]["affects_baking"])
+        self.assertTrue(options["FO_IMAGE_FRM"]["affects_baking"])
+        self.assertFalse(options["FO_DATABASE_MONGO"]["affects_baking"])
+        self.assertFalse(options["FO_TRACE_CATEGORIES"]["affects_baking"])
         self.assertEqual(options["FO_MEMORY_DIAGNOSTICS"]["default"], "OFF")
         self.assertEqual(options["FO_MEMORY_DIAGNOSTICS"]["category"], "profiling")
         self.assertEqual(options["FO_SPARK_PARTICLES"]["default"], "OFF")
         self.assertEqual(options["FO_EFFEKSEER_PARTICLES"]["default"], "OFF")
         helpers = {entry["name"]: entry for entry in model["helpers"]}
+        self.assertEqual(helpers["TemporaryCompat"]["signature"], 'TemporaryCompat(<id> "YYYY-MM-DD")')
         self.assertEqual(
             helpers["AddBakingTarget"]["signature"],
             "AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])",

@@ -28,23 +28,23 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 45,
+    "option_count": 57,
     "required_option_count": 9,
-    "optional_option_count": 36,
+    "optional_option_count": 48,
     "options_by_cache_type": {
-      "BOOL": 23,
-      "STRING": 22
+      "BOOL": 34,
+      "STRING": 23
     },
     "options_by_category": {
       "capacity": 2,
-      "dependency": 5,
+      "dependency": 16,
       "diagnostics": 1,
       "feature": 3,
       "geometry": 4,
       "model-shape": 4,
       "native-interface": 1,
       "output": 2,
-      "profiling": 1,
+      "profiling": 2,
       "project-identity": 4,
       "quality": 2,
       "rendering": 2,
@@ -55,7 +55,7 @@
       "tooling": 1
     },
     "stage_count": 10,
-    "helper_count": 6
+    "helper_count": 7
   },
   "options": [
     {
@@ -66,6 +66,7 @@
       "default": null,
       "category": "project-identity",
       "description": "Path to the embedding project's main .fomain configuration file.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MAIN_CONFIG"
     },
     {
@@ -76,6 +77,7 @@
       "default": null,
       "category": "project-identity",
       "description": "Short project identifier used as the generated target and binary prefix.",
+      "affects_baking": true,
       "id": "cmake.option.FO_DEV_NAME"
     },
     {
@@ -86,6 +88,7 @@
       "default": null,
       "category": "project-identity",
       "description": "Human-readable project name used by generated applications and packages.",
+      "affects_baking": true,
       "id": "cmake.option.FO_NICE_NAME"
     },
     {
@@ -100,6 +103,7 @@
       ],
       "category": "geometry",
       "description": "World-grid geometry mode.",
+      "affects_baking": true,
       "id": "cmake.option.FO_GEOMETRY"
     },
     {
@@ -110,6 +114,7 @@
       "default": null,
       "category": "geometry",
       "description": "Map cell width in pixels.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MAP_HEX_WIDTH"
     },
     {
@@ -120,6 +125,7 @@
       "default": null,
       "category": "geometry",
       "description": "Map cell height in pixels.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MAP_HEX_HEIGHT"
     },
     {
@@ -130,6 +136,7 @@
       "default": null,
       "category": "geometry",
       "description": "Map camera angle in degrees.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MAP_CAMERA_ANGLE"
     },
     {
@@ -140,6 +147,7 @@
       "default": null,
       "category": "project-identity",
       "description": "Application icon source used by generated platform targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_APP_ICON"
     },
     {
@@ -150,6 +158,7 @@
       "default": null,
       "category": "output",
       "description": "Common root for generated binaries, packages, baking data, and validation output.",
+      "affects_baking": false,
       "id": "cmake.option.FO_OUTPUT_PATH"
     },
     {
@@ -160,6 +169,7 @@
       "default": "20",
       "category": "toolchain",
       "description": "C++ language standard used for project compilation; values below 20 are unsupported.",
+      "affects_baking": false,
       "id": "cmake.option.FO_CXX_STANDARD"
     },
     {
@@ -170,6 +180,7 @@
       "default": "",
       "category": "output",
       "description": "Optional postfix appended to generated binary output directory names.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BINARY_OUTPUT_POSTFIX"
     },
     {
@@ -180,6 +191,7 @@
       "default": "200000",
       "category": "capacity",
       "description": "Capacity reserved for embedded data in generated binaries.",
+      "affects_baking": false,
       "id": "cmake.option.FO_EMBEDDED_DATA_CAPACITY"
     },
     {
@@ -190,6 +202,7 @@
       "default": "16",
       "category": "rendering-shape",
       "description": "Number of float slots in ScriptValueBuf; the value must be a multiple of four.",
+      "affects_baking": true,
       "id": "cmake.option.FO_EFFECT_SCRIPT_VALUES"
     },
     {
@@ -200,6 +213,7 @@
       "default": "6",
       "category": "rendering-shape",
       "description": "Maximum number of passes in one effect.",
+      "affects_baking": true,
       "id": "cmake.option.FO_EFFECT_MAX_PASSES"
     },
     {
@@ -210,6 +224,7 @@
       "default": "30",
       "category": "model-shape",
       "description": "Number of model rendering layers compiled into the engine shape contract.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MODEL_LAYERS_COUNT"
     },
     {
@@ -220,6 +235,7 @@
       "default": "8",
       "category": "model-shape",
       "description": "Maximum number of textures available to one 3D model.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MODEL_MAX_TEXTURES"
     },
     {
@@ -230,6 +246,7 @@
       "default": "54",
       "category": "model-shape",
       "description": "Maximum number of bone matrices available to one 3D model.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MODEL_MAX_BONES"
     },
     {
@@ -240,6 +257,7 @@
       "default": "4",
       "category": "model-shape",
       "description": "Number of bone influences compiled into each 3D model vertex.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MODEL_BONES_PER_VERTEX"
     },
     {
@@ -250,7 +268,19 @@
       "default": "31",
       "category": "capacity",
       "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight.",
+      "affects_baking": false,
       "id": "cmake.option.FO_STRING_INLINE_CAPACITY"
+    },
+    {
+      "name": "FO_TRACE_CATEGORIES",
+      "cache_type": "STRING",
+      "value_kind": "string",
+      "required": false,
+      "default": "",
+      "category": "profiling",
+      "description": "Select Tracy profiling categories compiled into profiling configurations.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_TRACE_CATEGORIES"
     },
     {
       "name": "FO_MSAN_LIBCXX_ROOT",
@@ -260,6 +290,7 @@
       "default": "",
       "category": "toolchain",
       "description": "Install prefix of an MSan-instrumented libc++ used by San_Memory configurations.",
+      "affects_baking": false,
       "id": "cmake.option.FO_MSAN_LIBCXX_ROOT"
     },
     {
@@ -270,6 +301,7 @@
       "default": "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt",
       "category": "toolchain",
       "description": "MemorySanitizer ignorelist path.",
+      "affects_baking": false,
       "id": "cmake.option.FO_MSAN_IGNORELIST"
     },
     {
@@ -280,6 +312,7 @@
       "default": "",
       "category": "tooling",
       "description": "Optional ReSharper solution settings file copied during finalization.",
+      "affects_baking": false,
       "id": "cmake.option.FO_RESHARPER_SETTINGS"
     },
     {
@@ -290,6 +323,7 @@
       "default": "OFF",
       "category": "feature",
       "description": "Compile support for 3D models.",
+      "affects_baking": true,
       "id": "cmake.option.FO_ENABLE_3D"
     },
     {
@@ -300,6 +334,7 @@
       "default": "OFF",
       "category": "feature",
       "description": "Compile the SPARK particle baker, runtime backend, and Mapper authoring tools.",
+      "affects_baking": true,
       "id": "cmake.option.FO_SPARK_PARTICLES"
     },
     {
@@ -310,6 +345,7 @@
       "default": "OFF",
       "category": "feature",
       "description": "Compile the Effekseer project compiler and runtime backend.",
+      "affects_baking": true,
       "id": "cmake.option.FO_EFFEKSEER_PARTICLES"
     },
     {
@@ -320,6 +356,7 @@
       "default": "OFF",
       "category": "scripting",
       "description": "Reserve the Native scripting source-root option; the current tree has no implemented Native backend.",
+      "affects_baking": true,
       "id": "cmake.option.FO_NATIVE_SCRIPTING"
     },
     {
@@ -330,6 +367,7 @@
       "default": "OFF",
       "category": "scripting",
       "description": "Compile the AngelScript scripting backend.",
+      "affects_baking": true,
       "id": "cmake.option.FO_ANGELSCRIPT_SCRIPTING"
     },
     {
@@ -340,6 +378,7 @@
       "default": "OFF",
       "category": "scripting",
       "description": "Compile the Managed C# scripting backend and embedded Mono runtime.",
+      "affects_baking": true,
       "id": "cmake.option.FO_MANAGED_SCRIPTING"
     },
     {
@@ -350,6 +389,7 @@
       "default": "OFF",
       "category": "profiling",
       "description": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available.",
+      "affects_baking": false,
       "id": "cmake.option.FO_MEMORY_DIAGNOSTICS"
     },
     {
@@ -360,27 +400,151 @@
       "default": "OFF",
       "category": "dependency",
       "description": "Disable the bundled rpmalloc allocator.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_RPMALLOC"
     },
     {
-      "name": "FO_DISABLE_MONGO",
+      "name": "FO_DATA_SOURCE_DAT",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable MongoDB backend support.",
-      "id": "cmake.option.FO_DISABLE_MONGO"
+      "description": "Enable DAT 2.0 and 2.1 resource archives.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_DATA_SOURCE_DAT"
     },
     {
-      "name": "FO_DISABLE_SQLITE",
+      "name": "FO_DATA_SOURCE_ZIP",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable SQLite backend support.",
-      "id": "cmake.option.FO_DISABLE_SQLITE"
+      "description": "Enable external ZIP and BOS resource archives.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_DATA_SOURCE_ZIP"
+    },
+    {
+      "name": "FO_DATABASE_JSON",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the JSON file database provider.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_DATABASE_JSON"
+    },
+    {
+      "name": "FO_DATABASE_SQLITE",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the SQLite CBOR database provider.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_DATABASE_SQLITE"
+    },
+    {
+      "name": "FO_DATABASE_MONGO",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the MongoDB database provider.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_DATABASE_MONGO"
+    },
+    {
+      "name": "FO_IMAGE_FRM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the FRM image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_FRM"
+    },
+    {
+      "name": "FO_IMAGE_RIX",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the RIX image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_RIX"
+    },
+    {
+      "name": "FO_IMAGE_ART",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ART image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_ART"
+    },
+    {
+      "name": "FO_IMAGE_SPR",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the SPR image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_SPR"
+    },
+    {
+      "name": "FO_IMAGE_ZAR",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ZAR image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_ZAR"
+    },
+    {
+      "name": "FO_IMAGE_TIL",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the TIL image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_TIL"
+    },
+    {
+      "name": "FO_IMAGE_MOS",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the MOS image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_MOS"
+    },
+    {
+      "name": "FO_IMAGE_BAM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the BAM image importer.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_IMAGE_BAM"
     },
     {
       "name": "FO_DISABLE_ASIO",
@@ -390,6 +554,7 @@
       "default": "OFF",
       "category": "dependency",
       "description": "Disable the Asio networking backend.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_ASIO"
     },
     {
@@ -400,6 +565,7 @@
       "default": "OFF",
       "category": "dependency",
       "description": "Disable WebSocket transport support.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_WEB_SOCKETS"
     },
     {
@@ -410,6 +576,7 @@
       "default": "OFF",
       "category": "native-interface",
       "description": "Compile engine native symbols without the FOnline namespace.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_NAMESPACE"
     },
     {
@@ -420,6 +587,7 @@
       "default": "OFF",
       "category": "rendering",
       "description": "Disable the Vulkan rendering backend.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_VULKAN"
     },
     {
@@ -430,6 +598,7 @@
       "default": "OFF",
       "category": "rendering",
       "description": "Disable the SDL_GPU rendering backend.",
+      "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_SDL_GPU"
     },
     {
@@ -440,6 +609,7 @@
       "default": "OFF",
       "category": "diagnostics",
       "description": "Enable verbose FOnline build-system status output.",
+      "affects_baking": false,
       "id": "cmake.option.FO_VERBOSE_BUILD"
     },
     {
@@ -450,6 +620,7 @@
       "default": "OFF",
       "category": "target",
       "description": "Generate client application targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BUILD_CLIENT"
     },
     {
@@ -460,6 +631,7 @@
       "default": "OFF",
       "category": "target",
       "description": "Generate server application targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BUILD_SERVER"
     },
     {
@@ -470,6 +642,7 @@
       "default": "OFF",
       "category": "target",
       "description": "Generate mapper application targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BUILD_MAPPER"
     },
     {
@@ -480,6 +653,7 @@
       "default": "OFF",
       "category": "target",
       "description": "Generate the AngelScript compiler application target.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BUILD_ASCOMPILER"
     },
     {
@@ -490,6 +664,7 @@
       "default": "OFF",
       "category": "target",
       "description": "Generate baker application targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_BUILD_BAKER"
     },
     {
@@ -500,6 +675,7 @@
       "default": "OFF",
       "category": "quality",
       "description": "Generate engine unit-test targets.",
+      "affects_baking": false,
       "id": "cmake.option.FO_UNIT_TESTS"
     },
     {
@@ -510,6 +686,7 @@
       "default": "OFF",
       "category": "quality",
       "description": "Generate the code-coverage configuration; this mode cannot be combined with application or unit-test build modes.",
+      "affects_baking": false,
       "id": "cmake.option.FO_CODE_COVERAGE"
     }
   ],
@@ -691,6 +868,14 @@
       "source": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
       "description": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking.",
       "id": "cmake.helper.AddBakingTarget"
+    },
+    {
+      "name": "TemporaryCompat",
+      "kind": "function",
+      "signature": "TemporaryCompat(<id> \"YYYY-MM-DD\")",
+      "source": "BuildTools/cmake/helpers/Commands.cmake",
+      "description": "Mark temporary build refusals or platform restrictions with the shared compatibility removal date; expiry is checked by temporary_compat.py, including inactive branches.",
+      "id": "cmake.helper.TemporaryCompat"
     }
   ]
 }

@@ -202,6 +202,8 @@ finalizes the report after either success or failure.
 
 Before parallel pack preparation, `MountSharedInputDirs()` mounts each distinct configured `InputDirs` path once. Every pack context borrows the resulting read-only source through `DataSourceRef`, and the owning registry lives for exactly that `BakeAllInternal()` pass. Packs still apply their own include/exclude filters and preserve configured output semantics, but packs sharing a large authored tree no longer walk and cache that directory independently. Source-local name filtering preserves first-seen order while using a set of already-added names, so duplicate suppression is linear rather than repeatedly scanning the accumulated result.
 
+Before preparing packs, the master checks `Resources.baking-config-hash` against `FO_BAKING_CONFIG_HASH`. Missing/changed baking-impact options clear the output tree and force a complete rebuild; unchanged options permit incremental reuse. The [configuration fingerprint](../../how-to/build/project-configuration.md#baking-configuration-fingerprint) owns option registration and scope.
+
 ### `BakingReport`
 
 `BakingReport` is defined in its own `Source/Tools/BakingReport.h` / `.cpp`
@@ -255,10 +257,10 @@ The top-level lifecycle fields are:
 
 - `schemaVersion`, currently `1`;
 - `status` and `failureMessage`;
-- `buildHash`, `bakeOutput`, and total `durationMs`;
+- `buildHash`, `bakingConfigHash`, `bakeOutput`, and total `durationMs`;
 - `mode.forceRequested`, `mode.fullRebuild`, `mode.rebuildReason`, and
   `mode.singleThread`. Rebuild reasons are `incremental`, `requested`,
-  `build_hash_changed`, or `missing_build_hash`.
+  `build_hash_changed`, `baking_config_changed`, or `missing_build_hash`.
 
 `measurementScope` prevents incremental samples from being mistaken for corpus
 statistics. Input counts always describe the complete configured input
@@ -661,7 +663,7 @@ triangulation, validation, scoring, and the diagnostic result. `ImageBaker`
 owns image-format decoding, frame sequences and shared frames, adaptive
 per-frame padding and cropping, mesh serialization, and baking-report
 integration. This
-keeps polygonization independent of `ImageBaker::FrameShot` and allows the
+keeps polygonization independent of `ImageImport::FrameShot` and allows the
 geometry builder to be exercised without an image-resource container.
 
 Geometric safety is internal policy rather than project tuning. The baker uses

@@ -52,8 +52,8 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
             self.assertIn(contract, guide)
 
     def test_baker_claims_match_offset_import_and_transport_source(self) -> None:
-        header = self._read("Source/Tools/ImageBaker.h")
-        baker = self._read("Source/Tools/ImageBaker.cpp")
+        header = self._read("Source/Tools/ImageImport.h")
+        baker = self._read("Source/Tools/ImageBaker.cpp") + self._read("Source/Tools/ImageBaker-Fofrm.cpp")
         resource = self._read("Source/Common/SpriteResource.cpp")
         tests = self._read("Source/Tests/Test_ImageBaker.cpp")
 

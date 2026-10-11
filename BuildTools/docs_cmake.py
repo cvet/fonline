@@ -117,6 +117,8 @@ def _validate_options(raw_options: object) -> list[dict[str, object]]:
         required = raw_option.get("required")
         if not isinstance(required, bool):
             raise ValueError(f"{label}.required must be a boolean")
+        if not isinstance(raw_option.get("affects_baking"), bool):
+            raise ValueError(f"{label}.affects_baking must be a boolean")
         default = raw_option.get("default")
         if required:
             if cache_type != "STRING" or default is not None:
@@ -455,6 +457,7 @@ def _render_options(model: dict[str, object]) -> str:
                 _code(option["name"]),
                 f"{_code(option['cache_type'])} / {_code(option['value_kind'])}",
                 "Yes" if option["required"] else "No",
+                "Yes" if option["affects_baking"] else "No",
                 default,
                 allowed,
                 _code(option["category"]),
@@ -463,7 +466,7 @@ def _render_options(model: dict[str, object]) -> str:
         )
     _table(
         lines,
-        ("Stable ID", "Option", "Type / value", "Required", "Default", "Allowed", "Category", "Description"),
+        ("Stable ID", "Option", "Type / value", "Required", "Affects baking", "Default", "Allowed", "Category", "Description"),
         rows,
     )
     return "\n".join(lines)
@@ -582,8 +585,8 @@ RUSSIAN_REPLACEMENTS = {
 RUSSIAN_TABLE_HEADERS = {
     "| Field | Value |": "| Поле | Значение |",
     "| Reference | Entries | Purpose |": "| Справочник | Записи | Назначение |",
-    "| Stable ID | Option | Type / value | Required | Default | Allowed | Category | Description |":
-        "| Стабильный ID | Параметр | Тип / значение | Обязателен | По умолчанию | Допустимые | Категория | Описание |",
+    "| Stable ID | Option | Type / value | Required | Affects baking | Default | Allowed | Category | Description |":
+        "| Стабильный ID | Параметр | Тип / значение | Обязателен | Влияет на бейкинг | По умолчанию | Допустимые | Категория | Описание |",
     "| Order | Stable ID | Stage | Entrypoint | Hooks | Source | Responsibility |":
         "| Порядок | Стабильный ID | Стадия | Точка входа | Hooks | Источник | Ответственность |",
     "| Stable ID | Signature | Kind | Allowed roles | Source | Description |":

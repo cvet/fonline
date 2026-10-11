@@ -1190,7 +1190,7 @@ Bakers = {}
 
 TEST_CASE("BakerMasterRawCopyPackInputs")
 {
-    SECTION("InputFiles zip pack can be baked asynchronously")
+    SECTION("InputFiles zip pack follows provider selection")
     {
         string temp_dir = MakeTempBakerSetupDir("master_baker_input_file_pack");
         string output_dir = strex(temp_dir).combine_path("output").str();
@@ -1218,10 +1218,19 @@ Bakers = {}
         settings.ApplyConfigFile(config, temp_dir);
 
         MasterBaker baker {&settings};
+#if FO_DATA_SOURCE_ZIP
         REQUIRE(baker.BakeAll());
         REQUIRE(fs::read_file(output_path).has_value());
         CHECK(*fs::read_file(output_path) == "packed-source");
         CHECK(fs::read_file(build_hash_path).has_value());
+#else
+        CHECK_FALSE(baker.BakeAll());
+        CHECK_FALSE(fs::read_file(output_path).has_value());
+        CHECK_FALSE(fs::read_file(build_hash_path).has_value());
+        auto report = fs::read_file(strex(output_dir).combine_path("Baking.report.json").str());
+        REQUIRE(report);
+        CHECK(report->find("FO_DATA_SOURCE_ZIP") != string::npos);
+#endif
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
@@ -1260,6 +1269,66 @@ Bakers = {}
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+}
+
+TEST_CASE("BakerConfigChangesInvalidateOutputsWithoutChangingRevision")
+{
+    string temp_dir = MakeTempBakerSetupDir("baking-configuration");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    ignore_unused(fs::remove_dir_tree(temp_dir));
+    REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/source.json").str(), string_view {"source"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+    ConfigFile config {strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Core
+InputDirs = input
+IncludePatterns = **
+Bakers = {}
+)",
+        output_dir, RawCopyBaker::NAME)
+            .str()};
+    settings.ApplyConfigFile(config, temp_dir);
+
+    MasterBaker initial {&settings};
+    REQUIRE(initial.BakeAll());
+    string build_path = strex(output_dir).combine_path("Resources.build-hash").str();
+    string baking_config_path = strex(output_dir).combine_path("Resources.baking-config-hash").str();
+    REQUIRE(fs::read_file(build_path));
+    CHECK(*fs::read_file(build_path) == FO_BUILD_HASH);
+    REQUIRE(fs::read_file(baking_config_path));
+    CHECK(*fs::read_file(baking_config_path) == FO_BAKING_CONFIG_HASH);
+
+    string stale_path = strex(output_dir).combine_path("Stale/source.frm").str();
+    REQUIRE(fs::write_file(stale_path, string_view {"old decoder output"}));
+    SECTION("Changed configuration fingerprint")
+    {
+        REQUIRE(fs::write_file(baking_config_path, string_view {"previous-configuration"}));
+    }
+    SECTION("Missing configuration fingerprint")
+    {
+        REQUIRE(fs::remove_file(baking_config_path));
+    }
+    MasterBaker changed {&settings};
+    REQUIRE(changed.BakeAll());
+    CHECK_FALSE(fs::exists(stale_path));
+    CHECK(*fs::read_file(build_path) == FO_BUILD_HASH);
+    CHECK(*fs::read_file(baking_config_path) == FO_BAKING_CONFIG_HASH);
+    CHECK(fs::read_file(strex(output_dir).combine_path("Core/Data/source.json").str()));
+    auto changed_report = ReadBakerSetupReport(output_dir);
+    CHECK(changed_report.at("bakingConfigHash") == FO_BAKING_CONFIG_HASH);
+    CHECK(changed_report.at("mode").at("fullRebuild") == true);
+    CHECK(changed_report.at("mode").at("rebuildReason") == "baking_config_changed");
+
+    MasterBaker unchanged {&settings};
+    REQUIRE(unchanged.BakeAll());
+    auto unchanged_report = ReadBakerSetupReport(output_dir);
+    CHECK(unchanged_report.at("mode").at("fullRebuild") == false);
+    CHECK(unchanged_report.at("mode").at("rebuildReason") == "incremental");
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

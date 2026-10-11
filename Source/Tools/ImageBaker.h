@@ -37,11 +37,10 @@
 
 #include "Baker.h"
 #include "FileSystem.h"
+#include "ImageImport.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
-
-FO_DECLARE_EXCEPTION(ImageBakerException);
 
 struct SpriteInfoFileEntry;
 
@@ -49,39 +48,6 @@ class ImageBaker final : public BaseBaker
 {
 public:
     static constexpr string_view_nt NAME = "Image";
-    static constexpr int32_t MAX_DIRS_MINUS_ONE = 7;
-
-    struct FrameShot
-    {
-        uint16_t Width {};
-        uint16_t Height {};
-        int16_t NextX {};
-        int16_t NextY {};
-        vector<uint8_t> Data {};
-        bool Shared {};
-        uint16_t SharedIndex {};
-    };
-
-    struct FrameSequence
-    {
-        int16_t OffsX {};
-        int16_t OffsY {};
-        vector<FrameShot> Frames {};
-    };
-
-    struct FrameCollection
-    {
-        uint16_t SequenceSize {};
-        uint16_t AnimTicks {};
-        FrameSequence Main {};
-        bool HaveDirs {};
-        FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
-        string EffectName {};
-        string NewName {};
-    };
-
-    using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
-
     explicit ImageBaker(shared_ptr<BakingContext> ctx);
     ImageBaker(const ImageBaker&) = delete;
     ImageBaker(ImageBaker&&) noexcept = delete;
@@ -92,27 +58,14 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 4; }
 
-    void AddLoader(const LoadFunc& loader, const vector<string>& file_extensions);
+    void AddLoader(const ImageImport::LoadFunc& loader, const vector<string>& file_extensions, const ImageImport::OutputResolver& output_resolver = {});
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
-    [[nodiscard]] auto BakeCollection(string_view fname, const FrameCollection& collection) const -> SpriteInfoFileEntry;
+    auto BakeCollection(string_view fname, const ImageImport::FrameCollection& collection) const -> SpriteInfoFileEntry;
+    auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> ImageImport::FrameCollection;
 
-    [[nodiscard]] auto LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection;
-
-    unordered_map<string, LoadFunc> _fileLoaders {};
+    unordered_map<string, ImageImport::Loader> _fileLoaders {};
 };
 
 FO_END_NAMESPACE

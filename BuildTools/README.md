@@ -589,14 +589,14 @@ key that clients pin; `public` prints it again later. The script needs nothing b
 
 ## Temporary compatibility dates
 
-Code kept only for older builds or data carries `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or
-`[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed), see [temporary compatibility](../Docs/en/reference/native/essentials.md#temporary-compatibility).
+Native/managed old-build handling and temporary CMake refusals/exclusions share a dated marker; see
+[temporary compatibility](../Docs/en/reference/native/essentials.md#temporary-compatibility) for all three spellings.
 `temporary_compat.py` fails once a date has passed and lists every place of that id:
 
 ```bash
-python3 BuildTools/temporary_compat.py                                        # the engine Source tree
-python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
-python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+python3 BuildTools/temporary_compat.py # engine Source and BuildTools/cmake, including inactive branches
+python3 Engine/BuildTools/temporary_compat.py Engine/Source Engine/BuildTools/cmake CMakeLists.txt SourceExt Scripts
+python3 BuildTools/temporary_compat.py --report # every marker and the days it has left
 ```
 
 `--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are

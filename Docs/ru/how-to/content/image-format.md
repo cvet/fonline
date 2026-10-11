@@ -5,7 +5,7 @@ locale: ru
 document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"7677cbe13a997e201531807611dbd70830341ebe3aa65d594090a3090abad56f"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"2bb85be6f3c3c9a27927328ed20d39b7f28a3ab50f3fbd8befab5a6f70f0f43b"} -->
 # Форматы изображений и спрайтов
 
 FOnline запекает авторские и устаревшие изображения в компактный клиентский
@@ -535,3 +535,9 @@ clickability или воспринимаемое скольжение ног.
   policy, integration и изменений видимой проверки;
 - закрепляйте public examples на точной ревизии Engine и не обещайте поддержку
   формата или option, которую не исполняет их validation route.
+
+## Состав importers и native-расширения
+
+PNG/TGA/FOFRM обязательны. Другие importers требуют отдельных `FO_IMAGE_*` [опций](../build/project-configuration.md#optional-native-components). Известный выключенный вход, включая nested FOFRM, сообщает путь и опцию. Соседние `ImageBaker-*.h/.cpp` закрывают палитры/helpers вместе; `ImageBaker-ZarDecoder` разделяют ZAR/TIL при включении любого из них.
+
+Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` и `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. `context.Files` предоставляет соседние assets, `context.Resolve(path)` — nesting, третий аргумент `AddLoader` — выходное имя. Scheduling, meshes и serialization остаются у координатора. Stock client читает baked containers без source-декодеров; runtime extensions/container version сохраняются.

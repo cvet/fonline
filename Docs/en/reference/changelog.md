@@ -12,7 +12,25 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-10
+## Current - 2026-10-11
+
+### Changed
+
+- CMake `TemporaryCompat` dates restrictions, including inactive branches. Database selection has no Web veto.
+- Projects select adjacent guarded archive/database/image modules with positive `SetOptionValues`; source/header registration is unconditional. Memory and PNG/TGA/FOFRM remain mandatory. ZAR/TIL share their guarded decoder with preserved channel order.
+- JSON files use ordinary JSON, SQLite BLOBs use CBOR, BSON belongs only to Mongo. External ZIP/BOS is optional; Embedded/APK retain zlib/minizip. Declared baking-impact options invalidate resources independently of project revision; database and service options are excluded.
+
+### Migration
+
+- Include `Engine/BuildTools/cmake` and project CMake files in explicit `temporary_compat.py` inputs. Mark restrictions with `TemporaryCompat(Id "YYYY-MM-DD")`; CI owns expiry, keeping configuration reproducible.
+- Baseline: `2026.1.25-dev`, `16f1608794eafeb6c05001b997071105dbc403b9`. [Component selection](../how-to/build/project-configuration.md#optional-native-components) lists all options, roles, dependencies and diagnostics; [persistence](../explanation/persistence/index.md#storage-formats-and-upgrade-boundary) defines the new schema/limits.
+- Remove `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` from CMake, presets, environment and cache (`cmake -UFO_DISABLE_MONGO -UFO_DISABLE_SQLITE ...`). Explicitly enable used `FO_DATABASE_JSON`, `FO_DATABASE_SQLITE`, `FO_DATABASE_MONGO`, `FO_DATA_SOURCE_DAT`, `FO_DATA_SOURCE_ZIP` and `FO_IMAGE_*` through `SetOptionValues`. All optional defaults are OFF; retired options and disabled requests fail, with no aliases/fallback.
+- Search native callers for `ImageBaker::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc`, `MAX_DIRS_MINUS_ONE`: replace the prefix with `ImageImport::`. Loader argument four becomes `const ImageImport::Context&`; use `context.Files` and `context.Resolve(path)`. `AddLoader` argument three optionally maps output paths. Include adjacent `DataBase-{Memory,Json,SQLite,Mongo}.h`; factories become `DataBaseMemory::Create`, `DataBaseJson::Create`, `DataBaseSQLite::Create`, `DataBaseMongo::Create`, initialization becomes `DataBaseSQLite::InitializeRuntime`. BSON converters/allocator initialization are Mongo-private.
+- Use new empty JSON/SQLite directories. Old Extended JSON/BSON BLOBs have no reader or migration; retain old binaries/storage together for rollback. Mongo representation remains unchanged. No entity/property conversion rule is introduced; codecs preserve current AnyData values as documented in persistence.
+- Reconfigure, regenerate bindings/metadata, rebuild affected native roles together, fully rebake and package matching outputs. `Resources.baking-config-hash`/report `bakingConfigHash` are separate from `Resources.build-hash`; missing/changed baking configuration removes stale outputs. The [fingerprint contract](../how-to/build/project-configuration.md#baking-configuration-fingerprint) includes geometry, models/effects, scripting and particles as well as archive/image loaders. Compatibility advances `0.0.69` → `0.0.70`: no mixed binaries/snapshots; deploy matching client/server metadata and roll back complete binaries/resources/storage sets. Updater protocol, client-runtime ABI identifier and baked sprite version stay unchanged.
+- Regenerate contracts/snippets, EN/RU, site/routes and AI delivery. Validate minimal/full database/archive/image/baker suites, provider reopen/recovery and disabled-use failures; report platform/runtime proof separately. No publication is implied.
+
+## 2026.1.25-dev - 2026-10-10
 
 ### Fixed
 

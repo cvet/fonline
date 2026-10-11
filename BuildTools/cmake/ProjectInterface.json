@@ -31,7 +31,8 @@
       "required": true,
       "default": null,
       "category": "project-identity",
-      "description": "Path to the embedding project's main .fomain configuration file."
+      "description": "Path to the embedding project's main .fomain configuration file.",
+      "affects_baking": true
     },
     {
       "name": "FO_DEV_NAME",
@@ -40,7 +41,8 @@
       "required": true,
       "default": null,
       "category": "project-identity",
-      "description": "Short project identifier used as the generated target and binary prefix."
+      "description": "Short project identifier used as the generated target and binary prefix.",
+      "affects_baking": true
     },
     {
       "name": "FO_NICE_NAME",
@@ -49,7 +51,8 @@
       "required": true,
       "default": null,
       "category": "project-identity",
-      "description": "Human-readable project name used by generated applications and packages."
+      "description": "Human-readable project name used by generated applications and packages.",
+      "affects_baking": true
     },
     {
       "name": "FO_GEOMETRY",
@@ -57,9 +60,13 @@
       "value_kind": "enum",
       "required": true,
       "default": null,
-      "allowed_values": ["HEXAGONAL", "SQUARE"],
+      "allowed_values": [
+        "HEXAGONAL",
+        "SQUARE"
+      ],
       "category": "geometry",
-      "description": "World-grid geometry mode."
+      "description": "World-grid geometry mode.",
+      "affects_baking": true
     },
     {
       "name": "FO_MAP_HEX_WIDTH",
@@ -68,7 +75,8 @@
       "required": true,
       "default": null,
       "category": "geometry",
-      "description": "Map cell width in pixels."
+      "description": "Map cell width in pixels.",
+      "affects_baking": true
     },
     {
       "name": "FO_MAP_HEX_HEIGHT",
@@ -77,7 +85,8 @@
       "required": true,
       "default": null,
       "category": "geometry",
-      "description": "Map cell height in pixels."
+      "description": "Map cell height in pixels.",
+      "affects_baking": true
     },
     {
       "name": "FO_MAP_CAMERA_ANGLE",
@@ -86,7 +95,8 @@
       "required": true,
       "default": null,
       "category": "geometry",
-      "description": "Map camera angle in degrees."
+      "description": "Map camera angle in degrees.",
+      "affects_baking": true
     },
     {
       "name": "FO_APP_ICON",
@@ -95,7 +105,8 @@
       "required": true,
       "default": null,
       "category": "project-identity",
-      "description": "Application icon source used by generated platform targets."
+      "description": "Application icon source used by generated platform targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_OUTPUT_PATH",
@@ -104,7 +115,8 @@
       "required": true,
       "default": null,
       "category": "output",
-      "description": "Common root for generated binaries, packages, baking data, and validation output."
+      "description": "Common root for generated binaries, packages, baking data, and validation output.",
+      "affects_baking": false
     },
     {
       "name": "FO_CXX_STANDARD",
@@ -113,7 +125,8 @@
       "required": false,
       "default": "20",
       "category": "toolchain",
-      "description": "C++ language standard used for project compilation; values below 20 are unsupported."
+      "description": "C++ language standard used for project compilation; values below 20 are unsupported.",
+      "affects_baking": false
     },
     {
       "name": "FO_BINARY_OUTPUT_POSTFIX",
@@ -122,7 +135,8 @@
       "required": false,
       "default": "",
       "category": "output",
-      "description": "Optional postfix appended to generated binary output directory names."
+      "description": "Optional postfix appended to generated binary output directory names.",
+      "affects_baking": false
     },
     {
       "name": "FO_EMBEDDED_DATA_CAPACITY",
@@ -131,7 +145,8 @@
       "required": false,
       "default": "200000",
       "category": "capacity",
-      "description": "Capacity reserved for embedded data in generated binaries."
+      "description": "Capacity reserved for embedded data in generated binaries.",
+      "affects_baking": false
     },
     {
       "name": "FO_EFFECT_SCRIPT_VALUES",
@@ -140,7 +155,8 @@
       "required": false,
       "default": "16",
       "category": "rendering-shape",
-      "description": "Number of float slots in ScriptValueBuf; the value must be a multiple of four."
+      "description": "Number of float slots in ScriptValueBuf; the value must be a multiple of four.",
+      "affects_baking": true
     },
     {
       "name": "FO_EFFECT_MAX_PASSES",
@@ -149,7 +165,8 @@
       "required": false,
       "default": "6",
       "category": "rendering-shape",
-      "description": "Maximum number of passes in one effect."
+      "description": "Maximum number of passes in one effect.",
+      "affects_baking": true
     },
     {
       "name": "FO_MODEL_LAYERS_COUNT",
@@ -158,7 +175,8 @@
       "required": false,
       "default": "30",
       "category": "model-shape",
-      "description": "Number of model rendering layers compiled into the engine shape contract."
+      "description": "Number of model rendering layers compiled into the engine shape contract.",
+      "affects_baking": true
     },
     {
       "name": "FO_MODEL_MAX_TEXTURES",
@@ -167,7 +185,8 @@
       "required": false,
       "default": "8",
       "category": "model-shape",
-      "description": "Maximum number of textures available to one 3D model."
+      "description": "Maximum number of textures available to one 3D model.",
+      "affects_baking": true
     },
     {
       "name": "FO_MODEL_MAX_BONES",
@@ -176,7 +195,8 @@
       "required": false,
       "default": "54",
       "category": "model-shape",
-      "description": "Maximum number of bone matrices available to one 3D model."
+      "description": "Maximum number of bone matrices available to one 3D model.",
+      "affects_baking": true
     },
     {
       "name": "FO_MODEL_BONES_PER_VERTEX",
@@ -185,7 +205,8 @@
       "required": false,
       "default": "4",
       "category": "model-shape",
-      "description": "Number of bone influences compiled into each 3D model vertex."
+      "description": "Number of bone influences compiled into each 3D model vertex.",
+      "affects_baking": true
     },
     {
       "name": "FO_STRING_INLINE_CAPACITY",
@@ -194,7 +215,18 @@
       "required": false,
       "default": "31",
       "category": "capacity",
-      "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight."
+      "description": "Characters kept inside an engine string before it allocates; the value must be one less than a multiple of eight.",
+      "affects_baking": false
+    },
+    {
+      "name": "FO_TRACE_CATEGORIES",
+      "cache_type": "STRING",
+      "value_kind": "string",
+      "required": false,
+      "default": "",
+      "category": "profiling",
+      "description": "Select Tracy profiling categories compiled into profiling configurations.",
+      "affects_baking": false
     },
     {
       "name": "FO_MSAN_LIBCXX_ROOT",
@@ -203,7 +235,8 @@
       "required": false,
       "default": "",
       "category": "toolchain",
-      "description": "Install prefix of an MSan-instrumented libc++ used by San_Memory configurations."
+      "description": "Install prefix of an MSan-instrumented libc++ used by San_Memory configurations.",
+      "affects_baking": false
     },
     {
       "name": "FO_MSAN_IGNORELIST",
@@ -212,7 +245,8 @@
       "required": false,
       "default": "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt",
       "category": "toolchain",
-      "description": "MemorySanitizer ignorelist path."
+      "description": "MemorySanitizer ignorelist path.",
+      "affects_baking": false
     },
     {
       "name": "FO_RESHARPER_SETTINGS",
@@ -221,7 +255,8 @@
       "required": false,
       "default": "",
       "category": "tooling",
-      "description": "Optional ReSharper solution settings file copied during finalization."
+      "description": "Optional ReSharper solution settings file copied during finalization.",
+      "affects_baking": false
     },
     {
       "name": "FO_ENABLE_3D",
@@ -230,7 +265,8 @@
       "required": false,
       "default": "OFF",
       "category": "feature",
-      "description": "Compile support for 3D models."
+      "description": "Compile support for 3D models.",
+      "affects_baking": true
     },
     {
       "name": "FO_SPARK_PARTICLES",
@@ -239,7 +275,8 @@
       "required": false,
       "default": "OFF",
       "category": "feature",
-      "description": "Compile the SPARK particle baker, runtime backend, and Mapper authoring tools."
+      "description": "Compile the SPARK particle baker, runtime backend, and Mapper authoring tools.",
+      "affects_baking": true
     },
     {
       "name": "FO_EFFEKSEER_PARTICLES",
@@ -248,7 +285,8 @@
       "required": false,
       "default": "OFF",
       "category": "feature",
-      "description": "Compile the Effekseer project compiler and runtime backend."
+      "description": "Compile the Effekseer project compiler and runtime backend.",
+      "affects_baking": true
     },
     {
       "name": "FO_NATIVE_SCRIPTING",
@@ -257,7 +295,8 @@
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Reserve the Native scripting source-root option; the current tree has no implemented Native backend."
+      "description": "Reserve the Native scripting source-root option; the current tree has no implemented Native backend.",
+      "affects_baking": true
     },
     {
       "name": "FO_ANGELSCRIPT_SCRIPTING",
@@ -266,7 +305,8 @@
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the AngelScript scripting backend."
+      "description": "Compile the AngelScript scripting backend.",
+      "affects_baking": true
     },
     {
       "name": "FO_MANAGED_SCRIPTING",
@@ -275,7 +315,8 @@
       "required": false,
       "default": "OFF",
       "category": "scripting",
-      "description": "Compile the Managed C# scripting backend and embedded Mono runtime."
+      "description": "Compile the Managed C# scripting backend and embedded Mono runtime.",
+      "affects_baking": true
     },
     {
       "name": "FO_MEMORY_DIAGNOSTICS",
@@ -284,7 +325,8 @@
       "required": false,
       "default": "OFF",
       "category": "profiling",
-      "description": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available."
+      "description": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available.",
+      "affects_baking": false
     },
     {
       "name": "FO_DISABLE_RPMALLOC",
@@ -293,25 +335,138 @@
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable the bundled rpmalloc allocator."
+      "description": "Disable the bundled rpmalloc allocator.",
+      "affects_baking": false
     },
     {
-      "name": "FO_DISABLE_MONGO",
+      "name": "FO_DATA_SOURCE_DAT",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable MongoDB backend support."
+      "description": "Enable DAT 2.0 and 2.1 resource archives.",
+      "affects_baking": true
     },
     {
-      "name": "FO_DISABLE_SQLITE",
+      "name": "FO_DATA_SOURCE_ZIP",
       "cache_type": "BOOL",
       "value_kind": "boolean",
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable SQLite backend support."
+      "description": "Enable external ZIP and BOS resource archives.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_DATABASE_JSON",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the JSON file database provider.",
+      "affects_baking": false
+    },
+    {
+      "name": "FO_DATABASE_SQLITE",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the SQLite CBOR database provider.",
+      "affects_baking": false
+    },
+    {
+      "name": "FO_DATABASE_MONGO",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the MongoDB database provider.",
+      "affects_baking": false
+    },
+    {
+      "name": "FO_IMAGE_FRM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the FRM image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_RIX",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the RIX image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_ART",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ART image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_SPR",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the SPR image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_ZAR",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ZAR image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_TIL",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the TIL image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_MOS",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the MOS image importer.",
+      "affects_baking": true
+    },
+    {
+      "name": "FO_IMAGE_BAM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the BAM image importer.",
+      "affects_baking": true
     },
     {
       "name": "FO_DISABLE_ASIO",
@@ -320,7 +475,8 @@
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable the Asio networking backend."
+      "description": "Disable the Asio networking backend.",
+      "affects_baking": false
     },
     {
       "name": "FO_DISABLE_WEB_SOCKETS",
@@ -329,7 +485,8 @@
       "required": false,
       "default": "OFF",
       "category": "dependency",
-      "description": "Disable WebSocket transport support."
+      "description": "Disable WebSocket transport support.",
+      "affects_baking": false
     },
     {
       "name": "FO_DISABLE_NAMESPACE",
@@ -338,7 +495,8 @@
       "required": false,
       "default": "OFF",
       "category": "native-interface",
-      "description": "Compile engine native symbols without the FOnline namespace."
+      "description": "Compile engine native symbols without the FOnline namespace.",
+      "affects_baking": false
     },
     {
       "name": "FO_DISABLE_VULKAN",
@@ -347,7 +505,8 @@
       "required": false,
       "default": "OFF",
       "category": "rendering",
-      "description": "Disable the Vulkan rendering backend."
+      "description": "Disable the Vulkan rendering backend.",
+      "affects_baking": false
     },
     {
       "name": "FO_DISABLE_SDL_GPU",
@@ -356,7 +515,8 @@
       "required": false,
       "default": "OFF",
       "category": "rendering",
-      "description": "Disable the SDL_GPU rendering backend."
+      "description": "Disable the SDL_GPU rendering backend.",
+      "affects_baking": false
     },
     {
       "name": "FO_VERBOSE_BUILD",
@@ -365,7 +525,8 @@
       "required": false,
       "default": "OFF",
       "category": "diagnostics",
-      "description": "Enable verbose FOnline build-system status output."
+      "description": "Enable verbose FOnline build-system status output.",
+      "affects_baking": false
     },
     {
       "name": "FO_BUILD_CLIENT",
@@ -374,7 +535,8 @@
       "required": false,
       "default": "OFF",
       "category": "target",
-      "description": "Generate client application targets."
+      "description": "Generate client application targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_BUILD_SERVER",
@@ -383,7 +545,8 @@
       "required": false,
       "default": "OFF",
       "category": "target",
-      "description": "Generate server application targets."
+      "description": "Generate server application targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_BUILD_MAPPER",
@@ -392,7 +555,8 @@
       "required": false,
       "default": "OFF",
       "category": "target",
-      "description": "Generate mapper application targets."
+      "description": "Generate mapper application targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_BUILD_ASCOMPILER",
@@ -401,7 +565,8 @@
       "required": false,
       "default": "OFF",
       "category": "target",
-      "description": "Generate the AngelScript compiler application target."
+      "description": "Generate the AngelScript compiler application target.",
+      "affects_baking": false
     },
     {
       "name": "FO_BUILD_BAKER",
@@ -410,7 +575,8 @@
       "required": false,
       "default": "OFF",
       "category": "target",
-      "description": "Generate baker application targets."
+      "description": "Generate baker application targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_UNIT_TESTS",
@@ -419,7 +585,8 @@
       "required": false,
       "default": "OFF",
       "category": "quality",
-      "description": "Generate engine unit-test targets."
+      "description": "Generate engine unit-test targets.",
+      "affects_baking": false
     },
     {
       "name": "FO_CODE_COVERAGE",
@@ -428,7 +595,8 @@
       "required": false,
       "default": "OFF",
       "category": "quality",
-      "description": "Generate the code-coverage configuration; this mode cannot be combined with application or unit-test build modes."
+      "description": "Generate the code-coverage configuration; this mode cannot be combined with application or unit-test build modes.",
+      "affects_baking": false
     }
   ],
   "stages": [
@@ -436,7 +604,10 @@
       "order": 1,
       "name": "Init",
       "entrypoint": "StartProjectGeneration",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/Init.cmake",
       "description": "Declare options, detect the platform/toolchain, and establish common build state."
     },
@@ -444,7 +615,10 @@
       "order": 2,
       "name": "ProjectOptions",
       "entrypoint": "RegisterProjectOptions",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/ProjectOptions.cmake",
       "description": "Normalize project option combinations and reject incompatible build modes."
     },
@@ -452,7 +626,10 @@
       "order": 3,
       "name": "ThirdParty",
       "entrypoint": "AddThirdPartyLibraries",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/ThirdParty.cmake",
       "description": "Register bundled third-party dependencies and package lookup isolation."
     },
@@ -460,7 +637,10 @@
       "order": 4,
       "name": "EngineSources",
       "entrypoint": "RegisterEngineSources",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/EngineSources.cmake",
       "description": "Aggregate engine and embedding-project source lists and generated resource inputs."
     },
@@ -468,7 +648,10 @@
       "order": 5,
       "name": "Codegen",
       "entrypoint": "SetupCodeGeneration",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/Codegen.cmake",
       "description": "Define generated metadata/source outputs and code-generation targets."
     },
@@ -476,7 +659,10 @@
       "order": 6,
       "name": "CoreLibs",
       "entrypoint": "BuildCoreLibraries",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/CoreLibs.cmake",
       "description": "Create reusable engine libraries from the registered source groups."
     },
@@ -484,7 +670,10 @@
       "order": 7,
       "name": "Applications",
       "entrypoint": "BuildApplications",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/Applications.cmake",
       "description": "Create enabled client, server, mapper, compiler, baker, viewer, and test applications."
     },
@@ -492,7 +681,10 @@
       "order": 8,
       "name": "ScriptsAndBaking",
       "entrypoint": "SetupScriptsAndBaking",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
       "description": "Create script compilation and resource baking targets."
     },
@@ -500,7 +692,10 @@
       "order": 9,
       "name": "Packages",
       "entrypoint": "BuildPackages",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/Packages.cmake",
       "description": "Create package targets from embedding-project package declarations."
     },
@@ -508,7 +703,10 @@
       "order": 10,
       "name": "Finalize",
       "entrypoint": "FinalizeProjectGeneration",
-      "hooks": ["Pre", "Post"],
+      "hooks": [
+        "Pre",
+        "Post"
+      ],
       "source": "BuildTools/cmake/stages/Finalize.cmake",
       "description": "Finalize target organization and verify that every stage ran exactly once."
     }
@@ -540,7 +738,14 @@
       "kind": "macro",
       "signature": "AddEngineSources(<role> <path-or-glob> [<role> <path-or-glob> ...])",
       "source": "BuildTools/cmake/helpers/Build.cmake",
-      "allowed_roles": ["COMMON", "SERVER", "CLIENT", "MAPPER", "BAKER", "TESTS"],
+      "allowed_roles": [
+        "COMMON",
+        "SERVER",
+        "CLIENT",
+        "MAPPER",
+        "BAKER",
+        "TESTS"
+      ],
       "description": "Add role-scoped embedding-project native sources before RegisterEngineSources."
     },
     {
@@ -556,6 +761,13 @@
       "signature": "AddBakingTarget(<target> [SUB_CONFIG <name>] [FORCE] [COMMENT <text>])",
       "source": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
       "description": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking."
+    },
+    {
+      "name": "TemporaryCompat",
+      "kind": "function",
+      "signature": "TemporaryCompat(<id> \"YYYY-MM-DD\")",
+      "source": "BuildTools/cmake/helpers/Commands.cmake",
+      "description": "Mark temporary build refusals or platform restrictions with the shared compatibility removal date; expiry is checked by temporary_compat.py, including inactive branches."
     }
   ]
 }

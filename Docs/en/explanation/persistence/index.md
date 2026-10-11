@@ -73,20 +73,14 @@ Backends can override:
 - `DrawGui()`;
 - test hooks such as `OnCommitOperationWrittenToOpLog()` and `OnPendingChangesRestored()`.
 
-Factory functions declared in `DataBase.h`:
+Provider factories live in adjacent guarded headers and source pairs:
 
-- `CreateJsonDataBase()`;
-- `CreateSQLiteDataBase()` when `FO_HAVE_SQLITE` is enabled;
-- `CreateMongoDataBase()` when `FO_HAVE_MONGO` is enabled;
-- `CreateMemoryDataBase()`.
+- `DataBaseMemory::Create()` in `DataBase-Memory.h`, always available;
+- `DataBaseJson::Create()` in `DataBase-Json.h`, with `FO_DATABASE_JSON`;
+- `DataBaseSQLite::Create()` in `DataBase-SQLite.h`, with `FO_DATABASE_SQLITE`;
+- `DataBaseMongo::Create()` in `DataBase-Mongo.h`, with `FO_DATABASE_MONGO`.
 
-Implementation files:
-
-- `Source/Server/DataBase-Json.cpp`
-- `Source/Server/DataBase-SQLite.cpp`
-- `Source/Server/DataBase-Mongo.cpp`
-- `Source/Server/DataBase-Memory.cpp`
-- shared logic in `Source/Server/DataBase.cpp`
+`DataBase.cpp` owns dispatch, commit/recovery, keys and metrics. It includes every provider header unconditionally; a disabled provider has no declarations or implementation. `DataBaseSerialization.h/.cpp` owns the neutral JSON/CBOR document conversion. See [component selection](../../how-to/build/project-configuration.md#optional-native-components).
 
 ## Commit queue
 
@@ -155,11 +149,18 @@ When changing commit durability, validate failed-write recovery and pending-log 
 ## Backend-specific notes
 
 - JSON backend: file/directory-oriented storage and string-key escaping suitable for filesystem paths.
-- SQLite backend: enabled only when the build has `FO_HAVE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`, and `CreateSnapshot()` returns the serialized page image rather than copying the live files.
-- Mongo backend: enabled only when the build has `FO_HAVE_MONGO`; it shares the BSON conversion and allocator setup used by the JSON and SQLite backends.
+- SQLite backend: enabled only when the build has `FO_DATABASE_SQLITE`, which is server-only — clients link no embedded database. Every collection is a table inside one `Storage.sqlite` file, journalled in WAL mode, SQLite allocates through the engine memory system via `SQLITE_CONFIG_MALLOC`, and `CreateSnapshot()` returns the serialized page image rather than copying the live files.
+- Mongo backend: enabled only when the build has `FO_DATABASE_MONGO`; only this provider owns the BSON conversion and allocator setup, in `DataBase-Mongo.cpp`.
 - Memory backend: useful for tests and non-durable runtime paths.
 
-`DocumentToBson()` and `BsonToDocument()` convert between `AnyData::Document` and the BSON payload used by JSON, SQLite, and Mongo storage. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
+`DocumentToBson()` and `BsonToDocument()` are private Mongo helpers. JSON uses ordinary JSON text and SQLite uses CBOR BLOBs through `DataBaseSerialization`. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
+
+<a id="storage-formats-and-upgrade-boundary"></a>
+## Storage formats and upgrade boundary
+
+JSON files contain ordinary UTF-8 objects; SQLite record BLOBs contain CBOR objects. Both preserve signed Int64 (including limits and values above 2^53), finite Float64, Bool, String, Array and Dict, including embedded NUL in strings/keys. Null/binary, unsigned overflow, non-object roots, malformed/truncated input and trailing CBOR bytes fail. Limits: 64 MiB per record and 64 nesting levels. CBOR SAX validation checks types/depth/declared lengths before DOM allocation; validation precedes writes.
+
+Use new empty JSON/SQLite storage. Old Extended JSON/BSON BLOBs have no reader, conversion or fallback; keep old binaries/storage together for rollback. Mongo BSON and Memory semantics remain unchanged. SQLite retains tables/keys, WAL and snapshot/restore; Engine snapshots require matching `0.0.70` metadata/binaries. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns defaults, roles/dependencies and disabled-provider errors; [backup/recovery](../../how-to/release/backup-and-recovery.md) owns consistent sets and isolated restores. Guarded `Test_DataBase.cpp` fixtures cover types, integer/NUL/depth/corruption, provider reopen/update/delete, snapshots and recovery/oplog paths.
 
 ## Relationship to entity state
 
@@ -190,12 +191,14 @@ Relevant tests include:
 - entity-management tests such as `Test_LocationAndEntityMgmt.cpp` when persistence affects saved entities;
 - backend-specific tests when enabled by build options.
 
+The hidden `MongoDataBaseRecoversAfterIsolatedServerRestart` test requires `FO_TEST_MONGO_URI` (loopback) and `FO_TEST_MONGO_CONTROL` (an isolated writable directory). A coordinator waits for `ready`, stops its owned mongod, writes `stopped`, waits for `spilled`, restarts that instance and writes `restarted`; `complete` confirms replay and reopen.
+
 ## Change routing
 
 - Public facade and shared commit/recovery logic: `Source/Server/DataBase.h` and `Source/Server/DataBase.cpp`.
 - JSON backend: `Source/Server/DataBase-Json.cpp`.
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
-- Shared BSON allocator/conversion: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
+- Mongo-only BSON allocator/conversion: `Source/Server/DataBase-Mongo.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, and `BsonToDocument()`; Mongo-specific operations stay in `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
 - Entity/property serialization: [Entity Model](../entity-and-property-model/) and `PropertiesSerializer.*`.
 - Build feature toggles: [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).

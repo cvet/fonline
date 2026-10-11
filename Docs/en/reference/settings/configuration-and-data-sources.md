@@ -267,3 +267,9 @@ Related consumers are covered by resource, client, server, script, and baker tes
 3. If command-line or sub-config behavior changes, verify the embedding project config that exercises it, but keep project-specific values in project docs.
 4. If packaging/resource staging changes, re-check [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md), and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md) as applicable.
 5. Update [Baking Pipeline](../../explanation/content-pipeline/baking.md) or [BuildTools Pipeline](../cmake-and-buildtools/pipeline.md) when build-stage ownership changes.
+
+## Optional archive providers
+
+`DataSource.cpp` owns dispatch; adjacent `DataSource-Directory` and `DataSource-Embedded` pairs are mandatory, `DataSource-Dat` requires `FO_DATA_SOURCE_DAT`, `DataSource-Zip` requires `FO_DATA_SOURCE_ZIP`. Registration/includes are unconditional, guards internal. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns roles/dependencies.
+
+Priority remains Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Present disabled archives report their path/option even with `maybe_not_available=true`; only absent optional packs return empty sources. Corrupt priority packs never fall back. Embedded/APK retain bundled minizip with external ZIP OFF; `.fores` and updater patches remain baseline.

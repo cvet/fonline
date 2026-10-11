@@ -98,102 +98,131 @@
       "rationale": "It is the only built-in text descriptor that can combine sources, add frame deltas, and produce a runtime-loadable .fofrm path.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "auto ImageBaker::LoadFofrm",
+            "auto Load",
             "ConfigFile fofrm(reader.GetStr())"
           ]
         }
-      ]
+      ],
+      "build_option": null
     },
     {
       "id": "image-format.format.frm",
       "name": "Fallout FRM",
       "extension": "frm",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_FRM=ON",
       "stability": "experimental",
       "requirement": "FRM imports big-endian frame timing, offsets, deltas, one or complete direction tables, optional same-basename .pal data, and animated default-palette indices.",
       "rationale": "The importer preserves legacy frame geometry while normalizing pixels into the Engine RGBA container.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Frm.cpp",
           "anchors": [
-            "auto ImageBaker::LoadFrm",
+            "auto Load",
             "File palette_file = files.FindFileByPath",
             "collection.NewName = strvex(fname).starts_with(\"art/critters/\")"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Frm.h",
+          "anchors": [
+            "#if FO_IMAGE_FRM"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_FRM"
     },
     {
       "id": "image-format.format.fr0",
       "name": "Split directional FRx set",
       "extension": "fr0",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_FRM=ON",
       "stability": "experimental",
       "requirement": "A .fr0 entry discovers its numbered directional siblings, rejects a gap after direction loading begins, and renames baked output to lowercase .fofrm for critter paths or .frm otherwise.",
       "rationale": "The split legacy representation must become one runtime direction sheet with a deterministic output path.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Frm.cpp",
           "anchors": [
-            "auto ImageBaker::LoadFrX",
+            "auto LoadFrX",
             "collection.NewName = strex(\"{}.fofrm\"",
             "collection.NewName = strex(\"{}.frm\""
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Frm.h",
+          "anchors": [
+            "#if FO_IMAGE_FRM"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_FRM"
     },
     {
       "id": "image-format.format.rix",
       "name": "RIX image",
       "extension": "rix",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_RIX=ON",
       "stability": "experimental",
       "requirement": "RIX imports one opaque indexed image using its embedded palette and emits one RGBA frame.",
       "rationale": "The format has no authored animation or direction metadata.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Rix.cpp",
           "anchors": [
-            "auto ImageBaker::LoadRix",
+            "auto Load",
             "collection.SequenceSize = 1;"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Rix.h",
+          "anchors": [
+            "#if FO_IMAGE_RIX"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_RIX"
     },
     {
       "id": "image-format.format.art",
       "name": "Fallout Tactics ART",
       "extension": "art",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_ART=ON",
       "stability": "experimental",
       "requirement": "ART imports raw or RLE frames, palettes, offsets, frame rate, static or eight-rotation data, and the palette/alpha/mirror/frame filename options.",
       "rationale": "ART direction numbering and frame metadata require format-specific remapping before runtime use.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Art.cpp",
           "anchors": [
-            "auto ImageBaker::LoadArt",
+            "auto Load",
             "header.RotationCount == 8",
             "if (w * h == frame_info.FrameSize)"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Art.h",
+          "anchors": [
+            "#if FO_IMAGE_ART"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_ART"
     },
     {
       "id": "image-format.format.spr",
       "name": "Fallout Tactics SPR",
       "extension": "spr",
-      "availability": "baker only by default; wrap through FOFRM for the stock runtime",
+      "availability": "baker only by default; wrap through FOFRM for the stock runtime; importer requires FO_IMAGE_SPR=ON",
       "stability": "experimental",
       "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension.",
       "rationale": "Directly baked .spr output cannot be loaded by the default client; a .fofrm wrapper gives the output a registered extension without changing imported pixels.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
-            "auto ImageBaker::LoadSpr",
+            "auto Load",
             "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size())"
           ]
         },
@@ -202,81 +231,121 @@
           "anchors": [
             "return {\"fofrm\", \"frm\", \"fr0\", \"rix\", \"art\", \"zar\", \"til\", \"mos\", \"bam\", \"png\", \"tga\"};"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Spr.h",
+          "anchors": [
+            "#if FO_IMAGE_SPR"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_SPR"
     },
     {
       "id": "image-format.format.zar",
       "name": "ZAR image",
       "extension": "zar",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_ZAR=ON",
       "stability": "experimental",
       "requirement": "ZAR imports one palette-backed raw or RLE image with alpha into one RGBA frame.",
       "rationale": "ZAR is a single-image legacy container used directly and inside TIL.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Zar.cpp",
           "anchors": [
-            "auto ImageBaker::LoadZar",
+            "auto Load"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-ZarDecoder.cpp",
+          "anchors": [
             "strcmp(head, \"<zar>\")"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Zar.h",
+          "anchors": [
+            "#if FO_IMAGE_ZAR"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_ZAR"
     },
     {
       "id": "image-format.format.til",
       "name": "TIL animation",
       "extension": "til",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_TIL=ON",
       "stability": "experimental",
       "requirement": "TIL imports its nested ZAR frames as a 10 fps single-direction sequence.",
       "rationale": "The loader supplies timing because the legacy container exposes a frame list rather than an Engine animation descriptor.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
-            "auto ImageBaker::LoadTil",
+            "auto Load",
             "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count)"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Til.h",
+          "anchors": [
+            "#if FO_IMAGE_TIL"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_TIL"
     },
     {
       "id": "image-format.format.mos",
       "name": "MOS or MOSC tiled image",
       "extension": "mos",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_MOS=ON",
       "stability": "experimental",
       "requirement": "MOS imports one tiled palette image; MOSC is decompressed first, and palette color 0x00FF00 is made transparent.",
       "rationale": "Packed and unpacked files share one extension and normalize to one RGBA frame.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Mos.cpp",
           "anchors": [
-            "auto ImageBaker::LoadMos",
+            "auto Load",
             "if (color == 0xFF00)"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Mos.h",
+          "anchors": [
+            "#if FO_IMAGE_MOS"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_MOS"
     },
     {
       "id": "image-format.format.bam",
       "name": "BAM or BAMC animation",
       "extension": "bam",
-      "availability": "baker and default runtime",
+      "availability": "baker and default runtime; importer requires FO_IMAGE_BAM=ON",
       "stability": "experimental",
       "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, derives frame deltas, and treats palette blue 255 as transparent.",
       "rationale": "Cycle/frame lookup and palette transparency are part of the legacy format rather than generic sprite behavior.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Bam.cpp",
           "anchors": [
-            "auto ImageBaker::LoadBam",
+            "auto Load",
             "if (head[3] == 'C')",
             "if (color.comp.b == 255)"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Bam.h",
+          "anchors": [
+            "#if FO_IMAGE_BAM"
+          ]
         }
-      ]
+      ],
+      "build_option": "FO_IMAGE_BAM"
     },
     {
       "id": "image-format.format.png",
@@ -288,14 +357,15 @@
       "rationale": "PNG is the recommended lossless authored source for ordinary project images and transparent sprites.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Png.cpp",
           "anchors": [
-            "auto ImageBaker::LoadPng",
+            "auto Load",
             "png_set_strip_16",
             "png_set_filler(png_ptr.get(), 0x000000ff, PNG_FILLER_AFTER)"
           ]
         }
-      ]
+      ],
+      "build_option": null
     },
     {
       "id": "image-format.format.tga",
@@ -307,7 +377,7 @@
       "rationale": "Indexed, grayscale, other bit depths, image IDs, and alternate-origin assumptions are outside the implemented production subset.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Tga.cpp",
           "anchors": [
             "static auto TgaLoad",
             "if (type != 2 && type != 10)",
@@ -315,7 +385,8 @@
             "int32_t i = (height - y - 1) * width + x;"
           ]
         }
-      ]
+      ],
+      "build_option": null
     }
   ],
   "descriptor_fields": [
@@ -329,7 +400,7 @@
       "rationale": "The authored count and fps determine whole-sheet AnimTicks, while runtime playback divides that duration by flattened frame count.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "int32_t frm_fps = fofrm.GetAsInt(\"\", \"fps\", 10);",
             "frm_fps = fofrm.GetAsInt(\"\", \"Fps\", frm_fps);"
@@ -347,9 +418,14 @@
       "rationale": "Each referenced source can itself contain multiple frames.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);",
+            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Art.cpp",
+          "anchors": [
             "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
           ]
         }
@@ -365,7 +441,7 @@
       "rationale": "The parser reuses the current ox/oy variables instead of resetting them for each direction.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "ox = fofrm.GetAsInt(dir_str, \"offs_x\", ox);",
             "oy = fofrm.GetAsInt(dir_str, \"offs_y\", oy);"
@@ -383,14 +459,14 @@
       "rationale": "Authors must not treat a parsed-but-unused field as a rendering contract.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "collection.EffectName = fofrm.GetAsStr(\"\", \"effect\");",
             "collection.EffectName = fofrm.GetAsStr(\"\", \"Effect\", collection.EffectName);"
           ]
         },
         {
-          "path": "Source/Tools/ImageBaker.h",
+          "path": "Source/Tools/ImageImport.h",
           "anchors": [
             "string EffectName {};"
           ]
@@ -406,7 +482,7 @@
       "rationale": "SpriteSheet accepts exactly one direction or GameSettings::MAP_DIR_COUNT directions.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "string dir_str = strex(\"dir_{}\", dir);",
             "throw ImageBakerException(\"FOFRM file invalid apps\", fname);"
@@ -429,10 +505,15 @@
       "rationale": "References are joined with the descriptor directory and then dispatched by the referenced extension.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "frm_name = fofrm.GetAsStr(dir_str, \"frm\");",
-            "auto sub_collection = LoadAny(strex(\"{}/{}\", frm_dir, frm_name), files);"
+            "frm_name = fofrm.GetAsStr(dir_str, \"frm\");"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "sub_collection = context.Resolve(strex(\"{}/{}\", frm_dir, frm_name));"
           ]
         }
       ]
@@ -447,7 +528,7 @@
       "rationale": "This preserves source-format displacement while allowing authored composition corrections.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "sub_collection.Main.Frames[i].NextX + next_x",
             "sub_collection.Main.Frames[i].NextY + next_y"
@@ -463,7 +544,7 @@
       "rationale": "The merge loop copies child Main frames only and validates each later direction against collection.SequenceSize.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "frames += sub_collection.SequenceSize;",
             "frames != collection.SequenceSize",
@@ -481,7 +562,7 @@
       "rationale": "Nested animated references can therefore change effective frame cadence unless the author accounts for flattening.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "1000 * frm_count / frm_fps : 0"
           ]
@@ -499,7 +580,7 @@
       "rationale": "Options are parsed from the source reference without changing the physical source filename.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Art.cpp",
           "anchors": [
             "case 'T':",
             "case 'H':",
@@ -519,7 +600,7 @@
       "rationale": "The importer composes palette layers and animation selection before writing runtime RGBA frames.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "Format: fileName$[1,100,0,0][2,0,0,100]animName.spr",
             "if (rgb[0] >= 0 && rgb[0] <= 3)",
@@ -537,7 +618,7 @@
       "rationale": "The source can expose many cycles while one resource path needs deterministic output.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Bam.cpp",
           "anchors": [
             "Format: fileName$5-6.bam",
             "if (need_cycle >= cycles_count)",
@@ -598,8 +679,13 @@
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "substring_until('$')",
-            "substring_after('$')",
-            "return it->second(fname, opt"
+            "substring_after('$')"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "return it->second.Load(fname, opt"
           ]
         }
       ]
@@ -752,7 +838,7 @@
             "run_async(GetAsyncMode(), task_name",
             "logging::write(\"Image baking error for '{}': {}\"",
             "files_to_bake[file_index].first.GetPath()",
-            "throw ImageBakerException(\"Errors during images baking\", errors)"
+            "throw ImageBakerException(\"Errors during images baking\", errors, first_error)"
           ]
         }
       ]
@@ -930,7 +1016,7 @@
       "rationale": "A descriptor must resolve at least one source reference before a runtime frame table can exist.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Art.cpp",
           "anchors": [
             "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
           ]
@@ -945,7 +1031,7 @@
       "rationale": "Every direction sheet shares one frame-count and timing header.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "dir > 0 && frames != collection.SequenceSize",
             "throw ImageBakerException(\"FOFRM file invalid data\", fname)"
@@ -967,7 +1053,7 @@
       "rationale": "The flattening implementation copies concrete child pixels and does not rebase child shared indices.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "FOFRM file invalid data (shared index)"
           ]
@@ -997,7 +1083,7 @@
       "rationale": "The loader consumes the fixed header directly, then always flips rows and does not branch on descriptor origin.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Tga.cpp",
           "anchors": [
             "Indexed TGA is not supported",
             "TGA support only 24 and 32 bpp",
@@ -1111,5 +1197,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "3e1fdf7a223bbbe7952868b62c0a6f55d74a3a21e9d77a283cdf8820981e0450"
+  "contract_digest": "64f557a7ae14797c4b5145e11732815ec471a7d8247b0ac673aaf437ef33ff2e"
 }

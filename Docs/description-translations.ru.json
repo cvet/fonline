@@ -1332,8 +1332,8 @@
           "translation": "Ноль или больше записей в скобках задают ограниченные RGB offsets для part 0 other, 1 skin, 2 hair или 3 armor; part вне диапазона применяет RGB ко всем частям, а текст после последней скобки выбирает последовательность без учёта регистра (пустое значение выбирает первую)."
         },
         "/formats/@id=image-format.format.art/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "082d2526849c3a9896ca0fb38427d3f3adcb2f4c5135ccbb12633c94f9f7a7f3",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_ART=ON"
         },
         "/formats/@id=image-format.format.art/rationale": {
           "source_sha256": "f3c805e5d61c32e963a8887bcc9aac085b9893b994b2b109c7c6448d0919e581",
@@ -1344,8 +1344,8 @@
           "translation": "ART импортирует raw/RLE frames, palettes, offsets, frame rate, static или eight-rotation данные и filename options палитры/alpha/mirror/frame."
         },
         "/formats/@id=image-format.format.bam/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "f84b155dd67a552d6ab93def8ae12da8999013a6db0a5fa32b8ed9b9e55f61b0",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_BAM=ON"
         },
         "/formats/@id=image-format.format.bam/rationale": {
           "source_sha256": "0ce598fe946609ac793e4b88340839f8fb50f1d1c76fae25aae87b841a9ac1ea",
@@ -1368,8 +1368,8 @@
           "translation": "FOFRM компонует относительные ссылки на изображения в одно статическое изображение, анимацию или полный набор направлений и является предпочтительной авторской обёрткой для многокадровых либо содержащих параметры источников."
         },
         "/formats/@id=image-format.format.fr0/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "8e88ed895203e36df559db8ca9571f1583284c437784d2e5e89b2e030600c8c3",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_FRM=ON"
         },
         "/formats/@id=image-format.format.fr0/rationale": {
           "source_sha256": "645d448b6bbaf85caf33101edcc403e7b0b7b07328d39731098d697678dd68db",
@@ -1380,8 +1380,8 @@
           "translation": "Вход .fr0 обнаруживает нумерованные соседние направления, отклоняет разрыв после начала их загрузки и переименовывает запечённый выход в lowercase .fofrm для путей critter либо в .frm иначе."
         },
         "/formats/@id=image-format.format.frm/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "8e88ed895203e36df559db8ca9571f1583284c437784d2e5e89b2e030600c8c3",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_FRM=ON"
         },
         "/formats/@id=image-format.format.frm/rationale": {
           "source_sha256": "91d1697549dcc7f5cd359f72a8c2faa846773534e4374865c33213a0971718bb",
@@ -1392,8 +1392,8 @@
           "translation": "FRM импортирует big-endian timing кадров, offsets, deltas, одну либо полную таблицу направлений, необязательный одноимённый .pal и анимированные индексы стандартной палитры."
         },
         "/formats/@id=image-format.format.mos/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "33f76d36edae9fc22f72728ae1ac7350ea207a466a88ab1c91c11ba34ad9a765",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_MOS=ON"
         },
         "/formats/@id=image-format.format.mos/rationale": {
           "source_sha256": "bad093a6e5b51995234938b7b30fe9fcb14eff45015c6019f411485b3d4ac37d",
@@ -1416,8 +1416,8 @@
           "translation": "PNG декодируется через libpng, сокращает 16-битные каналы до 8 бит, раскрывает palette/low-bit grayscale/tRNS и заполняет отсутствующий alpha значением 255 перед созданием одного RGBA-кадра."
         },
         "/formats/@id=image-format.format.rix/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "8bd9d017c7065fa8c4d0916ddfd7dc4c915f11ad3a78bccdc5cee0db62813192",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_RIX=ON"
         },
         "/formats/@id=image-format.format.rix/rationale": {
           "source_sha256": "3debd0e8a92ce59d529732e498370897812ea2cd72a65ea1396b0e29e9659178",
@@ -1428,8 +1428,8 @@
           "translation": "RIX импортирует одно непрозрачное индексированное изображение со встроенной палитрой и создаёт один RGBA-кадр."
         },
         "/formats/@id=image-format.format.spr/availability": {
-          "source_sha256": "367de840079af0a89ca56cae612fad39443db9f34063521e0751239a6b7006d0",
-          "translation": "по умолчанию только baker; для штатного runtime оборачивайте в FOFRM"
+          "source_sha256": "e45a86ee0b7515797e394882505ccb6677815dee2b2218726733b640c56da414",
+          "translation": "по умолчанию только baker; для штатного runtime оборачивайте в FOFRM; импорт требует FO_IMAGE_SPR=ON"
         },
         "/formats/@id=image-format.format.spr/rationale": {
           "source_sha256": "64e1c261ea53196e03c1e4b95c942cc349ff52edc286d999d0a7e3cf99aa5c25",
@@ -1452,8 +1452,8 @@
           "translation": "TGA поддерживает только raw type 2 либо RLE type 10 TrueColor с 24 или 32 bpp, преобразует BGR(A) в RGBA и переворачивает строки снизу вверх."
         },
         "/formats/@id=image-format.format.til/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "5f70bf734406f4e4189cac54cf3380b0a37a5f0247b5f4cc28bfe84a7189489b",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_TIL=ON"
         },
         "/formats/@id=image-format.format.til/rationale": {
           "source_sha256": "ff9cbc59d5a9209b445a5c59ceafedaaae61409c788d350b3d58b13b283947bb",
@@ -1464,8 +1464,8 @@
           "translation": "TIL импортирует вложенные ZAR-кадры как однонаправленную последовательность 10 fps."
         },
         "/formats/@id=image-format.format.zar/availability": {
-          "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
-          "translation": "baker и штатный runtime"
+          "source_sha256": "c83c3943a6254450d23a3aed12eeaefdc4b259b31f38ba225e2a2a7d5f2b7d8f",
+          "translation": "baker и штатный runtime; импорт требует FO_IMAGE_ZAR=ON"
         },
         "/formats/@id=image-format.format.zar/rationale": {
           "source_sha256": "9f85be0bc18feca012f90e8fc73f562b10071a28b9c776b67fc38960417f1452",
@@ -3424,10 +3424,6 @@
           "source_sha256": "cb7731f077b23b1e68f5b29d464463497e3ae1879ee5c0525b9b03f8871567c5",
           "translation": "Отключает сетевой backend Asio."
         },
-        "/options/@id=cmake.option.FO_DISABLE_MONGO/description": {
-          "source_sha256": "1ab4b8bf6ab61f200bef9044d87197d7e9ce7fd60b849db2e3d433ca5dcb8aaa",
-          "translation": "Отключает поддержку backend MongoDB."
-        },
         "/options/@id=cmake.option.FO_DISABLE_NAMESPACE/description": {
           "source_sha256": "b37699c017b0cb086cfa0cbdb1123b16051912fd809b3b26eeb48d40046df856",
           "translation": "Компилирует нативные символы движка без пространства имён FOnline."
@@ -3443,10 +3439,6 @@
         "/options/@id=cmake.option.FO_DISABLE_SDL_GPU/description": {
           "source_sha256": "b78fde660528d4b5844fc93850ac31df40639ab0744055e22b7490929c67f4be",
           "translation": "Отключает backend рендеринга SDL_GPU."
-        },
-        "/options/@id=cmake.option.FO_DISABLE_SQLITE/description": {
-          "source_sha256": "cf0c3b7aa950a5205986d3b6ef67125fb9504039b2181ad9b62259a595afdb63",
-          "translation": "Отключает поддержку backend SQLite."
         },
         "/options/@id=cmake.option.FO_DISABLE_VULKAN/description": {
           "source_sha256": "62ad5b510987669ad221c561d5405dd5ca735687a38c64c7fd1f940d62775916",
@@ -3616,6 +3608,66 @@
         "/stages/@id=cmake.stage.ThirdParty/description": {
           "source_sha256": "50cbc96bea400db66cd480c0a6d8b711effb2eae698341580583ee5ae1828851",
           "translation": "Регистрирует встроенные сторонние зависимости и изоляцию поиска пакетов."
+        },
+        "/options/@id=cmake.option.FO_DATA_SOURCE_DAT/description": {
+          "source_sha256": "3299e269313978a31e420c05daa61c1d1768796cb2d85c21e39bcdfe0c7f9979",
+          "translation": "Включает ресурсные архивы DAT 2.0 и 2.1."
+        },
+        "/options/@id=cmake.option.FO_DATA_SOURCE_ZIP/description": {
+          "source_sha256": "380b38ad8b4aa5d0c5ac93f5cc7a9687b3f8bf2f9f01b8e2ea5122b924051211",
+          "translation": "Включает внешние ресурсные архивы ZIP и BOS."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_JSON/description": {
+          "source_sha256": "1fc7ed6b77c4a5f4860c5d617a06b7abea1a34e9b7995e0281f9ef811b0e27ba",
+          "translation": "Включает файловый провайдер базы данных JSON."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_SQLITE/description": {
+          "source_sha256": "c4f7e8804aa45da47f5b8da5eac97f6276b66209ad18372afb51b232269c18c2",
+          "translation": "Включает провайдер SQLite с документами CBOR."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_MONGO/description": {
+          "source_sha256": "6063b7a1c4216071fefdb411212324e6fe0197be83c037744b22b84707c36c97",
+          "translation": "Включает провайдер MongoDB и его зависимости libbson/mongoc."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_FRM/description": {
+          "source_sha256": "8b9a943b89ab3138cadf856a4e4e3b57234e0e7b4d13f2454c6d570428e2fa1d",
+          "translation": "Включает загрузчик изображений FRM."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_RIX/description": {
+          "source_sha256": "c587c5f406d4d43543c1eef13fe655e75f5beb327d0b29dc8748b3e266533c0d",
+          "translation": "Включает загрузчик изображений RIX."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_ART/description": {
+          "source_sha256": "05c491363482ac153e7c7c87728f4af396d5d93735bac71e63790a2d94d30023",
+          "translation": "Включает загрузчик изображений ART."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_SPR/description": {
+          "source_sha256": "b780d3a04e3cb011d0c9f01d9f4312af22292b8f19cdff0be2e0860eafa4c757",
+          "translation": "Включает загрузчик изображений SPR."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_ZAR/description": {
+          "source_sha256": "617625b7a7c39af2dfa14b92783b04723b416a8f3d9189480aec5efaa0b15467",
+          "translation": "Включает загрузчик изображений ZAR."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_TIL/description": {
+          "source_sha256": "a3cbe434472c0cabd2f2f01e0e3571201826d75ca904567e3481147d40b7470b",
+          "translation": "Включает загрузчик изображений TIL."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_MOS/description": {
+          "source_sha256": "1fe332ac4e8ea7da673f0c80af8b5899b56c5d5c21ffd58d55ae8df62cdbab5c",
+          "translation": "Включает загрузчик изображений MOS."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_BAM/description": {
+          "source_sha256": "a38e5edc82b1eaf341bcfebc91cf5ac9fde3d65b8bdb1cef181be49779e0f8ab",
+          "translation": "Включает загрузчик изображений BAM."
+        },
+        "/options/@id=cmake.option.FO_TRACE_CATEGORIES/description": {
+          "source_sha256": "aef5fd542a0ee41ed2fdeab1e3f4cbc7fec1b6ecf0c1cbcafaddd13c544409cf",
+          "translation": "Выбирает категории профилирования Tracy, компилируемые в конфигурациях профилирования."
+        },
+        "/helpers/@id=cmake.helper.TemporaryCompat/description": {
+          "source_sha256": "d0255ca6a9ec191b5990343734d320439e6094f6baae721a6cc0f9621a30a6bd",
+          "translation": "Помечает временные отказы сборки или платформенные ограничения общей датой удаления совместимости; temporary_compat.py проверяет истечение срока, включая неактивные ветки."
         }
       }
     },

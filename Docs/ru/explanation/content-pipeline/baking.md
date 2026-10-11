@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"ba4571caecfd6a506f3a3eec77f5f697ff98f4fc01c768f1249afb348a004ed1"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"b8c5e6f59746a0c88db32dd3e95acd621ba8ff483ce8c21d9f9bc3d2a93306c3"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -178,6 +178,8 @@ AddBakingTarget(Game_PublicResources
 
 До параллельной подготовки packs метод `MountSharedInputDirs()` один раз монтирует каждый уникальный настроенный путь `InputDirs`. Каждый pack context заимствует полученный read-only source через `DataSourceRef`, а владеющий registry существует ровно один проход `BakeAllInternal()`. Packs по-прежнему применяют собственные include/exclude filters и сохраняют настроенную семантику output, но несколько packs с большим общим authored tree больше не обходят и не кэшируют этот каталог независимо. Фильтрация имён внутри source сохраняет порядок первого появления, используя set уже добавленных имён, поэтому подавление duplicates выполняется линейно вместо повторного сканирования накопленного результата.
 
+До подготовки packs master сравнивает `Resources.baking-config-hash` с `FO_BAKING_CONFIG_HASH`. Отсутствие/изменение опций, влияющих на бейкинг, очищает выходное дерево и требует полного rebuild; прежние опции допускают incremental reuse. [Отпечаток конфигурации](../../how-to/build/project-configuration.md#baking-configuration-fingerprint) определяет регистрацию опций и границы проверки.
+
 ### `BakingReport`
 
 `BakingReport.h` задаёт общие DTO и контракт результата записи. Реализация в `.cpp` отвечает за агрегацию, анализ sprite mesh, создание JSON и пути результатов. `Baker.cpp` управляет только lifecycle и пересылает события.
@@ -207,9 +209,9 @@ Cleanup устаревших runtime resources пропускает любой `
 
 - `schemaVersion`, сейчас `1`;
 - `status` и `failureMessage`;
-- `buildHash`, `bakeOutput`, `durationMs`;
+- `buildHash`, `bakingConfigHash`, `bakeOutput`, `durationMs`;
 - `mode.forceRequested`, `mode.fullRebuild`, `mode.rebuildReason`, `mode.singleThread`;
-- причины rebuild: `incremental`, `requested`, `build_hash_changed`, `missing_build_hash`.
+- причины rebuild: `incremental`, `requested`, `build_hash_changed`, `baking_config_changed`, `missing_build_hash`.
 
 `measurementScope` не позволяет принять incremental-выборку за статистику всего corpus. Input counts описывают полный настроенный набор, тогда как output activity и baker details относятся к текущему проходу. В частности, `Image.details.spriteMesh` измеряет только перестроенные кадры. `completeCorpusDetails` истинен лишь при `mode.fullRebuild`; для распределений по всей графике нужен force bake.
 

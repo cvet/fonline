@@ -7,12 +7,30 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"6eef75c651fba3d433245798d13637f29ac1d40859350b655b5bf6d2384e87ba"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"87c64c15aa342c7a542c4aeeb41f9006de05aabcd8f67b580f9d45d1483aa6e7"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-10
+## Current - 2026-10-11
+
+### Изменено
+
+- CMake `TemporaryCompat` задаёт срок ограничениям, включая неактивные ветки. Выбор БД не запрещён для Web.
+- Проекты выбирают соседние модули архивов/БД/изображений под guards через положительные `SetOptionValues`; регистрация source/header безусловна. Memory и PNG/TGA/FOFRM обязательны. ZAR/TIL разделяют decoder под guard с сохранением порядка каналов.
+- JSON-файлы используют обычный JSON, BLOB SQLite — CBOR, BSON принадлежит только Mongo. Внешние ZIP/BOS опциональны; Embedded/APK сохраняют zlib/minizip. Опции с отметкой влияния на бейкинг инвалидируют ресурсы независимо от ревизии проекта; БД и служебные опции исключены.
+
+### Миграция
+
+- В явных входах `temporary_compat.py` укажите `Engine/BuildTools/cmake` и файлы CMake проекта. Ограничения помечайте `TemporaryCompat(Id "YYYY-MM-DD")`; CI проверяет истечение срока, сохраняя воспроизводимость конфигурации.
+- Предыдущая версия: `2026.1.25-dev`, `16f1608794eafeb6c05001b997071105dbc403b9`. [Выбор компонентов](../how-to/build/project-configuration.md#optional-native-components) перечисляет опции, роли, зависимости и диагностику; [persistence](../explanation/persistence/index.md#storage-formats-and-upgrade-boundary) задаёт новую схему/пределы.
+- Удалите `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` из CMake, presets, окружения и кеша (`cmake -UFO_DISABLE_MONGO -UFO_DISABLE_SQLITE ...`). Явно включите используемые `FO_DATABASE_JSON`, `FO_DATABASE_SQLITE`, `FO_DATABASE_MONGO`, `FO_DATA_SOURCE_DAT`, `FO_DATA_SOURCE_ZIP`, `FO_IMAGE_*` через `SetOptionValues`. Все optional defaults OFF; старые опции и выключенные компоненты завершаются ошибкой, без aliases/fallback.
+- Найдите native-вызовы `ImageBaker::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc`, `MAX_DIRS_MINUS_ONE`: замените префикс на `ImageImport::`. Аргумент четыре loader становится `const ImageImport::Context&`; используйте `context.Files`, `context.Resolve(path)`. Необязательный аргумент три `AddLoader` задаёт выходное имя. Подключите соседние `DataBase-{Memory,Json,SQLite,Mongo}.h`; фабрики теперь `DataBaseMemory::Create`, `DataBaseJson::Create`, `DataBaseSQLite::Create`, `DataBaseMongo::Create`, инициализация — `DataBaseSQLite::InitializeRuntime`. BSON-конвертеры/инициализация allocator приватны Mongo.
+- Используйте новые пустые каталоги JSON/SQLite. Для старых Extended JSON/BSON BLOB нет reader и миграции; для отката сохраните старые binaries/storage вместе. Mongo сохраняет представление. Правил преобразования entity/property нет; codecs сохраняют текущие AnyData по owning-документу persistence.
+- Повторите configure, генерацию bindings/metadata, совместную сборку затронутых native-ролей, full bake и упаковку matching outputs. `Resources.baking-config-hash`/report `bakingConfigHash` независимы от `Resources.build-hash`; отсутствие/смена конфигурации бейкинга удаляет stale outputs. [Контракт отпечатка](../how-to/build/project-configuration.md#baking-configuration-fingerprint) учитывает геометрию, модели/эффекты, скрипты и частицы вместе с загрузчиками архивов/изображений. Совместимость `0.0.69` → `0.0.70`: смешанные binaries/snapshots запрещены; поставляйте matching client/server metadata, откатывайте полный комплект binaries/resources/storage. Протокол updater, идентификатор client-runtime ABI и версия baked sprites сохраняются.
+- Перегенерируйте contracts/snippets, EN/RU, сайт/routes и AI delivery. Проверьте minimal/full suites БД/архивов/изображений/baker, reopen/recovery и ошибки выключенных компонентов; platform/runtime proof фиксируйте отдельно. Публикация не подразумевается.
+
+## 2026.1.25-dev - 2026-10-10
 
 ### Исправлено
 

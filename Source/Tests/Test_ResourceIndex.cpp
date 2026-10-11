@@ -779,6 +779,7 @@ TEST_CASE("ResourceIndexCost", "[.]")
     CHECK(fs::remove_dir_tree(dir));
 }
 
+#if FO_DATA_SOURCE_ZIP
 // Hidden, like the case above: the ZIP half, through the engine's own readers so both numbers share a code
 // path. Entries are stored, which leaves the mount comparison intact and makes the read figure ZIP's best
 TEST_CASE("ResourcePackVersusZipCost", "[.]")
@@ -856,5 +857,7 @@ TEST_CASE("ResourcePackVersusZipCost", "[.]")
 
     CHECK(fs::remove_dir_tree(dir));
 }
+
+#endif
 
 FO_END_NAMESPACE

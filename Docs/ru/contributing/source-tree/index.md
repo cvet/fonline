@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8da1612321aedc56e3ace92d12cb55ed86cb9f6a9e2f3c759fada129d3ae3880"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"d873f5702064e5d6e8ff9bab19eac3e2133c36492a2a26ef4e0fc65adb6d9394"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -112,3 +112,7 @@ Particle authoring имеет отдельный `ParticleBaker`: работу �
 - Не помещайте game-specific behavior в документацию движка, если оно явно не помечено как пример.
 - Не описывайте generated output как hand-authored source.
 - Не превращайте source-tree README в большие руководства; используйте тематические страницы `Docs/` и ссылки на них.
+
+## Соседние опциональные модули
+
+`Common/DataSource-*`, `Server/DataBase-*`, `Tools/ImageBaker-*` — соседние `.h/.cpp` под внутренними числовыми guards, с безусловной регистрацией/includes. Координаторы сохраняют dispatch; `ImageImport` владеет frames/context, `DataBaseSerialization` — JSON/CBOR, Mongo — BSON. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) перечисляет модули, роли и зависимости.

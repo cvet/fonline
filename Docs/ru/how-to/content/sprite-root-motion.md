@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"04ead23529b85d79eb2294313cd3aed667fc46b8facdd37859f67624cddd09a5"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"a0de6b46d4a154f555b2b61dff31ccbfe9d2a3088da7ddf0746e3835f8d21d54"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 В этом руководстве описано, как FOnline переносит покадровое смещение 2D-спрайта через запекание изображений и использует его для согласования отображаемого цикла ходьбы или бега движущегося криттера с авторитетным перемещением по гексам. Руководство следует текущему baker, декодеру ресурсов, загрузчику спрайтов, интерполяции движения, клиентскому коду представления и тестам Engine. Встраиваемый проект отвечает за исходную графику, сопоставление анимаций, настройку движения и визуальные приёмочные тесты.
@@ -45,7 +45,7 @@ Sprite root motion является данными представления. �
 
 ## Создание покадровых offsets
 
-`ImageBaker::FrameShot` хранит:
+`ImageImport::FrameShot` хранит:
 
 ```cpp
 int16_t NextX;

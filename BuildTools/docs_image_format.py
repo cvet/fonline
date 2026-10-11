@@ -157,7 +157,9 @@ def _derive_baker_extensions(source_text: str) -> list[str]:
     extensions: list[str] = []
     for line in source_text.splitlines():
         if "AddLoader(" in line:
-            extensions.extend(_quoted_values(line.rsplit(",", maxsplit=1)[-1]))
+            extension_list = re.search(r"\{([^}]*)\}", line)
+            if extension_list is not None:
+                extensions.extend(_quoted_values(extension_list.group(1)))
     if not extensions:
         raise ValueError("unable to derive ImageBaker extensions")
     return extensions

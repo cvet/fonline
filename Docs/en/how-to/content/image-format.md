@@ -515,3 +515,9 @@ When changing an image surface:
   and visible validation changes;
 - keep public examples pinned to an exact Engine revision and do not promise
   support for a format or option that their validation route does not exercise.
+
+## Importer composition and native extensions
+
+PNG/TGA/FOFRM are mandatory. Other importers require individual `FO_IMAGE_*` [options](../build/project-configuration.md#optional-native-components). Known disabled inputs, including nested FOFRM references, report their path and required option. Adjacent `ImageBaker-*.h/.cpp` files guard palettes/helpers together; `ImageBaker-ZarDecoder` is shared by ZAR/TIL when either is enabled.
+
+Native callbacks use `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` and `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. Use `context.Files` for sibling assets, `context.Resolve(path)` for nesting, and the third `AddLoader` argument for output-name mapping. Scheduling, meshes and serialization stay in the coordinator. Stock clients still read baked containers without source decoders; runtime extensions/container version are unchanged.

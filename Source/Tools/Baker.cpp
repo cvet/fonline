@@ -349,6 +349,10 @@ void MasterBaker::BakeAllInternal()
     logging::write("Time {}", backing_time.get_duration());
     logging::write("Baking complete!");
 
+    string baking_config_hash_path = MakeOutputPath("Resources.baking-config-hash");
+    bool baking_config_hash_write_ok = fs::write_file(baking_config_hash_path, FO_BAKING_CONFIG_HASH);
+    FO_VERIFY_AND_THROW(baking_config_hash_write_ok, "Unable to write the baking configuration hash file", baking_config_hash_path);
+
     bool build_hash_write_ok = fs::write_file(build_hash_path, FO_BUILD_HASH);
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
 }
@@ -365,6 +369,11 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     FO_TRACE_ZONE(Baking);
 
     auto prev_build_hash = fs::read_file(build_hash_path);
+    string baking_config_hash_path = MakeOutputPath("Resources.baking-config-hash");
+    auto prev_baking_config_hash = fs::read_file(baking_config_hash_path);
+    bool baking_config_hash_deleted = fs::remove_file(baking_config_hash_path);
+    FO_VERIFY_AND_THROW(baking_config_hash_deleted, "Unable to delete the previous baking configuration hash file", baking_config_hash_path);
+
     bool build_hash_deleted = fs::remove_file(build_hash_path);
     FO_VERIFY_AND_THROW(build_hash_deleted, "Unable to delete the previous build hash file", build_hash_path);
 
@@ -381,18 +390,22 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
         force_baking = true;
         rebuild_reason = "build_hash_changed";
     }
+    else if (!prev_baking_config_hash.has_value() || prev_baking_config_hash.value() != FO_BAKING_CONFIG_HASH) {
+        logging::write("Force rebuild all resources due to baking configuration changed");
+        force_baking = true;
+        rebuild_reason = "baking_config_changed";
+    }
 
     if (force_baking) {
         bool delete_output_ok = fs::remove_dir_tree(_settings->Baking.BakeOutput);
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
-    // A missing hash means the previous run never finished, so the tree is rebuilt - but not deleted, since the
-    // partial output is still a valid starting point once every file is re-checked
+    // A missing build hash also marks an incomplete run; configuration invalidation above discards its stale outputs
     if (!prev_build_hash.has_value()) {
         force_baking = true;
 
-        if (rebuild_reason == "incremental") {
+        if (rebuild_reason == "incremental" || rebuild_reason == "baking_config_changed") {
             rebuild_reason = "missing_build_hash";
         }
     }
