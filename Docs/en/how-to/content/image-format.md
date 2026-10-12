@@ -444,7 +444,11 @@ owns candidate policy and report fields.
 offsets and shared references. Server/client `EngineMetadata` reads it without
 RGBA decoding. Adding or losing this per-pack index requires a full rebake.
 
-Cache entries return prototype `MakeCopy()` results with independent animation.
+Every copyable load, including the first, returns `MakeCopy()`; the cache retains
+the factory prototype. `SpriteSheet` copies own playback and frame tables, start
+at frame/direction zero with valid size/anchor and retain state/action tags.
+`AtlasSprite::MakeCopy()` shares atlas pixels/geometry. First/last extraction
+cannot shorten later loads; each trimmed direction has one sprite and offset.
 `_nonFoundSprites` memoizes missing files/extensions, unknown factories and load
 failures by path. `CleanupSpriteCache()` does not clear it: recreate the manager
 or restart after adding a previously failed resource.

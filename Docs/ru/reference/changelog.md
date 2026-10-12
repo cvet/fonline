@@ -8,13 +8,25 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"953cdca22ef933ae36b50ce2095cf842f2426b89099289ae9c8ed1a33ddf2a9e"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"27c7a63eb7ee651621be7856e68b1d000fb7c080b9da732dc51d2474d01281f5"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-12
+
+### Исправлено
+
+- Первый загруженный sprite sheet независим от cached prototype. Усечение сокращает оба массива кадров; копирование ограничено размером назначения и задаёт размер/привязку нулевого кадра/направления.
+
+### Миграция
+
+- База `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` (`2026.1.33-dev`); новая версия `2026.1.34-dev`. Пересоберите native clients/Mapper и перезапустите. Конверсия scripts/config/content или БД не нужна: first/last selection, directional deltas, state/action tags и atlas sharing сохраняют смысл.
+- Независимое проигрывание теперь соблюдается с первой загрузки. Усечение не сокращает последующие загрузки; LastFrame по-прежнему суммирует обе оси. Проверьте повторные загрузки, усечённые копии и видимые animation/directions/stop-start.
+- Runtime `0.0.72`, Managed ABI 9 и sprite container v2 прежние. Запечённые изображения пригодны; обновите обычные generated metadata/bake markers, выкладывайте согласованные binaries. Откат возвращает baseline binaries без конверсии сохранений.
+
+## 2026.1.33-dev - 2026-10-12
 
 ### Добавлено
 

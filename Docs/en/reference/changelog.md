@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-12
 
+### Fixed
+
+- Keep the first loaded sprite sheet independent of its cached prototype. Trim both frame arrays; bound copying and initialize copy size/anchor at frame/direction zero.
+
+### Migration
+
+- Base `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` (`2026.1.33-dev`); update `2026.1.34-dev`. Rebuild native clients/Mapper and restart. No script/config/content or database conversion: first/last selection, directional deltas, state/action tags and atlas sharing retain meaning.
+- Copies now follow the existing independent-playback contract from the first load. First/last extraction cannot shorten later loads; last-frame deltas still sum both axes. Check repeated loads, trimmed copies and visible animation/directions/stop-start.
+- Runtime `0.0.72`, Managed ABI 9 and sprite container v2 stay unchanged. Reuse baked images; refresh normal generated metadata/bake markers and deploy matching binaries. Rollback restores the baseline binaries without converting saves.
+
+## 2026.1.33-dev - 2026-10-12
+
 ### Added
 
 - FOFRM `Alias` retains a binary sheet's directions, anchors, deltas and timing; ART `$r=0..7` selects one rotation.

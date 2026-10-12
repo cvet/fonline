@@ -2,6 +2,48 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-12 - Qualify the owner's amended integration revisions
+
+- During validation, the owner amended the project to
+  `d9cef89191671674ac41656d180b5e185dd89b9b` (`0.3.1563`) and Engine to
+  `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` (`2026.1.33-dev`). The committed
+  project pin matches. The Engine revision is now published; preserve it.
+  The amendment changes documentation/tests and project version metadata,
+  with no further native, game-script or resource-source changes.
+- The preceding native build and full bake use the earlier revision metadata;
+  retain their logs as intermediate evidence. Reconfigure and rebuild the
+  amended pair, rebake, and launch runtime checks only from its completed output.
+- Final qualification: all seven Windows Release native targets build with
+  current revision metadata. Focused native regression passes 63,689 assertions
+  in 38 cases, including bounded visibility and camera/hit filtering. The
+  embedding's exception-safety audit classifies 7,444 functions with no errors
+  or warnings; its style and fixed-message/verification-condition checks pass.
+- Full bake succeeds for the amended project hash: 33 packs, 16 bakers,
+  46 invocations, 26,956 inputs and 19,072 changed outputs, in 43:48. Its
+  automatic full-rebuild reason is `build_hash_changed`. The following
+  incremental bake succeeds in 37.738 seconds with zero changed/deleted outputs.
+  Retain the preceding 55:10 bake as intermediate metadata evidence only.
+- The embedding's Mono runtime passes 138/138 cases and 2,956 assertions across
+  13 suites, with no failures, timeouts, skips or global exception delta and
+  process exit 0. This includes checkpoints, group lifecycle, RefTypes, dynamic
+  assemblies, sprite ownership, footsteps and native/managed transport. All
+  runtime launches explicitly disable startup prebaking after the fresh bake.
+- A real 1280x800 client follows ordinary map-location, preview-eye and return
+  button clicks. The bounded `Vault17_Gateway` view has no chosen critter and
+  masks the exterior; returning preserves critter ID, trip, coordinates,
+  leader and personal checkpoints. Its current-metadata log has no errors or
+  exceptions. Execution/lock-wait overruns under concurrent workstation load
+  prevent a performance claim. Adapter stop returns 1; the separate headless
+  run proves clean server shutdown. The GUI process and adapter are stopped.
+- Documentation preparation and validation pass for 411 Markdown entries,
+  313 normative snippets, 4,871 translated descriptions and 28 retrieval tasks.
+  The 39 focused documentation regressions, 248 embedding tool tests and
+  22 checkpoint MCP tests pass; all 106 generated GUI screens are current.
+  Public example documentation, public API and version/history checks pass.
+  Preserve every published verification/disposition entry and the original
+  import implementation/tests, matching committed gitlink and safety refs.
+  Rendered Jekyll publication is not performed; Ruby/Bundler are unavailable.
+
 ## 2026-10-12 - Reconcile Arcanum imports with bounded map observation
 
 - Start from local Engine `543c2c5168fbdb859a8b0cdb5e9495a48faa28af`

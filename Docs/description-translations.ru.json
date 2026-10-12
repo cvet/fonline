@@ -1496,8 +1496,8 @@
           "translation": "Независимое animation state не должно изменять cached prototype, а разные классы atlas нельзя безусловно размещать совместно."
         },
         "/runtime_rules/@id=image-format.runtime.cache/requirement": {
-          "source_sha256": "938f80f0397bdeb8ec97e25ea991defb7a17502e335bb891109f11070a825bc0",
-          "translation": "Copyable sprites кэшируются по hashed path вместе с AtlasType, а каждая загрузка возвращает MakeCopy, поэтому один source path может иметь отдельные atlas-backed cache entries."
+          "source_sha256": "680389f751caa212205eb51903481d2e25a8a65708302010d97a18741ace315c",
+          "translation": "Копируемые спрайты кэшируются по hashed path вместе с AtlasType; каждая загрузка, включая первую, возвращает MakeCopy. Clock и таблицы кадров SpriteSheet независимы; AtlasSprite сохраняет общие atlas pixels/geometry."
         },
         "/runtime_rules/@id=image-format.runtime.decode/name": {
           "source_sha256": "18293e09282a72becf15f8649d1ab208653aa83adce644eacddc72443c573c41",
@@ -1532,8 +1532,8 @@
           "translation": "Визуальное root-motion displacement должно оставаться отдельным от sequence placement и authoritative world movement."
         },
         "/runtime_rules/@id=image-format.runtime.frame-offset/requirement": {
-          "source_sha256": "148d70afbc49747c4373709154fe1ec609a47b35bae42e8858f518d9023fd1df",
-          "translation": "Concrete и shared frames SpriteSheet сохраняют импортированные NextX/NextY в _sprOffset; обычный draw использует offset выбранного AtlasSprite, а locomotion projection потребляет отдельный массив frame offsets."
+          "source_sha256": "a59a0a7ab8c2a4177ccbba06ac923a2a76223b49c6a74b8a44b501ddcb9e9156",
+          "translation": "Concrete/shared frames сохраняют NextX/NextY в _sprOffset отдельно от draw placement. ResolveCritterAnimationFrames оставляет один спрайт и offset на направление; LastFrame суммирует предыдущие дельты по обеим осям. При обоих flags выбирается FirstFrame."
         },
         "/runtime_rules/@id=image-format.runtime.missing-cache/name": {
           "source_sha256": "8aa6f76a704bd4d34fc50dc88c278348c2d4921a1a77b8f308c2d26c864ad07e",
@@ -1556,8 +1556,8 @@
           "translation": "Animation state является клиентским presentation state, а каждое направление владеет параллельным frame sheet."
         },
         "/runtime_rules/@id=image-format.runtime.sprite-sheet/requirement": {
-          "source_sha256": "2a97f2c632a4b917f132b64cf42d09a06c3c3d7126bf6d8fd46c7ce6a36d956b",
-          "translation": "SpriteSheet принимает одно или полное число направлений карты, поддерживает выбор направления, random prewarm, normalized time, loop/reverse playback и считает один кадр либо нулевые полные ticks непроигрываемыми."
+          "source_sha256": "82a3a41182c027e1b8d8e1ce2e496f2e941e1cf656d38d419fe37b935c4c4876",
+          "translation": "SpriteSheet принимает одно или все направления карты, random prewarm, normalized time и loop/reverse playback; один кадр или нулевые ticks не проигрываются. Копии начинают с нулевого кадра/направления, корректного размера/привязки и сохраняют state/action tags."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/name": {
           "source_sha256": "1fa5917048511413fe454b412e646441428b6214cd80c08859786156742979af",

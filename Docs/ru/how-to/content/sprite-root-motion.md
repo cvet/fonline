@@ -5,18 +5,24 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"c6dda142f98c890523f149219376fe26715eeb9f5c477de235840806e030c078"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"62249a09af953c9e67a1cbbd50c1154dcff5111d1c393eea735ead38c36f384c"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
-В этом руководстве описано, как FOnline переносит покадровое смещение 2D-спрайта через запекание изображений и использует его для согласования отображаемого цикла ходьбы или бега движущегося криттера с авторитетным перемещением по гексам. Руководство следует текущему baker, декодеру ресурсов, загрузчику спрайтов, интерполяции движения, клиентскому коду представления и тестам Engine. Встраиваемый проект отвечает за исходную графику, сопоставление анимаций, настройку движения и визуальные приёмочные тесты.
+FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
+авторитетным движением по гексам. Проект владеет art, animation mapping,
+настройкой движения и визуальной приёмкой.
 
 ## Статус контракта
 
-Это принадлежащий Engine production-контракт для покадрового смещения 2D-спрайтов, переноса запечённых offsets, выбора кадра по движению, передачи фазы цикла и нормализации offset при остановке. Нормативными являются исходники и тесты Engine. Last Frontier и FOnline TLA служат только discovery- и compatibility-evidence; их ассеты, визуальная политика и исторические имена реализации не расширяют этот контракт.
+Исходники/тесты Engine определяют независимый 2D-контракт переноса offsets,
+выбора кадров по движению, передачи фазы и нормализации при остановке.
+Last Frontier/TLA — discovery и compatibility evidence, закреплённые в
+`BuildTools/ExternalProjectEvidence.json`; их art, policy и исторические имена
+не расширяют контракт. Выводите переиспользуемые утверждения из Engine.
 
-Контракт можно использовать независимо от checkout любого из этих проектов. Project evidence закреплено в `BuildTools/ExternalProjectEvidence.json`, а каждое переиспользуемое утверждение на этой странице повторно выведено из текущих исходников или тестов Engine.
-
-Это контракт представления движения для 2D. Общий импорт PNG/TGA и legacy-форматов, композиция FOFRM, запечённые записи, стандартная runtime-загрузка, атласы и кэши описаны в [Форматах изображений и спрайтов](image-format.md). Он не зависит от скелетной анимации `.fo3d` и метаданных длительности из [Анимации моделей](model-animation.md).
+[Форматы изображений и спрайтов](image-format.md) описывают импорт, FOFRM,
+контейнеры, загрузку, atlases и caches. Анимация/длительности `.fo3d` принадлежат
+[анимации моделей](model-animation.md).
 
 ## Область и источники истины
 
@@ -90,6 +96,11 @@ Offsets зависят от направления. Image baking может от
 `ImageBaker::BakeCollection` записывает `NextX` и `NextY` каждого конкретного кадра после преобразований как знаковые 16-битные значения в запись кадра SpriteResource v2. Запись deduplicated shared frame ссылается на более ранний кадр. `ReadSpriteResource` декодирует пару в `SpriteResourceFrameData::NextOffset` вместе с draw offset, размерами, пикселями и опциональной mesh кадра.
 
 `DefaultSpriteFactory::LoadSprite` создаёт `SpriteSheet` для направления и копирует декодированный `NextOffset` каждого конкретного кадра в `_sprOffset`. Shared frame копирует спрайт по ссылке и его уже декодированный offset. `SpriteSheet::GetSprOffset()` предоставляет клиентскому runtime read-only span.
+
+В `ResolveCritterAnimationFrames` извлечение первого кадра сохраняет его delta; последнего — сумму всех deltas
+по обеим осям. Направление содержит один спрайт/offset, копирование сохраняет
+эти значения без изменения полного cached sheet. При обоих resolver flags
+`FirstFrame` имеет приоритет над `LastFrame`.
 
 Binary layout и хранение `_sprOffset` являются приватными контрактами Engine. Игровые скрипты и инструменты должны создавать поддерживаемые исходные форматы и проверять отображаемое поведение, а не разбирать или изменять baked stream.
 
@@ -183,7 +194,10 @@ cycle_start  = anchor + cycle_number * T
 offs_anim    = (cycle_start - pos) + accum[i]
 ```
 
-Обычная позиция спрайта на карте уже содержит логический гекс и `HexOffset`. Добавление `offs_anim` компенсирует линейное движение внутри выбранного кадра и помещает спрайт в авторскую накопленную позицию этого кадра. Изображение продвигается на следующую авторскую delta при смене выбранного кадра, пока логическое движение продолжается под ним.
+Размещение map sprite включает логический гекс и `HexOffset`. `offs_anim`
+компенсирует линейное движение внутри кадра и ставит спрайт в накопленный
+авторский offset. Смена кадра продвигает визуал на следующую delta, пока
+логическое движение продолжается.
 
 Это выравнивание, а не locomotion, управляемая анимацией. Изменение `NextX` / `NextY` меняет визуальный шаг и выбор фазы, но не заставляет server-side entity двигаться дальше или быстрее.
 
@@ -233,22 +247,30 @@ new_anchor     = pos - round(old_phase * T_new)
 
 ## Практики создания контента
 
-1. Считайте `NextX` / `NextY` покадровым визуальным displacement, а не абсолютными координатами кадра.
-2. Создавайте и проверяйте каждое направление. Поддерживайте согласованные по направлению cycle vectors, чтобы повороты сохраняли убедительную фазу.
-3. Сохраняйте сумму `T` ненулевой для locomotion sheet, который должен пространственно управлять походкой.
-4. Согласуйте порядок offsets с порядком poses. Большая коррекция в одном кадре создаёт видимый скачок даже при правильной сумме цикла.
-5. Проверяйте mirroring, extraction, merging и substitutions первого/последнего кадра: эти операции могут изменить накопленные offsets.
-6. Не настраивайте скорость пути пикселями root motion. Настройте авторитетное движение правилами проекта, затем согласуйте с ним визуальный цикл.
-7. Проверяйте быстрые смены направления и stop/start. Эти маршруты проверяют передачу anchor и нормализацию offset, а не только равномерное прямое движение.
-8. Проверяйте поддерживаемые проектом zoom, geometry и renderer configurations. Алгоритм переиспользуем, но приемлемый cadence и foot sliding являются решениями контента.
+1. `NextX`/`NextY` — покадровые дельты в пикселях, а не абсолютные координаты.
+2. Проверяйте каждое направление и согласованность cycle vectors при поворотах.
+3. Сохраняйте `T` ненулевым для locomotion sheets, пространственно управляющих походкой.
+4. Согласуйте deltas с poses: большая коррекция одного кадра скачет даже при правильной сумме.
+5. Проверяйте изменения offsets при mirroring, extraction, merges и first/last substitutions.
+6. Настройте скорость авторитетным движением проекта, затем согласуйте визуальный цикл.
+7. Проверяйте anchor transfer и normalization при быстрых поворотах и stop/start.
+8. Проверяйте поддерживаемые zoom, geometry и renderers; приёмка cadence/foot sliding принадлежит проекту.
 
 ## Project evidence и правила извлечения
 
-Закреплённый snapshot Last Frontier направляет работу с 2D locomotion через `Docs/ContentWorkflow.md` и требует согласовывать изменения Engine по `Docs/DocumentationMaintenance.md`. Текущий character pipeline в основном использует `.fo3d`; `Docs/CharacterGenerator.md` пропускает импортированную translation из 3D-клипов `*_RM`, потому что мировым перемещением владеет Engine. Это полезная граница владения 3D, но не evidence конкретных значений 2D `NextX` / `NextY`.
+Закреплённый Last Frontier направляет 2D-работу через `Docs/ContentWorkflow.md`,
+согласование Engine — через `Docs/DocumentationMaintenance.md`. В основном
+`.fo3d` pipeline пропускает translation `*_RM` в `Docs/CharacterGenerator.md`:
+Engine владеет мировым движением. Это не подтверждает значения 2D `NextX`/`NextY`.
 
-В проверенных resource trees Last Frontier и FOnline TLA нет текущих созданных `.fofrm` или legacy FRM-family sprite assets, по которым можно подтвердить ненулевой production-цикл. `Docs/Animation.md` из TLA сохраняет полезное историческое объяснение projection цикла ходьбы, но имена `raw_ptr<const SpriteSheet>` и `DefaultSpriteFactory::LoadAnimation` устарели. Текущий Engine использует `nptr<const SpriteSheet>` и `DefaultSpriteFactory::LoadSprite`.
+Проверенные LF/TLA trees не содержат авторского FOFRM/FRM production cycle с
+подтверждённым ненулевым displacement. TLA `Docs/Animation.md` исторически
+объясняет projection; его `raw_ptr<const SpriteSheet>`/
+`DefaultSpriteFactory::LoadAnimation` устарели. Текущие имена —
+`nptr<const SpriteSheet>`/`DefaultSpriteFactory::LoadSprite`.
 
-Поэтому в переиспользуемый контракт не переносятся внешние значения offsets, утверждения о качестве походки или проектные скорости. Извлекайте только межпроектные концепции, записывайте точные snapshot paths и commits в evidence model, заново выводите результат из текущих исходников Engine и оставляйте визуальную приёмку в проекте-владельце.
+Извлекайте только концепции, записывайте точные paths/commits в evidence model,
+выводите результат из Engine. Скорости, offsets и визуальная приёмка принадлежат проекту.
 
 ## Граница проекта
 

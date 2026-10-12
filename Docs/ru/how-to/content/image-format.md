@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"eac5bae4014b204474779a513feba0204dfe8d0c1c80c6c6d1457df4492c3661"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"c414ee04770321dcda7e04ceb36bd89f75776535e35119dedab0931fbd679854"} -->
 
 # Форматы изображений и спрайтов
 
@@ -476,8 +476,12 @@ duration, directions, границами кадров, offsets и shared referen
 `EngineMetadata` загружает его на server и client без декодирования RGBA payload.
 Появление или потеря этого агрегированного индекса требует полной перезапечки.
 
-Copyable cache entries хранят prototype и возвращают `MakeCopy()`, чтобы
-вызывающие стороны не разделяли animation state. Отсутствующие файлы/расширения,
+Каждая copyable load, включая первую, возвращает `MakeCopy()`; cache сохраняет
+factory prototype. Копии `SpriteSheet` владеют playback и таблицами кадров,
+начинают с нулевого кадра/направления, корректных размера/привязки и сохраняют
+state/action tags. `AtlasSprite::MakeCopy()` разделяет atlas pixels/geometry.
+Усечение не сокращает следующие загрузки: каждое направление содержит один
+спрайт и offset. Отсутствующие файлы/расширения,
 неизвестные factories и ошибки загрузки отдельно мемоизируются по пути в
 `_nonFoundSprites`. `CleanupSpriteCache()` не очищает этот набор. После
 добавления ресурса, который запущенный клиент уже не смог загрузить, пересоздайте

@@ -205,6 +205,8 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                                     dir_anim->_sprOffset[0].x = first ? dir_anim->_sprOffset[0].x : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].x;
                                     dir_anim->_sprOffset[0].y = first ? dir_anim->_sprOffset[0].y : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].y;
                                     dir_anim->_framesCount = 1;
+                                    dir_anim->_spr.resize(1);
+                                    dir_anim->_sprOffset.resize(1);
                                 }
                             }
 

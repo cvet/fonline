@@ -611,6 +611,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_SpriteSheet.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextureAtlas.cpp"

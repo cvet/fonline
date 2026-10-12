@@ -939,7 +939,7 @@
       "id": "image-format.runtime.sprite-sheet",
       "name": "Direction and playback state",
       "stability": "experimental",
-      "requirement": "SpriteSheet accepts one or the full map direction count, supports direction selection, random prewarm, normalized time, loop/reverse playback, and treats one frame or zero whole ticks as non-playing.",
+      "requirement": "SpriteSheet accepts one/full map directions, random prewarm, normalized time and loop/reverse playback; one frame or zero ticks does not play. Copies start at frame/direction zero with valid size/anchor and retain state/action tags.",
       "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
       "source": [
         {
@@ -948,7 +948,15 @@
             "dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT",
             "void SpriteSheet::Prewarm()",
             "void SpriteSheet::SetDir",
-            "if (_framesCount == 1 || _wholeTicks == 0)"
+            "if (_framesCount == 1 || _wholeTicks == 0)",
+            "i < copy->_spr.size()",
+            "copy->RefreshParams()"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_SpriteSheet.cpp",
+          "anchors": [
+            "TEST_CASE(\"SpriteManagerReturnsIndependentSheetsFromTheFirstLoad\""
           ]
         }
       ]
@@ -957,7 +965,7 @@
       "id": "image-format.runtime.frame-offset",
       "name": "Per-frame sprite offsets",
       "stability": "experimental",
-      "requirement": "Concrete and shared SpriteSheet frames retain imported NextX/NextY in _sprOffset; ordinary drawing uses the selected AtlasSprite offset, while locomotion projection consumes the separate frame-offset array.",
+      "requirement": "Concrete/shared frames retain NextX/NextY in _sprOffset, separate from draw placement. ResolveCritterAnimationFrames extraction keeps one sprite and offset per direction; LastFrame sums preceding deltas on both axes. FirstFrame wins when both flags are set.",
       "rationale": "Visual root-motion displacement must remain separate from sequence placement and authoritative world movement.",
       "source": [
         {
@@ -971,6 +979,19 @@
           "path": "Source/Client/DefaultSprites.h",
           "anchors": [
             "auto GetSprOffset() const noexcept -> const_span<ipos32>"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_SpriteSheet.cpp",
+          "anchors": [
+            "TEST_CASE(\"ResourceManagerTrimsOnlyItsOwnSpriteSheet\""
+          ]
+        },
+        {
+          "path": "Source/Client/ResourceManager.cpp",
+          "anchors": [
+            "dir_anim->_spr.resize(1)",
+            "dir_anim->_sprOffset.resize(1)"
           ]
         }
       ]
@@ -1004,7 +1025,7 @@
       "id": "image-format.runtime.cache",
       "name": "Copyable sprite cache identity",
       "stability": "experimental",
-      "requirement": "Copyable sprites are cached by hashed path plus AtlasType and each load returns MakeCopy, so the same source path may have separate atlas-backed cache entries.",
+      "requirement": "Copyable sprites are cached by hashed path plus AtlasType; every load, including the first, returns MakeCopy. SpriteSheet clocks and frame tables are independent; AtlasSprite retains shared atlas pixels/geometry.",
       "rationale": "Independent animation state must not mutate the cached prototype, and different atlas classes cannot share placement blindly.",
       "source": [
         {
@@ -1012,7 +1033,14 @@
           "anchors": [
             "_copyableSpriteCache.find({path, atlas_type})",
             "return it->second->MakeCopy()",
-            "_copyableSpriteCache.emplace(pair {path, atlas_type}, spr)"
+            "_copyableSpriteCache.emplace(pair {path, atlas_type}, spr)",
+            "auto copy = spr->MakeCopy()"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_SpriteSheet.cpp",
+          "anchors": [
+            "TEST_CASE(\"SpriteManagerReturnsIndependentSheetsFromTheFirstLoad\""
           ]
         }
       ]
@@ -1232,5 +1260,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "95be56c87174c2671abb324888ef809ad52bfa038bac2367dcff0e89845d3ce7"
+  "contract_digest": "dac6e4c1fc04be2dab1368947cee3efec2315b353f37d236a4d9e657153d1b62"
 }

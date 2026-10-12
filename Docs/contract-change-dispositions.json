@@ -9396,6 +9396,42 @@
       "release_note": "Docs/en/reference/changelog.md 2026.1.33-dev and its Russian mirror document archive, decoder and nested image diagnostics.",
       "compatibility": "The exception contract for invalid inputs becomes explicit; successful input and ordinary absence retain their existing results. Rebuild native consumers and rebake affected packs. Runtime compatibility 0.0.72, script ABI identity 9, sprite container v2 and persisted data are unchanged relative to the published 2026.1.32-dev base.",
       "owner": "image-format"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.f61192539b87eb3e",
+      "baseline_contract_sha256": "305f52e348475ce6ca90110e7cac46f2c4d724185e295131fa4aba25eea560f3",
+      "current_contract_sha256": "81c485e2e1b0daa1e52b30820e06b26fe1df09206e957fb113ff57c164427dd8",
+      "classification": "breaking",
+      "rationale": "Fix the first-load exception to the documented independent SpriteSheet contract. Keep the factory prototype private from every caller; preserve path/atlas identity and AtlasSprite sharing.",
+      "migration": "No source/config/content/save conversion: this restores existing sheet isolation and extraction meaning. Follow the 2026.1.34-dev migration in Docs/en/reference/changelog.md: rebuild native clients/Mapper, restart, and check first/repeated loads, directional/shared offsets, trimmed copies and visible animation/stop-start. Existing baked images remain usable.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.34-dev and its Russian mirror; owning image-format and sprite-root-motion guides.",
+      "compatibility": "Runtime compatibility 0.0.72, Managed ABI identity 9, sprite container v2 and persisted state remain unchanged. Refresh normal generated metadata/bake markers and deploy matching native binaries; rollback restores the baseline binaries without save conversion.",
+      "owner": "image-format"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.33e770d2d29ee2cc",
+      "baseline_contract_sha256": "305f52e348475ce6ca90110e7cac46f2c4d724185e295131fa4aba25eea560f3",
+      "current_contract_sha256": "81c485e2e1b0daa1e52b30820e06b26fe1df09206e957fb113ff57c164427dd8",
+      "classification": "breaking",
+      "rationale": "Fix stale frame-array extents after extracting one frame. Preserve FirstFrame precedence and LastFrame two-axis accumulation, including decoded shared-frame deltas, without mutating the cached full sheet.",
+      "migration": "No source/config/content/save conversion: this restores existing sheet isolation and extraction meaning. Follow the 2026.1.34-dev migration in Docs/en/reference/changelog.md: rebuild native clients/Mapper, restart, and check first/repeated loads, directional/shared offsets, trimmed copies and visible animation/stop-start. Existing baked images remain usable.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.34-dev and its Russian mirror; owning image-format and sprite-root-motion guides.",
+      "compatibility": "Runtime compatibility 0.0.72, Managed ABI identity 9, sprite container v2 and persisted state remain unchanged. Refresh normal generated metadata/bake markers and deploy matching native binaries; rollback restores the baseline binaries without save conversion.",
+      "owner": "image-format"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.e475bcb98d01fe35",
+      "baseline_contract_sha256": "305f52e348475ce6ca90110e7cac46f2c4d724185e295131fa4aba25eea560f3",
+      "current_contract_sha256": "81c485e2e1b0daa1e52b30820e06b26fe1df09206e957fb113ff57c164427dd8",
+      "classification": "breaking",
+      "rationale": "Fix initial copy geometry and out-of-bounds writes when a source has inactive trailing frames. Copies reset playback to frame/direction zero with its actual size/anchor, retain state/action tags, and leave the source unchanged.",
+      "migration": "No source/config/content/save conversion: this restores existing sheet isolation and extraction meaning. Follow the 2026.1.34-dev migration in Docs/en/reference/changelog.md: rebuild native clients/Mapper, restart, and check first/repeated loads, directional/shared offsets, trimmed copies and visible animation/stop-start. Existing baked images remain usable.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.34-dev and its Russian mirror; owning image-format and sprite-root-motion guides.",
+      "compatibility": "Runtime compatibility 0.0.72, Managed ABI identity 9, sprite container v2 and persisted state remain unchanged. Refresh normal generated metadata/bake markers and deploy matching native binaries; rollback restores the baseline binaries without save conversion.",
+      "owner": "image-format"
     }
   ]
 }
