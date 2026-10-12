@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"d8506856b4f6171d0d4b195c005860f97f5c1ab766fb734d64413b27ad0276ea"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"0e6bb6a86c751af1113de88989428c6972bb340f21d376944afb0903e6caa6dd"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -493,6 +493,8 @@ Host проверяет absolute path и basename, продвигает файл
 wrong-basename и stale selectors возвращают host к install-dir runtime.
 `--ClientLibPath` остаётся последним explicit override. Portable-клиент selector
 не читает и не пишет.
+
+Bootstrap selectors публикуют полный проверенный путь через `fs::write_file` без общего фиксированного имени `.tmp`. Недопустимая цель или ошибка публикации сохраняет прежний выбор. Новые читатели получают полный новый selector, а уже открытый читатель сохраняет прежний.
 
 Installed mode включается marker-файлом `INSTALLED` рядом с executable; сам marker
 выбирает per-user layout, если command line не задал другой root. Portable zip не

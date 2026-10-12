@@ -46,6 +46,33 @@ static auto MakeTempCacheDir(string_view name) -> string
 
 TEST_CASE("CacheStorage")
 {
+    SECTION("PublishedEntriesKeepExistingReadersOnTheirPreviousContents")
+    {
+        string temp_dir = MakeTempCacheDir("cache_storage_atomic");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        CacheStorage cache {temp_dir};
+        cache.SetString("text", "old");
+        array<uint8_t, 3> before {'o', 'l', 'd'};
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+        REQUIRE(cache.SetDataChecked("data", before));
+        fs::disk_read_file text_reader {strex(temp_dir).combine_path("text").str()};
+        fs::disk_read_file data_reader {strex(temp_dir).combine_path("data").str()};
+        REQUIRE(static_cast<bool>(text_reader));
+        REQUIRE(static_cast<bool>(data_reader));
+
+        cache.SetString("text", "new");
+        REQUIRE(cache.SetDataChecked("data", after));
+        CHECK(cache.GetString("text") == "new");
+        CHECK(cache.GetData("data") == vector<uint8_t>(after.begin(), after.end()));
+        array<uint8_t, 3> previous_text {};
+        array<uint8_t, 3> previous_data {};
+        REQUIRE(text_reader.read_at(0, previous_text));
+        REQUIRE(data_reader.read_at(0, previous_data));
+        CHECK(previous_text == before);
+        CHECK(previous_data == before);
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 2);
+    }
+
     SECTION("StringAndBinaryEntriesRoundtrip")
     {
         string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");

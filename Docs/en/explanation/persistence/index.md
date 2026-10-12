@@ -12,6 +12,8 @@ This document explains the server-side database abstraction, collection/key mode
 
 Use it when changing `Source/Server/DataBase.*`, database settings, entity save/load code, or persistence tests.
 
+`DataBase-Json.cpp` publishes complete inserted and updated JSON records through `fs::write_file`; unique sibling staging replaces the former fixed `<record>.tmp` sequence. Record keys, JSON content and commit-queue semantics remain unchanged. SQLite snapshot restore uses the same atomic helper for its unpublished scratch database before opening it for restore.
+
 ## Ownership model
 
 The engine owns the reusable database abstraction, backend implementations, and source-backed recovery boundaries. [Backup and Recovery](../../how-to/release/backup-and-recovery.md) defines the provider-neutral backup/restore procedure; an embedding project owns deployment choices, connection strings, provider tooling, schedules, retention, RPO/RTO, data migration policy, and production authority.

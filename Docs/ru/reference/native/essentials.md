@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3a17c5e29bc01d94a6db042f38558a86d7482053979829011067f4d59b375606"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3258a3cf3be4f191ab6f86d665fe94392183a8406d836052b15331049e7d0876"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -376,7 +376,20 @@ standard stream копируется через `make_stream_string`,
 
 `DiskFileSystem.*` владеет низкоуровневым доступом к диску. `fs::disk_read_file` удерживает descriptor и длину, `read_at` делает ограниченное позиционное чтение; region constructor открывает несжатый `.fores` внутри APK без копирования. `fs::disk_write_file` исключает конкурирующих writers, дописывает или обрезает незафиксированный хвост и flush-ит через `fsync`/`_commit`. `fs::disk_directory_lock` сериализует изменение ресурсов без lock file (`flock` в POSIX, named mutex в Windows); в отличие от mutex, повторный flock на тот же каталог не является reentrant даже в одном процессе. `fs::rename_durable` сохраняет rename, а `fs::sync_parent` — directory entry; `fs::available_space` помогает проверить место без preallocation возобновляемой загрузки. `fs::is_contained_relative_path` отвергает rooted path, `..`, colon, NUL и неверный UTF-8 до соединения с writable root. `fs::make_writable_path` помещает относительный path под user root. Для преобразования UTF-8 в `std::filesystem::path` используйте `fs::make_path`, обратно — `fs::path_to_string`: `path.string()` в Windows проходит через ANSI code page и может упасть на кириллическом профиле. Вышележащий mount описан в [конфигурации и источниках данных](../settings/configuration-and-data-sources.md). `Compressor.*` владеет сжатием, `NetSockets.*` — низкоуровневыми сокетами, `WorkThread.*` — фоновыми workers.
 
+`fs::disk_write_mode::create_new` эксклюзивно создаёт файл и отказывает без
+обрезания, если путь существует. `fs::write_file` создаёт так временный файл
+рядом с назначением, сбрасывает и закрывает его, затем заменяет назначение; прежние
+читатели сохраняют descriptor и байты. Ошибка записи или публикации удаляет
+временный файл и сохраняет назначение. Helper не вызывает `fs::sync_parent`, поэтому
+атомарная видимость не обещает directory durability при отключении питания.
+
+`fs::write_file` — единственный helper записи готового файла; обе перегрузки, строковая и байтовая, всегда публикуют атомарно. Строковая перегрузка сохраняет NUL внутри строки; пустой ввод публикует пустой файл. Атомарной замене нужен доступ на запись в родительский каталог; она создаёт новый файловый объект и не сохраняет цель симлинка, идентичность hard link или индивидуальные метаданные назначения. Потребители, которым явно нужна идентичность файла, используют низкоуровневый поток `fs::disk_write_file`. Атомарная публикация не является транзакцией нескольких файлов или блокировкой между писателями.
+
+Windows-путь замены при открытом читателе резервирует завершающий UTF-16 NUL для [`FILE_RENAME_INFO`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info); `FileNameLength` учитывает только байты имени. Тесты меняют выравнивание имени назначения, сохраняя прежнего читателя и проверяя полное новое содержимое отдельным чтением.
+
 В Windows `fs::make_io_path` передаёт standard-library filesystem/file operations буквальный extended-length path, не меняя логический resource path. Дисковые тесты проверяют Unicode names длиннее 320 native characters и поведение trailing names. Применяйте преобразование на native I/O boundary, а не сокращайте project paths.
+
+`BuildTools/probe_windows_file_io.py` отдельно проверяет канонический адаптер пути и тела directory/open/rename/remove операций со статическим и динамическим MSVC runtime. Запись fixtures стандартным потоком проверяет этот адаптер; production-реализация атомарного `fs::write_file` проверяется нативными DiskFileSystem tests с полной линковкой.
 
 `Threading.h` экспортирует `coarse_sleep` и `precise_sleep`; код движка не
 использует `std::this_thread::sleep_for`. `coarse_sleep` паркует поток без

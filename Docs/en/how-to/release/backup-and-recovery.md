@@ -51,7 +51,7 @@ Treat one recoverable release as a compatible unit: immutable server package, ef
 | Backend | Durable data | Consistency and recovery boundary |
 |---|---|---|
 | `Memory` | None | Process-local test state. It cannot satisfy a persistent backup or recovery objective. |
-| `JSON <directory>` | One JSON file per record under collection directories | Each insert/update writes `<record>.json.tmp` and renames it, but operations spanning records are not one transaction. Take a stopped copy or a filesystem snapshot whose consistency has been proven for the complete directory. |
+| `JSON <directory>` | One JSON file per record under collection directories | Each insert/update publishes through `fs::write_file` with unique sibling staging, but operations spanning records are not one transaction. Take a stopped copy or a filesystem snapshot whose consistency has been proven for the complete directory. |
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` plus active SQLite WAL sidecars | The Engine opens WAL mode with `synchronous=NORMAL`; individual writes autocommit. Do not copy only `Storage.sqlite` while the server is running. Use a provider/SQLite-consistent online backup or stop the server and preserve the complete storage directory. The Engine exposes no online backup or checkpoint command. |
 | `Mongo <URI> <database>` | The named Mongo database in the configured deployment | The URI/provider defines write concern, replication, snapshot, dump, and point-in-time capabilities; the Engine does not override them. Use a provider-native database-consistent method and record its guarantees. |
 

@@ -99,6 +99,7 @@ namespace fs
     auto sync_parent(string_view path) noexcept -> bool;
     auto rename_durable(string_view from_path, string_view to_path) noexcept -> bool;
     auto rename(string_view from_path, string_view to_path) noexcept -> bool;
+    auto replace_file(string_view from_path, string_view to_path) noexcept -> bool;
     auto open_ifstream(string_view path, std::ios::openmode mode = std::ios::binary) -> std::ifstream;
     void iterate_dir(string_view dir, bool recursive, const file_visitor& visitor);
     auto list_dir_file_names(string_view dir, bool recursive = false) noexcept -> vector<string>;
@@ -170,6 +171,7 @@ namespace fs
     {
         create,
         append,
+        create_new,
     };
 
     class disk_write_file final

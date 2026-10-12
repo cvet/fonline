@@ -326,34 +326,7 @@ auto fs::compare_file_content(string_view path, const_span<uint8_t> content) -> 
 
 auto fs::write_file(string_view path, string_view content) -> bool
 {
-    FO_TRACE_ZONE(FileSystem);
-
-    size_t separator = path.find_last_of("/\\");
-    string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
-
-    if (!dir.empty() && !fs::create_directories(dir)) {
-        return false;
-    }
-
-    std::error_code ec;
-    auto fs_path = fs_make_io_path(path, ec);
-
-    if (ec) {
-        return false;
-    }
-
-    std::ofstream file {fs_path, std::ios::binary | std::ios::trunc};
-
-    if (!file) {
-        return false;
-    }
-
-    if (!content.empty()) {
-        file.write(content.data(), static_cast<std::streamsize>(content.size()));
-    }
-
-    file.flush();
-    return !!file;
+    return fs::write_file(path, const_span<uint8_t> {make_nptr(content.data()).reinterpret_as<const uint8_t>().get(), content.size()});
 }
 
 auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
@@ -367,25 +340,44 @@ auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
         return false;
     }
 
-    std::error_code ec;
-    auto fs_path = fs_make_io_path(path, ec);
+#if FO_WINDOWS
+    uint64_t process_id = winapi::get_current_process_id();
+#else
+    uint64_t process_id = static_cast<uint64_t>(posix::get_current_process_id());
+#endif
+    int64_t stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    string temporary_path;
+    bool created = false;
+    auto cleanup = scope_exit([&]() noexcept {
+        if (created) {
+            (void)fs::remove_file(temporary_path);
+        }
+    });
 
-    if (ec) {
-        return false;
+    for (uint32_t attempt = 0; attempt < 100; ++attempt) {
+        string temporary_name = strex("._write-{}-{}-{}.tmp", process_id, stamp, attempt).str();
+        temporary_path = strex(dir).combine_path(temporary_name).str();
+        fs::disk_write_file writer {temporary_path, fs::disk_write_mode::create_new};
+
+        if (!writer) {
+            if (fs::exists(temporary_path)) {
+                continue;
+            }
+
+            return false;
+        }
+
+        created = true;
+
+        if (!writer.write(content) || !writer.flush()) {
+            return false;
+        }
+
+        writer.close();
+        return fs::replace_file(temporary_path, path);
     }
 
-    std::ofstream file {fs_path, std::ios::binary | std::ios::trunc};
-
-    if (!file) {
-        return false;
-    }
-
-    if (!content.empty()) {
-        file.write(make_ptr(content.data()).reinterpret_as<char>().get(), static_cast<std::streamsize>(content.size()));
-    }
-
-    file.flush();
-    return !!file;
+    return false;
 }
 
 auto fs::remove_file(string_view path) noexcept -> bool
@@ -486,6 +478,17 @@ auto fs::rename_durable(string_view from_path, string_view to_path) noexcept -> 
     return winapi::rename_file_durable(fs::make_io_path(from_path), fs::make_io_path(to_path));
 #else
     return fs::rename(from_path, to_path) && fs::sync_parent(to_path) && fs::sync_parent(from_path);
+#endif
+}
+
+auto fs::replace_file(string_view from_path, string_view to_path) noexcept -> bool
+{
+    FO_TRACE_ZONE(FileSystem);
+
+#if FO_WINDOWS
+    return winapi::replace_file(fs::make_io_path(from_path), fs::make_io_path(to_path));
+#else
+    return fs::rename(from_path, to_path);
 #endif
 }
 
@@ -850,9 +853,9 @@ fs::disk_write_file::disk_write_file(string_view path, fs::disk_write_mode mode)
     FO_TRACE_ZONE(FileSystem);
 
 #if FO_WINDOWS
-    _descriptor = winapi::open_new_write_file(fs::make_io_path(path), mode == fs::disk_write_mode::append);
+    _descriptor = winapi::open_new_write_file(fs::make_io_path(path), mode == fs::disk_write_mode::append, mode == fs::disk_write_mode::create_new);
 #else
-    _descriptor = posix::open_new_write_file(string(path), mode == fs::disk_write_mode::append);
+    _descriptor = posix::open_new_write_file(string(path), mode == fs::disk_write_mode::append, mode == fs::disk_write_mode::create_new);
 #endif
 }
 

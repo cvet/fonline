@@ -326,4 +326,28 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
     CHECK_FALSE(IsClientResourcePackCurrent(settings, "Missing", target.GetContentHash()));
 }
 
+TEST_CASE("ClientRuntimeBootstrapPublishesCompleteSelectorsAndRetainsThePreviousSelectionOnFailure")
+{
+    auto root_path = std::filesystem::temp_directory_path() / std::format("fo_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string root = fs::path_to_string(root_path);
+    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
+    string selector = fs::path_to_string(root_path / "runtime.fo-runtime");
+    string first_target = fs::path_to_string(root_path / "first" / "Runtime.dll");
+    string second_target = fs::path_to_string(root_path / "second" / "Runtime.dll");
+    REQUIRE(WriteClientRuntimeBootstrapTarget(selector, first_target, "Runtime.dll"));
+    auto previous = fs::read_file(selector);
+    REQUIRE(previous.has_value());
+    fs::disk_read_file reader {selector};
+    REQUIRE(static_cast<bool>(reader));
+
+    CHECK_FALSE(WriteClientRuntimeBootstrapTarget(selector, "relative/Runtime.dll", "Runtime.dll"));
+    CHECK(fs::read_file(selector) == previous);
+    REQUIRE(WriteClientRuntimeBootstrapTarget(selector, second_target, "Runtime.dll"));
+    CHECK(ReadClientRuntimeBootstrapTarget(selector, "Runtime.dll") == optional<string> {fs::resolve_path(second_target)});
+    vector<uint8_t> old_bytes(previous->size());
+    REQUIRE(reader.read_at(0, old_bytes));
+    CHECK((string_view {make_ptr(old_bytes.data()).reinterpret_as<const char>().get(), old_bytes.size()} == *previous));
+    CHECK(fs::list_dir_file_names(root).size() == 1);
+}
+
 FO_END_NAMESPACE

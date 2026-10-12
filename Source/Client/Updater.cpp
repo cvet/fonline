@@ -1732,19 +1732,7 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
         return false;
     }
 
-    // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
-    string temp_path = strex("{}.tmp", bootstrap_file_path).str();
-
-    if (!fs::write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
-        return false;
-    }
-
-    if (!fs::rename(temp_path, bootstrap_file_path)) {
-        fs::remove_file(temp_path);
-        return false;
-    }
-
-    return true;
+    return fs::write_file(bootstrap_file_path, strex("{}\n", normalized_path.value()).str());
 }
 
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept

@@ -365,7 +365,20 @@ storage.
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs::disk_read_file` captures a descriptor and length, and `read_at` performs bounded positional reads; a region constructor opens an uncompressed `.fores` inside an APK without copying it. `fs::disk_write_file` excludes competing writers, appends or truncates an uncommitted suffix, and flushes via `fsync`/`_commit`. `fs::disk_directory_lock` serializes resource mutations without a lock file (`flock` on POSIX, named mutex on Windows); unlike a named mutex, a second flock on the same directory is not reentrant even in one process. `fs::rename_durable` persists a rename, and `fs::sync_parent` persists the directory entry; `fs::available_space` permits admission without preallocating a resumable download. `fs::is_contained_relative_path` rejects rooted, traversal, colon, NUL, and malformed UTF-8 paths before joining a writable root. `fs::make_writable_path` layers a relative path under the user root. Use `fs::make_path` for UTF-8 to `std::filesystem::path` and `fs::path_to_string` on the way back: `path.string()` on Windows converts through the ANSI code page and can fail for a Cyrillic profile. The higher mounted view is `Source/Common/FileSystem.*`, described in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression, `NetSockets.*` raw sockets, and `WorkThread.*` background workers.
 
+`fs::disk_write_mode::create_new` exclusively creates a file and fails without
+truncation if the path exists. `fs::write_file` uses this mode for a temporary
+sibling, flushes and closes it, then replaces the destination; existing readers keep
+the old descriptor and bytes. Write/publish failure removes the temporary sibling
+and preserves the destination. This helper does not call `fs::sync_parent`, so its
+atomic visibility contract does not promise directory durability across power loss.
+
+`fs::write_file` is the only complete-file write helper, and both its string and byte-span overloads always publish atomically. The string overload preserves embedded NUL; empty input publishes an empty file. Atomic replacement requires a writable parent and creates a new file object; it does not preserve symbolic-link targets, hard-link identity or destination-specific metadata. Consumers that explicitly need file identity use the lower-level `fs::disk_write_file` stream. Atomic publication is not a multi-file transaction or a lock between writers.
+
+The Windows open-reader replacement path reserves a terminating UTF-16 NUL for [`FILE_RENAME_INFO`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info); `FileNameLength` counts only the name bytes. Tests vary the destination-name alignment while retaining the old reader and checking the complete replacement through a new read.
+
 On Windows, `fs::make_io_path` presents a literal extended-length path to standard-library filesystem/file operations without changing the logical resource path. The disk tests exercise Unicode names past 320 native characters and Windows trailing-name behavior. Use this conversion at the native I/O boundary rather than truncating or shortening project paths.
+
+`BuildTools/probe_windows_file_io.py` independently checks the canonical path-adapter and directory/open/rename/remove bodies with static and dynamic MSVC runtimes. Its standard-stream fixture writes exercise that adapter; production atomic `fs::write_file` is validated by the linked native DiskFileSystem tests.
 
 `Threading.h` exposes `coarse_sleep` and `precise_sleep`; Engine code does not
 use `std::this_thread::sleep_for`. `coarse_sleep` parks without consuming CPU

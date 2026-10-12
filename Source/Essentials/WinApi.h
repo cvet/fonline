@@ -101,11 +101,12 @@ namespace winapi
     auto lock_named_mutex(const string& name) noexcept -> nptr<void>;
     void unlock_named_mutex(nptr<void> lock) noexcept;
     auto rename_file_durable(const string& from, const string& to) noexcept -> bool;
+    auto replace_file(const string& from, const string& to) noexcept -> bool;
 
     // A pack file opened for shared positional reading: the offset travels with each call, so a reader never
     // depends on a shared file cursor. The descriptor is the platform own one, and -1 means the open failed
     auto open_shared_read_file(const string& path) noexcept -> int32_t;
-    auto open_new_write_file(const string& path, bool append = false) noexcept -> int32_t;
+    auto open_new_write_file(const string& path, bool append = false, bool exclusive = false) noexcept -> int32_t;
     auto resize_file(int32_t fd, uint64_t size) noexcept -> bool;
     void close_file(int32_t fd) noexcept;
     auto get_file_size(int32_t fd) noexcept -> int64_t;

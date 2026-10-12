@@ -7,12 +7,27 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1b3afe353f7e9885363a9249f25139fc49dd5312245125d3183238c6056c3243"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d37c088deb3d40a55e5ffc4d01348d8fb7a386a7b6b6d9b22df8e6951357fcc7"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-15
+## Current - 2026-10-16
+
+### Исправлено
+
+- `fs::write_file` стал единственным атомарным helper полной записи строк и byte spans, включая NUL и пустой ввод. Эксклюзивный соседний временный файл, flush и атомарная замена сохраняют прежнее назначение при ошибке и поддерживают открытые readers/mapped DLLs. `disk_write_mode::create_new` отвергает существующий путь; алиаса `write_file_atomic` нет.
+- Общий helper используется для кэша, managed staging, маркеров клиентской сессии/bootstrap, результатов/отчётов/отпечатков Baker, зависимостей частиц, JSON-записей и SQLite restore scratch. Ошибка публикации сохраняет кэш; явное удаление — `RemoveEntry`. Windows rename names завершаются NUL, а отдельная path probe не зависит от линковки Engine.
+- Согласованы сводные решения по контрактам без удаления прежних записей аудита. Полные руководства и миграции сохранены в проверенном AI-пакете 2 MiB + 224 KiB; manifest, EN/RU-руководства и policy-тесты используют один предел. Обязательные начальные маршруты, состав и отказ при превышении не изменены.
+
+### Миграция
+
+- База: `1d88ee229d2d5208dd6c4c86814e032598a06e4c` (`2026.1.43-dev`). Это единое неопубликованное обновление объединяет локальные исправления атомарной записи и документацию; перед адаптацией примените опубликованные миграции до 43 включительно. Промежуточные локальные версии не являются этапами выпуска.
+- Native-сигнатуры `fs::write_file(path, string_view)` и byte-span сохранены; запись теперь заменяет готовый файл целиком вместо обрезания назначения. Проверьте права родителя, symlinks, hard links и метаданные назначения. Для streaming/in-place с сохранением идентичности используйте `fs::disk_write_file`; проверяйте write и flush. WinApi/Posix `open_new_write_file` добавляет необязательный `exclusive=false`, сохраняя вызовы с двумя аргументами. Экспериментальные локальные вызовы `write_file_atomic` замените на `write_file`; второго helper и совместимого алиаса нет.
+- Повторите configure/сборку Essentials, Common, Client, Server, Tools и Managed; перегенерируйте bindings, references, EN/RU, site/routes и AI, затем запеките ресурсы новым Baker. Проверьте filesystem/cache/database/selector/baking tests, публикацию с открытыми assembly readers и сохранение назначения при ошибке. `SetDataChecked == false` означает, что новое значение не зафиксировано; `SetString` журналирует ошибки. Для отката сохраняйте прежний полный пакет.
+- Относительно опубликованной версии 43 нет преобразования managed callers, settings, prototypes, persisted properties, saves, network, updater или resource schema. Смысл JSON keys/content, selector validation, порядка successful markers и unchanged timestamps сохранён. Совместимость остаётся `0.0.73`, managed ABI identity — `9`, sprite container — v2. Атомарная видимость не обещает directory durability при потере питания. См. [Essentials](native/essentials.md#файловая-система-сжатие-сокеты-и-рабочие-потоки).
+
+## 2026.1.43-dev - 2026-10-15
 
 ### Исправлено
 

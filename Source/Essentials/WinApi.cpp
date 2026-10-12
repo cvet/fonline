@@ -540,24 +540,72 @@ auto winapi::rename_file_durable(const string& from, const string& to) noexcept 
     return ::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
 }
 
+auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    wstring from_wide = strex(from).to_wide_char();
+    wstring to_wide = strex(to).to_wide_char();
+
+    if (::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING) != 0) {
+        return true;
+    }
+
+    // A mapped DLL cannot be truncated or replaced with MoveFileEx. POSIX rename keeps the old readers alive
+    // while publishing the new name, without a gap or a backup that needs a fallible rollback.
+    HANDLE handle = ::CreateFileW(from_wide.c_str(), DELETE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+    if (handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    auto close_handle = scope_exit([handle]() noexcept { ::CloseHandle(handle); });
+    size_t name_bytes = to_wide.size() * sizeof(wchar_t);
+
+    if (name_bytes > std::numeric_limits<DWORD>::max() - sizeof(FILE_RENAME_INFO)) {
+        return false;
+    }
+
+    // SetFileInformationByHandle consumes a NUL-terminated name even though FileNameLength excludes it.
+    size_t buffer_size = offsetof(FILE_RENAME_INFO, FileName) + name_bytes + sizeof(wchar_t);
+    vector<uint64_t> buffer((buffer_size + sizeof(uint64_t) - 1) / sizeof(uint64_t));
+    auto info = make_ptr(buffer.data()).reinterpret_as<FILE_RENAME_INFO>();
+    info->Flags = FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS;
+    info->RootDirectory = nullptr;
+    info->FileNameLength = static_cast<DWORD>(name_bytes);
+    memory::copy(make_ptr(info->FileName).reinterpret_as<uint8_t>(), make_ptr(to_wide.data()).reinterpret_as<const uint8_t>(), name_bytes);
+    // The SDK hides this enum entry when compiling for an older Windows baseline.
+    constexpr FILE_INFO_BY_HANDLE_CLASS rename_info_ex = static_cast<FILE_INFO_BY_HANDLE_CLASS>(22);
+    return ::SetFileInformationByHandle(handle, rename_info_ex, info.get(), static_cast<DWORD>(buffer_size)) != 0;
+}
+
 auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
 {
-    int32_t fd = -1;
     wstring path_wide = strex(path).to_wide_char();
+    // CRT sharing modes omit FILE_SHARE_DELETE, which prevents replacing a file while a reader holds it.
+    HANDLE handle = ::CreateFileW(path_wide.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
-    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_RDONLY | _O_NOINHERIT, _SH_DENYNO, 0) != 0) {
+    if (handle == INVALID_HANDLE_VALUE) {
         return -1;
+    }
+
+    int32_t fd = ::_open_osfhandle(reinterpret_cast<intptr_t>(handle), _O_BINARY | _O_RDONLY | _O_NOINHERIT);
+
+    if (fd < 0) {
+        ::CloseHandle(handle);
     }
 
     return fd;
 }
 
-auto winapi::open_new_write_file(const string& path, bool append) noexcept -> int32_t
+auto winapi::open_new_write_file(const string& path, bool append, bool exclusive) noexcept -> int32_t
 {
     int32_t fd = -1;
     wstring path_wide = strex(path).to_wide_char();
 
-    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT | _O_NOINHERIT, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+    int32_t flags = _O_BINARY | _O_WRONLY | _O_CREAT | _O_NOINHERIT | (exclusive ? _O_EXCL : 0);
+
+    if (::_wsopen_s(&fd, path_wide.c_str(), flags, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
         return -1;
     }
 

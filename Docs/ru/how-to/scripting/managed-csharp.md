@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"acca3cb1383c69ca747af5f060d266ad490c7e01f17f3f8966b5ab5789edf30b"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"16693f019462b831a705a07b319f8168fc0e8ca8229b7b7d6b2e91e3a8ce27e9"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -291,6 +291,8 @@ heap. Последующий успешный retry тоже сообщаетс�
 До выполнения кода или type initializer из entry assembly backend вызывает `Native.BindBackend` со своим pointer. Каждый internal call, которому нужно состояние Engine, явно передаёт этот bound pointer, поэтому static constructors, marshalling constructors, callbacks и continuations определяют правильный Engine без thread-local caller state. Binding определяет только владельца; он не создаёт script synchronization context или server entity cover.
 
 При запуске baked assemblies восстанавливаются в content-hashed подкаталоги writable `Cache/ManagedAssemblies/`. Уже совпадающие по байтам файлы переиспользуются, поэтому параллельные in-process Engine instances не перезаписывают загруженную Mono assembly. Отсутствие managed assemblies допустимо для tests/tools без baked scripts; настроенный gameplay project должен считать его ошибкой package или resource selection.
+
+Готовые файлы опубликованного кэша `ManagedAssemblies` записываются через `fs::write_file`: другой engine, открывающий тот же кэш с ключом по содержимому, не увидит частичную сборку. Файлы `ManagedRuntime` используют тот же атомарный helper внутри неопубликованного staging-каталога; каталог проверяется и переименовывается до выбора читателями.
 
 `DynamicAssemblies.Load(image, symbols)` загружает post-bake PE image в non-collectible load context данного backend. Имя assembly должно быть новым `FOnline.Dynamic.*`; код разделяет script types и statics backend и остаётся загруженным до конца процесса. `RunEntryAsync(MethodInfo)` принимает static метод без параметров, возвращающий значение, `Task` или `Task<T>`, и запускает его как отдельный script entry с собственным server synchronization context; `async void` запрещён, reflection wrapper исключения снимается. `ScriptsVersionId` — MVID entry assembly. На сервере `ReadClientScriptsImage()` возвращает клиентскую entry image из updater (либо локального bake), чтобы компилировать fragment против соответствующей версии клиента. Dynamic assemblies участвуют в очистке script statics.
 

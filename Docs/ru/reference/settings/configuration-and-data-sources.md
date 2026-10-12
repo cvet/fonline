@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"906453972584e76009b7ac1e39fc88ee1635bc962073c8347839283b16dc40b0"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ebed21992b4ac0921468a625580996ec7d672d394375be1b9bb1c67243884766"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -197,6 +197,8 @@ Snapshot нового источника снимается до его публ
 ## Хранилище кэша
 
 `Source/Common/CacheStorage.*` хранит именованные binary/string cache entries через `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()` и `RemoveEntry()`. Потребители с жёстким пределом используют `GetDataBounded(name, max_size)`: метод проверяет размер файла до выделения памяти и различает результаты `Success`, `Missing`, `TooLarge` и `Failed`. `SetDataChecked(...)` сообщает, удалось ли записать данные полностью. Низкоуровневый helper `fs_read_file_bounded()` применяет тот же предел до allocation и не читает файл, если он слишком велик. Хранилище отделено от resource packs: cache entries являются изменяемыми runtime/tool artifacts, а baked resources генерируются из настроенных inputs. Client-side cache consumers разрешают относительные cache paths через `fs_make_writable_path(UserWritablePath, CacheResources)`, поэтому portable clients хранят cache рядом с executable, а installed clients пишут под per-user root.
+
+Файловый backend публикует строковые и бинарные entries через `fs::write_file`. Уже открытые читатели сохраняют прежнее полное значение; последующие открытия получают новое. При ошибке публикации запись сохраняется, ошибка журналируется, а `SetDataChecked` возвращает `false`. Инвалидация остаётся явной операцией `RemoveEntry`; неудачная проверяемая запись не означает, что обновление было сохранено.
 
 Каждый entry хранится как один обычный файл с именем entry, в котором path separators заменены на `_`; поэтому cache directory остается читаемым и пригодным для проверки. Два имени entry, отличающиеся только такими separators, указывают на один файл. Для кэша это допустимо, поскольку miss всегда восстанавливаем, но caller, которому нужны разные entries, не должен полагаться только на структуру каталогов для их разделения. Cache не является confidentiality boundary: все, что нельзя хранить открыто, должно быть защищено владельцем до передачи в хранилище. Именно так работает secure-storage bridge встраивающего проекта.
 

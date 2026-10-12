@@ -79,7 +79,6 @@ ENGINE_SIGNATURES = (
     "auto fs::make_path(string_view path)",
     "static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended)",
     "auto fs::create_directories(string_view dir)",
-    "auto fs::write_file(string_view path, string_view content)",
     "auto fs::open_ifstream(string_view path, std::ios::openmode mode)",
     "auto fs::rename(string_view from_path, string_view to_path)",
     "auto fs::remove_file(string_view path)",
@@ -104,6 +103,18 @@ static std::string utf8(const std::filesystem::path& path)
     const auto value = path.u8string();
     return {value.begin(), value.end()};
 }
+static bool WriteProbeFixture(string_view path, string_view content)
+{
+    std::error_code ec;
+    const auto native_path = fs_make_io_path(path, ec);
+    if (ec) return false;
+    if (native_path.has_parent_path() && !fs::create_directories(utf8(native_path.parent_path()))) return false;
+    std::ofstream file{native_path, std::ios::binary | std::ios::trunc};
+    if (!file) return false;
+    file.write(content.data(), static_cast<std::streamsize>(content.size()));
+    file.flush();
+    return !!file;
+}
 int wmain(int argc, wchar_t** argv)
 {
     if (argc != 3 && argc != 4) return 2;
@@ -113,14 +124,14 @@ int wmain(int argc, wchar_t** argv)
     if (std::wstring_view{argv[1]} == L"remove_tree") {
         if (argc != 4 || ec) return 6;
         const std::string child = utf8(std::filesystem::path{argv[3]});
-        const bool created_before = fs::write_file(child, "descendant");
+        const bool created_before = WriteProbeFixture(child, "descendant");
         if (!created_before) return 7;
         const auto removed_before = std::filesystem::remove_all(resolved, ec);
         const int before_error = ec.value();
         std::error_code exists_error;
         const bool root_remained = std::filesystem::exists(resolved, exists_error);
         const bool negative_reproduced = before_error != 0 && root_remained && !exists_error;
-        const bool created_after = fs::write_file(child, "descendant");
+        const bool created_after = WriteProbeFixture(child, "descendant");
         const bool removed_after = fs::remove_dir_tree(input);
         const bool root_gone = !std::filesystem::exists(resolved, exists_error) && !exists_error;
         const auto resolved_child = fs_make_io_path(child, exists_error);
@@ -139,7 +150,7 @@ int wmain(int argc, wchar_t** argv)
     }
     if (std::wstring_view{argv[1]} == L"directory_names") {
         const std::string literal = utf8(fs_make_io_path(input, ec, true)) + ". ";
-        const bool written = !ec && fs::write_file(input + "\\child.bin", "ordinary") && fs::write_file(literal + "\\child.bin", "literal");
+        const bool written = !ec && WriteProbeFixture(input + "\\child.bin", "ordinary") && WriteProbeFixture(literal + "\\child.bin", "literal");
         const bool ordinary_removed = fs::remove_dir_tree(input + ". ");
         const bool ordinary_gone = !std::filesystem::exists(resolved, ec) && !ec;
         bool literal_retained = false;
@@ -155,7 +166,7 @@ int wmain(int argc, wchar_t** argv)
     }
     if (std::wstring_view{argv[1]} == L"names") {
         const std::string literal = utf8(resolved) + ". ";
-        const bool written = fs::write_file(input, "ordinary") && fs::write_file(literal, "literal");
+        const bool written = WriteProbeFixture(input, "ordinary") && WriteProbeFixture(literal, "literal");
         const auto read = [](const std::string& name) {
             auto stream = fs::open_ifstream(name, std::ios::binary);
             return std::string{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
@@ -172,7 +183,7 @@ int wmain(int argc, wchar_t** argv)
         std::cout << utf8(output);
         return 0;
     }
-    const bool written = fs::write_file(input, "FOnline native long-path probe\n");
+    const bool written = WriteProbeFixture(input, "FOnline native long-path probe\n");
     bool read = false;
     {
         auto stream = fs::open_ifstream(input, std::ios::binary);
@@ -223,7 +234,7 @@ def engine_probe_source() -> tuple[str, dict[str, object]]:
         "extracted_functions": {signature: hashlib.sha256(function.encode()).hexdigest() for signature, function in zip(ENGINE_SIGNATURES, functions)},
         "extracted_declaration_sha256": hashlib.sha256(declaration.encode()).hexdigest(),
         "harness_aliases": {"string_view": "std::string_view", "FO_WINDOWS": "1", "stack_trace_macros": "no-op", "ignore_unused": "void expression (marks the argument used)"},
-        "proof_scope": "Exact path conversion and create/write/open/rename/remove function bodies, including recursive removal and its canonical helper declaration. STL directory enumeration uses that conversion; the negative control uses remove_all with the ordinary two-argument conversion. Full engine linkage, allocator and visitor dispatch remain native unit-test responsibilities.",
+        "proof_scope": "Exact path conversion and create/open/rename/remove function bodies, including recursive removal and its canonical helper declaration. Fixture writes use a standard stream through the canonical path adapter; they do not copy or emulate the production atomic write helper. STL directory enumeration uses that conversion; the negative control uses remove_all with the ordinary two-argument conversion. Full engine linkage, atomic whole-file writes, allocator and visitor dispatch remain native unit-test responsibilities.",
         "native_source_sha256": hashlib.sha256(native.encode()).hexdigest(),
     }
 

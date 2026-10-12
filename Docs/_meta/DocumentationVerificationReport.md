@@ -2,6 +2,15 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-16 - Integrate published movement fixes and preserve atomic writes
+
+- Rebase only the unpublished atomic-write commit `45b56b718f681acd4c6c7e6a656165aa9055a6ca` from `eedcaa955ff4be79e43384766f7a47cbda0788d1` onto published master `1d88ee229d2d5208dd6c4c86814e032598a06e4c`. The resulting commit is `377844dc6186c76bc9749a0f83aa4c5044fcc631`, version `2026.1.44-dev`; preserve both published movement fixes and all earlier migration entries. Source-only range-diff is `=`. Reconcile the dated EN/RU baseline, runtime `0.0.73` and translation provenance; Managed ABI remains `9`.
+- Audit the complete two-commit incoming range: static blockers in gag-aware map queries, sparse-grid resizing, geometry expectations and authoritative rejected-direction replies. An independent read-only MiMo audit identifies stale API/reference migration values; verify the finding with the failing source-model check before regenerating. Retain the original audit and distinguish its static findings from execution evidence. Its historical no-disposition observation does not apply to the current model pair: the enforced aggregate gate requires one exact breaking disposition for `migration.Version.0.0`, now recorded with the published version-43 migration and both model digests.
+- Regenerate/check the API model, paired migration references and public index. Version validation against published 43-dev passes. The aggregate comparison passes one change in seventeen domains, one required disposition and no missing entries. Documentation preparation passes fifteen outputs; validation passes 412 Markdown entries. AI retrieval passes 28 tasks / 67 checks, 100% success and 0.938 MRR. Restore nineteen generated files only after proving normalized byte equality with HEAD; preserve all semantic changes.
+- All enabled native roles build without compiler warnings. The complete enabled native suite passes 655 cases / 732344 assertions, including the sparse-grid, map-path, filesystem/cache and Threading cases. Focused API/reference/aggregate/version/Managed-guide Python checks pass 45 tests. Version history validation passes the single unpublished 43-to-44 step.
+- Supplementary embedding checks: full forced baking succeeds in 794198 ms (34 packs, 16 bakers, 47 runs, 27018 inputs and 19025 changed outputs); all three Managed roles are rebuilt. Paired metadata generates a current 531-call project catalog. The targeted embedding gameplay run passes 61 cases / 1682 expectations across ten suites, with no failure, timeout, skip or global exception. A rendered native OpenGL development scene passes centering, zoom and return checks; four 1600x900 captures are inspected and no runtime hillshade cache is produced. This is development-scene evidence, not an ordinary-player route or graceful GUI-shutdown claim; the owned GUI process is force-stopped after capture.
+- Preserve the full embedding MCP smoke result separately: 1972 tests, 74 failures and two skips. All failures reproduce in 73 unchanged methods when reading original embedding text blobs; this qualifies stale static/source expectations, not a full old runtime. Five affected MCP checks pass. Browser/Jekyll, Web, Android, audible output and alternate-script-backend acceptance are not newly claimed. No push or standalone authored documentation commit is performed; recovery refs and all safety stashes are retained.
+
 ## 2026-10-14 - Move placement fixes onto master
 
 - Preserve the thirteen-file placement-fix snapshot while switching from detached `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` to master at published `48c437b01e85858e7c702c4be834dd647cd180cb`. Fast-forward the old local master; retain published ancestry. Review both incoming commits and their complete source/test/documentation range: holder-side filtering, Game-holder persistence, Git-ref build dependencies, canonical Managed component callback names, paired guidance and focused regressions.
@@ -11796,3 +11805,345 @@ private observer controller exits 1 because it misreads the event envelope; its
 failure is retained, and matching event/server-log output provides only partial
 data evidence. A corrected controller exits 0 with the same data and a screenshot.
 The engine map fix is not reverted or bypassed to hide the embedding defect.
+
+## 2026-10-07 - Adopt master and retain atomic Baker publication
+
+- Previous local revision: `e995fd0780fba0443b5175a96f93a00fefa9b813`;
+  fetched master: `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`;
+  common base: `8b5afb7b26c6fb6de44e73638a8670ad4d476fb7`.
+  Integrate both histories with fetched master as the first parent and advance
+  `2026.1.13-dev` to `2026.1.14-dev`. The previous local fix remains an ancestor.
+- Incoming source/test and build changes are adopted from the published tip.
+  Review includes movement prediction/reconciliation and their new fixtures,
+  bounded link-delay storage, allocator diagnostics, image-path diagnostics and
+  isolated Baker fixtures, package payload validation, shared resource-pack
+  hashing, configured build markers, checked managed compilation and codegen.
+  The merged source delta against fetched master is exactly the original atomic
+  publication fix; no movement, protocol, resource-pack or managed API replacement
+  is added by this integration.
+- Verify the overlapping POSIX changes retain Darwin signal-set macro support,
+  exclusive file creation and the default nonexclusive overload. Baker and
+  DiskFileSystem tests retain upstream fixture isolation alongside replacement,
+  failure cleanup, unchanged content and already-open-reader cases.
+- Move the fix's prose from the legacy baking redirect to the canonical EN/RU
+  baking and native Essentials owners; extend baking ownership to its filesystem
+  sources and tests. Refresh translation hashes only after both mirrors are
+  reviewed. Add dated bilingual version and migration notes; compatibility
+  marker `0.0.68` remains unchanged.
+- Regenerated snippets, complete localization state, site/search/routes,
+  AI retrieval evaluation and public AI delivery. Retrieval passes 28 tasks and
+  67 checks with 100% success and 0.930 MRR. The exact working-tree contract diff
+  against fetched master reports zero changes across seventeen domains and zero
+  required or missing dispositions.
+- Native rebuild, resource baking and embedding runtime tests follow the
+  integration commit so their configured version and revision identify the
+  final tree. This reconciliation does not claim browser rendering, macOS,
+  remote CI, release publication or production acceptance.
+
+## 2026-10-08 - Rebase unpublished atomic Baker publication
+
+- Previous local master: `de04f3bae71d3010b41a200dada5f293448c7efc`;
+  freshly fetched published baseline:
+  `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9` (`2026.1.13-dev`).
+  The published baseline has not advanced since the preceding integration.
+  Rebase only unpublished work into one linear `2026.1.14-dev` step, retaining
+  the native fix, tests and documentation resolutions from the former merge.
+  Published commits retain their identities and remain ancestors.
+- Compare the complete `Source/`, `BuildTools/` and `Resources/` trees against
+  the preserved old master. All three trees are identical. Existing native and
+  embedding runtime evidence remains scoped to that tested source; this history
+  rewrite does not claim a fresh native rebuild or runtime qualification.
+- Date the unpublished EN/RU release notes by the new UTC commit date. Preserve
+  every published version entry, the owning baking and Essentials guides,
+  reviewed translations, compatibility `0.0.68` and all source-owned contracts.
+  Regenerate translation state, snippets, site/search/routes, retrieval and
+  public AI delivery. Validate the exact one-step publication range and current
+  documentation artifacts.
+- Preserve the former master in a safety branch, retain the named generated-doc
+  stash and keep pre-existing uncommitted delivery files outside the consolidated
+  commit. The embedding worktree records the final SHA and file-preservation
+  evidence. No remote publication is performed.
+- Fresh working-tree gates pass: 410 documentation entries, 10 version fixtures,
+  194/194 reviewed translations, 309 normative snippets, 28 retrieval tasks and
+  67 checks at 100% success. Site/routes and AI delivery are current. Contract
+  comparison against the exact published baseline reports zero changes across
+  seventeen domains, with zero required or missing dispositions. Its report is
+  retained under ignored `Workspace/rebase-master-20261008/`.
+
+## 2026-10-09 - Master history integration
+
+- Fetched published `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+  (`2026.1.15-dev`) is the first parent; local
+  `00af1fe0c425e39ef7c1cc6c075f6b41cacad627` remains a merge ancestor.
+  Prepare `2026.1.16-dev` without rewriting either tip. The owner's explicit
+  conversation rule requires merge for branches with a remote tip.
+- Audit both incoming commits, all four native source/test paths and the
+  documentation generator/test changes. Keep SDL_GPU fence failure propagation,
+  recoverable alpha-mask readback state and the last completed picking mask.
+  Keep the standalone native regression suites for failed and pending readers.
+- Migrate obsolete route/translation sidecars to shared JSON sections of
+  `docs-manifest.json`; keep AI schema 3, site schema 4 and direct VERSION delivery.
+  Resolve generated conflicts by regenerating their owners, not merging JSON text.
+- The embedding project retains named safety stashes and byte copies for all
+  prior work. Its unified atomic writer update is restored as separate uncommitted
+  work after this history-only integration. Native/runtime validation follows on
+  that complete working tree; this receipt does not claim release publication.
+
+## 2026-10-08 - Complete-file atomic publication
+
+- Start from unchanged local master `00af1fe0c425e39ef7c1cc6c075f6b41cacad627`
+  (`2026.1.14-dev`); prepare the separate working-tree `2026.1.15-dev` update.
+  No commit, index mutation or remote publication is performed.
+- Add the string overload of `fs::write_file_atomic` and migrate complete cache
+  entries, managed-assembly cache files, client session markers, Baker outputs,
+  reports, successful build markers and particle dependency snapshots. Replace
+  fixed-name JSON-record and runtime-bootstrap temporary-file sequences with
+  the common helper. Retain previous cache entries after failed publication.
+  Direct writes remain for unpublished ManagedRuntime staging and SQLite restore
+  scratch files; the embedding project's shared MIME configuration additionally
+  retains its explicitly documented file-identity requirement.
+- New production-path regressions exposed a nullable empty-string input defect
+  in the new overload and a missing UTF-16 terminator in the Windows rename-info
+  buffer. Fix both before final validation. Vary four destination-name
+  alignments with an open reader, check differently sized replacement contents,
+  embedded NUL and empty publication, and verify file-cache and runtime-selector
+  callers against real disk files. Preserve initial failed runs as diagnostics.
+- Reconcile eight owning English guides and reviewed Russian mirrors, dated
+  change/migration notes, translation hashes and generated snippets, site/search,
+  routes, retrieval and public AI delivery. Update the existing backup/recovery
+  source-contract assertion after removing the obsolete fixed `.tmp` workflow.
+  All twenty focused Python documentation tests pass. Aggregate validation
+  passes 410 Markdown entries and 194/194 translations; retrieval passes 28 tasks
+  and 67 checks at 100% success and 0.938 MRR. Contract comparison against the
+  unchanged local HEAD reports zero changes across seventeen domains and zero
+  required or missing dispositions. Compatibility remains `0.0.68`.
+- Fresh embedding Windows x64 RelWithDebInfo builds of `LF_UnitTests`, `LF_Client`
+  and `LF_Baker` pass after the final native fix. Focused filesystem, cache,
+  database, Baker, runtime-selector and project composition/log suites pass
+  105 cases and 5862 assertions. Rebuilt-Baker incremental resource baking passes
+  with `Baking complete!`, report status `success` and the correct forty-byte
+  embedding build marker. This evidence does not qualify visible rendering,
+  other operating systems, remote CI or release publication.
+- The embedding worktree retains its original HEAD and index and all thirty-five
+  pre-existing changed files byte-for-byte. Local receipts are retained under
+  its ignored `Workspace/AtomicFilePublication-20261008/`; the unchanged engine
+  contract report is under `Workspace/atomic-publication-20261008/` here.
+
+## 2026-10-08 - Unified atomic write API
+
+- Complete the owner's correction to the preceding publication pass: keep only
+  `fs::write_file`, with string and byte-span overloads sharing one atomic
+  implementation. Remove the separate atomic name, direct implementations and
+  aliases. ManagedRuntime staging and SQLite scratch callers now use the same
+  contract. The embedding MIME configuration uses the existing low-level stream
+  to preserve file identity and checks open, write and flush results.
+- Refresh all eight owning EN/RU guides, translation stamps, migration notes and
+  generated projections. Keep release `2026.1.14-dev` and the preceding verification
+  receipt as historical evidence; the working version remains `2026.1.15-dev`.
+  Aggregate validation passes 410 Markdown entries and 194/194 translations;
+  snippets pass 309 normative, 159 evidence and 183 external-parser checks.
+  Retrieval passes 28 tasks and 67 checks at 100% success and 0.938 MRR. Version
+  validation and contract comparison pass, with zero changes across seventeen
+  domains and zero required or missing dispositions.
+- Adapt the standalone Windows path probe after removing the stream-based
+  helper: extract seven canonical path-operation bodies, create fixtures through
+  the canonical path adapter and state that atomic publication requires linked
+  native tests. Its fourteen Python tests pass. Actual static/dynamic MSVC probe
+  builds pass thirty STL scenarios and canonical path regressions; UNC is not
+  exercised. The three focused backup/recovery documentation tests also pass.
+- Re-derive the affected classifications in the embedding project's baseline;
+  preserve unrelated rows and prune the removed helper. Its audit passes 7340
+  functions with zero errors or warnings. Both write overloads are currently
+  `NoThrow`, without adding an interface `noexcept` promise; validated bootstrap
+  publication is `Strong` because normalization precedes the nonthrowing writer.
+  The baseline is integration evidence, not an engine-owned normative artifact.
+- Fresh Windows x64 RelWithDebInfo builds of `LF_UnitTests`, `LF_Client` and
+  `LF_Baker` pass. The rebuilt test executable passes 105 focused filesystem,
+  cache, database, bootstrap, Baker and embedding report/log cases with 5862
+  assertions. Incremental baking with the rebuilt Baker passes in 30.342 seconds,
+  with `Baking complete!`, report status `success` and the correct forty-byte
+  embedding build marker. Other platforms and visible rendering are not qualified.
+- Preserve both HEADs, indexes and all thirty-five original embedding changes;
+  no commit or publication is performed. Active sources and tools contain no
+  reference to the removed API. Local receipts are under the embedding ignored
+  `Workspace/UnifiedFileWrite-20261008/`; the engine contract report is under
+  ignored `Workspace/unified-file-write-20261008/`.
+
+## 2026-10-09 - Master integration with the unified write worktree
+
+- Merge published `cb33d42c7e4e2678e9b34ccf913d7b88186f979b` as the first parent
+  with local `00af1fe0c425e39ef7c1cc6c075f6b41cacad627`, retaining both histories.
+  The resulting master is `c3e9aa8a1d32ba31906a596b805264473cccb14a` at
+  `2026.1.16-dev`. Exact publication-range validation passes one publication
+  step. Restore the previous uncommitted unified `fs::write_file` work at
+  working version `2026.1.17-dev`; do not publish or commit that work.
+- Review the incoming model-hit-mask and SDL GPU fence recovery sources and
+  regressions. Adopt consolidated routing and translation sections in
+  `docs-manifest.json`, current-version headings, site VERSION inclusion and
+  updated AI delivery. Do not restore the retired standalone metadata files.
+- Reconcile EN/RU release notes and all generated projections. Aggregate
+  validation passes 410 Markdown entries; snippet checks pass 309 normative,
+  159 evidence and 183 external-parser checks. Retrieval passes 28 tasks and
+  67 checks at 100% success and 0.938 MRR. Contract comparison passes zero
+  changes across seventeen domains and zero required or missing dispositions.
+  Focused documentation-tool tests pass 110 cases and 65 subtests.
+- Preserve 28 non-overlapping engine files byte-for-byte, the empty index and
+  the previous/public tips as ancestors. The embedding repository preserves
+  its separate local work and Authoring state. Refresh configure after its
+  gitlink correction so final binaries use embedding SHA
+  `e4588c09f39685d5681e2a17370a876510805fd8`; retain the interrupted earlier
+  build log separately. The fresh Windows x64 RelWithDebInfo Baker build passes.
+- Fresh Windows x64 RelWithDebInfo builds of the embedding unit-test executable,
+  server headless and client targets pass, including the changed SDL GPU backend.
+  Focused filesystem, cache, database, Baker, runtime-selector, model-hit-mask,
+  null-renderer and embedding composition/log cases pass 125 tests and 6064
+  assertions on the fresh executable.
+- The first resource bake reports six `ipos`/`fpos` compilation errors in the
+  embedding railway adoption. Explicit metre-position conversion fixes those;
+  an isolated compiler-only check also finds the merged generated GUI collision,
+  which is corrected by regenerating the artifact from authored inputs. All
+  three isolated configurations then compile. These diagnostic checks do not
+  replace the normal analyzer-enabled bake. The full analyzer-enabled resource
+  bake passes in 1705.799 seconds with `Baking complete!`, report status
+  `success` and the correct forty-byte embedding build marker. A subsequent
+  test launch inherits the system SDK instead of the workspace SDK and fails
+  its startup prebake; preserve that log, restore the SDK environment and
+  restore resource publication before running tests with startup prebaking
+  disabled. That analyzer-enabled repeat bake passes in 1666.352 seconds,
+  again with the correct forty-byte marker and a success report.
+  Embedding gameplay integration passes 33 tests in nine suites with 213
+  expectations, zero failures, timeouts, skips or exception delta, a final
+  runner summary, clean server shutdown and exit zero. This covers metric
+  coordinates, movement speed, vision, migration, first-character creation,
+  authored quest addresses, actual railway travel/arrival/resume and the
+  embedded-client relief/click paths.
+- The embedding's ordinary windowed server and Baker runtime library are also
+  rebuilt successfully after identifying an older ordinary-launch executable.
+  Final aggregate validation and AI delivery checks pass again; indexes stay
+  empty and final preservation checks pass. The embedding retains the original
+  Authoring gitlink and child worktree state. No push is performed.
+  Local receipts are retained in the embedding ignored
+  `Workspace/UpdateProjectEngine-20261009/`; the engine contract report is
+  under ignored `Workspace/update-master-20261009/` here. No other-platform,
+  visible SDL GPU failure, remote CI or release-publication qualification is
+  claimed by these checks.
+
+## 2026-10-09 - Second master reconciliation and documentation preparation
+
+- Preserve local `c3e9aa8a1d32ba31906a596b805264473cccb14a` and published
+  `6db09ef1d49a44307dbdadf747087247d5f5e78b` as ancestors of master
+  `39313f3756a259e2e3e664fc3479947bda90a512`. The published tip is the first
+  parent; the merge owns `2026.1.18-dev` and passes the exact one-step version
+  check. Restore uncommitted unified-write work separately at `2026.1.19-dev`.
+- Review the complete incoming application-default and managed-runtime READY,
+  cache, prebuilt and publication checks, their regression fixtures, and the
+  documentation preparation/site changes. Retain the removal of versioned
+  delivery catalogs; generate ignored outputs through `docs_prepare.py`.
+  Review EN/RU testing prose and refresh its stale published source stamp.
+  Preserve published migration entries and both meaningful guide changes.
+- Preparation passes 309 normative, 159 evidence and 183 external-parser
+  snippet checks, 4838 current translated descriptions, 28 retrieval tasks and
+  67 checks with 100% success and 0.938 MRR. Aggregate validation passes 411
+  Markdown entries. The contract diff passes zero changes across seventeen
+  domains with zero required or missing dispositions. Runtime preparation and
+  site-build tests pass 538 cases and four subtests; two POSIX/Ninja producer
+  cases are skipped on Windows. Configure accepts the existing complete
+  Windows runtime through the new validator.
+- Restore ten unchanged local guides byte-for-byte after confirming only
+  line-ending differences from stash. Preservation verifies 23 unchanged
+  engine files, both original/published tips, master and the empty index.
+  The embedding preserves its separate local work and Authoring state.
+  Fresh Windows x64 RelWithDebInfo builds pass for the embedding client,
+  ordinary and headless servers, Baker, Baker runtime and unit tests.
+  Application defaults and precedence, filesystem/cache/database publication,
+  Baker, runtime selection, model-hit-mask, null renderer and embedding
+  composition/log checks pass 127 cases and 6208 assertions on the fresh
+  executable. The full analyzer-enabled bake passes in 1910.386 seconds with
+  a success report and the correct forty-byte embedding build marker. The
+  first embedding gameplay run passes 60 of 61 cases in thirteen suites;
+  its one failure is an outdated two-hex expectation in the new settlement
+  entry fixture after upstream introduces a configurable four-hex landing
+  radius. The embedding adapts the fixture to its metre-position type and
+  configured radius without changing gameplay. The analyzer-enabled
+  incremental repeat bake passes in 2153.693 seconds, and the corrected
+  entry retest passes one case and six expectations with no failures,
+  timeouts, skips or exception delta, clean server shutdown and exit zero.
+  Together these runs verify 61 unique gameplay cases, including metric
+  movement, migration, railway, checkpoint landing, group cooperation,
+  long actions, initial player creation and five embedded-client routes.
+  Final aggregate validation and AI delivery checks pass again. Empty
+  indexes, original/published ancestry and Authoring preservation are
+  confirmed. Windows x64 and server/embedded-client checks do not qualify
+  visible GPU rendering, other platforms, remote CI or publication. Local
+  receipts are in the embedding ignored
+  `Workspace/UpdateProjectEngine-20261009-1627/`; no push is performed.
+
+## 2026-10-10 - Rebase unpublished atomic publication work onto master
+
+- Preserve the original engine `39313f3756a259e2e3e664fc3479947bda90a512`
+  and its complete working tree in recovery refs, byte copies and a retained
+  stash. Audit all five incoming commits through published master
+  `bf673df1818c10aaf77c586077caf60cbd2e904f`. Rebase only unpublished work;
+  the local publication fix becomes `b93c4ea2d8b047bb4eca5177286ee04943c63a25`,
+  with version `2026.1.23-dev`. Retain the uncommitted unified `fs::write_file`
+  implementation separately as `2026.1.24-dev`, above published version 22.
+  Compatibility 69 is adopted from upstream. Published history is retained.
+- Review document migration actions and callbacks, collection proxies, enum
+  diagnostics and client/server grid selectors with their owning guides and
+  tests. Preserve meaningful earlier conflict resolutions. Reconcile English
+  and Russian guides and reviewed translation stamps. Canonical models and
+  prepared delivery outputs pass the aggregate source and retrieval checks:
+  35 changes across 17 domains, 32 required dispositions and zero missing;
+  411 Markdown entries, 4,841 current descriptions and 28 retrieval tasks
+  with 67 checks. The prepared public context has 398 documents and 2,256,004
+  bytes. The embedding RPC catalog is derived from fresh metadata: 524 calls.
+- Fresh Windows x64 RelWithDebInfo builds pass for the Baker and its runtime,
+  client and client runtime, both server roles, Mapper and unit tests. The
+  complete native run passes 552 cases and 667,334 assertions. Two additional
+  grid-cost runs each pass two cases and 1,675 assertions; concurrent compiler
+  load limits performance interpretation. Python checks pass 90 cases, with
+  another 15 cases and 11 subtests for source/documentation gates. Two boxed
+  event native probes require GCC/Clang Ninja and remain skipped on MSVC.
+  Real Chromium delayed/missing SVG fixtures pass three cases; the complete
+  published Jekyll site is not exercised by this local check.
+- The embedding rebases nine unpublished features above the fetched game
+  history, preserving metric positions, migration order, new-location radii,
+  debug authorization and packed colors. Initial baking detects old `fpos`
+  usage in new travel-upkeep fixtures; these are adapted to `ipos` without
+  changing gameplay. Full analyzer-enabled bakes then pass in 1,175.803 and
+  1,283.125 seconds. The latter uses complete-corpus inputs and publishes the
+  exact forty-byte `48de216c11407f8684c58c25bf62b18136e6f498` build marker.
+- The embedding subsequently receives one published Ops-record commit:
+  final source HEAD `88a7f3c73f3b6157b3b0038bacebf0781ee9e44f` is based on
+  `ba5e658ff079845376c8da9105a278955dbb2685`. That committed-tree difference
+  consists solely of 16 operations record paths. Keep the validated native
+  artifacts at build marker `48de216c11...`; native and gameplay sources do
+  not change with this final record-only rebase. All 69 working files are
+  restored byte-for-byte. This is local integration evidence, not package
+  attestation or release qualification at the newer source HEAD.
+- The first embedding gameplay run passes 93 of 94 cases in 18 suites,
+  with 765 expectations and no timeouts, skips or exception delta. One new
+  faction-escort fixture confuses island cells and metres when selecting
+  difficulty bands. Convert those fixture positions through the embedding
+  projection; no faction or gameplay rule changes. The first repeat compile
+  catches integer division promoted to double (`LF0017`); an explicit
+  integer centre local preserves the intended cell selection. The final
+  analyzer-enabled repeat passes in 1,120.650 seconds, with a success report
+  and the matching native/resource marker. The focused runtime retest passes
+  one case and 18 expectations, with zero failures, timeouts, skips or
+  exception delta, clean server shutdown and exit zero. Together the retained
+  first run and this retest verify all 94 unique selected gameplay cases;
+  they are not presented as a second complete 94-case run.
+  A real rendered embedding server, Memory DB and DevTest scene also pass
+  character generation and local SnowStart map entry through MCP. Inspect
+  the 1280-by-800 PNG frame: terrain, models, the controlled character and
+  UI are rendered. No administrative transfer commands are used. This dev
+  profile route does not qualify production UI or every GPU/backend.
+  Finally receive one further Ops-only commit (12 record paths), preserving
+  the same runtime/build inputs and all 69 working files. Final embedding
+  source HEAD is `80c0e97f98947f59d2d8a4e2e23e1ae5d9562fe5` on published
+  `7771650723e36fc67be1475bea606753cb3a02b4`; the validated artifact marker
+  remains `48de216c11...`. Retain the explicit source/artifact distinction.
+  Receipts are retained under the embedding ignored
+  `Workspace/UpdateProjectEngine-20261010/`. All safety copies remain;
+  Authoring is not operated on, no push or new feature commit is performed.

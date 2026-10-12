@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/backup-and-recovery.html
 ---
 
 # Резервное копирование и восстановление
-<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"735d3850e39b153fc0a66d22d37cd2ef8c9dd0f6df99b6ea959252a85f41a53e"} -->
+<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"2a96e092f52120adf8bf2ad80366589c13d699561273a79be9371135e7cfa0af"} -->
 Этот runbook определяет переиспользуемую границу резервного копирования, восстановления и disaster recovery для сервера FOnline. Используйте его вместе с [Persistence](../../explanation/persistence/) для механики хранилища, [Release Operations](operations.md) для управления процессом и [Engine Upgrade Guide](../migration/engine-upgrade.md), когда долговечные данные переходят между ревизиями Engine или игры.
 
 ## Решение о восстановлении
@@ -52,7 +52,7 @@ Engine не предоставляет команду snapshot базы данн
 | Backend | Долговечные данные | Граница согласованности и восстановления |
 |---|---|---|
 | `Memory` | Нет | Локальное для процесса тестовое состояние. Оно не может удовлетворить цели постоянного backup или recovery. |
-| `JSON <directory>` | Один JSON-файл на запись в каталогах коллекций | Каждая вставка или update записывает `<record>.json.tmp` и переименовывает его, но операции над несколькими записями не образуют одну транзакцию. Делайте копию остановленного процесса или filesystem snapshot, согласованность которого доказана для всего каталога. |
+| `JSON <directory>` | Один JSON-файл на запись в каталогах коллекций | Каждая вставка или update публикуется через `fs::write_file` с уникальным временным файлом рядом с записью, но операции над несколькими записями не образуют одну транзакцию. Делайте копию остановленного процесса или filesystem snapshot, согласованность которого доказана для всего каталога. |
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` и активные SQLite WAL sidecars | Engine открывает WAL mode с `synchronous=NORMAL`; отдельные записи выполняются с autocommit. Не копируйте только `Storage.sqlite` во время работы сервера. Используйте согласованный с provider/SQLite online backup либо остановите сервер и сохраните весь каталог хранилища. Engine не предоставляет команду online backup или checkpoint. |
 | `Mongo <URI> <database>` | Именованная база Mongo в настроенном deployment | URI и provider определяют write concern, репликацию, snapshot, dump и point-in-time возможности; Engine их не переопределяет. Используйте нативный согласованный метод провайдера и запишите его гарантии. |
 

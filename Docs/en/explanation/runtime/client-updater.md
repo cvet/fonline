@@ -458,6 +458,8 @@ Missing, oversized, relative, newline-containing, wrong-basename, and stale sele
 install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
 exe-dir sibling runtime and neither write nor read the installed selector.
 
+Bootstrap selectors publish their complete validated path with `fs::write_file`; they do not use a shared fixed `.tmp` filename. An invalid target or failed publication leaves the previous selection intact. New readers see the complete new selector, while an already-open reader retains the old selector.
+
 **Trigger:** the installer drops an `INSTALLED` file next to the exe; its presence alone selects the
 per-user layout unless the command line supplies another root. The portable zip has no marker. Android
 does not need one because its launcher passes the platform directory on the command line. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added

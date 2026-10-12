@@ -12,7 +12,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-15
+## Current - 2026-10-16
+
+### Fixed
+
+- Make `fs::write_file` the sole atomic whole-file helper for strings and byte spans, including embedded NUL and empty input. Exclusive sibling staging, flush and atomic replacement preserve the previous destination on failure and retain open readers/mapped DLLs. `disk_write_mode::create_new` rejects existing paths; no `write_file_atomic` alias remains.
+- Apply the shared helper to cache entries, managed staging, client session/bootstrap markers, Baker outputs/reports/fingerprints, particle dependency snapshots, JSON records and SQLite restore scratch files. Failed cache publication retains the existing entry; `RemoveEntry` is explicit invalidation. Windows rename names are NUL-terminated, and the standalone path probe remains independent of Engine linkage.
+- Reconcile cumulative contract dispositions without removing earlier review records. Retain complete owning guides and migration history in the reviewed 2 MiB + 224 KiB AI bundle; align its manifest, EN/RU guides and policy tests. Required start routes, membership and oversize rejection remain unchanged.
+
+### Migration
+
+- Baseline: `1d88ee229d2d5208dd6c4c86814e032598a06e4c` (`2026.1.43-dev`). This single unpublished update consolidates the local atomic-write fixes and documentation reconciliation; apply the published migrations through 43 before adoption. The intermediate local versions are not release steps.
+- Native `fs::write_file(path, string_view)` and byte-span signatures are retained; writes now replace complete files instead of truncating the destination. Audit parent-directory permissions, symlinks, hard links and destination metadata. Identity-dependent streaming/in-place writes use `fs::disk_write_file`; check write and flush results. The WinApi/Posix `open_new_write_file` wrappers add optional `exclusive=false`, preserving two-argument callers. Experimental local `write_file_atomic` calls must use `write_file`; no second whole-file policy or compatibility alias exists.
+- Reconfigure/rebuild Essentials, Common, Client, Server, Tools and Managed consumers; regenerate bindings, references, EN/RU, site/routes and AI outputs, then rebake using the rebuilt Baker. Check filesystem/cache/database/selector/baking tests, publication with open assembly readers and old destination survival on failure. `SetDataChecked == false` means the new value was not committed; `SetString` logs failures. Preserve the previous complete package for rollback.
+- No managed caller, setting, prototype, persisted property, save, network, updater or resource-schema conversion is introduced relative to published 43. JSON keys/content, selector validation, successful marker ordering and unchanged timestamps retain meaning. Runtime compatibility stays `0.0.73`, managed ABI identity `9`, and sprite container v2. Atomic visibility does not promise directory durability across power loss. See [Essentials](native/essentials.md#filesystem-compression-sockets-and-work-threads).
+
+## 2026.1.43-dev - 2026-10-15
 
 ### Fixed
 

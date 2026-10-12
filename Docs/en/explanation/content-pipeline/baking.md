@@ -211,6 +211,27 @@ and the stable baker name used for attribution. `WriteData` returns a
 `BakingWriteResult`, which distinguishes a content-changing write from an
 unchanged file whose timestamp was refreshed.
 
+Changed outputs use `fs::write_file`: an exclusively created temporary file
+beside the destination is written, flushed and closed before `fs::replace_file`
+publishes it. Existing readers retain the previous bytes; new opens receive the
+complete replacement. A failed write or publication preserves the destination and
+removes the temporary file. Unchanged outputs keep their existing comparison and
+timestamp behavior.
+
+Both `MasterBaker` outputs and `BakerDataSource::WriteData` use this publication path. Baking reports, the successful `Resources.build-hash` marker and Effekseer dependency-cache snapshots also publish complete files atomically; their contents, successful-bake ordering and unchanged-resource timestamp rules are preserved.
+
+Windows replacement supports DLLs with active memory mappings through POSIX rename
+semantics. Truncating such a DLL in place fails with error 1224, including when a
+validation engine inside the Baker has loaded it. Shared disk readers permit name
+replacement while retaining their open file, as on POSIX systems. The atomic-write
+helper flushes the temporary file; it does not add directory synchronization or
+claim power-loss durability for the rename.
+
+`Source/Tests/Test_DiskFileSystem.cpp` covers replacement with an existing reader,
+exclusive creation without truncation, destination preservation and temporary-file
+cleanup after publication failure. The low-level contract is owned by
+[Essentials](../../reference/native/essentials.md#filesystem-compression-sockets-and-work-threads).
+
 ### `BaseBaker`
 
 The abstract base for individual baker implementations. Each baker provides:

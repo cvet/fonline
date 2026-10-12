@@ -116,6 +116,94 @@ TEST_CASE("DiskFileSystem")
 #endif
     }
 
+    SECTION("AtomicStringWritePreservesEmbeddedZerosAndPublishesEmptyContent")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_string");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string file_path = strex(temp_dir).combine_path("data.bin").str();
+        string_view content {"old\0bytes", 9};
+        REQUIRE(fs::write_file(file_path, content));
+        CHECK(fs::read_file(file_path) == optional<string> {string(content)});
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+
+        REQUIRE(fs::write_file(file_path, string_view {}));
+        CHECK(fs::read_file(file_path) == optional<string> {string {}});
+        array<uint8_t, 9> old_bytes {};
+        REQUIRE(reader.read_at(0, old_bytes));
+        CHECK((string_view {make_ptr(old_bytes.data()).reinterpret_as<const char>().get(), old_bytes.size()} == content));
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 1);
+    }
+
+    SECTION("AtomicReplacementWithOpenReadersHandlesEveryWideNameAlignment")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_name_alignment");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+
+        for (size_t name_length = 1; name_length <= 4; ++name_length) {
+            string file_path = strex(temp_dir).combine_path(string(name_length, 'x') + ".bin").str();
+            CAPTURE(file_path);
+            REQUIRE(fs::write_file(file_path, string_view {"old"}));
+            fs::disk_read_file reader {file_path};
+            REQUIRE(static_cast<bool>(reader));
+
+            REQUIRE(fs::write_file(file_path, string_view {"replacement"}));
+            CHECK(fs::read_file(file_path) == optional<string> {"replacement"});
+            array<uint8_t, 3> old_bytes {};
+            REQUIRE(reader.read_at(0, old_bytes));
+            CHECK((string_view {make_ptr(old_bytes.data()).reinterpret_as<const char>().get(), old_bytes.size()} == "old"));
+        }
+
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 4);
+    }
+
+    SECTION("AtomicWriteKeepsExistingReadersOnThePreviousFile")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string file_path = strex(temp_dir).combine_path("data.bin").str();
+        array<uint8_t, 3> before = {'o', 'l', 'd'};
+        array<uint8_t, 3> after = {'n', 'e', 'w'};
+        REQUIRE(fs::write_file(file_path, before));
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+
+        REQUIRE(fs::write_file(file_path, after));
+        CHECK(fs::compare_file_content(file_path, after));
+        array<uint8_t, 3> old_bytes {};
+        REQUIRE(reader.read_at(0, old_bytes));
+        CHECK(old_bytes == before);
+        reader.close();
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 1);
+    }
+
+    SECTION("AtomicWriteFailurePreservesTheDestinationAndRemovesItsStage")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_failure");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string destination = strex(temp_dir).combine_path("occupied").str();
+        string child = strex(destination).combine_path("original.bin").str();
+        array<uint8_t, 3> bytes = {'o', 'l', 'd'};
+        REQUIRE(fs::write_file(child, bytes));
+
+        CHECK_FALSE(fs::write_file(destination, bytes));
+        CHECK(fs::is_dir(destination));
+        CHECK(fs::compare_file_content(child, bytes));
+        CHECK(fs::list_dir_file_names(temp_dir, true).size() == 1);
+    }
+
+    SECTION("ExclusiveWriterDoesNotTruncateAnExistingFile")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_exclusive");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string file_path = strex(temp_dir).combine_path("original.bin").str();
+        REQUIRE(fs::write_file(file_path, string_view {"original"}));
+
+        fs::disk_write_file writer {file_path, fs::disk_write_mode::create_new};
+        CHECK_FALSE(static_cast<bool>(writer));
+        CHECK(fs::read_file(file_path) == optional<string> {"original"});
+    }
+
     SECTION("ReadWriteRenameAndRemoveRoundtrip")
     {
         string temp_dir = MakeTempTestDir("diskfs_roundtrip");
@@ -551,6 +639,12 @@ TEST_CASE("DiskFilePrimitives")
         REQUIRE(reader.read_at(0, span<uint8_t> {read_back.data(), read_back.size()}));
         CHECK(read_back == bytes);
         CHECK(fs::available_space(dir).has_value());
+
+        array<uint8_t, 3> replacement = {'x', 'y', 'z'};
+        REQUIRE(fs::write_file(moved_path, replacement));
+        CHECK(fs::compare_file_content(moved_path, replacement));
+        REQUIRE(reader.read_at(0, span<uint8_t> {read_back.data(), read_back.size()}));
+        CHECK(read_back == bytes);
         reader.close();
     }
 

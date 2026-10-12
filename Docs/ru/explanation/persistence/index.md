@@ -7,10 +7,12 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"5589ce513590d2e75fc2c3ee309e9228b388fc98cfd9ee0dcf1b0b94febff200"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"95c457e880e66821f0320e745e824cea8806e4aa777150bf38a5f730fd51400b"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
+
+`DataBase-Json.cpp` публикует готовые добавленные и обновлённые JSON records через `fs::write_file`. Уникальный временный файл рядом с записью заменяет прежнюю последовательность с фиксированным `<record>.tmp`. Ключи, JSON-содержимое и семантика commit queue сохраняются. Восстановление снимка SQLite использует тот же атомарный helper для неопубликованной scratch-базы до открытия для восстановления.
 
 ## Модель владения
 

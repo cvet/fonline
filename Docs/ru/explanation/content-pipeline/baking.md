@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"ade29d421492f2373aa9456ea41f6a6362d99a64a110613ce7d93f02051a3703"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"c9135473ca7ff4438cb2ba61e9ca532396e800f19f8bbbe126b1ce24394b8826"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -210,6 +210,27 @@ AddBakingTarget(Game_PublicResources
 - `ForceSyncMode` — необязательное принудительное синхронное выполнение.
 
 В проходе `MasterBaker` контекст также содержит общий collector отчёта и стабильное имя baker-а для attribution. `WriteData` возвращает `BakingWriteResult`, различающий реально изменившуюся запись и byte-identical файл, которому только обновили timestamp.
+
+Изменённые результаты записываются через `fs::write_file`: временный файл
+рядом с назначением создаётся эксклюзивно, записывается, сбрасывается и закрывается,
+после чего `fs::replace_file` публикует его. Открытые читатели сохраняют прежние
+байты; новые открытия получают полную замену. Ошибка записи или публикации
+сохраняет назначение и удаляет временный файл. Сравнение и обновление timestamp
+неизменённых результатов сохраняют прежний смысл.
+
+Этот путь публикации используют и outputs `MasterBaker`, и `BakerDataSource::WriteData`. Отчёты запекания, маркер успешного завершения `Resources.build-hash` и снимки dependency cache Effekseer также публикуются целиком атомарно. Их содержимое, порядок подтверждения успешного запекания и правила timestamp для неизменённых ресурсов сохраняются.
+
+В Windows замена поддерживает DLL с активными memory mappings через POSIX rename
+semantics. Обрезание такой DLL на месте завершается ошибкой 1224, в том числе когда
+её загрузил проверочный engine внутри Baker. Общие читатели диска разрешают замену
+имени, удерживая открытый файл, как в POSIX. Helper сбрасывает временный файл, но
+не добавляет directory synchronization и не обещает сохранность rename при
+внезапном отключении питания.
+
+`Source/Tests/Test_DiskFileSystem.cpp` проверяет замену при открытом читателе,
+эксклюзивное создание без обрезания, сохранность назначения и удаление временного
+файла после ошибки публикации. Низкоуровневым контрактом владеет
+[Essentials](../../reference/native/essentials.md#файловая-система-сжатие-сокеты-и-рабочие-потоки).
 
 ### `BaseBaker`
 

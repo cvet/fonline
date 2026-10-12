@@ -677,9 +677,10 @@ auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
     return ::open(path.c_str(), O_RDONLY | O_CLOEXEC | LARGE_FILE_OPEN_FLAG);
 }
 
-auto posix::open_new_write_file(const string& path, bool append) noexcept -> int32_t
+auto posix::open_new_write_file(const string& path, bool append, bool exclusive) noexcept -> int32_t
 {
-    int32_t fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666);
+    int32_t flags = O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG | (exclusive ? O_EXCL : 0);
+    int32_t fd = ::open(path.c_str(), flags, 0666);
 
     if (fd < 0) {
         return -1;

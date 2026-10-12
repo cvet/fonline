@@ -223,7 +223,6 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
     string path = MakeCacheEntryPath(_workPath, entry_name);
 
     if (!fs::write_file(path, str)) {
-        fs::remove_file(path);
         logging::write(logging::type::warning, "Can't write cache at '{}'", path);
     }
 }
@@ -244,7 +243,6 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
     string path = MakeCacheEntryPath(_workPath, entry_name);
 
     if (!fs::write_file(path, data)) {
-        fs::remove_file(path);
         logging::write(logging::type::warning, "Can't write cache at '{}'", path);
         return false;
     }

@@ -10764,6 +10764,18 @@
       "release_note": "Docs/en/reference/changelog.md 2026.1.41-dev and Docs/ru/reference/changelog.md; owning particle-format guides and the generic ContinuousEmitterBoundsIgnoreEarlierBakes native regression.",
       "compatibility": "At introduction in 2026.1.41-dev, runtime compatibility 0.0.72, Managed ABI 9 and resource grammar are unchanged from published c727e6f549fe54095e21dad4c272b99761083e0f / 2026.1.40-dev. Measured bounds can change to their reproducible result; deploy matching generated metadata and packs with rebuilt binaries. Rollback restores matching baseline artifacts without save conversion.",
       "owner": "particle-format"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.fc3363ee3cedd153",
+      "baseline_contract_sha256": "c23562b19340f80d665db7419e7b6a8aff97b55e459256f56ef47c6262928881",
+      "current_contract_sha256": "bf6805f014e079c9568a00fca6fc7dab09f9e63f7ceb5369be91587329d3c1b6",
+      "classification": "breaking",
+      "rationale": "Reconcile the source-backed model with the runtime compatibility gate already published in 1d88ee229d / 2026.1.43-dev. Rejected stop-direction requests now receive the authoritative CritterDir reply. The stable migration symbol ID and callable APIs are unchanged; the model previously still described Version 0 0 72.",
+      "migration": "Apply the 2026.1.43-dev migration in Docs/en/reference/changelog.md and its Russian mirror, then the current 44-dev atomic-write migration. Reconfigure/rebuild Baker, server, clients and Mapper; regenerate metadata and rebake/deploy both resource sides together. No authored coordinate, direction, property, save or resource-format conversion is introduced. Rollback restores matching baseline binaries and packs.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.43-dev and Current 2026.1.44-dev, plus their Russian mirrors; Source/Common/Common.h owns the Version 0 0 73 gate.",
+      "compatibility": "Runtime gate advances from 0.0.72 to 0.0.73 at published 43-dev. Mixed endpoints are rejected; wire field layouts, existing positions/directions, Managed ABI identity 9 and persisted data retain meaning. The preserved local atomic-write patch introduces no additional gate or data conversion.",
+      "owner": "Engine movement authority and migration contracts"
     }
   ]
 }
