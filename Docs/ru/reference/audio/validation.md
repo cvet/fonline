@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-audio-validation","locale":"ru","source_path":"Docs/en/reference/audio/validation.md","source_sha256":"a31c721de0770bf0bc84877fc54eed85153156e5c0eb8883d9a6c2faa201e08c"} -->
+<!-- docs-translation: {"document_id":"generated-audio-validation","locale":"ru","source_path":"Docs/en/reference/audio/validation.md","source_sha256":"fa5856d9dd991853c4867ab6872a8681120112cd01c483f9fbed3c0296a914e2"} -->
 
 # Контракт проверки аудио
 
@@ -31,4 +31,4 @@ python -m unittest BuildTools.tests.test_docs_audio
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 
-Сейчас нет сфокусированного нативного fixture декодера/воспроизведения. Встраиваемый проект также должен запечь репрезентативные WAV, ACM и Ogg, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.
+Запускайте сфокусированные нативные suites Test_AudioBaker, Test_AudioBakerAcm и Test_AudioManager; покрытие ACM требует FO_AUDIO_ACM. Встраиваемый проект также должен запечь репрезентативные WAV и Ogg, а при включённой опции ещё и ACM, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.

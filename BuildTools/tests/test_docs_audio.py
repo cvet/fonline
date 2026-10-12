@@ -55,6 +55,16 @@ class AudioDocumentationTests(unittest.TestCase):
         )
         self.assertEqual(self.model["summary"]["entry_count"], 33)
 
+    def test_validation_names_live_native_suites_and_keeps_device_gate(self) -> None:
+        validation = docs_audio._render_validation(self.model)
+        for relative_path in self.model["outputs"]["native_test_files"]:
+            with self.subTest(source=relative_path):
+                self.assertIn(Path(relative_path).stem, validation)
+        self.assertNotIn("no focused native decoder/playback fixture", validation)
+        self.assertIn("FO_AUDIO_ACM", validation)
+        self.assertIn("visible client", validation)
+        self.assertIn("every claimed platform", validation)
+
     def test_audio_uses_the_audio_baker_instead_of_raw_copy(self) -> None:
         outputs = self.model["outputs"]
         self.assertTrue(

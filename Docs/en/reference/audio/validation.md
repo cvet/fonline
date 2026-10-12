@@ -29,4 +29,4 @@ python -m unittest BuildTools.tests.test_docs_audio
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 
-There is currently no focused native decoder/playback fixture. An embedding project must also bake representative WAV, ACM, and Ogg resources, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.
+Run the focused Test_AudioBaker, Test_AudioBakerAcm, and Test_AudioManager native suites; ACM coverage requires FO_AUDIO_ACM. An embedding project must also bake representative WAV and Ogg resources, and ACM when enabled, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.

@@ -12,7 +12,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-12
+## Current - 2026-10-13
+
+### Fixed
+
+- Name `Test_AudioBaker`, `Test_AudioBakerAcm`, and `Test_AudioManager` in audio validation; ACM still requires `FO_AUDIO_ACM`.
+- Align the bilingual AI delivery ADR with its dated measurement, preserving complete documents and the byte budget.
+- Normalize six diagrams to LF without visual changes; retain four dated verification records as historical evidence.
+
+### Migration
+
+- `cd5c1168f8f4bdab63a2909ceacb049ba87e070a` (`2026.1.35-dev`) → `2026.1.36-dev`: documentation, generators and tests only. No API, script, configuration, resource, persisted-data or DB conversion. Audio semantics, ABI `9`, runtime `0.0.72`, sprite v2, updater and network schemas are unchanged.
+- Run `docs_audio.py --write`, `docs_diagrams.py --write`, then `docs_prepare.py` from `BuildTools/`. Check audio documentation tests, diagrams, EN/RU hashes, version, site/routes and complete AI delivery. Use matching code/build/package metadata; no forced rebake. Native audio and audible platform checks remain separate. Rollback restores baseline documentation, generators and metadata; saved data is unchanged.
+
+## 2026.1.35-dev - 2026-10-12
 
 ### Fixed
 

@@ -675,11 +675,12 @@ def _render_validation(model: dict[str, object]) -> str:
             "cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests",
             "```",
             "",
-            "There is currently no focused native decoder/playback fixture. An "
-            "embedding project must also bake representative WAV, ACM, and Ogg "
-            "resources, exercise effect and music calls in a visible client with "
-            "audio enabled, inspect logs, and verify volume/repeat behavior on "
-            "every claimed platform.",
+            "Run the focused Test_AudioBaker, Test_AudioBakerAcm, and "
+            "Test_AudioManager native suites; ACM coverage requires FO_AUDIO_ACM. "
+            "An embedding project must also bake representative WAV and Ogg "
+            "resources, and ACM when enabled, exercise effect and music calls in "
+            "a visible client with audio enabled, inspect logs, and verify "
+            "volume/repeat behavior on every claimed platform.",
             "",
         ]
     )
@@ -725,8 +726,8 @@ RUSSIAN_REPLACEMENTS = {
     "Included:": "Включено:",
     "Excluded:": "Исключено:",
     "## Validation commands": "## Команды проверки",
-    "There is currently no focused native decoder/playback fixture. An embedding project must also bake representative WAV, ACM, and Ogg resources, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.":
-        "Сейчас нет сфокусированного нативного fixture декодера/воспроизведения. Встраиваемый проект также должен запечь репрезентативные WAV, ACM и Ogg, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.",
+    "Run the focused Test_AudioBaker, Test_AudioBakerAcm, and Test_AudioManager native suites; ACM coverage requires FO_AUDIO_ACM. An embedding project must also bake representative WAV and Ogg resources, and ACM when enabled, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.":
+        "Запускайте сфокусированные нативные suites Test_AudioBaker, Test_AudioBakerAcm и Test_AudioManager; покрытие ACM требует FO_AUDIO_ACM. Встраиваемый проект также должен запечь репрезентативные WAV и Ogg, а при включённой опции ещё и ACM, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.",
 }
 
 RUSSIAN_TABLE_HEADERS = {

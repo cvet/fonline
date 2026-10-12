@@ -8,13 +8,26 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1c94c6efb0b90b98ce0cc1d231fd8a22a79aafdb599f909b62e3659d3754dcfd"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e086765271cb7e781841117ee25f2d1f838271abcdd7475263c9556338580569"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-12
+## Current - 2026-10-13
+
+### Исправлено
+
+- В проверке аудио названы `Test_AudioBaker`, `Test_AudioBakerAcm` и `Test_AudioManager`; ACM требует `FO_AUDIO_ACM`.
+- Двуязычный ADR согласован с датированным измерением AI delivery; документы включены целиком, лимит байтов сохранён.
+- Шесть диаграмм переведены на LF без видимых изменений; четыре датированные записи проверки сохранены как исторические доказательства.
+
+### Миграция
+
+- `cd5c1168f8f4bdab63a2909ceacb049ba87e070a` (`2026.1.35-dev`) → `2026.1.36-dev`: только документация, генераторы и тесты. Конверсия API, скриптов, конфигурации, ресурсов, хранимых данных и БД не нужна. Смысл аудио, ABI `9`, runtime `0.0.72`, спрайты v2, схемы updater и сети прежние.
+- Запустите `docs_audio.py --write`, `docs_diagrams.py --write`, затем `docs_prepare.py` из `BuildTools/`. Проверьте тесты документации аудио, диаграммы, хеши EN/RU, версию, site/routes и полный AI delivery. Метаданные кода, сборки и пакетов должны совпадать; принудительная перепечка не нужна. Native audio и слышимые проверки платформ выполняются отдельно. Откат возвращает документацию, генераторы и метаданные базы; сохранения не меняются.
+
+## 2026.1.35-dev - 2026-10-12
 
 ### Исправлено
 

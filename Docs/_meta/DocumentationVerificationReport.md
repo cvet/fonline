@@ -11293,6 +11293,123 @@ Completed local validation:
   locally; source/site/route preparation and browser fixtures passed, while a
   fresh rendered documentation-site/browser audit was not executed. No new
   standalone commit, push, release or site publication was performed.
+
+## 2026-10-10 - Preserve prepared history during the Ops joint refresh
+
+- Preserve all thirteen original owner files in named safety evidence. Current instructions preserve published history and require rebasing unpublished work; the older blanket-ban preparation below remains historical evidence. Incoming authored instructions take precedence.
+- Retain six former delivery projections in safety copies for regeneration from current source; do not overlay old generated outputs onto incoming source.
+- This entry records source reconciliation and checkout preservation only. Full incoming source, documentation generation, build, Bake, saved-world and runtime qualification remain open.
+
+
+## 2026-10-06 - Owner-authorized immutable-history policy reconciliation
+
+- This prepared working-tree scope is separate from the frozen 17-path incoming
+  `eecc6320a5eba6f14c96de0448fb9984a66fd442` to
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6` audit recorded below. The embedding
+  owner explicitly requires every part of a branch with a remote tip to remain
+  immutable, including its unpublished commits. Reconcile the conflicting
+  mandatory-rebase wording in `AGENTS.md`, both versioning locales and both
+  documentation-maintenance locales. Require fast-forward or a normal merge,
+  remote-tip ancestry before push, and prohibit rebase/reset/amend, force-push
+  and remote branch deletion for such a branch. Apply the history rule
+  independently to Engine, embedding-project histories and the root Engine
+  gitlink. Earlier dated rebase records remain historical evidence.
+- Preserve exact private preimages before writing. The existing
+  `test_docs_governance_foundations.py` policy case fails on the corrected docs
+  for both locales because it requires the obsolete mandatory-rebase phrases.
+  Retain that exit-1 receipt and both causal assertion failures. Change only its
+  related policy expectations to the owner's immutable-history, merge and
+  ancestry requirements; all five governance cases then pass in 0.008 seconds.
+  No implementation, runtime or native-test behavior is changed by this scope.
+- Review the two EN/RU paragraph pairs and refresh their normalized source-hash
+  provenance. Regenerate snippets, complete translation status, site/search/
+  routes, retrieval evaluation and AI delivery through their owners. Initial
+  downstream AI attempts overlap the site capture; preserve those receipts and
+  exclude them from acceptance. A subsequent ordered evaluation/delivery repeat
+  starts after site generation completes, and fresh read-only checks pass for
+  every generated owner. Localization remains 194/194; snippet freshness remains
+  309 normative and 159 evidence fences. Retrieval remains 28 tasks / 67 checks,
+  100% success and 0.930 MRR. Complete AI delivery is 2,204,513 bytes within the
+  unchanged 2,228,224-byte limit. The enforced comparison against frozen
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6` has zero changes across seventeen
+  models; whitespace validation passes.
+- The embedding operator records the final edited-record link/aggregate check,
+  complete prepared diff and physical old/new digests separately after this
+  entry. The 183 external snippet parser checks, broad documentation fixture
+  suite, native/build/bake/game/browser/package work and remote CI are not run.
+  G0 incident `INC-20261003-1` stays open. The Engine commit remains frozen at
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6`; this owner-approved preparation
+  performs no commit, push or additional version bump. A future publication
+  must satisfy the versioning owner's exact new-step requirements. It is not
+  runtime or production acceptance.
+
+
+## 2026-10-06 - Ops source and documentation audit for 2026.1.12-dev
+
+- Audit the complete 17-path incoming Engine range
+  `eecc6320a5eba6f14c96de0448fb9984a66fd442` to
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6`, including the full structural
+  changes in both search indexes. The embedding project reports a completed
+  normal merge at `e1d0de40f9ebf89f056bbd9bf6568b90219a5148` (version 1507),
+  preserving its old `f53a4853a3590c2eacf158a650383d73bddc3bc3` and incoming
+  `06bdd27b940ade1677575b97a82c259b21218910` histories. Read the complete Engine
+  maintainer instructions and the owning maintenance, versioning and upgrade
+  contracts. The embedding owner's immutable-history instruction requires normal
+  merges for a branch with a remote tip; this audit performs no history rewrite.
+- The Ubuntu `engine-update` CI job now installs `python3-pytest` and runs
+  `BuildTools/tests/test_codegen_default_args.py` before the existing version
+  gates. The macro-header fixture supplies fixed Engine version/revision inputs
+  and verifies their macros. All eight existing regression cases pass locally;
+  this is a fresh local Python result, not a new remote CI result. Production
+  `BuildTools/codegen.py` is byte-identical across the range. The baker-helper
+  change only condenses its cache-lifetime comment; executable declarations and
+  statements are unchanged after removing whole-line comments. No native test
+  or cache-cleanup runtime qualification is claimed.
+- The version advances once from `2026.1.11-dev` to `2026.1.12-dev`, with paired
+  English/Russian release and migration notes. Compatibility remains `0.0.68`;
+  this range introduces no API, ABI, wire, resource, persisted-data or caller
+  migration. Reconfigure and rebuild consumers to obtain the new native
+  version/revision identity when native execution is permitted. Source-owned
+  testing/changelog changes are reflected in the snippet, translation, site,
+  route, search and AI-delivery projections; no additional model delta is found.
+- Ten lightweight commands finish with exit 0 between 15:50:14 and
+  15:52:02 UTC on the exact incoming checkout: the eight-case codegen pytest
+  module; the one-step committed version/history check; complete localization;
+  snippet freshness without external parsers; site/search/route freshness;
+  AI retrieval; AI delivery; the enforced contract-model comparison against the
+  preceding Engine revision; complete standalone documentation validation; and
+  incoming-range whitespace validation. Localization is current for 194/194
+  documents. Snippet freshness covers 309 normative and 159 evidence fences.
+  Site delivery covers 194 English and 194 Russian search documents and 398
+  routes. Retrieval passes 28 tasks and 67 checks at 100% success and 0.930 MRR.
+  AI delivery covers 398 public documents and 2,203,523 full-context bytes within
+  the unchanged 2,228,224-byte limit. Aggregate validation passes 410 Markdown
+  entries. The seventeen-model comparison reports zero changes and no required
+  dispositions; it does not assert an eighteen-model result.
+- These ten results precede this dated-record addition. The entry preserves the
+  earlier report byte-for-byte below it; the embedding operator separately
+  checks the edited record's links and whitespace. Private evidence retains
+  command PID/start ticks, actual UTC intervals, exits, stream hashes, code pins
+  and complete path coverage. One initial auxiliary read receipt captured a
+  null exit because of an EOF/wait race; the original receipt is retained and a
+  bounded reaped repeat has exit 0 with an identical stream hash. Acceptance
+  check receipts have concrete exit 0 values.
+- The 183 external snippet parser checks, broad documentation fixture suite,
+  native builds/tests, bake, game runtime, browser rendering, packages and new
+  remote CI are not executed in this pass. The embedding host incident
+  `INC-20261003-1` keeps its G0 restriction open. This is source/documentation
+  evidence and does not qualify runtime or production deployment. No Engine
+  commit, push or additional version bump is performed for this record.
+
+
+## 2026-10-06 — Prepared Engine 1.13 integration documentation verification
+
+- Frozen incoming audit: f450c3bb96b7140d006341e9a2a5be51513f11d6 to 671a19e60f498534e9cf38c6cfbc0dfc48c14fb9, one commit and all fifteen changed paths. The joint project root ea10aec0ba5c973fe0e37ceb9a02e20fd50f016c selects project 1509 and the exact Engine target. This record was prepared as a private post-cutoff proposal and then adopted into the owner-review worktree by the parent. It does not constitute an Engine commit or publication.
+- Both Managed C# locales and their dated 2026.1.13-dev notes preserve the distinction between MSBuild Assemblies/<Target>Assemblies/ staging and published Assemblies/Assemblies-<target>/ resources. Primary baker, loader, packaging and cleanup source ranges were read. Complete Source and BuildTools trees are identical across the incoming range. Compatibility remains 0.0.68; this Engine documentation commit requires no caller, configuration or saved-data migration.
+- Five incoming checks passed: four Managed documentation cases, five preserved owner governance cases, exact one-step Engine version/history validation, whitespace validation and zero contract changes across seventeen generator-supported models. This is not an eighteen-domain result.
+- Separate reconciliation preserves the seven authored owner overlays and regenerates snippets, locale status, site/search/routes, AI evaluation and AI delivery in dependency order on the 1.13 base. Five freshness commands passed before this record was appended: 194/194 current translations, 398 public documents, 2,205,752/2,228,224 full-context bytes. No structured model regeneration was needed because its inputs were unchanged. Prior generated files from the retained safety stash were not applied.
+- This internal record was appended after the checked candidate and after source cutoff. Primary inventory classifies it visibility=internal and translation=not-required; public/current filters exclude it from snippet, site and AI delivery inputs. The parent checks freshness after applying this record; its command receipts are retained separately from the original worker checks. The original worker did not run post-append freshness checks.
+- The snippet checker reports 309 normative and 159 evidence snippets; its 183 external-parser obligations were not executed. Native/managed compilation, package/runtime acceptance, full aggregate source validation, browser/visual/Pages publication and production acceptance were not performed. G0 INC-20261003-1 remains open. Initial private generation attempts failed on omitted Markdown inputs and are retained as failures; only the final ordered replay and freshness receipts support generated-output acceptance.
 ## 2026-10-11 — Bounded map observation and upstream reconciliation
 
 - Reconcile the complete incoming range `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9..6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.13-dev..2026.1.28-dev`) before adding bounded views as `2026.1.29-dev`. The incoming published history remains intact. Retain the named safety snapshot while integration validation is in progress.
