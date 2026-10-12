@@ -2757,7 +2757,8 @@ Frm=one.toy
         baker.AddLoader(
             [](string_view, string_view, FileReader reader, const ImageImport::Context&) -> ImageImport::FrameCollection {
                 (void)reader.GetLEUInt32();
-                return {};
+                ImageImport::FrameCollection collection;
+                return collection;
             },
             {"toy"});
 

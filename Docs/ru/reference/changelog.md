@@ -8,13 +8,26 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"27c7a63eb7ee651621be7856e68b1d000fb7c080b9da732dc51d2474d01281f5"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1c94c6efb0b90b98ce0cc1d231fd8a22a79aafdb599f909b62e3659d3754dcfd"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-12
+
+### Исправлено
+
+- Исправлены пустой return теста ImageBaker для GCC и nullable-формат; runtime прежний.
+- API-проверки сохраняют равенство исходникам и явную классификацию: 2573 символа, 2572 experimental, один internal.
+- Сокращены метки URL AI-пакета; полные документы, ссылки, состав и прежний лимит размера сохранены.
+
+### Миграция
+
+- База: `d5bef2f554019e4c6c45366a1f422c11e9229878` (`2026.1.34-dev`); далее `2026.1.35-dev`. Сохраните прежнее принятие владения, ACM и Arcanum. API, конфигурация, данные, sprite v2, ABI `9` и runtime `0.0.72` прежние.
+- Пересоберите и запеките все роли; выполните format/API/native-тесты и `python BuildTools/docs_prepare.py` для ссылок, EN/RU, сайта и AI. Откат использует согласованные код, тесты и metadata базы 34; конверсии игры нет.
+
+## 2026.1.34-dev - 2026-10-12
 
 ### Исправлено
 

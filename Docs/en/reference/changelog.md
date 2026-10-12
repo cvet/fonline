@@ -16,6 +16,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Fix GCC's empty ImageBaker test return and managed nullable formatting; preserve runtime behavior.
+- API checks retain source equality and explicit classification: 2573 symbols, 2572 experimental, one internal.
+- Compact AI bundle URL labels; preserve complete documents, URLs, membership and the existing byte limit.
+
+### Migration
+
+- Base: `d5bef2f554019e4c6c45366a1f422c11e9229878` (`2026.1.34-dev`); next `2026.1.35-dev`. Keep prior ownership, ACM and Arcanum adoption. API, config, storage, sprite v2, ABI `9` and runtime `0.0.72` are unchanged.
+- Rebuild and rebake all roles; run formatting/API/native tests and `python BuildTools/docs_prepare.py` for references, EN/RU, site and AI. Rollback uses matching baseline-34 code, tests and metadata; no game-state conversion.
+
+## 2026.1.34-dev - 2026-10-12
+
+### Fixed
+
 - Keep the first loaded sprite sheet independent of its cached prototype. Trim both frame arrays; bound copying and initialize copy size/anchor at frame/direction zero.
 
 ### Migration

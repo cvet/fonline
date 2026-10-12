@@ -46,7 +46,7 @@ public sealed class DatabaseDocument
             throw new InvalidOperationException("Database document context is no longer valid");
         }
 
-        object? value;
+        object ? value;
 
         if (Values != null) {
             value = Values.TryGetValue(property, out object? stored) ? stored : null;
