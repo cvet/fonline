@@ -475,8 +475,13 @@ void ClientEngine::MainLoop()
 
     _conn.Process();
     ProcessInputEvents();
-    ProcessScheduledCallbacks();
-    TimeEventMngr.ProcessTimeEvents();
+
+    {
+        FO_TRACE_ZONE_NAMED(Engine, "ClientFrameCallbacks");
+
+        ProcessScheduledCallbacks();
+        TimeEventMngr.ProcessTimeEvents();
+    }
 
     // Reporting an overrun is itself a script call that can overrun, so a record produced here simply arrives
     // on the next frame instead of recursing
@@ -484,7 +489,11 @@ void ClientEngine::MainLoop()
         OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
     }
 
-    OnLoop.Fire();
+    {
+        FO_TRACE_ZONE_NAMED(Engine, "ClientFrameOnLoop");
+
+        OnLoop.Fire();
+    }
 
     if (_curMap) {
         auto map = GetCurMap();
@@ -526,7 +535,11 @@ void ClientEngine::MainLoop()
         CanDrawInScripts = true;
         auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
 
-        OnRenderIface.Fire();
+        {
+            FO_TRACE_ZONE_NAMED(Engine, "ClientFrameOnRenderIface");
+
+            OnRenderIface.Fire();
+        }
 
         // A script that throws between activating and presenting a surface leaves it bound, and BeginScene clears the
         // render-target stack but not this list — an abandoned surface would fail EndScene on every following frame

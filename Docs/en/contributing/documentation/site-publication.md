@@ -395,3 +395,6 @@ Escalate a mismatch to both repository and domain administrators. Do not work ar
 16. Production source settings and DNS were not changed unless the change explicitly required administrator review.
 
 The reviewed integration of client multithreading with the current master corpus adds 32,768 bytes of index capacity; complete document coverage, token policy and overflow rejection remain unchanged.
+
+Diagram outputs use UTF-8 with LF on every host. `docs_diagrams.py --check` compares exact stored bytes
+with the rendered outputs, so a line-ending change cannot pass while invalidating the catalog's SVG hashes.

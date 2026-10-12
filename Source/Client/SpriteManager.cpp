@@ -327,11 +327,15 @@ void SpriteManager::PrepareSpriteCpuUpdates()
 {
     FO_TRACE_ZONE(Render);
 
-    _preparedUpdateSprites.clear();
+    {
+        FO_TRACE_ZONE_NAMED(Render, "SpriteCpuUpdatePrepare");
 
-    for (auto& spr : _liveUpdateSprites) {
-        if (spr->PrepareUpdate()) {
-            _preparedUpdateSprites.emplace_back(spr.get());
+        _preparedUpdateSprites.clear();
+
+        for (auto& spr : _liveUpdateSprites) {
+            if (spr->PrepareUpdate()) {
+                _preparedUpdateSprites.emplace_back(spr.get());
+            }
         }
     }
 

@@ -114,7 +114,7 @@ namespace
         GameTimer Timer {&Settings};
         hash_storage Hashes {};
         EffectManager Effects {&Settings, &Resources, Window->GetRender()};
-        SpriteManager Sprites {&Settings, Window, &Resources, &Timer, &Effects, &Hashes};
+        SpriteManager Sprites {&Settings, Window, &Resources, &Timer, &Effects, &Hashes, nullptr};
         nptr<RecordingSpriteSheetFactory> Factory {};
 
         explicit SpriteSheetFixture(bool shared_frame = false)

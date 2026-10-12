@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-- Rebase the unpublished client-worker integration onto published master 2026.1.35-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the four intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
+- Rebase the unpublished client-worker integration onto published master 2026.1.36-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the five intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
 
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
 

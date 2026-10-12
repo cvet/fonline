@@ -357,8 +357,9 @@ TEST_CASE("FileSystem")
         check_read_error([&] { (void)reader.GetLEUInt16(); }, 2);
         check_read_error([&] { (void)reader.GetBEUInt32(); }, 4);
         check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
+
         array<uint8_t, 4> output {};
-        check_read_error([&] { reader.CopyData(output); }, 4);
+        check_read_error([&] { reader.ReadBytes(output); }, 4);
 
         CHECK_THROWS(reader.GetStrNT());
         CHECK(reader.GetCurPos() == 2);

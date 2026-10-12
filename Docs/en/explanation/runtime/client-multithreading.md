@@ -188,11 +188,25 @@ Measure median/p95/p99 frame time, CPU critical-path time, GPU time, batch prepa
 after warmup, RSS, and input-to-present latency. Run both uncapped and frame-capped sessions, and include a
 low-core machine so scheduler overhead cannot hide inside a crowd scene. Average FPS proves nothing.
 
-The capture already carries the zones this needs. `SpriteManager::UpdateSprites` and `PrepareSpriteCpuUpdates`
-(`Render`) frame the stage on the application thread; `WorkScheduler::RunBatch` (`Threading`) spans the batch,
-join wait included; each participant's share is a `WorkScheduler::RunClaimedChunks` zone on its own thread, with
-the kernel, `ModelInstance::EvaluateAnimationPose` (`Model`), inside it. The owner's share sits inside `RunBatch`,
-so the join wait is that zone's time outside its `RunClaimedChunks`.
+`SpriteManager::UpdateSprites` and `PrepareSpriteCpuUpdates` (`Render`) frame the stage on the application
+thread. `SpriteCpuUpdatePrepare` isolates preparation of the eligible sprite set. `WorkScheduler::RunBatch`
+(`Threading`) spans submission, the owner's work and participant drain; each participant has a
+`WorkScheduler::RunClaimedChunks` zone containing its kernel work. Time outside the owner's `RunClaimedChunks`
+also includes submission and closing overhead, so that residual is not a measurement of join wait.
+
+`ClientWorkBatchJoin` spans acquisition of the batch mutex, participant drain and closing the batch.
+Its nested `ClientWorkBatchWait` starts after the initial mutex acquisition and covers the participant predicate
+loop, condition-variable waits and their mutex reacquisition. A batch already drained still has a short wait
+zone; this is elapsed zone time, not a count of sleeping time or proof of lock contention. Every nonempty worker
+batch attaches `items=N;chunks=N;workers=N;minItemsPerChunk=N` as RunBatch zone text. It is formatted only when
+the `Threading` category is compiled in, after the zero-worker direct return. Per-participant wall-clock durations
+may overlap and cannot be summed into the owner's critical path.
+
+The `Engine` category also provides `ClientFrameCallbacks` (scheduled callbacks and time events),
+`ClientFrameOnLoop` and `ClientFrameOnRenderIface`. These boundaries remain available with `-Script`, without
+installing Mono per-method hooks. They include native calls made by their handlers and do not isolate managed
+CPU time. Correlate complete batch zones with intervals between `Application::EndFrame` completions, preserving
+capture identity, source paths, owner thread and incomplete-boundary exclusions.
 
 Proposed gates, to pin before promoting the mode: A→B no worse than 1% on median CPU frame time and 2% on
 p95/p99, with enough repeated runs to resolve that; for D, a repeatable end-to-end gain on a declared target

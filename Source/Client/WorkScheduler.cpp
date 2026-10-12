@@ -164,6 +164,11 @@ void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t m
         .ItemsPerChunk = items_per_chunk,
     };
 
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+    string batch_metadata = strex("items={};chunks={};workers={};minItemsPerChunk={}", item_count, chunk_count, _workerCount, min_items_per_chunk);
+    ZoneText(batch_metadata.c_str(), batch_metadata.length());
+#endif
+
     {
         scoped_lock locker {_mutex};
 
@@ -184,10 +189,16 @@ void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t m
     RunClaimedChunks(batch);
 
     {
+        FO_TRACE_ZONE_NAMED(Threading, "ClientWorkBatchJoin");
+
         unique_lock locker {_mutex};
 
-        while (_activeParticipants != 0) {
-            _doneSignal.wait(locker);
+        {
+            FO_TRACE_ZONE_NAMED(Threading, "ClientWorkBatchWait");
+
+            while (_activeParticipants != 0) {
+                _doneSignal.wait(locker);
+            }
         }
 
         // Closing the batch before the next one opens is what stops a worker that woke late from claiming a chunk

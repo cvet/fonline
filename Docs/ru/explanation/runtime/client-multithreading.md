@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"fe8a889bfc3a5393a7bc8b5281de01c6bb89bf6b02b3eebfe82c8b384723ef6c"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"96a68755956482b8c30791e83a8871bbbfa8c1dbd6b914479a069154da6667a7"} -->
 
 # Необязательная многопоточность клиента
 
@@ -148,7 +148,26 @@ SDL требует основной поток для [SDL_PollEvent](https://wi
 
 Измеряются median/p95/p99 времени кадра, CPU critical path, GPU time, подготовка пакета и join wait, выделения после прогрева, RSS и input-to-present latency. Нужны режимы с ограничением кадра и без него, а также машина с малым числом ядер. Средний FPS ничего не доказывает.
 
-`SpriteManager::UpdateSprites` и `PrepareSpriteCpuUpdates` (`Render`) обрамляют стадию; `WorkScheduler::RunBatch` (`Threading`) включает join; `WorkScheduler::RunClaimedChunks` каждого участника содержит `ModelInstance::EvaluateAnimationPose` (`Model`). Join владельца — время `RunBatch` вне его `RunClaimedChunks`.
+`SpriteManager::UpdateSprites` и `PrepareSpriteCpuUpdates` (`Render`) обрамляют стадию на основном потоке.
+`SpriteCpuUpdatePrepare` выделяет подготовку набора допустимых спрайтов. `WorkScheduler::RunBatch` (`Threading`)
+охватывает отправку, работу владельца и завершение участников; `WorkScheduler::RunClaimedChunks` каждого участника
+содержит его вычисления. Остаток вне `RunClaimedChunks` владельца включает также отправку и закрытие пакета,
+поэтому не является отдельным измерением ожидания join.
+
+`ClientWorkBatchJoin` охватывает получение mutex пакета, завершение участников и закрытие пакета.
+Вложенная `ClientWorkBatchWait` начинается после первоначального получения mutex и включает цикл проверки
+участников, ожидания condition variable и повторное получение mutex при пробуждении. Уже завершённый пакет
+также имеет короткую wait-зону: это длительность зоны, а не счётчик времени сна или доказательство конкуренции
+за блокировку. Каждый непустой пакет с воркерами записывает в текст RunBatch
+`items=N;chunks=N;workers=N;minItemsPerChunk=N`. Форматирование выполняется только при включённой категории
+`Threading`, после выхода однопоточной дорожки. Длительности зон участников могут перекрываться;
+их сумма не является критическим путём владельца.
+
+Категория `Engine` также даёт `ClientFrameCallbacks` (отложенные callbacks и time events), `ClientFrameOnLoop`
+и `ClientFrameOnRenderIface`. Эти границы доступны с `-Script`, без установки Mono hooks на каждый метод.
+Они включают нативные вызовы из обработчиков и не выделяют собственное CPU-время Managed-кода. Полные зоны
+пакетов сопоставляются с интервалами завершения `Application::EndFrame`; сохраняются идентичность захвата,
+исходники, поток владельца и исключения незавершённых граничных событий.
 
 Предлагаемые пороги до принятия режима: A→B не хуже 1% median CPU frame time и 2% p95/p99, с достаточным числом повторов; для D — воспроизводимый выигрыш полного кадра на объявленном workload, без дополнительного буферизованного кадра и существенного ухудшения малых сцен. Предел выгоды задаёт последовательный остаток: `T ≈ T_serial + T_parallel / P + T_prepare + T_join`. Ускорение вычисления не гарантирует такое же ускорение кадра при преобладании GPU или скриптов.
 

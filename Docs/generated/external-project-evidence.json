@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "05034f7c628fb5c164cab832ed8c5daea3981c83cdd0f436c1e02f3721eca096",
+  "source_sha256": "e3736d4d904e1efa6420cabc2c8a6d38ec8e1eae24d7b17d68a430bd994d39f8",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -23,7 +23,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31",
+      "revision": "a336f2035146b98b553af8b80a26bac34f1bc84b",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -844,9 +844,13 @@
         {
           "snapshot": "fonline-tla",
           "path": "Docs/ReanimationPlan.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Plans/2026-10-11-client-multithreading-next-measurements.md"
         }
       ],
-      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.",
+      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy. Per-frame batch diagnosis needs exact completion intervals, explicit item counts and separate participant-drain scopes; dispatch residual is not wait time and recursive or cross-thread zone totals are not a critical path.",
       "disposition": "promoted",
       "owner": "quality",
       "priority": "P1",
@@ -862,7 +866,7 @@
         "build-release"
       ],
       "promotion_gate": "At least one representative Engine-owned capture proves native and script zones with exact tools.",
-      "decision": "Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation."
+      "decision": "Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation. The pinned client frame analysis identifies these boundaries without qualifying default promotion. Engine-owned batch text, join/wait and coarse callback zones are re-derived from WorkScheduler, SpriteManager and ClientEngine; project fixtures, CSV correlation, host policy and benchmark verdicts remain project-owned."
     },
     {
       "id": "gameplay-test-harness",
@@ -1740,7 +1744,7 @@
   "summary": {
     "snapshot_count": 2,
     "record_count": 30,
-    "source_reference_count": 193,
+    "source_reference_count": 194,
     "records_by_disposition": {
       "boundary-owned": 2,
       "project-owned": 3,

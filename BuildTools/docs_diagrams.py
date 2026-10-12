@@ -746,11 +746,11 @@ def _write_or_check(root: Path, *, check: bool) -> int:
     for relative_path, content in outputs.items():
         output = root / relative_path
         if check:
-            if not output.is_file() or output.read_text(encoding="utf-8") != content:
+            if not output.is_file() or output.read_bytes() != content.encode("utf-8"):
                 stale.append(relative_path)
         else:
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(content, encoding="utf-8")
+            output.write_text(content, encoding="utf-8", newline="\n")
     if stale:
         print(
             "Documentation diagrams are stale: " + ", ".join(stale),

@@ -10,14 +10,14 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Snapshots: **2**
 - Classified concerns: **30**
-- Source references: **193**
+- Source references: **194**
 - Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 24, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
-| `last-frontier` | `lastfrontierdev/lf` | `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier` | `lastfrontierdev/lf` | `a336f2035146b98b553af8b80a26bac34f1bc84b` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
 ## Classified concerns
@@ -157,9 +157,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Client and server profiling
 
-- Sources: `last-frontier:Docs/Profiling.md`, `fonline-tla:Docs/ReanimationPlan.md`
-- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.
-- Decision: Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation.
+- Sources: `last-frontier:Docs/Profiling.md`, `fonline-tla:Docs/ReanimationPlan.md`, `last-frontier:Docs/Plans/2026-10-11-client-multithreading-next-measurements.md`
+- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy. Per-frame batch diagnosis needs exact completion intervals, explicit item counts and separate participant-drain scopes; dispatch residual is not wait time and recursive or cross-thread zone totals are not a critical path.
+- Decision: Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation. The pinned client frame analysis identifies these boundaries without qualifying default promotion. Engine-owned batch text, join/wait and coarse callback zones are re-derived from WorkScheduler, SpriteManager and ClientEngine; project fixtures, CSV correlation, host policy and benchmark verdicts remain project-owned.
 - Promotion gate: At least one representative Engine-owned capture proves native and script zones with exact tools.
 
 ### Reusable gameplay and integration test harness
