@@ -560,7 +560,7 @@ def render_full_context(
             [
                 f"===== BEGIN DOCUMENT {record['id']} =====",
                 f"Source: {record['path']}",
-                f"Canonical URL: {record['canonical_url']}",
+                f"URL: {record['canonical_url']}",
                 "",
                 str(record["content"]).rstrip("\n"),
                 "",

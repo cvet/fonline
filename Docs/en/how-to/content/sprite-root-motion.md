@@ -8,21 +8,27 @@ permalink: /Docs/en/how-to/content/sprite-root-motion.html
 
 # Sprite Root Motion and Walk Cycles
 
-This guide documents how FOnline carries per-frame 2D sprite displacement through image baking and uses it to align a moving critter's rendered walk or run cycle with authoritative hex movement. It follows the current baker, resource decoder, sprite loader, movement interpolation, client presentation code, and Engine tests. An embedding project owns its source art, animation mapping, movement tuning, and visual acceptance tests.
+FOnline transports baked 2D frame deltas and aligns walk/run poses with authoritative
+hex movement. Projects own art, animation mapping, tuning and visual acceptance.
 
 ## Contract status
 
-This is the Engine-owned production contract for 2D per-frame displacement, baked offset transport, movement-driven frame selection, cycle-phase transfer, and stop-time offset normalization. Engine source and tests are normative. Last Frontier and FOnline TLA are discovery and compatibility evidence only; their assets, visual policy, and historical implementation names do not extend this contract.
+Engine source/tests define this independently usable 2D contract: offset transport,
+movement-driven frame selection, phase transfer and stop normalization. Last
+Frontier/TLA are discovery and compatibility evidence, pinned in
+`BuildTools/ExternalProjectEvidence.json`; their art, policy and historical names
+do not extend it. Re-derive reusable claims from Engine source/tests.
 
-The contract is independently usable without either project checkout. Project evidence is pinned in `BuildTools/ExternalProjectEvidence.json`, while every reusable claim on this page is re-derived from current Engine source or tests.
-
-This is a 2D movement-presentation contract. General PNG/TGA and legacy import, FOFRM composition, baked records, stock runtime loading, atlases, and caches are owned by [Image And Sprite Formats](image-format.md). It is independent of `.fo3d` skeletal animation and the duration metadata documented in [Model Animation](model-animation.md).
+[Image And Sprite Formats](image-format.md) owns import, FOFRM, containers,
+loading, atlases and caches. `.fo3d` animation/durations belong to
+[Model Animation](model-animation.md).
 
 ## Scope and authority
 
 The owning sources are:
 
-- `Source/Tools/ImageBaker.*` for `FrameShot::NextX` / `NextY`, source-format import, transformations, and baked sprite serialization;
+- `Source/Tools/ImageImport.*` for `FrameShot::NextX` / `NextY` and the shared loader context;
+- `Source/Tools/ImageBaker.*` for coordination, transformations, and baked sprite serialization; adjacent `ImageBaker-*.h/.cpp` pairs own source-format import;
 - `Source/Common/SpriteResource.*` for the shared SpriteResource v2 frame decoder and `NextOffset` transport;
 - `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset`, baked loading, shared frames, and per-direction sheets;
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
@@ -74,6 +80,13 @@ NextY_1 = -1
 
 Nested FOFRM references add the referencing frame's offset to the selected nested frame. Other supported formats carry or derive offsets according to their own importer. Missing values normally become zero; inspect the format-specific `ImageBaker` loader instead of assuming that every source format exposes the same authored fields.
 
+The optional Arcanum ART importer preserves `DeltaX`/`DeltaY` as `NextX`/`NextY`,
+including the corresponding signs after mirroring. Per-frame hot spots instead
+align frames on a common canvas and determine sequence placement; they are not
+frame displacement. FOFRM `Alias` retains both kinds of offset, while ordinary
+composition copies only child frames and adds authored frame deltas. See the
+[ART import contract](image-format.md#art) for rotation and placement rules.
+
 Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. That merge path is private Engine behavior and has no focused per-axis regression in the current native suite; do not treat offset preservation across the splice as a public guarantee. Validate the selected baked sheet on both axes rather than editing the baked stream.
 
 ## Baked and runtime representation
@@ -81,6 +94,11 @@ Offsets are direction-specific. Image baking may mirror, crop, or compose frames
 `ImageBaker::BakeCollection` writes each concrete post-transformation frame's `NextX` and `NextY` as signed 16-bit values in the SpriteResource v2 frame record. A deduplicated shared-frame record points to an earlier frame instead. `ReadSpriteResource` decodes the pair into `SpriteResourceFrameData::NextOffset` together with the frame's draw offset, dimensions, pixels, and optional mesh.
 
 `DefaultSpriteFactory::LoadSprite` creates a direction-specific `SpriteSheet` and copies each concrete frame's decoded `NextOffset` into `_sprOffset`. A shared frame copies the referenced sprite and its already-decoded offset. `SpriteSheet::GetSprOffset()` exposes a read-only span to client runtime code.
+
+In `ResolveCritterAnimationFrames`, first-frame extraction retains its delta; last-frame extraction sums all deltas
+on both axes. Each trimmed direction has one sprite/offset, and copies preserve
+those values without modifying the full cached sheet. `FirstFrame` takes
+precedence over `LastFrame` when both resolver flags are set.
 
 This binary layout and `_sprOffset` storage are private Engine contracts. Game scripts and tools should author supported source formats and consume rendered behavior, not parse or patch the baked stream.
 
@@ -160,7 +178,7 @@ It chooses the first frame with the smallest absolute distance:
 abs(accum_dot_total[i] - cycle_proj)
 ```
 
-The selected frame is therefore the authored pose closest to the critter's current position along the cycle axis. The algorithm uses integer `int32_t` / `int64_t` arithmetic for displacement and dot products.
+Select the closest pose along the cycle axis using integer `int32_t`/`int64_t` displacement and dot products.
 
 If `T` is zero, `dot(T, T)` is zero and the function returns frame `0`. The walk/run offset branch also leaves `_offsAnim` at zero. A zero-total cycle is valid fallback data, but it cannot spatially drive a walk cycle.
 
@@ -174,9 +192,11 @@ cycle_start  = anchor + cycle_number * T
 offs_anim    = (cycle_start - pos) + accum[i]
 ```
 
-The normal map sprite position already includes logical hex position and `HexOffset`. Adding `offs_anim` cancels linear movement inside the selected frame and places the sprite at the frame's authored cumulative position. The visual advances when the selected frame changes, by the next authored delta, while logical movement continues underneath.
+Map placement includes logical hex position and `HexOffset`. `offs_anim` cancels
+within-frame linear movement, placing the sprite at the cumulative authored offset.
+Frame changes advance the visual by the next delta while logical movement continues.
 
-This is alignment, not animation-authored locomotion. Changing `NextX` / `NextY` changes visual stepping and phase selection but cannot make the server-side entity travel farther or faster.
+Root-motion pixels affect visual stepping/phase, never server travel distance or speed.
 
 ## Direction and sheet changes
 
@@ -224,22 +244,29 @@ Automated baker and geometry tests establish data and normalization behavior. Th
 
 ## Authoring practices
 
-1. Treat `NextX` / `NextY` as per-frame visual displacement, not as absolute frame coordinates.
-2. Author and inspect every movement direction. Keep cycle vectors directionally consistent so turns preserve a believable phase.
-3. Keep the sum `T` non-zero for locomotion sheets that should spatially drive a gait.
-4. Match offset order to pose order. A large correction concentrated in one frame produces a visible jump even when the total cycle is correct.
-5. Validate mirroring, extraction, merging, and first/last-frame substitutions because those operations can alter accumulated offsets.
-6. Do not tune path speed by changing root-motion pixels. Tune authoritative movement through project movement rules and then author the visual cycle to match.
-7. Test rapid direction changes and movement stop/start. Those paths exercise anchor transfer and offset normalization, not only steady straight movement.
-8. Test at the project's supported zoom, geometry, and renderer configurations. The algorithm is reusable, but acceptable visual cadence and foot sliding are content decisions.
+1. `NextX`/`NextY` are per-frame pixel deltas, not absolute coordinates.
+2. Inspect every direction; keep cycle vectors directionally consistent for turns.
+3. Keep `T` nonzero for locomotion sheets that spatially drive gait.
+4. Match deltas to poses; a large single-frame correction jumps even with a correct total.
+5. Check mirrors, extraction, merges and first/last substitutions for offset changes.
+6. Tune speed through authoritative project movement, then match the visual cycle.
+7. Test rapid turns and stop/start for anchor transfer and normalization.
+8. Test supported zoom, geometry and renderers; cadence/foot-sliding acceptance is project-owned.
 
 ## Project evidence and extraction rules
 
-The pinned Last Frontier snapshot routes 2D locomotion through `Docs/ContentWorkflow.md` and requires Engine changes to be reconciled through `Docs/DocumentationMaintenance.md`. Its current character pipeline is predominantly `.fo3d`; `Docs/CharacterGenerator.md` skips imported 3D `*_RM` translation clips because Engine movement owns world translation. That 3D rule is a useful ownership boundary, not evidence for concrete 2D `NextX` / `NextY` values.
+The pinned Last Frontier snapshot routes 2D work through `Docs/ContentWorkflow.md`
+and Engine reconciliation through `Docs/DocumentationMaintenance.md`. Its mainly
+`.fo3d` pipeline skips `*_RM` translation in `Docs/CharacterGenerator.md` because
+Engine owns world movement; this does not prove 2D `NextX`/`NextY` values.
 
-The audited Last Frontier and FOnline TLA resource trees contain no current authored `.fofrm` or legacy FRM-family sprite assets from which a non-zero production cycle can be verified. TLA's `Docs/Animation.md` preserves useful historical reasoning about walk-cycle projection, but its `raw_ptr<const SpriteSheet>` and `DefaultSpriteFactory::LoadAnimation` names are stale. Current Engine uses `nptr<const SpriteSheet>` and `DefaultSpriteFactory::LoadSprite`.
+Audited LF/TLA trees contain no current authored `.fofrm` or legacy FRM-family sprite assets
+with a verified nonzero production cycle. TLA `Docs/Animation.md` explains projection historically;
+its `raw_ptr<const SpriteSheet>`/`DefaultSpriteFactory::LoadAnimation` names are
+stale. Current names are `nptr<const SpriteSheet>`/`DefaultSpriteFactory::LoadSprite`.
 
-Therefore no external offset value, gait quality claim, or project-specific speed is promoted into the reusable contract. Extract only cross-project concepts, record exact snapshot paths and commits in the evidence model, re-derive the result from current Engine source, and keep project visual acceptance in the owning project.
+Extract concepts only; record exact paths/commits in the evidence model, re-derive
+them from Engine and keep project speeds, offsets and visual acceptance project-owned.
 
 ## Project boundary
 

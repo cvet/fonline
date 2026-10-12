@@ -664,7 +664,9 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     }
 
     if (spr->IsCopyable()) {
+        auto copy = spr->MakeCopy();
         _copyableSpriteCache.emplace(pair {path, atlas_type}, spr);
+        return copy;
     }
 
     return spr;

@@ -87,6 +87,8 @@ private:
     vector<nptr<void>> _images {};
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
+    vector<nptr<void>> _refTypePumps {};
+    vector<nptr<void>> _refTypeShutdowns {};
     std::atomic<bool> _continuationsReady {};
     vector<nptr<void>> _backendUnbinds {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};

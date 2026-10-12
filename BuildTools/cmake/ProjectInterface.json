@@ -469,6 +469,16 @@
       "affects_baking": true
     },
     {
+      "name": "FO_AUDIO_ACM",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "dependency",
+      "description": "Enable the ACM audio importer.",
+      "affects_baking": true
+    },
+    {
       "name": "FO_DISABLE_ASIO",
       "cache_type": "BOOL",
       "value_kind": "boolean",

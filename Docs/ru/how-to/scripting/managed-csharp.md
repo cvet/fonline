@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4f03affed2cdd7f15006f479c6a59a354af5b37f1a17b7c2bcdadfd64d934a18"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4d43d7cf51b44c90a31a31391f58a9c0bcde72bc74f69178801c8c59dd811fb1"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -194,7 +194,38 @@ Managed `FOnline.any` — value type с текстовым представле�
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 
-Native ref types являются явными borrowed wrappers. Если проект хранит один после вызова/frame, следуйте generated контракту `__AddRef()`/`__Release()`. Factory-backed wrapper начинает с reference, которую нужно освободить после передачи владения или detach.
+Нативные managed RefType с зарегистрированной фабрикой без аргументов имеют публичный конструктор:
+`new MapSpriteHolder()` создаёт пригодный нативный объект. Типы без фабрики — `FogLayer`, `SpritePattern`,
+`VideoPlayback`, `TimeEventContext`, `MovingContext` — получают через создающие API движка.
+Динамические RefType остаются обычными managed DTO.
+
+Нативные обёртки с подсчётом ссылок реализуют `System.IDisposable` и автоматически удерживают одну
+нативную ссылку. Результаты фабрик и `PassOwnership` принимают переданную ссылку; другие результаты,
+аргументы callback/событий и элементы коллекций получают собственную ссылку до передачи скриптам.
+Независимые обёртки имеют независимое владение; C#-алиасы разделяют одну обёртку. Нативные `__Factory`,
+`__AddRef` и `__Release` скрыты из публичного managed API. Используйте `new`, создающие API, `using`
+и `Dispose()`. Конструктор разделяет учёт с временной обёрткой фабрики без второй нативной ссылки.
+
+`Dispose()` закрывает обёртку, возвращает её ссылку на разрешённом скриптовом потоке и подавляет
+финализацию. Повторный вызов и освобождение после shutdown безопасны; получение указателя закрытой
+обёртки, включая boxed/packed-аргументы и элементы коллекций, вызывает исключение. Не совмещайте
+освобождение и вызовы конкурентно. Экспортированный нативный `Dispose` без аргументов входит в очистку:
+`FogLayer.Dispose()` удаляет слой с карты и освобождает обёртку как при прямом вызове, так и через `using`.
+Действие выполняется до возврата ссылки; ошибка сохраняет владение для повторной попытки, а уже
+выполненное действие при повторной попытке не повторяется. Динамические DTO и нативные обёртки без
+подсчёта ссылок не получают этого владения/интерфейса.
+
+Недостижимый объект учёта ставит очистку в очередь и будит backend. Следующий `Process` выполняет
+нативную очистку на потоке движка перед продолжениями скриптов; финализатор не запускает нативные
+деструкторы. Срок GC не определён. Нативные вызовы удерживают получателя и packed-аргументы RefType.
+`Map.DrawMapSprite` заимствует поля holder до завершения кадра: держите владельца до последнего
+отрисованного использования, вызовите `StopDraw()`, затем `Dispose()`. Область `using` должна включать
+это использование.
+
+Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
+очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
+Пересоберите согласованные нативные компоненты и перевыпеките все managed-роли с ABI identity `9`;
+совместимость runtime — `0.0.71`.
 
 `hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 
@@ -273,7 +304,7 @@ Weaver записывает в каждую обработанную assembly м
 
 Shutdown сначала вызывает `BeginManagedTeardown`, который до любой другой очистки выполняет `Native.BeginBackendTeardown` и делает `Native.IsBackendTearingDown` истинным, пока backend ещё bound. Так wrapper, завершённый во время обычного runtime, отличается от wrapper, ставшего недостижимым из-за самого teardown. Wrapper с thread-affine native resource, который нельзя освободить из finalizer thread, в последнем случае может не сообщать о leak, потому что владеющая Engine subsystem уже уничтожается. `Native.IsBackendAlive` не позволяет провести это различие: unbind намеренно остаётся более поздним шагом, чтобы собранные во время shutdown entity wrappers ещё могли вернуть свои native references.
 
-Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
+Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, закрывает и освобождает владение нативными RefType на потоке движка, затем выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют. Предварительный возврат ссылок RefType также удаляет нативные корни callbacks, способные удерживать обёртки сущностей. Shutdown сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
 
 Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. Поэтому browser shutdown выполняет один inline collect/wait pass; `GC.WaitForPendingFinalizers()` возвращает сразу, finalizers позднее выполняются как main-thread jobs, а промежуточное число wrappers сообщается, но не проверяется. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
@@ -356,6 +387,7 @@ Managed backend передаёт фиксированный native context, mana
 | Async scheduler | `test_managed_async_callbacks.py`, tests isolation/frame pump и awaited gameplay path подключающего проекта. |
 | Entity-cover contract | Tests Roslyn analyzer, warning-free managed build и owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Native tests baker/backend и повторный multi-instance startup/shutdown. |
+| Владение нативными RefType или финализация | `test_managed_ref_type_lifetime.py`, сгенерированные конструкторы и адаптеры ссылок в `Test_ManagedScriptBaker`, компиляция каждой роли и runtime-приёмка holder с остановкой backend. |
 | Indexed ABI, callback adapters или wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters и runtime точного target. |
 | Package или updater | Tests runtime payload/packaging, проверка точного target package, startup из artifact и update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke и project acceptance этой платформы. |
@@ -402,6 +434,7 @@ Engine guide задаёт reusable behavior; документация проек
 - `Source/Common/ScriptSystem.*`
 - `Source/Common/Settings.inc`
 - `Source/Scripting/Managed/`
+- `Source/Scripting/Managed/CoreScripts/NativeRefTypeLifetime.cs`
 - `Source/Tools/ManagedScriptBaker.*`
 - `Source/Applications/ManagedScriptBakerApp.cpp`
 - `BuildTools/cmake/stages/Init.cmake`

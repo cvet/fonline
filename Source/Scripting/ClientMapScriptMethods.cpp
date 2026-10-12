@@ -247,6 +247,11 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     }
 
     auto item = self->GetItem(itemId);
+
+    if (item && !self->IsHexInViewArea(item->GetHex())) {
+        return nullptr;
+    }
+
     return item;
 }
 
@@ -259,6 +264,11 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex
     }
 
     auto item = self->GetItemOnHex(hex);
+
+    if (item && !self->IsHexInViewArea(item->GetHex())) {
+        return nullptr;
+    }
+
     return item;
 }
 
@@ -267,7 +277,16 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItems(ptr<MapView> self)
 {
     span<refcount_ptr<ItemHexView>> map_items = self->GetItems();
-    return MakeScriptRefHandleVectorAs<ItemView, ItemHexView>(map_items);
+    vector<ptr<ItemView>> items;
+    items.reserve(map_items.size());
+
+    for (auto item : map_items) {
+        if (self->IsHexInViewArea(item->GetHex())) {
+            items.emplace_back(item);
+        }
+    }
+
+    return items;
 }
 
 // Returns all client item views occupying a valid hex; an invalid hex throws
@@ -279,7 +298,15 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItemsOnHex(ptr<MapView> self, 
     }
 
     span<ptr<ItemHexView>> hex_items = self->GetItemsOnHex(hex);
-    return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
+    vector<ptr<ItemView>> items;
+
+    for (auto item : hex_items) {
+        if (self->IsHexInViewArea(item->GetHex())) {
+            items.emplace_back(item);
+        }
+    }
+
+    return items;
 }
 
 // Returns the critter with the supplied runtime id, or null for a zero or unknown id

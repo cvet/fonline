@@ -450,18 +450,21 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     auto copy = safe_alloc::make_shared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
 
-    for (size_t i = 0; i < _spr.size(); i++) {
+    for (size_t i = 0; i < _spr.size() && i < copy->_spr.size(); i++) {
         copy->_spr[i] = _spr[i]->MakeCopy();
         copy->_sprOffset[i] = _sprOffset[i];
-        copy->_stateAnim = _stateAnim;
-        copy->_actionAnim = _actionAnim;
     }
+
+    copy->_stateAnim = _stateAnim;
+    copy->_actionAnim = _actionAnim;
 
     for (int32_t i = 0; i < _dirCount - 1; i++) {
         if (_dirs[i]) {
             copy->_dirs[i] = _dirs[i]->MakeCopy().dyn_cast<SpriteSheet>();
         }
     }
+
+    copy->RefreshParams();
 
     return copy;
 }

@@ -142,6 +142,7 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
         "audio_manager_header",
         "audio_baker",
         "audio_baker_header",
+        "audio_baker_acm",
         "client_global_scripts",
         "settings",
         "application",
@@ -252,6 +253,14 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     if indexed_extensions != baker_extensions:
         raise ValueError("Audio.SoundFileExtensions and AudioBaker extensions differ")
 
+    optional_baker_extensions = {
+        option: _quoted_values(extensions)
+        for option, extensions in re.findall(
+            r"#if (FO_AUDIO_[A-Z0-9_]+)\s+AddLoader\([^;]+\{([^}]+)\}\);\s+#endif",
+            baker_text,
+        )
+    }
+
     native_test_root = root / str(sources["native_test_directory"])
     native_test_files = sorted(
         path.relative_to(root).as_posix()
@@ -267,6 +276,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     return {
         "indexed_extensions": indexed_extensions,
         "baker_extensions": baker_extensions,
+        "optional_baker_extensions": optional_baker_extensions,
         "decoder_extensions": [native_extension.group(1)],
         "raw_copy_extensions": raw_copy_extensions,
         "missing_suffix_fallback": False,
@@ -665,11 +675,12 @@ def _render_validation(model: dict[str, object]) -> str:
             "cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests",
             "```",
             "",
-            "There is currently no focused native decoder/playback fixture. An "
-            "embedding project must also bake representative WAV, ACM, and Ogg "
-            "resources, exercise effect and music calls in a visible client with "
-            "audio enabled, inspect logs, and verify volume/repeat behavior on "
-            "every claimed platform.",
+            "Run the focused Test_AudioBaker, Test_AudioBakerAcm, and "
+            "Test_AudioManager native suites; ACM coverage requires FO_AUDIO_ACM. "
+            "An embedding project must also bake representative WAV and Ogg "
+            "resources, and ACM when enabled, exercise effect and music calls in "
+            "a visible client with audio enabled, inspect logs, and verify "
+            "volume/repeat behavior on every claimed platform.",
             "",
         ]
     )
@@ -715,8 +726,8 @@ RUSSIAN_REPLACEMENTS = {
     "Included:": "Включено:",
     "Excluded:": "Исключено:",
     "## Validation commands": "## Команды проверки",
-    "There is currently no focused native decoder/playback fixture. An embedding project must also bake representative WAV, ACM, and Ogg resources, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.":
-        "Сейчас нет сфокусированного нативного fixture декодера/воспроизведения. Встраиваемый проект также должен запечь репрезентативные WAV, ACM и Ogg, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.",
+    "Run the focused Test_AudioBaker, Test_AudioBakerAcm, and Test_AudioManager native suites; ACM coverage requires FO_AUDIO_ACM. An embedding project must also bake representative WAV and Ogg resources, and ACM when enabled, exercise effect and music calls in a visible client with audio enabled, inspect logs, and verify volume/repeat behavior on every claimed platform.":
+        "Запускайте сфокусированные нативные suites Test_AudioBaker, Test_AudioBakerAcm и Test_AudioManager; покрытие ACM требует FO_AUDIO_ACM. Встраиваемый проект также должен запечь репрезентативные WAV и Ogg, а при включённой опции ещё и ACM, вызвать эффекты и музыку в видимом клиенте с включённым аудио, проверить логи и поведение громкости/повтора на каждой заявленной платформе.",
 }
 
 RUSSIAN_TABLE_HEADERS = {

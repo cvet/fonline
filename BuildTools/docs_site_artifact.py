@@ -437,6 +437,13 @@ def audit_site(
                 published_internal_paths.add(published_path)
                 errors.append(f"internal documentation artifact is published: {published_path}")
 
+    managed_sources = site_dir / "Source/Scripting/Managed"
+    for published_file in sorted(managed_sources.rglob("*")):
+        relative_path = published_file.relative_to(managed_sources)
+        if published_file.is_file() and {"bin", "obj"}.intersection(relative_path.parts[:-1]):
+            published_path = "/" + published_file.relative_to(site_dir).as_posix()
+            errors.append(f"managed build output is published: {published_path}")
+
     parsed_pages: dict[Path, RenderedPageParser] = {}
     for html_path, route in sorted(expected_route_files.items(), key=lambda item: str(item[0])):
         if not html_path.is_file():

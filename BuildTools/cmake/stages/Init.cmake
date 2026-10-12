@@ -63,7 +63,8 @@ DeclareBoolOptions(BAKING
 	FO_IMAGE_ZAR "Enable the ZAR image importer" OFF
 	FO_IMAGE_TIL "Enable the TIL image importer" OFF
 	FO_IMAGE_MOS "Enable the MOS image importer" OFF
-	FO_IMAGE_BAM "Enable the BAM image importer" OFF)
+	FO_IMAGE_BAM "Enable the BAM image importer" OFF
+	FO_AUDIO_ACM "Enable the ACM audio importer" OFF)
 
 DeclareBoolOptions(
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
@@ -382,6 +383,7 @@ AddCompileDefinitionsList(
 	FO_IMAGE_TIL=$<BOOL:${FO_IMAGE_TIL}>
 	FO_IMAGE_MOS=$<BOOL:${FO_IMAGE_MOS}>
 	FO_IMAGE_BAM=$<BOOL:${FO_IMAGE_BAM}>
+	FO_AUDIO_ACM=$<BOOL:${FO_AUDIO_ACM}>
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
 	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>

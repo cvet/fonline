@@ -187,6 +187,7 @@ public:
     void UnloadCritter(ptr<Critter> cr);
     void UnloadCritterInnerEntities(ptr<Critter> cr);
     void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr);
+    void ReturnPlayerFromViewMap(ptr<Player> player);
     void DestroyUnloadedCritter(ident_t cr_id);
 
     void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator, uint32_t plan_seq = 0, float32_t plan_distance_shift = 0.0f);

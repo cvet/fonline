@@ -155,7 +155,6 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 `DocumentToBson()` and `BsonToDocument()` are private Mongo helpers. JSON uses ordinary JSON text and SQLite uses CBOR BLOBs through `DataBaseSerialization`. `GetDbKeyType()` reports whether a runtime key is integer- or string-backed.
 
-<a id="storage-formats-and-upgrade-boundary"></a>
 ## Storage formats and upgrade boundary
 
 JSON files contain ordinary UTF-8 objects; SQLite record BLOBs contain CBOR objects. Both preserve signed Int64 (including limits and values above 2^53), finite Float64, Bool, String, Array and Dict, including embedded NUL in strings/keys. Null/binary, unsigned overflow, non-object roots, malformed/truncated input and trailing CBOR bytes fail. Limits: 64 MiB per record and 64 nesting levels. CBOR SAX validation checks types/depth/declared lengths before DOM allocation; validation precedes writes.

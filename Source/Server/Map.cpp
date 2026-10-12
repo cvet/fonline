@@ -78,6 +78,7 @@ void Map::ClearAllAssociations() noexcept
         scoped_lock locker {_spectatorLock};
 
         _spectatorPlayers.clear();
+        _spectatorAreas.clear();
     }
 
     _critters.clear();
@@ -264,6 +265,123 @@ void Map::RemoveSpectatorPlayer(ptr<Player> player)
     scoped_lock lock {_spectatorLock};
 
     vec_remove_unique_value(_spectatorPlayers, player);
+    _spectatorAreas.erase(player->GetId());
+}
+
+void Map::SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    scoped_lock lock {_spectatorLock};
+
+    _spectatorAreas.erase(player->GetId());
+
+    if (radius <= 0) {
+        return;
+    }
+
+    auto& area = _spectatorAreas.emplace(player->GetId(), SpectatorArea {.Hex = hex, .Radius = radius}).first->second;
+
+    for (auto cr : _critters) {
+        if (!cr->IsDestroyed() && !cr->IsDestroying() && GeometryHelper::GetDistance(hex, cr->GetHex()) <= radius) {
+            area.VisibleEntities.emplace(cr->GetId());
+        }
+    }
+    for (auto item : _items) {
+        if (!item->IsDestroyed() && !item->IsDestroying() && item->CanSendItem(true) && GeometryHelper::GetDistance(hex, item->GetHex()) <= radius) {
+            area.VisibleEntities.emplace(item->GetId());
+        }
+    }
+}
+
+bool Map::IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id)
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    shared_lock lock {_spectatorLock};
+
+    auto area = _spectatorAreas.find(player_id);
+    return area == _spectatorAreas.end() || area->second.VisibleEntities.contains(entity_id);
+}
+
+auto Map::GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    shared_lock lock {_spectatorLock};
+
+    vector<refcount_ptr<Player>> recipients;
+
+    for (auto player : _spectatorPlayers) {
+        auto area = _spectatorAreas.find(player->GetId());
+
+        if (area == _spectatorAreas.end() || (area->second.VisibleEntities.contains(entity_id) && GeometryHelper::GetDistance(area->second.Hex, hex) <= area->second.Radius)) {
+            recipients.emplace_back(player.hold_ref());
+        }
+    }
+
+    return recipients;
+}
+
+void Map::RefreshAreaSpectators(ptr<const Critter> cr, bool removed)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
+
+    scoped_lock lock {_spectatorLock};
+
+    for (auto player : _spectatorPlayers) {
+        auto it = _spectatorAreas.find(player->GetId());
+
+        if (it == _spectatorAreas.end()) {
+            continue;
+        }
+
+        auto& area = it->second;
+        bool visible = !removed && !cr->IsDestroyed() && !cr->IsDestroying() && GeometryHelper::GetDistance(area.Hex, cr->GetHex()) <= area.Radius;
+        bool known = area.VisibleEntities.contains(cr->GetId());
+
+        if (visible && !known) {
+            area.VisibleEntities.emplace(cr->GetId());
+            player->Send_AddObservedCritter(cr);
+        }
+        else if (!visible && known) {
+            area.VisibleEntities.erase(cr->GetId());
+            player->Send_RemoveCritter(cr);
+        }
+        else if (visible) {
+            player->Send_Moving(cr);
+        }
+    }
+}
+
+void Map::RefreshAreaSpectators(ptr<const Item> item, bool removed)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
+
+    scoped_lock lock {_spectatorLock};
+
+    for (auto player : _spectatorPlayers) {
+        auto it = _spectatorAreas.find(player->GetId());
+
+        if (it == _spectatorAreas.end()) {
+            continue;
+        }
+
+        auto& area = it->second;
+        bool visible = !removed && !item->IsDestroyed() && !item->IsDestroying() && item->CanSendItem(true) && GeometryHelper::GetDistance(area.Hex, item->GetHex()) <= area.Radius;
+        bool known = area.VisibleEntities.contains(item->GetId());
+
+        if (visible && !known) {
+            area.VisibleEntities.emplace(item->GetId());
+            player->Send_AddItemOnMap(item);
+        }
+        else if (!visible && known) {
+            area.VisibleEntities.erase(item->GetId());
+            player->Send_RemoveItemFromMap(item);
+        }
+    }
 }
 
 auto Map::GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>
@@ -514,8 +632,11 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     }
 
     // Notify spectators
+    RefreshAreaSpectators(item);
     for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
-        player->Send_AddItemOnMap(item);
+        if (!player->IsAreaView()) {
+            player->Send_AddItemOnMap(item);
+        }
     }
 }
 
@@ -610,6 +731,7 @@ void Map::RemoveItem(ident_t item_id)
     auto item_ids = GetItemIds();
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
+    RefreshAreaSpectators(item, true);
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
@@ -650,7 +772,9 @@ void Map::RemoveItem(ident_t item_id)
 
     // Notify spectators
     for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
-        player->Send_RemoveItemFromMap(item);
+        if (!player->IsAreaView()) {
+            player->Send_RemoveItemFromMap(item);
+        }
     }
 }
 
@@ -711,7 +835,8 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
             }
         }
 
-        for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
+        RefreshAreaSpectators(item);
+        for (refcount_ptr<Player> player : GetSpectatorPlayersForSend(item->GetId(), item->GetHex())) {
             player->Send_Property(type, prop, entity);
         }
     }
@@ -788,6 +913,7 @@ void Map::ChangeViewItem(ptr<Item> item)
 
     ident_t initial_item_map_id = item->GetMapId();
     mpos initial_item_hex = item->GetHex();
+    RefreshAreaSpectators(item);
 
     for (auto cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {

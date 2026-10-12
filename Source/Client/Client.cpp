@@ -2033,12 +2033,14 @@ void ClientEngine::Net_OnViewMap()
     FO_TRACE_ZONE(Script);
 
     auto hex = _conn.InBuf->Read<mpos>();
+    auto radius = _conn.InBuf->Read<int32_t>();
 
     if (!_curMap) {
         break_into_debugger();
         return;
     }
 
+    _curMap->SetViewArea(hex, radius);
     OnMapView.Fire(hex);
 }
 
@@ -2340,7 +2342,18 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     if (Settings->Network.MoveSyncTrace) {
         mpos end_hex = moving->GetEndHex();
 
-        TraceMoveSync("move_recv", strex("cr={} own={} start={},{} end={},{} prev_hex={},{} offset_ms={} whole_ms={} joined={} lease_ms={} late_ms={} ahead_ms={} catchup_ms={} smooth_ms={}", cr->GetId(), cr->GetIsChosen() ? 1 : 0, plan_start_hex.x, plan_start_hex.y, end_hex.x, end_hex.y, prev_hex.x, prev_hex.y, offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, joined_steps, iround<int32_t>(moving->GetLeaseTime()), late_time.milliseconds(), server_ahead_time.milliseconds(), catch_up_time.milliseconds(), smooth_time.milliseconds()).strv());
+        TraceMoveSync("move_recv", //
+            strex("cr={} own={} start={},{} end={},{} prev_hex={},{} "
+                  "offset_ms={} whole_ms={} joined={} lease_ms={} late_ms={} ahead_ms={} catchup_ms={} smooth_ms={}", //
+                cr->GetId(), cr->GetIsChosen() ? 1 : 0, //
+                plan_start_hex.x, plan_start_hex.y, //
+                end_hex.x, end_hex.y, //
+                prev_hex.x, prev_hex.y, //
+                offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, //
+                joined_steps, iround<int32_t>(moving->GetLeaseTime()), //
+                late_time.milliseconds(), server_ahead_time.milliseconds(), //
+                catch_up_time.milliseconds(), smooth_time.milliseconds())
+                .strv());
     }
 }
 

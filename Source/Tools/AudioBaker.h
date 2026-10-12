@@ -81,7 +81,7 @@ private:
         size_t OutputBytes {};
     };
 
-    [[nodiscard]] auto IsBakeableExtension(string_view ext) const -> bool;
+    [[nodiscard]] auto IsBakeableExtension(string_view path) const -> bool;
     [[nodiscard]] auto BakeFile(const File& file) const -> BakedAudioInfo;
     [[nodiscard]] auto LoadWav(string_view fname, FileReader reader) const -> PcmAudio;
     [[nodiscard]] auto EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> vector<uint8_t>;

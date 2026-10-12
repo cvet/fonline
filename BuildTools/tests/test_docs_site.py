@@ -68,6 +68,24 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertLessEqual(output_bytes, max_bytes)
         self.assertLessEqual(russian_output_bytes, max_bytes)
 
+    def test_empty_anchor_metadata_is_not_searchable_but_code_examples_are(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        path = root / "Docs/Guide.md"
+        path.write_text(
+            path.read_text(encoding="utf-8")
+            + '\n<a id="decorativeanchorhash"></a> Visible anchor text: image-format.field.alias.\n'
+            + '\n```html\n<a id="visibleanchorcode"></a>\n```\n'
+            + '\n`<a id="visibleinlineanchor"></a>`\n',
+            encoding="utf-8",
+        )
+        search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])
+        self.assertNotIn("decorativeanchorhash", search["terms"])
+        self.assertIn("visible", search["terms"])
+        self.assertIn("image-format.field.alias", search["terms"])
+        self.assertIn("visibleanchorcode", search["terms"])
+        self.assertIn("visibleinlineanchor", search["terms"])
+
     def _document(
         self,
         document_id: str,

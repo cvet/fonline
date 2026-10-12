@@ -332,6 +332,40 @@ TEST_CASE("FileSystem")
         CHECK(reader.GetCurPos() == 0);
     }
 
+    SECTION("FileReaderFailuresPreserveBoundsAndPosition")
+    {
+        array<uint8_t, 3> data {'a', 'b', 'c'};
+        FileReader reader {{data.data(), data.size()}};
+        reader.SetCurPos(2);
+
+        auto check_read_error = [&](const auto& read, size_t requested) {
+            try {
+                read();
+                FAIL("Out-of-bounds read succeeded");
+            }
+            catch (const FileSystemExeption& ex) {
+                CHECK(ex.message() == "Invalid read size");
+                REQUIRE(ex.params().size() == 3);
+                CHECK(ex.params()[0] == "2");
+                CHECK(ex.params()[1] == strex("{}", requested).str());
+                CHECK(ex.params()[2] == "3");
+            }
+
+            CHECK(reader.GetCurPos() == 2);
+        };
+
+        check_read_error([&] { (void)reader.GetLEUInt16(); }, 2);
+        check_read_error([&] { (void)reader.GetBEUInt32(); }, 4);
+        check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
+        array<uint8_t, 4> output {};
+        check_read_error([&] { reader.CopyData(output); }, 4);
+
+        CHECK_THROWS(reader.GetStrNT());
+        CHECK(reader.GetCurPos() == 2);
+        CHECK_THROWS(reader.GoForward(std::numeric_limits<size_t>::max()));
+        CHECK(reader.GetCurPos() == 2);
+    }
+
     SECTION("FileCollectionReportsMissingEntriesWithoutThrowing")
     {
         string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");

@@ -20,17 +20,17 @@ This reference describes Engine-owned audio resource delivery, decoding, playbac
 | Stability | <code>experimental</code> |
 | Support policy | Authored WAV and native Ogg inputs, the baked Ogg payload, sound handles, placement updates, and client playback behavior are revision-pinned by focused baker and mixer tests. |
 | Source manifest | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Contract digest | <code>a5b3cb18613c5f67a6be38634f1e162fc652de55e57bf8b14482015ca92c9205</code> |
+| Contract digest | <code>394916f497737c02d26fe04fa27ac697add44812653a7f6a884d4fc9ee0ced5b</code> |
 | Runtime formats | <code>.ogg</code> |
 | Missing-suffix fallback | no |
 | Runtime side | <code>client</code> |
-| Focused native audio tests | 2 |
+| Focused native audio tests | 3 |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Formats](formats.md) | 2 | Accepted containers/codecs and source roles. |
+| [Formats](formats.md) | 3 | Accepted containers/codecs and source roles. |
 | [Delivery](delivery.md) | 5 | Audio baking, authored paths, indexing, and payload rules. |
-| [Decoding](decoding.md) | 7 | Format restrictions, streaming, conversion, and mixing. |
+| [Decoding](decoding.md) | 8 | Format restrictions, streaming, conversion, and mixing. |
 | [Playback](playback.md) | 10 | Script methods, sound handles, placement, music, repeat, and volume. |
 | [Validation](validation.md) | 7 | Failure behavior and verification boundaries. |
 

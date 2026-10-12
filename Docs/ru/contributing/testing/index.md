@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0f6195764ddfa7c01fcf4edb9ec97531c45678a7052627d9d814690ad54e7a13"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"e17ed4eec526fb6ed873c4cc36a5a5d4bea5aa4a00f952c529621b9fd7c3c265"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -74,6 +74,10 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 связанный executable и DLL после линковки и до упаковки. Статическая проверка
 не доказывает работу на настоящей Windows 7 SP1; см.
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
+
+`Test_SpriteSheet.cpp` использует native resolver и stub frontend с любым
+scripting backend: первые/cache-hit копии, начальная геометрия, first/last
+extraction, directional/shared offsets и копирование усечённых sheets.
 
 ## Запуск тестов
 

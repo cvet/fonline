@@ -18,8 +18,9 @@ stable IDs, source anchors, or machine-readable values matter.
 
 ## Source map
 
-- `Source/Tools/AudioBaker.*` accepts authored WAV and Ogg, verifies the input,
+- `Source/Tools/AudioBaker.*` accepts authored WAV, Ogg and optional ACM, verifies the input,
   and emits an Ogg Vorbis payload while preserving the authored resource path.
+- `Source/Tools/AudioBaker-Acm.*` owns the guarded ACM decoder and loader.
 - `Source/Client/AudioManager.*` indexes resource paths and owns decoding,
   streaming, handles, placement, repeat, stop, and live volume state.
 - `Source/Scripting/ClientGlobalScriptMethods.cpp` exports `Game.PlaySound`,
@@ -28,25 +29,26 @@ stable IDs, source anchors, or machine-readable values matter.
   and callback synchronization. `ApplicationHeadless.cpp` defines the no-audio
   headless boundary.
 - `Source/Common/Settings.inc` owns immutable audio startup settings.
-- `Source/Tests/Test_AudioBaker.cpp` and `Test_AudioManager.cpp` execute the
+- `Source/Tests/Test_AudioBaker.cpp`, `Test_AudioBakerAcm.cpp` and `Test_AudioManager.cpp` execute the
   focused native contract.
 - `BuildTools/AudioInterface.json` is the checked documentation contract.
 
 ## Supported resources
 
-The authoring boundary accepts two source forms:
+WAV and Ogg are mandatory; ACM is an optional authoring importer:
 
 | Authored suffix | Accepted input | Baker result | Runtime decoder |
 |---|---|---|---|
 | `.wav` | RIFF/WAVE PCM at 8, 16, 24, or 32 bits; IEEE float at 32 bits | Normalized to interleaved signed 16-bit and encoded as Ogg Vorbis | libvorbisfile |
 | `.ogg` | Ogg bitstream containing Vorbis audio | Verified and copied without another lossy pass | libvorbisfile |
+| `.acm` | Interplay ACM version 1, with `FO_AUDIO_ACM=ON` | Decoded to signed 16-bit PCM and encoded as Ogg Vorbis | libvorbisfile |
 
 There is no ACM runtime path. MP3, FLAC, Opus, AAC, arbitrary SDL formats, and
 Ogg containers carrying a codec other than Vorbis are unsupported.
 
 The authored suffix identifies the source path, not the bytes after baking. A
 resource named `Sfx/Door.wav` still has that path after baking, but its payload
-is Vorbis. Runtime therefore uses one decoder for both preserved `.wav` paths
+is Vorbis. Runtime therefore uses one decoder for preserved `.wav`/`.acm` paths
 and native `.ogg` paths; it does not dispatch a codec from the suffix.
 
 ## Delivering audio
@@ -64,12 +66,13 @@ Bakers = Audio
 
 Audio is no longer a `RawCopy` resource family. WAV is converted according to
 `Baking.AudioVorbisQuality`; authored Ogg is validated before passthrough.
-Both routes verify that the output opens as Vorbis. The baker reports encoded
+All routes verify that the output opens as Vorbis. The baker reports encoded
 and passthrough counts plus input/output byte totals.
 
 `AudioManager.IndexFiles()` records paths with suffixes listed by
 `Audio.SoundFileExtensions` (normally `wav ogg`). The catalog is an inspection
-surface; playback itself receives the exact selected resource path.
+surface; playback itself receives the exact selected resource path. Projects
+that index ACM paths add `acm` to this setting; its default stays `wav ogg`.
 
 ## Playing effects
 
@@ -153,6 +156,30 @@ Every accepted sample is normalized to signed 16-bit PCM before Vorbis
 encoding. Test the exact source export: metadata layout and malformed format
 fields are authoring errors even if an editor happens to play the file.
 
+### Optional ACM authoring
+
+Set the baking-impact option before `StartProjectGeneration`:
+
+```cmake
+SetOptionValues(FO_AUDIO_ACM ON)
+```
+
+The default is OFF. A collection scan or targeted bake containing `.acm` fails
+with `Audio importer is disabled; enable FO_AUDIO_ACM` and the authored path
+when disabled, including inputs an incremental checker would otherwise skip.
+The decoder and loader are compiled only with the numeric definition enabled;
+clients still decode the baked Vorbis payload. Changing the option changes
+`Resources.baking-config-hash` and forces a full bake after reconfiguration.
+
+The loader follows Fallout's channel convention: a case-insensitive
+`sound/music/` prefix means stereo; every other ACM path means mono, regardless
+of its header. Keep this directory layout when moving source assets. The
+declared sample rate must be positive and the decoded sample count must form
+complete non-empty frames. The unpacker preserves 16-bit wrapping and zero-bit
+padding past a truncated body; it rejects bad signatures, unsupported versions,
+empty blocks and undefined coding indices. Each decoder owns its amplitude
+table and decodes once, allowing independent files to bake concurrently.
+
 ### Ogg Vorbis runtime
 
 Authored Ogg and generated output are opened with libvorbisfile during baking.
@@ -187,7 +214,7 @@ callback scheduling, mixing, and audible output.
 
 ## Recommended project practice
 
-1. Put authored WAV/Ogg in a client pack that selects the `Audio` baker.
+1. Put authored WAV/Ogg, or enabled ACM, in a client pack that selects the `Audio` baker.
 2. Keep exact paths in project-owned catalogs; resolve concepts and variants
    before calling the engine.
 3. Use WAV as an editable/master input and native Ogg when avoiding another
@@ -220,7 +247,9 @@ cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 
 `Test_AudioBaker` covers PCM/float WAV conversion, native Ogg passthrough, and
-invalid inputs. `Test_AudioManager` covers decoder/mixer output, pan, placed
+invalid inputs, plus optional ACM output and disabled requests.
+`Test_AudioBakerAcm` pins unpacker samples, truncated-body padding, rejection
+diagnostics and the Fallout channel convention. `Test_AudioManager` covers decoder/mixer output, pan, placed
 starts, live updates, handle expiry, and synchronization-relevant behavior.
 
 Then bake the embedding project's real pack. Confirm preserved paths, inspect

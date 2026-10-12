@@ -183,6 +183,8 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 
 `MountPack` probes `.fores` first, then ZIP-compatible `.zip`/`.bos`, then Fallout `.dat`. Packaging now writes one `<Name>.fores` per logical resource pack; only executable-embedded resources remain ZIP. A `.fores` pack is one full base plus at most one writable `.patch.fores` with a complete current catalog, not an override directory or patch chain. A corrupt claimed `.fores` is an error, never a reason to fall back to an older sibling ZIP. The byte layout, integrity hashes, recovery rules, and `.foindex` cache are specified in [Resource Pack Format](../../../ResourcePackFormat.md).
 
+Arcanum DAT 2.1 stores a 24-byte entry record plus its name. Names may include a trailing C-string terminator; the reader strips trailing terminators, normalizes slashes and lowercases lookup paths. Compression (`0x2`), directory (`0x400`) and ignored (`0x800`) are bit flags; directory/ignored entries are excluded. Truncated tree headers, entry records and name ranges fail mounting. Valid Fallout DAT 2.0 entries retain their behavior; incomplete records and invalid tree extents are rejected. Rebuild the baker and rebake packs imported from DAT 2.1 after upgrading the reader.
+
 `FileSystem` then combines sources and offers:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;
@@ -267,6 +269,12 @@ Related consumers are covered by resource, client, server, script, and baker tes
 3. If command-line or sub-config behavior changes, verify the embedding project config that exercises it, but keep project-specific values in project docs.
 4. If packaging/resource staging changes, re-check [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md), and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md) as applicable.
 5. Update [Baking Pipeline](../../explanation/content-pipeline/baking.md) or [BuildTools Pipeline](../cmake-and-buildtools/pipeline.md) when build-stage ownership changes.
+
+## Resource loading failures
+
+A missing lookup remains `false`/`nullptr`. A corrupt mounted source raises `DataSourceException`: DAT tree errors identify the archive, format, field and relevant sizes/entry offset; entry reads include the archive and resource path, and zlib failures include its status. DAT 1.0 is explicitly unsupported. Decoded DAT payloads must reach the stream end and match the declared size, including empty entries.
+
+ZIP/embedded ZIP failures include the pack, entry or index and minizip status. Read length and close/CRC errors are distinct. Names must fit the 4096-byte buffer including their terminator; decoded entries must fit the signed 32-bit size field. A cached-directory short read throws instead of looking absent; refresh its index after changing files. `FileReader` bounds errors include position, requested bytes and buffer size without advancing the cursor. Loaders propagate these failures; the reporting boundary owns logging.
 
 ## Optional archive providers
 

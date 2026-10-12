@@ -52,6 +52,7 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto LoadImage(const ImageImport::Loader& loader, string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> ImageImport::FrameCollection;
 static auto PadSpriteFrame(const ImageImport::FrameShot& shot, int32_t padding) -> ImageImport::FrameShot;
 static auto ResolveSpriteFramePadding(const ImageImport::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
 static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageImport::FrameShot& shot);
@@ -208,7 +209,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
             auto& file_to_bake = files_to_bake[file_index];
             string_view path = file_to_bake.first.GetPath();
             ImageImport::Context context {&files, [this, &files](string_view nested_path) { return LoadAny(nested_path, files); }};
-            auto collection = file_to_bake.second.Load(path, "", file_to_bake.first.GetReader(), context);
+            auto collection = LoadImage(file_to_bake.second, path, "", file_to_bake.first.GetReader(), context);
             return BakeCollection(path, collection);
         }));
     }
@@ -608,7 +609,7 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
     string ext = strex(fname_with_opt).get_file_extension();
     string dir = strex(fname_with_opt).extract_dir();
     string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
-    string fname = strex("{}/{}.{}", dir, name, ext);
+    string fname = strex(dir).combine_path(strex("{}.{}", name, ext)).str();
     string_view opt = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
 
     ImageImport::CheckEnabled(fname);
@@ -621,10 +622,22 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
 
     if (auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
         ImageImport::Context context {&files, [this, &files](string_view nested_path) { return LoadAny(nested_path, files); }};
-        return it->second.Load(fname, opt, file.GetReader(), context);
+        return LoadImage(it->second, fname, opt, file.GetReader(), context);
     }
     else {
         throw ImageBakerException("Invalid image file extension", fname);
+    }
+}
+
+static auto LoadImage(const ImageImport::Loader& loader, string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> ImageImport::FrameCollection
+{
+    size_t input_size = reader.GetSize();
+
+    try {
+        return loader.Load(fname, opt, std::move(reader), context);
+    }
+    catch (const std::exception& ex) {
+        throw ImageBakerException("Image import failed", fname, opt, input_size, ex.what());
     }
 }
 

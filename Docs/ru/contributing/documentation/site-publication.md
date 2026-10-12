@@ -5,12 +5,14 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"76a3f6f8dc1a5d59c8a029cdf560192335ff5ceb5baa863eab5aa1e6b3c4717d"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"0a0647eddecaacaebd578a2841cb63688e9b5107e6c55a1a97ff6d7010d1caef"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
 
 Шаблон включает корневой `VERSION` стандартным тегом Jekyll `include`; `includes_dir: .` делает этот единственный источник доступным и локальной сборке, и обычной сборке GitHub Pages. Копия версии и подготовительный шаг не нужны. Публикуйте `/VERSION` побайтно вместе с `/docs-manifest.json`; отчёты маршрутов и переводов хранятся в разделах этого общего индекса.
+
+Аннотации результатов поиска ограничены 224 символами вместе с многоточием и сокращаются по границе слова. Поисковые слова и оценки полного документа сохраняются; лимит байтов индекса прежний.
 
 ## Назначение
 
@@ -123,6 +125,8 @@ Jekyll читает канонический Markdown из корня репоз
 
 GitHub Pages использует `jekyll-readme-index`, который обычно превращает route вложенного `README.md` в directory index. Поэтому семь public root/subsystem/example READMEs закрепляют manifest-owned `.html` routes коротким YAML front matter. `Docs/Site/_config.yml` исключает local build trees, third-party inputs, private example governance templates и BuildTools subtrees без public pages, сохраняя source files, на которые ссылается документация. Удаление pinned permalink создаёт обещанный каталогом, но не отрендеренный Jekyll route и проваливает source-level и post-build validation.
 
+Каталоги managed `bin` и `obj` внутри `Source/Scripting/Managed/` содержат результаты сборки на любой глубине проекта. Исключайте их шаблонами каталогов без завершающего слеша; аудит артефакта отклоняет опубликованные файлы внутри них, сохраняя авторские исходники.
+
 Обычные `index.md` используют canonical directory URL Jekyll (`/path/`), хотя artifact остаётся `/path/index.html`. `BuildTools/docs_site.py` записывает directory form в navigation, search, locale reservations и route catalog, чтобы canonical tags и published links совпадали с GitHub Pages.
 
 Записи документов манифеста с `visibility: internal` и сгенерированные
@@ -161,6 +165,8 @@ python BuildTools/docs_site.py --check
 ```
 
 При изменении visual, fenced или delivery layers сначала создайте diagrams и screenshot catalog, затем snippet report, translation status, site data, AI evaluation report и в конце AI delivery. Evaluation использует site search model, а public `docs-manifest.json` записывает hashes diagram, screenshot, snippet, machine model, evaluation, navigation, search и route catalog. Generated delivery data нельзя редактировать вручную. Presentation меняется в layout или local assets; ownership navigation/search/routing меняется в source manifest. Принятые границы описаны в [проверке snippets](snippets.md), [ADR-0004](../decisions/0004-manifest-backed-site-navigation-search.md), [ADR-0006](../decisions/0006-documentation-version-locale-routing.md), [оценке документации для ИИ](ai-evaluation.md) и [процессе перевода](translation.md).
+
+Поиск игнорирует скрытые комментарии перевода и пустые HTML-якоря вне блоков и строк кода. Разметка якорей остаётся в исходной странице и маршрутах; видимый текст и стабильные ID доступны для поиска. Примеры самой разметки индексируются.
 
 ## Миграция версий, локалей и маршрутов
 

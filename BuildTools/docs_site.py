@@ -527,7 +527,7 @@ def _markdown_body(text: str) -> str:
     code_ranges = [match.span() for match in docs_localization.FENCE_RE.finditer(normalized)]
     code_ranges.extend(match.span() for match in re.finditer(r"(`+)(.+?)\1", normalized))
     return re.sub(
-        r"<!--.*?-->",
+        r'<!--.*?-->|<a\s+id="[^"]*"\s*>\s*</a>',
         lambda match: match.group(0) if any(start <= match.start() < end for start, end in code_ranges) else "",
         normalized,
         flags=re.DOTALL,
@@ -705,7 +705,7 @@ def _plain_text(value: str) -> str:
     return value.strip(" #>|-")
 
 
-def _summary(text: str, max_characters: int = 240) -> str:
+def _summary(text: str, max_characters: int = 224) -> str:
     paragraph: list[str] = []
     active_fence: str | None = None
     for line in text.splitlines():
@@ -733,7 +733,7 @@ def _summary(text: str, max_characters: int = 240) -> str:
     summary = " ".join(paragraph)
     if len(summary) <= max_characters:
         return summary
-    shortened = summary[: max_characters - 1].rsplit(" ", maxsplit=1)[0]
+    shortened = summary[: max_characters - 3].rsplit(" ", maxsplit=1)[0]
     return shortened.rstrip(".,;:") + "..."
 
 

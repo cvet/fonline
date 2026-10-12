@@ -217,6 +217,37 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         )
         self.assertNotIn("Docs/generated/internal.json", docs_site_artifact._expected_static_paths(manifest))
 
+    def test_managed_build_outputs_fail_without_rejecting_authored_sources(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        site = root / "_site"
+        sources = (
+            "Source/Common/Example.h",
+            "Source/Scripting/Managed/Compiler/Program.cs",
+            "Source/Scripting/Managed/Deep/Project/Owner.cs",
+        )
+        generated = (
+            "Source/Scripting/Managed/Compiler/bin/Debug/compiler.dll",
+            "Source/Scripting/Managed/Compiler/obj/Debug/compiler.pdb",
+            "Source/Scripting/Managed/Deep/Project/bin/Release/compiler.dll",
+            "Source/Scripting/Managed/Deep/Project/obj/Release/generated.cs",
+        )
+        for relative_path in sources + generated:
+            path = site / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("source fixture\n", encoding="utf-8")
+
+        report = docs_site_artifact.audit_site(root, site)
+
+        self.assertEqual(report["error_count"], len(generated))
+        self.assertEqual(set(report["errors"]), {
+            f"managed build output is published: /{path}" for path in generated
+        })
+        for relative_path in generated:
+            (site / relative_path).unlink()
+        self.assertEqual(docs_site_artifact.audit_site(root, site)["error_count"], 0)
+        self.assertTrue(all((site / path).is_file() for path in sources))
+
     def test_accessibility_and_canonical_failures_are_reported(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)

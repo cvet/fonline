@@ -12,6 +12,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Rebase the unpublished client-worker integration onto published master 2026.1.35-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the four intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
+
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
 
 ### Changed
@@ -25,7 +27,139 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Apply the intervening 2026.1.14-dev through 2026.1.28-dev migration records below. Reconfigure and rebuild matching binaries, regenerate contracts with their current experimental labels, prepare documentation outputs, and fully rebake the project. No additional database or protocol conversion is introduced by this branch reconciliation.
 
-## Current - 2026-10-11
+
+## Current - 2026-10-13
+
+### Fixed
+
+- Name `Test_AudioBaker`, `Test_AudioBakerAcm`, and `Test_AudioManager` in audio validation; ACM still requires `FO_AUDIO_ACM`.
+- Align the bilingual AI delivery ADR with its dated measurement, preserving complete documents and the byte budget.
+- Normalize six diagrams to LF without visual changes; retain four dated verification records as historical evidence.
+
+### Migration
+
+- `cd5c1168f8f4bdab63a2909ceacb049ba87e070a` (`2026.1.35-dev`) → `2026.1.36-dev`: documentation, generators and tests only. No API, script, configuration, resource, persisted-data or DB conversion. Audio semantics, ABI `9`, runtime `0.0.72`, sprite v2, updater and network schemas are unchanged.
+- Run `docs_audio.py --write`, `docs_diagrams.py --write`, then `docs_prepare.py` from `BuildTools/`. Check audio documentation tests, diagrams, EN/RU hashes, version, site/routes and complete AI delivery. Use matching code/build/package metadata; no forced rebake. Native audio and audible platform checks remain separate. Rollback restores baseline documentation, generators and metadata; saved data is unchanged.
+
+## 2026.1.35-dev - 2026-10-12
+
+### Fixed
+
+- Fix GCC's empty ImageBaker test return and managed nullable formatting; preserve runtime behavior.
+- API checks retain source equality and explicit classification: 2573 symbols, 2572 experimental, one internal.
+- Compact AI bundle URL labels; preserve complete documents, URLs, membership and the existing byte limit.
+
+### Migration
+
+- Base: `d5bef2f554019e4c6c45366a1f422c11e9229878` (`2026.1.34-dev`); next `2026.1.35-dev`. Keep prior ownership, ACM and Arcanum adoption. API, config, storage, sprite v2, ABI `9` and runtime `0.0.72` are unchanged.
+- Rebuild and rebake all roles; run formatting/API/native tests and `python BuildTools/docs_prepare.py` for references, EN/RU, site and AI. Rollback uses matching baseline-34 code, tests and metadata; no game-state conversion.
+
+## 2026.1.34-dev - 2026-10-12
+
+### Fixed
+
+- Keep the first loaded sprite sheet independent of its cached prototype. Trim both frame arrays; bound copying and initialize copy size/anchor at frame/direction zero.
+
+### Migration
+
+- Base `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` (`2026.1.33-dev`); update `2026.1.34-dev`. Rebuild native clients/Mapper and restart. No script/config/content or database conversion: first/last selection, directional deltas, state/action tags and atlas sharing retain meaning.
+- Copies now follow the existing independent-playback contract from the first load. First/last extraction cannot shorten later loads; last-frame deltas still sum both axes. Check repeated loads, trimmed copies and visible animation/directions/stop-start.
+- Runtime `0.0.72`, Managed ABI 9 and sprite container v2 stay unchanged. Reuse baked images; refresh normal generated metadata/bake markers and deploy matching binaries. Rollback restores the baseline binaries without converting saves.
+
+## 2026.1.33-dev - 2026-10-12
+
+### Added
+
+- FOFRM `Alias` retains a binary sheet's directions, anchors, deltas and timing; ART `$r=0..7` selects one rotation.
+
+### Fixed
+
+- Correct DAT 2.1 names/case/slashes/flags and ART header, palettes, rotation-major tables, bounded raw/RLE streams and placement.
+- Preserve DAT/ZIP/embedded/cached-directory/nested-image exception context; diagnose byte bounds, truncated records, decoded lengths and compression trailers.
+- Exclude empty HTML anchors from search outside code; preserve visible text, IDs and literal examples within existing byte limits.
+
+### Migration
+
+- Base `6875e109534e94657c37fed55c559550901e9313` (`2026.1.32-dev`); update `2026.1.33-dev`. Enable `FO_DATA_SOURCE_DAT`/`FO_IMAGE_ART` only when needed (defaults OFF); disabled inputs name the option. `DataSource-Dat`/`ImageBaker-Art` own decoding; FOFRM delegates to `ImageImport::Context::Resolve`. Other formats, callbacks and options retain meaning.
+- `$r3`/`$R3` remains palette 3: replace donor `Alias = Actor$r3.art` with `Alias = Actor$r=3.art`. Ordinary `frm` accepts the selector; `Alias` retains the whole sheet and rejects another FOFRM. Follow the [ART guide](../how-to/content/image-format.md#art) for selector validation, palette fallback, limits, timing and category-dependent placement; preserve its source-directory categories.
+- Detect inputs with `rg --files -g '*.art' -g '*.dat' -g '*.fofrm'` and `rg -n 'Alias|\$[rR]=?[0-7]' <source-roots>`. Reconfigure/rebuild baker, runtime and metadata; force-rebake affected packs with `BakeResources`. Restart and visually check palettes, anchors, deltas, aliases and both map geometries.
+- Handle cached short reads as `DataSourceException`; repair named archives and refresh directory indices. Missing lookups/log ownership remain unchanged. Sprite container v2, runtime `0.0.72`, ABI identity 9, updater/package schemas and persisted data stay unchanged from the base. Deploy resources/binaries together; rollback restores both. No save/database conversion or proprietary assets are required.
+
+
+## 2026.1.32-dev - 2026-10-12
+
+### Fixed
+
+- Normalize native RefType lifetime/binding comments; runtime tokens and generated API stay unchanged.
+- Bind FOFRM Count provenance to its loader and reading context; reject the ART loader.
+- Enforce the published 2 MiB + 192 KiB governance budget, complete documents and oversize rejection.
+- Match translation checks to 4,866 entries: 2,576 API, 106 audio and 79 CMake descriptions; reject missing/stale translations.
+- Restore the optional-archive-provider heading and anchor.
+- Match the executable CMake check to 58 options.
+- Exclude managed `bin`/`obj` from documentation sites; rendered audits retain authored sources.
+- Cap search summaries at 224 characters, retaining full-document postings and the byte budget.
+
+### Migration
+
+- Baseline: `2026.1.31-dev`, `b197060d30d01ac74d7a203039a6bdb379c17948`. Retain RefType ownership (29), required ACM adoption (30), and bounded observation (31): ABI `9`, runtime `0.0.72`. No new script, config, resource-schema or stored-data migration; runtime semantics stay unchanged.
+- Run `python BuildTools/docs_prepare.py` for models, EN/RU, snippets, site/routes and AI outputs; validate governance, provenance, translations and versioning. Rebuild/package with `2026.1.32-dev`. Rollback restores baseline-31 docs/tests and matching builds without changing game state or ownership.
+
+## 2026.1.31-dev - 2026-10-11
+
+### Added
+
+- `Player.ViewMapArea(map, hex, radius)` provides a live, fixed, bounded map view while retaining a controlled global-map critter. Dynamic subjects are filtered by inclusive hex distance; entering and leaving subjects are updated from movement and item events. Clients initially center the camera and mask the exterior independently of regular fog settings.
+- `Player.ReturnFromViewMap()` restores the controlled critter's normal display. Existing detached `ViewMap` remains a full-map administrative view.
+
+### Fixed
+
+- Bounded map cameras accept normal scrolling without moving their visibility area. Resizing preserves the camera position within authored scroll boundaries. The exterior mask uses an overridable primitive fog effect with an inward smooth edge and full exterior opacity.
+- Bounded map views respect authored camera scroll boundaries when centering, zooming and resizing. The visibility area remains centered on its focal hex even when the camera must stop at a map edge.
+
+### Migration
+
+The `ViewMap` network message now carries an `int32` radius after its focal hex (zero for the existing full-map view). Network compatibility advances from `0.0.71` to `0.0.72`; rebuild both endpoints and their script metadata together. No persisted map, item or critter data migration is required: view subscriptions and bounds are runtime-only. Bounded views send current positions at hex transitions and omit future movement paths. Returning requires the complete controlled-critter initial-info graph; global-map group information is sent by the project under its group cover.
+
+Rebake resources to include `Effects/Primitive_ViewAreaFog.fofx` when adopting the smooth bounded-view edge. Embedding projects can override that effect and must keep the exterior opaque. Camera scrolling requires the project's normal input handlers on its bounded-view screen; the visibility center and radius remain server-owned.
+
+Baseline: `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`); this rebased bounded-view update is `2026.1.31-dev`. Apply the preceding Managed RefType ownership migration and rebuild/rebake all roles together.
+
+## 2026.1.30-dev - 2026-10-11
+
+### Added
+
+- Add the optional built-in Interplay ACM audio importer as `FO_AUDIO_ACM`, OFF by default. `AudioBaker-Acm.*` owns the per-decoder unpacker state and Fallout channel convention; `AudioBaker` registers it only when enabled. Move the decoder regression fixtures into Engine and test automatic Vorbis baking plus disabled requests.
+
+### Migration
+
+- Base: `2026.1.29-dev`, `3a366761742204d15aa86726cc23168c9b7ec81d`; this update is `2026.1.30-dev`. WAV/Ogg defaults, exact paths, playback, volumes and existing source meanings stay unchanged. The new importer is Baker-only and backend/platform independent; no new third-party library is required.
+- Projects using a local ACM loader must set `SetOptionValues(FO_AUDIO_ACM ON)` before `StartProjectGeneration`, remove their ACM source/test entries from `AddEngineSources`, and remove the loader include and `audio_baker->AddLoader(LoadAcmAudio, {"acm"})` registration from `SetupBakersHook`. Keep other project bakers/hooks. Direct decoder users include `AudioBaker-Acm.h` and use `AudioBakerAcm::Decoder`, `AudioBakerAcm::DecoderException` and `AudioBakerAcm::Load(string_view, FileReader)`; their declarations exist only when enabled. Search CMake, presets, environment and native extensions for `AcmDecoder`, `LoadAcmAudio`, `.acm` and `FO_AUDIO_ACM` before migration. Projects using only WAV/Ogg need no source migration and leave the option OFF.
+- Preserve a case-insensitive `sound/music/` prefix for stereo ACM; all other ACM paths are mono even if the header says stereo. Keep positive source sample rates and complete non-empty PCM frames. The unpacker retains the original wrap/padding arithmetic; encoded output retains the authored path and uses the existing Vorbis payload. Add `acm` to project `Audio.SoundFileExtensions` only when the inspection catalog needs it; the Engine default remains `wav ogg`.
+- Reconfigure, rebuild bakers/affected native targets, then bake all resource packs with `Audio`. `FO_AUDIO_ACM` participates in `FO_BAKING_CONFIG_HASH`, so missing/changed fingerprints force a full bake and are written only on success. Disabled collection and targeted ACM requests fail before incremental skipping with `Audio importer is disabled; enable FO_AUDIO_ACM` and the path. Confirm focused decoder tests, enabled/disabled bake tests, real ACM pack counters/paths/channel shapes and active-device client playback.
+- No persisted entity/database conversion, migration rule, network marker (upstream `0.0.71`), sprite/resource schema or host/runtime ABI change. Ship the newly baked Vorbis resources at their existing paths. Rollback restores the previous baker and the project's local loader/build entries together, followed by a full bake; do not mix loader registrations from both owners.
+
+## 2026.1.29-dev - 2026-10-11
+
+### Fixed
+
+- Factory-backed Managed C# constructors create usable native objects and share their factory lease. Native types without a factory have no public default constructor; dynamic DTOs keep ordinary construction.
+- Refcounted wrappers automatically retain one native reference. Factories and `PassOwnership` transfer it; other results, callback/event arguments and collection elements acquire it. Forgotten leases queue engine-thread cleanup; shutdown cleans queued/live leases before entity collection/unbind. Native calls keep wrappers alive.
+
+### Added
+
+- Standard `IDisposable`/`using` ownership hides `__Factory`, `__AddRef` and `__Release` from the public managed API. Native zero-argument `Dispose` actions run before reference release: `FogLayer.Dispose()` removes its layer and closes the wrapper in one call.
+
+### Migration
+
+- Baseline: `6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.28-dev`); apply versions 26–28 below first. The earlier audited `16f1608794` sources have the zero-pointer constructor defect. All managed roles change; native/AngelScript signatures, IDs, defaults and property/data schemas stay unchanged.
+- Replace `__Factory()` with `new`, remove manual `__AddRef()`, and replace `__Release()` with `Dispose()`/`using`. Engine-returned wrappers retain their native targets automatically. C# aliases share disposal; independent wrappers have independent ownership. Dynamic DTOs and non-refcounted wrappers lack this interface.
+- Find default construction of `SpritePattern`, `FogLayer`, `VideoPlayback`, `TimeEventContext` and `MovingContext` and use their creating APIs. Compile every role to catch aliases and target-typed `new()`.
+- Keep `Map.DrawMapSprite` holders through the last rendered frame, then `StopDraw()` and `Dispose()`. A `using` scope must cover that frame; GC timing is unspecified. Direct `fog.Dispose()` and `using` perform both native and wrapper cleanup; remove former two-step cleanup. Repeated disposal and disposal after shutdown are harmless. Disposed pointer access and boxed/packed arguments reject use. Cleanup failures retain ownership for retry without repeating a completed native action.
+- Rebuild matching native components and rebake every role with ABI generator identity `9`. Runtime compatibility advances from `0.0.70` to `0.0.71`; binaries/resources and client/server sides upgrade together. The preceding unpublished ABI `8`/runtime `0.0.70` bindings also require rebuilding. Follow [rebuild ordering](../how-to/build/generated-content.md). No persisted-data or backup conversion is needed.
+- Rollback rebuilds/rebakes matching previous sources for all sides, restoring their prior manual ownership and constructor behavior. Earlier component, storage, baking-lock, document-migration and server-grid requirements below still apply.
+- Generator tests verify the public surface; lifetime tests cover automatic acquisition, native cleanup, GC, retries, aliases, constructor leases, shutdown and backend isolation. Runtime acceptance covers properties, drawing, `using`/disposal and orderly shutdown. See [lifetime rules and validation](../how-to/scripting/managed-csharp.md).
+
+## 2026.1.28-dev - 2026-10-11
 
 ### Fixed
 

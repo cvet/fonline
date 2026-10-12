@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-image-format-validation","locale":"ru","source_path":"Docs/en/reference/image-format/validation.md","source_sha256":"bd3301f45795098057a0f1170c426d87234303459dfd343a04e0fc02bedbfc6e"} -->
+<!-- docs-translation: {"document_id":"generated-image-format-validation","locale":"ru","source_path":"Docs/en/reference/image-format/validation.md","source_sha256":"c546db0600a6ba33517704bb0e173501b0f48655375dc276324efbb249ff7a6a"} -->
 
 # Проверка форматов изображений
 
@@ -15,7 +15,7 @@ generated: true
 
 | Стабильный ID | Правило | Требование | Причина | Источник |
 | --- | --- | --- | --- | --- |
-| <a id="entry-image-format-validation-fofrm-count-068d95fc54"></a><code>image-format.validation.fofrm-count</code> | Положительный count FOFRM | Отклоняйте descriptor, у которого count/Count равен нулю или отрицателен. | До существования runtime frame table descriptor должен разрешить хотя бы одну source reference. | [Source/Tools/ImageBaker-Art.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker-Art.cpp) |
+| <a id="entry-image-format-validation-fofrm-count-068d95fc54"></a><code>image-format.validation.fofrm-count</code> | Положительный count FOFRM | Отклоняйте descriptor, у которого count/Count равен нулю или отрицателен. | До существования runtime frame table descriptor должен разрешить хотя бы одну source reference. | [Source/Tools/ImageBaker-Fofrm.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker-Fofrm.cpp) |
 | <a id="entry-image-format-validation-fofrm-directions-55fce0e5eb"></a><code>image-format.validation.fofrm-directions</code> | Полные равные направления | Отклоняйте частичные наборы направлений и любое последующее направление, чьё расплющенное число кадров отличается от нулевого. | Каждый direction sheet разделяет один frame-count и timing header. | [Source/Tools/ImageBaker-Fofrm.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker-Fofrm.cpp), [Source/Tests/Test_ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tests/Test_ImageBaker.cpp) |
 | <a id="entry-image-format-validation-fofrm-nested-shared-106e8e7e2a"></a><code>image-format.validation.fofrm-nested-shared</code> | Без вложенных shared frame records | Отклоняйте ссылку FOFRM, чей дочерний кадр Main уже является shared record. | Реализация flattening копирует concrete child pixels и не перенумеровывает child shared indices. | [Source/Tools/ImageBaker-Fofrm.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker-Fofrm.cpp) |
 | <a id="entry-image-format-validation-rgba-payload-a6560c29d9"></a><code>image-format.validation.rgba-payload</code> | Точный размер RGBA payload | Отклоняйте каждый concrete frame, чья byte payload не равна в точности width, умноженной на height и четыре. | Client читает фиксированное число байтов RGBA8 без отдельного поля payload length. | [Source/Tools/ImageBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ImageBaker.cpp) |

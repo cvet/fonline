@@ -21,6 +21,407 @@ This report records source-grounded documentation verification passes for the en
 - Keep removed delivery reports untracked and prepare them through `docs_prepare.py`. Reviewed complete search sizes are 1,342,918 English and 1,872,594 Russian bytes; raise capacity by 32 KiB to 1,900,544 per locale. The complete AI context is 2,294,518 bytes; raise its capacity to the next 32 KiB boundary, 2,326,528. Preserve all membership, token and overflow-rejection rules and update both owning policy locales and budget regressions.
 - Documentation validation passes 413 Markdown entries; version/changelog and public-index checks pass. Focused API, description, snippet, AI-delivery and version tests pass 48 cases. The embedding exception-safety audit passes 7,423 functions without errors or warnings. Native rebuild, bake and runtime acceptance are tracked by the embedding integration plan and are not claimed by these documentation gates.
 
+## 2026-10-12 - Qualify the owner's amended integration revisions
+
+- During validation, the owner amended the project to
+  `d9cef89191671674ac41656d180b5e185dd89b9b` (`0.3.1563`) and Engine to
+  `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` (`2026.1.33-dev`). The committed
+  project pin matches. The Engine revision is now published; preserve it.
+  The amendment changes documentation/tests and project version metadata,
+  with no further native, game-script or resource-source changes.
+- The preceding native build and full bake use the earlier revision metadata;
+  retain their logs as intermediate evidence. Reconfigure and rebuild the
+  amended pair, rebake, and launch runtime checks only from its completed output.
+- Final qualification: all seven Windows Release native targets build with
+  current revision metadata. Focused native regression passes 63,689 assertions
+  in 38 cases, including bounded visibility and camera/hit filtering. The
+  embedding's exception-safety audit classifies 7,444 functions with no errors
+  or warnings; its style and fixed-message/verification-condition checks pass.
+- Full bake succeeds for the amended project hash: 33 packs, 16 bakers,
+  46 invocations, 26,956 inputs and 19,072 changed outputs, in 43:48. Its
+  automatic full-rebuild reason is `build_hash_changed`. The following
+  incremental bake succeeds in 37.738 seconds with zero changed/deleted outputs.
+  Retain the preceding 55:10 bake as intermediate metadata evidence only.
+- The embedding's Mono runtime passes 138/138 cases and 2,956 assertions across
+  13 suites, with no failures, timeouts, skips or global exception delta and
+  process exit 0. This includes checkpoints, group lifecycle, RefTypes, dynamic
+  assemblies, sprite ownership, footsteps and native/managed transport. All
+  runtime launches explicitly disable startup prebaking after the fresh bake.
+- A real 1280x800 client follows ordinary map-location, preview-eye and return
+  button clicks. The bounded `Vault17_Gateway` view has no chosen critter and
+  masks the exterior; returning preserves critter ID, trip, coordinates,
+  leader and personal checkpoints. Its current-metadata log has no errors or
+  exceptions. Execution/lock-wait overruns under concurrent workstation load
+  prevent a performance claim. Adapter stop returns 1; the separate headless
+  run proves clean server shutdown. The GUI process and adapter are stopped.
+- Documentation preparation and validation pass for 411 Markdown entries,
+  313 normative snippets, 4,871 translated descriptions and 28 retrieval tasks.
+  The 39 focused documentation regressions, 248 embedding tool tests and
+  22 checkpoint MCP tests pass; all 106 generated GUI screens are current.
+  Public example documentation, public API and version/history checks pass.
+  Preserve every published verification/disposition entry and the original
+  import implementation/tests, matching committed gitlink and safety refs.
+  Rendered Jekyll publication is not performed; Ruby/Bundler are unavailable.
+
+## 2026-10-12 - Reconcile Arcanum imports with bounded map observation
+
+- Start from local Engine `543c2c5168fbdb859a8b0cdb5e9495a48faa28af`
+  and embedding project `056f1162b8ef32bdc2828e36c1b416c0c185232b`.
+  Fetch and retain published tips `6875e109534e94657c37fed55c559550901e9313`
+  and `6c39763626308c3e7acc3b6a06bfd9b439f2f654`. Rebase the single
+  unpublished commit in each repository; Engine becomes
+  `ad06cb966bc1c7b7c362cb64dc42bceeb61d5d6b`, `2026.1.33-dev`, and
+  the project `689b02117e7fd9e63f8f1d8e8214e4fff76cbfea` pins that commit.
+  Preserve published changelog bodies and contract dispositions.
+- Audit the incoming bounded-observation API, fixed server visibility area,
+  subject enter/leave tracking, movement-path suppression, return lifecycle,
+  client filtering, camera bounds and opaque exterior mask, with their native
+  tests. Adopt upstream network marker `0.0.72`; Managed ABI identity remains
+  9. Rebuild matching native roles and rebake script metadata and effects.
+  View subscriptions are runtime-only; no persisted-data conversion is added.
+- Preserve DAT/ART/Alias and diagnostic implementation/tests from the local
+  pre-update revision. Retain the upstream FOFRM Count provenance correction,
+  site summary limit, managed-output exclusions and governance checks alongside
+  the local empty-anchor search regression. The embedding's optional ART,
+  DAT and ACM importers remain disabled.
+- Final build, bake, documentation and runtime results are pending below.
+
+## 2026-10-12 - Update the Arcanum integration onto published Managed ownership and ACM
+
+- Start from Engine `03882b47916246ccc1e201e14d8ede2e6410ed89` and the embedding
+  project `aaec6a863485e71924cde84b6b155560f12e299e`. Fetch and audit the complete
+  incoming ranges, including the subsequently published optional ACM importer.
+  Rebase only the single unpublished commit in each repository. Final Engine is
+  `7e0013f98c0235ef674e1023937ce091ce04d00b` (`2026.1.31-dev`) on published
+  `e1a3815ff96c7d88f47314984e9d9242e37bc585`; the embedding project is
+  `a5f78c6d24b23db7c90de10add9bd9a91e1d4b06` on published
+  `8e9c000efc5859393710ce12e12d8a1aa8f985d1`. Its committed Engine pin matches.
+- Review Managed factory visibility, acquired/adopted leases, disposal,
+  finalizer queueing, engine-thread release and teardown. Adopt upstream ABI
+  generator identity 9 and runtime compatibility marker `0.0.71`; rebuild
+  matching native roles and rebake all script assemblies and metadata. Review
+  the embedding's published construction-preview and sprite-owner adaptations.
+  The ACM importer remains OFF in this embedding; audit its private decoder
+  state, disabled-option diagnostics, Vorbis output and baking fingerprint.
+  No additional gameplay, persistence or resource-format migration is added.
+- Preserve the original DAT/ART/Alias and diagnostic source/tests byte-for-byte
+  relative to the initial local Engine revision. Preserve all published report
+  sections and contract dispositions. Reconcile the local v31 migration,
+  concrete compatibility notes and combined snippet counters without changing
+  historical published entries.
+- Remove empty decorative HTML anchor IDs from search prose outside literal
+  code. Keep visible stable IDs and inline/fenced HTML examples searchable;
+  retain the original byte budgets. The new regression fails before the fix
+  and all 16 site tests pass afterward. Reconcile paired publication guides,
+  local migration copy and the Russian image-guide wording without losing rules.
+- Final Windows Release builds pass for UnitTests, Baker, Client, Server,
+  Mapper and both headless roles. Rebuild the remaining roles after generated
+  revision metadata becomes `7e0013f98c-dirty`; the final focused native run
+  passes 63,547 assertions in 36 cases. Compiler/linker diagnostics are clean.
+  Optional enabled-module and graphical acceptance are not newly qualified.
+- A forced full bake succeeds in 32:56. The initial runtime command omitted
+  the documented post-bake prebake override and was stopped before testing;
+  its own verified process tree alone was terminated. Recover the invalidated
+  success markers through a complete normal Baker run in 22:26. Both final
+  reports succeed: 33 packs, 16 bakers, 46 invocations, 26,952 inputs and 19,040
+  changed outputs. The subsequent incremental run completes in 9.7 seconds
+  with zero changed/deleted outputs. Report fingerprints and the build hash
+  agree with the final revisions. These durations are not performance gates.
+- Run the final embedding smoke with prebake disabled, Memory storage and an
+  isolated writable/cache directory. Five real server/embedded-headless-client
+  suites pass 24/24 cases and 134 expectations: RefTypes, dynamic assemblies,
+  native transports, footsteps, sprite factories/GUI ownership/abandonment and
+  construction preview. Failed, timed-out, skipped and exception-delta counters
+  are zero; independent log validation accepts the aggregate and shutdown.
+  This checks live ownership/state behavior, not a fresh visual GPU capture.
+- Final documentation preparation passes 313/313 normative snippets, 159
+  evidence and 183 external-parser checks; 4,869/4,869 generated descriptions
+  are current. Source validation covers 411 Markdown entries. AI retrieval
+  passes 28 tasks and 67 checks, 100% success, MRR 0.930, within existing budgets.
+  Six snippet tests and 21 incoming ACM/Managed/CMake Python tests pass.
+  Aggregate contracts have four changes, two required dispositions and zero
+  missing. The embedding exception-safety audit covers 7,404 functions with
+  zero findings; native-message/predicate, C# style and version checks pass.
+  Embedding Python tests pass 62 cases and 33 subtests with 23 skips; localization
+  tests pass 15 cases. Rendered Jekyll/browser publication is not exercised.
+- Evidence is retained in the embedding workspace under
+  `engine-donor-integration/refresh-after-arcanum-2026-10-11/`. Safety references
+  and stashes remain. Published history is preserved; additional reconciliation
+  changes stay unstaged/uncommitted for owner review. No push, Authoring access,
+  donor-checkout change or protected operations-record edit is performed.
+
+## 2026-10-11 - Preserve resource-loading failure reasons in exceptions
+
+- Extend the same uncommitted `2026.1.28-dev` draft at published baseline
+  `5ef9334595f45522c8d580c25e22ed4556ab137b`. The preceding modular import and
+  Baker-ownership changes, history and safety snapshots remain intact.
+- Audit all four DataSource providers, mount/open dispatch, FileReader, image
+  import modules and nested FOFRM resolution. DAT tree failures now throw their
+  specific reason and archive context directly; reads preserve entry names,
+  decoder status, sizes and offsets. ZIP/embedded ZIP preserve minizip status
+  and distinguish tree, read and close failures. Cached-directory short reads
+  throw rather than masquerading as absence. Normal absent lookups still use
+  their existing optional result. Image import exceptions retain source path,
+  options, input size and the original cause through nested resolution.
+- FileReader failures retain byte position, requested size and buffer size;
+  bounds arithmetic avoids overflow. DAT decompression validates stream end,
+  checksum and exact output size, including empty output and overrun detection.
+  No additional loader logging is introduced; existing reporting boundaries
+  consume the exceptions. Reviewed resource-pack recovery/probe, model, font
+  and audio paths already distinguish their expected results or report errors.
+- Five diagnostic regressions fail against the preceding libraries. Final
+  native builds pass without compiler/linker warnings. Enabled ART/DAT Debug
+  suites pass 99,239 assertions in nine hex cases and 115,413 in ten square
+  cases, with ZIP enabled in the square fixture. Default Release suites pass
+  61,555 assertions in four cases with the optional modules disabled. An initial
+  square failure was an expected pack-name slash in the test, corrected before
+  the passing final rerun. These focused runs are not a full-suite or
+  performance qualification. Embedded malformed-payload coverage is limited
+  to code review and compilation; ZIP fixtures exercise the shared error shapes.
+- A real Baker run bakes fourteen valid synthetic inputs. Corrupt DAT and
+  TGA/FOFRM fixtures exit 1 with archive or nested image context preserved;
+  the valid fixture exits 0. Initial smoke-fixture path/section errors are
+  retained separately as preflight logs. The embedding's normal incremental
+  BakeResources run completes in 26.064 seconds. No new GUI behavior is claimed.
+- Reconcile paired owning guides, migration notes, image-format model/source
+  anchors, translations and dispositions. Ten image-format documentation tests,
+  411 Markdown entries, version/migration validation and 312/312 normative
+  snippets pass, including 159 evidence and 183 external-parser checks.
+  Aggregate contracts report four changes across seventeen domains, two required
+  dispositions and zero missing. Exception-safety audit covers 7,401 functions
+  with zero errors/warnings; fixed-message, verification-predicate and formatting
+  checks pass. Site/search and AI delivery were regenerated within the existing
+  byte budget. Rendered Jekyll/browser validation and publication were not run.
+- Evidence is retained under the embedding workspace's
+  `engine-donor-integration/diagnostics-2026-10-11/`; reusable regression tests
+  remain in Engine. No commit, push, index staging, gitlink change, Authoring,
+  donor checkout, protected operations record or gameplay change was performed.
+
+## 2026-10-11 - Restore Arcanum import in the modular loaders
+
+- Baseline is published `5ef9334595f45522c8d580c25e22ed4556ab137b`
+  (`2026.1.27-dev`); the uncommitted draft is `2026.1.28-dev`. Preserve the
+  published v27 notes and the preceding Baker-ownership evidence below.
+- Restore selected changes from the deferred snapshot in `DataSource-Dat`,
+  `ImageBaker-Art` and `ImageBaker-Fofrm`. Keep optional gates/defaults,
+  generic `ImageImport::Context::Resolve`, native callback signatures and the
+  coordinator. DAT 2.0 remains on its existing path; DAT 1.0 is not added.
+- Reconcile the image guide, root-motion distinction, data-source reference,
+  interface, generated references/model, Russian descriptions and mirrors.
+  Document `Alias`, explicit `r=` rotation, unchanged `$r3`, palette fallback,
+  bounded decoding and rebake/cache migration. Sprite container v2, network
+  marker `0.0.70`, script ABI and persistence formats remain unchanged.
+- Engine-source regressions fail against the original libraries for DAT 2.1,
+  ART decoding and generic Alias. Final Windows Debug image/data-source suites
+  pass 61,796 assertions with hex geometry and 61,955 with square geometry,
+  with ART/DAT enabled. Release disabled-module and generic-loader checks pass.
+  A custom loader uses its own extension rather than overriding disabled ART.
+- The embedding Release run initially passes 546/548 cases; failures are the
+  custom-extension fixture and two sleep timing assertions on the loaded host.
+  After fixture correction, all affected cases pass in a four-case rerun with
+  61,410 assertions. This is correctness coverage, not performance qualification
+  or a claim that the initial aggregate run passed. Final builds have no warnings.
+- A separate synthetic hex pack bakes fourteen files, including compressed
+  DAT 2.1 and eight single-rotation aliases. An ordinary Windows client renders
+  both frames with ten fixed hot spots and expected red/blue borders; full
+  1024x768 captures were inspected. Controlled-process cleanup follows capture.
+  This is local embedding acceptance, not platform/publication qualification.
+- Focused documentation tests pass 18 cases; snippets pass 312/312 normative,
+  159 evidence and 183 external-parser checks. Source validation passes 411
+  Markdown entries. Exact-baseline aggregate contracts have three changes,
+  one required disposition and zero missing; historical dispositions remain.
+- Translation coverage is current at 194/194. Site/search data and AI delivery
+  are current: 398 public documents and 2,278,054 complete-context bytes under
+  the existing 2,293,760-byte budget. Version/migration and formatting checks pass;
+  the embedding exception-safety audit passes 7,400 functions without findings.
+  Rendered Jekyll/browser checks and publication were not performed.
+- No commit, push, history rewrite, donor checkout modification or source-asset
+  import was performed. Retain the deferred snapshot and prior safety stashes.
+
+## 2026-10-11 - Reconcile TLA ACM with published Managed RefType ownership
+
+- Starting TLA revision: `5977ce9161224170bfee3fc16761a61bf0491f9a`; its
+  recorded Engine pin and clean local master are
+  `27b8d95fc34635b0e1d1da062dd3efb79d09b330` (`2026.1.29-dev`, ACM).
+  Fetch Engine upstream master
+  `3a366761742204d15aa86726cc23168c9b7ec81d` (`2026.1.29-dev`, Managed).
+  Retain the original local commit under
+  `safety/tla-acm-before-update-20261011` while preparing its rebase onto the
+  published tip. No remote publication is authorized.
+- Audit every incoming native source, C# lease, generator, regression fixture
+  and documentation change from common baseline
+  `6a1f03880a84e097cfedee6d331178aad89e390d`. Preserve factory adoption,
+  borrowed-wrapper acquisition, disposal validation, engine-thread cleanup,
+  shutdown ownership, and ABI generator identity 9. The upstream runtime
+  compatibility marker advances from `0.0.70` to `0.0.71`.
+- Native ACM sources and tests combine without conflicts. Reconcile both
+  report histories and all contract dispositions; retain the published Managed
+  entry as `2026.1.29-dev` and recalculate the local ACM entry to
+  `2026.1.30-dev` from that published base. ACM adds no further compatibility
+  marker, storage, resource-format or host/updater ABI change. Refresh the
+  reviewed Russian changelog source hash.
+- TLA remains AngelScript-only (`FO_MANAGED_SCRIPTING=OFF`), with the ACM
+  importer enabled and both map grid selectors `Dynamic`. No gameplay source,
+  authored resource or project configuration migration is required. Rebuild
+  matching client/server/baker components and rebake role metadata for the
+  upstream compatibility boundary; no persisted-data conversion is required.
+- Validate the reconciled source before completing the rebase: TLA's full
+  `Verify :: All` passes all native targets, 578 native cases
+  (729026 assertions), 106 script harness cases, Python tooling,
+  validators and formatters. Focused Managed lifetime/version/audio/CMake
+  checks pass 60 tests and 71 subtests. Source version and generated
+  audio/CMake checks pass; the previous-pin-to-working-source aggregate diff
+  reports one compatibility change across 17 domains, one required disposition
+  and zero missing dispositions.
+- Preserve the initial unsuccessful attempt and its environmental limit:
+  The first full native attempt passes 577 cases and fails one existing
+  sleep timing bound (17.3 ms versus less than 8 ms) on a saturated host;
+  the isolated unchanged Threading case passes all 11 assertions, followed
+  by this clean full-chain retry. The original failing log is retained.
+- Documentation preparation and validation pass 411 source pages, 312
+  normative snippets, 159 evidence samples and 183 external-parser checks;
+  all 4864 translated descriptions are current. Build the rendered site from
+  the reconciled sources: artifact validation passes 592 routes, 41 static
+  endpoints and 85620 local references; the browser audit passes 1776 page
+  checks, 15 interaction profiles and 23 screenshots, with zero findings.
+  Inspect the Russian 200-percent zoom screenshot and the current version
+  badge. Final-commit builds and the ordinary isolated player runtime smoke
+  are verified by the embedding checkout after rebase completion; the checks
+  recorded here are source validation before that commit exists.
+
+## 2026-10-11 - Reconcile IDisposable ownership with published master 28
+
+- Audit all three published steps from `16f1608794eafeb6c05001b997071105dbc403b9`
+  through `6a1f03880a84e097cfedee6d331178aad89e390d`, including optional
+  data-source/image/database modules, the final CMake baking fingerprint,
+  exclusive output locks, their tests and owning guides. Rebase the unpublished
+  managed RefType work from `fa5044e813941f58f2d2a29be7afcdc5de4560d8` onto
+  published master as `31bcda624790e7a5e5f9c05e7aaea78a18bb2d40`.
+  Advance the local draft to `2026.1.29-dev`; retain published migration entries
+  26, 27 and 28, all older entries and published ancestry.
+- Reconcile the managed guide and its Russian translation with generated
+  constructors, private factory adapters and automatic native ownership.
+  Factory/PassOwnership results adopt one reference; borrowed results,
+  callbacks and collection elements acquire one reference per wrapper.
+  Standard IDisposable composes an existing native Dispose action with lease
+  release. Finalizers enqueue engine-thread cleanup; shutdown closes all live
+  leases before native teardown. Native and AngelScript signatures are retained.
+  Record managed ABI identity 9 and runtime compatibility 70 -> 71 in the current
+  migration note; regenerate the API, human references and public index.
+- Preserve published contract dispositions and append the exact reviewed
+  runtime 70 -> 71 digest pair. The complete old-local/current diff passes
+  72 changes across seventeen domains with 57 required dispositions and none
+  missing. Published-master/current passes one runtime change with its one
+  required disposition and none missing. Version and temporary-compatibility
+  checks pass; the latter finds eight markers in five groups without errors.
+- Build fresh Windows x64/MSVC managed embedding targets for Baker, unit tests,
+  server, client and Mapper. The fresh native unit suite passes 548 cases and
+  664140 assertions, including a separate successful precise-sleep rerun after
+  native compilation. Engine-owned process exclusion passes two cases; its
+  AngelScript AS_DEBUG-only case is skipped in this managed configuration.
+  Owner exit, forced contenders, unchanged outputs and successful retry are
+  checked using the fresh native executables.
+- The selected engine and embedding Python suites pass 176 cases and 78
+  subtests; 23 POSIX-only process fixtures are skipped. Additional documentation,
+  shutdown and callback-root suites pass 36 cases and 13 subtests, with nine
+  Linux/GCC/Clang runtime probes skipped. Engine-owned managed lifetime fixtures
+  include 28 direct scenarios for leases, automatic acquisition/adoption,
+  native Dispose, GC, queue draining and shutdown. These reusable tests and
+  source implementations own the contract; embedding checks are integration
+  evidence only.
+- Prepare fifteen documentation outputs in dependency order and validate
+  411 Markdown entries, 311 normative snippets, 159 evidence entries, 183
+  external parser checks and 4856 description translations. Site/search/routes
+  and AI delivery pass; retrieval retains 28 tasks, 67 checks, 100% success and
+  0.930 MRR. Ruby/Jekyll and Node are unavailable locally, so rendered-site
+  acceptance is not claimed. Public example freshness passes all four current
+  source-ready repositories; their private/publication status is unchanged.
+- Complete fresh embedding baking with all three managed roles and analyzers
+  retained: 33 packs, 26952 inputs, 19040 submitted outputs and 662 maps.
+  Dialog composition reports no errors. A following incremental bake passes
+  with zero changed files and zero deletions; all 81 submitted files are
+  unchanged. Native/resource provenance remains the original compiled embedding
+  hash `e22f1edc915b545778f8c883dc77ab6f968b01a4` and Engine source revision
+  `31bcda624790e7a5e5f9c05e7aaea78a18bb2d40`. A concurrent process amends only
+  plans, this report and the embedding gitlink to Engine
+  `c6e40f1b682efbc9cc2d287ff4607e6616917a0f`; compare both ranges and confirm
+  identical native/tool/config/version sources rather than rebuilding solely
+  for documentary commit metadata.
+- Correct an embedding multi-frame probe that was initially routed through
+  single-frame cleanup, rebake all managed roles with analyzers, and repeat the
+  complete selected actual Mono run. All five suites pass 22 cases and 133
+  expectations, with zero failures, timeouts, skips or global exception delta.
+  The full native-log checker passes, including destruction/shutdown markers.
+  Integration evidence covers automatic borrowed FogLayer retention across
+  frames, public IDisposable/native Dispose composition, repeated cleanup,
+  rejected access after disposal, private ownership adapters, sprite-holder
+  factories, footsteps, construction consumers, RefType properties, dynamic
+  assemblies and native-to-managed transport conditions. The final incremental
+  bake again changes no files and deletes none. The corrected embedding probe
+  is a working-tree test-only change; native Engine sources remain identical
+  to the compiled revision. No publication, real database migration,
+  AngelScript, other renderer or non-Windows platform qualification is implied.
+
+## 2026-10-11 - Move the optional ACM importer into Engine
+
+- Fast-forward the clean embedding Engine from published
+  `1f56dafc48504da2e2b12736a7bf5fbf10b45de2` (`2026.1.26-dev`) to
+  `6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.28-dev`). Audit the
+  incoming output-lock, diagnostic-lock, hash ownership and normalization
+  source/tests; preserve their published migration records. Ignore the two
+  generated lock files in TLA. The uncommitted ACM block is `2026.1.29-dev`.
+- Move the per-instance decoder, loader and existing regression fixtures into
+  unconditional Engine source inventories with guarded contents. Add
+  `FO_AUDIO_ACM`, OFF by default and marked for the baking fingerprint; TLA
+  enables it and removes its duplicate sources and hook registration. Preserve
+  authored paths, PCM arithmetic, sample rates and the Fallout channel convention.
+  No save, network, resource-container or host/runtime ABI conversion is required.
+- Reconcile the owning audio/build/source-tree guides, English/Russian changelog,
+  stable description translations and generated audio/CMake models. The exact
+  published-base/current contract diff passes six changes across seventeen
+  domains, three required dispositions and none missing; native API has no delta.
+  CMake structural fixtures now account for 58 options. Focused documentation
+  tests pass after updating the previous 57-option expectation.
+- Reconfigure and complete TLA's authoritative `Verify :: All`: full resource bake,
+  all native targets, 578 native cases / 729001 assertions, 106/106 script cases,
+  156 Python tests / 82 subtests, quality/nullability gates and formatters. Native
+  builds and script compilation finish without warnings. A separate native
+  `FO_AUDIO_ACM=0` binary passes 186 AudioBaker assertions, including explicit
+  collection/targeted ACM rejection and unchanged WAV/Ogg behavior.
+- Compare every shipped ACM-derived payload before/after the full bake: all 1385
+  files are byte-identical (1361 mono effects, 24 stereo tracks, all 22050 Hz).
+  The full bake processes 19 packs, 33978 inputs and 18672 submitted outputs;
+  Audio counters record 1518 encodes and 21 native-Ogg passthroughs. Preserve the
+  full-bake report before incremental startup runs overwrite the canonical report.
+- Rendered-site validation exposes three duplicate English fragment IDs from
+  published version 26: explicit anchors repeat automatic heading IDs in project
+  configuration and persistence. Remove only the repeated anchors, retain all
+  public fragment addresses and Russian anchors, and refresh translation hashes.
+- Source documentation validation passes 411 Markdown entries; preparation checks
+  312 normative snippets, 159 evidence snippets and 183 external parser cases.
+  All 4864 generated description translations are current. AI delivery contains
+  398 public documents and 2277047 full-context bytes; retrieval retains 28 tasks,
+  67 checks, 100% success and 0.930 MRR.
+- Render the unchanged source, layout and navigation inputs through the pinned
+  Ruby/GitHub Pages toolchain on a verified Linux mirror to avoid slow WSL/Windows
+  filesystem traversal. All 1514 input hashes match the current checkout. Import
+  the rendered tree and current public endpoints into the canonical ignored site
+  directory. Artifact validation passes 592 routes, 41 static endpoints and 85616
+  local references. Earlier incomplete-mirror attempts fail their gates and are
+  retained as failed evidence, not rendered-site acceptance.
+- The final pinned Chromium audit passes all 1776 rendered page checks across
+  desktop, mobile and 200-percent profiles, fifteen interaction profiles and
+  twenty-three screenshots, with zero findings.
+  Review the retained Russian 200-percent view and the normal TLA player
+  screenshot; navigation, readable text, current version and the ordinary map
+  state are visible.
+- Isolated normal-client runs register a player, enter the ordinary map and move.
+  With music muted, the client's own active output-device session has a nonzero
+  peak during ordinary ACM ambience; user cache hashes remain unchanged. All three
+  runs record script/rendering overruns on the saturated shared host, including
+  the final 30-FPS run. Their functional/audio evidence does not certify a
+  warning-free or performance result; the diagnostic gate remains failed.
+
 ## 2026-10-11 - Restore Baker ownership on updated master
 
 - Integrate published `cfa468f17bd5dff82cebc6f05b568620fc34163c` through
@@ -509,6 +910,56 @@ This report records source-grounded documentation verification passes for the en
   `_Proto` and a nested typed reference. Repeat payout reconciliation remains inert; shutdown is graceful.
   These are embedding integration results, not a production database restore, website deployment or
   qualification of additional native runtime platforms. Local changes and safety stashes remain uncommitted.
+
+## 2026-10-09 - Last Frontier lf-6 revision reconciliation
+
+- Preserve old Engine tip `2d8c0e2126ce1e8988bfc8ffcaa274dbe2dcd87d` in
+  `safety/lf6-before-update-20261009`. Rebase its one unpublished RefType factory
+  fix onto published `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`; the resulting
+  tip is `5f5e2df9f03e3b977dfd1181af5f8d4cf608e768`. Published ancestry remains
+  intact, and the native fix and its tests are unchanged by replay.
+- Audit both incoming commits, including every changed source/tool/test path:
+  failed SDL_GPU readback recovery and shared documentation metadata. Rendering
+  retains completed masks, discards failed readers, retries, and preserves redraws
+  received while a reader is pending. Documentation consumers use the routing
+  and translation-status sections of `docs-manifest.json`; removed standalone
+  reports remain removed. Existing thresholds, successful pixels, native API,
+  CMake/settings, network compatibility, ABI, resources and saves retain their
+  semantics. No project caller or database migration is required.
+- Keep both incoming owning guides and translations. Freeze the published
+  `Current` changelog entry as `2026.1.15-dev`; record the replayed fix as
+  `2026.1.16-dev`, dated 2026-10-09 UTC. Regenerate API/reference/public index,
+  snippets, localization, site/search/routes, retrieval evaluation and AI delivery
+  with their owners. All 17 current contract domains compare with zero changes
+  and zero required dispositions against the preserved old models.
+- The version-parser suite passes 11 cases; aggregate source documentation
+  validation passes 410 Markdown entries. Twenty focused documentation cases
+  pass, covering shared metadata ownership, version-independent delivery,
+  search comment filtering, routing consumers and managed guides. Localization
+  is current for all 194 translations; site, API and AI delivery checks pass.
+  Snippets validate 309 normative and 159 evidence entries with 183 external
+  parser checks. The publication history check passes the one replayed step.
+- A fresh RelWithDebInfo native unit build succeeds. The affected
+  `ModelSpriteHitMask*` and `ManagedScriptBaker` cases pass all 506 assertions
+  in three cases, exercising failed readback recovery, pending redraws and
+  factory-backed constructor generation.
+- Fresh Windows client, headless server and baker targets build successfully.
+  Resource baking completes with exit 0 using the embedding project's pinned
+  .NET SDK 10.0.301. The first attempt selected the system SDK 10.0.102 and
+  failed SDK resolution; the retry selects the already installed user-local
+  SDK through process-local PATH and DOTNET_ROOT. Keep the original failed
+  attempt separate from the successful bake. Managed script compilation takes
+  16 minutes 43 seconds; the complete successful bake takes 22 minutes 56 seconds.
+- The embedding project's exact native-map-sprite factory and construction
+  preview parity regressions pass in one standard embedded-client worker:
+  two cases, six runner assertions, zero failures, timeouts, skips or exception
+  delta. The process exits 0 after its parallel summary and normal server
+  shutdown; no process from this checkout remains. The disabled analytics
+  diagnostic is the test profile's expected configuration notice.
+- Runtime evidence covers this Windows embedded-client integration. Readback
+  failure and pending-redraw regressions use the native test renderer; physical
+  GPU fault injection and other platform qualification are outside this pass.
+  Earlier runtime results remain historical evidence. No publication is requested.
 
 ## 2026-10-06 - Complete the paused checked-arithmetic rebase
 
@@ -10838,3 +11289,188 @@ Completed local validation:
 - Regenerated source models/references, owned visual catalogs, snippets, description translations, inventory, localization, site/search/routes, retrieval and AI delivery using their owning generators. Adopted upstream `Docs/Site` paths, Engine version `2026.1.13-dev` and its reviewed 2228224-byte bundle budget. Both sides of previous verification history are retained. Locale source hashes reflect the reviewed merged English/Russian prose.
 - All 31 generator freshness checks pass; standalone validation passes 412 Markdown entries. Generated descriptions are 4843/4843 current, page translations 195/195, and snippets 310 normative plus 160 evidence with 183 external-parser requirements. Retrieval passes 67/67 checks over 28 tasks, MRR 0.930. Aggregate contract diff against the exact fetched master passes: five additive experimental settings and one inventory-scope fingerprint change, with its exact disposition recorded; the other sixteen domains match master.
 - Updated only snapshot expectations affected by the retained branch additions. Selected Python suites and embedding-project native/build/bake checks are running separately; no success is claimed before their final verdicts. This branch integration is not a master publication or release cut. No push, production/site publication, visual acceptance, performance qualification, TSan or additional-platform result is claimed.
+
+## 2026-10-10 — lf-6 Engine update verification
+
+- Baseline: `5f5e2df9f03e3b977dfd1181af5f8d4cf608e768` (`2026.1.16-dev`).
+  Published target: `16f1608794eafeb6c05001b997071105dbc403b9` (`2026.1.25-dev`).
+  The unpublished native RefType factory fix was rebased onto that target as
+  `2026.1.26-dev`; current HEAD is `cb2e62a4effda4591dbe656df80d93e027d2b076`.
+  An external unpublished amend included the previous lf-6 verification entry;
+  native sources, BuildTools, public documentation and VERSION did not change.
+- Reviewed all ten incoming commits: startup defaults, managed runtime READY
+  validation, explicit document migration actions and original-document context,
+  comments, lazy SVG browser readiness, managed collection writeback/proxy
+  lifetimes, client chunks and server grid selectors, example configuration,
+  current-display queries and attached-critter teardown. Reconciled generated
+  contracts in owner order and retained published bilingual version records.
+- Exact aggregate contract comparison against the safety baseline passes:
+  37 changes across 17 domains, 32 required dispositions and zero missing.
+  The ledger retains historical reviews and adds reviews for this digest pair,
+  including marker 69, migration grammar, grid selector replacement and the
+  additive display-query inventory change.
+- Documentation preparation with real external shell parsers passed: 310
+  normative snippets, 159 evidence snippets, 183 external checks, 4843 translated
+  descriptions, 28 AI tasks and 67 retrieval checks (100%, MRR 0.930).
+  Documentation Python fixtures passed 53 cases with one optional skip and
+  51 subtests; focused runtime/codegen/version fixtures passed 564 cases with
+  five platform/optional skips and 62 subtests. GCC/Clang native probes were
+  not qualified by the MSVC configuration.
+- The configured Windows x64/MSVC managed-backend native suite passed 553 cases
+  and 667331 assertions. Two explicit `ClientMapFieldAccessCost` runs passed
+  ten assertions each; the server grid benchmark passed 1665 assertions over
+  all nine selector combinations and five measurement series. Checksums and
+  functional results match. These workload measurements are not an FPS claim.
+- Embedding evidence only: Last Frontier was updated from root `7691416c8419`
+  to `fb8d31517b8e0ede5f734df50651c2f95212fea1` (`0.3.1555`), preserving its
+  unpublished construction fix. Both published tips remain ancestors. Native
+  client, graphical/headless servers, Mapper and Baker built successfully;
+  the final root build hash triggered a complete rebake. The 22-case filtered
+  gameplay run passed all six suites with zero skips, timeouts, failures or new
+  global exceptions, followed by normal shutdown. The separate two-process
+  SQLite fixture restored legacy Bar identities and observed a committed
+  canonical `_Proto` and route before fixture cleanup; both processes stopped
+  normally. No valuable database was used.
+- The rendered Windows DevTest entry and Options screen were captured and
+  visually reviewed: map, actors, HUD and resolution choices render correctly.
+  The adapter stopped only its owned diagnostic process; its return code 1 is
+  diagnostic cleanup, not a gameplay-test exit. Evidence is retained under the
+  embedding workspace `Workspace/Update-lf6-2026-10-10/` and does not replace
+  reusable Engine fixtures or owning documentation.
+- Safety refs and stashes are retained. This run does not qualify AngelScript,
+  other host compilers/platforms, multiple displays, production deployment,
+  browser rendering or FPS. Ruby/Jekyll and Node/browser tooling were unavailable
+  locally; source/site/route preparation and browser fixtures passed, while a
+  fresh rendered documentation-site/browser audit was not executed. No new
+  standalone commit, push, release or site publication was performed.
+
+## 2026-10-10 - Preserve prepared history during the Ops joint refresh
+
+- Preserve all thirteen original owner files in named safety evidence. Current instructions preserve published history and require rebasing unpublished work; the older blanket-ban preparation below remains historical evidence. Incoming authored instructions take precedence.
+- Retain six former delivery projections in safety copies for regeneration from current source; do not overlay old generated outputs onto incoming source.
+- This entry records source reconciliation and checkout preservation only. Full incoming source, documentation generation, build, Bake, saved-world and runtime qualification remain open.
+
+
+## 2026-10-06 - Owner-authorized immutable-history policy reconciliation
+
+- This prepared working-tree scope is separate from the frozen 17-path incoming
+  `eecc6320a5eba6f14c96de0448fb9984a66fd442` to
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6` audit recorded below. The embedding
+  owner explicitly requires every part of a branch with a remote tip to remain
+  immutable, including its unpublished commits. Reconcile the conflicting
+  mandatory-rebase wording in `AGENTS.md`, both versioning locales and both
+  documentation-maintenance locales. Require fast-forward or a normal merge,
+  remote-tip ancestry before push, and prohibit rebase/reset/amend, force-push
+  and remote branch deletion for such a branch. Apply the history rule
+  independently to Engine, embedding-project histories and the root Engine
+  gitlink. Earlier dated rebase records remain historical evidence.
+- Preserve exact private preimages before writing. The existing
+  `test_docs_governance_foundations.py` policy case fails on the corrected docs
+  for both locales because it requires the obsolete mandatory-rebase phrases.
+  Retain that exit-1 receipt and both causal assertion failures. Change only its
+  related policy expectations to the owner's immutable-history, merge and
+  ancestry requirements; all five governance cases then pass in 0.008 seconds.
+  No implementation, runtime or native-test behavior is changed by this scope.
+- Review the two EN/RU paragraph pairs and refresh their normalized source-hash
+  provenance. Regenerate snippets, complete translation status, site/search/
+  routes, retrieval evaluation and AI delivery through their owners. Initial
+  downstream AI attempts overlap the site capture; preserve those receipts and
+  exclude them from acceptance. A subsequent ordered evaluation/delivery repeat
+  starts after site generation completes, and fresh read-only checks pass for
+  every generated owner. Localization remains 194/194; snippet freshness remains
+  309 normative and 159 evidence fences. Retrieval remains 28 tasks / 67 checks,
+  100% success and 0.930 MRR. Complete AI delivery is 2,204,513 bytes within the
+  unchanged 2,228,224-byte limit. The enforced comparison against frozen
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6` has zero changes across seventeen
+  models; whitespace validation passes.
+- The embedding operator records the final edited-record link/aggregate check,
+  complete prepared diff and physical old/new digests separately after this
+  entry. The 183 external snippet parser checks, broad documentation fixture
+  suite, native/build/bake/game/browser/package work and remote CI are not run.
+  G0 incident `INC-20261003-1` stays open. The Engine commit remains frozen at
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6`; this owner-approved preparation
+  performs no commit, push or additional version bump. A future publication
+  must satisfy the versioning owner's exact new-step requirements. It is not
+  runtime or production acceptance.
+
+
+## 2026-10-06 - Ops source and documentation audit for 2026.1.12-dev
+
+- Audit the complete 17-path incoming Engine range
+  `eecc6320a5eba6f14c96de0448fb9984a66fd442` to
+  `f450c3bb96b7140d006341e9a2a5be51513f11d6`, including the full structural
+  changes in both search indexes. The embedding project reports a completed
+  normal merge at `e1d0de40f9ebf89f056bbd9bf6568b90219a5148` (version 1507),
+  preserving its old `f53a4853a3590c2eacf158a650383d73bddc3bc3` and incoming
+  `06bdd27b940ade1677575b97a82c259b21218910` histories. Read the complete Engine
+  maintainer instructions and the owning maintenance, versioning and upgrade
+  contracts. The embedding owner's immutable-history instruction requires normal
+  merges for a branch with a remote tip; this audit performs no history rewrite.
+- The Ubuntu `engine-update` CI job now installs `python3-pytest` and runs
+  `BuildTools/tests/test_codegen_default_args.py` before the existing version
+  gates. The macro-header fixture supplies fixed Engine version/revision inputs
+  and verifies their macros. All eight existing regression cases pass locally;
+  this is a fresh local Python result, not a new remote CI result. Production
+  `BuildTools/codegen.py` is byte-identical across the range. The baker-helper
+  change only condenses its cache-lifetime comment; executable declarations and
+  statements are unchanged after removing whole-line comments. No native test
+  or cache-cleanup runtime qualification is claimed.
+- The version advances once from `2026.1.11-dev` to `2026.1.12-dev`, with paired
+  English/Russian release and migration notes. Compatibility remains `0.0.68`;
+  this range introduces no API, ABI, wire, resource, persisted-data or caller
+  migration. Reconfigure and rebuild consumers to obtain the new native
+  version/revision identity when native execution is permitted. Source-owned
+  testing/changelog changes are reflected in the snippet, translation, site,
+  route, search and AI-delivery projections; no additional model delta is found.
+- Ten lightweight commands finish with exit 0 between 15:50:14 and
+  15:52:02 UTC on the exact incoming checkout: the eight-case codegen pytest
+  module; the one-step committed version/history check; complete localization;
+  snippet freshness without external parsers; site/search/route freshness;
+  AI retrieval; AI delivery; the enforced contract-model comparison against the
+  preceding Engine revision; complete standalone documentation validation; and
+  incoming-range whitespace validation. Localization is current for 194/194
+  documents. Snippet freshness covers 309 normative and 159 evidence fences.
+  Site delivery covers 194 English and 194 Russian search documents and 398
+  routes. Retrieval passes 28 tasks and 67 checks at 100% success and 0.930 MRR.
+  AI delivery covers 398 public documents and 2,203,523 full-context bytes within
+  the unchanged 2,228,224-byte limit. Aggregate validation passes 410 Markdown
+  entries. The seventeen-model comparison reports zero changes and no required
+  dispositions; it does not assert an eighteen-model result.
+- These ten results precede this dated-record addition. The entry preserves the
+  earlier report byte-for-byte below it; the embedding operator separately
+  checks the edited record's links and whitespace. Private evidence retains
+  command PID/start ticks, actual UTC intervals, exits, stream hashes, code pins
+  and complete path coverage. One initial auxiliary read receipt captured a
+  null exit because of an EOF/wait race; the original receipt is retained and a
+  bounded reaped repeat has exit 0 with an identical stream hash. Acceptance
+  check receipts have concrete exit 0 values.
+- The 183 external snippet parser checks, broad documentation fixture suite,
+  native builds/tests, bake, game runtime, browser rendering, packages and new
+  remote CI are not executed in this pass. The embedding host incident
+  `INC-20261003-1` keeps its G0 restriction open. This is source/documentation
+  evidence and does not qualify runtime or production deployment. No Engine
+  commit, push or additional version bump is performed for this record.
+
+
+## 2026-10-06 — Prepared Engine 1.13 integration documentation verification
+
+- Frozen incoming audit: f450c3bb96b7140d006341e9a2a5be51513f11d6 to 671a19e60f498534e9cf38c6cfbc0dfc48c14fb9, one commit and all fifteen changed paths. The joint project root ea10aec0ba5c973fe0e37ceb9a02e20fd50f016c selects project 1509 and the exact Engine target. This record was prepared as a private post-cutoff proposal and then adopted into the owner-review worktree by the parent. It does not constitute an Engine commit or publication.
+- Both Managed C# locales and their dated 2026.1.13-dev notes preserve the distinction between MSBuild Assemblies/<Target>Assemblies/ staging and published Assemblies/Assemblies-<target>/ resources. Primary baker, loader, packaging and cleanup source ranges were read. Complete Source and BuildTools trees are identical across the incoming range. Compatibility remains 0.0.68; this Engine documentation commit requires no caller, configuration or saved-data migration.
+- Five incoming checks passed: four Managed documentation cases, five preserved owner governance cases, exact one-step Engine version/history validation, whitespace validation and zero contract changes across seventeen generator-supported models. This is not an eighteen-domain result.
+- Separate reconciliation preserves the seven authored owner overlays and regenerates snippets, locale status, site/search/routes, AI evaluation and AI delivery in dependency order on the 1.13 base. Five freshness commands passed before this record was appended: 194/194 current translations, 398 public documents, 2,205,752/2,228,224 full-context bytes. No structured model regeneration was needed because its inputs were unchanged. Prior generated files from the retained safety stash were not applied.
+- This internal record was appended after the checked candidate and after source cutoff. Primary inventory classifies it visibility=internal and translation=not-required; public/current filters exclude it from snippet, site and AI delivery inputs. The parent checks freshness after applying this record; its command receipts are retained separately from the original worker checks. The original worker did not run post-append freshness checks.
+- The snippet checker reports 309 normative and 159 evidence snippets; its 183 external-parser obligations were not executed. Native/managed compilation, package/runtime acceptance, full aggregate source validation, browser/visual/Pages publication and production acceptance were not performed. G0 INC-20261003-1 remains open. Initial private generation attempts failed on omitted Markdown inputs and are retained as failures; only the final ordered replay and freshness receipts support generated-output acceptance.
+## 2026-10-11 — Bounded map observation and upstream reconciliation
+
+- Reconcile the complete incoming range `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9..6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.13-dev..2026.1.28-dev`) before adding bounded views as `2026.1.29-dev`. The incoming published history remains intact. Retain the named safety snapshot while integration validation is in progress.
+- Review the incoming metadata/document migrations, managed collection proxies and runtime readiness, settings defaults, chunked client fields and selectable server grids, display queries, attachment teardown, extracted archive/image/database components, codec boundary, baking configuration fingerprint and exclusive output/diagnostic locks against their source/tests and owning guides. Existing component selections and migration decisions remain in force; bounded observation adds no persisted-data conversion.
+- Resolve the lifetime-fixture overlap by retaining its new `load_map` and optional-size inputs. Preserve the chunked `MapView` field type and current grid selectors. Advance the bounded-view wire marker from the fetched `0.0.70` to `0.0.71`; keep updater, host/runtime ABI and resource-schema identifiers unchanged.
+- The server/runtime and rendering guides, dated bilingual changelog, source-owned experimental inventory, API model/references, reviewed Russian descriptions and public index describe the added `Player.ViewMapArea` and `Player.ReturnFromViewMap`. Full detached `ViewMap` retains its meaning. Camera input remains embedding-owned; visibility bounds and subject filtering remain server-owned, with an opaque exterior and overridable inward fog edge.
+- Regenerate models and references before snippets, EN/RU status, navigation/search/routes, AI evaluation and AI delivery. Keep outputs retired from tracking by the incoming delivery migration ignored. Aggregate comparison against `6a1f03880a` passes four changes in seventeen domains with both required dispositions present. Version/migration checks accept `2026.1.29-dev`; standalone documentation validation passes 411 Markdown entries. Native and embedding-runtime acceptance are recorded after the corresponding builds and bakes complete.
+- No push, release/tag creation, site publication or production qualification is implied by this source integration.
+- Native client, server, headless server, baker and unit-test targets build successfully against the reconciled sources. `BoundedMapSpectatorsTrackVisibility` and `MapViewItemHitTestingCanSelectTransparentEggOccluders` pass 142 assertions across two test cases. The AngelScript-only `ServerMiscScriptOperations` fixture is not registered in the current Managed configuration and is not counted as API execution evidence.
+
+## 2026-10-11 — Bounded view rebase onto Managed ownership and optional ACM
+
+- Rebase the unpublished bounded-view commit onto `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`), preserving the published Managed RefType and optional ACM histories. Recalculate the local version to `2026.1.31-dev` and its distinct wire compatibility marker to `0.0.72`.
+- Regenerate API/reference/public indexes and bind the bounded-view dispositions to the current upstream model digests. The optional ACM selection remains project-controlled and OFF by default; Managed wrappers use the upstream automatic lifetime and IDisposable contract. Integration validation follows in the embedding project plan; earlier results above remain evidence of their exact earlier revisions.

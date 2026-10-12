@@ -605,6 +605,7 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*;
+static auto BoxNativeMethodReturnValue(ptr<const ManagedScriptBackend> backend, const MethodDesc& method, bool is_factory, void* data, const DataAccessor* accessor) -> MonoObject*;
 
 // Event dispatch bridge
 static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> dst, ptr<const DataAccessor> accessor);
@@ -629,7 +630,7 @@ static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*;
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*;
 static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context);
-static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*;
+static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr, bool adopt_reference = false) -> MonoObject*;
 static auto CreateDynamicRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> MonoObject*;
 static auto CreateRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*;
 static auto CreateDynamicRefTypeFromManaged(ptr<ManagedScriptBackend> backend, const BaseTypeDesc& base_type, MonoObject* value) -> refcount_nptr<DynamicRefTypeInstance>;
@@ -715,7 +716,7 @@ static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<E
 
 // Extraction and hash primitives
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*;
-static auto ExtractRefPtr(MonoObject* obj) -> void*;
+static auto ExtractRefPtr(ptr<const ManagedScriptBackend> backend, MonoObject* obj) -> void*;
 static auto ExtractNativeHstring(MonoObject* obj) -> hstring;
 static auto ExtractNativeAnyText(MonoObject* obj) -> string;
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring;
@@ -1029,6 +1030,8 @@ struct ManagedWrapperClassEntry
 {
     nptr<MonoClass> Class {};
     nptr<MonoMethod> PointerCtor {};
+    nptr<MonoMethod> AdoptNativeReference {};
+    nptr<MonoMethod> AcquireNativeReference {};
 };
 
 struct ManagedDynamicFieldAccessors
@@ -4402,7 +4405,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
         auto get_result = [result_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(result_handle)); };
 
         if (method->Ret) {
-            MonoObject* ret = BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
+            MonoObject* ret = BoxNativeMethodReturnValue(backend, *method, is_ref_type_factory, ret_data, call.Accessor.get());
             mono_array_setref(get_result(), result_index, ret);
             result_index++;
         }
@@ -4426,7 +4429,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
         return nullptr;
     }
 
-    return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
+    return BoxNativeMethodReturnValue(backend, *method, is_ref_type_factory, ret_data, call.Accessor.get());
 }
 
 static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*
@@ -5577,6 +5580,15 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
     });
 }
 
+static auto BoxNativeMethodReturnValue(ptr<const ManagedScriptBackend> backend, const MethodDesc& method, bool is_factory, void* data, const DataAccessor* accessor) -> MonoObject*
+{
+    if ((method.PassOwnership || is_factory) && method.Ret.Kind == ComplexTypeKind::Simple && method.Ret.BaseType.IsRefType && !IsDynamicManagedRefType(method.Ret.BaseType)) {
+        return CreateNativeRefTypeObject(backend, method.Ret.BaseType, *NativeDataProvider::GetHandleSlot(data), true);
+    }
+
+    return BoxNativeCallValue(backend, method.Ret, data, accessor);
+}
+
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*
 {
     if (!type) {
@@ -5995,13 +6007,34 @@ static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, Mo
     }
 }
 
-static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr) -> MonoObject*
+static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, void* ref_ptr, bool adopt_reference) -> MonoObject*
 {
     CountManagedObject();
 
     if (ref_ptr == nullptr) {
         return nullptr;
     }
+
+    nptr<const MethodDesc> release_method;
+
+    if (adopt_reference) {
+        FO_VERIFY_AND_THROW(base_type.RefType, "Owned Managed RefType has no native metadata", base_type.Name);
+        auto it = std::ranges::find_if(base_type.RefType->Methods, [](const MethodDesc& method) { return method.Name == "__Release" && method.Args.empty() && !method.Ret; });
+        FO_VERIFY_AND_THROW(it != base_type.RefType->Methods.end(), "Owned Managed RefType has no reference release method", base_type.Name);
+        release_method = make_ptr(&*it);
+    }
+
+    // Until the managed lease adopts it, a failed wrapper construction must return the transferred reference
+    auto return_ownership_on_failure = scope_fail([&]() noexcept {
+        if (release_method) {
+            safe_call([&] {
+                array<ptr<void>, 1> args_data {make_ptr(&ref_ptr).void_cast()};
+                FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
+                call.ArgsData = args_data;
+                release_method->Call(call);
+            });
+        }
+    });
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
     const ManagedWrapperClassEntry& wrapper = ResolveWrapperClass(backend, base_type.Name);
@@ -6016,6 +6049,19 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
     MonoObject* exception = nullptr;
     mono_runtime_invoke(wrapper.PointerCtor.get_no_const(), obj.GetObject(), args, &exception);
     ThrowIfManagedException(backend, exception, "Managed ref type wrapper constructor failed");
+
+    if (adopt_reference) {
+        FO_VERIFY_AND_THROW(wrapper.AdoptNativeReference, "Managed RefType ownership adapter not found", base_type.Name);
+        exception = nullptr;
+        mono_runtime_invoke(wrapper.AdoptNativeReference.get_no_const(), obj.GetObject(), nullptr, &exception);
+        ThrowIfManagedException(backend, exception, "Managed RefType ownership adoption failed");
+    }
+    else if (wrapper.AcquireNativeReference) {
+        exception = nullptr;
+        mono_runtime_invoke(wrapper.AcquireNativeReference.get_no_const(), obj.GetObject(), nullptr, &exception);
+        ThrowIfManagedException(backend, exception, "Managed RefType ownership acquisition failed");
+    }
+
     return obj.GetObject();
 }
 
@@ -6560,7 +6606,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
             storage.RefTypePtr = storage.DynamicRefType;
         }
         else {
-            storage.RefTypePtr = ExtractRefPtr(value);
+            storage.RefTypePtr = ExtractRefPtr(backend, value);
         }
 
         return &storage.RefTypePtr;
@@ -7234,6 +7280,8 @@ static auto FindWrapperClass(ptr<const ManagedScriptBackend> backend, string_vie
 
     if (entry.Class) {
         entry.PointerCtor = mono_class_get_method_from_name(entry.Class.get(), ".ctor", 1);
+        entry.AdoptNativeReference = mono_class_get_method_from_name(entry.Class.get(), "__AdoptNativeReference", 0);
+        entry.AcquireNativeReference = mono_class_get_method_from_name(entry.Class.get(), "__AcquireNativeReference", 0);
     }
 
     return entry;
@@ -7641,21 +7689,28 @@ static auto ExtractEntityPtr(MonoObject* obj) -> Entity*
     return static_cast<Entity*>(entity_ptr);
 }
 
-static auto ExtractRefPtr(MonoObject* obj) -> void*
+static auto ExtractRefPtr(ptr<const ManagedScriptBackend> backend, MonoObject* obj) -> void*
 {
     if (obj == nullptr) {
         return nullptr;
     }
 
-    MonoClassField* field = FindFieldInHierarchy(mono_object_get_class(obj), "_refPtr");
+    MonoMethod* getter = nullptr;
 
-    if (field == nullptr) {
-        throw ScriptSystemException("Managed ref type wrapper has no native pointer field");
+    for (MonoClass* klass = mono_object_get_class(obj); klass != nullptr; klass = mono_class_get_parent(klass)) {
+        getter = mono_class_get_method_from_name(klass, "get_RefPtr", 0);
+
+        if (getter != nullptr) {
+            break;
+        }
     }
 
-    void* ref_ptr = nullptr;
-    mono_field_get_value(obj, field, &ref_ptr);
-    return ref_ptr;
+    FO_VERIFY_AND_THROW(getter != nullptr, "Managed RefType wrapper has no native pointer getter");
+    MonoObject* exception = nullptr;
+    MonoObject* result = mono_runtime_invoke(getter, obj, nullptr, &exception);
+    ThrowIfManagedException(backend, exception, "Managed RefType pointer access failed");
+    FO_VERIFY_AND_THROW(result != nullptr, "Managed RefType pointer getter returned no value");
+    return *static_cast<void**>(mono_object_unbox(result));
 }
 
 static auto ExtractNativeHstring(MonoObject* obj) -> hstring
@@ -8302,7 +8357,11 @@ ManagedScriptBackend::~ManagedScriptBackend()
             _persistentGcHandles.clear();
             _globalFuncs.clear();
 
-            // Callback handles can root wrappers too; collect after releasing them and before losing the images
+            for (nptr<void> shutdown : _refTypeShutdowns) {
+                (void)InvokeManagedScript(this, shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed RefType ownership shutdown failed");
+            }
+
+            // Native RefTypes may retain callback handles too; collect after returning every owned reference
             FinalizeManagedObjects();
             UnbindBackend();
 
@@ -8319,6 +8378,8 @@ ManagedScriptBackend::~ManagedScriptBackend()
 
     _continuationPumps.clear();
     _continuationShutdowns.clear();
+    _refTypePumps.clear();
+    _refTypeShutdowns.clear();
     _persistentGcHandles.clear();
     _globalFuncs.clear();
     _images.clear();
@@ -8345,6 +8406,10 @@ void ManagedScriptBackend::Process()
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
     ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::CacheForThread};
+
+    for (nptr<void> pump : _refTypePumps) {
+        (void)InvokeManagedScript(this, pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed RefType release pump failed");
+    }
 
     for (nptr<void> pump : _continuationPumps) {
         (void)InvokeManagedScript(this, pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation pump failed");
@@ -8663,8 +8728,16 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             MonoMethod* unbind = mono_class_get_method_from_name(native_class, "UnbindBackend", 0);
             FO_VERIFY_AND_THROW(bind != nullptr && unbind != nullptr, "Managed backend binding methods not found");
 
+            MonoClass* ref_lifetime_class = mono_class_from_name(image, "FOnline", "NativeRefTypeLifetime");
+            FO_VERIFY_AND_THROW(ref_lifetime_class != nullptr, "Managed RefType lifetime class not found");
+            MonoMethod* ref_pump = mono_class_get_method_from_name(ref_lifetime_class, "Drain", 0);
+            MonoMethod* ref_shutdown = mono_class_get_method_from_name(ref_lifetime_class, "Shutdown", 0);
+            FO_VERIFY_AND_THROW(ref_pump != nullptr && ref_shutdown != nullptr, "Managed RefType lifetime methods not found");
+
             _continuationPumps.emplace_back(pump);
             _continuationShutdowns.emplace_back(shutdown);
+            _refTypePumps.emplace_back(ref_pump);
+            _refTypeShutdowns.emplace_back(ref_shutdown);
             _backendUnbinds.emplace_back(unbind);
             _images.emplace_back(image);
 

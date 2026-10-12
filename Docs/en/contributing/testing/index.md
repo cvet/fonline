@@ -44,6 +44,10 @@ Feature-specific test bodies use the same compile-time guards as their runtime t
 
 The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
 
+`Test_SpriteSheet.cpp` uses a native resolver and stub frontend with either scripting
+backend. It checks first/cache-hit copies, initial geometry, first/last frame
+extraction, directional/shared offsets and copying trimmed sheets.
+
 ## Running tests
 
 The `engine-update` CI job also runs

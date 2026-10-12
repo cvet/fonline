@@ -58,7 +58,7 @@ public:
     [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override;
 
 private:
-    bool ReadTree() FO_TSA_REQUIRES(_datFileLocker);
+    void ReadTree() FO_TSA_REQUIRES(_datFileLocker);
 
     mutable mutex _datFileLocker {};
     mutable std::ifstream _datFile FO_TSA_GUARDED_BY(_datFileLocker) {};
@@ -85,31 +85,35 @@ FalloutDat::FalloutDat(string_view fname)
 
     _writeTime = fs::last_write_time(fname);
 
-    if (!ReadTree()) {
-        throw DataSourceException("Read fallout dat file tree failed");
-    }
+    ReadTree();
 }
 
-bool FalloutDat::ReadTree()
+void FalloutDat::ReadTree()
 {
     FO_TRACE_ZONE(FileSystem);
+
+    size_t file_size = fs::stream_get_size(_datFile);
+
+    if (file_size < 12) {
+        throw DataSourceException("Fallout DAT file is too short to contain a footer", _fileName, file_size);
+    }
 
     uint32_t version = 0;
 
     if (!fs::stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
-        return false;
+        throw DataSourceException("Can't seek to fallout DAT version marker", _fileName, file_size);
     }
 
     auto version_buf = object_to_bytes(version);
 
     if (!fs::stream_read_exact(_datFile, version_buf)) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT version marker", _fileName, file_size);
     }
 
     // DAT 2.1 Arcanum
     if (version == 0x44415431) { // 1TAD
         if (!fs::stream_set_read_pos(_datFile, -4, std::ios_base::end)) {
-            return false;
+            throw DataSourceException("Can't seek to Arcanum DAT 2.1 tree size", _fileName);
         }
 
         uint32_t tree_size = 0;
@@ -117,12 +121,16 @@ bool FalloutDat::ReadTree()
         auto tree_size_buf = object_to_bytes(tree_size);
 
         if (!fs::stream_read_exact(_datFile, tree_size_buf)) {
-            return false;
+            throw DataSourceException("Can't read Arcanum DAT 2.1 tree size", _fileName);
+        }
+
+        if (tree_size < 32 || tree_size > file_size || tree_size > numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
+            throw DataSourceException("Arcanum DAT 2.1 tree size is invalid", _fileName, tree_size, file_size);
         }
 
         // Read tree
         if (!fs::stream_set_read_pos(_datFile, -numeric_cast<int32_t>(tree_size), std::ios_base::end)) {
-            return false;
+            throw DataSourceException("Can't seek to Arcanum DAT 2.1 tree", _fileName, tree_size);
         }
 
         uint32_t files_total = 0;
@@ -130,7 +138,7 @@ bool FalloutDat::ReadTree()
         auto files_total_buf = object_to_bytes(files_total);
 
         if (!fs::stream_read_exact(_datFile, files_total_buf)) {
-            return false;
+            throw DataSourceException("Can't read Arcanum DAT 2.1 file count", _fileName, tree_size);
         }
 
         tree_size -= 28 + 4; // Subtract information block and files total
@@ -139,7 +147,7 @@ bool FalloutDat::ReadTree()
         ptr<uint8_t> tree_data = _memTree.get();
 
         if (!fs::stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
-            return false;
+            throw DataSourceException("Can't read Arcanum DAT 2.1 tree entries", _fileName, tree_size, files_total);
         }
 
         // Indexing tree
@@ -147,29 +155,46 @@ bool FalloutDat::ReadTree()
         auto tree_span = make_span(tree_data, tree_size);
 
         while (tree_pos < tree_size) {
+            if (tree_size - tree_pos < 24) {
+                throw DataSourceException("Arcanum DAT 2.1 tree entry is truncated", _fileName, tree_pos, tree_size, files_total);
+            }
+
             auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
             uint32_t fnsz = 0;
             auto fnsz_target = make_ptr(&fnsz).reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
             memory::copy(fnsz_target, fnsz_source, sizeof(fnsz));
 
+            if (fnsz > tree_size - tree_pos - 24) {
+                throw DataSourceException("Arcanum DAT 2.1 file name exceeds the tree entry", _fileName, tree_pos, fnsz, tree_size);
+            }
+
             uint32_t type = 0;
             auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
             auto type_source = tree_entry.offset(4 + fnsz + 4);
             memory::copy(type_target, type_source, sizeof(type));
 
-            if (fnsz != 0 && type != 0x400) { // Not folder
+            // Entry flags: 0x1 plain, 0x2 zlib, 0x400 directory, 0x800 ignored
+            if ((type & 0x400) == 0 && (type & 0x800) == 0) {
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
                 auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
                 auto raw_name_source = tree_entry.offset(4);
                 memory::copy(raw_name_target, raw_name_source, raw_name.size());
-                string name = strex(raw_name).normalize_path_slashes();
 
-                if (type == 2) {
-                    auto compressed_flag = tree_entry.offset(4 + fnsz + 7);
-                    *compressed_flag = 1; // Compressed
+                // The stored name length includes its C-string terminator
+                while (!raw_name.empty() && raw_name.back() == '\0') {
+                    raw_name.pop_back();
                 }
+
+                if (raw_name.empty() || raw_name.find('\0') != string::npos) {
+                    throw DataSourceException("Arcanum DAT 2.1 file name is empty or contains an embedded terminator", _fileName, tree_pos, fnsz);
+                }
+
+                string name = strex(raw_name).normalize_path_slashes().lower();
+
+                auto compressed_flag = tree_entry.offset(4 + fnsz + 7);
+                *compressed_flag = (type & 0x2) != 0 ? 1 : 0;
 
                 auto file_info = tree_entry.offset(4 + fnsz + 7);
                 _filesTree.emplace(name, file_info);
@@ -179,61 +204,64 @@ bool FalloutDat::ReadTree()
             tree_pos += numeric_cast<size_t>(fnsz) + 24;
         }
 
-        return true;
+        return;
     }
 
     // DAT 2.0 Fallout2
     if (!fs::stream_set_read_pos(_datFile, -8, std::ios_base::end)) {
-        return false;
+        throw DataSourceException("Can't seek to fallout DAT 2.0 footer", _fileName);
     }
 
     uint32_t tree_size = 0;
     auto tree_size_buf = object_to_bytes(tree_size);
 
     if (!fs::stream_read_exact(_datFile, tree_size_buf)) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT 2.0 tree size", _fileName);
     }
 
     uint32_t dat_size = 0;
     auto dat_size_buf = object_to_bytes(dat_size);
 
     if (!fs::stream_read_exact(_datFile, dat_size_buf)) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT 2.0 file size", _fileName);
     }
 
     // Check for DAT1.0 Fallout1 dat file
     if (!fs::stream_set_read_pos(_datFile, 0, std::ios_base::beg)) {
-        return false;
+        throw DataSourceException("Can't seek to fallout DAT header", _fileName);
     }
 
     uint32_t dir_count = 0;
     auto dir_count_buf = object_to_bytes(dir_count);
 
     if (!fs::stream_read_exact(_datFile, dir_count_buf)) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT header", _fileName);
     }
 
     dir_count >>= 24;
 
     if (dir_count == 0x01 || dir_count == 0x33) {
-        return false;
+        throw DataSourceException("Fallout DAT 1.0 is not supported", _fileName);
     }
 
     // Check for truncated
-    if (fs::stream_get_size(_datFile) != dat_size) {
-        return false;
+    if (file_size != dat_size) {
+        throw DataSourceException("Fallout DAT 2.0 file size does not match its footer", _fileName, dat_size, file_size);
+    }
+    if (tree_size < 4 || tree_size > file_size - 8 || tree_size > numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() - 8)) {
+        throw DataSourceException("Fallout DAT 2.0 tree size is invalid", _fileName, tree_size, file_size);
     }
 
     // Read tree
     if (!fs::stream_set_read_pos(_datFile, -(numeric_cast<int32_t>(tree_size) + 8), std::ios_base::end)) {
-        return false;
+        throw DataSourceException("Can't seek to fallout DAT 2.0 tree", _fileName, tree_size);
     }
 
     uint32_t files_total = 0;
     auto files_total_buf = object_to_bytes(files_total);
 
     if (!fs::stream_read_exact(_datFile, files_total_buf)) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT 2.0 file count", _fileName, tree_size);
     }
 
     tree_size -= 4;
@@ -241,7 +269,7 @@ bool FalloutDat::ReadTree()
     ptr<uint8_t> tree_data = _memTree.get();
 
     if (!fs::stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
-        return false;
+        throw DataSourceException("Can't read fallout DAT 2.0 tree entries", _fileName, tree_size, files_total);
     }
 
     // Indexing tree
@@ -249,14 +277,18 @@ bool FalloutDat::ReadTree()
     auto tree_span = make_span(tree_data, tree_size);
 
     while (tree_pos < tree_size) {
+        if (tree_size - tree_pos < 17) {
+            throw DataSourceException("Fallout DAT 2.0 tree entry is truncated", _fileName, tree_pos, tree_size, files_total);
+        }
+
         auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
         uint32_t name_len = 0;
         auto name_len_target = make_ptr(&name_len).reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
         memory::copy(name_len_target, name_len_source, sizeof(name_len));
 
-        if (tree_pos + 4 + name_len > tree_size) {
-            return false;
+        if (name_len > tree_size - tree_pos - 17) {
+            throw DataSourceException("Fallout DAT 2.0 file name exceeds the tree entry", _fileName, tree_pos, name_len, tree_size);
         }
 
         if (name_len != 0) {
@@ -274,8 +306,6 @@ bool FalloutDat::ReadTree()
 
         tree_pos += numeric_cast<size_t>(4) + name_len + 13;
     }
-
-    return true;
 }
 
 auto FalloutDat::IsFileExists(string_view path) const -> bool
@@ -361,7 +391,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     memory::copy(offset_target, offset_source, sizeof(offset));
 
     if (!fs::stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
-        throw DataSourceException("Can't read file from fallout dat (1)", path);
+        throw DataSourceException("Can't seek to file in fallout dat", _fileName, path, offset);
     }
 
     size = real_size;
@@ -369,9 +399,9 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     ptr<uint8_t> buf_data = buf.get();
 
     if (type == 0) {
-        // Plane data
+        // Plain data
         if (!fs::stream_read_exact(_datFile, make_span(buf_data, size))) {
-            throw DataSourceException("Can't read file from fallout dat (2)", path);
+            throw DataSourceException("Can't read uncompressed file from fallout dat", _fileName, path, offset, real_size);
         }
     }
     else {
@@ -386,8 +416,10 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
             allocator.deallocate(cast_from_void<uint8_t*>(address).get(), 0);
         };
 
-        if (inflateInit(&stream) != Z_OK) {
-            throw DataSourceException("Can't read file from fallout dat (3)", path);
+        int32_t init_result = inflateInit(&stream);
+
+        if (init_result != Z_OK) {
+            throw DataSourceException("Can't initialize fallout dat decompression", _fileName, path, init_result);
         }
 
         auto end_inflate = scope_exit([&stream]() noexcept { inflateEnd(&stream); });
@@ -398,15 +430,21 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         stream.avail_out = real_size;
 
         uint32_t left = packed_size;
+        uint8_t overflow_byte = 0;
 
-        while (stream.avail_out != 0) {
+        while (true) {
+            if (stream.avail_out == 0) {
+                stream.next_out = &overflow_byte;
+                stream.avail_out = 1;
+            }
+
             if (stream.avail_in == 0 && left > 0) {
-                auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
+                uint32_t len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
                 auto read_buf = make_nptr(_readBuf.data());
                 stream.next_in = read_buf.get();
 
                 if (!fs::stream_read_exact(_datFile, make_span(read_buf, len))) {
-                    throw DataSourceException("Can't read file from fallout dat (4)", path);
+                    throw DataSourceException("Can't read compressed file from fallout dat", _fileName, path, offset, packed_size, left, len);
                 }
 
                 stream.avail_in = len;
@@ -416,9 +454,16 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
             int32_t r = inflate(&stream, Z_NO_FLUSH);
 
             if (r != Z_OK && r != Z_STREAM_END) {
-                throw DataSourceException("Can't read file from fallout dat (5)", path);
+                throw DataSourceException("Can't decompress file from fallout dat", _fileName, path, r, packed_size, real_size, stream.total_in, stream.total_out);
+            }
+            if (stream.total_out > real_size) {
+                throw DataSourceException("Fallout DAT decompressed size exceeds the tree entry", _fileName, path, real_size, stream.total_out);
             }
             if (r == Z_STREAM_END) {
+                if (stream.total_out != real_size) {
+                    throw DataSourceException("Fallout DAT decompressed size does not match the tree entry", _fileName, path, real_size, stream.total_out);
+                }
+
                 break;
             }
         }

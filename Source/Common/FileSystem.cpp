@@ -305,7 +305,7 @@ auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
     }
 
     if (size > _buf.size() - _curPos) {
-        throw FileSystemExeption("Invalid read size");
+        throw FileSystemExeption("Invalid read size", _curPos, size, _buf.size());
     }
 
     auto data = make_ptr(_buf.data()).offset(_curPos);
@@ -326,7 +326,7 @@ void FileReader::SetCurPos(size_t pos)
 
 void FileReader::GoForward(size_t offs)
 {
-    FO_VERIFY_AND_THROW(_curPos + offs <= _buf.size(), "File reader forward seek would move past the loaded buffer", _curPos, offs, _buf.size());
+    FO_VERIFY_AND_THROW(offs <= _buf.size() - _curPos, "File reader forward seek would move past the loaded buffer", _curPos, offs, _buf.size());
 
     _curPos += offs;
 }
@@ -342,7 +342,7 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
 {
     FO_VERIFY_AND_THROW(!fragment.empty(), "File reader fragment search received an empty pattern", _curPos, _buf.size());
 
-    if (_curPos + fragment.size() > _buf.size()) {
+    if (fragment.size() > _buf.size() - _curPos) {
         return false;
     }
 
@@ -372,8 +372,8 @@ void FileReader::CopyData(span<uint8_t> buf)
     if (buf.empty()) {
         return;
     }
-    if (_curPos + buf.size() > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (buf.size() > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, buf.size(), _buf.size());
     }
 
     auto source = make_ptr(_buf.data()).offset(_curPos);
@@ -393,15 +393,15 @@ void FileReader::ReadBytes(span<uint8_t> out)
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetStrNT() -> string
 {
-    if (_curPos + 1 > _buf.size()) {
-        throw FileSystemExeption("Invalid read pos");
+    if (_curPos == _buf.size()) {
+        throw FileSystemExeption("Invalid read pos", _curPos, _buf.size());
     }
 
-    uint32_t len = 0;
+    size_t len = 0;
 
     while (true) {
-        if (_curPos + len >= _buf.size()) {
-            throw FileSystemExeption("Invalid null terminated string length");
+        if (len >= _buf.size() - _curPos) {
+            throw FileSystemExeption("Invalid null terminated string length", _curPos, len, _buf.size());
         }
 
         auto cur_byte = make_ptr(_buf.data()).offset(_curPos + len);
@@ -414,7 +414,7 @@ auto FileReader::GetStrNT() -> string
     }
 
     string str;
-    str.resize(numeric_cast<size_t>(len));
+    str.resize(len);
 
     if (!str.empty()) {
         auto source = make_ptr(_buf.data()).offset(_curPos);
@@ -427,8 +427,8 @@ auto FileReader::GetStrNT() -> string
 
 auto FileReader::GetUInt8() -> uint8_t
 {
-    if (_curPos + sizeof(uint8_t) > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (sizeof(uint8_t) > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint8_t), _buf.size());
     }
 
     return _buf[_curPos++];
@@ -437,8 +437,8 @@ auto FileReader::GetUInt8() -> uint8_t
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetBEUInt16() -> uint16_t
 {
-    if (_curPos + sizeof(uint16_t) > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (sizeof(uint16_t) > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint16_t), _buf.size());
     }
 
     uint32_t high_byte = _buf[_curPos++];
@@ -449,8 +449,8 @@ auto FileReader::GetBEUInt16() -> uint16_t
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetLEUInt16() -> uint16_t
 {
-    if (_curPos + sizeof(uint16_t) > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (sizeof(uint16_t) > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint16_t), _buf.size());
     }
 
     uint32_t low_byte = _buf[_curPos++];
@@ -461,8 +461,8 @@ auto FileReader::GetLEUInt16() -> uint16_t
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetBEUInt32() -> uint32_t
 {
-    if (_curPos + sizeof(uint32_t) > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (sizeof(uint32_t) > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint32_t), _buf.size());
     }
 
     uint32_t res = 0;
@@ -477,8 +477,8 @@ auto FileReader::GetBEUInt32() -> uint32_t
 // ReSharper disable once CppInconsistentNaming
 auto FileReader::GetLEUInt32() -> uint32_t
 {
-    if (_curPos + sizeof(uint32_t) > _buf.size()) {
-        throw FileSystemExeption("Invalid read size");
+    if (sizeof(uint32_t) > _buf.size() - _curPos) {
+        throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint32_t), _buf.size());
     }
 
     uint32_t res = 0;

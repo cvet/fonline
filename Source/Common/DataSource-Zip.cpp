@@ -151,8 +151,13 @@ ZipFile::ZipFile(string_view fname) :
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
-        throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName);
+    int32_t global_info_result = unzGetGlobalInfo(zip_handle.get(), &gi);
+
+    if (global_info_result != UNZ_OK) {
+        throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName, global_info_result);
+    }
+    if (gi.number_entry == 0) {
+        throw DataSourceException("ZIP archive has no entries", _fileName);
     }
 
     ZipFileInfo zip_info;
@@ -161,16 +166,27 @@ ZipFile::ZipFile(string_view fname) :
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName);
+        int32_t file_pos_result = unzGetFilePos(zip_handle.get(), &pos);
+
+        if (file_pos_result != UNZ_OK) {
+            throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName, i, file_pos_result);
         }
 
-        if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName);
+        int32_t file_info_result = unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0);
+
+        if (file_info_result != UNZ_OK) {
+            throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName, i, file_info_result);
+        }
+        if (info.size_filename >= sizeof(name_buf)) {
+            throw DataSourceException("ZIP file name exceeds the supported length", _fileName, i, info.size_filename, sizeof(name_buf));
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
             string name = strex(name_buf).normalize_path_slashes();
+
+            if (info.uncompressed_size > numeric_cast<uLong>(std::numeric_limits<int32_t>::max())) {
+                throw DataSourceException("ZIP entry exceeds the supported decoded size", _fileName, name, info.uncompressed_size);
+            }
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = numeric_cast<int32_t>(info.uncompressed_size);
@@ -178,8 +194,12 @@ ZipFile::ZipFile(string_view fname) :
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
-            throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName);
+        if (i + 1 < gi.number_entry) {
+            int32_t next_result = unzGoToNextFile(zip_handle.get());
+
+            if (next_result != UNZ_OK) {
+                throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName, i, next_result);
+            }
         }
     }
 
@@ -249,11 +269,16 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
     const auto& info = it->second;
     unz_file_pos pos = info.Pos;
 
-    if (unzGoToFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", _fileName, path);
+    int32_t file_pos_result = unzGoToFilePos(_zipHandle.get(), &pos);
+
+    if (file_pos_result != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzGoToFilePos)", _fileName, path, file_pos_result);
     }
-    if (unzOpenCurrentFile(_zipHandle.get()) != UNZ_OK) {
-        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", _fileName, path);
+
+    int32_t open_result = unzOpenCurrentFile(_zipHandle.get());
+
+    if (open_result != UNZ_OK) {
+        throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", _fileName, path, open_result);
     }
 
     auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));

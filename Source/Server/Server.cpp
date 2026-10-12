@@ -2730,6 +2730,17 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
     DbStorage.Delete(CrittersCollectionName, cr_id);
 }
 
+void ServerEngine::ReturnPlayerFromViewMap(ptr<Player> player)
+{
+    FO_TRACE_ZONE(Entity);
+    ValidateEntityAccess(player);
+    auto cr = player->GetControlledCritter();
+    FO_VERIFY_AND_THROW(cr, "Map view return requires a controlled critter", player->GetId());
+    ValidateEntityAccess(cr);
+    player->ResetViewMap();
+    SendCritterInitialInfo(cr, nullptr);
+}
+
 void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)
 {
     FO_TRACE_ZONE(Entity);

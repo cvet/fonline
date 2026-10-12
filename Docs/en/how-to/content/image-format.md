@@ -8,24 +8,21 @@ permalink: /Docs/en/how-to/content/image-format.html
 
 # Image And Sprite Formats
 
-FOnline bakes authored and legacy images into a compact client sprite container.
-The baker can import static RGBA sources, legacy indexed formats, animations,
-direction sheets, and text `.fofrm` compositions. It can also replace the
-ordinary full-frame quad with a validated indexed silhouette and crop the
-serialized RGBA canvas to that geometry. At runtime the stock client reads the
-versioned container, places concrete frames in a texture atlas, and creates either
-an `AtlasSprite` or a `SpriteSheet`.
+FOnline bakes RGBA/legacy images, animations, direction sheets and `.fofrm`
+compositions into a versioned sprite container, optionally with cropped RGBA
+and validated silhouette geometry. Clients upload frames to atlases as
+`AtlasSprite` or `SpriteSheet`.
 
-Use this guide for authoring decisions and operational behavior. Use the
-generated [image-format reference](../../reference/image-format/index.md), its
+Authoring and operation are covered here; the generated
+[image-format reference](../../reference/image-format/index.md) owns exact
+revision contracts:
 [source-format](../../reference/image-format/formats.md),
 [FOFRM](../../reference/image-format/fofrm.md),
 [filename-option](../../reference/image-format/options.md),
 [baking](../../reference/image-format/baking.md),
 [runtime](../../reference/image-format/runtime.md), and
-[validation](../../reference/image-format/validation.md) pages, plus the
-[canonical JSON model](../../../generated/image-format.json), for the exact
-current-revision contract.
+[validation](../../reference/image-format/validation.md),
+[canonical JSON](../../../generated/image-format.json).
 
 ## Scope and authority
 
@@ -54,26 +51,19 @@ The owning sources are:
 - `Source/Tests/Test_ImageBaker.cpp` and `Test_TextureAtlas.cpp` for executable
   import, failure, and allocation examples.
 
-`BuildTools/ImageFormatInterface.json` is the source-backed structured
-contract. `BuildTools/docs_image_format.py` validates every declared source
-anchor, derives the live baker and runtime extension lists, verifies that the
-legacy FOFRM `Effect` field is still absent from serialized output, and renders
-the generated reference. Importer, descriptor, container, factory, atlas, or
-cache drift must update that model in the same change.
+`BuildTools/ImageFormatInterface.json` owns the structured contract.
+`BuildTools/docs_image_format.py` checks source anchors, live baker/runtime
+extensions and the absence of serialized FOFRM `Effect`, then renders references.
+Importer, descriptor, container, factory, atlas and cache changes require model updates.
 
-Native custom loaders passed to `ImageBaker::AddLoader` receive
-`const ImageImport::Context&`. Read the current pack through `*context.Files`
-and resolve nested images through `context.Resolve(path)` so the configured
-importer checks and filename options still apply. `FrameShot`, `FrameSequence`,
-`FrameCollection`, and `MAX_DIRS_MINUS_ONE` belong to `ImageImport`; migrate
-former `ImageBaker` type references and `FileCollection` loader parameters
-when adopting the extracted modules. The frame fields and baked container
-retain their meaning.
+`ImageBaker::AddLoader` callbacks receive `const ImageImport::Context&`:
+use `*context.Files` for the pack and `context.Resolve(path)` for checked nesting
+with filename options. Move former `ImageBaker` types `FrameShot`, `FrameSequence`,
+`FrameCollection`, `MAX_DIRS_MINUS_ONE` to `ImageImport` and replace `FileCollection`
+loader parameters with this context. Frame/container meanings stay unchanged.
 
-This page is reusable Engine documentation. An embedding project owns its
-concrete asset catalog, licenses, resource-pack precedence, source-file policy,
-visual style, animation substitutions, hit-test expectations, movement tuning,
-and visible acceptance baselines.
+Projects own asset catalogs/licenses, pack precedence, source policy, visual
+style, animation substitutions, hit expectations, movement tuning and visual baselines.
 
 ## Choose a source format
 
@@ -83,7 +73,7 @@ and visible acceptance baselines.
 | Existing TrueColor pipeline output | TGA | Use the supported type 2/type 10, 24/32-bpp, no-image-ID, bottom-left-origin subset. |
 | Multi-frame or directional project sprite | FOFRM referencing PNG/TGA | Keeps composition, offsets, frame deltas, and timing explicit and reviewable. |
 | Existing Fallout FRM/FR0 asset | FRM or FR0 | Preserve only when the project can redistribute the source and has a visual regression route. |
-| Existing Tactics ART/SPR asset | FOFRM referencing ART/SPR | Filename options select palettes, frames, mirrors, colors, and sequences. SPR should normally be wrapped because of the default runtime boundary. |
+| Existing Arcanum ART or Tactics SPR asset | FOFRM referencing ART/SPR | Filename options select palettes, frames, mirrors, colors, and sequences. SPR should normally be wrapped because of the default runtime boundary. |
 | Existing Infinity Engine asset | ZAR/TIL/MOS/BAM, normally through FOFRM when selection is needed | Treat as an import path, not a recommended format for new art. |
 
 The built-in image baker does not support JPEG, BMP, GIF, DDS, WebP, AVIF, or
@@ -118,6 +108,22 @@ baked payload format.
 FOFRM uses the Engine `ConfigFile` parser. The root/default section describes a
 single-direction sequence. Directional sheets use `[dir_N]` or `[Dir_N]`
 sections.
+
+### Whole-source alias
+
+Use `Alias` to keep the source's complete direction sheet, offsets, timing and
+frame deltas. Ordinary `frm` composition retains only child Main frames.
+
+```ini
+Alias = Actor$r=3.art
+```
+
+`Alias` resolves a binary image source relative to the descriptor; another
+FOFRM is rejected. The baked output retains the descriptor path. Other
+composition keys are ignored. Filename options pass unchanged to the registered
+source loader, exactly as for ordinary `frm` references. FOFRM has no
+format-specific fields. Without source options selecting a direction, an alias
+keeps all source directions.
 
 ### Minimal static image
 
@@ -251,7 +257,7 @@ Actor$1THF5-7.art
 ```
 
 - `0` through `3` select a palette; the last selector wins and an unavailable
-  palette falls back to palette zero.
+  palette falls back to the first present palette slot.
 - `T` derives alpha from the maximum RGB component; palette index zero remains
   fully transparent.
 - `H` and `V` mirror horizontally and vertically.
@@ -259,8 +265,34 @@ Actor$1THF5-7.art
   descending ranges. Bounds clamp to the available frame table.
 - Option letters are case-insensitive. Unknown characters are ignored.
 
-ART's static flag forces one rotation. Eight-rotation input is remapped to the
-current map geometry and becomes a complete Engine direction sheet.
+ART is the Arcanum format. The 132-byte header stores bit depth (8), not
+rotation count. Flag `0x1` means one stored rotation; otherwise there are eight.
+All rotation-major frame tables precede the pixel streams. Raw data has exactly
+width × height bytes; RLE is bounded by each frame's declared data size.
+Truncated tables/streams, underfilled or overflowing RLE, negative dimensions
+and values outside the baked canvas/offset range fail during baking.
+
+Each direction aligns its selected frames on one transparent canvas so their
+hot spots coincide. Sequence offsets locate that hot spot; `NextX`/`NextY`
+retain the frame deltas. Square directions use ART rotations `1,2,3,4,5,6,7,0`;
+hex directions use `1,2,3,5,6,7`. The `art/critter/`, `art/monster/` and
+`art/unique_npc/` categories mirror rotations 1–3 from 7–5. Walls and portals
+shift hot spots by (-40,+20) for rotations 0,1,6,7. Horizontal roof mirrors use
+the left-edge anchor. These rules follow the [Arcanum renderer](https://github.com/alexbatalov/arcanum-ce/blob/main/first_party/tig/src/art.c).
+
+Whole duration is `(1000 / fps) * selected_frames`, saturated at 65535 ms;
+fps zero gives zero ticks for explicit frame indexing. Keep playing animations
+short enough for a positive per-frame duration.
+
+The ART loader accepts `r=0..7` (or uppercase `R=`) to select one clockwise
+rotation from north. Use `Alias = Actor$r=3.art` to retain that rotation's
+anchors and timing, or `frm = Actor$r=3.art` in ordinary composition. A source
+with one stored rotation reuses it with wall placement for the requested
+rotation. Put a palette digit before `r=` and alpha/mirror/frame options after
+it, for example `Actor$1r=3HF0-1.art`. Missing, negative, multi-digit or
+out-of-range rotations and invalid trailing characters fail baking. The equals
+sign distinguishes this option from legacy `$r3` or `$R3`, which still select
+palette 3.
 
 ### SPR
 
@@ -372,37 +404,29 @@ cross-revision byte compatibility.
 
 ## Runtime loading, atlas, and caches
 
-`SpriteManager` lowercases the path extension and selects a registered
-`SpriteFactory`. The default factory delegates the complete byte span to
-`ReadSpriteResource`, which validates magic, version, records, mesh geometry,
-footer, and trailing data. The factory then validates the one/full-direction
-invariant.
+`SpriteManager` selects a registered `SpriteFactory` by lowercased extension.
+The default factory passes all bytes to `ReadSpriteResource` to validate magic,
+version, records, mesh geometry, footer and trailing data, then checks one/full directions.
 
-A one-frame, one-direction resource becomes `AtlasSprite`. Its sequence
-`OffsX`/`OffsY` becomes the sprite placement offset; serialized `NextX`/`NextY`
-is read but ignored. A multi-frame or directional resource becomes
-`SpriteSheet`. Each direction owns a parallel sheet and each concrete or shared
-frame retains its separate displacement in `_sprOffset`.
+A single frame/direction becomes `AtlasSprite`: placement uses `OffsX`/`OffsY`;
+`NextX`/`NextY` is read but ignored. Otherwise `SpriteSheet` stores parallel
+direction sheets and concrete/shared frame displacement in `_sprOffset`.
 
-`SpriteSheet` can select a direction, randomize the initial frame with
-`Prewarm`, set normalized time, and play looped or reversed. `Play` does nothing
-for one frame or zero whole ticks. Direction changes do not themselves rewrite
-the common animation clock.
+`SpriteSheet` supports direction selection, randomized `Prewarm`, normalized time,
+looping and reverse playback. `Play` ignores one frame or zero ticks; changing
+direction preserves the common animation clock.
 
-Concrete RGBA frames are allocated in the requested `AtlasType`. The factory
-requires positive dimensions, uploads the image, duplicates one-pixel edges for
-linear filtering, and creates a hit mask from alpha through
-`Settings.SpriteHitValue`. Atlas type is also part of the copyable-sprite cache
-key, so the same path can have separate interface/map/one-image instances.
+Concrete positive-size RGBA frames use the requested `AtlasType`, duplicated
+one-pixel edges for linear filtering and an alpha hit mask from
+`Settings.SpriteHitValue`. The cache key includes atlas type, allowing separate
+interface/map/one-image instances of one path.
 
-With `SpriteMesh.Enabled`, `ImageBaker` treats `alpha > AlphaThreshold` as the
-visible mask, searches candidates up to `MaxTriangles`, and scores saved source
-frame area against submitted triangles using `AreaSavingsWeight`. Every selected
-mesh must cover all visible pixel cells. Invalid or unprofitable candidates keep
-the regular quad; an empty mask records explicit empty geometry. Mesh frames may
-use a cropped or slightly padded texture canvas, but their serialized offset,
-logical source size, and source origin preserve placement, scaling, map-light
-interpolation, and hit-test coordinates.
+With `SpriteMesh.Enabled`, the visible mask is `alpha > AlphaThreshold`.
+Candidates use up to `MaxTriangles`; `AreaSavingsWeight` scores saved frame area
+against submitted triangles. Meshes must cover every visible pixel cell.
+Invalid/unprofitable candidates retain quads; empty masks record empty geometry.
+Cropping/padding preserves placement, scaling, map-light interpolation and hit
+coordinates through serialized offsets, logical source size and source origin.
 
 The baker validates the complete `SpriteMesh.*` group even when mesh generation
 is disabled. Standalone project configs must therefore declare a positive
@@ -410,75 +434,65 @@ is disabled. Standalone project configs must therefore declare a positive
 `AreaSavingsWeight`; [the minimal project config](../../../../Examples/MinimalProject/FOnlineStarter.fomain)
 shows the explicit disabled defaults.
 
-Ordinary full-image sprite draws submit the baked indexed triangle list. Region
-crops, tiled patterns, padded custom-effect or outline draws, fonts, blits,
-runtime model sprites, and particles continue to use their rectangular paths.
-Use [Frontend and Rendering](../../explanation/rendering/#sprite-and-model-atlas-geometry)
-for exact draw and atlas-dump behavior. Use
-[Baking Pipeline](../../explanation/content-pipeline/baking.md#image-and-sprite-mesh-statistics) for
-candidate policy and baking-report fields.
+Full-image draws submit baked indexed triangles; region crops, tiles, padded
+effects/outlines, fonts, blits, runtime model sprites and particles use rectangles.
+[Frontend and Rendering](../../explanation/rendering/#sprite-and-model-atlas-geometry)
+owns draw/atlas dumps; [Baking Pipeline](../../explanation/content-pipeline/baking.md#image-and-sprite-mesh-statistics)
+owns candidate policy and report fields.
 
-`SpriteInfo/<PackName>.foinfo` version 1 is a compact per-pack index of duration,
-directions, frame bounds, offsets, and shared references. Common
-`EngineMetadata` loads it on server and client without decoding RGBA payloads.
-Adding or losing that aggregate index is a full-rebake condition.
+`SpriteInfo/<PackName>.foinfo` v1 indexes duration, directions, frame bounds,
+offsets and shared references. Server/client `EngineMetadata` reads it without
+RGBA decoding. Adding or losing this per-pack index requires a full rebake.
 
-Copyable cache entries store a prototype and return `MakeCopy()` so callers do
-not share animation state. Missing files, missing extensions, unknown factories,
-and load failures are separately memoized by path in `_nonFoundSprites`.
-`CleanupSpriteCache()` does not clear that set. After adding a resource that the
-running client already failed to load, recreate the sprite manager or restart
-the client before testing the same path again.
+Every copyable load, including the first, returns `MakeCopy()`; the cache retains
+the factory prototype. `SpriteSheet` copies own playback and frame tables, start
+at frame/direction zero with valid size/anchor and retain state/action tags.
+`AtlasSprite::MakeCopy()` shares atlas pixels/geometry. First/last extraction
+cannot shorten later loads; each trimmed direction has one sprite and offset.
+`_nonFoundSprites` memoizes missing files/extensions, unknown factories and load
+failures by path. `CleanupSpriteCache()` does not clear it: recreate the manager
+or restart after adding a previously failed resource.
 
 ## Authoring practices
 
-For new game content:
-
-1. Prefer PNG for source pixels and FOFRM for animation/direction composition.
-2. Use lowercase extensions and stable case-correct paths even though extension
-   dispatch itself is lowercased.
-3. Keep one semantic animation per descriptor. Avoid deeply nested animated
-   references because count, flattening, and timing become harder to review.
-4. Write `fps`, `count`, every `frm_N`, and both offsets explicitly. In a
-   directional file, write offsets in every direction.
-5. Keep all direction sections complete and frame counts symmetrical.
-6. Treat `NextX`/`NextY` as presentation data. Validate root motion visually
-   and never use it as authoritative movement or collision state.
-7. Wrap SPR imports in FOFRM unless the embedding project intentionally owns a
-   custom factory.
-8. Convert unsupported or ambiguous TGA exports to PNG.
-9. Keep original legacy assets and custom palettes only when licensing permits
-   redistribution; document provenance in the embedding project.
-10. Review dimensions, transparent borders, atlas filtering, click/hit masks,
-    direction mapping, cadence, and stop/start behavior in a visible client.
-11. After changing `SpriteMesh.*`, container code, or mesh policy, run
-    `ForceBakeResources`; source timestamps cannot prove that existing outputs
-    used the same settings. Inspect `BakingReport.json` and `Game.DumpAtlases()`
-    before accepting triangle cost, padding, crop, or fallback changes.
-
-An AI author should prefer explicit FOFRM keys and one-frame PNG references.
-Before changing an existing legacy option string, inspect the generated option
-reference and the focused native fixtures rather than guessing from filenames.
+1. Prefer PNG and explicit FOFRM keys/one-frame references; convert unsupported
+   or ambiguous TGA exports. Use lowercase extensions and stable case-correct paths.
+2. Keep one animation per descriptor. Deep nesting obscures count, flattening and timing.
+3. Write `fps`, `count`, every `frm_N` and both offsets explicitly, including
+   every direction; keep complete direction sets with equal frame counts.
+4. `NextX`/`NextY` is presentation data: inspect root motion visually;
+   authoritative movement/collision must not depend on it.
+5. Wrap SPR in FOFRM unless a project-owned factory handles it. Check generated
+   options and native fixtures before editing legacy selectors.
+6. Redistribute legacy assets/palettes only with permission; record project provenance.
+7. Visually check dimensions, transparent borders, filtering, hit masks,
+   directions, cadence and stop/start behavior.
+8. Changes to `SpriteMesh.*`, container code or mesh policy require
+   `ForceBakeResources`; timestamps cannot attest settings. Inspect
+   `BakingReport.json` and `Game.DumpAtlases()` for triangle cost, padding,
+   cropping and fallback changes.
 
 ## Diagnostics
 
 | Symptom | Likely boundary | First checks |
 |---|---|---|
-| Targeted bake writes nothing and reports no error | Unsupported/missing target or `BakeChecker` skip | Confirm extension, source pack, path case, timestamp/cache policy, and whether a full scan sees the file. |
-| `Image file not found` | FOFRM relative reference | Resolve from the descriptor directory and remove `$...` before checking the physical path. |
-| `FOFRM file invalid data` | Missing slot, unequal directions, empty child, or partial direction set | Compare `count`, every `frm_N`, all direction sections, and flattened child counts. |
-| `FOFRM file invalid data (shared index)` | Nested child already uses shared records | Flatten from concrete sources or remove the nested animation layer. |
-| Direct `.spr` path reports unknown extension | Stock runtime factory boundary | Load the baked `.fofrm` wrapper or register a project-owned custom factory. |
-| Sprite remains missing after the file is added | `_nonFoundSprites` memoization | Restart/recreate the client sprite manager and confirm baked output exists. |
-| Animation does not play | One frame, zero ticks, or invalid effective cadence | Inspect flattened frame count and `AnimTicks`; calculate integer ticks per frame. |
-| Direction changes show wrong framing | Inherited/missing offsets or source-direction remap | Make offsets explicit in every section and inspect all directions visibly. |
-| TGA is flipped or shifted | Unsupported origin/image-ID assumptions | Re-export with the supported preset or convert to PNG. |
-| Alpha fringe or incorrect hit area | Source alpha, atlas border, or `SpriteHitValue` | Inspect raw alpha and the final atlas-backed sprite in the intended client profile. |
+| Targeted bake silently writes nothing | Unsupported/missing target or `BakeChecker` skip | Check extension, pack, case, timestamp/cache and full-scan discovery. |
+| `Image file not found` | FOFRM reference | Resolve relative to descriptor; strip `$...` for the physical path. |
+| `FOFRM file invalid data` | Missing slot, unequal/partial directions, empty child | Check `count`, `frm_N`, directions and flattened counts. |
+| `FOFRM file invalid data (shared index)` | Nested shared records | Use concrete sources or remove nesting. |
+| Direct `.spr` unknown extension | Runtime factory | Use baked `.fofrm` or a project factory. |
+| Added sprite still missing | `_nonFoundSprites` | Confirm output; recreate manager/restart. |
+| Animation stopped | One frame, zero ticks, invalid cadence | Check flattened count, `AnimTicks`, integer ticks/frame. |
+| Wrong directional framing | Inherited/missing offsets, remap | Set explicit offsets; inspect every direction. |
+| TGA flipped/shifted | Unsupported origin/image ID | Re-export supported TGA or PNG. |
+| Alpha fringe/wrong hit area | Alpha, atlas border, `SpriteHitValue` | Inspect source alpha and final sprite in the intended profile. |
 
-During a scan, independent image failures are logged as `Image baking error` and
-the baker throws one aggregate `Errors during images baking` exception after all
-selected work completes. Fix every underlying file; the aggregate count is not
-the root cause.
+Every loader raises `Image import failed` with source path/options/size and the
+original exception. Each FOFRM `Alias`/nested `frm` level retains that context.
+`FileReader` adds byte position, requested size and buffer extent. Loaders do not log.
+
+Scans log each `Image baking error`, then throw `Errors during images baking`
+after all selected work. Fix each underlying file rather than the aggregate count.
 
 ## Validation workflow
 
@@ -492,39 +506,31 @@ python BuildTools\docs_contract_diff.py --help
 python BuildTools\docs_validate.py
 ```
 
-For importer, container, atlas, or playback changes, run the focused native
-image-baker and texture-atlas coverage through the configured `RunUnitTests`
-target. `Test_ImageBaker.cpp` covers targeted/scan baking, BakeChecker behavior,
-PNG/TGA, every legacy importer, options, FOFRM flattening/directions, shared
-records, output renaming, and malformed inputs. `Test_TextureAtlas.cpp` covers
-allocator split/search/free behavior.
+Importer/container/atlas/playback changes require focused `RunUnitTests`:
+`Test_ImageBaker.cpp` covers targeted/scanned baking, BakeChecker, PNG/TGA,
+legacy loaders/options, FOFRM flattening/directions, shared records, renaming
+and malformed inputs; `Test_TextureAtlas.cpp` covers allocation split/search/free.
 
-Then validate an affected embedding project:
+For affected projects:
 
-1. regenerate the image-format model/reference and review the aggregate
-   `image-format` contract diff;
-2. rebake affected resources with the project's pinned Engine revision;
-3. run the narrow project resource/prototype checks that resolve those paths;
-4. launch a visible client scene that exercises every changed image, animation,
-   direction, mirror, alpha edge, hit area, and supported renderer/profile;
-5. for locomotion offsets, also follow
-   [Sprite Root Motion](sprite-root-motion.md) and inspect straight movement,
-   turns, direction changes, and stop/start transitions.
+1. Regenerate model/references and review the aggregate `image-format` diff.
+2. Rebake against the exact Engine pin; check resource/prototype path resolution.
+3. Visually exercise changed images, animation, directions, mirrors, alpha,
+   hit areas and every supported renderer/profile.
+4. For locomotion, follow [Sprite Root Motion](sprite-root-motion.md): straight
+   movement, turns, direction changes and stop/start transitions.
 
-Native tests prove decoding and container invariants. They do not prove project
-art framing, resource-pack precedence, visual cadence, filtering, clickability,
-or perceived foot sliding.
+Native tests prove decoding/container invariants; framing, pack precedence,
+cadence, filtering, clickability and perceived foot sliding require visual checks.
 
 ## Change checklist
 
-When changing an image surface:
+For image changes:
 
-- update `BuildTools/ImageFormatInterface.json` and this guide in the same
-  Engine change;
-- regenerate `Docs/generated/image-format.json` and all generated image pages;
-- run `BuildTools/tests/test_docs_image_format.py`, the complete documentation
-  suite, and `docs_contract_diff.py` against the intended base;
-- run focused native tests for the touched loader/runtime/atlas boundary;
+- Update `BuildTools/ImageFormatInterface.json` and this guide together;
+  regenerate `Docs/generated/image-format.json` and all image pages.
+- Run `BuildTools/tests/test_docs_image_format.py`, complete docs validation,
+  `docs_contract_diff.py` against the intended base and focused native tests.
 - update [Baking Pipeline](../../explanation/content-pipeline/baking.md),
   [Client Runtime](../../explanation/runtime/client.md), or
   [Sprite Root Motion](sprite-root-motion.md) only when their owned behavior

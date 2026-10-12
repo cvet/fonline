@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ee60969f87b1335d0b07cf65f2804c9e48faf3d3a2479ea87e196eca5705280e"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"906453972584e76009b7ac1e39fc88ee1635bc962073c8347839283b16dc40b0"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -163,6 +163,8 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 `MountPack` ищет сначала `.fores`, затем ZIP-совместимые `.zip`/`.bos`, затем Fallout `.dat`. Packaging пишет по одному `<Name>.fores` на логический pack; ZIP сохраняется только для Embedded внутри executable. Полная база `.fores` может иметь один writable `.patch.fores` с полным актуальным каталогом — это не каталог переопределений и не цепочка патчей. Повреждённый `.fores` не подменяется старым одноимённым ZIP. Бинарный формат, хеши, восстановление и кэш `.foindex` описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md).
 
+Arcanum DAT 2.1 хранит 24-байтную запись плюс имя. Имя может включать завершающий нуль C-строки; reader удаляет завершающие нули, нормализует слеши и переводит пути поиска в нижний регистр. Сжатие (`0x2`), каталог (`0x400`) и игнорирование (`0x800`) — битовые флаги; каталоги и игнорируемые записи исключаются. Усечённые заголовки дерева, записи и диапазоны имени отклоняются при монтировании. Корректные записи Fallout DAT 2.0 сохраняют прежнее поведение; неполные записи и неверные границы дерева отклоняются. После обновления reader пересоберите baker и перезапеките пакеты, импортированные из DAT 2.1.
+
 Затем `FileSystem` объединяет источники и предоставляет:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()` и `AddCustomSource()`;
@@ -247,6 +249,12 @@ Snapshot нового источника снимается до его публ
 3. Если изменилось поведение command line или sub-config, проверьте конфигурацию встраивающего проекта, которая его использует, но оставьте project-specific values в документации проекта.
 4. Если изменился packaging или resource staging, при необходимости повторно проверьте [Web build, packaging и browser debugging](../../how-to/platforms/web-debugging.md), [Android build, packaging и device debugging](../../how-to/platforms/android-debugging.md) и [разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 5. При изменении владения build stages обновите [конвейер baking](../../explanation/content-pipeline/baking.md) или [конвейер BuildTools](../cmake-and-buildtools/pipeline.md).
+
+## Ошибки загрузки ресурсов
+
+Отсутствующий результат поиска остаётся `false`/`nullptr`. Повреждённый смонтированный источник выдаёт `DataSourceException`: ошибки дерева DAT содержат архив, формат, поле и нужные размеры/смещение записи; ошибки чтения — архив и путь ресурса, ошибки zlib — код возврата. DAT 1.0 явно не поддерживается. Распаковка DAT должна достичь конца потока и совпасть с заявленным размером, включая пустые записи.
+
+Ошибки ZIP/embedded ZIP содержат пакет, запись либо индекс и код minizip. Неполное чтение и ошибка закрытия/CRC различаются. Имя с терминатором должно помещаться в буфер 4096 байт, размер распакованной записи — в знаковое 32-битное поле. Неполное чтение cached-directory выбрасывает исключение; после изменения файлов обновляйте индекс. Ошибка границ `FileReader` содержит позицию, число запрошенных байтов и размер буфера, не сдвигая курсор. Загрузчики передают ошибку выше; журналирование принадлежит границе обработки.
 
 ## Опциональные провайдеры архивов
 

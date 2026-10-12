@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
@@ -114,6 +115,36 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "outputs.accepted_extensions must be"):
                 docs_image_format.generate_image_format_model(ENGINE_ROOT, str(manifest_path))
+
+    def test_fofrm_count_anchors_reject_art_with_same_guard_message(self) -> None:
+        manifest = json.loads(
+            (ENGINE_ROOT / docs_image_format.DEFAULT_MANIFEST).read_text(encoding="utf-8")
+        )
+        guard = 'FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive"'
+        art_path = "Source/Tools/ImageBaker-Art.cpp"
+        read_text = Path.read_text
+
+        def read_with_shared_art_guard(path: Path, *args, **kwargs) -> str:
+            text = read_text(path, *args, **kwargs)
+            return text + "\n" + guard if path == ENGINE_ROOT / art_path else text
+
+        for collection, entry_id in (
+            ("descriptor_fields", "image-format.field.count"),
+            ("validation_rules", "image-format.validation.fofrm-count"),
+        ):
+            with self.subTest(entry=entry_id):
+                changed = copy.deepcopy(manifest)
+                entry = next(entry for entry in changed[collection] if entry["id"] == entry_id)
+                source = next(source for source in entry["source"] if guard in source["anchors"])
+                source["path"] = art_path
+
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    manifest_path = Path(temporary_directory) / "ImageFormatInterface.json"
+                    manifest_path.write_text(json.dumps(changed), encoding="utf-8")
+                    with mock.patch.object(Path, "read_text", autospec=True,
+                                           side_effect=read_with_shared_art_guard), \
+                            self.assertRaisesRegex(ValueError, "anchor is missing.*fofrm.GetAsInt"):
+                        docs_image_format.generate_image_format_model(ENGINE_ROOT, str(manifest_path))
 
     def test_generated_pages_and_checked_outputs_are_current(self) -> None:
         pages = docs_image_format.render_reference_pages(ENGINE_ROOT)
