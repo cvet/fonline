@@ -12,7 +12,25 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-11
+## Current - 2026-10-12
+
+### Fixed
+
+- Normalize native RefType lifetime/binding comments; runtime tokens and generated API stay unchanged.
+- Bind FOFRM Count provenance to its loader and reading context; reject the ART loader.
+- Enforce the published 2 MiB + 192 KiB governance budget, complete documents and oversize rejection.
+- Match translation checks to 4,866 entries: 2,576 API, 106 audio and 79 CMake descriptions; reject missing/stale translations.
+- Restore the optional-archive-provider heading and anchor.
+- Match the executable CMake check to 58 options.
+- Exclude managed `bin`/`obj` from documentation sites; rendered audits retain authored sources.
+- Cap search summaries at 224 characters, retaining full-document postings and the byte budget.
+
+### Migration
+
+- Baseline: `2026.1.31-dev`, `b197060d30d01ac74d7a203039a6bdb379c17948`. Retain RefType ownership (29), required ACM adoption (30), and bounded observation (31): ABI `9`, runtime `0.0.72`. No new script, config, resource-schema or stored-data migration; runtime semantics stay unchanged.
+- Run `python BuildTools/docs_prepare.py` for models, EN/RU, snippets, site/routes and AI outputs; validate governance, provenance, translations and versioning. Rebuild/package with `2026.1.32-dev`. Rollback restores baseline-31 docs/tests and matching builds without changing game state or ownership.
+
+## 2026.1.31-dev - 2026-10-11
 
 ### Added
 

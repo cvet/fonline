@@ -6024,7 +6024,7 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
         release_method = make_ptr(&*it);
     }
 
-    // Until the managed lease adopts it, a failed wrapper construction must return the transferred reference.
+    // Until the managed lease adopts it, a failed wrapper construction must return the transferred reference
     auto return_ownership_on_failure = scope_fail([&]() noexcept {
         if (release_method) {
             safe_call([&] {
@@ -8361,7 +8361,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
                 (void)InvokeManagedScript(this, shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed RefType ownership shutdown failed");
             }
 
-            // Native RefTypes may retain callback handles too; collect after returning every owned reference.
+            // Native RefTypes may retain callback handles too; collect after returning every owned reference
             FinalizeManagedObjects();
             UnbindBackend();
 

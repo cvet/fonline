@@ -705,7 +705,7 @@ def _plain_text(value: str) -> str:
     return value.strip(" #>|-")
 
 
-def _summary(text: str, max_characters: int = 240) -> str:
+def _summary(text: str, max_characters: int = 224) -> str:
     paragraph: list[str] = []
     active_fence: str | None = None
     for line in text.splitlines():
@@ -733,7 +733,7 @@ def _summary(text: str, max_characters: int = 240) -> str:
     summary = " ".join(paragraph)
     if len(summary) <= max_characters:
         return summary
-    shortened = summary[: max_characters - 1].rsplit(" ", maxsplit=1)[0]
+    shortened = summary[: max_characters - 3].rsplit(" ", maxsplit=1)[0]
     return shortened.rstrip(".,;:") + "..."
 
 

@@ -1143,6 +1143,7 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
         // Notify spectators
         map->RefreshAreaSpectators(cr);
+
         if (map->HasSpectatorPlayers()) {
             for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
                 if (!player->IsAreaView()) {

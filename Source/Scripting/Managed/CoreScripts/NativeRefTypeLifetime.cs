@@ -3,7 +3,7 @@ namespace FOnline;
 using System;
 using System.Collections.Generic;
 
-// Entry-assembly state belongs to one backend. Records retain native ownership, never their managed wrappers.
+// Entry-assembly state belongs to one backend. Records retain native ownership, never their managed wrappers
 internal sealed class NativeRefTypeLifetime
 {
     private static readonly object Gate = new object();
@@ -21,13 +21,13 @@ internal sealed class NativeRefTypeLifetime
         Invariant.Verify(pointer != IntPtr.Zero, "Native RefType pointer must not be null");
         NativeReference = new Reference(pointer, addRefMethod, releaseMethod, disposeMethod);
 
-        // Construction is completed by the backend's private acquire/adopt adapter before exposing the wrapper.
+        // Construction is completed by the backend's private acquire/adopt adapter before exposing the wrapper
         GC.SuppressFinalize(this);
     }
 
     ~NativeRefTypeLifetime()
     {
-        // The intrusive queue allocates nothing and never calls a resource destructor on the finalizer thread.
+        // The intrusive queue allocates nothing and never calls a resource destructor on the finalizer thread
         lock (Gate)
         {
             Reference? reference = NativeReference;
@@ -45,7 +45,7 @@ internal sealed class NativeRefTypeLifetime
         ObjectDisposedException.ThrowIf(Closed || Disposed || !Native.IsBackendAlive, typeof(NativeRefTypeLifetime));
     }
 
-    // A factory or PassOwnership export supplies this reference; adopting it must not call native AddRef.
+    // A factory or PassOwnership export supplies this reference; adopting it must not call native AddRef
     internal void AdoptReference()
     {
         lock (Gate)
@@ -69,7 +69,7 @@ internal sealed class NativeRefTypeLifetime
             ObjectDisposedException.ThrowIf(Closed || Disposed, typeof(NativeRefTypeLifetime));
             int count = checked(NativeReference.Count + 1);
 
-            // Allocate tracking storage before acquiring the native reference.
+            // Allocate tracking storage before acquiring the native reference
             OwnedReferences.Add(NativeReference);
 
             try {
@@ -155,7 +155,7 @@ internal sealed class NativeRefTypeLifetime
         {
             Reference[] remaining = new Reference[OwnedReferences.Count];
             OwnedReferences.CopyTo(remaining);
-            // Close before unbinding so a late finalizer cannot signal a dead backend or enqueue twice.
+            // Close before unbinding so a late finalizer cannot signal a dead backend or enqueue twice
             Closed = true;
             Pending = null;
 

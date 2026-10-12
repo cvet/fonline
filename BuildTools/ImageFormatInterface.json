@@ -416,12 +416,8 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);"
-          ]
-        },
-        {
-          "path": "Source/Tools/ImageBaker-Art.cpp",
-          "anchors": [
+            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);",
+            "frm_count = fofrm.GetAsInt(\"\", \"Count\", frm_count);",
             "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
           ]
         }
@@ -1012,9 +1008,10 @@
       "rationale": "A descriptor must resolve at least one source reference before a runtime frame table can exist.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker-Art.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
+            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\"",
+            "frm_count = fofrm.GetAsInt(\"\", \"Count\", frm_count);"
           ]
         }
       ]

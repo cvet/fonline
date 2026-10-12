@@ -174,9 +174,11 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
 FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius)
 {
     ValidateEntityAccess(map);
+
     if (self->IsDestroying() || !map->GetSize().is_valid_pos(hex) || radius <= 0 || radius > std::numeric_limits<int16_t>::max()) {
         throw ScriptException("Invalid bounded map view", self->GetId(), hex, radius);
     }
+
     auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
@@ -192,9 +194,11 @@ FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpo
 FO_SCRIPT_API void Server_Player_ReturnFromViewMap(ptr<Player> self)
 {
     auto cr = self->GetControlledCritter();
+
     if (!cr) {
         throw ScriptException("Map view return requires a controlled critter", self->GetId());
     }
+
     ValidateEntityAccess(cr);
     self->GetEngine()->ReturnPlayerFromViewMap(self);
 }

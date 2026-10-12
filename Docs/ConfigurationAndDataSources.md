@@ -61,3 +61,7 @@ Continue with the [canonical English reference](en/reference/settings/configurat
 ## Validation checklist
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).
+
+## Optional archive providers
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#optional-archive-providers).

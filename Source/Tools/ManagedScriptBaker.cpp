@@ -638,7 +638,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                         out << CS_INDENT << "    _refPtr = __created.RefPtr;\n";
 
                         if (ref_counted) {
-                            // The temporary wrapper shares the lease; collecting it cannot release the constructed object.
+                            // The temporary wrapper shares the lease; collecting it cannot release the constructed object
                             out << CS_INDENT << "    _refLifetime = __created._refLifetime;\n";
                         }
 
@@ -3546,7 +3546,7 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
         out << indent << "global::System.GC.KeepAlive(this);\n";
     }
 
-    // A packed handle is not a GC root; keep native RefType arguments alive through the native call.
+    // A packed handle is not a GC root; keep native RefType arguments alive through the native call
     for (size_t i = 0; i < args.size(); i++) {
         if (args[i].Type.BaseType.IsRefType && !IsDynamicManagedRefType(args[i].Type.BaseType)) {
             out << indent << "global::System.GC.KeepAlive(" << arg_names[i] << ");\n";
@@ -4176,7 +4176,7 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
         const MethodDesc& method = methods[method_index];
 
-        // Reference operations belong to the managed lease; native Dispose is composed with its cleanup.
+        // Reference operations belong to the managed lease; native Dispose is composed with its cleanup
         if (ref_counted && method.Args.empty() && !method.Ret && (method.Name == "__AddRef" || method.Name == "__Release" || method.Name == "Dispose")) {
             continue;
         }

@@ -46,8 +46,14 @@ public sealed class DatabaseDocument
             throw new InvalidOperationException("Database document context is no longer valid");
         }
 
-        object? value = Values != null ? (Values.TryGetValue(property, out object ? stored) ? stored : null): Native
-                                              .ReadDatabaseDocument(Context, property);
+        object? value;
+
+        if (Values != null) {
+            value = Values.TryGetValue(property, out object? stored) ? stored : null;
+        }
+        else {
+            value = Native.ReadDatabaseDocument(Context, property);
+        }
 
         if (value == null) {
             return default;

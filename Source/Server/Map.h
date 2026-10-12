@@ -107,9 +107,6 @@ public:
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
     [[nodiscard]] auto GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>;
     [[nodiscard]] bool IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id);
-    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius);
-    void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
-    void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
     [[nodiscard]] auto GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>;
@@ -130,6 +127,9 @@ public:
     void RefreshCritterPlayerState(ptr<Critter> cr);
     void AddSpectatorPlayer(ptr<Player> player);
     void RemoveSpectatorPlayer(ptr<Player> player);
+    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius);
+    void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
+    void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
     void SetItem(ptr<Item> item);
     void RemoveItem(ident_t item_id);

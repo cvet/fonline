@@ -2980,17 +2980,23 @@ auto MapView::IsOutsideArea(mpos hex) const -> bool
 void MapView::SetViewArea(mpos hex, int32_t radius)
 {
     _viewArea.reset();
+
     if (radius <= 0) {
         return;
     }
+
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex) && radius <= std::numeric_limits<int16_t>::max(), "Invalid map view area", hex, radius);
+
     for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
         ipos32 corner(hex);
+
         for (int32_t step = 0; step < radius; step++) {
             GeometryHelper::MoveHexByDirUnsafe(corner, mdir(hdir(dir)));
         }
+
         _viewAreaBoundary[numeric_cast<size_t>(dir)] = corner;
     }
+
     _viewArea.emplace(hex, radius);
     InstantScrollTo(hex);
 }
@@ -3005,6 +3011,7 @@ void MapView::DrawViewAreaMask(const irect32& draw_area)
     if (!_viewArea) {
         return;
     }
+
     ipos32 center = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(_viewArea->first));
     ipos32 world_center = GeometryHelper::GetHexPos(_viewArea->first);
     array<PrimitivePoint, (GameSettings::MAP_DIR_COUNT + 1) * 2> points {};
@@ -3682,6 +3689,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
         if (!IsHexInViewArea(item->GetHex())) {
             return;
         }
+
         int32_t sort_value = mspr->GetSortValue();
 
         if (sort_value <= best_sort && sort_value <= best_egg_sort) {
@@ -4093,6 +4101,7 @@ void MapView::SetScreenSize(isize32 size)
     }
 
     RebuildMapNow();
+
     if (_viewArea) {
         InstantScroll({});
     }

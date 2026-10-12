@@ -5,12 +5,14 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"0ecd66e4f0ecd82b2194f788a4ab5e058dadee80d06ecb657e74351c5d242f53"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"a5487a68441123b742b9e8ad00f704a088c8c6969c2eceadedc0cc464eac58bf"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
 
 Шаблон включает корневой `VERSION` стандартным тегом Jekyll `include`; `includes_dir: .` делает этот единственный источник доступным и локальной сборке, и обычной сборке GitHub Pages. Копия версии и подготовительный шаг не нужны. Публикуйте `/VERSION` побайтно вместе с `/docs-manifest.json`; отчёты маршрутов и переводов хранятся в разделах этого общего индекса.
+
+Аннотации результатов поиска ограничены 224 символами вместе с многоточием и сокращаются по границе слова. Поисковые слова и оценки полного документа сохраняются; лимит байтов индекса прежний.
 
 ## Назначение
 
@@ -122,6 +124,8 @@ Jekyll читает канонический Markdown из корня репоз
 </figure>
 
 GitHub Pages использует `jekyll-readme-index`, который обычно превращает route вложенного `README.md` в directory index. Поэтому семь public root/subsystem/example READMEs закрепляют manifest-owned `.html` routes коротким YAML front matter. `Docs/Site/_config.yml` исключает local build trees, third-party inputs, private example governance templates и BuildTools subtrees без public pages, сохраняя source files, на которые ссылается документация. Удаление pinned permalink создаёт обещанный каталогом, но не отрендеренный Jekyll route и проваливает source-level и post-build validation.
+
+Каталоги managed `bin` и `obj` внутри `Source/Scripting/Managed/` содержат результаты сборки на любой глубине проекта. Исключайте их шаблонами каталогов без завершающего слеша; аудит артефакта отклоняет опубликованные файлы внутри них, сохраняя авторские исходники.
 
 Обычные `index.md` используют canonical directory URL Jekyll (`/path/`), хотя artifact остаётся `/path/index.html`. `BuildTools/docs_site.py` записывает directory form в navigation, search, locale reservations и route catalog, чтобы canonical tags и published links совпадали с GitHub Pages.
 

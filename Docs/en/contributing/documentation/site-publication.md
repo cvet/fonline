@@ -12,6 +12,8 @@ permalink: /Docs/en/contributing/documentation/site-publication.html
 
 The layout includes root `VERSION` through Jekyll's standard `include` tag; `includes_dir: .` makes that single source available in local builds and the ordinary GitHub Pages build alike. No copied version or preparation step is required. Publish `/VERSION` byte-for-byte with `/docs-manifest.json`; route and translation reports are sections of that shared index.
 
+Search-result summaries are limited to 224 characters including the ellipsis, with truncation at a word boundary. Full-document search terms and scores are retained; the search-index byte limit remains unchanged.
+
 ## Purpose
 
 Use this page when changing `Docs/Site/_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
@@ -122,6 +124,8 @@ provenance, locale mirrors and rendered-site checks together.
 </figure>
 
 GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `Docs/Site/_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
+
+Managed `bin` and `obj` directories below `Source/Scripting/Managed/` are build outputs at any project depth. Exclude them with directory globs without a trailing slash; the artifact audit rejects any published file inside them while retaining authored source files.
 
 Ordinary `index.md` pages use Jekyll's canonical directory URL (`/path/`), while
 their artifact remains `/path/index.html`. `BuildTools/docs_site.py` records the

@@ -64,6 +64,8 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - Resources/
+  - Source/Scripting/Managed/**/bin
+  - Source/Scripting/Managed/**/obj
   - Temp/
   - ThirdParty/
   - Workspace/
