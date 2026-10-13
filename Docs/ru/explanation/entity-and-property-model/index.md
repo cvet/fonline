@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"e5a2d6e20facb097d4f5d63e8f140b7a222ee58dc453ab230d0e59f47f775024"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"bc1b789cb3d5c86a183f14572e6f9fa42d8813f84735775f8c92bbf5a6538471"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -235,9 +235,10 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 К соответствующим тестам относятся:
 
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntityProtos.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - тесты свойств и метаданных, например `Test_Properties.cpp` и `Test_EngineMetadata.cpp`, если они присутствуют в checkout.
 
 ## Маршрутизация изменений

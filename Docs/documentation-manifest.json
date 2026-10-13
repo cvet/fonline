@@ -10271,48 +10271,10 @@
     "Docs/en/how-to/content/model-animation.md": {
       "id": "model-animation",
       "title": "Model Animation Metadata and Duration",
-      "audiences": [
-        "game-developer",
-        "content-author",
-        "engine-contributor",
-        "ai-agent"
-      ],
-      "classification": {
-        "diataxis": "how-to",
-        "visibility": "public",
-        "human": true,
-        "translation": "required"
-      },
-      "owner": "content-data",
-      "state": "current",
-      "disposition": "retain",
-      "target": "Docs/en/how-to/content/model-animation.md",
-      "sources": [
-        "BuildTools/ExternalProjectEvidence.json",
-        "Source/Tools/ModelSourceLoader.cpp",
-        "Source/Tools/ModelAnimationConverter.cpp",
-        "Source/Tools/ModelInfoBaker.cpp",
-        "Source/Common/ModelAnimationData.cpp",
-        "Source/Common/AnimationInfo.cpp",
-        "Source/Client/ModelInformation.cpp",
-        "Source/Client/ModelAnimation.cpp",
-        "Source/Client/ModelInstance.cpp",
-        "Source/Common/EngineBase.cpp",
-        "Source/Common/EngineBase.h",
-        "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "Source/Tests/Test_ModelBaker.cpp",
-        "Source/Tests/Test_ModelMeshData.cpp",
-        "Source/Tests/Test_ModelSourceLoader.cpp",
-        "Source/Tests/Test_ModelAnimationData.cpp",
-        "Source/Tests/Test_ModelAnimationConverter.cpp",
-        "Source/Tests/Test_ModelAnimationRuntime.cpp",
-        "Source/Tests/Test_ModelAnimationPoseProcedural.cpp",
-        "Source/Tests/Test_ModelSkeletonCompatibility.cpp",
-        "Source/Tests/Test_OzzAnimation.cpp",
-        "Source/Tests/Test_CommonScriptMethods.cpp",
-        "BuildTools/tests/test_docs_model_animation.py"
-      ]
+      "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/content/model-animation.md",
+      "sources": ["BuildTools/ExternalProjectEvidence.json", "Source/Tools/ModelSourceLoader.cpp", "Source/Tools/ModelAnimationConverter.cpp", "Source/Tools/ModelInfoBaker.cpp", "Source/Common/ModelAnimationData.cpp", "Source/Common/AnimationInfo.cpp", "Source/Client/ModelInformation.cpp", "Source/Client/ModelAnimation.cpp", "Source/Client/ModelInstance.cpp", "Source/Common/EngineBase.cpp", "Source/Common/EngineBase.h", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Source/Scripting/ClientCritterScriptMethods.cpp", "Source/Tests/Test_ModelBaker.cpp", "Source/Tests/Test_ModelMeshData.cpp", "Source/Tests/Test_ModelSourceLoader.cpp", "Source/Tests/Test_ModelAnimationData.cpp", "Source/Tests/Test_ModelAnimationConverter.cpp", "Source/Tests/Test_ModelAnimationRuntime.cpp", "Source/Tests/Test_ModelAnimationPoseProcedural.cpp", "Source/Tests/Test_ModelSkeletonCompatibility.cpp", "Source/Tests/Test_OzzAnimation.cpp", "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp", "BuildTools/tests/test_docs_model_animation.py"]
     },
     "Docs/ModelAnimation.md": {
       "id": "legacy-model-animation-route",

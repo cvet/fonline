@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #include "Common.h"
@@ -2794,3 +2798,6 @@ int RunInitList()
 }
 
 FO_END_NAMESPACE
+
+#endif
+

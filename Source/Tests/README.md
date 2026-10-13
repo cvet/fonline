@@ -29,191 +29,16 @@ The complete source-backed filename list and count are generated in [source-inve
 retain their result across another thread's final release and that an older entity cannot unregister
 a successor with the same id.
 
-After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
+`FO_TESTS_SOURCE` is unconditional. Backend-specific translation units own complete guards; general native suites run with either backend. Shared header fixtures keep AS compilation guarded. See the [backend ownership contract](../../Docs/en/contributing/testing/#test-runner-model).
 
-The configured executable contains the suites for its enabled scripting backend. AngelScript-only translation
-units are selected only when `FO_ANGELSCRIPT_SCRIPTING` is enabled; `Test_ManagedScriptBaker.cpp` is selected only
-when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always present.
+`Test_ManagedScriptRuntime.cpp` compiles `Fixtures/ManagedRuntimeProbe.cs` with the real baker/SDK and runs server/client/mapper bridges and two-server isolation. It requires the configured SDK/runtime; the [test map](../../Docs/en/contributing/testing/#test-runner-model) owns coverage and limits.
+
+After adding, removing, or renaming a `Test_*.cpp` file, regenerate the inventory from the engine root:
 
 ```bash
 python BuildTools/docs_inventory.py --write
 python BuildTools/docs_inventory.py --check
 ```
-
-### Configuration, data sources, files, and caches
-
-- `Source/Tests/Test_CacheStorage.cpp`
-- `Source/Tests/Test_ConfigFile.cpp`
-- `Source/Tests/Test_DataSource.cpp`
-- `Source/Tests/Test_FileSystem.cpp`
-- `Source/Tests/Test_Settings.cpp`
-- `Source/Tests/Test_SettingsStorage.cpp`
-
-### Core platform, containers, and utilities
-
-- `Source/Tests/Test_BaseLogging.cpp`
-- `Source/Tests/Test_BasicCore.cpp`
-- `Source/Tests/Test_CommonHelpers.cpp`
-- `Source/Tests/Test_Compressor.cpp`
-- `Source/Tests/Test_Containers.cpp`
-- `Source/Tests/Test_Cryptography.cpp`
-- `Source/Tests/Test_DequeObject.cpp`
-- `Source/Tests/Test_DataSerialization.cpp`
-- `Source/Tests/Test_DiskFileSystem.cpp`
-- `Source/Tests/Test_ExceptionHandling.cpp`
-- `Source/Tests/Test_ExtendedTypes.cpp`
-- `Source/Tests/Test_FunctionObjects.cpp`
-- `Source/Tests/Test_GenericUtils.cpp`
-- `Source/Tests/Test_GlobalData.cpp`
-- `Source/Tests/Test_HashedString.cpp`
-- `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp` (OOM/commit failure policy and opt-in owner-thread occupancy, reusable holes and size-class totals without cache flushing)
-- `Source/Tests/Test_Platform.cpp`
-- `Source/Tests/Test_RandomGenerator.cpp`
-- `Source/Tests/Test_SafeArithmetics.cpp`
-- `Source/Tests/Test_SettingsStorage.cpp`
-- `Source/Tests/Test_SmartPointers.cpp`
-- `Source/Tests/Test_StackTrace.cpp`
-- `Source/Tests/Test_StringObject.cpp`
-- `Source/Tests/Test_StringUtils.cpp`
-- `Source/Tests/Test_StrongType.cpp`
-- `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_Threading.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
-
-### Common runtime model
-
-- `Source/Tests/Test_AnyData.cpp`
-- `Source/Tests/Test_ApplicationHeadless.cpp`
-- `Source/Tests/Test_ClientEntityLifetime.cpp`
-- `Source/Tests/Test_Common.cpp`
-- `Source/Tests/Test_EngineMetadata.cpp`
-- `Source/Tests/Test_EntityLifecycle.cpp`
-- `Source/Tests/Test_EntityProtos.cpp`
-- `Source/Tests/Test_Geometry.cpp`
-- `Source/Tests/Test_LineTracer.cpp`
-- `Source/Tests/Test_MapLoader.cpp`
-- `Source/Tests/Test_MapSprite.cpp`
-- `Source/Tests/Test_MapViewHitTesting.cpp` (self-contained faded-wall/floor picking, default and opt-in egg policy; either scripting backend)
-- `Source/Tests/Test_Movement.cpp`
-- `Source/Tests/Test_PathFinding.cpp`
-- `Source/Tests/Test_Properties.cpp`
-- `Source/Tests/Test_ProtoManager.cpp`
-- `Source/Tests/Test_TextPack.cpp`
-- `Source/Tests/Test_Timer.cpp`
-- `Source/Tests/Test_TransparentEgg.cpp`
-- `Source/Tests/Test_TwoDimensionalGrid.cpp`
-
-### Networking and server/client integration
-
-- `Source/Tests/Test_LinkDelay.cpp` (usual transit, sustained slowdown and bounded late-plan catch-up)
-
-- `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_ClientEngine.cpp`
-- `Source/Tests/Test_ClientRuntimeApi.cpp`
-- `Source/Tests/Test_ClientServerIntegration.cpp`
-- `Source/Tests/Test_ClientUpdater.cpp`
-- `Source/Tests/Test_DataBase.cpp`
-- `Source/Tests/Test_EntitySync.cpp`
-- `Source/Tests/Test_FogOfWar.cpp`
-- `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ModelAnimation.cpp`
-- `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
-- `Source/Tests/Test_NoiseProtocol.cpp`
-- `Source/Tests/Test_NetworkClient.cpp`
-- `Source/Tests/Test_NetworkServer.cpp`
-- `Source/Tests/Test_NetworkUdp.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
-- `Source/Tests/Test_ServerEngine.cpp`
-- `Source/Tests/Test_ServerEntityLoading.cpp`
-- `Source/Tests/Test_ServerEntityLifetime.cpp`
-- `Source/Tests/Test_ServerEventContracts.cpp`
-- `Source/Tests/Test_ServerItems.cpp`
-- `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ServerMoveReconciliation.cpp`
-- `Source/Tests/Test_SecureChannel.cpp`
-- `Source/Tests/Test_UpdaterBackend.cpp`
-
-### Scripting and script-visible APIs
-
-- `Source/Tests/Test_AngelScriptAlignment.cpp`
-- `Source/Tests/Test_AngelScriptAttributes.cpp`
-- `Source/Tests/Test_AngelScriptBytecode.cpp`
-- `Source/Tests/Test_AngelScriptCall.cpp`
-- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
-
-### Bakers and tools
-
-- `Source/Tests/Test_AngelScriptBaker.cpp`
-- `Source/Tests/Test_AudioBaker.cpp`
-- `Source/Tests/Test_BakerSetup.cpp`
-- `Source/Tests/Test_ConfigBaker.cpp`
-- `Source/Tests/Test_EffectBaker.cpp`
-- `Source/Tests/Test_ImageBaker.cpp`
-- `Source/Tests/Test_ImageWriter.cpp`
-- `Source/Tests/Test_MapBaker.cpp`
-- `Source/Tests/Test_Mapper.cpp`
-- `Source/Tests/Test_MetadataBaker.cpp`
-- `Source/Tests/Test_ManagedScriptBaker.cpp`
-- `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ModelBounds.cpp`
-- `Source/Tests/Test_ModelMeshData.cpp`
-- `Source/Tests/Test_ModelAnimationData.cpp`
-- `Source/Tests/Test_ModelAnimationConverter.cpp`
-- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
-- `Source/Tests/Test_ModelAnimationRuntime.cpp`
-- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
-- `Source/Tests/Test_ModelSpriteLayout.cpp`
-- `Source/Tests/Test_ModelSourceLoader.cpp`
-- `Source/Tests/Test_OzzAnimation.cpp`
-- `Source/Tests/Test_ProtoBaker.cpp`
-- `Source/Tests/Test_ProtoTextBaker.cpp`
-- `Source/Tests/Test_RawCopyBaker.cpp`
-- `Source/Tests/Test_ResourceIndex.cpp`
-- `Source/Tests/Test_ResourcePack.cpp`
-- `Source/Tests/Test_TextBaker.cpp`
-- `Source/Tests/Test_TextureAtlas.cpp`
-
-The model-pipeline coverage is intentionally split. `Test_ModelMeshData.cpp`
-owns the mesh-only wire contract; `Test_ModelSourceLoader.cpp` and
-`Test_ModelAnimationConverter.cpp` own source extraction and canonical
-conversion; `Test_ModelAnimationData.cpp` owns the versioned rig archive;
-`Test_ModelBaker.cpp` crosses source-backed baking and binding resolution; and
-the animation, runtime-pose, procedural, skeleton-compatibility, and Ozz suites
-cover the production sampling and matrix path. Keep these boundaries green
-independently, then use `Test_ClientEngine.cpp` for the baker-to-client parser
-boundary.
-
-### Rendering and frontend tests
-
-- `Source/Tests/Test_AudioManager.cpp` — pins the panning law sample by sample, and runs a real
-  baked Ogg through the mixer against a fake audio device to prove a placed sound is mixed where it
-  was placed, that `UpdateSound` moves one that is already playing, and that its handle stops
-  answering once the sound has finished.
-- `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
-  window-state harness used by diagnostic-panel coverage.
-- `Source/Tests/Test_EffekseerParticleRuntime.cpp` - runs cooked legacy and modern Effekseer
-  effects through the native runtime's real Sprite/Ring callbacks and validates deterministic
-  multi-instance topology, FOnline geometry, atlas UVs, all three Z-sort modes, Ring index-budget
-  chunking, and facade-level scale reapplication without respawn or timing reset.
-- `Source/Tests/Test_ImGui.cpp`
-- `Source/Tests/Test_ModelSpriteLayout.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp` - covers `.efkproj` source discovery,
-  `.spark`/`.efkproj` output-key mapping, generated binary validation, rejection
-  of authored `.spk`/`.efk` runtime inputs, and SPARK seeded-stream isolation
-  across interleaved effects and independent engine contexts. The build/integration bake path
-  exercises the native fixed-profile exporter on real XML projects.
-- `Source/Tests/Test_Rendering.cpp`
-
-The documentation CI job rejects stale generated inventory. The headings above
-mirror the current source files for navigation but do not replace the generated
-complete list.
 
 The attachment teardown regressions run with either scripting backend: `CritterAttachmentTeardown`
 checks server links, native reports and delivery to the surviving player; `ClientCritterFinalizationDropsAttachmentIds`
@@ -252,6 +77,8 @@ and exclude `Source/Tests/` from the reported source denominator.
 ## Shared test helpers
 
 Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOURCE`:
+
+`Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h`, and `Test_ServerMapOperationsHelpers.h` share native resource construction with their AngelScript suites. Backend-specific compilation stays guarded inside these fixtures.
 
 - `Source/Tests/Test_BakerHelpers.h` - baked-resource fixtures (sprites, protos, metadata) and a
   `TestRig` that runs the real bakers over in-memory sources.

@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"c4724876437f65ae7485167ef379bf4f55a6fdc7ff357814bdf13d2dec5192c3"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"8979d29c3424c28b0aac3a589e02987baaf46f1687af2c28b67b152d9c7b8e7b"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -58,6 +58,7 @@ permalink: /Docs/ru/how-to/content/prototype-format.html
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## От исходного файла до запечённого прототипа
 

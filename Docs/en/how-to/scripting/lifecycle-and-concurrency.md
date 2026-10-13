@@ -99,10 +99,12 @@ Document migrations are synchronous dispatcher-owned callbacks, executed before 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
 
 ## Runtime mental model
 
@@ -383,7 +385,7 @@ Choose the narrowest gate that proves the changed contract:
 | Server cover, singleton lock, or access validation | `Test_EntitySync`, affected script-method/entity tests, and a project runtime path. |
 | Inbound server remote-call cover | Server runtime/remote-call tests plus a handler that reads the caller's controlled critter. |
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |
-| `InitScript` authoring or runtime resolution | `Test_ServerMapOperations`, focused baker tests, and an embedding-project bake. |
+| `InitScript` authoring or runtime resolution | `Test_AngelScriptServerMapOperations`, focused baker tests, and an embedding-project bake. |
 | Entity callback/time-event lifetime | Entity/time-event tests and a destruction or shutdown smoke path. |
 | Script object lifetime or shutdown GC | AngelScript: `Test_AngelScriptCall` and an engine shutdown smoke; Managed: callback-GC/load-context tests and a managed runtime shutdown smoke. |
 | Project script behavior only | Embedding-project bake plus the narrowest gameplay/scene test. |

@@ -31,557 +31,19 @@
 // SOFTWARE.
 //
 
-#include <filesystem>
+#include "Common.h"
 
-#include "catch_amalgamated.hpp"
-
-#include "AngelScriptScripting.h"
-#include "Baker.h"
-#include "DataSerialization.h"
-#include "DiskFileSystem.h"
-#include "ImGuiStuff.h"
-#include "Logging.h"
-#include "Movement.h"
-#include "Server.h"
-#include "Test_BakerHelpers.h"
+#include "Test_ServerEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
-namespace
+using namespace ServerEngineTests;
+
+class BoundaryArgAccessor final : public DataAccessor
 {
-    constexpr msize SERVER_TEST_MAP_SIZE {200, 200};
-    constexpr mpos SERVER_TEST_MOVE_START_HEX {20, 20};
-    constexpr uint16_t SERVER_TEST_MOVE_SPEED = 100;
-    const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
-    const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
-
-    enum class ServerTestScriptMode : uint8_t
-    {
-        Default,
-        StopOnInit,
-        ThrowOnInit,
-    };
-
-    static auto MakeServerTestSettings() -> GlobalSettings
-    {
-        auto settings = GlobalSettings(false);
-
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
-
-        BakerTests::ApplySelfContainedServerSettings(settings);
-
-        return settings;
-    }
-
-    static auto MakeServerHealthFileName() -> string
-    {
-        auto exe_path = platform::get_exe_path();
-
-        return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
-    }
-
-    static auto MakeTempServerResourceDir(string_view name) -> string
-    {
-        auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs::path_to_string(base);
-    }
-
-    static void RemoveServerHealthFile(string_view name) noexcept
-    {
-        std::error_code ec;
-        (void)std::filesystem::remove(std::filesystem::path {fs::make_path(name)}, ec);
-    }
-
-    static auto MakeEmptyMapBlob() -> vector<uint8_t>
-    {
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
-        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
-        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint32_t>(uint32_t {0});
-        return map_data;
-    }
-
-    // A sustained hold is impossible for a covered target, so this pins that the give-up comes from the retry
-    // budget and not the watchdog, by requiring the contention to still be held when the throw lands
-    static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
-    {
-        std::atomic<bool> state_locked {};
-        std::atomic<bool> release_state {};
-        std::atomic<bool> ensure_finished {};
-        std::jthread state_owner {[&](std::stop_token) {
-            state_lock->LockStateMutex();
-            state_locked.store(true, std::memory_order_release);
-
-            while (!release_state.load(std::memory_order_acquire)) {
-                std::this_thread::yield();
-            }
-
-            state_lock->UnlockStateMutex();
-        }};
-        auto release_state_guard = scope_exit([&release_state]() noexcept { release_state.store(true, std::memory_order_release); });
-
-        while (!state_locked.load(std::memory_order_acquire)) {
-            std::this_thread::yield();
-        }
-
-        // A safety net that must stay well above the retry budget, or releasing early would turn the expected
-        // throw into a success and mask a regression
-        std::jthread contention_watchdog {[&](std::stop_token) {
-            for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
-                std::this_thread::sleep_for(std::chrono::milliseconds {1});
-            }
-
-            release_state.store(true, std::memory_order_release);
-        }};
-
-        CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
-
-        // Read before the test releases the contention itself, so this reflects only the watchdog
-        bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
-        ensure_finished.store(true, std::memory_order_release);
-        release_state.store(true, std::memory_order_release);
-        state_owner.join();
-        contention_watchdog.join();
-
-        CHECK_FALSE(rescued_by_watchdog);
-    }
-
-    // The realistic counterpart, where a foreign thread holds the mutex only for its own non-blocking pass:
-    // retention must retry through that window and land
-    static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
-    {
-        std::atomic<bool> state_locked {};
-        std::jthread state_owner {[&](std::stop_token) {
-            state_lock->LockStateMutex();
-            state_locked.store(true, std::memory_order_release);
-            std::this_thread::sleep_for(std::chrono::milliseconds {40});
-            state_lock->UnlockStateMutex();
-        }};
-
-        while (!state_locked.load(std::memory_order_acquire)) {
-            std::this_thread::yield();
-        }
-
-        CHECK_NOTHROW(ctx.EnsureEntitySynced(target));
-        state_owner.join();
-    }
-
-    static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        REQUIRE(static_cast<bool>(registrar));
-
-        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
-        proto.SetSize(map_size);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
-
-        writer.write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint32_t>(uint32_t {1});
-        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.write_string_bytes(type_name.as_str());
-        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.write_string_bytes(proto_name);
-        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        if (!props_data.empty()) {
-            writer.write_bytes({props_data.data(), props_data.size()});
-        }
-
-        return protos_data;
-    }
-
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
-    {
-        BakerServerEngine compiler_engine {metadata_resources};
-
-        return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineScripts",
-            {
-                {"Scripts/ServerEngineTest.fos", R"(
-namespace ServerEngineTest
-{
-    int InitCalls = 0;
-    int CritterInitCalls = 0;
-    int64 LastCritterId = 0;
-    bool LastCritterFirstTime = false;
-    int ManualCalls = 0;
-    int AdminCallCounter = 0;
-    int ModuleInitOrder = 0;
-    int ImmediateInitOrder = 0;
-    int DeferredInitOrder = 0;
-
-    [[ModuleInit]]
-    void RegisterHooks()
-    {
-        ImmediateInitOrder = ++ModuleInitOrder;
-        Game.OnInit.Subscribe(OnInit);
-        Game.OnCritterInit.Subscribe(OnCritterInit);
-    }
-
-    [[ModuleInit(2)]]
-    void RunDeferredInit()
-    {
-        DeferredInitOrder = ++ModuleInitOrder;
-    }
-
-    [[Event]]
-    void OnInit()
-    {
-        InitCalls++;
-    }
-
-    [[Event]]
-    void OnCritterInit(Critter cr, bool firstTime)
-    {
-        CritterInitCalls++;
-        LastCritterId = cr.Id.value;
-        LastCritterFirstTime = firstTime;
-    }
-
-    void UnitTestNoop() {}
-
-    [[Async]]
-    void UnitTestSuspend()
-    {
-        Yield(60000);
-    }
-
-    void UnitTestMarkManualCall()
-    {
-        ManualCalls++;
-    }
-
-    void UnitTestResetAdminCallCounter()
-    {
-        AdminCallCounter = 0;
-    }
-
-    void UnitTestAdminEntryImpl()
-    {
-        AdminCallCounter++;
-    }
-
-    [[AdminRemoteCall]]
-    void UnitTestAdminEntry()
-    {
-        UnitTestAdminEntryImpl();
-    }
-
-    void UnitTestRegularEntry()
-    {
-        AdminCallCounter += 100;
-    }
-
-    void UnitTestInvokeAdminEntry()
-    {
-        UnitTestAdminEntryImpl();
-    }
-
-    int UnitTestGetInitCalls()
-    {
-        return InitCalls;
-    }
-
-    int UnitTestGetCritterInitCalls()
-    {
-        return CritterInitCalls;
-    }
-
-    int64 UnitTestGetLastCritterId()
-    {
-        return LastCritterId;
-    }
-
-    bool UnitTestGetLastCritterFirstTime()
-    {
-        return LastCritterFirstTime;
-    }
-
-    int UnitTestGetManualCalls()
-    {
-        return ManualCalls;
-    }
-
-    int UnitTestGetAdminCallCounter()
-    {
-        return AdminCallCounter;
-    }
-
-    int UnitTestGetImmediateInitOrder()
-    {
-        return ImmediateInitOrder;
-    }
-
-    int UnitTestGetDeferredInitOrder()
-    {
-        return DeferredInitOrder;
-    }
-
-    int UnitTestSumArray(int[] values)
-    {
-        int total = 0;
-
-        for (int i = 0; i < values.length(); i++) {
-            total += values[i];
-        }
-
-        return total;
-    }
-
-    void UnitTestMutateArray(int[] & values)
-    {
-        if (values.length() > 0) {
-            values[0] += 10;
-        }
-
-        values.insertLast(77);
-    }
-
-    int UnitTestSumDict(dict<int, int> values)
-    {
-        int total = 0;
-
-        for (int i = 0; i < values.length(); i++) {
-            total += values.getKey(i);
-            total += values.getValue(i);
-        }
-
-        return total;
-    }
-
-    int64 UnitTestGetCritterIdValue(Critter cr)
-    {
-        return cr !is null ? cr.Id.value : 0;
-    }
-
-    bool UnitTestIsItemNull(Item? item)
-    {
-        return item is null;
-    }
-
-    bool UnitTestMatchesHash(hstring value)
-    {
-        return value == "UnitTestHash".hstr();
-    }
-
-}
-)"},
-            },
-            [](string_view message) {
-                string message_str = string(message);
-
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
-    }
-
-    static auto MakeInitGateScriptBinary(const FileSystem& metadata_resources, ServerTestScriptMode mode) -> vector<uint8_t>
-    {
-        BakerServerEngine compiler_engine {metadata_resources};
-
-        string_view body = mode == ServerTestScriptMode::StopOnInit ? string_view {"return EventResult::StopChain;"} : string_view {R"(throw("Unit test OnInit failure");
-        return EventResult::ContinueChain;)"};
-
-        return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineInitGateScripts",
-            {
-                {"Scripts/ServerEngineInitGateTest.fos",
-                    strex(R"(
-namespace ServerEngineInitGateTest
-{{
-    [[ModuleInit]]
-    void RegisterHooks()
-    {{
-        Game.OnInit.Subscribe(OnInit);
-    }}
-
-    [[Event]]
-    EventResult OnInit()
-    {{
-        {}
-    }}
-}}
-)",
-                        body)
-                        .str()},
-            },
-            [](string_view message) {
-                string message_str = string(message);
-
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
-    }
-
-    static auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default) -> FileSystem
-    {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
-
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
-        compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
-
-        FileSystem compiler_resources;
-        compiler_resources.AddCustomSource(std::move(compiler_resources_source));
-
-        BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto fomap_blob = MakeEmptyMapBlob();
-        auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
-
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
-        runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
-        runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
-        runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
-        runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
-        runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
-        runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
-        runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
-
-        FileSystem resources;
-        resources.AddCustomSource(std::move(runtime_source));
-
-        return resources;
-    }
-
-    static auto WaitForServerStart(ptr<ServerEngine> server) -> string
-    {
-        for (int32_t i = 0; i < 6000; i++) {
-            if (server->IsStarted()) {
-                return {};
-            }
-            if (server->IsStartingError()) {
-                return "ServerEngine startup failed";
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds {10});
-        }
-
-        return "ServerEngine startup timed out";
-    }
-
-    static auto MakeServerEngine(GlobalSettings& settings, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt) -> refcount_ptr<ServerEngine>
-    {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources(), std::move(restore_snapshot));
-    }
-
-    static void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
-    {
-        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
-
-        string startup_error = WaitForServerStart(server);
-        INFO(startup_error);
-        CHECK_FALSE(startup_error.empty());
-        CHECK(server->IsStartingError());
-        CHECK_FALSE(server->IsStarted());
-
-        REQUIRE_NOTHROW(server->Shutdown());
-    }
-
-    static void CheckServerStartupFailsSafely(GlobalSettings& settings)
-    {
-        CheckServerStartupFailsSafely(settings, MakeServerTestResources());
-    }
-
-    static auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
-    {
-        AnyData::Document doc;
-        doc.Assign(string {"value"}, value);
-        return doc;
-    }
-
-    static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
-    {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
-        server->RequireCurrentSyncContext()->SyncEntity(not_logged_in_player);
-
-        not_logged_in_player->SetName(name);
-        not_logged_in_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
-
-        return player;
-    }
-
-    static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
-    {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
-        auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
-
-        SyncContext ctx;
-        ctx.Activate();
-        auto release = scope_exit([&ctx]() noexcept {
-            safe_call([&ctx] {
-                ctx.Release();
-                ctx.Deactivate();
-            });
-        });
-
-        ctx.SyncEntity(player);
-        player->SetName(name);
-        return player;
-    }
-
-    static auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
-    {
-        return safe_alloc::make_refcounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
-    }
-
-    static auto WaitForUnlockedServerCondition(ptr<ServerEngine> server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
-    {
-        FO_VERIFY_AND_THROW(locked, "Server must be locked before waiting on condition");
-
-        server->Unlock();
-        locked = false;
-
-        auto deadline = std::chrono::steady_clock::now() + timeout;
-
-        while (std::chrono::steady_clock::now() < deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds {5});
-
-            if (!server->Lock(timespan {std::chrono::seconds {10}})) {
-                continue;
-            }
-
-            locked = true;
-
-            if (condition()) {
-                return true;
-            }
-
-            server->Unlock();
-            locked = false;
-        }
-
-        if (!locked) {
-            if (!server->Lock(timespan {std::chrono::seconds {10}})) {
-                return false;
-            }
-
-            locked = true;
-        }
-
-        return condition();
-    }
-}
+public:
+    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return 0; }
+};
 
 TEST_CASE("ServerResourcesFollowPackagedSetting")
 {
@@ -803,7 +265,9 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
     });
 
     auto settings = MakeServerTestSettings();
+    ScriptFuncDesc event_desc {};
     auto server = MakeServerEngine(settings);
+    event_desc = BakerTests::MakeNoopCallbackDesc(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -832,31 +296,12 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         CHECK_FALSE(fs::exists(fs::path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
     }
 
-    SECTION("SuspendedAngelScript")
-    {
-        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-        {
-            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            auto suspend_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestSuspend"));
-            REQUIRE(suspend_func);
-            REQUIRE(suspend_func.Call());
-        }
-
-        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
-
-        CHECK(result.ReachedQuiescence);
-        CHECK_FALSE(result.State.has_value());
-        CHECK(result.Payload.empty());
-        CHECK(has_blocker(result, ServerSnapshotBlockerKind::SuspendedScriptContexts));
-        CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
-    }
-
     SECTION("TimeEvent")
     {
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         {
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-            auto event_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
+            ScriptFunc<void> event_func {&event_desc};
             REQUIRE(event_func);
             ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
         }
@@ -1009,7 +454,6 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         CHECK(next_location->GetId() == expected_next_location_id);
     }
 }
-
 #endif
 
 TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
@@ -1321,23 +765,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         ignore_unused(critter_id);
     }
 }
-
 #endif
-
-TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
-{
-    auto settings = MakeServerTestSettings();
-
-    SECTION("ExplicitStopChain")
-    {
-        CheckServerStartupFailsSafely(settings, MakeServerTestResources(ServerTestScriptMode::StopOnInit));
-    }
-
-    SECTION("ExplicitResultException")
-    {
-        CheckServerStartupFailsSafely(settings, MakeServerTestResources(ServerTestScriptMode::ThrowOnInit));
-    }
-}
 
 TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 {
@@ -1462,182 +890,6 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
         CHECK_THROWS(server->CreateCritter(missing_pid, false));
         CHECK_THROWS(server->CreateCritter(missing_pid, true));
     }
-}
-
-TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-
-    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-
-    int init_calls = 0;
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetInitCalls"), init_calls));
-    CHECK(init_calls == 1);
-
-    int manual_calls = 0;
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetManualCalls"), manual_calls));
-    CHECK(manual_calls == 0);
-
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestMarkManualCall")));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetManualCalls"), manual_calls));
-    CHECK(manual_calls == 1);
-
-    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
-    auto cr = server->CreateCritter(critter_pid, false);
-
-    int critter_init_calls = 0;
-    int64_t last_critter_id = 0;
-    bool last_first_time = false;
-
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetCritterInitCalls"), critter_init_calls));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetLastCritterId"), last_critter_id));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetLastCritterFirstTime"), last_first_time));
-
-    CHECK(critter_init_calls >= 1);
-    CHECK(last_critter_id == cr->GetId().underlying_value());
-    CHECK(last_first_time);
-
-    server->CrMngr.DestroyCritter(cr);
-}
-
-TEST_CASE("ServerEngineModuleInitAttributePriorityIsRespected")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-
-    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-
-    int immediate_init_order = 0;
-    int deferred_init_order = 0;
-
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetImmediateInitOrder"), immediate_init_order));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetDeferredInitOrder"), deferred_init_order));
-
-    CHECK(immediate_init_order == 1);
-    CHECK(deferred_init_order == 2);
-}
-
-TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-
-    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestResetAdminCallCounter")));
-    REQUIRE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestAdminEntry")));
-
-    int admin_call_counter = 0;
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
-    CHECK(admin_call_counter == 1);
-
-    CHECK_FALSE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestRegularEntry")));
-    REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetAdminCallCounter"), admin_call_counter));
-    CHECK(admin_call_counter == 1);
-}
-
-TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-
-    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-
-    vector<int32_t> values {1, 2, 3};
-    auto sum_array_func = server->FindFunc<int32_t, vector<int32_t>>(get_func_name("ServerEngineTest::UnitTestSumArray"));
-    REQUIRE(sum_array_func);
-    REQUIRE(sum_array_func.Call(values));
-    CHECK(sum_array_func.GetResult() == 6);
-
-    auto mutate_array_func = server->FindFunc<void, vector<int32_t>&>(get_func_name("ServerEngineTest::UnitTestMutateArray"));
-    REQUIRE(mutate_array_func);
-    REQUIRE(mutate_array_func.Call(values));
-    CHECK(values == vector<int32_t> {11, 2, 3, 77});
-
-    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
-    auto cr = server->CreateCritter(critter_pid, false);
-
-    auto critter_id_func = server->FindFunc<int64_t, ptr<Critter>>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
-    REQUIRE(critter_id_func);
-    REQUIRE(critter_id_func.Call(cr));
-    CHECK(critter_id_func.GetResult() == cr->GetId().underlying_value());
-
-    auto nullable_item_func = server->FindFunc<bool, nptr<Item>>(get_func_name("ServerEngineTest::UnitTestIsItemNull"));
-    REQUIRE(nullable_item_func);
-    REQUIRE(nullable_item_func.Call(nptr<Item> {}));
-    CHECK(nullable_item_func.GetResult());
-
-    auto matches_hash_func = server->FindFunc<bool, hstring>(get_func_name("ServerEngineTest::UnitTestMatchesHash"));
-    REQUIRE(matches_hash_func);
-    REQUIRE(matches_hash_func.Call(server->Hashes.to_hashed_string("UnitTestHash")));
-    CHECK(matches_hash_func.GetResult());
-
-    server->CrMngr.DestroyCritter(cr);
 }
 
 TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
@@ -1834,9 +1086,6 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         CHECK(finished_moving->GetBlockHex() == blocked_hex);
     }
 }
-
-// Per-entity sync rail against real ServerEntity instances, which the primitive tests in Test_EntitySync.cpp
-// cannot reach because they have no entity hierarchy
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
 {
@@ -2255,9 +1504,6 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_FALSE(IsEntityAccessValid(cr_a)); // empty again → strict model: still no cover, access denied
 }
 
-// Symmetric Critter<->Player auto-widening: each half reports the other through GetSyncWidenEntity, so a Sync
-// of either must cover both
-
 TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 {
     auto settings = MakeServerTestSettings();
@@ -2460,9 +1706,6 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     ctx.Release();
 }
 
-// The link accessors run without the entity cover, so they must hand out an owning handle rather than a raw
-// read: the refcount deltas below are what separates a pin from a bare load that a concurrent detach can free
-
 TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
 {
     auto settings = MakeServerTestSettings();
@@ -2546,9 +1789,6 @@ TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
     CHECK(held == player);
     CHECK(held->GetName() == "LinkPinPlayer");
 }
-
-// Readers and reparenters hammer the race the verify loop exists for. Assertions stay timing-independent so it
-// cannot flake, and an EntitySyncException is an accepted outcome: the bounded retry gives up over livelocking
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
 {
@@ -2785,9 +2025,6 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     }
 }
 
-// An ancestor cover grants access to a descendant but must not exclude another thread's own lock on it —
-// isolated here, where ReparentStress only exercises it under noise
-
 TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 {
     auto settings = MakeServerTestSettings();
@@ -2956,9 +2193,6 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     cr_a->SetParent(nullptr);
     cr_b->SetParent(nullptr);
 }
-
-// Two nested contexts requesting the same pair in opposite order form a genuine hold-and-wait cycle that only
-// the globally-ordered escalation can break; a watchdog turns a regression into a failure instead of a hang
 
 TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 {
@@ -3144,14 +2378,6 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         cr_b->SetParent(nullptr);
     }
 }
-
-// Minimal accessor for driving NativeDataCaller::ConvertArg directly. The entity branch reads its
-// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body
-class BoundaryArgAccessor final : public DataAccessor
-{
-public:
-    [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return 0; }
-};
 
 TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 {
@@ -3347,4 +2573,46 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     CHECK(drawn_text.find("NotLoggedIn players (1)") != string::npos);
 }
 
+TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
+{
+    auto settings = MakeServerTestSettings();
+
+    ConfigFile runtime_config {"TestSettings.Int32Value = 7\nUngroupedTestSetting = 9\n"};
+    settings.ApplyConfigFile(runtime_config, "");
+
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings,
+        MakeServerTestResources(ServerTestScriptMode::Default,
+            BakerTests::MakeMetadataBlob({{"Setting",
+                {
+                    {"TestSettings.Int32Value", "int32", "0"},
+                    {"UngroupedTestSetting", "int32", "0"},
+                    {"TestSettings.Int64Value", "int64", "0"},
+                    {"TestSettings.StringValue", "string", "0"},
+                    {"TestSettings.BoolValue", "bool", "0"},
+                }}})));
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // The configuration named these before the engine existed, so the metadata baseline of "0" must not
+    // have replaced them; the ungrouped one proves the bare spelling matches the same way
+    CHECK(settings.GetCustomSetting("TestSettings.Int32Value") == "7");
+    CHECK(settings.GetCustomSetting("UngroupedTestSetting") == "9");
+
+    // The configuration never named these, so they arrive from the metadata baseline
+    CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
+}
+
 FO_END_NAMESPACE
+

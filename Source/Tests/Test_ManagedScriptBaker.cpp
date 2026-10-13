@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_MANAGED_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #include "Test_BakerHelpers.h"
@@ -1810,3 +1814,6 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 }
 
 FO_END_NAMESPACE
+
+#endif
+

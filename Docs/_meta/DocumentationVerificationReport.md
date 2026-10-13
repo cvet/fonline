@@ -21,6 +21,58 @@ This report records source-grounded documentation verification passes for the en
 - Keep removed delivery reports untracked and prepare them through `docs_prepare.py`. Reviewed complete search sizes are 1,342,918 English and 1,872,594 Russian bytes; raise capacity by 32 KiB to 1,900,544 per locale. The complete AI context is 2,294,518 bytes; raise its capacity to the next 32 KiB boundary, 2,326,528. Preserve all membership, token and overflow-rejection rules and update both owning policy locales and budget regressions.
 - Documentation validation passes 413 Markdown entries; version/changelog and public-index checks pass. Focused API, description, snippet, AI-delivery and version tests pass 48 cases. The embedding exception-safety audit passes 7,423 functions without errors or warnings. Native rebuild, bake and runtime acceptance are tracked by the embedding integration plan and are not claimed by these documentation gates.
 
+## 2026-10-13 - Integrate version 36 and prepare preserved scripting work as version 37
+
+- Fast-forward the embedding project `4ffc94401607c1ad6e2477e3d4f89828b99cd524` to `1eadf9385475331b0d669bc0cb8c75e2dc477a44`, and Engine `cd5c1168f8f4bdab63a2909ceacb049ba87e070a` to `91d8bf21ac89e5342db17aab8e25332e049e900e`. Review all 40 project commits and the Engine update. Preserve published ancestry, all prior report entries, local backend/test coverage and twelve safety stashes/refs; resolve three documentation conflicts without source conflicts.
+- Bump the local working VERSION to `2026.1.37-dev`, date both current changelog entries and freeze the published version-36 heading. Validate the step against Engine HEAD and pass eleven versioning tests. Contract comparison against version 36 passes with zero changes in seventeen domains and no required or missing dispositions. Runtime 0.0.72, Managed ABI 9, sprite v2, resource/network identities and saved-data semantics remain unchanged.
+- Review source-backed audio fixture ownership and the bilingual AI ADR; verify all six incoming SVGs are byte-identical after CRLF/LF normalization. Preserve all 190 split cases without missing/duplicate entries. The backend and real Managed fixture match the safety copy apart from three explicitly removed trailing comment periods; no executable tokens change.
+- Both final native and AS builds pass. Full AS coverage passes 695 cases / 739050 assertions; Managed passes 661 / 732806. Full bake passes in 742693 ms, all seven application stamps match the current project and three script-role assemblies are refreshed. Both generated configurations and retained application version literals identify Engine 37.
+- The embedding gameplay run matches 1227 active cases exactly: 1226 pass, one unchanged unconditional hidden-target skip, zero failures/timeouts/global exceptions and 79897 expectations. A real two-process SQLite/CBOR restart passes with both clean shutdowns and exact restored prototype, route, version and debrief flags.
+- Visible native OpenGL map/Options/Inventory/PDA captures pass their rendering inspection. Retain the strict timing result (failed, overruns {'process-1': 10, 'process-2': 16}) and forced GUI cleanup as separate limits. Offline map audits remain open; their findings are not rendering acceptance. Documentation preparation/validation and AI retrieval pass; Ruby/Bundler are unavailable, so Jekyll HTML rendering remains unproved. Audible/platform acceptance is not newly claimed for the documentation-only incoming audio change.
+- Delivery remains local and uncommitted; root gitlink equals Engine HEAD, while VERSION 37 is a working-tree change. No owner publication, Authoring changes or authored operations updates occur.
+
+## 2026-10-12 - Integrate versions 34 and 35 with preserved scripting tests
+
+- Fast-forward the embedding project from `7089ae85a3815b370322e3d817234d16034983a2`
+  to `4ffc94401607c1ad6e2477e3d4f89828b99cd524` and Engine from
+  `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6` to `cd5c1168f8f4bdab63a2909ceacb049ba87e070a`.
+  Preserve published ancestry and all local native/AS/Managed coverage, add two named safety
+  stashes/refs and retain all eight previous copies. Resolve four documentation conflicts by
+  keeping both report histories and both SpriteSheet/backend testing sections.
+- Review first-load cache isolation, trimmed frame tables, bounded copying, initial geometry and
+  the native resolver/stub regressions; retain sprite v2, runtime 0.0.72, Managed ABI 9 and storage
+  behavior. Review the GCC-compatible ImageBaker return, unchanged nullable declaration semantics,
+  independent API-count correction and complete-corpus URL-label compaction.
+- Regenerate source inventory, image/API/public references and reviewed translation provenance.
+  The current baseline-33 comparison passes three changes and three required dispositions without
+  missing entries. Focused Python checks pass sixty cases and twenty-three subtests initially;
+  a stale generated test inventory is regenerated and the affected case passes its isolated retry.
+- Native and separate AS builds pass without compiler warnings. Full AS tests pass
+  695 cases / 739050 assertions; Managed passes 661 / 732807.
+  Preserve all 190 split cases without missing/duplicate entries and verify normalized byte
+  identity of the Managed backend, native runtime test and real C# fixture against the safety copy.
+- The embedding exception audit passes 7444 functions without errors/warnings; migration,
+  identity, NPC-level, GUI-source, paired knowledge-base and complete adult-overlay checks pass.
+  Full baking and all seven application/resource hashes match the qualified embedding revision.
+  Exact gameplay inventory covers 1226 cases / 79919 expectations:
+  1225 pass and one pre-existing unconditional hidden-target desync case skips.
+  Its method is unchanged from the embedding baseline; retain this coverage limitation.
+  The official checker passes its unchanged policy without failures, timeouts or global exceptions.
+  Retain the original incorrect min-total-1228 refusal, then recheck the completed clean log
+  against 1226 active registrations: two unchanged process-stop registrations require
+  Setup/Recover and are inactive in Disabled mode. All 25 suites pass; no source/test rewrite
+  or full gameplay replay is needed for this inventory correction.
+  The isolated two-process SQLite/CBOR restart passes
+  with clean server shutdowns and committed migrated identity and debrief values.
+- Four fresh visible OpenGL captures pass rendering review. The strict timing gate is
+  failed; per-process overruns are {'1': 8, '2': 12}. Preserve this result as a qualification limit
+  without weakening thresholds. The adapter terminates only owned processes; graceful GUI
+  shutdown remains unproven. Verify and archive the owned session marker after process exit.
+- External documentation preparation passes 15 outputs and validation passes 411 Markdown
+  entries; repeat preparation/validation after final evidence. Ruby/Bundler are unavailable,
+  so a local Jekyll site build is not proven. Retain all ten safety stashes/refs, empty indexes
+  and matching HEAD/gitlink; do not commit or push this owner's uncommitted work.
+
 ## 2026-10-12 - Qualify the owner's amended integration revisions
 
 - During validation, the owner amended the project to
@@ -62,6 +114,85 @@ This report records source-grounded documentation verification passes for the en
   Preserve every published verification/disposition entry and the original
   import implementation/tests, matching committed gitlink and safety refs.
   Rendered Jekyll publication is not performed; Ruby/Bundler are unavailable.
+
+## 2026-10-12 - Integrate versions 23 through 33 with preserved scripting tests
+
+- Fast-forward the embedding project from `38db9e92207226f795ab4f1c23f57ac77f391706` to
+  `d9cef89191671674ac41656d180b5e185dd89b9b` and Engine from
+  `bf673df1818c10aaf77c586077caf60cbd2e904f` to `5170fa03ccdcc8efb6a592f9aba3baebfd544cb6`.
+  Retain all published ancestry, two new named safety stashes and refs, and the five previous backups.
+  Resolve thirteen Engine paths and one embedding registry path without commits or publication.
+- Preserve the native/AS split and all 190 original cases without duplicates. Carry the new storage
+  feature guards into the shared Location/ServerEngine sources and the bounded-view AS checks into
+  the renamed binding source. Retain both histories of this report and all ordered release notes.
+- Review the ordered migration boundary: explicit optional component selection, current JSON/CBOR
+  storage, moved image contexts and loaders, exclusive output/debug locks, automatic Managed RefType
+  leases and constructor factories, bounded observation and matching endpoints. Native compatibility
+  advances 69 to 72 and generator identity to 9. Previous SQLite BSON fixtures are not current proof.
+- Regenerate API, audio, image, CMake, map, model and public-index references after restoring source
+  ownership. Remove 31 duplicated unpublished explanations because exact published SHA-pair entries
+  already cover them; retain every published record verbatim. Review 60 composed-range entries,
+  including native-codegen inventory, compatibility 69 to 72 and the Arcanum ART identity/placement
+  update. The complete version-22 baseline comparison passes 87 changes, 63 required dispositions
+  and none missing; stability labels remain unchanged.
+- Fresh embedding native applications, unit tests and baker build without compiler diagnostics.
+  Qualification explicitly enables JSON/SQLite, DAT/ZIP, ART/FRM and ACM while retaining authored
+  embedding defaults. Actual Windows process-lock probes pass two cases; the AS_DEBUG probe is
+  inapplicable to this Release profile. The separate AS build also passes. Full backend runs pass
+  693 AS cases / 738335 assertions and 659 Managed cases / 732110 assertions. A full embedding bake
+  compiles all three script roles and bakes 662 maps; its report and all seven application/library
+  build-hash files identify the updated embedding revision.
+- The embedding exception audit passes 7444 functions without errors or warnings. Its identity
+  registries are current. Focused Python checks pass 172 tests and 25 subtests initially; five CMake
+  revision probes exceed their unchanged 60-second deadlines during concurrent native compilation.
+  All five affected probes pass when repeated after building. Preserve both logs and the limits.
+- The first documentation preparation exceeds the existing full-corpus delivery budget by 7904
+  bytes. Condense the duplicated suite filename inventory and backend summaries in both test README
+  editions; retain the complete canonical testing guide, generated source inventory and contracts.
+  Full external preparation then passes 15 outputs, 313 normative / 159 evidence snippets, 183 parser
+  checks, all 4871 descriptions and 28 retrieval tasks / 67 checks (100 percent, MRR 0.930).
+  Move audio validation evidence from the removed README inventory to actual AudioBaker/AudioManager
+  test anchors. Validation passes all 411 maintained Markdown entries. Focused testing/audio/embedding
+  registry checks pass 26 tests and two subtests; site, AI delivery and contract-diff checks pass 38
+  tests and two subtests. Ruby/Bundler are unavailable, so a local Jekyll build is not qualified.
+- Update the embedding's isolated stopped SQLite fixture and live committed-record observer to
+  current CBOR with a pinned dependency. Three regression checks cover preserved nested data and
+  rejected missing/ambiguous recipients; explicitly close SQLite connections for Windows cleanup.
+  The real two-process SQLite restart passes with clean shutdowns and no failures, timeouts or
+  global exceptions. The live CBOR observer records canonical `Player`, data version 31563 and
+  `Traders_BarSupplyRun` with the retained Seen/Notified flags.
+- The fresh embedding gameplay run passes the exact source-derived inventory of 131 cases and
+  3424 expectations across fourteen suites, with no extra, missing or duplicate cases, failures,
+  timeouts, skips or global exceptions. Selection includes tags, so the preliminary name-only
+  count of 68 was insufficient; preserve that initial inventory and compare against the full rules.
+- The normal visible 64-bit OpenGL client enters the 1200 by 1200 Bar map and displays Options,
+  Inventory and PDA through ordinary screen commands. Inspect all four captured PNGs and verify
+  the updated server/client build identities. Rendering passes; the strict timing gate fails on
+  30 server and 48 client overruns, so retain the wrapper FAIL result without relaxing deadlines.
+  The adapter terminates its two owned processes with return code 1; verify both PIDs have exited
+  and archive only the matching build/PID session marker. This route does not prove graceful GUI
+  shutdown or runtime performance acceptance.
+- Closing git verification preserves the exact updated gitlink and published ancestry, empty
+  indexes, zero unmerged paths and all seven safety stashes/refs. All 41 modified source files
+  retain the required final blank line. No embedding Authoring/Ops edits, commits or pushes occur.
+- A closing embedding tracking-ref update introduces one additional published clothing-prototype
+  correction. Review all six changed paths and fast-forward to `7089ae85a3815b370322e3d817234d16034983a2`,
+  version 0.3.1564, retaining the unchanged Engine pin and an eighth safety stash/ref. Final configure
+  and native rebuilding pass without compiler diagnostics; all seven application/library hashes
+  identify this tip. The repeated full Managed run passes 659 cases / 732114 assertions. Final
+  full baking passes in 1026596 ms, including all three script roles and 662 maps, with matching
+  build and configuration hashes. The exact expanded inventory passes 133 cases / 3470 expectations
+  in fifteen suites without failures, timeouts, skips or global exceptions; both clothing-layer
+  regressions contribute 46 expectations. The repeated real SQLite restart passes with clean
+  process shutdowns and records canonical Player, data version 31564 and the retained caravan flags.
+  The AS source and standalone fixture are unchanged; the complete 693-case run remains applicable
+  to this Engine revision. Preserve the preceding embedding evidence as the earlier qualified pair.
+- Inspect the four final-revision visible-client PNGs and confirm map/screen states and build
+  identities. Functional rendering passes; the strict timing gate still fails on 62 server and
+  88 client overruns, with no fatal/exception markers. Preserve the wrapper FAIL and both logs.
+  Its adapter stops only the owned PIDs 72132/74444 with return code 1; verify they have exited and
+  archive the matching session marker. Performance and graceful GUI shutdown remain unqualified.
+  Closing verification retains all eight safety stashes/refs and the exact unchanged Engine pin.
 
 ## 2026-10-12 - Reconcile Arcanum imports with bounded map observation
 
@@ -578,6 +709,123 @@ This report records source-grounded documentation verification passes for the en
 - Retain the removal of the old root `assets/docs-search*.json` paths. Generate search data in the current `Docs/Site/Assets/` owner directory, then regenerate source models, references, snippets, translation state, site/routes, retrieval evaluation and AI delivery. Preserve prior verification entries from both histories.
 - This pass verifies history and source/documentation reconciliation. Earlier native builds and visible-client checks retain their original tested revisions; they are not fresh runtime or platform qualification of the rebased tree. Safety refs and worktree/index snapshots remain in the embedding checkout.
 
+## 2026-10-10 - Reconcile version 22 after scripting runtime qualification
+
+- Complete the first qualified embedding pair below, then fetch and fast-forward the additional
+  published range to project `38db9e92207226f795ab4f1c23f57ac77f391706` and Engine
+  `bf673df1818c10aaf77c586077caf60cbd2e904f`. Their gitlink and Engine HEAD agree.
+  Preserve the local test split, Managed dictionary fixes and ASIO fixture isolation in two further
+  named safety stashes. Resolve six documentation conflicts, retaining both dated evidence blocks
+  and the merged translated prose; no publication or history rewriting occurs.
+- Review every incoming Engine path: directly indexed chunk storage, coordinate-preserving resize
+  and move-only cells, the client field layout, independent exact string server selectors and early
+  invalid-value rejection, constructor-owner unwind, native memory/function fixtures and optional
+  hidden measurements. Retain marker 69; require fresh native consumers for the changed MapView layout.
+  Embedding configuration already adopts both new selectors as Dynamic.
+- Preserve all 190 original split cases. Regenerate API/map/font references, the public API index
+  and reviewed Russian provenance. Review composed full-range disposition SHA pairs while retaining
+  all published per-step entries: the old Engine to current worktree comparison passes 35 changes,
+  32 required dispositions and none missing. Qualification continues on this exact updated pair;
+  earlier results below remain evidence for their recorded revisions.
+- Fresh embedding client, Mapper, interactive/headless servers, baker and unit tests build without
+  compiler diagnostics; all seven application/library hashes equal the exact updated project SHA.
+  Rebuild the separate AS executable as well. Both final full inventories pass: AngelScript
+  680 cases / 737787 assertions and Managed 647 cases / 731529 assertions. This includes the new
+  client field/storage and server grid-selector functional fixtures with either scripting backend.
+  Fresh embedding baking succeeds in 802677 ms, with the report and resource build hash equal to
+  the exact updated project SHA and Server/Client/Mapper assemblies rebuilt in this run.
+- The embedding gameplay inventory passes all 23 declared cases across seven suites, with 74
+  expectations and no extra, missing or duplicate cases, failures, skips, timeouts or global exceptions.
+  A separate trader escort run passes both the merchant-faction guard case and the factionless
+  generic trader control, with 22 expectations and no runtime exceptions.
+- The real two-process SQLite restart passes with legacy Bar identities: both processes stop
+  gracefully, the second confirms a clean previous shutdown, and seven expectations pass without
+  overruns. Committed BSON restores Player from TestLegacyCritterIdentity, migrates the saved route
+  to Traders_BarSupplyRun, preserves Seen/Notified, and reaches embedding DataVersion 31551.
+- The optional optimized client field workload passes twice with 10 assertions per run; all nine
+  server prototype/instance grid combinations pass 1665 assertions. These checks validate consistent
+  functional results. Shared-host timings are not accepted performance evidence.
+- Review the ordinary 64-bit OpenGL client on the updated embedding binaries and freshly baked
+  resources: Bar reports 1200 by 1200 fields, and Inventory/PDA are opened with normal client actions.
+  Capture and inspect the rendered map and both windows after their opening animation; all three
+  screenshots are populated and readable. Native and script failure-marker lists are empty.
+  The fixture map transfer uses the owning admin setup route; it does not substitute for rendering.
+  Timing qualification fails with nine server and fourteen client execution overruns, without
+  changing thresholds or stopping unrelated processes. Preserve the failed timing report at
+  embedding `Workspace/update-tip-visible-map-review/report.json`; its renderedSmoke is passed,
+  timingGate failed and overall status FAIL. This is functional rendering evidence, not FPS,
+  long-session memory, 32-bit address-space or clean client-wrapper shutdown qualification.
+- Preserve the initial helper-call error and the subsequent native previous-session dialog attempt.
+  The adapter's forced cleanup causes that previous-session report; use Common.NonInteractive for
+  the final visible launch to avoid a blocking native dialog, keeping OpenGL and the window enabled.
+  No production exception reporting, logging checks or timing limits are weakened.
+- The full-range contract comparison, generated models and translated provenance pass; final
+  documentation preparation and validation logs are embedding `Workspace/update-tip-docs-prepare-final.log`
+  and `Workspace/update-tip-docs-validate-final.log`. Full Jekyll rendering remains unavailable
+  because Ruby/Bundler are missing; the three Chromium diagram regressions pass. Retain all five
+  named safety stashes and refs, published ancestry and empty indexes. No commits or pushes occur.
+
+## 2026-10-10 - Reconcile versions 18 through 21 with scripting test boundaries
+
+- Fast-forward the embedding project from `93b395b7e8937c9279d446436e957d8ebade5fd8`
+  through `c4014a656babcffccef3a5d067ed5302cb670a29` to
+  `09446c6aa9c829a71daa66f0e2621a887c792326`, and Engine from
+  `6db09ef1d49a44307dbdadf747087247d5f5e78b` to
+  `cfa468f17bd5dff82cebc6f05b568620fc34163c`. The project gitlink equals Engine HEAD.
+  Preserve the unpublished test-boundary work through named safety stashes, retain published
+  ancestry, and resolve the CMake, changelog and translated documentation conflicts without publication.
+- Audit all four incoming Engine commits and their source/test changes: explicit Property/Proto
+  Rename, Transform and Remove actions, original read-only document context, synchronous typed
+  migrators and atomic document staging; collection proxies backed by their current native containers;
+  Managed event collection writeback; and delayed/missing documentation-diagram image decoding.
+  Retain the compatibility marker 69 and the ordered bilingual migration notes for versions 18 to 21.
+- Include the incoming `Test_AngelScriptDocumentMigrations.cpp` in the unconditional test-source
+  inventory and guard its complete translation unit after `Common.h`. Preserve all 190 original
+  cases in the previous test split, with no missing or duplicate cases. Review the C# probe's
+  control-block spacing against the incoming coding contract.
+- Regenerate API, prototype, model and font models/references and reviewed Russian provenance,
+  then snippets, localization, routes/search, AI retrieval and delivery. API/prototype regeneration
+  agrees with the incoming committed models; model/font deltas retain the moved native fixture anchors.
+  Comparison against the exact old Engine SHA passes: 30 changes across 17 domains,
+  29 required dispositions and none missing. Preparation verifies 4841 current descriptions,
+  310 normative snippets, 159 evidence snippets and 183 external-parser checks;
+  retrieval passes 28 tasks / 67 checks at 100% success and 0.930 MRR.
+- Fresh embedding builds of client, Mapper, interactive/headless servers, baker and unit tests
+  complete without compiler warnings; all seven application/library build hashes equal the project SHA.
+  Fresh embedding baking succeeds in 903927 ms, with the report and resource hash equal to that
+  exact project SHA and all Server/Client/Mapper assemblies rebuilt. Earlier dated results below
+  belong to their recorded revisions and do not certify this updated worktree.
+- Both final Engine backend inventories pass on version 21: Managed 642 cases / 730817 assertions,
+  AngelScript 675 cases / 737076 assertions, including the incoming document-migration suite.
+  The embedding project receives one further published fix for deterministic POSIX-path schema
+  ordering and migration/UI fixture evidence. Reconfigure and refresh the embedding artifacts;
+  discard only its interrupted, corrupt generated NuGet assets file, preserving a diagnostic copy.
+- The embedding Managed retry exposes a test-isolation defect: the detached ASIO reporter writes
+  its intentional callback exception after its test returns, contaminating `BaseLogging`'s exact file
+  comparison. Capture and await that expected nonfatal report, forward other reports and restore
+  the previous callback. Keep the production logger, transport and exact logging assertions unchanged.
+  An intermediate full AS retry has four `Threading` upper-bound failures under shared-host load;
+  retain that failed log. Both rebuilt binaries pass all 302 assertions in the three-case
+  network/logging/threading group, including the unchanged timer limits. Both final full retries pass,
+  as recorded above; no timing thresholds are relaxed.
+- Embedding gameplay passes all 18 cases across five suites, with 54 expectations, no skipped
+  cases, failures, timeouts or global exceptions. Compare the exact declared inventory with the
+  output, including the separate Vault17 identity case; there are no missing, extra or duplicate cases.
+  The real two-process legacy-identity SQLite restart passes with graceful shutdown in both processes
+  and seven verify expectations. Observe committed BSON before fixture cleanup: `_Proto` becomes
+  `Player`, the nested route becomes `Traders_BarSupplyRun`, and read/notified flags remain true.
+  There are no overruns; the second process reports that the previous shutdown was clean.
+- Source/static qualification passes the 7362-function exception audit with no errors or warnings,
+  42 Engine Python tests with two inapplicable GCC/Clang Ninja probes skipped in this MSVC environment,
+  another 85 Engine tests / 105 subtests, and three pinned Chromium diagram regressions.
+  Embedding identity/quest regressions pass 114 tests / 231 subtests; the current migration inventory
+  and real 118-quest preload audit also pass. Prepare and validate documentation after recording
+  these results; keep the generated delivery artifacts outside the index.
+- Retain the local source changes and all safety stashes without committing or publishing.
+  Freeze the qualified embedding pair above: two later published project-only documentation/CI
+  commits are outside this snapshot. Full Jekyll rendering is unavailable because Ruby/Bundler
+  are absent; preparation and static validation remain available. These local results do not qualify
+  a production database restore, ordinary GUI acceptance, remote CI, additional platforms or website deployment.
 
 ## 2026-10-10 - Reconcile document migrations and collection proxies with local map-grid work
 
@@ -2149,7 +2397,7 @@ Source areas checked:
 
 - `Source/Client/ModelSpriteLayout.*` and `Source/Client/ModelSprites.cpp` for current/required frame placement merging, signed pivots, retry bounds, and atlas publication.
 - `Source/Common/TimeEvents.cpp` for the engine-frame-clock deadline check in `TimeEventManager::FireAndAdvance()`.
-- `Source/Tests/Test_ModelSpriteLayout.cpp` and `Source/Tests/Test_CommonScriptMethods.cpp` for the incoming regression cases.
+- `Source/Tests/Test_ModelSpriteLayout.cpp` and `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp` for the incoming regression cases.
 
 Results:
 
@@ -2246,7 +2494,7 @@ Source areas checked:
 - `Source/Common/NetBuffer.*` and `Source/Common/NetworkUdp.*` for message framing, hash/debug-hash serialization, and ordered UDP behavior.
 - `Source/Client/NetworkClient*` and `Source/Server/NetworkServer*` for transport-neutral client/server abstractions plus interthread, socket, UDP, ASIO, and WebSocket implementations.
 - `Source/Server/Server.*`, `Source/Server/EntityManager.*`, `MapManager.*`, `CritterManager.*`, `ItemManager.*`, `Player.*`, `Critter.*`, `Map.*`, `Location.*`, `Item.*`, `ClientDataValidation.*`, and `UpdaterBackend.*` for authoritative server runtime ownership, entity/session flow, validation, managers, movement, persistence handoff, and updater hosting.
-- `Source/Tests/Test_NetworkUdp.cpp`, `Source/Tests/Test_NetworkClient.cpp`, `Source/Tests/Test_NetworkServer.cpp`, `Source/Tests/Test_ServerEngine.cpp`, `Source/Tests/Test_ServerItems.cpp`, `Source/Tests/Test_ServerMapOperations.cpp`, `Source/Tests/Test_ServerAdvancedOps.cpp`, `Source/Tests/Test_ServerScriptMethods.cpp`, `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp` for the current validation surfaces named by the promoted pages.
+- `Source/Tests/Test_NetworkUdp.cpp`, `Source/Tests/Test_NetworkClient.cpp`, `Source/Tests/Test_NetworkServer.cpp`, `Source/Tests/Test_ServerEngine.cpp`, `Source/Tests/Test_ServerItems.cpp`, `Source/Tests/Test_ServerMapOperations.cpp`, `Source/Tests/Test_AngelScriptServerAdvancedOps.cpp`, `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`, `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp` for the current validation surfaces named by the promoted pages.
 
 Results:
 

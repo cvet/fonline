@@ -90,7 +90,7 @@ class ModelAnimationDocumentationTests(unittest.TestCase):
         engine = self._read("Source/Common/EngineBase.cpp")
         common_methods = self._read("Source/Scripting/CommonGlobalScriptMethods.cpp")
         client_methods = self._read("Source/Scripting/ClientCritterScriptMethods.cpp")
-        common_tests = self._read("Source/Tests/Test_CommonScriptMethods.cpp")
+        common_tests = self._read("Source/Tests/Test_AngelScriptCommonScriptMethods.cpp")
 
         self.assertIn('MODEL_ANIMATION_INFO_FILE_NAME = "ModelAnimationInfo.foinfo"', animation_info)
         self.assertIn("ReadAnimationInfo(resources, Hashes)", engine)

@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptArray.h"
@@ -4629,37 +4633,6 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
 
 // Lives here because this rig is the one that declares game settings in its metadata blob. Pins
 // BaseEngine's own precedence rule, so dropping the guard in its constructor fails a test
-TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
-{
-    auto settings = MakeSettings();
-
-    ConfigFile runtime_config {"TestSettings.Int32Value = 7\nUngroupedTestSetting = 9\n"};
-    settings.ApplyConfigFile(runtime_config, "");
-
-    auto server = MakeServerEngine(settings);
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForStart(server);
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    // The configuration named these before the engine existed, so the metadata baseline of "0" must not
-    // have replaced them; the ungrouped one proves the bare spelling matches the same way
-    CHECK(settings.GetCustomSetting("TestSettings.Int32Value") == "7");
-    CHECK(settings.GetCustomSetting("UngroupedTestSetting") == "9");
-
-    // The configuration never named these, so they arrive from the metadata baseline
-    CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
-    CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
-    CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
-}
 
 TEST_CASE("ScriptBuiltinsReflectionOperations")
 {
@@ -4770,3 +4743,6 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 }
 
 FO_END_NAMESPACE
+
+#endif
+

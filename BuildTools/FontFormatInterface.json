@@ -34,8 +34,8 @@
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
-      "Source/Tests/Test_Mapper.cpp",
-      "Source/Tests/Test_ClientServerIntegration.cpp"
+      "Source/Tests/Test_MapperHelpers.h",
+      "Source/Tests/Test_ClientServerIntegrationHelpers.h"
     ]
   },
   "outputs": {
@@ -580,8 +580,8 @@
       "requirement": "Run the focused documentation test and the full generated Engine unit-test target after FontManager or font descriptor changes.",
       "rationale": "Structural checks pin source-derived contracts while native tests cover resource and client construction paths.",
       "source": [
-        {"path": "Source/Tests/Test_Mapper.cpp", "anchors": ["AddMinimalFont", "Version 2", "MakeMinimalBakedSprite"]},
-        {"path": "Source/Tests/Test_ClientServerIntegration.cpp", "anchors": ["Default.fofnt"]}
+        {"path": "Source/Tests/Test_MapperHelpers.h", "anchors": ["AddMinimalFont", "Version 2", "MakeMinimalBakedSprite"]},
+        {"path": "Source/Tests/Test_ClientServerIntegrationHelpers.h", "anchors": ["Default.fofnt"]}
       ]
     },
     {

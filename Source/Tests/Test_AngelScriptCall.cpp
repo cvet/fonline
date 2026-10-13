@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -588,3 +592,6 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
 #endif
 
 FO_END_NAMESPACE
+
+#endif
+

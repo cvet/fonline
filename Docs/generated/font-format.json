@@ -38,8 +38,8 @@
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
-      "Source/Tests/Test_Mapper.cpp",
-      "Source/Tests/Test_ClientServerIntegration.cpp"
+      "Source/Tests/Test_MapperHelpers.h",
+      "Source/Tests/Test_ClientServerIntegrationHelpers.h"
     ]
   },
   "outputs": {
@@ -1195,7 +1195,7 @@
       "rationale": "Structural checks pin source-derived contracts while native tests cover resource and client construction paths.",
       "source": [
         {
-          "path": "Source/Tests/Test_Mapper.cpp",
+          "path": "Source/Tests/Test_MapperHelpers.h",
           "anchors": [
             "AddMinimalFont",
             "Version 2",
@@ -1203,7 +1203,7 @@
           ]
         },
         {
-          "path": "Source/Tests/Test_ClientServerIntegration.cpp",
+          "path": "Source/Tests/Test_ClientServerIntegrationHelpers.h",
           "anchors": [
             "Default.fofnt"
           ]
@@ -1250,5 +1250,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "76258828339a7603add4ae984ecf8d557484940d4d92fdadd8e0d950135ec3bc"
+  "contract_digest": "692f92b10e1d76357c3dc9372a342693e754ac83b3cea32f302f88b40ba3d0dc"
 }

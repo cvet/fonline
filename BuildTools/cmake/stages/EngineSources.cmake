@@ -628,32 +628,34 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMoveReconciliation.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBuiltins.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptDocumentMigrations.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptClientEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptClientServerIntegration.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptEntityLifecycle.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptEntityOps.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptLocationAndEntityMgmt.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptMapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerAdvancedOps.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerItems.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerMapOperations.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerScriptMethods.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptRuntime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp")
 
-if(FO_ANGELSCRIPT_SCRIPTING)
-    AppendList(FO_TESTS_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptDocumentMigrations.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp")
-endif()
-
-if(FO_MANAGED_SCRIPTING)
-    AppendList(FO_TESTS_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp")
-endif()

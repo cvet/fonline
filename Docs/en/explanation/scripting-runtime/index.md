@@ -58,15 +58,17 @@ Read this page together with:
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
+- `Source/Tests/Test_ManagedScriptRuntime.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
 ## Layer map
 
@@ -130,8 +132,8 @@ symmetrically:
 `NativeDataCaller::ConvertArg`/`ReturnArg` read and write back through the slot, and the AngelScript-to-
 AngelScript branch of `ScriptFuncCall()` (script-fired events with by-ref args, `Invoke` targeting a script
 function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regression coverage:
-`Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
-`Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
+`Test_AngelScriptCommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
+`Test_AngelScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
 When `asEP_ALLOW_UNSAFE_REFERENCES` is enabled, AngelScript may defer releasing method receivers and
 arguments until an expression reaches a safe point. Short-circuit boolean compilation processes the
@@ -295,13 +297,14 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_ManagedScriptBaker.cpp` — generated C# API and indexed ABI, packed frames/adapters, project/assembly construction, attributes, values, properties, remotes, and diagnostics.
 - `Source/Scripting/Managed/Tests/` — managed core-library bootstrap and generated-API fixtures.
 - `Source/Scripting/Managed/Analyzers/Tests/` — synchronization-cover analyzer diagnostics.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — real server/client/mapper assemblies, module initialization, events, native call marshalling, exceptions and per-engine isolation.
 - `Source/Tests/Test_ClientDataValidation.cpp` and `Test_NetBuffer.cpp` — inbound remote-call payload validation and framing.
-- `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_EntityLifecycle.cpp` and `Test_EntitySync.cpp` — lifecycle and server synchronization boundaries.
 - `Source/Tests/Test_MetadataBaker.cpp` — baked event and remote-call metadata grammar.
-- `Source/Tests/Test_ServerScriptMethods.cpp` — server exported methods.
-- `Source/Tests/Test_ScriptBuiltins.cpp` — built-in script helpers/types.
-- `Source/Tests/Test_ScriptEntityOps.cpp` — script/entity interactions.
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` — server exported methods.
+- `Source/Tests/Test_AngelScriptBuiltins.cpp` — built-in script helpers/types.
+- `Source/Tests/Test_AngelScriptEntityOps.cpp` — script/entity interactions.
 
 Use these tests as executable documentation when changing script registration, generated wrappers, method signatures, nullability, event declarations, or remote-call dispatch.
 

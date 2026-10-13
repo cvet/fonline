@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"04acf5b4a401dee98bc868467dcf7dfdda7a7dc1979688e9a90948c92d601ddc"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"95a4a2a05e17fb70064e4f5970bb5f165ed6ed89e78d7ffc4e5d3acc9ea5d15c"} -->
 
 ## Ограниченный обзор карты
 
@@ -16,7 +16,6 @@ permalink: /Docs/ru/explanation/runtime/server.html
 Карта хранит видимые ID объектов каждого ограниченного получателя под `_spectatorLock`. Начальные снимки, рассылки персонажей и изменения предметов используют это членство; события движения и предметов добавляют и удаляют объекты на границе. Передача позиций также проверяет актуальный гекс до постановки в очередь, поэтому телепорт не раскрывает внешнюю позицию до события удаления. Ограниченные получатели видят актуальные позиции при смене гекса, без будущих маршрутов. `Send_AddObservedCritter` сериализует чужой объект в режиме полной видимости под его покрытием, не читая видимость получателя; появлению на границе не нужна блокировка независимой сущности получателя.
 
 `Player.ReturnFromViewMap()` очищает подписку и отправляет обычную начальную информацию управляемого персонажа. Вызывающий заранее покрывает весь её граф зависимостей и перепроверяет состояние после уступающих управление обработчиков. Проект отправляет состав глобальной группы под её покрытием и владеет доступом, отменой и интерфейсом. Отключение и уничтожение карты удаляют native-подписки; проект также очищает состояние своей сессии.
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"c4a8ab4592c0d56dbebdb6aa66746d65236bd1fab86eea7cca842e22f18ed2fe"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение серверной среды выполнения из `Source/Server/`; игровые правила, содержимое мира, конкретный баланс, задания и политика развёртывания отдельного проекта остаются в документации подключающего проекта.
 
 ## Назначение
@@ -74,10 +73,12 @@ permalink: /Docs/ru/explanation/runtime/server.html
 - `Source/Tests/Test_Timer.cpp`
 - `Source/Tests/Test_WorkerPool.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerAdvancedOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
 - `Source/Tests/Test_DataBase.cpp`
 
@@ -530,13 +531,19 @@ Custom inner entities так же читаются batch-ом на holder entry:
 
 При изменении серверного поведения используйте минимальную подходящую область тестирования:
 
-- `Source/Tests/Test_ServerEngine.cpp` — запуск сервера, создание криттера, выгрузка управляемого игроком криттера, инициализация скриптового модуля и событий, allowlist административных удалённых вызовов, маршалинг скриптов и просроченное движение.
-- `Source/Tests/Test_EntityLifecycle.cpp` — события инициализации сущности, C++ API сущностей и менеджеров, регистрация игрока и покрытие переподключения; `IndependentRootCoverEnumeration` проверяет перечисление групп глобальной карты и наблюдателей карты и получаемое вызывающим покрытие, включая отсутствие групповой рассылки в initial info, передачу её `Critter.SendGlobalMapGroupInfo()` и отказ экспорта отправлять без покрытия участников.
-- `Source/Tests/Test_ServerItems.cpp` — создание и уничтожение предметов, инвентарь криттера, жизненный цикл криттера и запросы менеджера сущностей.
-- `Source/Tests/Test_ServerMapOperations.cpp` — предметы и криттеры карты, клетки, пути, статические предметы, локации и фильтрация прототипов и свойств.
-- `Source/Tests/Test_ServerAdvancedOps.cpp` — создание локаций, массовые операции менеджера сущностей, расширенные операции с криттерами и предметами, скриптовые операции утилит, базы данных, строк, массивов, словарей, математики, времени и прототипов.
-- `Source/Tests/Test_ServerScriptMethods.cpp` — серверная поверхность скриптовых методов для инвентаря и состояния криттера, игровых запросов, предметов, жизненного цикла сущностей, базы данных, текста и id игроков.
-- `Source/Tests/Test_ClientServerIntegration.cpp` — рукопожатие клиента и сервера и поведение событий соединения.
+- `Source/Tests/Test_ServerEngine.cpp` — native-запуск сервера, создание криттера, выгрузка управляемого игроком криттера, снимки состояния, приоритет настроек и просроченное движение.
+- `Source/Tests/Test_AngelScriptServerEngine.cpp` — инициализация модулей и события AS, allowlist административных удалённых вызовов, маршалинг и отказ снимка при приостановленном скрипте.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — загрузка настоящих managed-сборок, инициализация модулей, события криттера, маршалинг вызовов, отчёт об исключениях и изоляция движков.
+- `Source/Tests/Test_EntityLifecycle.cpp` — C++ API сущностей и менеджеров, регистрация игрока и покрытие переподключения; `IndependentRootCoverEnumeration` проверяет перечисление групп глобальной карты и наблюдателей карты и получаемое вызывающим покрытие, включая отсутствие групповой рассылки в initial info, передачу её `Critter.SendGlobalMapGroupInfo()` и отказ экспорта отправлять без покрытия участников.
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` — скриптовые события инициализации и завершения сущностей, вызовы функций.
+- `Source/Tests/Test_ServerItems.cpp` — native-переносы предметов без владельца и запросы менеджера сущностей.
+- `Source/Tests/Test_AngelScriptServerItems.cpp` — создание и уничтожение предметов, инвентарь и жизненный цикл криттера через скриптовые привязки.
+- `Source/Tests/Test_ServerMapOperations.cpp` — native-загрузка статических сущностей карты.
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp` — скриптовые операции с предметами, криттерами, клетками, путями и локациями, фильтрация прототипов и свойств, реентерабельная доставка событий.
+- `Source/Tests/Test_AngelScriptServerAdvancedOps.cpp` — создание локаций, массовые операции менеджера сущностей, расширенные операции с криттерами и предметами, скриптовые операции утилит, базы данных, строк, массивов, словарей, математики, времени и прототипов.
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` — серверная поверхность скриптовых методов для инвентаря и состояния криттера, игровых запросов, предметов, жизненного цикла сущностей, базы данных, текста и id игроков.
+- `Source/Tests/Test_ClientServerIntegration.cpp` — native-проверки транспорта, повреждённых пакетов, соединений и владения.
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp` — рукопожатие, вход и совместная сессия карты через скрипты.
 - `Source/Tests/Test_DataBase.cpp` — поведение хранилища, используемого серверным сохранением сущностей.
 
 Точные имена тестовых целей генерируются CMake/BuildTools-конфигурацией подключающего проекта; не закрепляйте имена целей одного проекта в документации движка.

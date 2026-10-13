@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 ---
 
 # Карта методов скриптового API
-<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"02a72a6ea025bcebeb0452f7bf001f450ed25f4a1c02e1e0aaa320083001b36b"} -->
+<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"948220776546c2a495bb21489e4f09b391017efe7692b3f8b761df964091e32d"} -->
 > Документация движка. Эта страница сопоставляет нативные файлы `///@ ExportMethod` в `Source/Scripting/` с их обязанностями в скриптовом интерфейсе. Она дополняет страницу [Скриптовый runtime](../../explanation/scripting-runtime/), но не является полным сгенерированным справочником API.
 
 ## Назначение
@@ -59,7 +59,7 @@ python BuildTools/docs_inventory.py --check
   - случайные значения, время, UTF-8, буфер обмена и открытие ссылок;
   - геометрические helpers для расстояния, направления, угла линии, интервалов и трассировки;
   - общая сериализация и форматирование.
-- Тесты: `Source/Tests/Test_CommonScriptMethods.cpp`, `Source/Tests/Test_ScriptBuiltins.cpp`.
+- Тесты: `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`, `Source/Tests/Test_AngelScriptBuiltins.cpp`.
 - Контракты tuple анимации модели, aliases, bake, общего lookup и клиентского экземпляра: [Model Animation](../../how-to/content/model-animation.md).
 
 ### `Source/Scripting/CommonImGuiScriptMethods.cpp`
@@ -85,7 +85,7 @@ python BuildTools/docs_inventory.py --check
   - создание локаций и карт и запрос мировых сущностей;
   - серверные глобальные операции, требующие владения `ServerEngine`.
 - Связанные страницы: [Серверный runtime](../../explanation/runtime/server.md), [Модель сущностей](../../explanation/entity-and-property-model/), [Персистентность](../../explanation/persistence/).
-- Тесты: `Source/Tests/Test_ServerScriptMethods.cpp` и серверные runtime-тесты.
+- Тесты: `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` и серверные runtime-тесты.
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
@@ -271,9 +271,9 @@ python BuildTools/docs_inventory.py --check
 2. После изменения export-файлов выполните `python BuildTools/docs_inventory.py --write`, затем `--check`.
 3. Выполните генерацию кода и скомпилируйте созданные wrappers.
 4. Запустите подходящие тесты методов:
-   - общие методы: `Source/Tests/Test_CommonScriptMethods.cpp`;
-   - серверные методы: `Source/Tests/Test_ServerScriptMethods.cpp` и соответствующие server runtime tests;
-   - поведение entity и handles: `Source/Tests/Test_ScriptEntityOps.cpp`;
-   - builtins и types: `Source/Tests/Test_ScriptBuiltins.cpp`.
+   - общие методы: `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`;
+   - серверные методы: `Source/Tests/Test_AngelScriptServerScriptMethods.cpp` и соответствующие server runtime tests;
+   - поведение entity и handles: `Source/Tests/Test_AngelScriptEntityOps.cpp`;
+   - builtins и types: `Source/Tests/Test_AngelScriptBuiltins.cpp`.
 5. Запустите nullable analyzers, если изменилась pointer-сигнатура.
 6. Проверьте runtime-поведение на стороне-владельце; одна компиляция не доказывает правильность размещения метода.

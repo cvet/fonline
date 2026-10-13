@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c37e288288f973754de6efc6bb81789dffc660e9d0d50a876770d947a1f868a6"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -78,7 +78,7 @@ Engine отвечает за:
 - `Source/Scripting/Managed/ManagedScriptBackend.*`, `ManagedRuntime.*`, `ManagedScripting.*`, `ManagedHost/ManagedLoadContextHost.cs`, `CoreScripts/ScriptSynchronizationContext.cs` и `Analyzers/SyncCoverAnalyzer.cs`;
 - `Source/Tools/ManagedScriptBaker.*`, `Source/Applications/ManagedScriptBakerApp.cpp` и `Source/Tests/Test_ManagedScriptBaker.cpp`;
 - `Source/Common/Settings.inc`;
-- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp` и `Test_ScriptBuiltins.cpp`;
+- `Source/Tests/Test_StackTrace.cpp`, `Test_ExceptionHandling.cpp` и `Test_AngelScriptBuiltins.cpp`;
 - `BuildTools/angelscript-debugger/package.json` и его TypeScript-исходников;
 - точных снимков проектов в `BuildTools/ExternalProjectEvidence.json`.
 
@@ -176,7 +176,7 @@ Engine отвечает за:
 
 `ReportExceptionAndContinue` записывает пойманное нефатальное исключение. `ReportExceptionAndExit` и strong assertions записывают диагностику и завершают процесс или передают управление отладчику согласно контракту. Модель уровней exception safety и правила entity-lifecycle throw-as-signal описаны в [Exception Safety](../contributing/coding-contracts/exception-safety.md).
 
-Контекстные аргументы AngelScript `throw(...)` и `verify(...)` форматируются через `GetScriptObjectInfo()`. Entity handles содержат объявленный script type, имя entity, runtime id и proto id либо `<none>`, если proto отсутствует, поэтому production exception указывает участвующие объекты, а не только базовый тип вроде `Critter` или `AbstractItem`. Primitive, enum, string и null сохраняют компактное представление. `Test_ScriptBuiltins.cpp` закрепляет этот entity context через настоящий global binding `throw`.
+Контекстные аргументы AngelScript `throw(...)` и `verify(...)` форматируются через `GetScriptObjectInfo()`. Entity handles содержат объявленный script type, имя entity, runtime id и proto id либо `<none>`, если proto отсутствует, поэтому production exception указывает участвующие объекты, а не только базовый тип вроде `Critter` или `AbstractItem`. Primitive, enum, string и null сохраняют компактное представление. `Test_AngelScriptBuiltins.cpp` закрепляет этот entity context через настоящий global binding `throw`.
 
 Используйте break-on-throw осмотрительно. AngelScript bindings и lifecycle-код движка могут бросать исключения как часть намеренного reporting path. Начинайте с фиксированного сообщения и context parameters из лога, затем ставьте сфокусированный breakpoint в owning invariant или reporter. Для повреждения памяти приоритетны evidence ASan/MSan/UBSan/TSan и первый некорректный доступ, а не более поздний вторичный assertion.
 

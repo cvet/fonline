@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"2eac079806478f96f089ef695dacc006e1b5b1ec31c503a2f16177590bd92904"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"ec95530725cf98716c7704064c8b1efa2f01f8c1ff59670f0826ec446e3e69d0"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1135,7 +1135,7 @@ depth variant. Atlas packing/dump geometry принадлежит
 `Test_TextureAtlas.cpp`, matrix/depth projection — `Test_Geometry.cpp`, а
 model/image/particle suites — соответствующим runtime paths.
 
-Requested-region sections `NullRenderer` проверяют layout строк, snapshot в точке запроса, bounds и однократную передачу результата. В `Test_ClientEngine.cpp` есть `ModelSpriteHitTestReadsItsMaskFromTheAtlas` для повторного использования CPU-mask и её обновления после redraw. Fixture компилируется только с `FO_ANGELSCRIPT_SCRIPTING`; Managed-only build его не выполняет. Оба fixtures не доказывают fence timing и видимый picking на GPU backend.
+Requested-region sections `NullRenderer` проверяют layout строк, snapshot в точке запроса, bounds и однократную передачу результата. В `Test_ClientEngine.cpp` есть `ModelSpriteHitTestReadsItsMaskFromTheAtlas` для повторного использования CPU-mask и её обновления после redraw. Fixture требует `FO_ENABLE_3D` и выполняется с обоими скриптовыми бэкендами. Оба fixtures не доказывают fence timing и видимый picking на GPU backend.
 
 Native tests доказывают backend-neutral invariants, но не реализацию GPU.
 Добавляйте visible target-specific route для каждого затронутого backend:

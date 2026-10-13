@@ -29,7 +29,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
-      "Source/Tests/Test_CommonScriptMethods.cpp"
+      "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
   "outputs": {

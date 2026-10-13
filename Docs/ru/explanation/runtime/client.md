@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"6bf745497eaf6d31c82a6dcc91a7b02a76677fadd59bba1cf68f02af389277ec"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"f3c98c0084363333814679870420cb7aa7b423474dbcac9241e5c5d881651315"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -78,6 +78,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
@@ -108,7 +109,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 1. **Инициализация приложения** выполняется во frontend-слое. `Application` владеет главным окном, renderer, input и audio. См. [Frontend и рендеринг](../rendering/).
 2. **Выбор файловой системы ресурсов** начинается в `GetClientResources(const ClientSettings&)` из `Source/Client/Client.cpp`, который строит клиентское представление `FileSystem` для runtime managers и проверки локальной metadata version в updater. Установленные клиенты добавляют writable resource overlay с более высоким приоритетом над read-only base resources; см. [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md) и [Client Updater](client-updater.md).
 3. **Создание движка** связывает settings, resources, главное окно приложения, сгенерированные метаданные, script modules и client managers.
-4. **`OnStart` и инициализация скриптов** предоставляют скриптам первую клиентскую точку входа. `Source/Tests/Test_ClientEngine.cpp` проверяет, что module init и loop calls доступны в самодостаточном client runtime.
+4. **`OnStart` и инициализация скриптов** предоставляют скриптам первую клиентскую точку входа. `Source/Tests/Test_AngelScriptClientEngine.cpp` проверяет, что module init и loop calls доступны в самодостаточном client runtime.
 5. **Главный цикл** обрабатывает frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing и обновления, связанные с rendering.
 6. **Сетевое подключение** начинается с `Connect()`, передающего transport setup и handshake в `ClientConnection`.
 7. **Состояние карты и сущностей** приходит в сетевых сообщениях, представляется клиентскими view entities и обновляется через property sync и movement/action packets.
@@ -407,8 +408,11 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 При изменении client runtime используйте минимальный подходящий scope тестов:
 
-- `Source/Tests/Test_ClientEngine.cpp` - самодостаточный startup client engine, регистрация сущностей, инициализация script module и loop callbacks.
-- `Source/Tests/Test_ClientServerIntegration.cpp` - client/server handshake через interthread transport и наблюдаемые client connection events.
+- `Source/Tests/Test_ClientEngine.cpp` - native-построение клиента, регистрация сущностей и ресурсы rendering с обоими скриптовыми бэкендами.
+- `Source/Tests/Test_AngelScriptClientEngine.cpp` - инициализация AngelScript, loop callbacks и клиентские привязки.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` - загрузка настоящей managed-сборки клиента и инициализация модуля.
+- `Source/Tests/Test_ClientServerIntegration.cpp` - native-проверки транспорта, повреждённых пакетов и соединений.
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp` - рукопожатие, вход, совместные карты и события соединения через AngelScript.
 - `Source/Tests/Test_ClientDataValidation.cpp` - проверка inbound remote-call payload для UTF-8, enums, floats, hashed strings, bools, truncation и ref-type payloads.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` - проверка ABI, exports и results client runtime для host/runtime split из [Client Updater](client-updater.md).
 

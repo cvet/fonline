@@ -1012,7 +1012,7 @@ geometry live in `Test_TextureAtlas.cpp`; matrix/depth projection lives in
 `Test_Geometry.cpp`; model, image, and particle suites own their respective
 runtime paths.
 
-The `NullRenderer` requested-region sections check row layout, the request-time snapshot, bounds, and exactly-once transfer. `Test_ClientEngine.cpp` contains `ModelSpriteHitTestReadsItsMaskFromTheAtlas`, covering CPU-mask reuse and redraw refresh. That fixture is compiled only with `FO_ANGELSCRIPT_SCRIPTING`; a Managed-only build does not execute it. Neither fixture validates fence timing or visible picking on a GPU backend.
+The `NullRenderer` requested-region sections check row layout, the request-time snapshot, bounds, and exactly-once transfer. `Test_ClientEngine.cpp` contains `ModelSpriteHitTestReadsItsMaskFromTheAtlas`, covering CPU-mask reuse and redraw refresh. That fixture requires `FO_ENABLE_3D` and executes with either scripting backend. Neither fixture validates fence timing or visible picking on a GPU backend.
 
 Native tests prove backend-neutral invariants, not a GPU implementation. Pair
 them with a visible target-specific route for every affected implementation:

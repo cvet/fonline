@@ -240,8 +240,8 @@ The hidden `ClientPoseBatchCost` experiment compares identical baked animation i
   claim the whole feature rests on, so it is covered where it can run in every configuration.
 - [Test_ClientEngine.cpp](../../../../Source/Tests/Test_ClientEngine.cpp) — `ModelPosePhasesMatchTheSinglePassPose`: the
   split `ModelInstance` phases, interleaved as a batch interleaves them and then run through a real scheduler,
-  land on the same pose as the single-pass one. That file is compiled only in an AngelScript-enabled build, since
-  the baked-model fixtures live there; the kernel-level cover above is the unconditional one.
+  land on the same pose as the single-pass one. The model fixtures and this native test run with either scripting backend;
+  the kernel-level cover above also remains backend-neutral.
 
 Run the native tests under ThreadSanitizer where it is available, and apply
 [ThreadSafetyAnalysis.md](../../contributing/coding-contracts/thread-safety-analysis.md) to the scheduler's shared state. Neither proves task lifetime,
