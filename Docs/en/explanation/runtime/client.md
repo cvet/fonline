@@ -630,3 +630,7 @@ When changing client runtime code, verify:
 - Platform-specific rendering/input implications are reflected in [Frontend and Rendering](../rendering/), [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), or [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md) as appropriate.
 
 Optional CPU workers: [client multithreading](client-multithreading.md) owns worker selection, model pose phases, and validation.
+
+## Map light and fog calculation ownership
+
+Dirty light sources and large dirty fog shapes can calculate their passive marks and fan geometry through the client worker budget. Source lifecycle, map-field publication, offset borrows, transitions and GPU submission stay on the application thread. Direct and small paths do not snapshot map obstacles. See [light and fog batches](client-multithreading.md#light-and-fog-batches) for thresholds, exact aggregation/trace rules, exception boundaries and native migration.

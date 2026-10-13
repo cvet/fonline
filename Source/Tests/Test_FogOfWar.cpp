@@ -35,6 +35,7 @@
 
 #include "FogOfWar.h"
 #include "LineTracer.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -388,4 +389,124 @@ TEST_CASE("FogOfWar")
     }
 }
 
+TEST_CASE("FogSectorIncludesBlockedCellAndPreservesFanOrder")
+{
+    auto input = MakeInput({10, 10}, nanotime {});
+    input.Radius = 4;
+    input.Distance = 4;
+    input.TraceMode = FogShape::TraceModeType::Overlay;
+    input.OverlayColor = ucolor {255, 128, 64, 255};
+    vector<uint8_t> obstacles(10000, uint8_t {1});
+    auto points = FogShape::CalculateSector(input, {{0, 0}, {100, 100}, obstacles}, 0);
+    REQUIRE(points.size() >= 3);
+    ipos32 target {10, 10};
+
+    for (int32_t i = 0; i < 4; i++) {
+#if FO_GEOMETRY == 1
+        GeometryHelper::MoveHexByDirUnsafe(target, hdir::NorthEast);
+#else
+        GeometryHelper::MoveHexByDirUnsafe(target, hdir::North);
+#endif
+    }
+
+    mpos blocked = input.FogOrigin.BaseHex;
+    LineTracer tracer(blocked, input.MapSize.from_raw_pos(target), 0.0f, input.MapSize);
+    REQUIRE(tracer.GetNextHex(blocked).has_value());
+    ipos32 expected = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(blocked)) + ipos32 {5, 4};
+    CHECK(points.front().Position == expected);
+    CHECK(points.front().Position != ipos32 {5, 4});
+    CHECK(points.front().Color == ucolor {204, 102, 51, 255});
+    CHECK(points.front().BaseOffset);
+    CHECK(points[2].Position == ipos32 {5, 4});
+    CHECK(points[2].Color == ucolor {255, 128, 64, 255});
+    CHECK_FALSE(points[2].BaseOffset);
+}
+
+TEST_CASE("FogParallelPreparationBypassesSnapshotsAndRecovers")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    WorkScheduler zero("FogSerial", 0);
+    WorkScheduler workers("FogWorkers", 2);
+    auto input = MakeInput({10, 10}, nanotime {});
+    input.Radius = 32;
+    input.Distance = 32;
+    input.TraceMode = FogShape::TraceModeType::Overlay;
+    input.TraceBulletToBlock = [size = input.MapSize](mpos start, mpos target, int32_t distance, bool check) {
+        ignore_unused(check);
+        mpos next = start;
+        LineTracer tracer(start, target, 0.0f, size);
+
+        for (int32_t i = 0; i < distance; i++) {
+            if (!tracer.GetNextHex(next).has_value()) {
+                break;
+            }
+        }
+
+        return next;
+    };
+    FogShape direct;
+    FogShape parallel;
+    direct.SetDrawOffset({3, 5});
+    direct.SetBaseDrawOffset({7, 11});
+    parallel.SetDrawOffset({3, 5});
+    parallel.SetBaseDrawOffset({7, 11});
+    size_t snapshot_reads = 0;
+    auto reader = [&snapshot_reads](mpos) {
+        snapshot_reads++;
+        return false;
+    };
+    direct.Prepare(input, &zero, reader);
+    CHECK(snapshot_reads == 0);
+    parallel.Prepare(input, &workers, reader);
+    CHECK(snapshot_reads > 0);
+    REQUIRE(parallel.GetPoints().size() == direct.GetPoints().size());
+
+    auto compare = [&] {
+        REQUIRE(parallel.GetPoints().size() == direct.GetPoints().size());
+
+        for (size_t i = 0; i < direct.GetPoints().size(); i++) {
+            CHECK(parallel.GetPoints()[i].PointPos == direct.GetPoints()[i].PointPos);
+            CHECK(parallel.GetPoints()[i].PointColor == direct.GetPoints()[i].PointColor);
+            CHECK(*parallel.GetPoints()[i].PointOffset == *direct.GetPoints()[i].PointOffset);
+        }
+    };
+    compare();
+    size_t clean_reads = snapshot_reads;
+    parallel.Prepare(input, &workers, reader);
+    CHECK(snapshot_reads == clean_reads);
+    auto old_points = vector<PrimitivePoint>(parallel.GetPoints().begin(), parallel.GetPoints().end());
+    parallel.RequestRebuild();
+    CHECK_THROWS(parallel.Prepare(input, &workers, [](mpos) -> bool { throw GenericException("Fog snapshot probe"); }));
+    CHECK(parallel.GetPoints().size() == old_points.size());
+    compare();
+    REQUIRE_NOTHROW(parallel.Prepare(input, &workers, reader));
+    compare();
+
+    input.Radius = 1;
+    snapshot_reads = 0;
+    parallel.Prepare(input, &workers, reader);
+    direct.Prepare(input, &zero, reader);
+    CHECK(snapshot_reads == 0);
+    compare();
+
+    input.Radius = 32;
+    input.FogOrigin.BaseHex = {0, 0};
+    input.FogTransitionDuration = 100;
+    direct.Prepare(input, &zero, reader);
+    parallel.Prepare(input, &workers, reader);
+    compare();
+    input.FrameTime = nanotime {timespan {std::chrono::milliseconds {50}}};
+    direct.Prepare(input, &zero, reader);
+    parallel.Prepare(input, &workers, reader);
+    compare();
+    input.Enabled = false;
+    direct.Prepare(input, &zero, reader);
+    parallel.Prepare(input, &workers, reader);
+    compare();
+}
+
 FO_END_NAMESPACE
+

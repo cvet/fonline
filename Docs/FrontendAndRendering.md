@@ -40,19 +40,19 @@ Continue with the [canonical English explanation](en/explanation/rendering/#appl
 
 ### `AppRender` / `IAppRender`
 
-Continue with the [canonical English explanation](en/explanation/rendering/#apprender--iapprender).
+Continue with the [canonical English explanation](en/explanation/rendering/#apprender-iapprender).
 
 ### `AppWindow` / `IAppWindow`
 
-Continue with the [canonical English explanation](en/explanation/rendering/#appwindow--iappwindow).
+Continue with the [canonical English explanation](en/explanation/rendering/#appwindow-iappwindow).
 
 ### `AppInput` / `IAppInput`
 
-Continue with the [canonical English explanation](en/explanation/rendering/#appinput--iappinput).
+Continue with the [canonical English explanation](en/explanation/rendering/#appinput-iappinput).
 
 ### `AppAudio` / `IAppAudio`
 
-Continue with the [canonical English explanation](en/explanation/rendering/#appaudio--iappaudio).
+Continue with the [canonical English explanation](en/explanation/rendering/#appaudio-iappaudio).
 
 ## Headless and stub modes
 

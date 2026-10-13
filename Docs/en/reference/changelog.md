@@ -12,6 +12,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Increase the reviewed full AI-context capacity by 4 KiB to 2,338,816 bytes for complete light/fog calculation and native rebuild guidance; retain whole documents, exclusions and overflow rejection.
+
+- Calculate dirty map light sources and large dirty fog sectors in the existing client worker budget. Workers receive passive bounded obstacles and return ordered marks/geometry; owner publication, source counts, offset borrows and transitions remain synchronous. Direct/zero/small paths avoid obstacle snapshots and direct light streams marks without a new event queue. Rebuild native consumers for the new `FogShape::Input` layout and `Prepare` signature. No script API, resource-schema, save or networking migration is required; Managed ABI 9 and runtime compatibility remain unchanged. Thresholds are provisional, multithreading stays off by default, and no speedup/GPU/platform qualification is claimed.
+
 - Add experimental `Game.PrepareTextLayouts` and `Game.CanPrepareTextLayoutsInParallel` with passive `TextLayoutResult` fields `Width`, `Height`, `Lines`. Coalesce cold measurement and draw layouts into synchronous worker batches; cache publication, recency, brightness and drawing remain on the application thread. Warm layouts create no jobs; serial and zero-worker consumers retain their direct route. Reconfigure/rebuild native and Managed consumers, regenerate bindings and rebake metadata; draw with returned bounds and the same format/color. No save, network or resource-schema conversion is required; Managed ABI 9 and runtime compatibility 0.0.72 remain unchanged. Thresholds are provisional and multithreading remains off pending frame measurements.
 
 - Increase the reviewed full AI-context capacity by 8 KiB to 2,334,720 bytes for complete text-layout/font/Managed guidance; retain all whole documents, exclusions and overflow rejection.

@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import unittest
 from pathlib import Path
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
+
+import docs_validate  # noqa: E402
+
 GUIDE_PATH = "Docs/en/explanation/rendering/index.md"
 RUSSIAN_PATH = "Docs/ru/explanation/rendering/index.md"
 LEGACY_PATH = "Docs/FrontendAndRendering.md"
@@ -116,14 +121,18 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
             "RequestedRegionOutsideTheTextureIsRefused",
         ):
             self.assertIn(marker, tests)
-        self.assertIn("ModelSpriteHitTestReadsItsMaskFromTheAtlas", model_tests)
+        marker = 'TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")'
+        self.assertIn(marker, model_tests)
+        fixture_prefix = model_tests.split(marker, 1)[0]
+        self.assertEqual(fixture_prefix.rsplit("#if", 1)[1].splitlines()[0].strip(), "FO_ENABLE_3D")
+        self.assertNotIn("FO_ANGELSCRIPT_SCRIPTING", fixture_prefix)
         self.assertNotIn("GetRenderTargetPixel", self._read("Source/Client/RenderTarget.h"))
         guide = self._read(GUIDE_PATH)
         for boundary in (
             "Before the first mask is ready, hit testing returns false",
             "blocking read at request time",
             "Outside frame recording",
-            "FO_ANGELSCRIPT_SCRIPTING",
+            "requires `FO_ENABLE_3D` and executes with either scripting backend",
             "not a server-authoritative hit",
         ):
             self.assertIn(boundary, guide)
@@ -228,8 +237,17 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
 
         canonical_text = self._read(GUIDE_PATH)
         legacy_text = self._read(LEGACY_PATH)
-        for heading in re.findall(r"^#{2,3} .+$", canonical_text, re.MULTILINE):
-            self.assertIn(heading, legacy_text)
+        russian_text = self._read(RUSSIAN_PATH)
+        self.assertIn("## Bounded map view presentation", canonical_text)
+        self.assertIn("## Отображение ограниченного обзора карты", russian_text)
+        self.assertIn("> Legacy route.", legacy_text)
+        self.assertIn("The canonical explanation moved to locale-specific paths.", legacy_text)
+        canonical_anchors = docs_validate._markdown_anchors(ENGINE_ROOT / GUIDE_PATH)
+        for heading in re.findall(r"^#{2,3} (.+)$", legacy_text, re.MULTILINE):
+            anchor = docs_validate._heading_slug(heading)
+            self.assertIn(anchor, canonical_anchors)
+        for anchor in re.findall(r"\]\(en/explanation/rendering/#([^)]+)\)", legacy_text):
+            self.assertIn(anchor, canonical_anchors)
         self.assertIn("en/explanation/rendering/", legacy_text)
         self.assertIn("ru/explanation/rendering/", legacy_text)
 

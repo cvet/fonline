@@ -1042,3 +1042,7 @@ The renderer stays on the application thread when [client multithreading](../run
 ### CPU geometry batches
 
 Atlas sprites, region quads and font glyphs share the pure `WritePreparedSpriteGeometry` kernel. The application thread captures immutable inputs, reserves output offsets and preserves draw order. With client workers enabled, geometry is completed before upload and before wireframe or external sprite code can read the buffer; render-target and scissor transitions retain their existing flush boundaries. Serial clients invoke the kernel directly. Map rotation, flattening, standing depth and both egg flags are captured values, never worker reads of map entities. See [client multithreading](../runtime/client-multithreading.md#sprite-and-glyph-geometry) for lifetime, exceptions, thresholds and measurement limits.
+
+## Parallel map preparation
+
+Light/fog worker stages calculate only passive CPU results. `MapView` publishes source marks and ordered fans after the light barrier; `FogShape` binds draw/base offsets after its sector barrier and retains all transition state on the owner. Render-target selection, primitive assembly, upload and compositing remain in their existing application-thread order. [Client multithreading](../runtime/client-multithreading.md#light-and-fog-batches) owns the direct-path bypass, immutable obstacle views, failure/retry contract and provisional thresholds. Native equality tests are separate from visible backend and GPU validation.

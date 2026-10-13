@@ -42,6 +42,7 @@
 #include "FogOfWar.h"
 #include "Geometry.h"
 #include "ItemHexView.h"
+#include "MapLightCalculation.h"
 #include "MapSprite.h"
 #include "PathFinding.h"
 #include "ScriptSystem.h"
@@ -393,11 +394,11 @@ private:
     void CleanLightSourceOffsets(ident_t id);
     void ApplyLightFan(ptr<LightSource> ls);
     void CleanLightFan(ptr<LightSource> ls);
-    void TraceLightLine(ptr<LightSource> ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity);
-    void MarkLightStep(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
-    void MarkLightEnd(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
-    void MarkLightEndNeighbor(ptr<LightSource> ls, mpos hex, bool north_south, int32_t raw_intensity);
-    void MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity);
+    auto MakeLightCalculationInput(ptr<const LightSource> ls) const -> MapLightCalculationInput;
+    void ApplyLightFans(const_span<ptr<LightSource>> sources);
+    void BeginLightFan(ptr<LightSource> ls);
+    void FinishLightFan(ptr<LightSource> ls, MapLightCalculationResult&& result);
+    void MarkLightColor(ptr<LightSource> ls, mpos hex, ucolor light_color);
     void CalculateHexLight(mpos hex, ptr<const Field> field);
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
@@ -494,3 +495,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-ai-documentation-delivery
 permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
 ---
-<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"50e6c1ed07bd4a632fc477bdb0ea7b036178a096bbbafc9c84fe532000431962"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"59fc15bace1fef61500a502d5c65f0c35e3fb2b80bea4d7190bf1128cd21e770"} -->
 # ADR-0003: доставка документации для ИИ на основе манифеста
 
 - Статус: принято
@@ -34,7 +34,7 @@ permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation
    - `docs-manifest.json`: публичную машиночитаемую проекцию исходного манифеста.
 3. `llms-full.txt` включает полные авторские публичные актуальные документы и index pages сгенерированных справочников. Сгенерированные detail pages исключаются, поскольку их канонические JSON-модели точнее. Проверенный список `exclude_document_ids` может исключить избыточную routing/index page, сохранив её в `llms.txt`, поиске, сайте для людей и `docs-manifest.json`; стартовые и неизвестные или неактуальные IDs исключать нельзя.
    Каждый полный документ сохраняет ID, путь исходника и заголовок канонической ссылки `URL:`; краткие метки сохраняют лимит размера.
-4. Исходный манифест проверяет до записи утверждённый лимит 2 MiB + 232 KiB (2 334 720 байт). Превышение даёт fail-closed отказ: без обрезания документа или непроверенного повышения. Состав, исключения routing pages и правило generated index сохраняются. Ограниченные прибавки сохраняли целиком владеющие руководства:
+4. Исходный манифест проверяет до записи утверждённый лимит 2 MiB + 236 KiB (2 338 816 байт). Превышение даёт fail-closed отказ: без обрезания документа или непроверенного повышения. Состав, исключения routing pages и правило generated index сохраняются. Ограниченные прибавки сохраняли целиком владеющие руководства:
 
    | Дата / ревизия | Байт в полном пакете | Проверенная прибавка и причина |
    |---|---:|---|
@@ -46,6 +46,7 @@ permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2 282 913 | +32 KiB для необязательных компонентов, baking-lock и миграций; превышение прежнего лимита на 21 921 байт. Ёмкость уже объявлена опубликованным манифестом. |
    | Опубликованная интеграция client workers | Ёмкость 2 326 528 байт | +32 KiB для полного объединённого актуального корпуса; состав и отказ при превышении не меняются. |
    | 2026-10-13, подготовленная компоновка текста | 2 328 727 до согласования политики | +8 KiB: полные руководства text-layout, font, Managed API и generated indexes превысили предыдущую ёмкость на 2199 байт. После этой правки политики и миграций размер измеряется заново; все полные документы и исключения сохраняются. |
+   | 2026-10-13, пассивный расчёт света и тумана | 2 336 059 до согласования политики | +4 KiB: полные правила владения, прямого пути и native rebuild для света/тумана превысили прежнюю ёмкость на 1339 байт. Целые документы, исключения и отказ при превышении сохраняются; итоговый пакет проверяется заново. |
 
    Измерение e1 оставляло 10 847 байт до соответствующей правки документации; перегенерированный результат измеряется заново. Действующие исключения сохраняют своих владельцев-заменителей: `tools` после отдельных руководств Mapper/viewer/particles; `ScriptMethodsMap.md` после сгенерированных `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` и native API index; `BuildTools/README.md` после сгенерированных CLI/helper/package references и `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Все исключённые страницы остаются в `llms.txt`, поиске и публичном манифесте. Руководство по проверяемой managed-арифметике и миграции используют этот лимит без нового повышения или исключения.
 5. Публичный манифест включает каждый публичный документ, в том числе видимые placeholder routes, чтобы клиенты могли отличить актуальный контракт от маршрута миграции. Внутренние планы и отчёты проверки исключаются.

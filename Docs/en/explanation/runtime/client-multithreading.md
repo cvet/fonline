@@ -13,6 +13,7 @@ permalink: /Docs/en/explanation/runtime/client-multithreading.html
 - `Source/Client/WorkScheduler.h` and `Source/Client/WorkScheduler.cpp`
 - `Source/Client/Client.cpp`, `SpriteManager.cpp`, `ModelSprites.cpp`, and `ModelInstance.cpp`
 - `Source/Client/FontManager.h`, `FontManager.cpp`, and `Source/Tests/Test_FontLayout.cpp`
+- `Source/Client/MapLightCalculation.h`, `MapLightCalculation.cpp`, `MapView.cpp`, `FogOfWar.h`, and `FogOfWar.cpp`
 - `Source/Common/Settings.inc`
 - `Source/Tests/Test_WorkScheduler.cpp`, `Test_ModelAnimationPoseProcedural.cpp`, and `Test_ClientEngine.cpp`
 
@@ -26,9 +27,10 @@ What is implemented today:
 - [SpriteManager](../../../../Source/Client/SpriteManager.cpp): two-phase frame updates with declared CPU-only work.
 - [SpriteGeometry](../../../../Source/Client/SpriteGeometry.cpp): atlas, region, glyph and map vertex/index kernels.
 - [FontManager](../../../../Source/Client/FontManager.cpp): pure measurement and draw-layout preparation with owner-only cache publication.
+- [MapView](../../../../Source/Client/MapView.cpp) and [FogShape](../../../../Source/Client/FogOfWar.cpp): dirty light-source and fog-sector calculations over passive obstacle snapshots.
 - [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is one worker stage.
 
-The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel lighting/fog/particles, an asynchronous resource lane or threaded Web. Their prerequisites and proposed order follow below.
+The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel particles, an asynchronous resource lane or threaded Web. Their prerequisites and proposed order follow below.
 
 No frame-time speedup is claimed. Tests establish pose equality and serial bypass; earlier embedding-project player-path checks do not qualify later revisions or platforms. See [Measuring it](#measuring-it).
 
@@ -95,6 +97,18 @@ Each eligible stage decides here. `ShouldRunParallel` is false for serial mode, 
 `FontManager::PrepareTextLayouts` prepares measurement and final draw formats in two synchronous phases. Each worker owns one `FontFormatInfo` and reads the selected font's immutable metrics; it never receives a client, entity, cache or renderer. The application thread coalesces duplicate keys, updates cache recency, applies brightness and publishes completed formats after each barrier. Draw formats use the measured extent and actual color, preserving the separate measurement/draw cache keys.
 
 Warm caches submit no jobs. The preliminary minimum is 32 distinct misses with at least 16 items per chunk. `Game.CanPrepareTextLayoutsInParallel()` reports worker availability, while `Game.PrepareTextLayouts` also supports explicit serial callers. Consumer scripts retain their existing direct route with no batch lists when workers are unavailable. Font replacement clears the cache; no prepared result exposes a native cache borrow. See [batch preparation](../../how-to/content/font-format.md#batch-preparation).
+
+## Light and fog batches
+
+`MapView::ProcessLighting` coalesces the global reapply request, intensity changes and source dirty flags into one ordered source list. At least eight dirty sources and available workers select `MapLightCalculation`; chunks contain at least two sources. The owner snapshots only a clipped rectangle around each source, including `LightBlocked`, `HasWall`, `HasTransparentWall` and `Corner`. The conservative rectangle includes the square perimeter and adjacent-wall marks. Inputs contain scalar source/daylight values, never `MapView`, `Field`, entities or callbacks. One worker result holds ordered mark events and fan tuples. Only after the complete batch joins does the owner clean and replace each source in the collected order, update visibility/global counters and rebuild render primitives. Removal and intensity interpolation remain on the owner. `UpdateHexLightSources` also batches the sources already marking an obstacle cell when eligible; its False/zero/small branch retains the original copied-map/direct loop. Individual source creation, movement and parameter updates remain immediate owner calculations. Existing obstacle invalidation coverage is unchanged: removing a cell no longer marked by a blocked source does not itself discover that source.
+
+`CalculateMapLight` and the owner-only `CalculateMapLightDirect` use one private calculation with separate obstacle readers and mark sinks. The direct sink publishes marks as before: False, zero workers and small dirty lists build neither obstacle snapshots nor temporary mark-event queues. The fan result is still a temporary vector moved into the source, so direct-path allocation cost requires measurement. The original float stepping, wall orientation, half-intensity neighbors, integer clamps/divisions and fan order are preserved. A repeated mark from one source replaces its whole color when any channel is stronger; the combined cell light takes a per-channel maximum across sources. These are different operations.
+
+`FogShape` separates its passive `CalculationInput` from the owner `Input` containing the direct trace callback. A dirty shape of radius at least 32 uses six hex or four square sectors through `FogGeometry`. Traced sectors receive a bounded immutable shoot-block mask; untraced shapes and overlays ignoring shoot blocks need no mask. `LineTracer` returns the blocked cell itself, including map-edge termination, matching `TraceBullet`'s block result rather than its previous-cell result. Sector results contain positions, colors and offset kinds. The owner concatenates sectors in perimeter order, preserving the center after every two edges, then binds stable draw/base offset borrows and runs transitions. Clean, disabled, small and zero-worker shapes create no snapshot or jobs.
+
+The thresholds are provisional and share `ClientEngine::WorkSched`'s existing worker budget; neither stage adds a pool or a public setting. Failed worker batches join before rethrowing and publish no pending results. Source dirty flags and fog rebuild requests remain set for a later retry; already published geometry stays valid. A direct light failure retains its recorded marks as a cleanable applied source. Native tests use frozen legacy hex mask/color/fan fixtures, hand-derived center and blocked-cell colors, actual dirty consumers, direct/zero/small paths and failure/recovery checks. These do not establish GPU equivalence, square-build qualification, platform qualification or frame-time speedup.
+
+Native consumers must rebuild: `FogShape::Input` now derives from `CalculationInput`, and `Prepare` accepts the optional scheduler and owner obstacle reader. Script declarations, serialized resources, saves, networking and Managed ABI 9 are unchanged by these internal interfaces.
 
 ## How many workers
 
@@ -178,7 +192,7 @@ With no workers, draw calls execute the kernel directly without queues or retain
 |---|---|
 | `MapView::Process`, `CritterHexView::Process` | Iteration mutates entities, map fields and deletion lists. |
 | `MapView::DrawMap` | Rebuilds map data, fires script events between render stages, and records GPU work. |
-| Lighting and fog | `ApplyLightFan` mutates shared map state; `FogShape::Input` traces live map state through a callback. Both need a pure kernel and an immutable obstacle view first, and the serial mode must not pay to build that view. |
+| Light/fog publication | Map fields, source ownership, visibility/global counters, offset borrows and fog transitions remain owner-only; workers calculate passive marks and geometry. |
 | Particles | SPARK and Effekseer share managers, random state and resource callbacks across systems. Middleware threading and client workers also have to be counted against one CPU budget, not enabled independently. |
 | Network | Stream decompression is stateful and ordered, and packet handlers mutate client entities. A transport offload needs an ordered byte handoff, not a parallel loop. |
 | Resource preparation | `ReadSpriteResource` is a usable CPU contract, but publication touches the cache, the atlas and the GPU. This is a cross-frame lane with generations, not a frame batch. |
@@ -279,8 +293,8 @@ player-visible surface twice, once per mode, and compare the two verdicts.
 
 1. **Profile.** The frame-time lanes above, on the two validated platforms. Everything below is worth doing only
    in the order the profile puts them.
-2. **A further stage, chosen by that profile.** Lighting geometry is the most likely, and it needs a pure kernel
-   plus an immutable obstacle view before it can be one.
+2. **A further stage, chosen by that profile.** Light and fog now have passive calculation boundaries; qualify
+   their existing stages before adding more work to the scheduler.
 3. **A resource lane.** Bounded prepare/publish with request generations, judged on loading latency and stalls,
    not on steady FPS. It is a different object from this scheduler.
 4. **Platform validation** for macOS and Android, and a decision on whether a threaded Web artifact is worth its

@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"b1cb4aaa65318b55c50fcdb16ae8772c136ea4b690531fff9c68a1ed52c4986e"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"eb2bcd3d91e04b4c2c359721e039f9879a8b3164e22b57cebc855a1825b2633e"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -430,3 +430,7 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 - Platform-specific последствия rendering/input отражены в [Frontend и рендеринг](../rendering/), [сборке, упаковке и отладке в браузере](../../how-to/platforms/web-debugging.md) или [сборке, упаковке и отладке на Android](../../how-to/platforms/android-debugging.md).
 
 Необязательные CPU workers: [многопоточность клиента](client-multithreading.md) описывает выбор числа потоков, фазы позы модели и проверку.
+
+## Владение расчётом света и тумана карты
+
+Dirty-источники света и большие dirty-формы тумана могут вычислять пассивные отметки и fan-геометрию через бюджет workers клиента. Жизненный цикл источников, публикация полей карты, заимствования смещений, переходы и GPU submission остаются на потоке приложения. Прямые и малые ветки не снимают препятствия карты. Пороги, точные правила агрегации/трассировки, границы исключений и native-миграция описаны в [пакетах света и тумана](client-multithreading.md#пакеты-света-и-тумана).

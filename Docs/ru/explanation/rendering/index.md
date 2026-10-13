@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a28fe5840d0e1cbea7cc0afa832650fff8260a9a4a13d582028d3b00656d9fdd"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"affba6c7003007cc53714b64e9e5de2b668b483bcdf050f814aee5200fd1ff60"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1160,3 +1160,7 @@ Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 ### CPU-пакеты геометрии
 
 Спрайты атласа, quad областей и глифы шрифта используют общий чистый kernel `WritePreparedSpriteGeometry`. Поток приложения фиксирует неизменяемые входы, резервирует смещения выходных диапазонов и сохраняет порядок отрисовки. При включённых client workers геометрия завершается до upload и до чтения буфера wireframe или внешним sprite; смена render target и scissor сохраняет прежние границы flush. Последовательный клиент вызывает kernel напрямую. Поворот карты, flattening, глубина стоящего спрайта и оба egg flags передаются значениями; workers не читают сущности карты. В [многопоточности клиента](../runtime/client-multithreading.md#геометрия-спрайтов-и-глифов) описаны время жизни, исключения, пороги и ограничения замеров.
+
+## Параллельная подготовка карты
+
+Worker-стадии света и тумана вычисляют только пассивные CPU-результаты. `MapView` публикует отметки источников и упорядоченные fans после light barrier; `FogShape` привязывает draw/base offsets после sector barrier и сохраняет transition-state у владельца. Выбор render targets, сборка примитивов, upload и композиция остаются в прежнем порядке потока приложения. [Многопоточность клиента](../runtime/client-multithreading.md#пакеты-света-и-тумана) определяет обход в direct-ветке, неизменные снимки препятствий, контракт ошибок/повтора и предварительные пороги. Native equality tests отделены от видимой backend/GPU-проверки.

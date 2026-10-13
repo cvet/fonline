@@ -8,11 +8,15 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"94bcd36bffa53a7d5d4861eeb8dd9dabd45a19a36feb44847ce4e3525e006083"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1813f7accef567320ff5a3eca1905ed032854f7a45c937dafadbd64e31012de9"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Увеличена проверенная ёмкость полного AI-контекста на 4 KiB до 2 338 816 байт для полного руководства по расчёту света/тумана и native rebuild; целые документы, исключения и отказ при превышении сохранены.
+
+- Добавлен расчёт dirty-источников света карты и больших dirty-секторов тумана в существующем бюджете workers клиента. Workers получают пассивные ограниченные препятствия и возвращают упорядоченные отметки/геометрию; публикация, счётчики источников, заимствования смещений и переходы остаются синхронными у владельца. Direct/zero/small-ветки обходятся без снимков препятствий, прямой свет пишет отметки без новой очереди. Пересоберите native-потребителей из-за нового layout `FogShape::Input` и сигнатуры `Prepare`. Миграции script API, формата ресурсов, сохранений и сети не нужны; Managed ABI 9 и runtime compatibility не меняются. Пороги предварительные, многопоточность по умолчанию выключена; ускорение, GPU- и платформенная готовность не заявлены.
 
 - Добавлены экспериментальные `Game.PrepareTextLayouts` и `Game.CanPrepareTextLayoutsInParallel` с passive полями `TextLayoutResult`: `Width`, `Height`, `Lines`. Холодные measurement/draw layouts объединяются в синхронные worker batches; публикация кэша, актуальность, brightness и рисование остаются на потоке приложения. Прогретые layouts не создают jobs; serial и zero-worker consumers сохраняют прямой путь. Переконфигурируйте и пересоберите native/Managed consumers, обновите bindings и перезапеките metadata; рисуйте в возвращённых размерах с теми же format/color. Save, network и resource schemas не требуют преобразования; Managed ABI 9 и runtime compatibility 0.0.72 не меняются. Пороги предварительные, многопоточность выключена до кадровых замеров.
 

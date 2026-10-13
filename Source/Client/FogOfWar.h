@@ -39,6 +39,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class WorkScheduler;
+
 class FogShape final
 {
 public:
@@ -55,7 +57,7 @@ public:
         int32_t LookDistance {};
     };
 
-    struct Input
+    struct CalculationInput
     {
         bool Enabled {true};
         int32_t Distance {};
@@ -65,14 +67,34 @@ public:
         TraceModeType TraceMode {};
         bool CheckShootBlocks {true};
         int32_t FogExtraLength {};
-        int32_t FogTransitionDuration {};
         int32_t MapHexWidth {};
         int32_t MapHexHeight {};
         msize MapSize {};
-        nanotime FrameTime {};
         Origin FogOrigin {};
+    };
+
+    struct Input : CalculationInput
+    {
+        int32_t FogTransitionDuration {};
+        nanotime FrameTime {};
         copyable_function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
+
+    struct ObstacleView
+    {
+        ipos32 Origin {};
+        isize32 Size {};
+        const_span<uint8_t> ShootBlocked {};
+    };
+
+    struct CalculatedPoint
+    {
+        ipos32 Position {};
+        ucolor Color {};
+        bool BaseOffset {};
+    };
+
+    static auto CalculateSector(const CalculationInput& input, const ObstacleView& obstacles, size_t sector) -> vector<CalculatedPoint>;
 
     FogShape() = default;
     FogShape(const FogShape&) = delete;
@@ -85,11 +107,11 @@ public:
     void RequestRebuild() noexcept { _rebuildFog = true; }
     void SetDrawOffset(ipos32 offset) noexcept { *_drawOffset = offset; }
     void SetBaseDrawOffset(ipos32 offset) noexcept { *_baseDrawOffset = offset; }
-    void Prepare(const Input& input);
+    void Prepare(const Input& input, nptr<WorkScheduler> scheduler = nullptr, const function<bool(mpos)>& read_shoot_block = {});
     void Clear();
 
 private:
-    void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
+    void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points, nptr<WorkScheduler> scheduler, const function<bool(mpos)>& read_shoot_block) const;
     void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
     void UpdateTransition(nanotime frame_time);
     void FinishTransition();
@@ -122,3 +144,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

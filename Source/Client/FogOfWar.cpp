@@ -34,8 +34,126 @@
 #include "FogOfWar.h"
 
 #include "Geometry.h"
+#include "LineTracer.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
+
+static auto ReadFogObstacle(const FogShape::ObstacleView& view, mpos hex) -> bool
+{
+    int32_t x = hex.x - view.Origin.x;
+    int32_t y = hex.y - view.Origin.y;
+    FO_VERIFY_AND_THROW(x >= 0 && y >= 0 && x < view.Size.width && y < view.Size.height, "Fog obstacle lookup is outside its snapshot", hex, view.Origin, view.Size);
+    size_t index = numeric_cast<size_t>(y) * numeric_cast<size_t>(view.Size.width) + numeric_cast<size_t>(x);
+    FO_VERIFY_AND_THROW(index < view.ShootBlocked.size(), "Fog obstacle snapshot is incomplete", index, view.ShootBlocked.size());
+    return view.ShootBlocked[index] != 0;
+}
+
+template<typename Trace, typename Emit>
+static void CalculateFogRange(const FogShape::CalculationInput& input, size_t first_sector, size_t sector_count, const Trace& trace, const Emit& emit)
+{
+    if (!input.Enabled || !input.FogOrigin.Valid) {
+        return;
+    }
+
+    int32_t dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
+
+    if (dist <= 0) {
+        return;
+    }
+
+    constexpr size_t sectors = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4;
+    FO_VERIFY_AND_THROW(first_sector < sectors && sector_count <= sectors - first_sector, "Fog sector range is invalid", first_sector, sector_count);
+    bool is_traced_overlay = input.TraceMode == FogShape::TraceModeType::Overlay;
+    mpos base_hex = input.FogOrigin.BaseHex;
+    int32_t half_hw = input.MapHexWidth / 2;
+    int32_t half_hh = input.MapHexHeight / 2;
+    ucolor overlay_color = input.OverlayColor.comp.a != 0 ? input.OverlayColor : ucolor {96, 224, 96, 255};
+    ucolor center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, 255} : (input.CenterColor.comp.a != 0 ? input.CenterColor : ucolor {0, 0, 0, 0});
+    FogShape::CalculatedPoint center {{half_hw, half_hh}, center_color, false};
+    ipos32 raw {base_hex.x, base_hex.y};
+    int32_t iterations = GameSettings::HEXAGONAL_GEOMETRY ? dist : dist * 2;
+    auto direction = [](size_t sector) {
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            return mdir {hdir(numeric_cast<int32_t>((sector + 2) % 6))};
+        }
+        else {
+            return mdir {hdir(numeric_cast<int32_t>(((sector + 1) * 2) % 8))};
+        }
+    };
+
+    for (int32_t i = 0; i < dist; i++) {
+#if FO_GEOMETRY == 1
+        GeometryHelper::MoveHexByDirUnsafe(raw, hdir::NorthEast);
+#else
+        GeometryHelper::MoveHexByDirUnsafe(raw, hdir::North);
+#endif
+    }
+
+    for (size_t sector = 0; sector < first_sector; sector++) {
+        for (int32_t i = 0; i < iterations; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(raw, direction(sector));
+        }
+    }
+
+    size_t points_added = first_sector == 0 ? 0 : first_sector * numeric_cast<size_t>(iterations) + 1;
+
+    for (size_t sector = first_sector; sector < first_sector + sector_count; sector++) {
+        int32_t edge_count = iterations + (sector == 0 ? 1 : 0);
+
+        for (int32_t edge = 0; edge < edge_count; edge++) {
+            if (sector != 0 || edge != 0) {
+                GeometryHelper::MoveHexByDirUnsafe(raw, direction(sector));
+            }
+
+            mpos target_hex = input.MapSize.clamp_pos(raw);
+            int32_t target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
+
+            if (is_traced_overlay) {
+                int32_t max_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
+                mpos block_hex = trace(base_hex, target_hex, max_dist, input.CheckShootBlocks);
+                ipos32 position = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
+                int32_t result_dist = GeometryHelper::GetDistance(base_hex, block_hex);
+                uint8_t strength = numeric_cast<uint8_t>(std::max(max_dist - result_dist, 0) * 255 / max_dist);
+                ucolor color {numeric_cast<uint8_t>(overlay_color.comp.r * strength / 255), numeric_cast<uint8_t>(overlay_color.comp.g * strength / 255), numeric_cast<uint8_t>(overlay_color.comp.b * strength / 255), 255};
+                emit(FogShape::CalculatedPoint {{position.x + half_hw, position.y + half_hh}, color, result_dist < max_dist});
+            }
+            else {
+                ipos32 position = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
+                ucolor color {255, numeric_cast<uint8_t>(target_dist * 255 / dist), 0, 0};
+                emit(FogShape::CalculatedPoint {{position.x + half_hw, position.y + half_hh}, color, target_dist < dist});
+            }
+
+            if (++points_added % 2 == 0) {
+                emit(center);
+            }
+        }
+    }
+}
+
+auto FogShape::CalculateSector(const CalculationInput& input, const ObstacleView& obstacles, size_t sector) -> vector<CalculatedPoint>
+{
+    FO_TRACE_ZONE(Map);
+
+    vector<CalculatedPoint> points;
+    auto trace = [&input, &obstacles](mpos start, mpos target, int32_t distance, bool check) {
+        mpos next = start;
+        LineTracer tracer(start, target, 0.0f, input.MapSize);
+
+        for (int32_t i = 0; i < distance; i++) {
+            if (!tracer.GetNextHex(next).has_value()) {
+                break;
+            }
+            if (check && ReadFogObstacle(obstacles, next)) {
+                break;
+            }
+        }
+
+        return next;
+    };
+    CalculateFogRange(input, sector, 1, trace, [&points](CalculatedPoint point) { points.emplace_back(point); });
+    return points;
+}
 
 void FogShape::Clear()
 {
@@ -57,7 +175,7 @@ void FogShape::Clear()
     _targetPoints.clear();
 }
 
-void FogShape::Prepare(const Input& input)
+void FogShape::Prepare(const Input& input, nptr<WorkScheduler> scheduler, const function<bool(mpos)>& read_shoot_block)
 {
     if (input.Enabled != _lastEnabled || input.FogOrigin.Valid != _lastOrigin.Valid || //
         (input.FogOrigin.Valid && (input.FogOrigin.BaseHex != _lastOrigin.BaseHex || input.FogOrigin.LookDistance != _lastOrigin.LookDistance)) || //
@@ -77,7 +195,7 @@ void FogShape::Prepare(const Input& input)
 
     if (_rebuildFog) {
         vector<PrimitivePoint> points;
-        BuildPoints(input, points);
+        BuildPoints(input, points, scheduler, read_shoot_block);
         _rebuildFog = false;
         StartTransition(std::move(points), input.FrameTime, input.FogTransitionDuration);
     }
@@ -85,101 +203,51 @@ void FogShape::Prepare(const Input& input)
     UpdateTransition(input.FrameTime);
 }
 
-void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const
+void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points, nptr<WorkScheduler> scheduler, const function<bool(mpos)>& read_shoot_block) const
 {
     FO_TRACE_ZONE(Map);
 
-    fog_points.clear();
-
-    if (!input.Enabled || !input.FogOrigin.Valid) {
-        return;
-    }
-
-    bool is_traced_overlay = input.TraceMode == TraceModeType::Overlay;
+    constexpr size_t sectors = GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4;
     int32_t dist = std::max(input.Radius > 0 ? input.Radius : input.FogOrigin.LookDistance + input.FogExtraLength, 0);
-    if (dist <= 0) {
+    auto publish = [this, &fog_points](CalculatedPoint point) { fog_points.emplace_back(PrimitivePoint {.PointPos = point.Position, .PointColor = point.Color, .PointOffset = point.BaseOffset ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset}}); };
+
+    // No request list, obstacle snapshot or jobs for serial, clean, disabled or small shapes
+    if (!input.Enabled || !input.FogOrigin.Valid || dist < 32 || !scheduler || !scheduler->ShouldRunParallel(sectors, 2)) {
+        if (input.Enabled && input.FogOrigin.Valid && dist > 0 && input.TraceMode == TraceModeType::Overlay) {
+            FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Trace bullet to block callback is required in overlay trace mode");
+        }
+
+        CalculateFogRange(input, 0, sectors, input.TraceBulletToBlock, publish);
         return;
     }
 
-    if (is_traced_overlay) {
-        FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Trace bullet to block callback is required in overlay trace mode");
+    CalculationInput calculation = input;
+    ObstacleView view;
+    vector<uint8_t> obstacles;
+
+    if (input.TraceMode == TraceModeType::Overlay && input.CheckShootBlocks) {
+        FO_VERIFY_AND_THROW(read_shoot_block, "Fog obstacle reader is required for parallel overlay calculation");
+        int32_t margin = std::min(dist, numeric_cast<int32_t>(std::max(input.MapSize.width, input.MapSize.height))) + 2;
+        view.Origin = {std::max(input.FogOrigin.BaseHex.x - margin, 0), std::max(input.FogOrigin.BaseHex.y - margin, 0)};
+        view.Size = {std::min(input.FogOrigin.BaseHex.x + margin + 1, numeric_cast<int32_t>(input.MapSize.width)) - view.Origin.x, std::min(input.FogOrigin.BaseHex.y + margin + 1, numeric_cast<int32_t>(input.MapSize.height)) - view.Origin.y};
+        obstacles.resize(numeric_cast<size_t>(view.Size.width) * numeric_cast<size_t>(view.Size.height));
+
+        for (int32_t y = 0; y < view.Size.height; y++) {
+            for (int32_t x = 0; x < view.Size.width; x++) {
+                obstacles[numeric_cast<size_t>(y * view.Size.width + x)] = read_shoot_block(input.MapSize.from_raw_pos(view.Origin.x + x, view.Origin.y + y)) ? 1 : 0;
+            }
+        }
+
+        view.ShootBlocked = obstacles;
     }
 
-    mpos base_hex = input.FogOrigin.BaseHex;
-    int32_t half_hw = input.MapHexWidth / 2;
-    int32_t half_hh = input.MapHexHeight / 2;
-    bool has_custom_overlay_color = input.OverlayColor.comp.a != 0;
-    bool has_custom_center_color = input.CenterColor.comp.a != 0;
-    ucolor default_overlay_color = ucolor {96, 224, 96, 255};
-    ucolor overlay_color = has_custom_overlay_color ? input.OverlayColor : default_overlay_color;
+    array<vector<CalculatedPoint>, sectors> results;
+    scheduler->RunBatch("FogGeometry", sectors, 1, [&calculation, &view, &results](size_t sector) { results[sector] = CalculateSector(calculation, view, sector); });
 
-    ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
-    uint8_t center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
-    ucolor center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, center_alpha} : (has_custom_center_color ? input.CenterColor : ucolor {0, 0, 0, center_alpha});
-    auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset};
-
-    ipos32 target_raw_hex = ipos32 {base_hex.x, base_hex.y};
-    size_t points_added = 0;
-
-    bool seek_start = true;
-
-    for (int32_t i = 0; i < (GameSettings::HEXAGONAL_GEOMETRY ? 6 : 4); i++) {
-        mdir dir;
-        int32_t iterations;
-
-        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            dir = hdir((i + 2) % 6);
-            iterations = dist;
-        }
-        else {
-            dir = hdir(((i + 1) * 2) % 8);
-            iterations = dist * 2;
-        }
-
-        for (int32_t j = 0; j < iterations; j++) {
-            if (seek_start) {
-                for (int32_t l = 0; l < dist; l++) {
-#if FO_GEOMETRY == 1
-                    GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::NorthEast);
-#elif FO_GEOMETRY == 2
-                    GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::North);
-#endif
-                }
-                seek_start = false;
-                j = -1;
-            }
-            else {
-                GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, dir);
-            }
-
-            mpos target_hex = input.MapSize.clamp_pos(target_raw_hex);
-            int32_t target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
-            auto edge_offset = target_dist < dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
-
-            if (is_traced_overlay) {
-                int32_t max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
-                auto block_hex = input.TraceBulletToBlock(base_hex, target_hex, max_overlay_dist, input.CheckShootBlocks);
-                ipos32 block_hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(block_hex));
-                int32_t result_overlay_dist = GeometryHelper::GetDistance(base_hex, block_hex);
-                auto overlay_strength = numeric_cast<uint8_t>(std::max(max_overlay_dist - result_overlay_dist, 0) * 255 / max_overlay_dist);
-                uint8_t color_r = numeric_cast<uint8_t>(overlay_color.comp.r * overlay_strength / 255);
-                uint8_t color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
-                uint8_t color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
-                ucolor color = ucolor {color_r, color_g, color_b, 255};
-                auto overlay_offset = result_overlay_dist < max_overlay_dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
-
-                fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
-            }
-            else {
-                ipos32 hex_pos = GeometryHelper::GetHexOffset(ipos32(base_hex), ipos32(target_hex));
-                ucolor color = ucolor {255, numeric_cast<uint8_t>(target_dist * 255 / dist), 0, 0};
-
-                fog_points.emplace_back(PrimitivePoint {.PointPos = {hex_pos.x + half_hw, hex_pos.y + half_hh}, .PointColor = color, .PointOffset = edge_offset});
-            }
-
-            if (++points_added % 2 == 0) {
-                fog_points.emplace_back(center_point);
-            }
+    // Bind owner offsets only after every sector has completed, preserving the global edge/center order
+    for (const auto& result : results) {
+        for (CalculatedPoint point : result) {
+            publish(point);
         }
     }
 }
@@ -372,3 +440,4 @@ void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
 }
 
 FO_END_NAMESPACE
+
