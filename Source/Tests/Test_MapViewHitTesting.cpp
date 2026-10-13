@@ -246,9 +246,11 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, int32_t {0});
     auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
     if (mode >= 2 && !client->WorkSched.IsParallel()) {
         SKIP("Client workers are unavailable on this platform");
     }
+
     auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
     auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
     map->InstantScrollTo(mpos {8, 8});
@@ -273,6 +275,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     auto before = client->WorkSched.GetDiagnostics();
     map->DrawMap();
     auto after = client->WorkSched.GetDiagnostics();
+
     if (mode == 2) {
         CHECK(after.ParallelBatches > before.ParallelBatches);
         CHECK(after.ParallelItems >= before.ParallelItems + 16);
@@ -376,9 +379,11 @@ TEST_CASE("FogDirtyConsumerSubmitsSectors")
     BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, int32_t {0});
     auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
     if (!client->WorkSched.IsParallel()) {
         SKIP("Client workers are unavailable on this platform");
     }
+
     auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1002}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
     auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
     map->InstantScrollTo(mpos {8, 8});
@@ -508,6 +513,7 @@ TEST_CASE("MapLightCalculationLegacyObstacleAndCapacityOracles")
 
     MapLightCalculationInput input {.MapSize = {20, 20}, .Hex = origin, .Color = item->GetLightColor(), .Distance = 6, .Intensity = item->GetLightIntensity(), .CurIntensity = 100, .Global = (flags & 1) != 0, .Inverse = (flags & 2) != 0, .StopDirections = numeric_cast<uint16_t>(flags >> 2), .MapCapacity = 40, .GlobalCapacity = 70};
     auto calculated = CalculateMapLight(input, {{0, 0}, {20, 20}, obstacles});
+
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         CHECK(LightFixtureDigest(calculated) == expected_digests[numeric_cast<size_t>(scenario)]);
     }

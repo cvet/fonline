@@ -162,6 +162,7 @@ void LightCalculation<Reader, Sink>::Calculate()
             mpos traced_hex = _input->MapSize.clamp_pos(raw_traced_hex);
 
             bool dir_disabled = (_input->StopDirections & (uint16_t {1} << i)) != 0;
+
             if (dir_disabled) {
                 traced_hex = center_hex;
             }
