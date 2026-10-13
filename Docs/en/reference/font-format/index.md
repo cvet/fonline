@@ -20,7 +20,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | Stability | <code>experimental</code> |
 | Support policy | The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance. |
 | Source manifest | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Contract digest | <code>7eeede33d884e5c437eb3e6dc4df8a7f936dae14cd3e96c3e192b8b77224dd14</code> |
+| Contract digest | <code>39520e39a5071bfb18cb2ebd6948a9c4eb1ff0a1367b8a44a34277c9d98f6393</code> |
 | Runtime descriptors | <code>.fofnt</code>, <code>.fnt</code> |
 | FOFNT maximum version | <code>2</code> |
 | BMFont binary version | <code>3</code> |
@@ -33,7 +33,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | [BMFont](bmfont.md) | 9 | Accepted binary-v3 blocks and metric transformations. |
 | [Binding](binding.md) | 8 | Raw-copy, slot, atlas, scale, and startup behavior. |
 | [Layout](layout.md) | 9 | TextFormat, wrapping, alignment, measurement, and glyph fallback. |
-| [Rendering](rendering.md) | 8 | Texture preparation, borders, effects, color tags, and cache. |
+| [Rendering](rendering.md) | 9 | Texture preparation, borders, effects, color tags, and cache. |
 | [Validation](validation.md) | 8 | Failure modes and executable validation gates. |
 
 ## Boundary

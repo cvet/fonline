@@ -29,3 +29,6 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-font-format-rendering-layout-cache-26a6758f8a"></a>
 - [`entry-font-format-rendering-layout-cache-26a6758f8a`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-layout-cache-26a6758f8a)
+
+<a id="entry-font-format-rendering-batch-layout-df478c5930"></a>
+- [`entry-font-format-rendering-batch-layout-df478c5930`](../../en/reference/font-format/rendering.md#entry-font-format-rendering-batch-layout-df478c5930)

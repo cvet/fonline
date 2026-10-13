@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2579,
-      "inventory_sha256": "911171eb96a3f651a15ad0fb2845ab7373fc183c4ef940ea237afdddce274bf0",
+      "symbol_count": 2585,
+      "inventory_sha256": "142ddf6880897a194ac94ec9c73f594101e2822d78ddc3acba78b2065da92b79",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,34 +70,34 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2579,
+    "symbol_count": 2585,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 58,
       "enum-value": 773,
       "event": 122,
-      "method": 1001,
+      "method": 1003,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
       "ref-method": 28,
       "ref-type": 6,
       "setting": 299,
-      "value-field": 62,
-      "value-type": 22
+      "value-field": 65,
+      "value-type": 23
     },
     "symbols_by_stability": {
-      "experimental": 2578,
+      "experimental": 2584,
       "internal": 1
     },
     "explicit_contract_declaration_count": 3,
-    "explicit_contract_symbol_count": 2579,
+    "explicit_contract_symbol_count": 2585,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2578,
+      "experimental": 2584,
       "internal": 1
     },
-    "described_symbol_count": 2579,
+    "described_symbol_count": 2585,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -40434,7 +40434,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1622
+        "line": 1652
       },
       "contract": {
         "explicit": true,
@@ -40606,6 +40606,46 @@
       "arguments": []
     },
     {
+      "id": "script.method.client.Game.CanPrepareTextLayoutsInParallel",
+      "family_id": "script.method.client.Game.CanPrepareTextLayoutsInParallel",
+      "kind": "method",
+      "name": "CanPrepareTextLayoutsInParallel",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.CanPrepareTextLayoutsInParallel()",
+      "description": "Reports whether text-layout preparation can use CPU workers; small batches and warm caches can still execute without jobs",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1264
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
       "id": "script.method.client.Game.CaptureScreenshot",
       "family_id": "script.method.client.Game.CaptureScreenshot",
       "kind": "method",
@@ -40624,7 +40664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1831
+        "line": 1861
       },
       "contract": {
         "explicit": true,
@@ -40672,7 +40712,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1987
+        "line": 2017
       },
       "contract": {
         "explicit": true,
@@ -40817,7 +40857,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1980
+        "line": 2010
       },
       "contract": {
         "explicit": true,
@@ -40857,7 +40897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2003
+        "line": 2033
       },
       "contract": {
         "explicit": true,
@@ -41080,7 +41120,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2010
+        "line": 2040
       },
       "contract": {
         "explicit": true,
@@ -41120,7 +41160,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1432
+        "line": 1462
       },
       "contract": {
         "explicit": true,
@@ -41238,7 +41278,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1443
+        "line": 1473
       },
       "contract": {
         "explicit": true,
@@ -41404,7 +41444,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1410
+        "line": 1440
       },
       "contract": {
         "explicit": true,
@@ -41459,7 +41499,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1271
+        "line": 1301
       },
       "contract": {
         "explicit": true,
@@ -41528,7 +41568,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1313
+        "line": 1343
       },
       "contract": {
         "explicit": true,
@@ -41597,7 +41637,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1296
+        "line": 1326
       },
       "contract": {
         "explicit": true,
@@ -41659,7 +41699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1330
+        "line": 1360
       },
       "contract": {
         "explicit": true,
@@ -41742,7 +41782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1348
+        "line": 1378
       },
       "contract": {
         "explicit": true,
@@ -41818,7 +41858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1365
+        "line": 1395
       },
       "contract": {
         "explicit": true,
@@ -41901,7 +41941,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1382
+        "line": 1412
       },
       "contract": {
         "explicit": true,
@@ -42079,7 +42119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1994
+        "line": 2024
       },
       "contract": {
         "explicit": true,
@@ -42167,7 +42207,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1904
+        "line": 1934
       },
       "contract": {
         "explicit": true,
@@ -42215,7 +42255,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1918
+        "line": 1948
       },
       "contract": {
         "explicit": true,
@@ -42989,7 +43029,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1551
+        "line": 1581
       },
       "contract": {
         "explicit": true,
@@ -43629,7 +43669,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1264
+        "line": 1294
       },
       "contract": {
         "explicit": true,
@@ -43892,7 +43932,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1925
+        "line": 1955
       },
       "contract": {
         "explicit": true,
@@ -44964,7 +45004,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1596
+        "line": 1626
       },
       "contract": {
         "explicit": true,
@@ -45034,6 +45074,75 @@
       ]
     },
     {
+      "id": "script.method.client.Game.PrepareTextLayouts",
+      "family_id": "script.method.client.Game.PrepareTextLayouts",
+      "kind": "method",
+      "name": "PrepareTextLayouts",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "TextLayoutResult[] Game.PrepareTextLayouts(string[] texts, isize size, TextFormat format, ucolor[] colors)",
+      "description": "Measures a text batch and prepares draw layouts in each measured extent with the supplied colors; results preserve input order",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1271
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "TextLayoutResult[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "texts",
+          "type": "string[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "size",
+          "type": "isize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "format",
+          "type": "TextFormat",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "colors",
+          "type": "ucolor[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Game.PresentOffscreenSurface#2119d712f785fe8c",
       "family_id": "script.method.client.Game.PresentOffscreenSurface",
       "kind": "method",
@@ -45052,7 +45161,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1720
+        "line": 1750
       },
       "contract": {
         "explicit": true,
@@ -45156,7 +45265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1675
+        "line": 1705
       },
       "contract": {
         "explicit": true,
@@ -45218,7 +45327,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1692
+        "line": 1722
       },
       "contract": {
         "explicit": true,
@@ -45308,7 +45417,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1665
+        "line": 1695
       },
       "contract": {
         "explicit": true,
@@ -45404,7 +45513,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1589
+        "line": 1619
       },
       "contract": {
         "explicit": true,
@@ -45459,7 +45568,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1932
+        "line": 1962
       },
       "contract": {
         "explicit": true,
@@ -45631,7 +45740,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1808
+        "line": 1838
       },
       "contract": {
         "explicit": true,
@@ -45679,7 +45788,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1856
+        "line": 1886
       },
       "contract": {
         "explicit": true,
@@ -45824,7 +45933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1891
+        "line": 1921
       },
       "contract": {
         "explicit": true,
@@ -45886,7 +45995,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1884
+        "line": 1914
       },
       "contract": {
         "explicit": true,
@@ -45941,7 +46050,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1911
+        "line": 1941
       },
       "contract": {
         "explicit": true,
@@ -46210,7 +46319,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1972
+        "line": 2002
       },
       "contract": {
         "explicit": true,
@@ -46258,7 +46367,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1965
+        "line": 1995
       },
       "contract": {
         "explicit": true,
@@ -46464,7 +46573,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2017
+        "line": 2047
       },
       "contract": {
         "explicit": true,
@@ -46615,7 +46724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1952
+        "line": 1982
       },
       "contract": {
         "explicit": true,
@@ -46663,7 +46772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1939
+        "line": 1969
       },
       "contract": {
         "explicit": true,
@@ -98659,6 +98768,111 @@
       "mutability": "value"
     },
     {
+      "id": "script.value-field.TextLayoutResult.Height",
+      "family_id": "script.value-field.TextLayoutResult.Height",
+      "kind": "value-field",
+      "name": "Height",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "TextLayoutResult",
+      "signature": "int32 TextLayoutResult.Height",
+      "description": "Measured text height used to prepare the draw layout",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 104
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.TextLayoutResult",
+      "type": "int32",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.TextLayoutResult.Lines",
+      "family_id": "script.value-field.TextLayoutResult.Lines",
+      "kind": "value-field",
+      "name": "Lines",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "TextLayoutResult",
+      "signature": "int32 TextLayoutResult.Lines",
+      "description": "Number of visible lines in the measurement rectangle",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 105
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.TextLayoutResult",
+      "type": "int32",
+      "mutability": "value"
+    },
+    {
+      "id": "script.value-field.TextLayoutResult.Width",
+      "family_id": "script.value-field.TextLayoutResult.Width",
+      "kind": "value-field",
+      "name": "Width",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "TextLayoutResult",
+      "signature": "int32 TextLayoutResult.Width",
+      "description": "Measured text width used to prepare the draw layout",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 103
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.value-type.TextLayoutResult",
+      "type": "int32",
+      "mutability": "value"
+    },
+    {
       "id": "script.value-field.TextPackKey.Collection",
       "family_id": "script.value-field.TextPackKey.Collection",
       "kind": "value-field",
@@ -100126,6 +100340,53 @@
         "notes": ""
       },
       "native_type": "TextFormat"
+    },
+    {
+      "id": "script.value-type.TextLayoutResult",
+      "family_id": "script.value-type.TextLayoutResult",
+      "kind": "value-type",
+      "name": "TextLayoutResult",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "value type TextLayoutResult",
+      "description": "Measured extent and visible line count for one entry in a prepared text-layout batch.",
+      "flags": [
+        "Layout",
+        "=",
+        "int32",
+        "-",
+        "Width",
+        "+",
+        "int32",
+        "-",
+        "Height",
+        "+",
+        "int32",
+        "-",
+        "Lines"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/FontManager.h",
+        "line": 106
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "native_type": "TextLayoutResult"
     },
     {
       "id": "script.value-type.TextPackKey",

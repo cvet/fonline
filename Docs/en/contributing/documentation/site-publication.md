@@ -213,7 +213,7 @@ The static site publishes three generated root endpoints, the route catalog, and
 | Route | Purpose |
 |---|---|
 | `https://fonline.ru/llms.txt` | Concise map of every public current page, grouped by Diataxis kind, plus canonical generated JSON models |
-| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes, capped at 2 MiB + 224 KiB |
+| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes, capped at 2 MiB + 232 KiB |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, source provenance, byte size, and SHA-256 content hashes |
 | `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version and locale policy, canonical target ownership, and legacy redirect requirements |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, current evidence checks, success rate, MRR, and failures |

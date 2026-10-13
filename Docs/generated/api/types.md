@@ -2863,6 +2863,22 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-value-field-textformat-skiplines-289c6d57d9"></a>
 - [`symbol-script-value-field-textformat-skiplines-289c6d57d9`](../../en/reference/script-api/types.md#symbol-script-value-field-textformat-skiplines-289c6d57d9)
 
+<a id="symbol-script-value-type-textlayoutresult-d9a2aedf5e"></a>
+- [`symbol-script-value-type-textlayoutresult-d9a2aedf5e`](../../en/reference/script-api/types.md#symbol-script-value-type-textlayoutresult-d9a2aedf5e)
+
+### <code>TextLayoutResult</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-value-field-textlayoutresult-height-53575942ef"></a>
+- [`symbol-script-value-field-textlayoutresult-height-53575942ef`](../../en/reference/script-api/types.md#symbol-script-value-field-textlayoutresult-height-53575942ef)
+
+<a id="symbol-script-value-field-textlayoutresult-lines-fe182c9a89"></a>
+- [`symbol-script-value-field-textlayoutresult-lines-fe182c9a89`](../../en/reference/script-api/types.md#symbol-script-value-field-textlayoutresult-lines-fe182c9a89)
+
+<a id="symbol-script-value-field-textlayoutresult-width-b6a8bb12fb"></a>
+- [`symbol-script-value-field-textlayoutresult-width-b6a8bb12fb`](../../en/reference/script-api/types.md#symbol-script-value-field-textlayoutresult-width-b6a8bb12fb)
+
 <a id="symbol-script-value-type-textpackkey-fc2a0c075a"></a>
 - [`symbol-script-value-type-textpackkey-fc2a0c075a`](../../en/reference/script-api/types.md#symbol-script-value-type-textpackkey-fc2a0c075a)
 

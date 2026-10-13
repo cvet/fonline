@@ -12,6 +12,7 @@ permalink: /Docs/en/explanation/runtime/client-multithreading.html
 
 - `Source/Client/WorkScheduler.h` and `Source/Client/WorkScheduler.cpp`
 - `Source/Client/Client.cpp`, `SpriteManager.cpp`, `ModelSprites.cpp`, and `ModelInstance.cpp`
+- `Source/Client/FontManager.h`, `FontManager.cpp`, and `Source/Tests/Test_FontLayout.cpp`
 - `Source/Common/Settings.inc`
 - `Source/Tests/Test_WorkScheduler.cpp`, `Test_ModelAnimationPoseProcedural.cpp`, and `Test_ClientEngine.cpp`
 
@@ -24,6 +25,7 @@ What is implemented today:
 - [WorkScheduler](../../../../Source/Client/WorkScheduler.h): bounded CPU batches over each `ClientEngine`'s persistent workers.
 - [SpriteManager](../../../../Source/Client/SpriteManager.cpp): two-phase frame updates with declared CPU-only work.
 - [SpriteGeometry](../../../../Source/Client/SpriteGeometry.cpp): atlas, region, glyph and map vertex/index kernels.
+- [FontManager](../../../../Source/Client/FontManager.cpp): pure measurement and draw-layout preparation with owner-only cache publication.
 - [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is one worker stage.
 
 The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel lighting/fog/particles, an asynchronous resource lane or threaded Web. Their prerequisites and proposed order follow below.
@@ -87,6 +89,12 @@ Each eligible stage decides here. `ShouldRunParallel` is false for serial mode, 
   it raises `FO_UNKNOWN_EXCEPTION()` and the process exits, per [ExceptionSafety.md](../../contributing/coding-contracts/exception-safety.md) §2.1.
 - **Nesting is refused.** A batch submitted from inside a batch throws instead of deadlocking against a pool it
   is itself occupying.
+
+## Text-layout batches
+
+`FontManager::PrepareTextLayouts` prepares measurement and final draw formats in two synchronous phases. Each worker owns one `FontFormatInfo` and reads the selected font's immutable metrics; it never receives a client, entity, cache or renderer. The application thread coalesces duplicate keys, updates cache recency, applies brightness and publishes completed formats after each barrier. Draw formats use the measured extent and actual color, preserving the separate measurement/draw cache keys.
+
+Warm caches submit no jobs. The preliminary minimum is 32 distinct misses with at least 16 items per chunk. `Game.CanPrepareTextLayoutsInParallel()` reports worker availability, while `Game.PrepareTextLayouts` also supports explicit serial callers. Consumer scripts retain their existing direct route with no batch lists when workers are unavailable. Font replacement clears the cache; no prepared result exposes a native cache borrow. See [batch preparation](../../how-to/content/font-format.md#batch-preparation).
 
 ## How many workers
 
@@ -154,7 +162,7 @@ happen on demand, inside drawing, where no batch boundary exists.
 
 `AtlasSprite::PrepareGeometry` accepts only the exact built-in atlas type. A subclass that changes `FillData` must explicitly override preparation and may use the protected `PrepareAtlasGeometry` helper; otherwise its owner callback runs after the geometry completion barrier. `ModelSprite` opts in and resolves its crop colors against the lighting width on the application thread, sharing the same read-only calculation with `FillData`. Workers never access a `ModelInstance`.
 
-`WritePreparedSpriteGeometry` writes only its provided spans. The same kernel handles quads, cropped mesh coordinates and color gradients, clipped-region quads and glyphs. Map rotation, projected flattening, standing depth and both transparency-egg flags run after the base geometry, using values captured by the owner. Text layout, UTF-8 processing, color tags, font selection, entity access and effect/texture selection remain on the application thread.
+`WritePreparedSpriteGeometry` writes only its provided spans. The same kernel handles quads, cropped mesh coordinates and color gradients, clipped-region quads and glyphs. Map rotation, projected flattening, standing depth and both transparency-egg flags run after the base geometry, using values captured by the owner. Draw-time glyph iteration, font selection, entity access and effect/texture selection remain on the application thread. Prepared layout can parse UTF-8 and inline colors in CPU workers before the owner consumes the cache.
 
 `FlushBatch` drains geometry before upload, preserving render-target, scissor and effect ordering. `Flush` also completes pending commands when their vertex count is zero, so malformed mesh indices cannot bypass validation. Wireframe buffer reads and unsupported external `Sprite::FillData` implementations also require completion first. `AbortScene` drops descriptors without drawing them. If a kernel throws, `RunBatch` joins all participating workers before rethrowing; the geometry drain discards pending commands, draw records and buffer counts, so no incomplete batch is uploaded or replayed.
 

@@ -12,6 +12,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Add experimental `Game.PrepareTextLayouts` and `Game.CanPrepareTextLayoutsInParallel` with passive `TextLayoutResult` fields `Width`, `Height`, `Lines`. Coalesce cold measurement and draw layouts into synchronous worker batches; cache publication, recency, brightness and drawing remain on the application thread. Warm layouts create no jobs; serial and zero-worker consumers retain their direct route. Reconfigure/rebuild native and Managed consumers, regenerate bindings and rebake metadata; draw with returned bounds and the same format/color. No save, network or resource-schema conversion is required; Managed ABI 9 and runtime compatibility 0.0.72 remain unchanged. Thresholds are provisional and multithreading remains off pending frame measurements.
+
+- Increase the reviewed full AI-context capacity by 8 KiB to 2,334,720 bytes for complete text-layout/font/Managed guidance; retain all whole documents, exclusions and overflow rejection.
+
 - Build prepared 2D sprite, mesh, region and glyph geometry in client worker batches. Snapshot frame selection and immutable mesh data before dispatch; finish geometry before GPU upload, wireframe reads or unsupported sprite callbacks, and discard pending commands on frame abort. `Render.ParallelSpriteGeometryMinCount` starts at a provisional 128; `Client.Multithreading` remains off by default pending workload measurements. Rebuild native consumers and rebake matching metadata after the new setting and sprite interface change.
 
 - Merge the published client-worker branch with master 2026.1.37-dev, preserving both published tips. Integrate Managed dictionary calls and the scripting-test ownership split. Keep model pose phase checks in the backend-neutral client suite; renderer/resource execution and runtime defaults are unchanged in this integration.

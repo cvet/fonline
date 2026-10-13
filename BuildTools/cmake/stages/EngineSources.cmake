@@ -652,6 +652,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerMapOperations.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptServerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_FontLayout.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"

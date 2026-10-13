@@ -1260,6 +1260,36 @@ FO_SCRIPT_API void Client_Game_GetTextInfo(ptr<ClientEngine> client, string_view
     }
 }
 
+// Reports whether text-layout preparation can use CPU workers; small batches and warm caches can still execute without jobs
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_CanPrepareTextLayoutsInParallel(ptr<ClientEngine> client)
+{
+    return client->WorkSched.IsParallel();
+}
+
+// Measures a text batch and prepares draw layouts in each measured extent with the supplied colors; results preserve input order
+///@ ExportMethod
+FO_SCRIPT_API vector<TextLayoutResult> Client_Game_PrepareTextLayouts(ptr<ClientEngine> client, readonly_vector<string> texts, isize32 size, TextFormat format, readonly_vector<ucolor> colors)
+{
+    if (texts.size() != colors.size()) {
+        throw ScriptException("Text layout batch requires one color per text", texts.size(), colors.size());
+    }
+
+    vector<TextLayoutRequest> requests;
+    requests.reserve(texts.size());
+
+    for (size_t i = 0; i < texts.size(); i++) {
+        requests.emplace_back(TextLayoutRequest {
+            .Text = texts[i],
+            .Size = size,
+            .Format = format,
+            .Color = colors[i] != ucolor::clear ? colors[i] : Color::TextWhite,
+        });
+    }
+
+    return client->FontMngr.PrepareTextLayouts(requests);
+}
+
 // Returns how many complete lines of the selected font fit within a positive-size rectangle, or zero for nonpositive dimensions
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetTextLines(ptr<ClientEngine> client, isize32 size, FontType font)
@@ -2021,3 +2051,4 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
 }
 
 FO_END_NAMESPACE
+

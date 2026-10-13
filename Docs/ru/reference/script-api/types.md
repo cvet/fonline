@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"a9cf596d0cd0b4c71c1af03143cf7e4edce6d956de05f0ae2052b9c569b222ee"} -->
+<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"4607b08feb1b93188a596f7d42bb0b5e8fc2dc5351b79e8f2d0df1a80116e7bb"} -->
 
 # Типы скриптов
 
@@ -15,7 +15,7 @@ generated: true
 
 [Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/api.json) | [Контракт генерации](../metadata/)
 
-Эта страница содержит **997** символов типов и их членов.
+Эта страница содержит **1001** символов типов и их членов.
 
 ## Сущности
 
@@ -1746,6 +1746,24 @@ Runtime: server, client, mapper<br>
 | <code>FontFlag TextFormat.Flags</code> | <a id="symbol-script-value-field-textformat-flags-954ab22bf2"></a><code>script.value-field.TextFormat.Flags</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:83](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L83) | Битовая маска FontFlag, управляющая выравниванием, переносом, обрезкой, цветовыми тегами и представлением глифов. |
 | <code>FontType TextFormat.Font</code> | <a id="symbol-script-value-field-textformat-font-54adc00ad4"></a><code>script.value-field.TextFormat.Font</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:82](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L82) | Слот шрифта, выбранный для измерения и отрисовки текста. |
 | <code>int32 TextFormat.SkipLines</code> | <a id="symbol-script-value-field-textformat-skiplines-289c6d57d9"></a><code>script.value-field.TextFormat.SkipLines</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:84](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L84) | Число пропускаемых строк: по умолчанию сверху, а при установленном AlignBottom — снизу. |
+
+<a id="symbol-script-value-type-textlayoutresult-d9a2aedf5e"></a>
+### <code>TextLayoutResult</code>
+
+<code>value type TextLayoutResult</code><br>
+ID символа: <code>script.value-type.TextLayoutResult</code><br>
+Runtime: server, client, mapper<br>
+Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
+Флаги: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>Width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Height</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Lines</code><br>
+Исходник: [Source/Client/FontManager.h:106](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L106)
+
+Измеренные размеры и число видимых строк одного элемента подготовленного пакета компоновки текста.
+
+| Поле | ID символа | Контракт значения | API-контракт | Исходник | Описание |
+| --- | --- | --- | --- | --- | --- |
+| <code>int32 TextLayoutResult.Height</code> | <a id="symbol-script-value-field-textlayoutresult-height-53575942ef"></a><code>script.value-field.TextLayoutResult.Height</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:104](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L104) | Измеренная высота текста, используемая для подготовки компоновки рисования |
+| <code>int32 TextLayoutResult.Lines</code> | <a id="symbol-script-value-field-textlayoutresult-lines-fe182c9a89"></a><code>script.value-field.TextLayoutResult.Lines</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:105](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L105) | Число видимых строк в прямоугольнике измерения |
+| <code>int32 TextLayoutResult.Width</code> | <a id="symbol-script-value-field-textlayoutresult-width-b6a8bb12fb"></a><code>script.value-field.TextLayoutResult.Width</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:103](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L103) | Измеренная ширина текста, используемая для подготовки компоновки рисования |
 
 <a id="symbol-script-value-type-textpackkey-fc2a0c075a"></a>
 ### <code>TextPackKey</code>

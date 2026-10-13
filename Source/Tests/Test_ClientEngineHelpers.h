@@ -1224,6 +1224,13 @@ namespace ClientEngineTest
         Game.GetTextInfo("rescaled text", isize(200, 50), TextFormat(), measured, lines);
         Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
 
+        string[] batchTexts = {"AB", "A\nB", ""};
+        ucolor[] batchColors = {ucolor(30, 40, 50, 120), ucolor(), ucolor()};
+        TextLayoutResult[] batchResults = Game.PrepareTextLayouts(batchTexts, isize(200, 500), TextFormat(), batchColors);
+        if (batchResults.length() != 3 || batchResults[0].Width != 10 || batchResults[0].Height != 8 || batchResults[0].Lines != 1) return -16;
+        if (batchResults[1].Width != 5 || batchResults[1].Height != 17 || batchResults[1].Lines != 2) return -17;
+        if (batchResults[2].Width != 0 || batchResults[2].Height != 0 || batchResults[2].Lines != 0) return -18;
+
         string[] noModels;
 )"
 #if FO_ENABLE_3D

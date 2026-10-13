@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"aaa829789240841ae53ec621b6016b232f3f06a148874b2be5dfacfe9bdd38f0"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"423e31e0c580df12c7ce7a590934a63640c2a253c48505d9dc2235d8e580ac00"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -189,6 +189,8 @@ Attributes являются доказательством, а не операц
 ## Значения, коллекции, properties и lifetime
 
 Bridge преобразует поддерживаемые primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments и return values через Engine metadata. Зарегистрированный value type является plain packed data: каждое поле — primitive, enum, `hstring` или single-field value type; offset каждого поля выровнен по его размеру; полный размер не содержит tail padding; native twin trivially copyable и имеет тот же размер. Metadata registration отклоняет остальные формы. Generated C# structs используют sequential layout, а backend проверяет Mono value size до копирования байтов.
+
+`TextLayoutResult` намеренно экспортирует три primitive поля (`Width`, `Height`, `Lines`), а не вложенный `isize`: multi-field value types нельзя использовать как layout fields. `Game.PrepareTextLayouts` принимает readonly native string/color vectors через managed `List<string>`/`List<ucolor>` и возвращает `List<TextLayoutResult>` в исходном порядке. При рисовании создавайте `isize` из полученных ширины и высоты. Пакетный вызов синхронный и не передаёт native workers managed callbacks или сущности. См. [пакетную подготовку](../content/font-format.md#пакетная-подготовка).
 
 Managed `FOnline.any` — value type с текстовым представлением Engine `any_t`, не `object` и не `string`. Преобразование в него неявно для поддерживаемых primitives, strings, enums и generated value structs; обратное преобразование явно и отклоняет неверный или выходящий за диапазон текст. Пустой текст читается как zero/false/empty text, числовое значение enum проверяется по диапазону базового типа, а numeric read принимает суффикс `f` в нижнем регистре. `ToEnum<T>()` принимает qualified member, простое имя или число. Equality сравнивает текст; `IsEmpty` проверяет пустоту. Используйте explicit operators, а не `System.Convert`/`IConvertible`. Collections используют `List<any>` и `Dictionary<K, any>`, а generated `GetAsAny`/`SetAsAny` обслуживают properties. Изменение этого представления требует совместного обновления native ABI и baked assemblies.
 

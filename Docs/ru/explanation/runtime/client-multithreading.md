@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"15ce0b6d40ee437151f7eef0d1c865c5ab13734655f7b261c82a6b236341e298"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"2b0e79d549087b5336fa34850eb1b07443bddbf8ccd8ccd6e8203b4ea9a8fab8"} -->
 
 # Необязательная многопоточность клиента
 
@@ -13,6 +13,7 @@ permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 
 - `Source/Client/WorkScheduler.h` и `Source/Client/WorkScheduler.cpp`
 - `Source/Client/Client.cpp`, `SpriteManager.cpp`, `ModelSprites.cpp` и `ModelInstance.cpp`
+- `Source/Client/FontManager.h`, `FontManager.cpp` и `Source/Tests/Test_FontLayout.cpp`
 - `Source/Common/Settings.inc`
 - `Source/Tests/Test_WorkScheduler.cpp`, `Test_ModelAnimationPoseProcedural.cpp` и `Test_ClientEngine.cpp`
 
@@ -20,7 +21,7 @@ permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 
 Многопоточность клиента — параметр запуска, а не сборки. Один бинарник поддерживает оба режима: `Client.Multithreading=False` оставляет работу на потоке приложения, `True` разрешает движку запустить дополнительные CPU-потоки. Число потоков движок выбирает по машине при создании клиента. Настройки фиксированного числа потоков, макроса `FO_ENABLE_CLIENT_MULTITHREADING` и отдельного артефакта нет: оба режима должны сравниваться на одной машине с одинаковыми ресурсами.
 
-Реализованы [WorkScheduler](../../../../Source/Client/WorkScheduler.h) с ограниченными синхронными пакетами и постоянными потоками каждого `ClientEngine`, разделение обновления спрайтов в [SpriteManager](../../../../Source/Client/SpriteManager.cpp) и фазы prepare / evaluate / finalize в [ModelInstance](../../../../Source/Client/ModelInstance.cpp). Workers выполняют вычисление анимационных поз и пакетную геометрию спрайтов/глифов через `SpriteGeometry`.
+Реализованы [WorkScheduler](../../../../Source/Client/WorkScheduler.h) с ограниченными синхронными пакетами и постоянными потоками каждого `ClientEngine`, разделение обновления спрайтов в [SpriteManager](../../../../Source/Client/SpriteManager.cpp) и фазы prepare / evaluate / finalize в [ModelInstance](../../../../Source/Client/ModelInstance.cpp). Workers выполняют вычисление анимационных поз и пакетную геометрию спрайтов/глифов через `SpriteGeometry`, а [FontManager](../../../../Source/Client/FontManager.cpp) подготавливает чистую компоновку измерения и рисования с публикацией кеша только владельцем.
 
 Render thread, запись GPU-команд вне потока приложения, конкурентные скрипты, параллельные свет, туман и частицы, асинхронная загрузка ресурсов и многопоточный Web не реализованы и не обещаются этим параметром.
 
@@ -68,6 +69,12 @@ else {
 - Следующий пакет открывается после закрытия предыдущего. Workers копируют его дескриптор под mutex и учитываются до освобождения; `RunBatch` ждёт обнуления этого счётчика. Иначе поздно проснувшийся worker мог бы применить старое вычисление к индексу нового пакета.
 - Первая `std::exception` сохраняется, оставшиеся chunks заканчиваются досрочно, а владелец повторно выбрасывает исключение из `RunBatch`. Неудачный элемент не перезапускается молча на основном потоке. `catch (...)` вызывает `FO_UNKNOWN_EXCEPTION()` и завершение процесса согласно [контракту исключений](../../contributing/coding-contracts/exception-safety.md), §2.1.
 - Вложенная отправка пакета запрещена и выбрасывает исключение вместо deadlock на занятом ею же пуле.
+
+## Пакеты компоновки текста
+
+`FontManager::PrepareTextLayouts` подготавливает измерение и окончательный формат рисования в двух синхронных фазах. Каждый worker владеет одним `FontFormatInfo` и читает неизменяемые метрики выбранного шрифта; ему не передаются клиент, сущность, кеш или renderer. Главный поток объединяет одинаковые ключи, обновляет использование кеша, применяет brightness и публикует завершённые форматы после каждого барьера. Форматы рисования используют измеренный размер и фактический цвет, сохраняя раздельные ключи кеша измерения/рисования.
+
+Прогретый кеш не создаёт заданий. Предварительный минимум — 32 уникальных промаха и не менее 16 элементов на chunk. `Game.CanPrepareTextLayoutsInParallel()` сообщает о наличии workers, а `Game.PrepareTextLayouts` поддерживает и явные serial вызовы. Скрипты потребителя сохраняют прямой путь без пакетных списков при отсутствии workers. Замена шрифта очищает кеш; подготовленный результат не открывает native cache borrow. См. [пакетную подготовку](../../how-to/content/font-format.md#пакетная-подготовка).
 
 ## Число потоков
 
@@ -118,7 +125,7 @@ Ozz пишет в буферы конкретной pose: sampling contexts, tra
 
 `AtlasSprite::PrepareGeometry` принимает только точный встроенный тип atlas. Наследник, меняющий `FillData`, должен явно переопределить подготовку и может использовать защищённый helper `PrepareAtlasGeometry`; иначе его callback выполняется на владельце после барьера завершения геометрии. `ModelSprite` явно поддерживает подготовку и рассчитывает цвета crop относительно ширины освещения на потоке приложения, используя тот же расчёт без изменения состояния, что и `FillData`. Workers не обращаются к `ModelInstance`.
 
-`WritePreparedSpriteGeometry` пишет только в переданные spans. Общий kernel обслуживает quad, координаты обрезанного mesh и цветовой градиент, quad вырезанной области и глифы. Поворот карты, projected flattening, глубина стоящего спрайта и оба флага transparency egg применяются после базовой геометрии по значениям, снятым владельцем. Компоновка текста, UTF-8, цветовые теги, выбор шрифта, доступ к сущностям и выбор effect/texture остаются на потоке приложения.
+`WritePreparedSpriteGeometry` пишет только в переданные spans. Общий kernel обслуживает quad, координаты обрезанного mesh и цветовой градиент, quad вырезанной области и глифы. Поворот карты, projected flattening, глубина стоящего спрайта и оба флага transparency egg применяются после базовой геометрии по значениям, снятым владельцем. Обход глифов при рисовании, выбор шрифта, доступ к сущностям и выбор effect/texture остаются на потоке приложения. Подготовленная компоновка может разбирать UTF-8 и inline colors на CPU workers до потребления кеша владельцем.
 
 `FlushBatch` завершает геометрию до upload, сохраняя порядок render targets, scissor и effects. `Flush` также завершает pending commands при нулевом числе вершин, поэтому повреждённые mesh indices не обходят проверку. Чтение буфера для wireframe и неподдерживаемая внешняя реализация `Sprite::FillData` также сначала завершают очередь. `AbortScene` удаляет descriptors без отрисовки. При исключении kernel `RunBatch` присоединяет всех участвующих workers до повторного выброса; обработчик геометрии удаляет команды, draw records и counts буферов, поэтому незавершённая пачка не загружается и не переигрывается.
 

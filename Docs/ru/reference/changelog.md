@@ -8,11 +8,15 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1cda421297fffff761421506c128023d702a7879fddeaa23fa559ef95b3840d9"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"94bcd36bffa53a7d5d4861eeb8dd9dabd45a19a36feb44847ce4e3525e006083"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Добавлены экспериментальные `Game.PrepareTextLayouts` и `Game.CanPrepareTextLayoutsInParallel` с passive полями `TextLayoutResult`: `Width`, `Height`, `Lines`. Холодные measurement/draw layouts объединяются в синхронные worker batches; публикация кэша, актуальность, brightness и рисование остаются на потоке приложения. Прогретые layouts не создают jobs; serial и zero-worker consumers сохраняют прямой путь. Переконфигурируйте и пересоберите native/Managed consumers, обновите bindings и перезапеките metadata; рисуйте в возвращённых размерах с теми же format/color. Save, network и resource schemas не требуют преобразования; Managed ABI 9 и runtime compatibility 0.0.72 не меняются. Пороги предварительные, многопоточность выключена до кадровых замеров.
+
+- Проверенная ёмкость полного AI-контекста увеличена на 8 KiB до 2 334 720 байт для полных руководств text-layout/font/Managed; целые документы, исключения и отказ при превышении сохраняются.
 
 - Подготовленная геометрия 2D-спрайтов, meshes, regions и glyphs строится пакетами на клиентских workers. Выбранный кадр и неизменяемые данные mesh фиксируются до dispatch; расчёт завершается перед GPU upload, чтением wireframe или внешним callback неподдерживаемого sprite, а прерывание кадра удаляет ожидающие команды. `Render.ParallelSpriteGeometryMinCount` начинается с предварительного 128; `Client.Multithreading` по умолчанию остаётся выключенным до замеров нагрузок. После новой настройки и изменения интерфейса sprite пересоберите native consumers и перезапеките согласованную metadata.
 

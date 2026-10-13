@@ -638,7 +638,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     StoreFont(index, std::move(font_data));
 }
 
-void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
+void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode)
 {
     FO_TRACE_ZONE(Gui);
 
@@ -1104,6 +1104,139 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
 auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>
 {
     FO_VERIFY_AND_THROW(static_cast<size_t>(font) < _allFonts.size(), "Text formatting requested a font index outside the loaded font table", font, _allFonts.size(), str.size(), rect);
+
+    uint64_t key = GetFormatKey(format, font, rect, color, mode, str);
+
+    if (auto it = _formatCache.find(key); it != _formatCache.end()) {
+        it->second->LastUsedFrame = _frameIndex;
+        return it->second;
+    }
+
+    auto fi = MakeFormatInfo(format, GetFont(font), rect, color, str);
+    fi->LastUsedFrame = _frameIndex;
+
+    FormatText(*fi, mode);
+
+    auto fi_ptr = fi.as_ptr();
+    _formatCache.emplace(key, std::move(fi));
+    return fi_ptr;
+}
+
+auto FontManager::PrepareTextLayouts(const_span<TextLayoutRequest> requests) -> vector<TextLayoutResult>
+{
+    FO_TRACE_ZONE(Gui);
+
+    vector<TextLayoutResult> results(requests.size());
+    auto scheduler = _sprMngr->GetWorkScheduler();
+
+    if (!scheduler || !scheduler->IsParallel()) {
+        for (size_t i = 0; i < requests.size(); i++) {
+            const auto& request = requests[i];
+            isize32 measured_size;
+            (void)GetTextInfo(request.Size, request.Text, request.Format, measured_size, results[i].Lines);
+            results[i].Width = measured_size.width;
+            results[i].Height = measured_size.height;
+
+            if (!request.Text.empty()) {
+                ucolor color = _sprMngr->ApplyColorBrightness(request.Color);
+                (void)GetOrFormat(request.Format, request.Format.Font, {0, 0, results[i].Width, results[i].Height}, color, FormatMode::Draw, request.Text);
+            }
+        }
+
+        return results;
+    }
+
+    vector<nptr<const FontFormatInfo>> measured = PrepareFormats(requests, FormatMode::LineCount);
+    vector<TextLayoutRequest> draw_requests;
+    draw_requests.reserve(requests.size());
+
+    for (size_t i = 0; i < requests.size(); i++) {
+        TextLayoutRequest draw_request = requests[i];
+
+        if (measured[i]) {
+            const auto& fi = *measured[i];
+            results[i].Width = fi.MaxCurX;
+            results[i].Height = fi.LinesInRect * fi.CurFont->LineHeight + (fi.LinesInRect - 1) * fi.CurFont->YAdvance;
+            results[i].Lines = fi.LinesInRect;
+        }
+
+        draw_request.Size = {results[i].Width, results[i].Height};
+        draw_request.Color = _sprMngr->ApplyColorBrightness(draw_request.Color);
+        draw_requests.emplace_back(std::move(draw_request));
+    }
+
+    (void)PrepareFormats(draw_requests, FormatMode::Draw);
+    return results;
+}
+
+auto FontManager::PrepareFormats(const_span<TextLayoutRequest> requests, FormatMode mode) -> vector<nptr<const FontFormatInfo>>
+{
+    FO_TRACE_ZONE(Gui);
+
+    vector<nptr<const FontFormatInfo>> results(requests.size());
+    vector<uint64_t> keys(requests.size());
+    vector<unique_ptr<FontFormatInfo>> pending;
+    vector<uint64_t> pending_keys;
+    unordered_set<uint64_t> pending_set;
+
+    for (size_t i = 0; i < requests.size(); i++) {
+        const auto& request = requests[i];
+        auto font = GetFont(request.Format.Font);
+
+        if (request.Text.empty()) {
+            continue;
+        }
+
+        irect32 rect {0, 0, request.Size};
+        ucolor color = mode == FormatMode::LineCount ? ucolor {} : request.Color;
+        uint64_t key = GetFormatKey(request.Format, request.Format.Font, rect, color, mode, request.Text);
+        keys[i] = key;
+
+        if (auto it = _formatCache.find(key); it != _formatCache.end()) {
+            it->second->LastUsedFrame = _frameIndex;
+            results[i] = it->second;
+            continue;
+        }
+
+        if (!pending_set.emplace(key).second) {
+            continue;
+        }
+
+        pending.emplace_back(MakeFormatInfo(request.Format, font, rect, color, request.Text));
+        pending_keys.emplace_back(key);
+    }
+
+    auto format_item = [&pending, mode](size_t index) { FormatText(*pending[index], mode); };
+    auto scheduler = _sprMngr->GetWorkScheduler();
+    // Preliminary conservative thresholds; the owner still formats small or warm batches without jobs
+    constexpr size_t min_parallel_items = 32;
+    constexpr size_t min_items_per_chunk = 16;
+
+    if (scheduler && scheduler->ShouldRunParallel(pending.size(), min_parallel_items)) {
+        scheduler->RunBatch(mode == FormatMode::Draw ? "TextDrawLayout" : "TextMeasureLayout", pending.size(), min_items_per_chunk, format_item);
+    }
+    else {
+        for (size_t i = 0; i < pending.size(); i++) {
+            format_item(i);
+        }
+    }
+
+    for (size_t i = 0; i < pending.size(); i++) {
+        pending[i]->LastUsedFrame = _frameIndex;
+        _formatCache.emplace(pending_keys[i], std::move(pending[i]));
+    }
+
+    for (size_t i = 0; i < requests.size(); i++) {
+        if (!requests[i].Text.empty() && !results[i]) {
+            results[i] = _formatCache.at(keys[i]);
+        }
+    }
+
+    return results;
+}
+
+auto FontManager::GetFormatKey(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) -> uint64_t
+{
     FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Text format skip-line count must not be negative");
     FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
@@ -1119,20 +1252,17 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    uint64_t key = hash_storage::default_hash(make_span(key_parts));
+    return hash_storage::default_hash(make_span(key_parts));
+}
 
-    if (auto it = _formatCache.find(key); it != _formatCache.end()) {
-        it->second->LastUsedFrame = _frameIndex;
-        return it->second;
-    }
-
-    auto str_len = str.length();
-    auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
-    auto max_lines = std::max<size_t>(str_len + 1, 1);
+auto FontManager::MakeFormatInfo(TextFormat format, ptr<const FontData> font, irect32 rect, ucolor color, string_view str) -> unique_ptr<FontFormatInfo>
+{
+    size_t str_len = str.length();
+    size_t max_chars = std::max<size_t>(str_len * 2 + 1, 1);
+    size_t max_lines = std::max<size_t>(str_len + 1, 1);
 
     auto fi = safe_alloc::make_unique<FontFormatInfo>();
-    FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
-    fi->CurFont = &*_allFonts[static_cast<size_t>(font)];
+    fi->CurFont = font;
     fi->Format = format;
     fi->Rect = irect32 {0, 0, rect.width, rect.height};
     fi->Color = color;
@@ -1140,13 +1270,8 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     fi->TextColor.assign(max_chars, ucolor::clear);
     fi->LineWidth.assign(max_lines, 0);
     fi->LineSpaceWidth.assign(max_lines, 0);
-    fi->LastUsedFrame = _frameIndex;
 
-    FormatText(*fi, mode);
-
-    auto fi_ptr = fi.as_ptr();
-    _formatCache.emplace(key, std::move(fi));
-    return fi_ptr;
+    return fi;
 }
 
 void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextFormat format)

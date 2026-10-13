@@ -91,6 +91,27 @@ struct TextFormat
 };
 static_assert(sizeof(TextFormat) == 12 && std::is_standard_layout_v<TextFormat>);
 
+struct TextLayoutRequest
+{
+    string Text {};
+    isize32 Size {};
+    TextFormat Format {};
+    ucolor Color {};
+};
+
+// Measured extent and visible line count for one entry in a prepared text-layout batch.
+// Width: Measured text width used to prepare the draw layout
+// Height: Measured text height used to prepare the draw layout
+// Lines: Number of visible lines in the measurement rectangle
+///@ ExportValueType Layout = int32-Width+int32-Height+int32-Lines
+struct TextLayoutResult
+{
+    int32_t Width {};
+    int32_t Height {};
+    int32_t Lines {};
+};
+static_assert(sizeof(TextLayoutResult) == 12 && std::is_standard_layout_v<TextLayoutResult>);
+
 class FontManager final
 {
 public:
@@ -102,11 +123,14 @@ public:
     auto operator=(FontManager&&) noexcept = delete;
     ~FontManager() = default;
 
+    [[nodiscard]] auto GetCachedLayoutCount() const -> size_t { return _formatCache.size(); }
     [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetLineHeight(FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
     [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
+
+    auto PrepareTextLayouts(const_span<TextLayoutRequest> requests) -> vector<TextLayoutResult>;
 
     void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale = 1.0f);
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
@@ -175,7 +199,10 @@ private:
     void StoreFont(int32_t index, FontData&& font_data);
     void BuildFont(int32_t index);
     static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
-    void FormatText(FontFormatInfo& fi, FormatMode mode) const;
+    static void FormatText(FontFormatInfo& fi, FormatMode mode);
+    [[nodiscard]] static auto GetFormatKey(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) -> uint64_t;
+    [[nodiscard]] static auto MakeFormatInfo(TextFormat format, ptr<const FontData> font, irect32 rect, ucolor color, string_view str) -> unique_ptr<FontFormatInfo>;
+    auto PrepareFormats(const_span<TextLayoutRequest> requests, FormatMode mode) -> vector<nptr<const FontFormatInfo>>;
     [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
     [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
     [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
@@ -190,3 +217,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

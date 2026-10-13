@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **997** type and member symbols.
+This page contains **1001** type and member symbols.
 
 ## Entities
 
@@ -1744,6 +1744,24 @@ Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines 
 | <code>FontFlag TextFormat.Flags</code> | <a id="symbol-script-value-field-textformat-flags-954ab22bf2"></a><code>script.value-field.TextFormat.Flags</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:83](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L83) | FontFlag bitmask controlling alignment, wrapping, clipping, color tags, and glyph presentation |
 | <code>FontType TextFormat.Font</code> | <a id="symbol-script-value-field-textformat-font-54adc00ad4"></a><code>script.value-field.TextFormat.Font</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:82](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L82) | Font slot selected for text measurement and rendering |
 | <code>int32 TextFormat.SkipLines</code> | <a id="symbol-script-value-field-textformat-skiplines-289c6d57d9"></a><code>script.value-field.TextFormat.SkipLines</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:84](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L84) | Line-skip count taken from the top by default or from the bottom when AlignBottom is set |
+
+<a id="symbol-script-value-type-textlayoutresult-d9a2aedf5e"></a>
+### <code>TextLayoutResult</code>
+
+<code>value type TextLayoutResult</code><br>
+Symbol ID: <code>script.value-type.TextLayoutResult</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>Width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Height</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Lines</code><br>
+Source: [Source/Client/FontManager.h:106](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L106)
+
+Measured extent and visible line count for one entry in a prepared text-layout batch.
+
+| Field | Symbol ID | Value contract | API contract | Source | Description |
+| --- | --- | --- | --- | --- | --- |
+| <code>int32 TextLayoutResult.Height</code> | <a id="symbol-script-value-field-textlayoutresult-height-53575942ef"></a><code>script.value-field.TextLayoutResult.Height</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:104](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L104) | Measured text height used to prepare the draw layout |
+| <code>int32 TextLayoutResult.Lines</code> | <a id="symbol-script-value-field-textlayoutresult-lines-fe182c9a89"></a><code>script.value-field.TextLayoutResult.Lines</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:105](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L105) | Number of visible lines in the measurement rectangle |
+| <code>int32 TextLayoutResult.Width</code> | <a id="symbol-script-value-field-textlayoutresult-width-b6a8bb12fb"></a><code>script.value-field.TextLayoutResult.Width</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:103](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L103) | Measured text width used to prepare the draw layout |
 
 <a id="symbol-script-value-type-textpackkey-fc2a0c075a"></a>
 ### <code>TextPackKey</code>

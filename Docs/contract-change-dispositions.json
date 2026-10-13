@@ -10584,6 +10584,18 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror: prepared client sprite/glyph geometry.",
       "compatibility": "The model scope grows from 2578 to 2579 symbols. This change adds no persisted-data or network schema migration. Rebuild native sprite consumers for the new virtual preparation method and private geometry storage; package matching binaries and generated script metadata together.",
       "owner": "Engine client rendering and runtime contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.0030fa096acaba95",
+      "baseline_contract_sha256": "0908b673c912d9273d5b7c1c2ef3ee5bc0bdd03683315fed5ee69c483ca155d4",
+      "current_contract_sha256": "d19669bc44eb9a14e629bd9edfc1fcf99b4d04f703258d6b9c86d867f50048ee",
+      "classification": "breaking",
+      "rationale": "Review the complete native-codegen inventory: add exactly two experimental client text-layout methods and the passive TextLayoutResult with Width, Height and Lines. Retain all 2579 previous IDs and their contracts.",
+      "migration": "Reconfigure and rebuild matching native and Managed consumers, regenerate bindings and rebake metadata. Batch homogeneous texts/colors, then draw on the application thread using returned bounds and the same format/color. See Docs/en/how-to/content/font-format.md and the Unreleased migration in Docs/en/reference/changelog.md.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror: prepared client text layouts and bounded documentation capacity.",
+      "compatibility": "The model scope grows from 2579 to 2585 symbols. Existing text APIs retain their contract. Managed ABI identity 9, runtime compatibility 0.0.72, persisted data and network/resource schemas are unchanged. Package matching binaries, Managed assemblies and generated metadata together; Client.Multithreading remains False.",
+      "owner": "Engine client font layout and script API contracts"
     }
   ]
 }

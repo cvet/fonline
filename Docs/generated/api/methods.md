@@ -246,6 +246,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-bytessend-b1aadbb89e"></a>
 - [`symbol-script-method-client-game-bytessend-b1aadbb89e`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bytessend-b1aadbb89e)
 
+<a id="symbol-script-method-client-game-canpreparetextlayoutsinparallel-109e079ed2"></a>
+- [`symbol-script-method-client-game-canpreparetextlayoutsinparallel-109e079ed2`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-canpreparetextlayoutsinparallel-109e079ed2)
+
 <a id="symbol-script-method-client-game-capturescreenshot-7079276c3e"></a>
 - [`symbol-script-method-client-game-capturescreenshot-7079276c3e`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-capturescreenshot-7079276c3e)
 
@@ -500,6 +503,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-preload3dfiles-a98ae506b3"></a>
 - [`symbol-script-method-client-game-preload3dfiles-a98ae506b3`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-preload3dfiles-a98ae506b3)
+
+<a id="symbol-script-method-client-game-preparetextlayouts-dcab5cc640"></a>
+- [`symbol-script-method-client-game-preparetextlayouts-dcab5cc640`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-preparetextlayouts-dcab5cc640)
 
 <a id="symbol-script-method-client-game-presentoffscreensurface-2119d712f785fe8c-3559197819"></a>
 - [`symbol-script-method-client-game-presentoffscreensurface-2119d712f785fe8c-3559197819`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-presentoffscreensurface-2119d712f785fe8c-3559197819)

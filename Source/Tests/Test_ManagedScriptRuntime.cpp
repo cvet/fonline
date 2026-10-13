@@ -223,12 +223,15 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     unlock_first_again.release();
 
     auto client_settings = ClientEngineTests::MakeClientTestSettings();
-    auto client_resources = ClientEngineTests::MakeClientTestResources();
+    auto client_resources = ClientEngineTests::MakeClientTestResources(ClientEngineTests::MakeUnitTestFontResources());
     assemblies.AddTo(client_resources);
     auto client = ClientEngineTests::MakeClientEngine(client_settings, std::move(client_resources));
     auto shutdown_client = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ManagedRuntimeProbe::GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
+    int32_t layout_result = -99;
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ManagedRuntimeProbe::CheckTextLayoutBatch"), layout_result));
+    CHECK(layout_result == 0);
     client->MainLoop();
 
     auto mapper_settings = MapperTests::MakeMapperTestSettings();

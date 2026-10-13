@@ -1105,6 +1105,31 @@
           ]
         }
       ]
+    },
+    {
+      "id": "font-format.rendering.batch-layout",
+      "name": "Measurement and draw batch preparation",
+      "stability": "experimental",
+      "requirement": "Prepare equally sized text/color lists with common bounds and format; draw each entry with its returned extent and the same color and format on the application thread.",
+      "rationale": "Distinct cold misses run pure CPU layout in two phases, while cache publication, recency, brightness and draw order remain owner-thread work; warm caches submit no jobs.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "PrepareTextLayouts",
+            "PrepareFormats",
+            "TextMeasureLayout",
+            "TextDrawLayout"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PrepareTextLayouts",
+            "Client_Game_CanPrepareTextLayoutsInParallel"
+          ]
+        }
+      ]
     }
   ],
   "validation_rules": [
@@ -1266,18 +1291,18 @@
     }
   ],
   "summary": {
-    "entry_count": 58,
+    "entry_count": 59,
     "format_count": 3,
     "fofnt_field_count": 13,
     "bmfont_rule_count": 9,
     "binding_rule_count": 8,
     "layout_rule_count": 9,
-    "rendering_rule_count": 8,
+    "rendering_rule_count": 9,
     "validation_rule_count": 8,
     "entries_by_stability": {
-      "experimental": 55,
+      "experimental": 56,
       "internal": 3
     }
   },
-  "contract_digest": "7eeede33d884e5c437eb3e6dc4df8a7f936dae14cd3e96c3e192b8b77224dd14"
+  "contract_digest": "39520e39a5071bfb18cb2ebd6948a9c4eb1ff0a1367b8a44a34277c9d98f6393"
 }

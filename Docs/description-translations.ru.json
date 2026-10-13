@@ -10373,6 +10373,30 @@
         "/symbols/@id=setting.common.Render.ParallelSpriteGeometryMinCount/description": {
           "source_sha256": "d64be1149950c8607ff9c029f6580ca704caf8e978e218f997cf6fde54b95897",
           "translation": "Предварительное минимальное число команд геометрии в CPU-пачке; перед настройкой порога измеряйте каждую нагрузку."
+        },
+        "/symbols/@id=script.value-type.TextLayoutResult/description": {
+          "source_sha256": "a3711f87e8683f78e965db1045d75a1db1189a817a32ca798dbec76abb5bc9dc",
+          "translation": "Измеренные размеры и число видимых строк одного элемента подготовленного пакета компоновки текста."
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Lines/description": {
+          "source_sha256": "ea80faddf5d9c350ac131699bc7d88381df547f1291ae9da8b7762a6d87c5f9b",
+          "translation": "Число видимых строк в прямоугольнике измерения"
+        },
+        "/symbols/@id=script.method.client.Game.CanPrepareTextLayoutsInParallel/description": {
+          "source_sha256": "b8c2b13fd6a798f45842f089ef0e38a7d28dd53542989b390c651f5ac2c52292",
+          "translation": "Сообщает, доступна ли подготовка компоновки текста на CPU workers; небольшие пакеты и прогретые кэши могут выполняться без заданий"
+        },
+        "/symbols/@id=script.method.client.Game.PrepareTextLayouts/description": {
+          "source_sha256": "d8eda7481136da4c47df73847425b35eaf949b469563974ff07638d86a4b925f",
+          "translation": "Измеряет пакет текстов и готовит компоновку рисования в измеренных размерах с переданными цветами; результаты сохраняют порядок входов"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Width/description": {
+          "source_sha256": "17c8e8e8e4c2f0fd2b9a9b7546377b7e6b5af182477fd726771fe8a0124e9456",
+          "translation": "Измеренная ширина текста, используемая для подготовки компоновки рисования"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Height/description": {
+          "source_sha256": "94256db6f1e166bff467729b5d15c3c2ba219f3faadccc0ebbc1f1524223afe7",
+          "translation": "Измеренная высота текста, используемая для подготовки компоновки рисования"
         }
       }
     },
@@ -12769,6 +12793,18 @@
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/requirement": {
           "source_sha256": "3d66e13d231f5a82addd560733a0fb847a6ed44d870ca68d42a2886f2bdb8dcf",
           "translation": "Учитывайте, что текущий загрузчик читает xoffset, yoffset и xadvance через GetLEUInt16, хотя поставляемые бинарные шрифты содержат отрицательные выносы."
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/name": {
+          "source_sha256": "fcc4b3964002096bb38c4ce7a3e6d2386ccf0c8e6fac38f58334e7947d664107",
+          "translation": "Пакетная подготовка измерения и компоновки рисования"
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/requirement": {
+          "source_sha256": "19e56620fb3f3b3b88d528b5b60a7bd81cd5bea1d0e1898dc7562ec527017974",
+          "translation": "Передавайте списки текстов и цветов одинакового размера с общими bounds и format; рисуйте каждый элемент на потоке приложения в возвращённых размерах с теми же цветом и форматом."
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/rationale": {
+          "source_sha256": "1680c5bfa2bf48f2e1beddfa133216e40b41da7e40ee79bd52571b6252b93d80",
+          "translation": "Новые уникальные промахи кэша выполняют чистую CPU-компоновку в два этапа; публикация кэша, его актуальность, brightness и порядок рисования остаются работой владельца, прогретый кэш не создаёт jobs."
         }
       }
     },
