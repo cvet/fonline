@@ -829,7 +829,7 @@ void SpriteManager::CompleteSpriteGeometry()
 void SpriteManager::Flush()
 {
     // Every render target switch flushes, and most find nothing queued, so only a real batch opens a zone
-    if (_spritesDrawBuf->VertCount == 0) {
+    if (_spritesDrawBuf->VertCount == 0 && _geometryQueue.empty()) {
         return;
     }
 

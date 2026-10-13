@@ -102,7 +102,7 @@ with the three thresholds taken from settings (defaults in brackets):
 | Keep one core for the application thread | The owner also executes chunks; counting it as a worker would double-book a core. |
 | Keep another from `Client.MultithreadingHeadroomMinCores` (4) | Headroom serves graphics-driver, audio and managed-runtime threads; smaller machines give that core to the batch. |
 | Phone cap: `Client.MultithreadingMaxMobileWorkers` (2) | Mixed cores and thermal limits make the reliable fast cluster small. Dynamically claimed, equal chunks on a slow core delay the batch. This cap never raises the general cap. |
-| General cap: `Client.MultithreadingMaxWorkers` (8) | Model poses are the only batch: further splitting into one or two poses adds worker wake/join overhead. |
+| General cap: `Client.MultithreadingMaxWorkers` (8) | Further splitting small batches adds worker wake/join overhead. Each stage also sets its own minimum chunk size. |
 
 Defaults give 0 workers on 1 core, 1 on 2, 2 on 3 and 4, 4 on 6, 6 on 8, and 8 from 10 cores up; a phone gets at most 2. Zero remains valid with the switch on. The startup log reports the actual count and limiting reason, including serial fallback.
 
@@ -156,7 +156,9 @@ happen on demand, inside drawing, where no batch boundary exists.
 
 `WritePreparedSpriteGeometry` writes only its provided spans. The same kernel handles quads, cropped mesh coordinates and color gradients, clipped-region quads and glyphs. Map rotation, projected flattening, standing depth and both transparency-egg flags run after the base geometry, using values captured by the owner. Text layout, UTF-8 processing, color tags, font selection, entity access and effect/texture selection remain on the application thread.
 
-`FlushBatch` drains geometry before upload, preserving render-target, scissor and effect ordering. Wireframe buffer reads and unsupported external `Sprite::FillData` implementations also require completion first. `AbortScene` drops descriptors without drawing them. If a kernel throws, `RunBatch` joins all participating workers before rethrowing; the geometry drain discards pending commands, draw records and buffer counts, so no incomplete batch is uploaded or replayed.
+`FlushBatch` drains geometry before upload, preserving render-target, scissor and effect ordering. `Flush` also completes pending commands when their vertex count is zero, so malformed mesh indices cannot bypass validation. Wireframe buffer reads and unsupported external `Sprite::FillData` implementations also require completion first. `AbortScene` drops descriptors without drawing them. If a kernel throws, `RunBatch` joins all participating workers before rethrowing; the geometry drain discards pending commands, draw records and buffer counts, so no incomplete batch is uploaded or replayed.
+
+Map egg overrides preserve the existing callback contract: when neither egg applies, the transform leaves an external sprite's per-vertex flags intact. When either egg applies, it replaces both slots. Built-in quad and mesh vertices initialize both slots before the transform.
 
 With no workers, draw calls execute the kernel directly without queues or retained mesh owners. With workers, `Render.ParallelSpriteGeometryMinCount` chooses parallel execution at drain (clamped to at least two commands); smaller queues execute on the owner. Its initial value, 128 commands, is provisional and requires workload measurements. The scheduler minimum chunk size is half that threshold, at least one command. Multithreading remains disabled by default.
 

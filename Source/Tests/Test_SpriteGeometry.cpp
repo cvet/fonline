@@ -474,6 +474,131 @@ TEST_CASE("SpriteGeometryFailedWorkerBatchDrainsAndDiscardsBeforePublication")
     CHECK(effect.Draws[0].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
 }
 
+TEST_CASE("SpriteGeometryZeroVertexIndexedMeshRejectsAtFirstFlushAndReleasesItsOwner")
+{
+    auto settings = MakeGeometrySettings(true);
+    auto client = MakeClientEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    if (!client->WorkSched.IsParallel()) {
+        SKIP("This platform does not start client workers");
+    }
+
+    auto [atlas, allocation, atlas_pos] = client->SprMngr.GetAtlasMngr()->FindAtlasPlace(AtlasType::OneImage, {5, 7});
+    ignore_unused(atlas_pos);
+    SpriteMeshData mesh {{5, 7}, {}, {}, {0}};
+    auto invalid = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {5, 7}, ipos32 {}, atlas, std::move(allocation), frect32 {}, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+    weak_ptr<const SpriteMeshData> mesh_owner {invalid->PrepareGeometry({}, {})->MeshOwner};
+
+    RecordingQuadEffect effect;
+    invalid->SetDrawEffect(&effect);
+    client->SprMngr.DrawSprite(invalid, {}, ucolor {1, 2, 3, 4});
+    invalid->SetDrawEffect(nullptr);
+    invalid.reset();
+    REQUIRE(mesh_owner.use_count() > 0);
+
+    CHECK_THROWS_WITH(client->SprMngr.Flush(), Catch::Matchers::ContainsSubstring("Prepared sprite vertex range exceeds the index type"));
+    CHECK(effect.Draws.empty());
+    CHECK(mesh_owner.use_count() == 0);
+    CHECK_NOTHROW(client->SprMngr.Flush());
+
+    auto valid = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {5, 7}, ipos32 {}, atlas, nullptr, frect32 {}, vector<bool> {});
+    valid->SetDrawEffect(&effect);
+    auto clear_effect = scope_exit([&valid]() noexcept { valid->SetDrawEffect(nullptr); });
+
+    CHECK_NOTHROW(client->SprMngr.DrawSprite(valid, {10, 20}, ucolor {1, 2, 3, 4}));
+    CHECK_NOTHROW(client->SprMngr.Flush());
+    REQUIRE(effect.Draws.size() == 1);
+    REQUIRE(effect.Draws[0].Vertices.size() == 4);
+    CHECK(effect.Draws[0].StartIndex == 0);
+    CHECK(effect.Draws[0].IndicesToDraw == optional<size_t> {6});
+    CHECK(effect.Draws[0].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+    CheckSpriteVertex(effect.Draws[0].Vertices[1], {10, 20, 0, ucolor {1, 2, 3, 4}, 0, 0, {}});
+}
+
+class GeometryEggDataSprite final : public Sprite
+{
+public:
+    GeometryEggDataSprite(ptr<SpriteManager> manager, ptr<const Sprite> delegate) :
+        Sprite(manager, delegate->GetSize(), {}),
+        _delegate {delegate}
+    {
+    }
+
+    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override { return _delegate->GetBatchTexture(); }
+
+    auto FillData(ptr<RenderDrawBuffer> buffer, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override
+    {
+        size_t start_vertex = buffer->VertCount;
+        size_t index_count = _delegate->FillData(buffer, pos, colors);
+        REQUIRE(buffer->VertCount == start_vertex + 4);
+
+        const fpos32 flags[] {{0.25f, 0.5f}, {0.75f, 1.25f}, {1.5f, 1.75f}, {2.25f, 2.5f}};
+
+        for (size_t corner = 0; corner < 4; corner++) {
+            auto& vertex = buffer->Vertices[start_vertex + corner];
+            vertex.EggFlags[0] = flags[corner].x;
+            vertex.EggFlags[1] = flags[corner].y;
+        }
+
+        return index_count;
+    }
+
+private:
+    ptr<const Sprite> _delegate;
+};
+
+TEST_CASE("SpriteGeometryMapPreservesExternalEggDataUnlessAnEggApplies")
+{
+    bool parallel = GENERATE(false, true);
+    uint8_t egg_case = GENERATE(uint8_t {0}, uint8_t {1}, uint8_t {2}, uint8_t {3}, uint8_t {4});
+    INFO("parallel=" << parallel << ", egg_case=" << numeric_cast<uint32_t>(egg_case));
+    auto settings = MakeGeometrySettings(parallel);
+    auto client = MakeClientEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto [atlas, allocation, atlas_pos] = client->SprMngr.GetAtlasMngr()->FindAtlasPlace(AtlasType::OneImage, {4, 8});
+    ignore_unused(atlas_pos);
+    auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {4, 8}, ipos32 {}, atlas, std::move(allocation), frect32 {}, vector<bool> {});
+    auto external = safe_alloc::make_shared<GeometryEggDataSprite>(&client->SprMngr, sprite);
+
+    RecordingQuadEffect effect;
+    MapSpriteList sprites;
+    ipos32 screen_offset {40, 60};
+    EggAppearenceType appearance = egg_case == 1 ? EggAppearenceType::None : EggAppearenceType::Always;
+
+    for (size_t index = 0; index < 128; index++) {
+        auto map_sprite = sprites.AddSprite(DrawOrderType::Item, {0, 0}, {}, &screen_offset, sprite, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        map_sprite->SetEggAppearence(appearance);
+    }
+
+    auto external_map_sprite = sprites.AddSprite(DrawOrderType::Item, {0, 0}, {}, &screen_offset, external, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+    external_map_sprite->SetEggAppearence(appearance);
+    client->SprMngr.SetEgg(TransparentEggSlot::Primary, {0, 0}, {40, 60}, {20, 30}, egg_case == 3 ? TransparentEggTarget::Structure : TransparentEggTarget::AnyOccluder);
+    client->SprMngr.SetEgg(TransparentEggSlot::Secondary, {0, 0}, {40, 60}, {20, 30}, egg_case == 2 ? TransparentEggTarget::Structure : TransparentEggTarget::AnyOccluder);
+
+    uint64_t before = client->WorkSched.GetDiagnostics().ParallelBatches;
+    client->SprMngr.DrawSprites(sprites, {0, 0, 100, 100}, egg_case != 0, DrawOrderType::Item, DrawOrderType::Item, ucolor {26, 52, 78, 130}, &effect);
+    REQUIRE(effect.Draws.size() == 1);
+    REQUIRE(effect.Draws[0].Vertices.size() == 129 * 4);
+    REQUIRE(effect.Draws[0].Indices.size() == 129 * 6);
+
+    float32_t primary = egg_case == 2 || egg_case == 4 ? 1.0f : 0.0f;
+    float32_t secondary = egg_case == 3 || egg_case == 4 ? 1.0f : 0.0f;
+    const fpos32 original_flags[] {{0.25f, 0.5f}, {0.75f, 1.25f}, {1.5f, 1.75f}, {2.25f, 2.5f}};
+
+    for (size_t corner = 0; corner < 4; corner++) {
+        CHECK(effect.Draws[0].Vertices[corner].EggFlags[0] == primary);
+        CHECK(effect.Draws[0].Vertices[corner].EggFlags[1] == secondary);
+
+        const auto& vertex = effect.Draws[0].Vertices[128 * 4 + corner];
+        CHECK(vertex.EggFlags[0] == (egg_case < 2 ? original_flags[corner].x : primary));
+        CHECK(vertex.EggFlags[1] == (egg_case < 2 ? original_flags[corner].y : secondary));
+    }
+
+    CHECK((client->WorkSched.GetDiagnostics().ParallelBatches > before) == client->WorkSched.IsParallel());
+}
+
 TEST_CASE("SpriteGeometryMapDrawCapturesAlphaRotationDepthAndTwoEggs")
 {
     bool parallel = GENERATE(false, true);

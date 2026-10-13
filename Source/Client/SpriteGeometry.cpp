@@ -195,8 +195,10 @@ void TransformPreparedSpriteGeometry(const PreparedSpriteTransform& transform, s
             vertex.PosZ = transform.ProjectionZ - (map_y - transform.ProjectionY) * transform.DepthSlope;
         }
 
-        vertex.EggFlags[0] = transform.EggFlags[0];
-        vertex.EggFlags[1] = transform.EggFlags[1];
+        if (transform.EggFlags[0] != 0.0f || transform.EggFlags[1] != 0.0f) {
+            vertex.EggFlags[0] = transform.EggFlags[0];
+            vertex.EggFlags[1] = transform.EggFlags[1];
+        }
     }
 }
 

@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"7b917a8ea568a05751e65a738ee9b69b06ed66127fa33bb8c1930fe13ad59b1f"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"15ce0b6d40ee437151f7eef0d1c865c5ab13734655f7b261c82a6b236341e298"} -->
 
 # Необязательная многопоточность клиента
 
@@ -80,7 +80,7 @@ else {
 | Одно ядро оставляется потоку приложения | Он сам вычисляет chunks, поэтому нельзя учитывать его ещё и как отдельного worker. |
 | Начиная с `Client.MultithreadingHeadroomMinCores` (4), оставляется ещё одно ядро | Драйвер, микшер и managed runtime имеют свои потоки. При меньшем числе ядер дополнительное ядро полезнее вычислениям пакета. |
 | Мобильный предел `Client.MultithreadingMaxMobileWorkers` (2) | Быстрые и медленные ядра работают в тепловом бюджете. Chunks выдаются динамически, но равного размера; медленное ядро задерживает весь пакет. Этот предел только понижает общий. |
-| Общий предел `Client.MultithreadingMaxWorkers` (8) | При большем числе workers нынешний пакет поз дробится до одной-двух поз на chunk, и пробуждение с join перестают окупаться. |
+| Общий предел `Client.MultithreadingMaxWorkers` (8) | Дальнейшее дробление небольших пакетов добавляет затраты на пробуждение и join. Каждая стадия также задаёт собственный минимальный размер chunk. |
 
 Значения по умолчанию дают 0 workers для 1 ядра, 1 для 2, 2 для 3 и 4, 4 для 6, 6 для 8 и 8 начиная с 10; телефон получает не более 2. Нулевой результат допустим и при включённом параметре. Журнал сообщает фактически выбранное число и ограничение: `Client multithreading: on, 6 worker threads (8 logical cores, one core kept for the application thread and one for driver, audio and runtime)`, `Client multithreading: on, running serial (1 logical cores, no core is left over beside the application thread)` или `Client multithreading: off`.
 
@@ -120,7 +120,9 @@ Ozz пишет в буферы конкретной pose: sampling contexts, tra
 
 `WritePreparedSpriteGeometry` пишет только в переданные spans. Общий kernel обслуживает quad, координаты обрезанного mesh и цветовой градиент, quad вырезанной области и глифы. Поворот карты, projected flattening, глубина стоящего спрайта и оба флага transparency egg применяются после базовой геометрии по значениям, снятым владельцем. Компоновка текста, UTF-8, цветовые теги, выбор шрифта, доступ к сущностям и выбор effect/texture остаются на потоке приложения.
 
-`FlushBatch` завершает геометрию до upload, сохраняя порядок render targets, scissor и effects. Чтение буфера для wireframe и неподдерживаемая внешняя реализация `Sprite::FillData` также сначала завершают очередь. `AbortScene` удаляет descriptors без отрисовки. При исключении kernel `RunBatch` присоединяет всех участвующих workers до повторного выброса; обработчик геометрии удаляет команды, draw records и counts буферов, поэтому незавершённая пачка не загружается и не переигрывается.
+`FlushBatch` завершает геометрию до upload, сохраняя порядок render targets, scissor и effects. `Flush` также завершает pending commands при нулевом числе вершин, поэтому повреждённые mesh indices не обходят проверку. Чтение буфера для wireframe и неподдерживаемая внешняя реализация `Sprite::FillData` также сначала завершают очередь. `AbortScene` удаляет descriptors без отрисовки. При исключении kernel `RunBatch` присоединяет всех участвующих workers до повторного выброса; обработчик геометрии удаляет команды, draw records и counts буферов, поэтому незавершённая пачка не загружается и не переигрывается.
+
+Переопределение map egg сохраняет прежний контракт callback: когда ни один egg не применяется, transform оставляет собственные флаги вершин внешнего спрайта. Когда применяется хотя бы один egg, заменяются оба slots. Встроенные quad и mesh vertices инициализируют оба slots перед transform.
 
 Без workers draw-вызовы исполняют kernel напрямую, без очередей и удержания mesh owners. При наличии workers `Render.ParallelSpriteGeometryMinCount` выбирает параллельное выполнение во время drain (порог ограничен снизу двумя командами); меньшие очереди исполняет владелец. Начальное значение 128 команд предварительное и требует замеров нагрузок. Минимальный chunk scheduler равен половине порога, не меньше одной команды. Многопоточность по умолчанию выключена.
 
