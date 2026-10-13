@@ -1038,3 +1038,7 @@ When changing frontend or rendering behavior, verify:
   native attach/debug changes cross-link to [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
 
 The renderer stays on the application thread when [client multithreading](../runtime/client-multithreading.md) is enabled; CPU pose batches never own GPU objects or command recording.
+
+### CPU geometry batches
+
+Atlas sprites, region quads and font glyphs share the pure `WritePreparedSpriteGeometry` kernel. The application thread captures immutable inputs, reserves output offsets and preserves draw order. With client workers enabled, geometry is completed before upload and before wireframe or external sprite code can read the buffer; render-target and scissor transitions retain their existing flush boundaries. Serial clients invoke the kernel directly. Map rotation, flattening, standing depth and both egg flags are captured values, never worker reads of map entities. See [client multithreading](../runtime/client-multithreading.md#sprite-and-glyph-geometry) for lifetime, exceptions, thresholds and measurement limits.

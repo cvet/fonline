@@ -1002,16 +1002,22 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "if (_meshData)",
-            "for (uint16_t local_index : mesh.Indices)",
+            "AtlasSprite::GetGeometry",
+            "WritePreparedSpriteGeometry",
             "1px border for correct linear interpolation",
             "hit_test_data[i] = _sprMngr->CheckHitTest"
           ]
         },
         {
+          "path": "Source/Client/SpriteGeometry.cpp",
+          "anchors": [
+            "for (uint16_t local_index : mesh.Indices)"
+          ]
+        },
+        {
           "path": "Source/Client/SpriteManager.cpp",
           "anchors": [
-            "spr->FillData(_spritesDrawBuf",
+            "FillSpriteGeometry",
             "DrawSpriteSize"
           ]
         }

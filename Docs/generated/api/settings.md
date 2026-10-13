@@ -754,6 +754,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-render-nullrenderer-aed71ab0c9"></a>
 - [`symbol-setting-common-render-nullrenderer-aed71ab0c9`](../../en/reference/script-api/settings.md#symbol-setting-common-render-nullrenderer-aed71ab0c9)
 
+<a id="symbol-setting-common-render-parallelspritegeometrymincount-e54fd9a09d"></a>
+- [`symbol-setting-common-render-parallelspritegeometrymincount-e54fd9a09d`](../../en/reference/script-api/settings.md#symbol-setting-common-render-parallelspritegeometrymincount-e54fd9a09d)
+
 <a id="symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3"></a>
 - [`symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3`](../../en/reference/script-api/settings.md#symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3)
 

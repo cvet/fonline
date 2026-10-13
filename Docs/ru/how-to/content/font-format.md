@@ -5,7 +5,7 @@ locale: ru
 document_id: font-format-guide
 permalink: /Docs/ru/how-to/content/font-format.html
 ---
-<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"40b691afb97e7264162953a58b48a42f1e52b25f53282ed366d8200f0adb2340"} -->
+<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"292f2bb159bf59f826930a7aa0e5b61c969ec174ef4fca31892fe8b5b47b0df3"} -->
 # Форматы шрифтов и компоновка текста
 
 FOnline отрисовывает растровые шрифты, описанные текстовым форматом Engine
@@ -356,3 +356,7 @@ cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 Целевые сгенерированные проверки доказывают описанный контракт исходников.
 Только встраивающий проект может доказать покрытие глифов, типографику, посадку
 в UI, поведение backend отрисовки и права на ресурсы.
+
+## Владение геометрией глифов
+
+Компоновка текста и доступ к атласу шрифта остаются на потоке приложения. `FontManager::DrawText` передаёт quad глифов значениями тому же kernel `SpriteGeometry`, что используется спрайтами атласа, сохраняя порядок глифов, границы UV, цвета и действующее объединение по effect/texture. При включённом `Client.Multithreading` крупные очереди геометрии могут исполняться CPU workers и завершаются до upload. Без workers глифы записываются напрямую. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md#геометрия-спрайтов-и-глифов); компоновка текста и renderer не становятся конкурентными.

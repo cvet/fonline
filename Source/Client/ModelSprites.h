@@ -83,6 +83,8 @@ public:
     [[nodiscard]] auto GetModel() -> ptr<ModelInstance>;
     [[nodiscard]] auto IsPlaying() const -> bool override;
 
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
+
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetDir(mdir dir) override;
@@ -109,6 +111,8 @@ private:
         bool BoundedCropEstablished {};
         optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
     };
+
+    [[nodiscard]] auto ResolveGeometryColors(const tuple<ucolor, ucolor>& colors) const -> tuple<ucolor, ucolor>;
 
     void RefreshHitMask() const;
     void SetupFrame(isize32 frame_size);
@@ -170,3 +174,4 @@ private:
 FO_END_NAMESPACE
 
 #endif
+

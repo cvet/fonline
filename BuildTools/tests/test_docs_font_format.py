@@ -66,7 +66,7 @@ class FontFormatDocumentationTests(unittest.TestCase):
         self.assertEqual(outputs["bmfont"]["char_record_size"], 20)
         self.assertEqual(outputs["atlas_type"], "IfaceSprites")
         self.assertEqual(outputs["cache_invalidation_frames"], 3)
-        self.assertEqual(self.model["summary"]["entry_count"], 57)
+        self.assertEqual(self.model["summary"]["entry_count"], 58)
 
     def test_fofnt_keys_slots_flags_and_scale_are_source_derived(self) -> None:
         outputs = self.model["outputs"]

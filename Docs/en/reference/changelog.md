@@ -12,6 +12,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Build prepared 2D sprite, mesh, region and glyph geometry in client worker batches. Snapshot frame selection and immutable mesh data before dispatch; finish geometry before GPU upload, wireframe reads or unsupported sprite callbacks, and discard pending commands on frame abort. `Render.ParallelSpriteGeometryMinCount` starts at a provisional 128; `Client.Multithreading` remains off by default pending workload measurements. Rebuild native consumers and rebake matching metadata after the new setting and sprite interface change.
+
 - Merge the published client-worker branch with master 2026.1.37-dev, preserving both published tips. Integrate Managed dictionary calls and the scripting-test ownership split. Keep model pose phase checks in the backend-neutral client suite; renderer/resource execution and runtime defaults are unchanged in this integration.
 
 

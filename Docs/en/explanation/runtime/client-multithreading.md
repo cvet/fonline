@@ -23,7 +23,8 @@ What is implemented today:
 
 - [WorkScheduler](../../../../Source/Client/WorkScheduler.h): bounded CPU batches over each `ClientEngine`'s persistent workers.
 - [SpriteManager](../../../../Source/Client/SpriteManager.cpp): two-phase frame updates with declared CPU-only work.
-- [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is currently the only worker stage.
+- [SpriteGeometry](../../../../Source/Client/SpriteGeometry.cpp): atlas, region, glyph and map vertex/index kernels.
+- [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is one worker stage.
 
 The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel lighting/fog/particles, an asynchronous resource lane or threaded Web. Their prerequisites and proposed order follow below.
 
@@ -147,6 +148,20 @@ against — settling the frame again would move the root under an already evalua
 Direct-draw models (`Render.ModelDirectDraw`), GUI previews and `Prewarm` keep the single-pass path: their poses
 happen on demand, inside drawing, where no batch boundary exists.
 
+## Sprite and glyph geometry
+
+`SpriteManager` snapshots atlas rectangles, colors, the selected `SpriteSheet` frame and map transforms on the application thread. It reserves disjoint vertex/index ranges and records `DipData` in draw order. Commands retain offsets rather than buffer spans while the vectors can grow. Immutable mesh topology is held until completion; subsequent frame selection or sprite destruction cannot change a queued mesh.
+
+`AtlasSprite::PrepareGeometry` accepts only the exact built-in atlas type. A subclass that changes `FillData` must explicitly override preparation and may use the protected `PrepareAtlasGeometry` helper; otherwise its owner callback runs after the geometry completion barrier. `ModelSprite` opts in and resolves its crop colors against the lighting width on the application thread, sharing the same read-only calculation with `FillData`. Workers never access a `ModelInstance`.
+
+`WritePreparedSpriteGeometry` writes only its provided spans. The same kernel handles quads, cropped mesh coordinates and color gradients, clipped-region quads and glyphs. Map rotation, projected flattening, standing depth and both transparency-egg flags run after the base geometry, using values captured by the owner. Text layout, UTF-8 processing, color tags, font selection, entity access and effect/texture selection remain on the application thread.
+
+`FlushBatch` drains geometry before upload, preserving render-target, scissor and effect ordering. Wireframe buffer reads and unsupported external `Sprite::FillData` implementations also require completion first. `AbortScene` drops descriptors without drawing them. If a kernel throws, `RunBatch` joins all participating workers before rethrowing; the geometry drain discards pending commands, draw records and buffer counts, so no incomplete batch is uploaded or replayed.
+
+With no workers, draw calls execute the kernel directly without queues or retained mesh owners. With workers, `Render.ParallelSpriteGeometryMinCount` chooses parallel execution at drain (clamped to at least two commands); smaller queues execute on the owner. Its initial value, 128 commands, is provisional and requires workload measurements. The scheduler minimum chunk size is half that threshold, at least one command. Multithreading remains disabled by default.
+
+`SpriteGeometryBatch` is the owner Tracy zone for nonempty geometry drains. Its `WorkScheduler::RunBatch` is named `SpriteGeometry`; existing scheduler batch metadata and join/wait/chunk zones remain unchanged. There is no zone per quad or glyph. `Test_SpriteGeometry.cpp` exercises real sprite/font submission, hand-derived geometry, worker/direct equality, frame/mesh lifetime, output bounds and failure recovery. These tests do not establish a frame-time speedup or a renderer/backend visual qualification.
+
 ## What stays on the owner, and why
 
 | Area | Why it is not a batch item |
@@ -214,7 +229,7 @@ workload with no extra buffered frame and no material regression on small scenes
 serial remainder — `T ≈ T_serial + T_parallel / P + T_prepare + T_join` — so a large speedup of one kernel does
 not imply a comparable frame-time gain, especially when the GPU or the scripts dominate.
 
-Structural gates are stricter than the timing ones, and they hold today: nothing added on the direct path, no
+Structural gates are stricter than the timing ones, and they hold today: no geometry queue or retained mesh owner on the direct path, no
 worker access to owner-only state, bounded pending work, and no task left at teardown.
 
 ## Tests
@@ -254,7 +269,7 @@ player-visible surface twice, once per mode, and compare the two verdicts.
 
 1. **Profile.** The frame-time lanes above, on the two validated platforms. Everything below is worth doing only
    in the order the profile puts them.
-2. **A second stage, chosen by that profile.** Lighting geometry is the most likely, and it needs a pure kernel
+2. **A further stage, chosen by that profile.** Lighting geometry is the most likely, and it needs a pure kernel
    plus an immutable obstacle view before it can be one.
 3. **A resource lane.** Bounded prepare/publish with request generations, judged on loading latency and stalls,
    not on steady FPS. It is a different object from this scheduler.

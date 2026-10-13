@@ -10572,6 +10572,18 @@
       "release_note": "Docs/en/reference/changelog.md records the integration; Docs/en/explanation/runtime/client-multithreading.md owns the retained worker contract.",
       "compatibility": "Published master and feature ancestry are preserved. ABI 9 and runtime compatibility 0.0.72 remain unchanged by this integration; matching client/server/resources still rebuild together.",
       "owner": "native-api integration"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.30764e2f55417d5a",
+      "baseline_contract_sha256": "387502f53e09132f8005306f6d318f99c34a14f30e03b6698818ac8f49b7208a",
+      "current_contract_sha256": "0908b673c912d9273d5b7c1c2ef3ee5bc0bdd03683315fed5ee69c483ca155d4",
+      "classification": "breaking",
+      "rationale": "Review the complete native-codegen inventory: add only the experimental Render.ParallelSpriteGeometryMinCount setting; retain all 2578 previous stable symbol IDs and their contracts.",
+      "migration": "Reconfigure and rebuild native consumers and rebake matching metadata. The setting defaults to a provisional 128; Client.Multithreading remains False. See Docs/en/explanation/runtime/client-multithreading.md.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror: prepared client sprite/glyph geometry.",
+      "compatibility": "The model scope grows from 2578 to 2579 symbols. This change adds no persisted-data or network schema migration. Rebuild native sprite consumers for the new virtual preparation method and private geometry storage; package matching binaries and generated script metadata together.",
+      "owner": "Engine client rendering and runtime contracts"
     }
   ]
 }

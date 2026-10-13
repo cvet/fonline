@@ -144,7 +144,21 @@ auto ModelSprite::IsDirectDraw() const -> bool
     return _factory->_settings->Render.ModelDirectDraw;
 }
 
+auto ModelSprite::PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
+{
+    auto geometry_colors = ResolveGeometryColors(colors);
+
+    return PrepareAtlasGeometry(pos, geometry_colors);
+}
+
 auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+{
+    auto geometry_colors = ResolveGeometryColors(colors);
+
+    return AtlasSprite::FillData(dbuf, pos, geometry_colors);
+}
+
+auto ModelSprite::ResolveGeometryColors(const tuple<ucolor, ucolor>& colors) const -> tuple<ucolor, ucolor>
 {
     FO_STRONG_ASSERT(_frameSize.width > 0 && _frameSize.height > 0 && _cropRect.x >= 0 && _cropRect.y >= 0 && _cropRect.width > 0 && _cropRect.height > 0 && numeric_cast<int64_t>(_cropRect.x) + _cropRect.width <= _frameSize.width && numeric_cast<int64_t>(_cropRect.y) + _cropRect.height <= _frameSize.height, "Model sprite crop is outside the logical frame", _cropRect, _frameSize);
 
@@ -174,7 +188,8 @@ auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     int64_t crop_left = lighting_origin + _cropRect.x - frame_origin;
     ucolor crop_color_left = interpolate_color(crop_left);
     ucolor crop_color_right = interpolate_color(crop_left + _cropRect.width);
-    return AtlasSprite::FillData(dbuf, pos, {crop_color_left, crop_color_right});
+
+    return {crop_color_left, crop_color_right};
 }
 
 void ModelSprite::Prewarm()
@@ -635,3 +650,4 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 FO_END_NAMESPACE
 
 #endif
+

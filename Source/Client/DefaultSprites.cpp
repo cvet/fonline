@@ -73,7 +73,8 @@ AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offse
     _atlas {atlas},
     _atlasRect {atlas_rect},
     _hitTestData {std::move(hit_data)},
-    _meshData {std::move(mesh_data)},
+    _meshData {mesh_data ? safe_alloc::make_shared<SpriteMeshData>(std::move(*mesh_data)) : shared_ptr<SpriteMeshData> {}},
+    _meshFrameSize {_meshData ? ResolveAtlasSpriteFrameSize(*_meshData) : isize32 {}},
     _atlasAllocation {std::move(atlas_allocation)}
 {
     if (_atlasAllocation) {
@@ -87,6 +88,7 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     _atlasRect {other._atlasRect},
     _hitTestData {std::move(other._hitTestData)},
     _meshData {std::move(other._meshData)},
+    _meshFrameSize {other._meshFrameSize},
     _atlasAllocation {std::move(other._atlasAllocation)}
 {
     _drawEffect = other._drawEffect;
@@ -108,11 +110,11 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    if (_meshData.has_value() && !_meshData->Indices.empty()) {
+    if (static_cast<bool>(_meshData) && !_meshData->Indices.empty()) {
         pos -= _meshData->SourceOffset;
     }
 
-    isize32 frame_size = _meshData.has_value() && !_meshData->Indices.empty() ? ResolveAtlasSpriteFrameSize(*_meshData) : _size;
+    isize32 frame_size = static_cast<bool>(_meshData) && !_meshData->Indices.empty() ? _meshFrameSize : _size;
 
     if (!frame_size.is_valid_pos(pos)) {
         return false;
@@ -140,135 +142,64 @@ auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
     return shared_from_this().cast_no_const();
 }
 
-auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+auto AtlasSprite::PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
 {
-    if (_meshData) {
-        const auto& mesh = *_meshData;
-
-        if (mesh.Indices.empty()) {
-            return 0;
-        }
-
-        dbuf->CheckAllocBuf(mesh.Vertices.size(), mesh.Indices.size());
-
-        auto& vbuf = dbuf->Vertices;
-        size_t& vpos = dbuf->VertCount;
-        auto& ibuf = dbuf->Indices;
-        size_t& ipos = dbuf->IndCount;
-        size_t base_vpos = vpos;
-        FO_VERIFY_AND_THROW(_size == mesh.SourceSize, "Atlas sprite logical size differs from its mesh source size", _size, mesh.SourceSize);
-
-        isize32 frame_size = ResolveAtlasSpriteFrameSize(mesh);
-        float32_t frame_width = numeric_cast<float32_t>(frame_size.width);
-        float32_t frame_height = numeric_cast<float32_t>(frame_size.height);
-        float32_t logical_width = numeric_cast<float32_t>(mesh.SourceSize.width);
-        float32_t logical_height = numeric_cast<float32_t>(mesh.SourceSize.height);
-        ucolor color_left = std::get<0>(colors);
-        ucolor color_right = std::get<1>(colors);
-        uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
-
-        for (ipos32 local_pos : mesh.Vertices) {
-            ipos32 source_pos = local_pos + mesh.SourceOffset;
-            float32_t logical_x = numeric_cast<float32_t>(source_pos.x) / logical_width;
-            float32_t logical_y = numeric_cast<float32_t>(source_pos.y) / logical_height;
-            float32_t frame_x = numeric_cast<float32_t>(local_pos.x) / frame_width;
-            float32_t frame_y = numeric_cast<float32_t>(local_pos.y) / frame_height;
-            int32_t source_x = std::clamp(source_pos.x, 0, mesh.SourceSize.width);
-            uint32_t color_x = numeric_cast<uint32_t>(source_x);
-            auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
-                uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
-                return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
-            };
-            auto& vertex = vbuf[vpos++];
-
-            vertex.PosX = pos.x + pos.width * logical_x;
-            vertex.PosY = pos.y + pos.height * logical_y;
-            vertex.PosZ = 0.0f;
-            vertex.TexU = _atlasRect.x + _atlasRect.width * frame_x;
-            vertex.TexV = _atlasRect.y + _atlasRect.height * frame_y;
-            vertex.EggFlags[0] = 0.0f;
-            vertex.EggFlags[1] = 0.0f;
-            vertex.Color = {
-                interpolate_component(color_left.comp.r, color_right.comp.r),
-                interpolate_component(color_left.comp.g, color_right.comp.g),
-                interpolate_component(color_left.comp.b, color_right.comp.b),
-                interpolate_component(color_left.comp.a, color_right.comp.a),
-            };
-        }
-
-        for (uint16_t local_index : mesh.Indices) {
-            ibuf[ipos++] = numeric_cast<vindex_t>(base_vpos + local_index);
-        }
-
-        return mesh.Indices.size();
+    // A derived FillData may require owner state or custom geometry; preparation is an explicit opt-in
+    if (typeid(*this) != typeid(AtlasSprite)) {
+        return std::nullopt;
     }
 
-    dbuf->CheckAllocBuf(4, 6);
+    return PrepareAtlasGeometry(pos, colors);
+}
 
-    auto& vbuf = dbuf->Vertices;
-    size_t& vpos = dbuf->VertCount;
-    auto& ibuf = dbuf->Indices;
-    size_t& ipos = dbuf->IndCount;
+auto AtlasSprite::PrepareAtlasGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry
+{
+    auto geometry = GetGeometry(pos, colors);
+    geometry.MeshOwner = _meshData;
 
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
+    return geometry;
+}
 
-    auto& v0 = vbuf[vpos++];
-    v0.PosX = pos.x;
-    v0.PosY = pos.y + pos.height;
-    v0.PosZ = 0.0f;
-    v0.TexU = _atlasRect.x;
-    v0.TexV = _atlasRect.y + _atlasRect.height;
-    v0.EggFlags[0] = 0.0f;
-    v0.EggFlags[1] = 0.0f;
-    v0.Color = std::get<0>(colors);
+auto AtlasSprite::GetGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry
+{
+    FO_VERIFY_AND_THROW(!_meshData || _meshData->Indices.empty() || _size == _meshData->SourceSize, "Atlas sprite logical size differs from its mesh source size", _size);
 
-    auto& v1 = vbuf[vpos++];
-    v1.PosX = pos.x;
-    v1.PosY = pos.y;
-    v1.PosZ = 0.0f;
-    v1.TexU = _atlasRect.x;
-    v1.TexV = _atlasRect.y;
-    v1.EggFlags[0] = 0.0f;
-    v1.EggFlags[1] = 0.0f;
-    v1.Color = std::get<0>(colors);
+    return PreparedSpriteGeometry {
+        .DrawRect = pos,
+        .TextureRect = _atlasRect,
+        .ColorLeft = std::get<0>(colors),
+        .ColorRight = std::get<1>(colors),
+        .Mesh = _meshData.as_nptr(),
+        .FrameSize = _meshFrameSize,
+    };
+}
 
-    auto& v2 = vbuf[vpos++];
-    v2.PosX = pos.x + pos.width;
-    v2.PosY = pos.y;
-    v2.PosZ = 0.0f;
-    v2.TexU = _atlasRect.x + _atlasRect.width;
-    v2.TexV = _atlasRect.y;
-    v2.EggFlags[0] = 0.0f;
-    v2.EggFlags[1] = 0.0f;
-    v2.Color = std::get<1>(colors);
+auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
+{
+    auto geometry = GetGeometry(pos, colors);
+    size_t vertex_count = GetPreparedSpriteVertexCount(geometry);
+    size_t index_count = GetPreparedSpriteIndexCount(geometry);
 
-    auto& v3 = vbuf[vpos++];
-    v3.PosX = pos.x + pos.width;
-    v3.PosY = pos.y + pos.height;
-    v3.PosZ = 0.0f;
-    v3.TexU = _atlasRect.x + _atlasRect.width;
-    v3.TexV = _atlasRect.y + _atlasRect.height;
-    v3.EggFlags[0] = 0.0f;
-    v3.EggFlags[1] = 0.0f;
-    v3.Color = std::get<1>(colors);
+    if (index_count == 0) {
+        return 0;
+    }
 
-    return 6;
+    dbuf->CheckAllocBuf(vertex_count, index_count);
+    WritePreparedSpriteGeometry(geometry, span<Vertex2D> {dbuf->Vertices}.subspan(dbuf->VertCount, vertex_count), span<vindex_t> {dbuf->Indices}.subspan(dbuf->IndCount, index_count), dbuf->VertCount);
+    dbuf->VertCount += vertex_count;
+    dbuf->IndCount += index_count;
+    return index_count;
 }
 
 auto AtlasSprite::ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>
 {
-    if (_meshData.has_value() && _meshData->Indices.empty()) {
+    if (static_cast<bool>(_meshData) && _meshData->Indices.empty()) {
         return std::nullopt;
     }
 
     isize32 source_size = _size;
-    ipos32 frame_offset = _meshData.has_value() ? _meshData->SourceOffset : ipos32 {};
-    isize32 frame_size = _meshData.has_value() ? ResolveAtlasSpriteFrameSize(*_meshData) : source_size;
+    ipos32 frame_offset = static_cast<bool>(_meshData) ? _meshData->SourceOffset : ipos32 {};
+    isize32 frame_size = static_cast<bool>(_meshData) ? _meshFrameSize : source_size;
     fpos32 requested_begin {
         uv0.x * numeric_cast<float32_t>(source_size.width),
         uv0.y * numeric_cast<float32_t>(source_size.height),
@@ -336,63 +267,16 @@ auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 
         return 0;
     }
 
-    const frect32& draw_rect = region->DrawRect;
-    const frect32& texture_rect = region->TextureRect;
-
+    PreparedSpriteGeometry geometry {
+        .DrawRect = region->DrawRect,
+        .TextureRect = region->TextureRect,
+        .ColorLeft = color,
+        .ColorRight = color,
+    };
     dbuf->CheckAllocBuf(4, 6);
-
-    auto& vbuf = dbuf->Vertices;
-    size_t& vpos = dbuf->VertCount;
-    auto& ibuf = dbuf->Indices;
-    size_t& ipos = dbuf->IndCount;
-
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
-    ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-
-    auto& v0 = vbuf[vpos++];
-    v0.PosX = draw_rect.x;
-    v0.PosY = draw_rect.y + draw_rect.height;
-    v0.PosZ = 0.0f;
-    v0.TexU = texture_rect.x;
-    v0.TexV = texture_rect.y + texture_rect.height;
-    v0.EggFlags[0] = 0.0f;
-    v0.EggFlags[1] = 0.0f;
-    v0.Color = color;
-
-    auto& v1 = vbuf[vpos++];
-    v1.PosX = draw_rect.x;
-    v1.PosY = draw_rect.y;
-    v1.PosZ = 0.0f;
-    v1.TexU = texture_rect.x;
-    v1.TexV = texture_rect.y;
-    v1.EggFlags[0] = 0.0f;
-    v1.EggFlags[1] = 0.0f;
-    v1.Color = color;
-
-    auto& v2 = vbuf[vpos++];
-    v2.PosX = draw_rect.x + draw_rect.width;
-    v2.PosY = draw_rect.y;
-    v2.PosZ = 0.0f;
-    v2.TexU = texture_rect.x + texture_rect.width;
-    v2.TexV = texture_rect.y;
-    v2.EggFlags[0] = 0.0f;
-    v2.EggFlags[1] = 0.0f;
-    v2.Color = color;
-
-    auto& v3 = vbuf[vpos++];
-    v3.PosX = draw_rect.x + draw_rect.width;
-    v3.PosY = draw_rect.y + draw_rect.height;
-    v3.PosZ = 0.0f;
-    v3.TexU = texture_rect.x + texture_rect.width;
-    v3.TexV = texture_rect.y + texture_rect.height;
-    v3.EggFlags[0] = 0.0f;
-    v3.EggFlags[1] = 0.0f;
-    v3.Color = color;
-
+    WritePreparedSpriteGeometry(geometry, span<Vertex2D> {dbuf->Vertices}.subspan(dbuf->VertCount, 4), span<vindex_t> {dbuf->Indices}.subspan(dbuf->IndCount, 6), dbuf->VertCount);
+    dbuf->VertCount += 4;
+    dbuf->IndCount += 6;
     return 6;
 }
 
@@ -467,6 +351,11 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
     copy->RefreshParams();
 
     return copy;
+}
+
+auto SpriteSheet::PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
+{
+    return GetCurSpr()->PrepareGeometry(pos, colors);
 }
 
 auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
@@ -761,3 +650,4 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 }
 
 FO_END_NAMESPACE
+

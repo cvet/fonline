@@ -8,11 +8,13 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8a2a88908d7d12dd2ccab56ac1a5774c1606750403738b97b3888220aba48e3c"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1cda421297fffff761421506c128023d702a7879fddeaa23fa559ef95b3840d9"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Подготовленная геометрия 2D-спрайтов, meshes, regions и glyphs строится пакетами на клиентских workers. Выбранный кадр и неизменяемые данные mesh фиксируются до dispatch; расчёт завершается перед GPU upload, чтением wireframe или внешним callback неподдерживаемого sprite, а прерывание кадра удаляет ожидающие команды. `Render.ParallelSpriteGeometryMinCount` начинается с предварительного 128; `Client.Multithreading` по умолчанию остаётся выключенным до замеров нагрузок. После новой настройки и изменения интерфейса sprite пересоберите native consumers и перезапеките согласованную metadata.
 
 - Опубликованная ветка клиентских workers объединена с master 2026.1.37-dev с сохранением обоих опубликованных tips. Интегрированы Managed dictionary calls и разделение владельцев scripting tests. Проверка фаз поз моделей остаётся в backend-neutral client suite; исполнение renderer/resources и runtime defaults этой интеграцией не меняется.
 

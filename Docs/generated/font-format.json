@@ -947,6 +947,35 @@
   ],
   "rendering_rules": [
     {
+      "id": "font-format.rendering.cpu-geometry",
+      "name": "Owner-prepared glyph geometry",
+      "stability": "internal",
+      "requirement": "Keep layout and font access on the application thread; submit immutable glyph values in draw order and complete their geometry before buffer upload.",
+      "rationale": "Glyphs share the pure sprite geometry kernel. Serial mode writes directly; optional client workers process disjoint reserved ranges without renderer or font-manager access.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "SubmitSpriteGeometry",
+            "PreparedSpriteGeometry"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "CompleteSpriteGeometry",
+            "SpriteGeometryBatch"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteGeometry.cpp",
+          "anchors": [
+            "WritePreparedSpriteGeometry"
+          ]
+        }
+      ]
+    },
+    {
       "id": "font-format.rendering.one-pixel-sampling-border",
       "name": "One-pixel sampling border",
       "stability": "experimental",
@@ -1237,18 +1266,18 @@
     }
   ],
   "summary": {
-    "entry_count": 57,
+    "entry_count": 58,
     "format_count": 3,
     "fofnt_field_count": 13,
     "bmfont_rule_count": 9,
     "binding_rule_count": 8,
     "layout_rule_count": 9,
-    "rendering_rule_count": 7,
+    "rendering_rule_count": 8,
     "validation_rule_count": 8,
     "entries_by_stability": {
       "experimental": 55,
-      "internal": 2
+      "internal": 3
     }
   },
-  "contract_digest": "692f92b10e1d76357c3dc9372a342693e754ac83b3cea32f302f88b40ba3d0dc"
+  "contract_digest": "7eeede33d884e5c437eb3e6dc4df8a7f936dae14cd3e96c3e192b8b77224dd14"
 }

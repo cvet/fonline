@@ -1186,12 +1186,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     size_t str_len = format_str.size();
     _sprMngr->_spritesDrawBuf->CheckAllocBuf(str_len * 4, str_len * 6);
 
-    auto& vbuf = _sprMngr->_spritesDrawBuf->Vertices;
-    size_t& vpos = _sprMngr->_spritesDrawBuf->VertCount;
-    auto& ibuf = _sprMngr->_spritesDrawBuf->Indices;
-    size_t& ipos = _sprMngr->_spritesDrawBuf->IndCount;
-
-    size_t start_ipos = ipos;
+    size_t start_ipos = _sprMngr->_spritesDrawBuf->IndCount;
 
     bool variable_space = false;
     int32_t i_advance;
@@ -1254,64 +1249,19 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             float32_t h = numeric_cast<float32_t>(l.Size.height + 2);
 
             const frect32& texture_uv = is_enum_set(flags, FontFlag::Bordered) ? l.TexBorderedPos : l.TexPos;
-            float32_t x1 = texture_uv.x;
-            float32_t y1 = texture_uv.y;
-            float32_t x2 = texture_uv.x + texture_uv.width;
-            float32_t y2 = texture_uv.y + texture_uv.height;
-
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 0);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 1);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 2);
-            ibuf[ipos++] = numeric_cast<vindex_t>(vpos + 3);
-
-            auto& v0 = vbuf[vpos++];
-            v0.PosX = x;
-            v0.PosY = y + h;
-            v0.PosZ = 0.0f;
-            v0.TexU = x1;
-            v0.TexV = y2;
-            v0.EggFlags[0] = 0.0f;
-            v0.EggFlags[1] = 0.0f;
-            v0.Color = color;
-
-            auto& v1 = vbuf[vpos++];
-            v1.PosX = x;
-            v1.PosY = y;
-            v1.PosZ = 0.0f;
-            v1.TexU = x1;
-            v1.TexV = y1;
-            v1.EggFlags[0] = 0.0f;
-            v1.EggFlags[1] = 0.0f;
-            v1.Color = color;
-
-            auto& v2 = vbuf[vpos++];
-            v2.PosX = x + w;
-            v2.PosY = y;
-            v2.PosZ = 0.0f;
-            v2.TexU = x2;
-            v2.TexV = y1;
-            v2.EggFlags[0] = 0.0f;
-            v2.EggFlags[1] = 0.0f;
-            v2.Color = color;
-
-            auto& v3 = vbuf[vpos++];
-            v3.PosX = x + w;
-            v3.PosY = y + h;
-            v3.PosZ = 0.0f;
-            v3.TexU = x2;
-            v3.TexV = y2;
-            v3.EggFlags[0] = 0.0f;
-            v3.EggFlags[1] = 0.0f;
-            v3.Color = color;
+            (void)_sprMngr->SubmitSpriteGeometry(PreparedSpriteGeometry {
+                .DrawRect = {x, y, w, h},
+                .TextureRect = texture_uv,
+                .ColorLeft = color,
+                .ColorRight = color,
+            });
 
             curx += l.XAdvance;
             variable_space = true;
         }
     }
 
-    size_t ind_count = ipos - start_ipos;
+    size_t ind_count = _sprMngr->_spritesDrawBuf->IndCount - start_ipos;
 
     if (ind_count != 0) {
         if (_sprMngr->_dipQueue.empty() || _sprMngr->_dipQueue.back().MainTexture != texture || _sprMngr->_dipQueue.back().SourceEffect != font->DrawEffect) {
@@ -1403,3 +1353,4 @@ auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
 }
 
 FO_END_NAMESPACE
+

@@ -66,14 +66,22 @@ public:
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
     [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
+
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
+private:
+    [[nodiscard]] auto GetGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry;
+
 protected:
+    [[nodiscard]] auto PrepareAtlasGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry;
+
     nptr<TextureAtlas> _atlas {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
-    optional<SpriteMeshData> _meshData {};
+    shared_ptr<const SpriteMeshData> _meshData {};
+    isize32 _meshFrameSize {};
     unique_del_nptr<TextureAtlasLayout::Allocation> _atlasAllocation {};
 };
 
@@ -108,6 +116,8 @@ public:
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
     [[nodiscard]] auto GetDirCount() const noexcept -> int32_t { return _dirCount; }
     [[nodiscard]] auto GetSprOffset() const noexcept -> const_span<ipos32> { return _sprOffset; }
+
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
@@ -160,3 +170,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

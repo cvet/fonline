@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"f645e27ebac9f39b6c9c83031aeef8fcb1e1493b3e3c7c1a7fedc0b5147275d4"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a28fe5840d0e1cbea7cc0afa832650fff8260a9a4a13d582028d3b00656d9fdd"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1156,3 +1156,7 @@ Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 - Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).
 
 Рендерер остаётся на потоке приложения при включении [многопоточности клиента](../runtime/client-multithreading.md); CPU-пакеты поз не владеют GPU-объектами и записью команд.
+
+### CPU-пакеты геометрии
+
+Спрайты атласа, quad областей и глифы шрифта используют общий чистый kernel `WritePreparedSpriteGeometry`. Поток приложения фиксирует неизменяемые входы, резервирует смещения выходных диапазонов и сохраняет порядок отрисовки. При включённых client workers геометрия завершается до upload и до чтения буфера wireframe или внешним sprite; смена render target и scissor сохраняет прежние границы flush. Последовательный клиент вызывает kernel напрямую. Поворот карты, flattening, глубина стоящего спрайта и оба egg flags передаются значениями; workers не читают сущности карты. В [многопоточности клиента](../runtime/client-multithreading.md#геометрия-спрайтов-и-глифов) описаны время жизни, исключения, пороги и ограничения замеров.

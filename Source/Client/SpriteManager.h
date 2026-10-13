@@ -41,6 +41,7 @@
 #include "MapSprite.h"
 #include "RenderTarget.h"
 #include "Settings.h"
+#include "SpriteGeometry.h"
 #include "TextureAtlas.h"
 #include "VisualParticles.h"
 #include "WorkScheduler.h"
@@ -102,6 +103,12 @@ public:
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
+    [[nodiscard]] virtual auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
+    {
+        ignore_unused(pos, colors);
+        return std::nullopt;
+    }
+
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
@@ -258,6 +265,13 @@ public:
     void InvalidateEgg();
 
 private:
+    struct GeometryCommand
+    {
+        PreparedSpriteGeometry Geometry {};
+        size_t VertexOffset {};
+        size_t IndexOffset {};
+    };
+
     struct EggSlot
     {
         bool Valid {};
@@ -274,6 +288,10 @@ private:
 
     void UpdateSprites();
     void PrepareSpriteCpuUpdates();
+    auto FillSpriteGeometry(ptr<const Sprite> sprite, const frect32& pos, const tuple<ucolor, ucolor>& colors, const PreparedSpriteTransform& transform = {}) -> size_t;
+    auto FillSpriteRegionGeometry(ptr<const AtlasSprite> sprite, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) -> size_t;
+    auto SubmitSpriteGeometry(PreparedSpriteGeometry geometry) -> size_t;
+    void CompleteSpriteGeometry();
     void FlushBatch();
     void RefreshScissor();
     void EnableScissor();
@@ -311,6 +329,7 @@ private:
     bool _sceneBackgroundValid {};
 
     vector<DipData> _dipQueue {};
+    vector<GeometryCommand> _geometryQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};
     vector<Vertex2D> _spriteWireframeVertices {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf;
@@ -331,3 +350,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

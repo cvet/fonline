@@ -382,6 +382,7 @@ void SpriteManager::AbortScene() noexcept
 {
     // Runs on the unwind path, so it hands the renderer back as it was found — dropped draws, released scissor and
     // render target — and reports rather than raises the one step that can fail on an already-gone render context
+    _geometryQueue.clear();
     _dipQueue.clear();
     _spriteWireframeVertices.clear();
     _spritesDrawBuf->VertCount = 0;
@@ -729,6 +730,102 @@ void SpriteManager::CleanupSpriteCache()
     _atlasMngr.CleanupAtlases();
 }
 
+auto SpriteManager::FillSpriteGeometry(ptr<const Sprite> sprite, const frect32& pos, const tuple<ucolor, ucolor>& colors, const PreparedSpriteTransform& transform) -> size_t
+{
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        if (auto geometry = sprite->PrepareGeometry(pos, colors)) {
+            geometry->Transform = transform;
+            return SubmitSpriteGeometry(std::move(*geometry));
+        }
+
+        CompleteSpriteGeometry();
+    }
+
+    size_t start_vertex = _spritesDrawBuf->VertCount;
+    size_t index_count = sprite->FillData(_spritesDrawBuf, pos, colors);
+    TransformPreparedSpriteGeometry(transform, span<Vertex2D> {_spritesDrawBuf->Vertices}.subspan(start_vertex, _spritesDrawBuf->VertCount - start_vertex));
+    return index_count;
+}
+
+auto SpriteManager::FillSpriteRegionGeometry(ptr<const AtlasSprite> sprite, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) -> size_t
+{
+    if (!_workScheduler || !_workScheduler->IsParallel()) {
+        return sprite->FillRegionData(_spritesDrawBuf, uv0, uv1, pos, color);
+    }
+
+    auto region = sprite->ResolveRegion(uv0, uv1, pos);
+
+    if (!region) {
+        return 0;
+    }
+
+    return SubmitSpriteGeometry(PreparedSpriteGeometry {
+        .DrawRect = region->DrawRect,
+        .TextureRect = region->TextureRect,
+        .ColorLeft = color,
+        .ColorRight = color,
+    });
+}
+
+auto SpriteManager::SubmitSpriteGeometry(PreparedSpriteGeometry geometry) -> size_t
+{
+    size_t vertex_count = GetPreparedSpriteVertexCount(geometry);
+    size_t index_count = GetPreparedSpriteIndexCount(geometry);
+
+    if (index_count == 0) {
+        return 0;
+    }
+
+    _spritesDrawBuf->CheckAllocBuf(vertex_count, index_count);
+    size_t vertex_offset = _spritesDrawBuf->VertCount;
+    size_t index_offset = _spritesDrawBuf->IndCount;
+
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        _geometryQueue.emplace_back(GeometryCommand {std::move(geometry), vertex_offset, index_offset});
+    }
+    else {
+        WritePreparedSpriteGeometry(geometry, span<Vertex2D> {_spritesDrawBuf->Vertices}.subspan(vertex_offset, vertex_count), span<vindex_t> {_spritesDrawBuf->Indices}.subspan(index_offset, index_count), vertex_offset);
+    }
+
+    _spritesDrawBuf->VertCount += vertex_count;
+    _spritesDrawBuf->IndCount += index_count;
+    return index_count;
+}
+
+void SpriteManager::CompleteSpriteGeometry()
+{
+    if (_geometryQueue.empty()) {
+        return;
+    }
+
+    FO_TRACE_ZONE_NAMED(Render, "SpriteGeometryBatch");
+
+    auto clear_commands = scope_exit([this]() noexcept { _geometryQueue.clear(); });
+    auto discard_failed_batch = scope_fail([this]() noexcept {
+        _dipQueue.clear();
+        _spriteWireframeVertices.clear();
+        _spritesDrawBuf->VertCount = 0;
+        _spritesDrawBuf->IndCount = 0;
+    });
+    const_span<GeometryCommand> commands {_geometryQueue};
+    span<Vertex2D> vertices {_spritesDrawBuf->Vertices};
+    span<vindex_t> indices {_spritesDrawBuf->Indices};
+    auto write_geometry = [commands, vertices, indices](size_t index) {
+        const auto& command = commands[index];
+        WritePreparedSpriteGeometry(command.Geometry, vertices.subspan(command.VertexOffset, GetPreparedSpriteVertexCount(command.Geometry)), indices.subspan(command.IndexOffset, GetPreparedSpriteIndexCount(command.Geometry)), command.VertexOffset);
+    };
+    size_t min_count = numeric_cast<size_t>(std::max(_settings->Render.ParallelSpriteGeometryMinCount, 2));
+
+    if (_workScheduler && _workScheduler->ShouldRunParallel(commands.size(), min_count)) {
+        _workScheduler->RunBatch("SpriteGeometry", commands.size(), std::max<size_t>(min_count / 2, 1), write_geometry);
+    }
+    else {
+        for (size_t index = 0; index < commands.size(); index++) {
+            write_geometry(index);
+        }
+    }
+}
+
 void SpriteManager::Flush()
 {
     // Every render target switch flushes, and most find nothing queued, so only a real batch opens a zone
@@ -743,6 +840,7 @@ void SpriteManager::FlushBatch()
 {
     FO_TRACE_ZONE(Render);
 
+    CompleteSpriteGeometry();
     _spritesDrawBuf->Upload(EffectUsage::QuadSprite);
 
     EnableScissor();
@@ -789,6 +887,8 @@ void SpriteManager::FlushBatch()
 
 void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
 {
+    CompleteSpriteGeometry();
+
     FO_VERIFY_AND_THROW(index_count % 3 == 0, "Sprite wireframe source indices are not grouped by triangles", start_index, index_count);
     FO_VERIFY_AND_THROW(start_index <= _spritesDrawBuf->IndCount && index_count <= _spritesDrawBuf->IndCount - start_index, "Sprite wireframe source range is outside the index buffer", start_index, index_count, _spritesDrawBuf->IndCount);
 
@@ -862,7 +962,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
     color = ApplyColorBrightness(color);
 
     size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
+    size_t ind_count = FillSpriteGeometry(spr, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
         if (_drawWireframe) {
@@ -925,7 +1025,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
     color = ApplyColorBrightness(color);
 
     size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
+    size_t ind_count = FillSpriteGeometry(spr, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
         if (_drawWireframe) {
@@ -963,7 +1063,7 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
 
     color = ApplyColorBrightness(color);
 
-    size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, uv0, uv1, frect32 {pos, size}, color);
+    size_t ind_count = FillSpriteRegionGeometry(atlas_spr, uv0, uv1, frect32 {pos, size}, color);
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -1021,7 +1121,7 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
         for (float32_t xx = numeric_cast<float32_t>(pos.x); xx < end_x; xx += width) {
             float32_t local_width = std::min(width, end_x - xx);
             fpos32 uv1 {local_width / width, local_height / height};
-            size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, {}, uv1, {xx, yy, local_width, local_height}, color);
+            size_t ind_count = FillSpriteRegionGeometry(atlas_spr, {}, uv1, {xx, yy, local_width, local_height}, color);
 
             if (ind_count != 0) {
                 if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -1247,62 +1347,35 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
         float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
-        size_t start_vpos = _spritesDrawBuf->VertCount;
         size_t start_ipos = _spritesDrawBuf->IndCount;
-        size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
-
-        auto& vbuf = _spritesDrawBuf->Vertices;
-        bool standing_sprite = is_standing_sprite(draw_order);
         vec3 sprite_proj = get_map_sprite_proj(mspr.get());
-        float32_t pos_z = sprite_proj.z;
-
-        for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-            vbuf[j].PosZ = pos_z;
-        }
-
-        // Rotation and map-projected flattening
+        PreparedSpriteTransform transform {
+            .MapSprite = true,
+            .ProjectionY = sprite_proj.y,
+            .ProjectionZ = sprite_proj.z,
+        };
         int16_t angle_deg = mspr->GetAngle();
         bool use_map_projected = mspr->GetMapProjected();
 
         if (angle_deg != 0 || use_map_projected) {
             float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
-            float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
-            float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-            float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
-            float32_t cx = xf + wf * 0.5f;
-            float32_t cy = yf + hf * 0.5f;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t dx = vbuf[j].PosX - cx;
-                float32_t dy = vbuf[j].PosY - cy;
-                vbuf[j].PosX = cx + dx * cs - dy * sn;
-                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
-            }
+            transform.Rotate = true;
+            transform.Center = {xf + wf * 0.5f, yf + hf * 0.5f};
+            transform.CosAngle = angle_deg != 0 ? std::cos(rad) : 1.0f;
+            transform.SinAngle = angle_deg != 0 ? std::sin(rad) : 0.0f;
+            transform.YScale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
         }
 
-        if (standing_sprite) {
-            float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
+        if (is_standing_sprite(draw_order)) {
+            transform.Standing = true;
+            transform.SceneRootY = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
             float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-            float32_t sin_a = std::sin(angle_rad);
-            float32_t cos_a = std::cos(angle_rad);
-            float32_t tan_a = sin_a / cos_a;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
-                vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
-            }
+            transform.DepthSlope = std::sin(angle_rad) / std::cos(angle_rad);
         }
 
-        // Setup eggs
-        bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr);
-        bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr);
-
-        if (use_first_egg || use_second_egg) {
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
-                vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
-            }
-        }
+        transform.EggFlags[0] = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr) ? EGG_ENABLED_FLAG : 0.0f;
+        transform.EggFlags[1] = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr) ? EGG_ENABLED_FLAG : 0.0f;
+        size_t ind_count = FillSpriteGeometry(spr, {xf, yf, wf, hf}, {color_l, color_r}, transform);
 
         if (ind_count != 0) {
             if (_drawWireframe) {
@@ -1563,3 +1636,4 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 }
 
 FO_END_NAMESPACE
+

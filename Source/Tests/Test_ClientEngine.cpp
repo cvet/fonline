@@ -1578,7 +1578,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 
-    SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
+    SECTION("Moving an atlas sprite preserves the allocation mesh observer")
     {
         TextureAtlasLayout layout {{12, 12}};
         auto atlas_allocation = layout.Allocate({12, 12});
@@ -1591,11 +1591,10 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
         {
             AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
-            nptr<const SpriteMeshData> source_mesh = allocation_observer->GetSpriteMesh();
             AtlasSprite moved {std::move(source)};
 
             REQUIRE(allocation_observer->GetSpriteMesh());
-            CHECK(allocation_observer->GetSpriteMesh() != source_mesh);
+            CHECK(allocation_observer->GetSpriteMesh()->Vertices == vector<ipos32> {{0, 0}, {5, 5}, {10, 0}});
             auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
             CHECK(moved.FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         }

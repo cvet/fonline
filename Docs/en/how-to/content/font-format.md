@@ -351,3 +351,7 @@ For an embedding-project font change:
 The focused generated checks prove the documented source contract. Only the
 embedding project can prove its glyph coverage, typography, UI fit, rendering
 backend behavior, and asset rights.
+
+## Glyph geometry ownership
+
+Text layout and font-atlas access stay on the application thread. `FontManager::DrawText` submits value-only glyph quads to the same `SpriteGeometry` kernel as atlas sprites, preserving glyph order, UV borders, colors and the current effect/texture batching. With `Client.Multithreading` enabled, large geometry queues can execute on CPU workers and complete before upload. Without workers, glyphs are written directly. See [client multithreading](../../explanation/runtime/client-multithreading.md#sprite-and-glyph-geometry); this adds no concurrent text-layout or renderer access.

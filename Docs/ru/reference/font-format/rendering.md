@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-font-format-rendering","locale":"ru","source_path":"Docs/en/reference/font-format/rendering.md","source_sha256":"875e346b57fca64b74a409c445afe2a6044a375ccb9c7175536dd94fce88cde9"} -->
+<!-- docs-translation: {"document_id":"generated-font-format-rendering","locale":"ru","source_path":"Docs/en/reference/font-format/rendering.md","source_sha256":"c26aa1a4893a5acbaabdde01fc15d8c4cada3246606b54336b86eb3d692be25c"} -->
 
 # Контракт отрисовки шрифтов
 
@@ -15,6 +15,7 @@ generated: true
 
 | Стабильный ID | Правило | Требование | Причина | Источник |
 | --- | --- | --- | --- | --- |
+| <a id="entry-font-format-rendering-cpu-geometry-06507ead44"></a><code>font-format.rendering.cpu-geometry</code> | Подготовленная владельцем геометрия глифов | Компоновка и доступ к шрифтам остаются на потоке приложения; неизменяемые значения глифов передаются в порядке отрисовки, а их геометрия завершается до загрузки буфера. | Глифы используют общий чистый kernel геометрии спрайтов. Последовательный режим пишет напрямую; необязательные client workers обрабатывают непересекающиеся зарезервированные диапазоны без доступа к renderer или менеджеру шрифтов. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp), [Source/Client/SpriteManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.cpp), [Source/Client/SpriteGeometry.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteGeometry.cpp) |
 | <a id="entry-font-format-rendering-one-pixel-sampling-border-c99645ca3f"></a><code>font-format.rendering.one-pixel-sampling-border</code> | Однопиксельная рамка выборки | Оставляйте не менее одного пикселя корректного прозрачного отступа вокруг каждого прямоугольника глифа и по краю изображения. | Координаты текстуры и передаваемые quad расширяют каждый видимый глиф на один пиксель со всех сторон. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
 | <a id="entry-font-format-rendering-grayscale-tint-2eb10fd758"></a><code>font-format.rendering.grayscale-tint</code> | Нормализация серого и тонирование | Используйте завершающий * в FOFNT Image или бинарный BMFont, когда растр должен нормализоваться в средне-серый и тонироваться цветом отрисовки. | RGB непрозрачных пикселей становится 128/128/128 при сохранении альфа-канала; прозрачные пиксели очищаются. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |
 | <a id="entry-font-format-rendering-bordered-copy-891143d814"></a><code>font-format.rendering.bordered-copy</code> | Копия атласа с обводкой | Резервируйте прозрачный отступ для однопиксельного чёрного расширения; FontFlag::Bordered выбирает сгенерированную вторую текстуру. | Загрузчик дублирует изображение и заполняет прозрачных соседей видимых пикселей до расчёта UV обводки. | [Source/Client/FontManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.cpp) |

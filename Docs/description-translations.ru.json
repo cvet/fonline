@@ -10369,6 +10369,10 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=setting.common.Render.ParallelSpriteGeometryMinCount/description": {
+          "source_sha256": "d64be1149950c8607ff9c029f6580ca704caf8e978e218f997cf6fde54b95897",
+          "translation": "Предварительное минимальное число команд геометрии в CPU-пачке; перед настройкой порога измеряйте каждую нагрузку."
         }
       }
     },
@@ -11978,6 +11982,18 @@
     },
     "font-format": {
       "entries": {
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/name": {
+          "source_sha256": "c0fe6a731b144b0b0e173f76ab379f3c2313ff11ab8abfe1050a90afee14836b",
+          "translation": "Подготовленная владельцем геометрия глифов"
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/rationale": {
+          "source_sha256": "bd107a18b662c0baf00a3d0cf0a9ff99921c420c5e1c482eb5e05e1853c21302",
+          "translation": "Глифы используют общий чистый kernel геометрии спрайтов. Последовательный режим пишет напрямую; необязательные client workers обрабатывают непересекающиеся зарезервированные диапазоны без доступа к renderer или менеджеру шрифтов."
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/requirement": {
+          "source_sha256": "70774f9cd91a61f192812a8d64cec699052a0a4b9ddf283f664c3a3a8033267a",
+          "translation": "Компоновка и доступ к шрифтам остаются на потоке приложения; неизменяемые значения глифов передаются в порядке отрисовки, а их геометрия завершается до загрузки буфера."
+        },
         "/binding_rules/@id=font-format.binding.bind-time-scale/name": {
           "source_sha256": "1f5094833fd46338b8988f4b50d204a697cdc2971dfdf26211f98b2adbc31306",
           "translation": "Уменьшение при привязке"
