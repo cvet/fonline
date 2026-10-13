@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"08c7eed4dfaa381b091df6d5c2581feb8117fc38d9a6077978d7c2d8057b4992"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"cf5f6423c14e87de297d42b75249c486ae1560b29d5e94388178c58899cb9236"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -24,6 +24,8 @@ document_id: unit-tests-readme
 ## Текущие наборы тестов
 
 Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+
+`Test_ClientEntityLifetime.cpp` выполняется с любым scripting backend. Он проверяет, что результат поиска в registry остаётся живым при освобождении последней другой ссылки из другого потока и что старая сущность не может удалить регистрацию новой сущности с тем же id.
 
 После добавления, удаления или переименования файла `Test_*.cpp` перегенерируйте инвентарь из корня движка:
 

@@ -12,6 +12,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Merge the published client-worker branch with master 2026.1.37-dev, preserving both published tips. Integrate Managed dictionary calls and the scripting-test ownership split. Keep model pose phase checks in the backend-neutral client suite; renderer/resource execution and runtime defaults are unchanged in this integration.
+
+
 - Rebase the unpublished client-worker integration onto published master 2026.1.36-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the five intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
 
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
@@ -26,6 +29,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Apply the intervening 2026.1.14-dev through 2026.1.28-dev migration records below. Reconfigure and rebuild matching binaries, regenerate contracts with their current experimental labels, prepare documentation outputs, and fully rebake the project. No additional database or protocol conversion is introduced by this branch reconciliation.
+
 
 
 ## Current - 2026-10-13

@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"96a68755956482b8c30791e83a8871bbbfa8c1dbd6b914479a069154da6667a7"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"7092e6ee68d984180a8f55f41e0bd1753bbffe6818e028241117c15efb2d1d33"} -->
 
 # Необязательная многопоточность клиента
 
