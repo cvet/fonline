@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"9665faec8b82a99e0e346c4ebc5b7992501e09d5162f3272a5ca06ed1bc26952"} -->
 Этот документ описывает переиспользуемые примитивы координат карты, движения, поиска пути, трассировки линий и загрузки карт, которыми пользуются клиентская и серверная среды выполнения и инструменты.
 
 Синтаксис разделов `.fomap`, идентичность и владение размещёнными объектами, обратимый цикл Mapper, зависящий от стороны baking и материализацию содержимого в runtime см. в [формате карт](../how-to/content/map-format.md). Эта страница отвечает за семантику геометрии и движения.
@@ -328,6 +328,7 @@ static void Load(
 - `Source/Tests/Test_MapLoader.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## Маршрутизация изменений
 

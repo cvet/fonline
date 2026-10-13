@@ -78,6 +78,7 @@ Read this page together with:
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
@@ -108,7 +109,7 @@ A typical client lifetime has these phases:
 1. **Application initialization** happens in the frontend layer. `Application` owns the main window, renderer, input, and audio. See [Frontend and Rendering](../rendering/).
 2. **Resource filesystem selection** starts through `GetClientResources(const ClientSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers and by the updater's local metadata-version check. Installed clients add a higher-priority writable resource overlay above the read-only base resources; see [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) and [Client Updater](client-updater.md).
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
-4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
+4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_AngelScriptClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
 6. **Network connection** starts with `Connect()`, which delegates transport setup and handshake work to `ClientConnection`.
 7. **Map and entity state** arrive through network messages, are represented as client view entities, and are updated through property sync and movement/action packets.
@@ -607,8 +608,11 @@ A plan the receiver's copy of the critter has partly walked already — the cont
 
 Use the smallest relevant test scope when changing client runtime behavior:
 
-- `Source/Tests/Test_ClientEngine.cpp` — self-contained client engine startup, entity registration, script module initialization, and loop callbacks.
-- `Source/Tests/Test_ClientServerIntegration.cpp` — client/server handshake over interthread transport and observable client connection events.
+- `Source/Tests/Test_ClientEngine.cpp` — native client construction, entity registration and rendering resources with either scripting backend.
+- `Source/Tests/Test_AngelScriptClientEngine.cpp` — AngelScript initialization, loop callbacks and client bindings.
+- `Source/Tests/Test_ManagedScriptRuntime.cpp` — real managed client assembly loading and module initialization.
+- `Source/Tests/Test_ClientServerIntegration.cpp` — native transport, malformed payload and connection behavior.
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp` — client/server handshake, login, shared maps and connection events through AngelScript.
 - `Source/Tests/Test_ClientDataValidation.cpp` — inbound remote-call payload validation for UTF-8, enums, floats, hashed strings, bools, truncation, and ref-type payloads.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` — client runtime ABI/export/result validation for the host/runtime split described in [Client Updater](client-updater.md).
 

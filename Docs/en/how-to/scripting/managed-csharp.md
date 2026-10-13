@@ -137,6 +137,8 @@ Inbound remote-call handlers may return `void`, `Task`, or `Task<T>`. Remote cal
 
 Callback and remote-call arguments keep their metadata shape: native `any[]` arrives as `List<any>` and `string=>any` as `Dictionary<string, any>`. The bridge does not adapt these into `List<object>` or string dictionaries; declare the exact generated types.
 
+`[CallableFromNative]` methods register under `TypeName::MethodName`. `List<T>` and `Dictionary<K,V>` parameters and results use Engine array and dictionary descriptors when their element/key/value types are supported simple Engine types. The native registration resolves `K=>V` before array syntax; dictionaries with collection values remain outside this callback bridge. By-reference registration currently supports the built-in `(Critter, Critter, ref string)` delegates. `Test_ManagedScriptRuntime.cpp` checks these calls through real compiled assemblies, including dictionary arguments and returned values.
+
 ## Async and continuation scheduling
 
 `Game.YieldAsync(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.

@@ -33,9 +33,7 @@
 
 #include "catch_amalgamated.hpp"
 
-#include <future>
-#include <thread>
-
+#include "Common.h"
 #include "NetSockets.h"
 #include "NetworkServer.h"
 #include "ServerConnection.h"
@@ -475,6 +473,26 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     auto settings = MakeServerNetworkSettings();
 
+    // Accept rearming precedes detached exception reporting; own that report before the next test changes the log sink
+    auto report_promise = safe_alloc::make_shared<std::promise<bool>>();
+    auto report_future = report_promise->get_future();
+    auto previous_exception_callback = exceptions::get_callback();
+    exceptions::set_callback([report_promise, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) mutable {
+        if (message == "test accept callback failure") {
+            report_promise->set_value(fatal);
+            return;
+        }
+
+        if (previous_exception_callback) {
+            previous_exception_callback(message, trace, fatal);
+        }
+        else {
+            logging::write_base(strex("{}\n", message), &trace);
+            logging::write_base("\n\n");
+        }
+    });
+    auto restore_exception_callback = scope_exit([previous_exception_callback]() noexcept { exceptions::set_callback(previous_exception_callback); });
+
     std::atomic_int callback_count {};
     std::promise<shared_ptr<NetworkServerConnection>> second_connection_promise;
     auto second_connection_future = second_connection_promise.get_future();
@@ -525,6 +543,9 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     second_connection->Disconnect();
     second_client.close();
+
+    REQUIRE(report_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    CHECK_FALSE(report_future.get());
 }
 
 TEST_CASE("NetworkServerAsioShutdownDisconnectsAcceptedConnections")
@@ -725,3 +746,4 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 #endif
 
 FO_END_NAMESPACE
+

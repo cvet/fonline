@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"fc9fcddf0fe6325c30648fd7cdf5a535ac3151d76edcf93e6862adf02e61f214"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"bfa5d83284c841c1ddafbf7f046d0d920ab878f2018e965fba341fe0c392cfc5"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -101,10 +101,12 @@ dispatchers в другой форме. Указывайте только док
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
 
 ## Модель runtime
 
@@ -385,7 +387,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 | Server cover, singleton lock или access validation | `Test_EntitySync`, затронутые script-method/entity tests и runtime-путь проекта. |
 | Cover входящего server remote call | Server runtime/remote-call tests и handler, читающий controlled critter вызывающего. |
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |
-| Authoring или runtime resolution `InitScript` | `Test_ServerMapOperations`, специализированные baker tests и bake подключающего проекта. |
+| Authoring или runtime resolution `InitScript` | `Test_AngelScriptServerMapOperations`, специализированные baker tests и bake подключающего проекта. |
 | Lifetime callback/time event сущности | Entity/time-event tests и smoke path destruction либо shutdown. |
 | Lifetime script object или shutdown GC | AngelScript: `Test_AngelScriptCall` и engine shutdown smoke; Managed: callback-GC/load-context tests и managed runtime shutdown smoke. |
 | Только поведение проектного скрипта | Bake подключающего проекта и самый узкий gameplay/scene test. |

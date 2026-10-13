@@ -40,13 +40,17 @@ Use this page when choosing native validation for an engine change or when addin
 
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
-Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires both `FO_ENABLE_3D` and `FO_ANGELSCRIPT_SCRIPTING`; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
+Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires `FO_ENABLE_3D` and runs with either scripting backend; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
 
 The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
 
 `Test_SpriteSheet.cpp` uses a native resolver and stub frontend with either scripting
 backend. It checks first/cache-hit copies, initial geometry, first/last frame
 extraction, directional/shared offsets and copying trimmed sheets.
+
+`FO_TESTS_SOURCE` is unconditional: every engine-owned test translation unit is registered in every configuration. `Test_AngelScript*.cpp` and `Test_ManagedScript*.cpp` own source-wide guards for their respective backend; disabled suites register no Catch2 cases. Backend-neutral engine, entity, persistence, networking, map, rendering and Mapper checks keep their general filenames and run with either backend. Shared `Test_*Helpers.h` fixtures compile inline `.fos` resources only for AngelScript; their native resources do not require scripts in Managed builds. Cases moved out of mixed suites also receive an `AngelScript` prefix.
+
+`Test_ManagedScriptRuntime.cpp` compiles the engine-owned `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` with the real `ManagedScriptBaker` and .NET SDK, then loads its server/client/mapper assemblies. It checks module initialization, critter events, native-to-managed calls, array arguments/results, dictionaries, UTF-8 and by-reference strings, hashes, nullable entity handles, exception reporting and isolation of two simultaneously live servers. It requires the SDK for `ManagedScript.TargetFramework` and the configured managed runtime payload; dry-run markers are not runtime evidence. This is focused bridge coverage, not exhaustive parity with every AngelScript export scenario.
 
 ## Running tests
 
@@ -154,6 +158,8 @@ Atlas and render-target dump tests use `TexDumpArtifacts` from
 new directories created by that run. This prevents parallel or interrupted
 test sessions from deleting pre-existing diagnostic evidence and keeps cleanup
 scoped to artifacts the test can prove it owns.
+
+Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
 
@@ -348,7 +354,6 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
@@ -358,17 +363,27 @@ Use these ownership groups to choose a starting area; the filenames are represen
 ### Scripting and script-visible APIs
 
 - `Source/Tests/Test_AngelScriptAlignment.cpp`
+- `Source/Tests/Test_AngelScriptServerAdvancedOps.cpp`
+- `Source/Tests/Test_ManagedScriptRuntime.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerItems.cpp`
+- `Source/Tests/Test_AngelScriptServerEngine.cpp`
+- `Source/Tests/Test_AngelScriptMapper.cpp`
+- `Source/Tests/Test_AngelScriptLocationAndEntityMgmt.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptClientServerIntegration.cpp`
+- `Source/Tests/Test_AngelScriptClientEngine.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — compiled-bytecode document migrations on a real server: signature rejection, typed detached values/context, conditional identity domains, idempotency, atomic exceptions, and prototype chains/defaults.
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptBuiltins.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptServerScriptMethods.cpp`
 
-The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
+The AngelScript suites cover its compiler/runtime, bytecode, call bridge, attributes, builtins, and baker. Managed C# has separate evidence layers: `Test_ManagedScriptBaker.cpp` covers native baker generation; `Test_ManagedScriptRuntime.cpp` covers real compiled assemblies and bridge execution; `BuildTools/tests/test_managed_*.py` covers runtime setup, payloads, platforms, callbacks, GC roots, and packaging; `Source/Scripting/Managed/Analyzers/Tests` exercises the Roslyn synchronization analyzer; and `Source/Scripting/Managed/Tests` exercises CoreScripts and generated API bootstrap. Run `CompileManagedScripts` and then a real Managed resource bake to prove the embedding project's configured sources, target assemblies, and `ManagedRuntime/` payload. These layers complement rather than substitute for the backend-neutral entity/script-method tests.
 
 ### Bakers and tools
 

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"7effe7215671ea9bb187c6fdeb3706d0e15d68fea7369404e7f147e04ea7bbb8"} -->
+<!-- docs-translation: {"document_id":"generated-audio-index","locale":"ru","source_path":"Docs/en/reference/audio/index.md","source_sha256":"0488548ae24059100284b84ec2facdcc107643d763828cebc1a17ef9cbd8d52d"} -->
 
 # Сгенерированный справочник audio
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Авторские входы WAV и нативного Ogg, запечённый payload Ogg, handles звука, обновления позиционирования и поведение клиентского воспроизведения привязаны к ревизии сфокусированными тестами baker и mixer. |
 | Исходный манифест | [BuildTools/AudioInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/AudioInterface.json) |
-| Digest контракта | <code>394916f497737c02d26fe04fa27ac697add44812653a7f6a884d4fc9ee0ced5b</code> |
+| Digest контракта | <code>8805fa8607a51a9b146f3732e31222bf83fcdf86ef353be3f315b22254063bb9</code> |
 | Runtime-форматы | <code>.ogg</code> |
 | Missing-suffix fallback | no |
 | Сторона выполнения | <code>client</code> |

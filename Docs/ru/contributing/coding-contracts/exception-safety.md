@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"dd327906a2cedcb53105117dded22033a9699c9bbd7270efa948d4049af0f62d"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"b52c3c4f0e29304b1a2a6deeffabafc9c2a8ac73981d5fa7b995544c156dafc7"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -130,8 +130,8 @@ catch (...) {
 ## 3. Контракт жизненного цикла сущности (создание / уничтожение)
 
 Жизненный цикл намеренно не является транзакцией с общим откатом. Контракт
-закреплен тестами `Source/Tests/Test_EntityLifecycle.cpp` и
-`Source/Tests/Test_ServerMapOperations.cpp`.
+закреплен тестами `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
+`Source/Tests/Test_AngelScriptServerMapOperations.cpp`.
 
 **Создание** (`CritterManager::CreateCritterOnMap`, `ItemManager::CreateItem`,
 `MapManager::CreateLocation`/`CreateMap`, `ServerEngine::CreateCritter` и
@@ -345,8 +345,8 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 7. Тесты
 
-Контракты закреплены `Source/Tests/Test_EntityLifecycle.cpp` и
-`Source/Tests/Test_ServerMapOperations.cpp`. При изменении lifecycle или
+Контракты закреплены `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
+`Source/Tests/Test_AngelScriptServerMapOperations.cpp`. При изменении lifecycle или
 инвариантов запускайте сгенерированную цель unit-тестов проекта-встраивателя и
 расширяйте эти suites, не ослабляя assertions.
 

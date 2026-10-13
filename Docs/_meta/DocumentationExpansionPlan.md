@@ -489,7 +489,7 @@ Source areas covered by the documentation set:
 - `Source/Tools/AngelScriptBaker.*`
 - `Source/Applications/ASCompilerApp.cpp`
 - `Source/Tests/Test_AngelScript*.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
+- `Source/Tests/Test_AngelScriptCommonScriptMethods.cpp`
 
 **Write:**
 - Script module lifecycle, method registration, generated API, compile/bake flow, nullability relationship.

@@ -58,6 +58,7 @@ The generated property catalog says whether the engine parser can load a key. It
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## From source file to baked prototype
 

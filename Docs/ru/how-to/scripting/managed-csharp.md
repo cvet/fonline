@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4d43d7cf51b44c90a31a31391f58a9c0bcde72bc74f69178801c8c59dd811fb1"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"aaa829789240841ae53ec621b6016b232f3f06a148874b2be5dfacfe9bdd38f0"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -137,6 +137,8 @@ Entity-only post-set реакции могут возвращать `Task`; valu
 Inbound remote-call handlers могут возвращать `void`, `Task` или `Task<T>`. У remote call нет wire result, поэтому незавершённые tasks наблюдаются без блокировки network/client pump; значение `Task<T>` игнорируется. Named script function с non-generic `Task` использует ту же async boundary. `Task<T>` named function остаётся synchronous, когда native code нужен `T`.
 
 Аргументы callback и remote call сохраняют форму metadata: native `any[]` поступает как `List<any>`, а `string=>any` — как `Dictionary<string, any>`. Bridge не превращает их в `List<object>` или строковый словарь; указывайте точные generated types.
+
+Методы `[CallableFromNative]` регистрируются под именем `TypeName::MethodName`. Аргументы и результаты `List<T>` и `Dictionary<K,V>` используют Engine descriptors массивов и словарей, когда типы элементов, ключей и значений относятся к поддерживаемым простым типам Engine. Native-регистрация разрешает `K=>V` до синтаксиса массива; словари со значениями-коллекциями остаются за пределами этого callback bridge. Регистрация аргументов по ссылке сейчас поддерживает встроенные delegates `(Critter, Critter, ref string)`. `Test_ManagedScriptRuntime.cpp` проверяет эти вызовы через настоящие скомпилированные assemblies, включая аргументы и возвращаемые значения словарей.
 
 ## Async и планирование continuations
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"28969041601b7fa130700ea2d3d6a654ee4ecdec285ff957b5431b0511fb7648"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"05ccd1b8e229a14ae77ad6dc13c885ba7aff91855852f3dbd2a7a387c3982ad0"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -52,8 +52,8 @@ permalink: /Docs/ru/contributing/testing/
 он не является универсальным именем движка.
 
 Тесты отдельных возможностей используют те же compile-time guards, что и их
-runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует одновременно
-`FO_ENABLE_3D` и `FO_ANGELSCRIPT_SCRIPTING`; проект только с 2D продолжает
+runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует
+`FO_ENABLE_3D` и работает с обоими скриптовыми бэкендами; проект только с 2D продолжает
 собирать и выполнять остальные client, atlas и hit-testing suites.
 
 Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
@@ -78,6 +78,10 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 `Test_SpriteSheet.cpp` использует native resolver и stub frontend с любым
 scripting backend: первые/cache-hit копии, начальная геометрия, first/last
 extraction, directional/shared offsets и копирование усечённых sheets.
+
+Список `FO_TESTS_SOURCE` безусловный: все единицы трансляции тестов движка зарегистрированы в каждой конфигурации. Файлы `Test_AngelScript*.cpp` и `Test_ManagedScript*.cpp` сами содержат условия компиляции для своих бэкендов; отключённые наборы не регистрируют сценарии Catch2. Общие проверки движка, сущностей, сохранения данных, сети, карт, отрисовки и Mapper сохраняют общие имена и выполняются с обоими бэкендами. Общие фикстуры `Test_*Helpers.h` компилируют встроенные `.fos` только при AngelScript; их native-ресурсы в Managed не требуют скриптов. Сценарии, вынесенные из смешанных наборов, также получают префикс `AngelScript`.
+
+`Test_ManagedScriptRuntime.cpp` компилирует принадлежащий движку `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` настоящим `ManagedScriptBaker` и .NET SDK, затем загружает сборки сервера, клиента и Mapper. Он проверяет инициализацию модулей, события персонажей, вызовы из native-кода в C#, массивы в аргументах и результатах, словари, строки UTF-8 и строки по ссылке, хеши, допускающие null ссылки на сущности, отчёт об исключении и изоляцию двух одновременно работающих серверов. Требуются SDK для `ManagedScript.TargetFramework` и настроенные файлы среды выполнения; маркеры пробного запуска не доказывают выполнение скриптов. Это целевое покрытие связки native/Managed, а не полное соответствие каждому сценарию AS-привязок.
 
 ## Запуск тестов
 
@@ -191,6 +195,8 @@ Tests dump-ов atlas и render target используют `TexDumpArtifacts` �
 существующих каталогов `TexDump_*`, а затем удаляет только новые каталоги своего
 run. Поэтому parallel или прерванный test session не удаляет ранее собранные
 diagnostic evidence, а cleanup ограничен artifacts с доказанным ownership.
+
+Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
 
 Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
 `<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
@@ -340,9 +346,9 @@ location/entity management.
 
 - `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — миграции документов через скомпилированный байткод на настоящем сервере: отклонение сигнатур, типизированные отделённые значения/контекст, условные домены имён, идемпотентность, атомарность при исключении и цепочки/значения прототипов.
 
-AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`, `Test_ScriptEntityOps`, `Test_CommonScriptMethods` и `Test_ServerScriptMethods`.
+AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_AngelScriptBuiltins`, `Test_AngelScriptEntityOps`, `Test_AngelScriptCommonScriptMethods` и `Test_AngelScriptServerScriptMethods`.
 
-Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn analyzer синхронизации; `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
+Для Managed C# используются отдельные слои evidence: `Test_ManagedScriptBaker.cpp` проверяет native generation baker-а; `Test_ManagedScriptRuntime.cpp` — настоящие assemblies и выполнение bridge; `BuildTools/tests/test_managed_*.py` — runtime setup, payloads, platforms, callbacks, GC roots и packaging; `Source/Scripting/Managed/Analyzers/Tests` — Roslyn analyzer синхронизации; `Source/Scripting/Managed/Tests` — CoreScripts и bootstrap generated API. После них выполните `CompileManagedScripts` и реальный resource bake Managed, чтобы доказать настроенные проектом sources, target assemblies и payload `ManagedRuntime/`. Эти слои дополняют, а не заменяют backend-neutral tests сущностей и script methods.
 
 ### Bakers и инструменты
 

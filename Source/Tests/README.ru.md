@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"25989f28d399523a369de9a81f0dcadd0db57d38fe212a23923e5f1167f86f48"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"08c7eed4dfaa381b091df6d5c2581feb8117fc38d9a6077978d7c2d8057b4992"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -32,164 +32,9 @@ python BuildTools/docs_inventory.py --write
 python BuildTools/docs_inventory.py --check
 ```
 
-### Конфигурация, источники данных, файлы и кеши
+`FO_TESTS_SOURCE` безусловный. Translation units конкретного бэкенда содержат полные guards, общие native-наборы выполняются в обоих бэкендах. Header-фикстуры защищают AS-компиляцию; полный [контракт владения](../../Docs/ru/contributing/testing/) ведёт карта тестирования.
 
-- `Source/Tests/Test_CacheStorage.cpp`
-- `Source/Tests/Test_ConfigFile.cpp`
-- `Source/Tests/Test_DataSource.cpp`
-- `Source/Tests/Test_FileSystem.cpp`
-- `Source/Tests/Test_Settings.cpp`
-
-### Базовая платформа, контейнеры и утилиты
-
-- `Source/Tests/Test_BaseLogging.cpp`
-- `Source/Tests/Test_BasicCore.cpp`
-- `Source/Tests/Test_CommonHelpers.cpp`
-- `Source/Tests/Test_Compressor.cpp`
-- `Source/Tests/Test_Containers.cpp`
-- `Source/Tests/Test_Cryptography.cpp`
-- `Source/Tests/Test_DequeObject.cpp`
-- `Source/Tests/Test_DataSerialization.cpp`
-- `Source/Tests/Test_DiskFileSystem.cpp`
-- `Source/Tests/Test_ExceptionHandling.cpp`
-- `Source/Tests/Test_ExtendedTypes.cpp`
-- `Source/Tests/Test_FunctionObjects.cpp`
-- `Source/Tests/Test_GenericUtils.cpp`
-- `Source/Tests/Test_GlobalData.cpp`
-- `Source/Tests/Test_HashedString.cpp`
-- `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp` (политика OOM/commit failure и opt-in заполнение heap потока-владельца, повторно используемые slots и суммы size classes без очистки caches)
-- `Source/Tests/Test_Platform.cpp`
-- `Source/Tests/Test_RandomGenerator.cpp`
-- `Source/Tests/Test_SafeArithmetics.cpp`
-- `Source/Tests/Test_SettingsStorage.cpp`
-- `Source/Tests/Test_SmartPointers.cpp`
-- `Source/Tests/Test_StackTrace.cpp`
-- `Source/Tests/Test_StringObject.cpp`
-- `Source/Tests/Test_StringUtils.cpp`
-- `Source/Tests/Test_StrongType.cpp`
-- `Source/Tests/Test_TimeRelated.cpp`
-- `Source/Tests/Test_Threading.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
-- `Source/Tests/Test_WorkThread.cpp`
-
-### Общая модель среды выполнения
-
-- `Source/Tests/Test_AnyData.cpp`
-- `Source/Tests/Test_ApplicationHeadless.cpp`
-- `Source/Tests/Test_ClientEntityLifetime.cpp`
-- `Source/Tests/Test_Common.cpp`
-- `Source/Tests/Test_EngineMetadata.cpp`
-- `Source/Tests/Test_EntityLifecycle.cpp`
-- `Source/Tests/Test_EntityProtos.cpp`
-- `Source/Tests/Test_Geometry.cpp`
-- `Source/Tests/Test_LineTracer.cpp`
-- `Source/Tests/Test_MapLoader.cpp`
-- `Source/Tests/Test_MapSprite.cpp`
-- `Source/Tests/Test_MapViewHitTesting.cpp` (самодостаточный выбор стены/пола, обычная и opt-in политика «яйца»; оба скриптовых backend)
-- `Source/Tests/Test_Movement.cpp`
-- `Source/Tests/Test_PathFinding.cpp`
-- `Source/Tests/Test_Properties.cpp`
-- `Source/Tests/Test_ProtoManager.cpp`
-- `Source/Tests/Test_TextPack.cpp`
-- `Source/Tests/Test_Timer.cpp`
-- `Source/Tests/Test_TransparentEgg.cpp`
-- `Source/Tests/Test_TwoDimensionalGrid.cpp`
-
-### Сеть и интеграция сервера с клиентом
-
-- `Source/Tests/Test_LinkDelay.cpp` (обычное время передачи, устойчивое замедление и ограниченное догоняние позднего плана)
-- `Source/Tests/Test_ClientDataValidation.cpp`
-- `Source/Tests/Test_ClientEngine.cpp`
-- `Source/Tests/Test_ClientRuntimeApi.cpp`
-- `Source/Tests/Test_ClientServerIntegration.cpp`
-- `Source/Tests/Test_ClientUpdater.cpp`
-- `Source/Tests/Test_DataBase.cpp`
-- `Source/Tests/Test_EntitySync.cpp`
-- `Source/Tests/Test_FogOfWar.cpp`
-- `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ModelAnimation.cpp`
-- `Source/Tests/Test_NetBuffer.cpp`
-- `Source/Tests/Test_NetSockets.cpp`
-- `Source/Tests/Test_NoiseProtocol.cpp`
-- `Source/Tests/Test_NetworkClient.cpp`
-- `Source/Tests/Test_NetworkServer.cpp`
-- `Source/Tests/Test_NetworkUdp.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
-- `Source/Tests/Test_ServerEngine.cpp`
-- `Source/Tests/Test_ServerEntityLoading.cpp`
-- `Source/Tests/Test_ServerEntityLifetime.cpp`
-- `Source/Tests/Test_ServerEventContracts.cpp`
-- `Source/Tests/Test_ServerItems.cpp`
-- `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ServerMoveReconciliation.cpp`
-- `Source/Tests/Test_SecureChannel.cpp`
-- `Source/Tests/Test_UpdaterBackend.cpp`
-
-### Скрипты и доступные из скриптов API
-
-- `Source/Tests/Test_AngelScriptAlignment.cpp`
-- `Source/Tests/Test_AngelScriptAttributes.cpp`
-- `Source/Tests/Test_AngelScriptBytecode.cpp`
-- `Source/Tests/Test_AngelScriptCall.cpp`
-- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
-- `Source/Tests/Test_CommonScriptMethods.cpp`
-- `Source/Tests/Test_ScriptBuiltins.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
-
-### Baker и инструменты
-
-- `Source/Tests/Test_AngelScriptBaker.cpp`
-- `Source/Tests/Test_AudioBaker.cpp`
-- `Source/Tests/Test_BakerSetup.cpp`
-- `Source/Tests/Test_ConfigBaker.cpp`
-- `Source/Tests/Test_EffectBaker.cpp`
-- `Source/Tests/Test_ImageBaker.cpp`
-- `Source/Tests/Test_ImageWriter.cpp`
-- `Source/Tests/Test_MapBaker.cpp`
-- `Source/Tests/Test_Mapper.cpp`
-- `Source/Tests/Test_MetadataBaker.cpp`
-- `Source/Tests/Test_ManagedScriptBaker.cpp`
-- `Source/Tests/Test_ModelBaker.cpp`
-- `Source/Tests/Test_ModelBounds.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp`
-- `Source/Tests/Test_ModelMeshData.cpp`
-- `Source/Tests/Test_ModelAnimationData.cpp`
-- `Source/Tests/Test_ModelAnimationConverter.cpp`
-- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
-- `Source/Tests/Test_ModelAnimationRuntime.cpp`
-- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
-- `Source/Tests/Test_ModelSourceLoader.cpp`
-- `Source/Tests/Test_OzzAnimation.cpp`
-- `Source/Tests/Test_ProtoBaker.cpp`
-- `Source/Tests/Test_ProtoTextBaker.cpp`
-- `Source/Tests/Test_RawCopyBaker.cpp`
-- `Source/Tests/Test_ResourceIndex.cpp`
-- `Source/Tests/Test_ResourcePack.cpp`
-- `Source/Tests/Test_TextBaker.cpp`
-- `Source/Tests/Test_TextureAtlas.cpp`
-
-Покрытие конвейера моделей намеренно разделено. `Test_ModelMeshData.cpp`
-владеет wire-контрактом только для mesh; `Test_ModelSourceLoader.cpp` и
-`Test_ModelAnimationConverter.cpp` владеют извлечением исходных данных и
-каноническим преобразованием; `Test_ModelAnimationData.cpp` владеет
-версионированным архивом rig; `Test_ModelBaker.cpp` пересекает основанный на
-исходных данных baking и разрешение привязок; наборы animation, runtime-pose,
-procedural, skeleton-compatibility и Ozz покрывают производственный путь
-семплирования и матриц. Поддерживайте эти границы независимо зелёными, затем
-используйте `Test_ClientEngine.cpp` для границы между baker и парсером клиента.
-
-### Тесты рендеринга и frontend
-
-- `Source/Tests/Test_AudioManager.cpp`
-- `Source/Tests/Test_EffekseerParticleRuntime.cpp` - прогоняет подготовленные legacy- и modern-эффекты Effekseer через реальные callbacks Sprite/Ring нативной среды выполнения и проверяет детерминированную топологию нескольких экземпляров, геометрию FOnline, UV атласа, все три режима Z-sort, разбиение Ring по бюджету индексов и повторное применение масштаба на уровне facade без respawn или сброса времени.
-- `Source/Tests/Test_ImGui.cpp`
-- `Source/Tests/Test_ModelSpriteLayout.cpp`
-- `Source/Tests/Test_ParticleBaker.cpp` - покрывает обнаружение исходных `.efkproj`, сопоставление выходных ключей `.spark`/`.efkproj`, проверку генерируемых бинарных данных, отклонение авторских `.spk`/`.efk` на входе среды выполнения и изоляцию seeded-stream SPARK между чередующимися эффектами и независимыми контекстами движка. Путь сборки и интеграционного baking применяет нативный экспортер с фиксированным профилем к реальным XML-проектам.
-- `Source/Tests/Test_Rendering.cpp`
-
-CI-задача документации отклоняет устаревший сгенерированный инвентарь. Заголовки выше отражают текущие исходные файлы для навигации, но не заменяют полный сгенерированный список.
+`Test_ManagedScriptRuntime.cpp` компилирует `Fixtures/ManagedRuntimeProbe.cs` настоящим baker/SDK и проверяет server/client/mapper bridge и изоляцию двух серверов. Требуются настроенные SDK/runtime; покрытие и пределы описывает [карта тестирования](../../Docs/ru/contributing/testing/).
 
 Регрессии отсоединения при уничтожении выполняются при любом scripting backend: `CritterAttachmentTeardown`
 проверяет связи сервера, native-отчёты и доставку оставшемуся игроку; `ClientCritterFinalizationDropsAttachmentIds`
@@ -222,6 +67,8 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 ## Общие вспомогательные средства тестов
 
 Заголовочные вспомогательные средства находятся рядом с наборами тестов и не входят в `FO_TESTS_SOURCE`:
+
+`Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h` и `Test_ServerMapOperationsHelpers.h` разделяют построение native-ресурсов с наборами AngelScript. Компиляция для конкретного бэкенда остаётся под guards внутри этих фикстур.
 
 - `Source/Tests/Test_BakerHelpers.h` содержит fixtures запечённых ресурсов (спрайтов, прототипов и metadata) и
   `TestRig`, который запускает настоящие bakers поверх источников в памяти.

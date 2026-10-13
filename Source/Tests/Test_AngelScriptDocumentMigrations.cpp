@@ -31,19 +31,20 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
+#include "Common.h"
 
 #if FO_ANGELSCRIPT_SCRIPTING
+
+#include "catch_amalgamated.hpp"
+
 #include "AngelScriptBackend.h"
 #include "AngelScriptScripting.h"
 #include "PropertiesSerializer.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 
-#if FO_ANGELSCRIPT_SCRIPTING
 namespace
 {
     static auto MakeMigrationMetadata() -> vector<uint8_t>
@@ -493,6 +494,8 @@ TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
         CHECK_FALSE(server->ResolveDocumentProto(item, server->Hashes.to_hashed_string("Retired"), document));
     }
 }
-#endif
 
 FO_END_NAMESPACE
+
+#endif
+

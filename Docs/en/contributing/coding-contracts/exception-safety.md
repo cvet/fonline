@@ -64,7 +64,7 @@ Do not log and continue, fabricate an `"Unknown exception"` domain error, or ret
 
 ## 3. The entity-lifecycle contract (create / destroy)
 
-Entity lifecycle is deliberately **not** "transactional rollback". The contract, encoded by the tests in `Source/Tests/Test_EntityLifecycle.cpp` and `Source/Tests/Test_ServerMapOperations.cpp`, is:
+Entity lifecycle is deliberately **not** "transactional rollback". The contract, encoded by the tests in `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` and `Source/Tests/Test_AngelScriptServerMapOperations.cpp`, is:
 
 **Create (`CritterManager::CreateCritterOnMap`, `ItemManager::CreateItem`, `MapManager::CreateLocation`/`CreateMap`, `ServerEngine::CreateCritter`/`LoadCritter`):**
 - The entity is allocated and registered first, then placed, then its init script and entry events run.
@@ -200,7 +200,7 @@ Persistence note: DB writes (`DbStorage.Insert/Update/Delete`) are **enqueue-onl
 
 ## 7. Tests
 
-The contracts above are pinned by `Source/Tests/Test_EntityLifecycle.cpp` (init/finish-event destruction, load/unload events, registry collections) and `Source/Tests/Test_ServerMapOperations.cpp` (the full map critter in/out/init × may-destroy / may-move-away / may-destroy-map matrix). When changing any lifecycle or invariant behavior, run the embedding project's generated engine unit-test target and extend these suites rather than weakening an assertion.
+The contracts above are pinned by `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` (init/finish-event destruction, load/unload events, registry collections) and `Source/Tests/Test_AngelScriptServerMapOperations.cpp` (the full map critter in/out/init × may-destroy / may-move-away / may-destroy-map matrix). When changing any lifecycle or invariant behavior, run the embedding project's generated engine unit-test target and extend these suites rather than weakening an assertion.
 
 ## 8. Per-function exception-safety classification (ES levels)
 

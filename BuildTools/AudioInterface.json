@@ -557,8 +557,12 @@
       "rationale": "These suites execute the codec and callback contract directly; a visible client is still required to prove a real platform device and audible output.",
       "source": [
         {
-          "path": "Source/Tests/README.md",
-          "anchors": ["Test_AudioBaker.cpp", "Test_AudioManager.cpp"]
+          "path": "Source/Tests/Test_AudioBaker.cpp",
+          "anchors": ["TEST_CASE(\"AudioBaker\")"]
+        },
+        {
+          "path": "Source/Tests/Test_AudioManager.cpp",
+          "anchors": ["TEST_CASE(\"AudioManagerPan\")", "TEST_CASE(\"AudioManagerDynamicPlacement\")"]
         },
         {
           "path": "BuildTools/docs_audio.py",

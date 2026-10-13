@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptScripting.h"
@@ -1376,3 +1380,6 @@ TEST_CASE("ProtoAccessOperations")
 }
 
 FO_END_NAMESPACE
+
+#endif
+

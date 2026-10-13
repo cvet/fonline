@@ -235,9 +235,10 @@ Persistence backends store `AnyData::Document` records. For database commit/reco
 Relevant tests include:
 
 - `Source/Tests/Test_EntityLifecycle.cpp`
+- `Source/Tests/Test_AngelScriptEntityLifecycle.cpp`
 - `Source/Tests/Test_EntityProtos.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
-- `Source/Tests/Test_ScriptEntityOps.cpp`
+- `Source/Tests/Test_AngelScriptEntityOps.cpp`
 - property/metadata tests such as `Test_Properties.cpp` and `Test_EngineMetadata.cpp` when available in the checkout.
 
 ## Change routing

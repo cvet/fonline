@@ -105,6 +105,7 @@ namespace BakerTests
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
         ApplyTestChannelKeys(settings);
+        OverrideSetting(settings.Baking.BakeOutput, string {});
         OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
@@ -153,6 +154,7 @@ namespace BakerTests
     inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
     {
         ApplyTestChannelKeys(settings);
+        OverrideSetting(settings.Baking.BakeOutput, string {});
         OverrideSetting(settings.ServerNetwork.DisableNetworking, true);
         OverrideSetting(settings.DataBase.OpLogEnabled, false);
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
@@ -164,6 +166,15 @@ namespace BakerTests
         settings.ApplyDefaultSettings();
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
+    }
+
+    inline auto MakeNoopCallbackDesc(hstring name) -> ScriptFuncDesc
+    {
+        return ScriptFuncDesc {
+            .Name = name,
+            .Call = [](FuncCallData&) {},
+            .AttributeChecker = [](string_view) { return false; },
+        };
     }
 
     constexpr string_view TEST_METADATA_VERSION = "testdatalayout00";
@@ -613,3 +624,4 @@ namespace BakerTests
 }
 
 FO_END_NAMESPACE
+

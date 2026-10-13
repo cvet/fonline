@@ -31,6 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
+#if FO_ANGELSCRIPT_SCRIPTING
+
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptBackend.h"
@@ -2297,53 +2301,7 @@ TEST_CASE("LocationTimeEventOps")
 
 // ========== C++ API Tests ==========
 
-TEST_CASE("CommonCppApiTests")
-{
-    MAKE_CM_SERVER();
-
-    SECTION("ProtoManagerLookups")
-    {
-        // Verify that protos loaded in our test setup
-        CHECK(server->EntityMngr.GetCrittersCount() == 0);
-        CHECK(server->EntityMngr.GetLocationsCount() == 0);
-        CHECK(server->EntityMngr.GetItemsCount() == 0);
-    }
-
-    SECTION("EntityManagerMultipleEntities")
-    {
-        // Create multiple entities and verify counts
-        auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
-        auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
-        auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
-
-        CHECK(server->EntityMngr.GetCrittersCount() >= 3);
-
-        // Clean up
-        server->CrMngr.DestroyCritter(cr3);
-        server->CrMngr.DestroyCritter(cr2);
-        server->CrMngr.DestroyCritter(cr1);
-    }
-
-    SECTION("ItemManagerContainerOps")
-    {
-        auto cr = server->CreateCritter(get_func("TestCritter"), false);
-
-        auto item1 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
-        auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true);
-
-        const auto& inv = cr->GetInvItems();
-        CHECK(inv.size() == 2);
-
-        server->ItemMngr.DestroyItem(item2);
-        server->ItemMngr.DestroyItem(item1);
-        server->CrMngr.DestroyCritter(cr);
-    }
-
-    SECTION("ServerHealthCheck")
-    {
-        string health = server->GetHealthInfo();
-        CHECK(health.find("Server uptime") != string::npos);
-    }
-}
-
 FO_END_NAMESPACE
+
+#endif
+

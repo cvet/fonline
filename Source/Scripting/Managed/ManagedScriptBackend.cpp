@@ -5483,8 +5483,30 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
         return;
     }
 
+    if (type.Kind == ComplexTypeKind::Dict) {
+        FO_VERIFY_AND_THROW(type.KeyType, "Dictionary type has no key type");
+        ManagedObjectRoot dictionary;
+        dictionary.SetObject(value);
+        size_t dictionary_size = GetManagedDictionaryCount(backend, dictionary.GetObject());
+        accessor->ClearDict(ret_data);
+
+        for (size_t i = 0; i < dictionary_size; i++) {
+            ManagedObjectRoot key;
+            key.SetObject(GetManagedDictionaryKey(backend, dictionary.GetObject(), i));
+            ManagedObjectRoot element;
+            element.SetObject(GetManagedDictionaryValue(backend, dictionary.GetObject(), i));
+            ManagedScalarValue key_storage;
+            ManagedScalarValue element_storage;
+            void* key_value = ConvertManagedSimpleObjectToNative(backend, *type.KeyType, key.GetObject(), key_storage);
+            void* element_value = ConvertManagedSimpleObjectToNative(backend, type.BaseType, element.GetObject(), element_storage);
+            accessor->AddDictElement(ret_data, key_value, element_value);
+        }
+
+        return;
+    }
+
     if (type.Kind != ComplexTypeKind::Simple) {
-        throw ScriptSystemException("Managed callback dictionary returns are not supported yet");
+        throw ScriptSystemException("Unsupported Managed callback return shape");
     }
 
     const BaseTypeDesc& base_type = type.BaseType;
@@ -7540,8 +7562,7 @@ static auto FindRefTypeDesc(ptr<EngineMetadata> meta, string_view owner_type_nam
 
 static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view type_name) -> ComplexTypeDesc
 {
-    // Build a ComplexTypeDesc from an engine type name (mirrors the simple-type and array branches of AngelScript's
-    // resolve_type)
+    // Build a ComplexTypeDesc from the supported managed registration shapes
     ComplexTypeDesc type;
 
     // A by-ref argument arrives as "T&". The descriptor already models it: IsMutable is what the metadata uses for
@@ -7554,6 +7575,21 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
         }
 
         return ref_type;
+    }
+
+    // Dictionary names must be resolved before arrays: a dictionary-of-array is not a plain array
+    if (size_t separator = type_name.find("=>"); separator != string_view::npos) {
+        string_view key_name = type_name.substr(0, separator);
+        string_view value_name = type_name.substr(separator + 2);
+
+        if (!meta->IsValidBaseType(key_name) || !meta->IsValidBaseType(value_name)) {
+            return {};
+        }
+
+        type.Kind = ComplexTypeKind::Dict;
+        type.KeyType = meta->GetBaseType(key_name);
+        type.BaseType = meta->GetBaseType(value_name);
+        return type;
     }
 
     // Array element: "T[]" -> Array desc wrapping the element base type. The managed registration emits this for
@@ -8845,3 +8881,4 @@ void ManagedScriptBackend::BindRequiredStuff()
 FO_END_NAMESPACE
 
 #endif
+

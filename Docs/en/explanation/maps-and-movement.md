@@ -365,6 +365,7 @@ Relevant tests include:
 - `Source/Tests/Test_MapLoader.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
 
 ## Change routing
 
