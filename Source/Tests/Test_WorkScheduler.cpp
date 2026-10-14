@@ -582,4 +582,194 @@ TEST_CASE("ClientMultithreadingFollowsTheSetting")
     }
 }
 
+TEST_CASE("WorkSchedulerBackgroundIsAsynchronousAndDoesNotHoldForeground", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    WorkScheduler scheduler {"background", 1};
+    auto group = scheduler.CreateBackgroundGroup();
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto entered_future = entered.get_future();
+    auto release_future = release.get_future();
+    auto unblock = scope_exit([&]() noexcept {
+        release.set_value();
+        scheduler.DrainBackground(group);
+    });
+    std::thread::id worker_id;
+    std::thread::id owner_id = std::this_thread::get_id();
+
+    auto task = scheduler.TrySubmitBackground(group, [&] {
+        worker_id = std::this_thread::get_id();
+        entered.set_value();
+
+        if (release_future.wait_for(std::chrono::seconds {10}) != std::future_status::ready) {
+            throw WorkSchedulerException("Background test release deadline expired");
+        }
+    });
+
+    REQUIRE(task);
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+    CHECK(worker_id != owner_id);
+    CHECK(scheduler.PollBackground(task).Status == WorkScheduler::BackgroundStatus::Running);
+
+    size_t visited = 0;
+    scheduler.RunBatch("foreground", 7, 1, [&](size_t) {
+        CHECK(std::this_thread::get_id() == owner_id);
+        visited++;
+    });
+
+    CHECK(visited == 7);
+    CHECK(scheduler.PollBackground(task).Status == WorkScheduler::BackgroundStatus::Running);
+}
+
+TEST_CASE("WorkSchedulerBackgroundCancelRetainsActiveWorkUntilDrain", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    WorkScheduler scheduler {"background-cancel", 1};
+    auto group = scheduler.CreateBackgroundGroup();
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto entered_future = entered.get_future();
+    auto release_future = release.get_future();
+    bool released = false;
+    auto unblock = scope_exit([&]() noexcept {
+        if (!released) {
+            release.set_value();
+        }
+
+        scheduler.DrainBackground(group);
+    });
+
+    auto active = scheduler.TrySubmitBackground(group, [&] {
+        entered.set_value();
+
+        if (release_future.wait_for(std::chrono::seconds {10}) != std::future_status::ready) {
+            throw WorkSchedulerException("Background cancellation deadline expired");
+        }
+    });
+
+    REQUIRE(active);
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+    std::atomic<size_t> queued_runs {};
+    auto queued = scheduler.TrySubmitBackground(group, [&] { queued_runs.fetch_add(1); });
+    REQUIRE(queued);
+
+    scheduler.CancelBackground(group);
+    CHECK(scheduler.PollBackground(queued).Status == WorkScheduler::BackgroundStatus::Cancelled);
+    CHECK(scheduler.PollBackground(active).Status == WorkScheduler::BackgroundStatus::Running);
+    CHECK_FALSE(scheduler.TrySubmitBackground(group, [] { }));
+
+    release.set_value();
+    released = true;
+    scheduler.DrainBackground(group);
+    CHECK(scheduler.PollBackground(active).Status == WorkScheduler::BackgroundStatus::Cancelled);
+    CHECK(queued_runs.load() == 0);
+}
+
+TEST_CASE("WorkSchedulerBackgroundHasBoundedAdmissionAndIndependentFailure", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    WorkScheduler scheduler {"background-budget", 1};
+    auto group = scheduler.CreateBackgroundGroup();
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto entered_future = entered.get_future();
+    auto release_future = release.get_future();
+    bool released = false;
+    auto unblock = scope_exit([&]() noexcept {
+        if (!released) {
+            release.set_value();
+        }
+
+        scheduler.DrainBackground(group);
+    });
+
+    auto active = scheduler.TrySubmitBackground(group, [&] {
+        entered.set_value();
+
+        if (release_future.wait_for(std::chrono::seconds {10}) != std::future_status::ready) {
+            throw WorkSchedulerException("Background admission deadline expired");
+        }
+
+        throw WorkSchedulerException("Expected background failure");
+    });
+
+    REQUIRE(active);
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+
+    for (size_t index = 1; index < WorkScheduler::MAX_BACKGROUND_TASKS; index++) {
+        REQUIRE(scheduler.TrySubmitBackground(group, [] { }));
+    }
+
+    CHECK_FALSE(scheduler.TrySubmitBackground(group, [] { }));
+    release.set_value();
+    released = true;
+    scheduler.DrainBackground(group);
+
+    auto failed = scheduler.PollBackground(active);
+    CHECK(failed.Status == WorkScheduler::BackgroundStatus::Completed);
+    REQUIRE(failed.Exception);
+    CHECK_THROWS_WITH(std::rethrow_exception(failed.Exception), Catch::Matchers::ContainsSubstring("Expected background failure"));
+
+    std::atomic<size_t> foreground_runs {};
+    CHECK_NOTHROW(scheduler.RunBatch("healthy", 8, 1, [&](size_t) { foreground_runs.fetch_add(1); }));
+    CHECK(foreground_runs.load() == 8);
+    REQUIRE(scheduler.TrySubmitBackground(group, [] { }));
+    scheduler.DrainBackground(group);
+}
+
+TEST_CASE("WorkSchedulerBackgroundAndForegroundShareTheSameWorker", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    WorkScheduler scheduler {"background-shared", 1};
+    auto group = scheduler.CreateBackgroundGroup();
+    std::thread::id background_thread;
+    REQUIRE(scheduler.TrySubmitBackground(group, [&] { background_thread = std::this_thread::get_id(); }));
+    scheduler.DrainBackground(group);
+    std::thread::id owner = std::this_thread::get_id();
+    CHECK(background_thread != owner);
+    std::promise<void> worker_entered;
+    auto entered = worker_entered.get_future();
+    std::atomic<bool> signalled {};
+    std::atomic<bool> wrong_worker {};
+
+    scheduler.RunBatch("shared-worker", 2, 1, [&](size_t) {
+        if (std::this_thread::get_id() == owner) {
+            bool ready = entered.wait_for(std::chrono::seconds {10}) == std::future_status::ready;
+            FO_VERIFY_AND_THROW(ready, "Foreground worker did not enter");
+        }
+        else {
+            wrong_worker.store(std::this_thread::get_id() != background_thread);
+
+            if (!signalled.exchange(true)) {
+                worker_entered.set_value();
+            }
+        }
+    });
+
+    CHECK(signalled.load());
+    CHECK_FALSE(wrong_worker.load());
+}
+
+TEST_CASE("WorkSchedulerBackgroundSerialModeCreatesNoGroup", "[resource-preparation]")
+{
+    WorkScheduler scheduler {"background-serial", 0};
+    auto group = scheduler.CreateBackgroundGroup();
+    CHECK_FALSE(group);
+    CHECK_FALSE(scheduler.TrySubmitBackground(group, [] { FAIL("Serial background work must not run"); }));
+}
+
 FO_END_NAMESPACE
+

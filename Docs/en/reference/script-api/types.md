@@ -1646,14 +1646,14 @@ Symbol ID: <code>script.enum.TransparentEggSlot</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:64](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L64)
+Source: [Source/Client/SpriteManager.h:65](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L65)
 
 Selects one of the two simultaneous transparency-egg masks supported by sprite rendering
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:67](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L67) | First transparency-egg mask evaluated for map sprites |
-| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:68](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L68) | Second independent transparency-egg mask evaluated for map sprites |
+| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:68](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L68) | First transparency-egg mask evaluated for map sprites |
+| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:69](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L69) | Second independent transparency-egg mask evaluated for map sprites |
 
 <a id="symbol-script-enum-transparenteggtarget-980d792f08"></a>
 ### <code>TransparentEggTarget</code>
@@ -1663,14 +1663,14 @@ Symbol ID: <code>script.enum.TransparentEggTarget</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:72](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L72)
+Source: [Source/Client/SpriteManager.h:73](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L73)
 
 Which of the sprites standing in front of an egg&#x27;s hex the egg cuts
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:75](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L75) | Cut every sprite whose egg appearance places it before the egg |
-| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:76](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L76) | Cut walls and roofs only, leaving foreground props drawn |
+| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:76](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L76) | Cut every sprite whose egg appearance places it before the egg |
+| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:77](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L77) | Cut walls and roofs only, leaving foreground props drawn |
 
 ## Value Types
 

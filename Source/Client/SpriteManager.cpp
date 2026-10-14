@@ -233,6 +233,8 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
 
 void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 {
+    DiscardPreparedSpriteResources();
+
     for (const auto& ext : factory->GetExtensions()) {
         _spriteFactoryMap.insert_or_assign(ext, factory);
     }
@@ -617,6 +619,143 @@ void SpriteManager::DisableScissor()
     }
 }
 
+SpriteManager::~SpriteManager()
+{
+    ShutdownResourcePreparation();
+}
+
+auto SpriteManager::CanPrepareSpriteResources() const -> bool
+{
+    return !_resourcePreparationStopped && _workScheduler && _workScheduler->IsParallel();
+}
+
+auto SpriteManager::GetResourcePreparationDiagnostics() const -> ResourcePreparation::Diagnostics
+{
+    return _resourcePreparation ? _resourcePreparation->GetDiagnostics() : ResourcePreparation::Diagnostics {};
+}
+
+auto SpriteManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type, bool as_quad) -> bool
+{
+    FO_TRACE_ZONE(Render);
+
+    if (!CanPrepareSpriteResources() || !path || path.as_str().size() > ResourcePreparation::Limits {}.PathBytes) {
+        return false;
+    }
+
+    if (!as_quad && (_copyableSpriteCache.count({path, atlas_type}) != 0 || _nonFoundSprites.count(path) != 0)) {
+        return false;
+    }
+
+    if (as_quad) {
+        if (!GetSpriteFactory(typeid(DefaultSpriteFactory))) {
+            return false;
+        }
+    }
+    else {
+        auto factory = _spriteFactoryMap.find(strex(path).get_file_extension());
+
+        if (factory == _spriteFactoryMap.end() || typeid(*factory->second) != typeid(DefaultSpriteFactory)) {
+            return false;
+        }
+    }
+
+    if (!_resourcePreparation) {
+        _resourcePreparation = safe_alloc::make_unique<ResourcePreparation>(_workScheduler);
+    }
+
+    ResourcePreparation::Key key {string(path.as_str()), as_quad ? ResourcePreparation::Kind::Quad : ResourcePreparation::Kind::Sprite, static_cast<uint32_t>(atlas_type), _resourceGeneration, _resourceEpoch};
+
+    if (_resourcePreparation->FindRequest(key) != 0) {
+        return true;
+    }
+
+    if (_resourcePreparation->GetDiagnostics().Outstanding >= ResourcePreparation::Limits {}.Requests) {
+        return false;
+    }
+
+    File file;
+    std::exception_ptr error;
+
+    try {
+        auto header = _resources->ReadFileHeader(path.as_str());
+
+        if (header && header.GetSize() > ResourcePreparation::Limits {}.EncodedBytes) {
+            return false;
+        }
+
+        file = _resources->ReadFile(path);
+    }
+    catch (const std::exception& ex) {
+        ignore_unused(ex);
+        error = std::current_exception();
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+
+    ResourcePreparation::RequestResult result;
+
+    if (file && !error) {
+        result = _resourcePreparation->Request(std::move(key), file.GetDataSpan());
+    }
+    else {
+        ResourcePreparation::Input input;
+        input.Identity = std::move(key);
+        input.Missing = !error;
+        input.AcquisitionError = std::move(error);
+        result = _resourcePreparation->Request(std::move(input));
+    }
+
+    return result.Status == ResourcePreparation::Admission::Accepted || result.Status == ResourcePreparation::Admission::Coalesced;
+}
+
+auto SpriteManager::ConsumePreparedSpriteResource(hstring path, AtlasType atlas_type, bool as_quad, const function<void(SpriteResourceData&&)>& publish) -> bool
+{
+    if (!_resourcePreparation || _resourcePreparationStopped) {
+        return false;
+    }
+
+    ResourcePreparation::Key key {string(path.as_str()), as_quad ? ResourcePreparation::Kind::Quad : ResourcePreparation::Kind::Sprite, static_cast<uint32_t>(atlas_type), _resourceGeneration, _resourceEpoch};
+    uint64_t ticket = _resourcePreparation->FindRequest(key);
+    return ticket != 0 && _resourcePreparation->Consume(ticket, publish);
+}
+
+void SpriteManager::DrainPreparedSpriteResources()
+{
+    if (_resourcePreparation) {
+        _resourcePreparation->Drain();
+    }
+}
+
+void SpriteManager::DiscardPreparedSpriteResources()
+{
+    FO_VERIFY_AND_THROW(_resourceEpoch != std::numeric_limits<uint64_t>::max(), "Sprite preparation epoch exhausted");
+    _resourceEpoch++;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->CancelAll();
+    }
+}
+
+void SpriteManager::AdvanceResourcePreparationGeneration()
+{
+    FO_VERIFY_AND_THROW(_resourceGeneration != std::numeric_limits<uint64_t>::max(), "Sprite preparation generation exhausted");
+    uint64_t generation = _resourceGeneration++;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->CancelGeneration(generation);
+    }
+}
+
+void SpriteManager::ShutdownResourcePreparation()
+{
+    _resourcePreparationStopped = true;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->Shutdown();
+    }
+}
+
 auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
     return LoadSprite(_hashResolver->to_hashed_string(path), atlas_type, no_warn_if_not_exists);
@@ -686,6 +825,8 @@ void SpriteManager::InvalidateSpriteResource(string_view path)
 {
     FO_TRACE_ZONE(Render);
 
+    DiscardPreparedSpriteResources();
+
     hstring hashed_path = _hashResolver->to_hashed_string(path);
     _nonFoundSprites.erase(hashed_path);
 
@@ -713,6 +854,8 @@ void SpriteManager::RetryFailedSpriteLoads()
 void SpriteManager::CleanupSpriteCache()
 {
     FO_TRACE_ZONE(Render);
+
+    DiscardPreparedSpriteResources();
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
         _spriteFactories[i]->ClenupCache();

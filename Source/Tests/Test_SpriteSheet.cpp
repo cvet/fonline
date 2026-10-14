@@ -114,18 +114,26 @@ namespace
         GameTimer Timer {&Settings};
         hash_storage Hashes {};
         EffectManager Effects {&Settings, &Resources, Window->GetRender()};
-        SpriteManager Sprites {&Settings, Window, &Resources, &Timer, &Effects, &Hashes, nullptr};
+        WorkScheduler Scheduler;
+        SpriteManager Sprites {&Settings, Window, &Resources, &Timer, &Effects, &Hashes, &Scheduler};
         nptr<RecordingSpriteSheetFactory> Factory {};
 
-        explicit SpriteSheetFixture(bool shared_frame = false)
+        explicit SpriteSheetFixture(bool shared_frame = false, int32_t workers = 0, bool default_factory = false) :
+            Scheduler {"SpriteSheet", workers}
         {
             auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteSheetTest");
             source->AddFile("Sheet.fofrm", MakeSpriteSheetTestResource(shared_frame));
             source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(5, 7));
             Resources.AddCustomSource(std::move(source));
-            auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites);
-            Factory = factory.as_nptr();
-            Sprites.RegisterSpriteFactory(std::move(factory));
+
+            if (default_factory) {
+                Sprites.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&Sprites));
+            }
+            else {
+                auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites);
+                Factory = factory.as_nptr();
+                Sprites.RegisterSpriteFactory(std::move(factory));
+            }
         }
     };
 
@@ -191,8 +199,22 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
     bool shared_frame = GENERATE(false, true);
     // Native resolver flags: FirstFrame = 1, LastFrame = 2; first wins when both are present
     uint32_t frame_flags = GENERATE(uint32_t {1}, uint32_t {2}, uint32_t {3});
-    CAPTURE(shared_frame, frame_flags);
-    SpriteSheetFixture fixture {shared_frame};
+    bool prepared = GENERATE(false, true);
+    CAPTURE(shared_frame, frame_flags, prepared);
+
+    if constexpr (FO_WEB) {
+        if (prepared) {
+            SKIP("This build has no worker threads");
+        }
+    }
+
+    SpriteSheetFixture fixture {shared_frame, prepared ? 1 : 0, prepared};
+
+    if (prepared) {
+        REQUIRE(fixture.Sprites.PrefetchSpriteResource(fixture.Hashes.to_hashed_string("Sheet.fofrm"), AtlasType::MapSprites));
+        fixture.Sprites.DrainPreparedSpriteResources();
+    }
+
     SpriteSheetTestResolver resolver;
     resolver.FrameFlags = frame_flags;
     ResourceManager resources {&fixture.Settings, &fixture.Resources, &fixture.Sprites, &resolver};
@@ -245,4 +267,91 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
     CHECK(untrimmed->GetSprOffset().size() == 3);
 }
 
+TEST_CASE("ResourcePreparationPublishesIndependentSheetsAndPreservesFactoryOverrides", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    SpriteSheetFixture fixture {true, 1, true};
+    REQUIRE(fixture.Sprites.CanPrepareSpriteResources());
+    hstring path = fixture.Hashes.to_hashed_string("Sheet.fofrm");
+    REQUIRE(fixture.Sprites.PrefetchSpriteResource(path, AtlasType::MapSprites));
+    fixture.Sprites.DrainPreparedSpriteResources();
+    auto first = fixture.Sprites.LoadSprite(path, AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto second = fixture.Sprites.LoadSprite(path, AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    REQUIRE(first);
+    REQUIRE(second);
+    CHECK(first != second);
+    CHECK(first->GetFramesCount() == 3);
+    CHECK(first->GetDirCount() == GameSettings::MAP_DIR_COUNT);
+    CHECK(first->GetSprOffset()[1] == ipos32 {1, -1});
+    CHECK(first->GetSprOffset()[2] == ipos32 {3, -3});
+    first->SetDir(hdir {1});
+    first->SetTime(1.0f);
+    first->Play({}, true, true);
+    CHECK_FALSE(second->IsPlaying());
+    CHECK(second->GetTime() == 0.0f);
+    CHECK(fixture.Sprites.GetResourcePreparationDiagnostics().Consumed == 1);
+    CHECK_FALSE(fixture.Sprites.PrefetchSpriteResource(path, AtlasType::MapSprites));
+
+    SpriteSheetFixture custom {false, 1};
+    hstring custom_path = custom.Hashes.to_hashed_string("Sheet.fofrm");
+    CHECK_FALSE(custom.Sprites.PrefetchSpriteResource(custom_path, AtlasType::MapSprites));
+    REQUIRE(custom.Sprites.LoadSprite(custom_path, AtlasType::MapSprites));
+    CHECK(custom.Factory->LoadCount == 1);
+    CHECK(custom.Sprites.GetResourcePreparationDiagnostics().Submitted == 0);
+}
+
+TEST_CASE("ResourcePreparationQuadKeepsDistinctValidationAndRevocation", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    SpriteSheetFixture fixture {false, 1, true};
+    auto mesh_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PreparedMesh");
+    SpriteMeshData mesh {{3, 3}, {1, 1}, {{0, 0}, {1, 0}, {0, 1}}, {0, 1, 2}};
+    mesh_source->AddFile("Mesh.png", BakerTests::MakeMinimalBakedSprite(1, 1, SpriteMeshKind::Mesh, mesh));
+    fixture.Resources.AddCustomSource(std::move(mesh_source));
+    hstring mesh_path = fixture.Hashes.to_hashed_string("Mesh.png");
+    REQUIRE(fixture.Sprites.PrefetchSpriteResource(mesh_path, AtlasType::IfaceSprites, true));
+    fixture.Sprites.DrainPreparedSpriteResources();
+    auto image = fixture.Sprites.LoadSpriteAsQuad(mesh_path, AtlasType::IfaceSprites);
+    REQUIRE(image);
+    CHECK(image->GetSize() == isize32 {3, 3});
+    auto texture = image->GetBatchTexture();
+    REQUIRE(texture);
+    auto rect = image->GetAtlasRect();
+    ipos32 pos {iround<int32_t>(rect.x * numeric_cast<float32_t>(texture->Size.width)), iround<int32_t>(rect.y * numeric_cast<float32_t>(texture->Size.height))};
+    auto pixels = texture->GetTextureRegion(pos, {3, 3});
+    REQUIRE(pixels.size() == 9);
+
+    for (size_t index = 0; index < pixels.size(); index++) {
+        CHECK(pixels[index] == (index == 4 ? ucolor {255, 255, 255, 255} : ucolor {}));
+    }
+
+    hstring sheet = fixture.Hashes.to_hashed_string("Sheet.fofrm");
+    REQUIRE(fixture.Sprites.PrefetchSpriteResource(sheet, AtlasType::IfaceSprites, true));
+    fixture.Sprites.DrainPreparedSpriteResources();
+    CHECK_THROWS_WITH(fixture.Sprites.LoadSpriteAsQuad(sheet, AtlasType::IfaceSprites), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one direction"));
+
+    hstring quad = fixture.Hashes.to_hashed_string("Quad.png");
+    REQUIRE(fixture.Sprites.PrefetchSpriteResource(quad, AtlasType::IfaceSprites, true));
+    fixture.Sprites.DrainPreparedSpriteResources();
+    fixture.Sprites.InvalidateSpriteResource("Quad.png");
+    auto replacement = safe_alloc::make_unique<BakerTests::MemoryDataSource>("Replacement");
+    replacement->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(9, 4));
+    fixture.Resources.AddCustomSource(std::move(replacement));
+    auto replaced = fixture.Sprites.LoadSpriteAsQuad(quad, AtlasType::IfaceSprites);
+    REQUIRE(replaced);
+    CHECK(replaced->GetSize() == isize32 {9, 4});
+    CHECK(fixture.Sprites.GetResourcePreparationDiagnostics().Outstanding == 0);
+
+    fixture.Sprites.ShutdownResourcePreparation();
+    CHECK_FALSE(fixture.Sprites.CanPrepareSpriteResources());
+    REQUIRE(fixture.Sprites.LoadSprite(quad, AtlasType::IfaceSprites));
+}
+
 FO_END_NAMESPACE
+

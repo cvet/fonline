@@ -6,6 +6,9 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/map-format/validation.md) | [Russian](../../ru/reference/map-format/validation.md)
 
+<a id="entry-map-format-rule-client-resource-preparation-793d833886"></a>
+- [`entry-map-format-rule-client-resource-preparation-793d833886`](../../en/reference/map-format/validation.md#entry-map-format-rule-client-resource-preparation-793d833886)
+
 <a id="entry-map-format-rule-config-syntax-c8ce441afa"></a>
 - [`entry-map-format-rule-config-syntax-c8ce441afa`](../../en/reference/map-format/validation.md#entry-map-format-rule-config-syntax-c8ce441afa)
 

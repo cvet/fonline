@@ -285,6 +285,22 @@
   ],
   "rules": [
     {
+      "id": "map-format.rule.client-resource-preparation",
+      "name": "Client static resource preparation",
+      "requirement": "After original replay admits a cold eligible sprite, inspect at most 64 records including that record using passive owner properties, submit eligible resources before one window fence, then replay original item publication order. Skip removed IDs before property restoration. Defer speculative errors to original replay.",
+      "stability": "internal",
+      "description": "Direct, zero-worker and fully warm paths avoid lookahead, fences and epoch changes. Preparation does not change the baked format, effective PicMap, factory overrides or the published failure prefix.",
+      "source": {
+        "path": "Source/Client/MapView.cpp",
+        "anchors": [
+          "preparation_window_end",
+          "PrefetchSpriteResource",
+          "DrainPreparedSpriteResources",
+          "Replay owns the diagnostic"
+        ]
+      }
+    },
+    {
       "id": "map-format.rule.config-syntax",
       "name": "Configuration syntax",
       "requirement": "Use INI-like repeated sections, key = value assignments, # comments, backslash continuation, and key += value append where the property parser supports it.",
@@ -3548,7 +3564,7 @@
     "directive_count": 5,
     "ownership_count": 4,
     "supported_ownership_count": 3,
-    "rule_count": 17,
+    "rule_count": 18,
     "property_count": 107,
     "authorable_property_count": 86,
     "excluded_property_count": 21,
@@ -3563,5 +3579,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "a1598b0419bbd00aaf23c953072439dba1c502c66e9fe426e9b2962f428bf8ae"
+  "contract_digest": "8be35d6ab7908c02bb6f5f47607eadf1d0b48b3756c8d70b3931751b078759b2"
 }

@@ -876,6 +876,32 @@
   ],
   "runtime_rules": [
     {
+      "id": "image-format.runtime.cpu-preparation",
+      "name": "Bounded CPU preparation",
+      "stability": "internal",
+      "requirement": "With effective workers, owner-read bytes may be decoded on the common scheduler before owner-only normal or quad publication. Preserve exact factory dispatch, original exceptions, generation/epoch revocation and active/publishing reservation lifetime.",
+      "rationale": "The 32-slot and 64 MiB input/decoded/control reservation uses a qualified default decoder and excludes retained diagnostic exception payloads, arbitrary decoder captures, allocator/transient/provider/GPU storage and process RSS. Capacity decline uses direct loading.",
+      "source": [
+        {
+          "path": "Source/Client/ResourcePreparation.cpp",
+          "anchors": [
+            "EstimateReservation",
+            "job->Publishing = true",
+            "CancelGeneration",
+            "MeasureSpriteResourceStorage"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "PrefetchSpriteResource",
+            "typeid(*factory->second) != typeid(DefaultSpriteFactory)",
+            "ShutdownResourcePreparation"
+          ]
+        }
+      ]
+    },
+    {
       "id": "image-format.runtime.factory-coverage",
       "name": "Default factory extension boundary",
       "stability": "experimental",
@@ -909,7 +935,8 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "SpriteResourceData resource = ReadSpriteResource",
+            "return PublishSprite(path, atlas_type, ReadSpriteResource(file.GetDataSpan()))",
+            "DefaultSpriteFactory::PublishSprite",
             "if (sprite_info.FrameCount > 1 || direction_count > 1)"
           ]
         }

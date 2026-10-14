@@ -183,6 +183,10 @@ earlier still requires another declared receiving source. See [networking](../..
 
 Always regenerate and package both outputs after changing a map or a referenced prototype. Treat a one-sided stale result as invalid even when only one runtime role appears affected.
 
+## Client static resource preparation
+
+After the original replay restores a record and admits its first cold eligible sprite, `MapView::LoadStaticData` scans a window of at most 64 source records including that record using a separate owner cursor and passive property restoration, including inherited `PicMap`. Removed static IDs are skipped before restoring properties or preparing a sprite. All eligible requests in the window are submitted before its single fence; the original replay then creates and publishes items in source order. Preparation never creates entities or changes the baked format. A speculative record error stops lookahead and remains deferred to the original replay, preserving its already-published failure prefix. False, effective-zero and fully warm clients retain the direct loop without lookahead, a fence or an epoch change. Admission limits and exact-factory eligibility can decline preparation without changing ordinary loading; see [resource preparation](image-format.md#bounded-cpu-resource-preparation).
+
 ## Coordinates And Bounds
 
 `ProtoMap.Size` defines valid map coordinates. Every placed critter and every `MapHex` item must have a `Hex` inside that size. Server loading rejects out-of-range positions.

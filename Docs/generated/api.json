@@ -29146,7 +29146,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 67
+        "line": 68
       },
       "contract": {
         "explicit": true,
@@ -29182,7 +29182,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 68
+        "line": 69
       },
       "contract": {
         "explicit": true,
@@ -29218,7 +29218,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 75
+        "line": 76
       },
       "contract": {
         "explicit": true,
@@ -29254,7 +29254,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 76
+        "line": 77
       },
       "contract": {
         "explicit": true,
@@ -31173,7 +31173,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 64
+        "line": 65
       },
       "contract": {
         "explicit": true,
@@ -31207,7 +31207,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 72
+        "line": 73
       },
       "contract": {
         "explicit": true,

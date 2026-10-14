@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"aa54d81f30a0bee6bf990be3cf9d6fb20f70a73738f5b8d8e55df1b739f61bc4"} -->
+<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"c023b92c4101360f23d285329c83d54a7663b3eeb10e42c7689e5936a771ad1c"} -->
 
 # Сгенерированный справочник форматов изображений
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт создаётся для закреплённой ревизии Engine. Проекты владеют каталогами ресурсов, лицензированием источников, визуальным стилем, политикой сжатия, приоритетом resource pack, подстановками анимаций, настройкой движения и видимой приёмкой. |
 | Исходный manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Digest контракта | <code>09ac98e897f8898c9374a09545c5da6958c620e3913fdc94cf98bc9531e49486</code> |
+| Digest контракта | <code>8df096f067b928d83596758589923fc1f74af646fabffae0d228c0f0538469d8</code> |
 | Baker | <code>Image</code>, порядок 4 |
 | Запечённые pixels | <code>RGBA8</code> |
 | Сторона runtime | <code>client</code> |
@@ -33,7 +33,7 @@ generated: true
 | [FOFRM](fofrm.md) | 10 | Поля descriptor, aliases, направления, flattening и timing. |
 | [Параметры](options.md) | 4 | Selectors имени файла ART, SPR и BAM. |
 | [Запекание](baking.md) | 10 | Обнаружение, имена выходов, записи контейнера и отказы. |
-| [Runtime](runtime.md) | 8 | Покрытие factory, sprite sheets, загрузка в atlas и caches. |
+| [Runtime](runtime.md) | 9 | Покрытие factory, sprite sheets, загрузка в atlas и caches. |
 | [Проверка](validation.md) | 9 | Ограничения источников и исполняемые проверки. |
 
 ## Граница

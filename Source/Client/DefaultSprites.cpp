@@ -509,13 +509,25 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     FO_TRACE_ZONE(Render);
 
+    shared_ptr<Sprite> result;
+
+    if (_sprMngr->ConsumePreparedSpriteResource(path, atlas_type, false, [&](SpriteResourceData&& resource) { result = PublishSprite(path, atlas_type, std::move(resource)); })) {
+        return result;
+    }
+
     auto file = _sprMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
     }
 
-    SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
+    return PublishSprite(path, atlas_type, ReadSpriteResource(file.GetDataSpan()));
+}
+
+auto DefaultSpriteFactory::PublishSprite(hstring path, AtlasType atlas_type, SpriteResourceData resource) -> shared_ptr<Sprite>
+{
+    FO_TRACE_ZONE(Render);
+
     FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Sprite resource has no sprite animation info", path);
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
     uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
@@ -570,13 +582,25 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 {
     FO_TRACE_ZONE(Render);
 
+    shared_ptr<AtlasSprite> result;
+
+    if (_sprMngr->ConsumePreparedSpriteResource(path, atlas_type, true, [&](SpriteResourceData&& resource) { result = PublishQuad(path, atlas_type, std::move(resource)); })) {
+        return result;
+    }
+
     auto file = _sprMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
     }
 
-    SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
+    return PublishQuad(path, atlas_type, ReadSpriteResource(file.GetDataSpan()));
+}
+
+auto DefaultSpriteFactory::PublishQuad(hstring path, AtlasType atlas_type, SpriteResourceData resource) -> shared_ptr<AtlasSprite>
+{
+    FO_TRACE_ZONE(Render);
+
     FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Image resource must contain exactly one direction", path, resource.Directions.size());
     SpriteResourceDirectionData& direction = resource.Directions.front();
     FO_VERIFY_AND_THROW(direction.Frames.size() == 1, "Image resource must contain exactly one frame", path, direction.Frames.size());

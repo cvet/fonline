@@ -304,6 +304,8 @@ void ClientEngine::Shutdown()
 {
     FO_TRACE_ZONE(Engine);
 
+    SprMngr.ShutdownResourcePreparation();
+
     Disconnect();
 
     OnFinish.Fire();
@@ -2813,6 +2815,8 @@ void ClientEngine::UnloadMap()
 {
     FO_TRACE_ZONE(Map);
 
+    SprMngr.AdvanceResourcePreparationGeneration();
+
     OnMapUnload.Fire();
 
     // A held direction belongs to the map it was given on; on the next one the input says again whether it is still held
@@ -3674,3 +3678,4 @@ static auto ChooseClientWorkerCount(const ClientSettings& settings) -> int32_t
 }
 
 FO_END_NAMESPACE
+

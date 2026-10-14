@@ -38,6 +38,76 @@ FO_BEGIN_NAMESPACE
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>;
 
+auto EstimateSpriteResourceStorage(const_span<uint8_t> data, size_t limit) -> optional<size_t>
+{
+    uint64_t frames = data.size() >= 7 ? uint64_t {data[2]} + (uint64_t {data[3]} << 8) : 0;
+    uint64_t directions = data.size() >= 7 ? data[6] : 0;
+    uint64_t metadata = sizeof(SpriteResourceData) + directions * (sizeof(SpriteResourceDirectionData) + sizeof(SpriteDirInfo));
+    metadata += directions * frames * (sizeof(SpriteResourceFrameData) + sizeof(SpriteFrameInfo));
+
+    // RGBA and indices expand 1:1; uint16 mesh coordinates expand at most 2:1 into ipos32
+    if (metadata > limit || data.size() > (limit - metadata) / 2) {
+        return std::nullopt;
+    }
+
+    return numeric_cast<size_t>(metadata + data.size() * 2);
+}
+
+auto MeasureSpriteResourceStorage(const SpriteResourceData& resource, size_t limit) -> optional<size_t>
+{
+    size_t size = 0;
+    auto add = [&](size_t count, size_t element_size) {
+        if (count > (limit - size) / element_size) {
+            return false;
+        }
+
+        size += count * element_size;
+        return true;
+    };
+
+    if (!add(1, sizeof(SpriteResourceData)) || !add(resource.Directions.capacity(), sizeof(SpriteResourceDirectionData))) {
+        return std::nullopt;
+    }
+
+#if FO_ENABLE_3D
+    if (resource.Animation.Model.has_value()) {
+        return std::nullopt;
+    }
+#endif
+
+    if (resource.Animation.Sprite.has_value()) {
+        const auto& info = *resource.Animation.Sprite;
+
+        if (!add(info.Directions.capacity(), sizeof(SpriteDirInfo))) {
+            return std::nullopt;
+        }
+
+        for (const auto& direction : info.Directions) {
+            if (!add(direction.Frames.capacity(), sizeof(SpriteFrameInfo))) {
+                return std::nullopt;
+            }
+        }
+    }
+
+    for (const auto& direction : resource.Directions) {
+        if (!add(direction.Frames.capacity(), sizeof(SpriteResourceFrameData))) {
+            return std::nullopt;
+        }
+
+        for (const auto& frame : direction.Frames) {
+            if (!add(frame.Pixels.capacity(), sizeof(ucolor))) {
+                return std::nullopt;
+            }
+
+            if (frame.Mesh.has_value() && (!add(frame.Mesh->Vertices.capacity(), sizeof(ipos32)) || !add(frame.Mesh->Indices.capacity(), sizeof(uint16_t)))) {
+                return std::nullopt;
+            }
+        }
+    }
+
+    return size;
+}
+
 auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 {
     FO_TRACE_ZONE(Render);
@@ -237,3 +307,4 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
 }
 
 FO_END_NAMESPACE
+

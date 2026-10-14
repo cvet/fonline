@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-validation","locale":"ru","source_path":"Docs/en/reference/map-format/validation.md","source_sha256":"627a90cda6f951c1536624fb66ebd41ce0249bae4e1b4bd30d35613003909d59"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-validation","locale":"ru","source_path":"Docs/en/reference/map-format/validation.md","source_sha256":"b18ec491d5b1f86af9a60b90def2071f835dc405ce6e2a9789b05ade624a8754"} -->
 
 # Правила валидации карт
 
@@ -17,6 +17,7 @@ generated: true
 
 | Стабильный ID | Правило | Требование | Примечания | Авторитетный источник |
 | --- | --- | --- | --- | --- |
+| <a id="entry-map-format-rule-client-resource-preparation-793d833886"></a><code>map-format.rule.client-resource-preparation</code> | Подготовка ресурсов статики клиента | После приёма холодного допустимого спрайта исходным replay проверяются не больше 64 записей, включая текущую, с пассивными owner properties; допустимые ресурсы подаются до единственного fence окна, затем сохраняется исходный порядок публикации предметов. Removed IDs пропускаются до восстановления свойств. Спекулятивные ошибки откладываются до исходного replay. | Direct, нулевой бюджет workers и полностью тёплый кеш обходят lookahead, fences и смену epoch. Подготовка не меняет baked format, действующий PicMap, factory overrides или опубликованный префикс перед ошибкой. | [Source/Client/MapView.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/MapView.cpp) |
 | <a id="entry-map-format-rule-config-syntax-c8ce441afa"></a><code>map-format.rule.config-syntax</code> | Синтаксис конфигурации | Используйте повторяющиеся INI-подобные секции, присваивания key = value, комментарии #, продолжение обратной косой чертой и добавление key += value там, где его поддерживает парсер свойства. | .fomap использует общий парсер ConfigFile. | [Source/Common/ConfigFile.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/ConfigFile.cpp) |
 | <a id="entry-map-format-rule-closed-section-set-e6b71cb035"></a><code>map-format.rule.closed-section-set</code> | Закрытый набор секций | Используйте только якоря ProtoMap верхнего уровня и вложенные секции &lt;owner&gt;/Critter или &lt;owner&gt;/Item. | [$Name/...] привязывается к предыдущему якорю. Явный владелец обязан именовать объявленную карту; контекстная вложенная секция перед первым якорем отклоняется. | [Source/Common/MapLoader.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/MapLoader.cpp) |
 | <a id="entry-map-format-rule-map-identity-2c4b8fee3b"></a><code>map-format.rule.map-identity</code> | Идентичность карты | Задавайте каждой карте в контейнере с несколькими картами уникальное $Name ProtoMap; одиночный безымянный якорь наследует базовое имя исходника. | Идентичность карты, целевой поиск при запекании и имена запечённых output берутся из объявленных ID карт, а не имён контейнеров. | [Source/Tools/MapBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/MapBaker.cpp) |

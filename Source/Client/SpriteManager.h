@@ -40,6 +40,7 @@
 #include "Geometry.h"
 #include "MapSprite.h"
 #include "RenderTarget.h"
+#include "ResourcePreparation.h"
 #include "Settings.h"
 #include "SpriteGeometry.h"
 #include "TextureAtlas.h"
@@ -191,7 +192,7 @@ public:
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
     auto operator=(SpriteManager&&) noexcept = delete;
-    ~SpriteManager() = default;
+    ~SpriteManager();
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
@@ -219,6 +220,15 @@ public:
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+
+    [[nodiscard]] auto CanPrepareSpriteResources() const -> bool;
+    [[nodiscard]] auto GetResourcePreparationDiagnostics() const -> ResourcePreparation::Diagnostics;
+    auto PrefetchSpriteResource(hstring path, AtlasType atlas_type, bool as_quad = false) -> bool;
+    auto ConsumePreparedSpriteResource(hstring path, AtlasType atlas_type, bool as_quad, const function<void(SpriteResourceData&&)>& publish) -> bool;
+    void DrainPreparedSpriteResources();
+    void DiscardPreparedSpriteResources();
+    void AdvanceResourcePreparationGeneration();
+    void ShutdownResourcePreparation();
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -347,6 +357,12 @@ private:
     optional<isize32> _pendingWindowedSize {};
 
     EventUnsubscriber _eventUnsubscriber {};
+
+    uint64_t _resourceGeneration {1};
+    uint64_t _resourceEpoch {1};
+    bool _resourcePreparationStopped {};
+    // Last member drains first during constructor unwind, before factories, atlases and provider borrows
+    unique_nptr<ResourcePreparation> _resourcePreparation {};
 };
 
 FO_END_NAMESPACE

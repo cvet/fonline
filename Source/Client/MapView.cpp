@@ -374,6 +374,14 @@ void MapView::LoadStaticData()
         _processingItems.reserve(256);
 
         vector<uint8_t> props_data;
+        bool prepare_resources = _engine->SprMngr.CanPrepareSpriteResources();
+        uint32_t preparation_window_end = 0;
+        bool prepared_resources = false;
+        auto discard_preparation = scope_exit([&]() noexcept {
+            if (prepared_resources) {
+                _engine->SprMngr.DiscardPreparedSpriteResources();
+            }
+        });
 
         for (uint32_t i = 0; i < items_count; i++) {
             ident_t static_id = ident_t {reader.read<ident_t::underlying_type>()};
@@ -397,6 +405,44 @@ void MapView::LoadStaticData()
             }
 
             item_props.RestoreAllData(props_data);
+
+            if (prepare_resources && i >= preparation_window_end && _engine->SprMngr.PrefetchSpriteResource(ItemProperties {item_props}.GetPicMap(), AtlasType::MapSprites)) {
+                prepared_resources = true;
+                preparation_window_end = i + std::min<uint32_t>(items_count - i, 64);
+                auto lookahead = reader;
+                vector<uint8_t> preparation_props;
+
+                for (uint32_t index = i + 1; index < preparation_window_end; index++) {
+                    try {
+                        ident_t id {lookahead.read<ident_t::underlying_type>()};
+                        auto proto_hash = lookahead.read<hstring::hash_t>();
+                        uint32_t size = lookahead.read<uint32_t>();
+                        auto bytes = lookahead.read_bytes(size);
+
+                        if (removed_ids.count(id) != 0) {
+                            continue;
+                        }
+
+                        auto proto = _engine->GetProtoItem(_engine->Hashes.resolve_hash(proto_hash));
+                        FO_VERIFY_AND_THROW(proto, "Missing required item prototype");
+                        Properties properties {proto->GetProperties()->GetRegistrar()};
+                        preparation_props.assign(bytes.begin(), bytes.end());
+                        properties.RestoreAllData(preparation_props);
+                        ItemProperties item_properties {properties};
+                        (void)_engine->SprMngr.PrefetchSpriteResource(item_properties.GetPicMap(), AtlasType::MapSprites);
+                    }
+                    catch (const std::exception& ex) {
+                        // Replay owns the diagnostic and the already-published prefix, even for a later broken record
+                        ignore_unused(ex);
+                        break;
+                    }
+                    catch (...) {
+                        FO_UNKNOWN_EXCEPTION();
+                    }
+                }
+
+                _engine->SprMngr.DrainPreparedSpriteResources();
+            }
 
             auto item_props_ptr = make_nptr(&item_props);
             auto static_item = safe_alloc::make_refcounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);

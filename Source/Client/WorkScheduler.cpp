@@ -118,6 +118,124 @@ WorkScheduler::~WorkScheduler()
     StopWorkers();
 }
 
+auto WorkScheduler::EstimateBackgroundStorage() -> size_t
+{
+    return sizeof(BackgroundState) + sizeof(shared_ptr_storage_block<uint8_t>) + MAX_BACKGROUND_TASKS * (sizeof(BackgroundWork) * 2 + sizeof(shared_ptr<BackgroundTask>));
+}
+
+auto WorkScheduler::CreateBackgroundGroup() -> shared_ptr<BackgroundGroup>
+{
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Background groups belong to the scheduler owner");
+
+    if (!IsParallel()) {
+        return nullptr;
+    }
+
+    scoped_lock locker {_mutex};
+    FO_VERIFY_AND_THROW(!_finish, "Client work scheduler is stopped", _name);
+    FO_VERIFY_AND_THROW(_nextBackgroundGroupId != std::numeric_limits<uint64_t>::max(), "Background group sequence exhausted");
+
+    if (!_background) {
+        auto state = safe_alloc::make_unique<BackgroundState>();
+        state->Identity = safe_alloc::make_shared<uint8_t>();
+        state->Queued.reserve(MAX_BACKGROUND_TASKS);
+        state->Active.reserve(MAX_BACKGROUND_TASKS);
+        _background = std::move(state);
+    }
+
+    auto group = safe_alloc::make_shared<BackgroundGroup>();
+    group->_id = ++_nextBackgroundGroupId;
+    group->_identity = _background->Identity;
+    return group;
+}
+
+auto WorkScheduler::TrySubmitBackground(shared_ptr<BackgroundGroup> group, function<void()> work) -> shared_ptr<BackgroundTask>
+{
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Background submission belongs to the scheduler owner");
+
+    if (!IsParallel()) {
+        return nullptr;
+    }
+
+    FO_VERIFY_AND_THROW(group && work, "Background submission requires a group and owned work");
+    shared_ptr<BackgroundTask> task;
+
+    {
+        scoped_lock locker {_mutex};
+        FO_VERIFY_AND_THROW(_background && group->_identity == _background->Identity, "Background group belongs to another scheduler");
+        FO_VERIFY_AND_THROW(!_batchActive, "Background submission cannot nest inside a foreground batch");
+
+        if (_finish || group->_cancelled.load(std::memory_order_acquire) || _background->Queued.size() + _background->Active.size() >= MAX_BACKGROUND_TASKS) {
+            return nullptr;
+        }
+
+        FO_VERIFY_AND_THROW(_nextBackgroundTaskId != std::numeric_limits<uint64_t>::max(), "Background task sequence exhausted");
+        task = safe_alloc::make_shared<BackgroundTask>();
+        task->_id = ++_nextBackgroundTaskId;
+        task->_group = group;
+
+        _background->Queued.push_back({task, std::move(work)});
+        group->_pending.fetch_add(1, std::memory_order_release);
+    }
+
+    _workSignal.notify_one();
+    return task;
+}
+
+auto WorkScheduler::PollBackground(const shared_ptr<BackgroundTask>& task) const -> BackgroundResult
+{
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Background polling belongs to the scheduler owner");
+    FO_VERIFY_AND_THROW(task, "Background task is absent");
+    BackgroundStatus status = task->_status.load(std::memory_order_acquire);
+
+    // The completion release publishes the exception and the owned work's writes together
+    return {status, status == BackgroundStatus::Completed ? task->_exception : std::exception_ptr {}};
+}
+
+void WorkScheduler::CancelBackground(shared_ptr<BackgroundGroup> group)
+{
+    FO_TRACE_ZONE(Threading);
+
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Background cancellation belongs to the scheduler owner");
+    FO_VERIFY_AND_THROW(group, "Background group is absent");
+    vector<BackgroundWork> cancelled;
+    cancelled.reserve(MAX_BACKGROUND_TASKS);
+
+    {
+        scoped_lock locker {_mutex};
+        FO_VERIFY_AND_THROW(_background && group->_identity == _background->Identity, "Background group belongs to another scheduler");
+        group->_cancelled.store(true, std::memory_order_release);
+
+        for (auto it = _background->Queued.begin(); it != _background->Queued.end();) {
+            if (it->Task->_group == group) {
+                cancelled.emplace_back(std::move(*it));
+                it = _background->Queued.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+
+    RetireCancelledWork(std::move(cancelled));
+    _doneSignal.notify_all();
+}
+
+void WorkScheduler::DrainBackground(const shared_ptr<BackgroundGroup>& group)
+{
+    FO_TRACE_ZONE(Threading);
+
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Background drain belongs to the scheduler owner");
+    FO_VERIFY_AND_THROW(group, "Background group is absent");
+    unique_lock locker {_mutex};
+    FO_VERIFY_AND_THROW(_background && group->_identity == _background->Identity, "Background group belongs to another scheduler");
+    FO_VERIFY_AND_THROW(!_batchActive, "Background drain cannot nest inside a foreground batch");
+
+    while (group->_pending.load(std::memory_order_acquire) != 0) {
+        _doneSignal.wait(locker);
+    }
+}
+
 auto WorkScheduler::GetDiagnostics() const noexcept -> Diagnostics
 {
     return Diagnostics {
@@ -137,6 +255,7 @@ void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t m
 {
     FO_TRACE_ZONE(Threading);
 
+    FO_VERIFY_AND_THROW(std::this_thread::get_id() == _ownerThread, "Client work batches belong to the scheduler owner", batch_name);
     FO_VERIFY_AND_THROW(item_work, "Client work batch has no item work", batch_name);
 
     if (item_count == 0) {
@@ -283,11 +402,12 @@ void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept
 
     while (true) {
         Batch batch;
+        optional<BackgroundWork> background_work;
 
         {
             unique_lock locker {_mutex};
 
-            while (!_finish && (!_batchActive || _batchGeneration == last_generation)) {
+            while (!_finish && (!_batchActive || _batchGeneration == last_generation) && (!_background || _background->Queued.empty())) {
                 _workSignal.wait(locker);
             }
 
@@ -295,9 +415,22 @@ void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept
                 return;
             }
 
-            last_generation = _batchGeneration;
-            batch = _batch;
-            _activeParticipants++;
+            if (_batchActive && _batchGeneration != last_generation) {
+                last_generation = _batchGeneration;
+                batch = _batch;
+                _activeParticipants++;
+            }
+            else {
+                background_work.emplace(std::move(_background->Queued.front()));
+                _background->Queued.erase(_background->Queued.begin());
+                _background->Active.emplace_back(background_work->Task);
+                background_work->Task->_status.store(BackgroundStatus::Running, std::memory_order_release);
+            }
+        }
+
+        if (background_work) {
+            RunBackgroundWork(std::move(*background_work));
+            continue;
         }
 
         RunClaimedChunks(batch);
@@ -312,16 +445,76 @@ void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept
     }
 }
 
+void WorkScheduler::RunBackgroundWork(BackgroundWork work) noexcept
+{
+    FO_TRACE_ZONE(Threading);
+
+    auto task = work.Task;
+
+    if (!task->_group->_cancelled.load(std::memory_order_acquire)) {
+        try {
+            work.Work();
+        }
+        catch (const std::exception& ex) {
+            ignore_unused(ex);
+            task->_exception = std::current_exception();
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
+    }
+
+    // Captures can own large payloads; release them before reporting quiescence and outside the scheduler mutex
+    work.Work = nullptr;
+
+    {
+        scoped_lock locker {_mutex};
+        auto it = std::find(_background->Active.begin(), _background->Active.end(), task);
+        FO_STRONG_ASSERT(it != _background->Active.end(), "Active background task is absent");
+        _background->Active.erase(it);
+
+        bool cancelled = task->_group->_cancelled.load(std::memory_order_acquire);
+        task->_status.store(cancelled ? BackgroundStatus::Cancelled : BackgroundStatus::Completed, std::memory_order_release);
+        task->_group->_pending.fetch_sub(1, std::memory_order_release);
+    }
+
+    _doneSignal.notify_all();
+}
+
+void WorkScheduler::RetireCancelledWork(vector<BackgroundWork> work) noexcept
+{
+    for (auto& item : work) {
+        item.Work = nullptr;
+        item.Task->_status.store(BackgroundStatus::Cancelled, std::memory_order_release);
+        item.Task->_group->_pending.fetch_sub(1, std::memory_order_release);
+    }
+}
+
 void WorkScheduler::StopWorkers() noexcept
 {
     FO_TRACE_ZONE(Threading);
+
+    vector<BackgroundWork> cancelled;
 
     {
         scoped_lock locker {_mutex};
 
         _finish = true;
+
+        if (_background) {
+            for (auto& task : _background->Active) {
+                task->_group->_cancelled.store(true, std::memory_order_release);
+            }
+
+            cancelled = std::move(_background->Queued);
+
+            for (auto& work : cancelled) {
+                work.Task->_group->_cancelled.store(true, std::memory_order_release);
+            }
+        }
     }
 
+    RetireCancelledWork(std::move(cancelled));
     _workSignal.notify_all();
 
     for (auto& worker : _workers) {
@@ -334,3 +527,4 @@ void WorkScheduler::StopWorkers() noexcept
 }
 
 FO_END_NAMESPACE
+

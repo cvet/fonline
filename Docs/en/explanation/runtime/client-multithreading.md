@@ -23,14 +23,15 @@ permalink: /Docs/en/explanation/runtime/client-multithreading.html
 
 What is implemented today:
 
-- [WorkScheduler](../../../../Source/Client/WorkScheduler.h): bounded CPU batches over each `ClientEngine`'s persistent workers.
+- [WorkScheduler](../../../../Source/Client/WorkScheduler.h): bounded CPU batches and owning background tasks over each `ClientEngine`'s persistent workers.
+- [ResourcePreparation](../../../../Source/Client/ResourcePreparation.h): owned CPU decoding with owner-only acquisition/publication and bounded static-map lookahead.
 - [SpriteManager](../../../../Source/Client/SpriteManager.cpp): two-phase frame updates with declared CPU-only work.
 - [SpriteGeometry](../../../../Source/Client/SpriteGeometry.cpp): atlas, region, glyph and map vertex/index kernels.
 - [FontManager](../../../../Source/Client/FontManager.cpp): pure measurement and draw-layout preparation with owner-only cache publication.
 - [MapView](../../../../Source/Client/MapView.cpp) and [FogShape](../../../../Source/Client/FogOfWar.cpp): dirty light-source and fog-sector calculations over passive obstacle snapshots.
 - [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is one worker stage.
 
-The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel particles, an asynchronous resource lane or threaded Web. Their prerequisites and proposed order follow below.
+The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel particles or threaded Web. Their prerequisites and proposed order follow below.
 
 No frame-time speedup is claimed. Tests establish pose equality and serial bypass; earlier embedding-project player-path checks do not qualify later revisions or platforms. See [Measuring it](#measuring-it).
 
@@ -59,7 +60,7 @@ Batch rules:
 - **The owner never publishes anything while a batch is running.** `RunBatch` is synchronous: it returns only
   after every item has completed, so there is no window in which a worker and the owner both touch the frame.
 
-Outside `RunBatch` there is no outstanding work; shutdown only joins idle workers. A batch cannot outlive its stage. Cross-frame resource work needs a separate bounded queue and request generations.
+A foreground batch cannot outlive its stage. Owning background resource tasks can remain outstanding outside `RunBatch`; they use the same workers but separate pending/failure accounting. Foreground batches take priority at worker acquisition, and the owner can finish their chunks while workers are busy decoding. Cancel removes queued captures outside the scheduler lock, active work retains ownership until exit, and drain establishes quiescence. Only the constructing owner manages groups and consumption; workers cannot submit or drain nested work. No additional pool or dispatcher is created.
 
 ## The scheduler
 
@@ -195,7 +196,7 @@ With no workers, draw calls execute the kernel directly without queues or retain
 | Light/fog publication | Map fields, source ownership, visibility/global counters, offset borrows and fog transitions remain owner-only; workers calculate passive marks and geometry. |
 | Particles | SPARK and Effekseer share managers, random state and resource callbacks across systems. Middleware threading and client workers also have to be counted against one CPU budget, not enabled independently. |
 | Network | Stream decompression is stateful and ordered, and packet handlers mutate client entities. A transport offload needs an ordered byte handoff, not a parallel loop. |
-| Resource preparation | `ReadSpriteResource` is a usable CPU contract, but publication touches the cache, the atlas and the GPU. This is a cross-frame lane with generations, not a frame batch. |
+| Resource acquisition/publication | The owner reads bytes and publishes factories, caches, atlas and GPU state. `ResourcePreparation` workers only decode owned bytes; see [limits and lifetime](../../how-to/content/image-format.md#bounded-cpu-resource-preparation). |
 | Scripts, renderer, GPU objects | Single-owner by design. Concurrent C# callbacks and a render thread are outside this feature. The frame path no longer reads the GPU back synchronously — a model's hit mask arrives through a non-blocking readback ([FrontendAndRendering.md](../rendering/index.md#reading-a-texture-back)) — so a future render thread would not be stalled by picking. |
 
 SDL documents event polling and GL context selection as main-thread operations, so the portable renderer stays
@@ -295,7 +296,6 @@ player-visible surface twice, once per mode, and compare the two verdicts.
    in the order the profile puts them.
 2. **A further stage, chosen by that profile.** Light and fog now have passive calculation boundaries; qualify
    their existing stages before adding more work to the scheduler.
-3. **A resource lane.** Bounded prepare/publish with request generations, judged on loading latency and stalls,
-   not on steady FPS. It is a different object from this scheduler.
+3. **Resource-lane qualification.** Measure loading latency, stalls and memory for the existing bounded prepare/publish lane; qualify other STL implementations before shipping them. The pinned MSVC reservation excludes retained diagnostic exception payloads and is not a physical peak bound.
 4. **Platform validation** for macOS and Android, and a decision on whether a threaded Web artifact is worth its
    separate loader and isolation requirements.

@@ -12,6 +12,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Prepare cold static-map sprite resources with owning asynchronous CPU decode tasks on the existing client worker pool. Acquisition, ordered sprite/cache/atlas publication and error replay stay on the owner. Bound lookahead and request reservations; preserve warm/direct/zero-worker paths, custom factory dispatch, generation cancellation and shutdown drain. Multithreading remains off by default; see [migration below](#resource-preparation-migration).
+
+- Increase the reviewed full AI-context capacity by 8 KiB to 2,347,008 bytes for complete resource-preparation guidance; retain whole documents, exclusions and overflow rejection.
+
 - Increase the reviewed full AI-context capacity by 4 KiB to 2,338,816 bytes for complete light/fog calculation and native rebuild guidance; retain whole documents, exclusions and overflow rejection.
 
 - Calculate dirty map light sources and large dirty fog sectors in the existing client worker budget. Workers receive passive bounded obstacles and return ordered marks/geometry; owner publication, source counts, offset borrows and transitions remain synchronous. Direct/zero/small paths avoid obstacle snapshots and direct light streams marks without a new event queue. Rebuild native consumers for the new `FogShape::Input` layout and `Prepare` signature. No script API, resource-schema, save or networking migration is required; Managed ABI 9 and runtime compatibility remain unchanged. Thresholds are provisional, multithreading stays off by default, and no speedup/GPU/platform qualification is claimed.
@@ -28,6 +32,15 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Rebase the unpublished client-worker integration onto published master 2026.1.36-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the five intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
 
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
+
+### Resource preparation migration
+
+Native embedders using `WorkScheduler`, `SpriteManager` or `DefaultSpriteFactory` must reconfigure and rebuild all enabled consumers together: member layouts changed and `ResourcePreparation` is a new module. Existing custom factory overrides retain their dispatch; only the exact built-in factory opts into preparation. Call lane APIs on the owner; CPU decoders own passive bytes/results and cannot capture providers, entities or renderer state. Drain before destroying dependencies.
+
+Rebake and package matching metadata/runtime payloads with the rebuilt roles. No script/configuration, resource-format, save, network or Managed ABI conversion is introduced. Keep `Client.Multithreading=False` until workload qualification. The 64 MiB reservation is qualified for the documented MSVC STL; allocator overhead, transient over-allocation, provider/GPU storage, retained exception diagnostics and arbitrary decoder captures are excluded. Other STL and performance require separate qualification; see [resource preparation](../how-to/content/image-format.md#bounded-cpu-resource-preparation).
+
+Validate the exact binaries with native cancellation, error, publication and actual-map tests plus a visible cold/revisited-map/shutdown route. This does not qualify timing, peak RSS or GPU equivalence. Rollback restores matching preceding binaries/resources without persisted-data conversion.
+
 
 ### Changed
 

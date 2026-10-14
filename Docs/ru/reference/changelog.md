@@ -8,11 +8,15 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1813f7accef567320ff5a3eca1905ed032854f7a45c937dafadbd64e31012de9"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"196eb24ab9d80f329da2ba6bd9dfe015aa47326707663c71ee0f877c90859e87"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Добавлена подготовка холодных спрайтов статической карты через владеющие асинхронные CPU-задачи существующего клиентского пула. Чтение, упорядоченная публикация sprite/cache/atlas и воспроизведение ошибок остаются владельцу. Ограничены просмотр следующих записей и reservation; сохранены warm/direct/zero-worker пути, dispatch пользовательских фабрик, отмена generation и shutdown drain. Многопоточность остаётся выключенной по умолчанию; см. [миграцию ниже](#миграция-подготовки-ресурсов).
+
+- Проверенный предел полного AI-контекста увеличен на 8 KiB до 2 347 008 bytes для полного руководства по подготовке ресурсов; целые документы, исключения и отказ при переполнении сохранены.
 
 - Увеличена проверенная ёмкость полного AI-контекста на 4 KiB до 2 338 816 байт для полного руководства по расчёту света/тумана и native rebuild; целые документы, исключения и отказ при превышении сохранены.
 
@@ -30,6 +34,15 @@ permalink: /Docs/ru/reference/changelog.html
 - Переоснован неопубликованный слой интеграции клиентских workers на опубликованный master 2026.1.36-dev с сохранением пяти экспериментальных настроек и 2578 классифицированных символов native-codegen. Примените пять промежуточных записей миграции ниже и пересоберите/перезапеките согласованные приложения и ресурсы; эта интеграция не меняет ABI или сетевую совместимость.
 
 - Добавлен скрытый эксперимент `ClientPoseBatchCost`: парный прямой и рабочий расчёт переданного запечённого rig с точной проверкой результатов и сырыми timing samples. См. [контракт входов](../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз). Обычный unit-прогон и runtime defaults не меняются.
+
+### Миграция подготовки ресурсов
+
+Native-потребители `WorkScheduler`, `SpriteManager` и `DefaultSpriteFactory` должны повторно сконфигурировать и собрать все включённые роли вместе: изменились member layouts, добавлен модуль `ResourcePreparation`. Существующие custom factory overrides сохраняют dispatch; в подготовку включается только точная встроенная фабрика. Lane API вызывается владельцем; CPU decoder владеет пассивными bytes/results и не захватывает providers, entities или renderer state. До уничтожения зависимостей требуется drain.
+
+Повторно запеките и упакуйте согласованные metadata/runtime payloads с новыми ролями. Конверсия script/configuration, resource-format, saves, network или Managed ABI не вводится. До квалификации нагрузки сохраняйте `Client.Multithreading=False`. Reservation 64 MiB квалифицирована для указанной MSVC STL; исключены allocator overhead, transient over-allocation, provider/GPU storage, retained exception diagnostics и произвольные decoder captures. Другие STL и производительность требуют отдельной квалификации; см. [подготовку ресурсов](../how-to/content/image-format.md#ограниченная-cpu-подготовка-ресурсов).
+
+Проверьте точные бинарники native-тестами отмены, ошибок, публикации и настоящей карты, затем видимым маршрутом холодной/повторной карты и shutdown. Это не квалификация timing, peak RSS или GPU equivalence. Откат восстанавливает предыдущие согласованные binaries/resources без преобразования сохранённых данных.
+
 
 ### Изменено
 

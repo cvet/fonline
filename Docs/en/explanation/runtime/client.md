@@ -113,7 +113,7 @@ A typical client lifetime has these phases:
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
 6. **Network connection** starts with `Connect()`, which delegates transport setup and handshake work to `ClientConnection`.
 7. **Map and entity state** arrive through network messages, are represented as client view entities, and are updated through property sync and movement/action packets.
-8. **Shutdown** disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
+8. **Shutdown** first closes and drains resource preparation, then disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
 
@@ -384,7 +384,7 @@ whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contribu
 
 ### Map unload and native storage lifetime
 
-`ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool.
+`ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool. Resource preparation cancels the previous generation before `OnMapUnload`; active CPU requests retain their owned inputs until quiescence and cannot publish into the next generation.
 
 All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
 

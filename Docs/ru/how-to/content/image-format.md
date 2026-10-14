@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"c414ee04770321dcda7e04ceb36bd89f75776535e35119dedab0931fbd679854"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"673105525298e6031431ace8a81e76b72dbde4750a7689a2f3294595fed77ce3"} -->
 
 # Форматы изображений и спрайтов
 
@@ -486,6 +486,18 @@ state/action tags. `AtlasSprite::MakeCopy()` разделяет atlas pixels/geo
 `_nonFoundSprites`. `CleanupSpriteCache()` не очищает этот набор. После
 добавления ресурса, который запущенный клиент уже не смог загрузить, пересоздайте
 sprite manager или перезапустите клиент перед проверкой того же пути.
+
+## Ограниченная CPU-подготовка ресурсов
+
+При наличии клиентских workers `SpriteManager::PrefetchSpriteResource` читает запечённые bytes на потоке приложения и передаёт принадлежащий запросу буфер в `ResourcePreparation`. Штатный decoder — `ReadSpriteResource` на существующем pool `WorkScheduler`. Worker не получает provider, hash resolver, factory, entity или renderer. Распараллеливается CPU-разбор, а не файловый или архивный I/O. False, нулевой бюджет workers, Web и Mapper не создают полосу и копии bytes.
+
+Предварительные ограничения: 32 уникальных незавершённых запроса, 64 МиБ reservation входов/decoded/control storage, 8 МиБ encoded bytes и 16 МиБ оценённого decoded storage на запрос, путь до 4 КиБ. Слот занимают queued, active, completed и publishing запросы. Ключ включает путь, normal/quad kind, atlas intent, поколение карты и эпоху ресурса; дубликат проверяется до чтения. Full и BudgetDeclined возвращают обычный loader. Missing отличается от ошибки разбора; исходный тип исключения и полный diagnostic повторно выбрасываются только при потреблении владельцем.
+
+Оценка без аллокаций включает всю metadata направлений/кадров анимации и удвоенный encoded size для pixels и mesh expansion. Приём также учитывает фактические capacity входа/пути, job/control blocks, inline work и консервативные allowances общих таблиц. Размерные vectors и точные reserve штатного decoder квалифицированы по MSVC 19.51 / STL 14.51.36231; фактические output capacity проверяются как защита от drift. Это учитываемая reservation на данной реализации, а не переносимый предел allocator или физического пика. Исключены allocator overhead, временное implementation over-allocation, provider acquisition/decompression, GPU publication, удерживаемый diagnostic exception payload и произвольные captures внедрённого decoder. Патологически большое исключение может выйти за reservation. Другие STL требуют квалификации до поставки; latency загрузки, process RSS и производительность пока не квалифицированы.
+
+Допускается только точный встроенный тип default factory: subclass с override сохраняет свой dispatch. Normal и quad loads используют прежние общие owner publication helpers, сохраняя независимое воспроизведение sheets, shared frames и проверки direction/frame/cropped image quad-маршрута. Pending при потреблении возвращает direct fallback. Отмена сразу отзывает публикацию, но удерживает active storage до выхода CPU; callback публикации удерживает слот и reservation до возврата или unwind. Необязательная принадлежащая полосе decoder dependency принимает только пассивные bytes/results и обязана быть reentrant CPU-функцией без owner captures.
+
+Инвалидация повышает общую эпоху ресурса до прежней инвалидации кеша пути; очистка при нехватке памяти также отбрасывает подготовку. Unload карты отменяет поколение до `OnMapUnload`. Явный shutdown клиента закрывает и дренирует подготовку до disconnect/events, а деструктор `SpriteManager` дренирует её до разрушения providers, factories и renderer dependencies. Scheduler живёт дольше. См. [подготовку статики карты](map-format.md#подготовка-ресурсов-статики-клиента) и [планирование workers](../../explanation/runtime/client-multithreading.md).
 
 ## Практики авторинга
 

@@ -40,7 +40,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
    Each complete document keeps its ID, source path and canonical `URL:` header; compact labels preserve the byte budget.
-4. The manifest checks the reviewed 2 MiB + 236 KiB (2,338,816 bytes) before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Reviewed growth:
+4. The manifest checks the reviewed 2 MiB + 244 KiB (2,347,008 bytes) before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Reviewed growth:
 
    | Date / revision | Complete bundle bytes | Reviewed growth and reason |
    |---|---:|---|
@@ -53,6 +53,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    | Published client-worker integration | 2,326,528-byte capacity | +32 KiB: retain the merged current corpus; membership and overflow rejection are unchanged. |
    | 2026-10-13, prepared text layout | 2,328,727 before policy reconciliation | +8 KiB: complete text-layout, font, Managed API and generated-index guidance exceeded the prior capacity by 2,199 bytes. Remeasure after this policy and migration update; retain all complete documents and exclusions. |
    | 2026-10-13, passive light/fog calculation | 2,336,059 before policy reconciliation | +4 KiB: complete light/fog ownership, direct-path and native rebuild guidance exceeded the prior capacity by 1,339 bytes. Retain whole documents, exclusions and overflow rejection; remeasure the final bundle. |
+   | 2026-10-14, bounded CPU resource preparation | 2,341,812 before policy reconciliation | +8 KiB: complete decoder ownership, map replay, cancellation and qualified memory-bound guidance exceeded the prior capacity by 2,996 bytes. Retain whole documents, exclusions and overflow rejection; remeasure the final bundle. |
 
    The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Omitted pages remain in `llms.txt`, search and the public manifest. Checked managed-arithmetic guides/migration notes use this bound without another increase or exclusion.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.

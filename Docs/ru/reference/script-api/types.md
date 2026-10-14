@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"e7ef541561e2a107d8a0c868e7c1d197080ac7c68661f507603936cc7c47cb80"} -->
+<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"681de602e67586205ef58d2baa9c762c09714546d95fa2e33d2c64b252ba2b39"} -->
 
 # Типы скриптов
 
@@ -1648,14 +1648,14 @@ ID символа: <code>script.enum.TransparentEggSlot</code><br>
 Runtime: server, client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Флаги: -<br>
-Исходник: [Source/Client/SpriteManager.h:64](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L64)
+Исходник: [Source/Client/SpriteManager.h:65](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L65)
 
 Выбирает одну из двух одновременно поддерживаемых отрисовкой масок прозрачности вокруг игрока.
 
 | Значение | Объявлено | Число | ID символа | Контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:67](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L67) | Первая маска прозрачности вокруг игрока, проверяемая для спрайтов карты. |
-| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:68](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L68) | Вторая независимая маска прозрачности вокруг игрока, проверяемая для спрайтов карты. |
+| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:68](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L68) | Первая маска прозрачности вокруг игрока, проверяемая для спрайтов карты. |
+| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:69](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L69) | Вторая независимая маска прозрачности вокруг игрока, проверяемая для спрайтов карты. |
 
 <a id="symbol-script-enum-transparenteggtarget-980d792f08"></a>
 ### <code>TransparentEggTarget</code>
@@ -1665,14 +1665,14 @@ ID символа: <code>script.enum.TransparentEggTarget</code><br>
 Runtime: server, client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Флаги: -<br>
-Исходник: [Source/Client/SpriteManager.h:72](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L72)
+Исходник: [Source/Client/SpriteManager.h:73](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L73)
 
 Определяет, какие спрайты перед гексом прозрачной маски она скрывает.
 
 | Значение | Объявлено | Число | ID символа | Контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:75](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L75) | Скрывать каждый спрайт, который находится перед гексом маски по правилу прозрачности. |
-| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:76](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L76) | Скрывать только стены и крыши, сохраняя передние предметы обстановки. |
+| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:76](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L76) | Скрывать каждый спрайт, который находится перед гексом маски по правилу прозрачности. |
+| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:77](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L77) | Скрывать только стены и крыши, сохраняя передние предметы обстановки. |
 
 ## Value types
 

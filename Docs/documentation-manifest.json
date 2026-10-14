@@ -203,7 +203,7 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2338816,
+      "max_bytes": 2347008,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",

@@ -42,7 +42,7 @@ FO_DECLARE_EXCEPTION(WorkSchedulerException);
 // Optional CPU parallelism, switched on at startup by Client.Multithreading and never by a build option: one binary
 // runs both modes, and zero workers starts no thread and builds no queue at all
 
-// It schedules bounded batches of independent CPU items and nothing else. The application thread stays the sole
+// It schedules bounded CPU batches and owned background resource work. The application thread stays the sole
 // owner of entities, scripts, input, GPU work and resource publication - see Docs/ClientMultithreading.md
 class WorkScheduler final
 {
@@ -82,6 +82,44 @@ public:
         uint64_t ParallelChunks {};
     };
 
+    enum class BackgroundStatus : uint8_t
+    {
+        Queued,
+        Running,
+        Completed,
+        Cancelled,
+    };
+
+    struct BackgroundResult
+    {
+        BackgroundStatus Status {};
+        std::exception_ptr Exception {};
+    };
+
+    class BackgroundGroup final
+    {
+        friend class WorkScheduler;
+
+    private:
+        uint64_t _id {};
+        shared_ptr<uint8_t> _identity {};
+        std::atomic<bool> _cancelled {};
+        std::atomic<size_t> _pending {};
+    };
+
+    class BackgroundTask final
+    {
+        friend class WorkScheduler;
+
+    private:
+        uint64_t _id {};
+        shared_ptr<BackgroundGroup> _group {};
+        std::atomic<BackgroundStatus> _status {BackgroundStatus::Queued};
+        std::exception_ptr _exception {};
+    };
+
+    static constexpr size_t MAX_BACKGROUND_TASKS = 32;
+
     // How many workers a client with multithreading on starts: every spare core, less the headroom, within a cap.
     // Zero is a legitimate answer, and the reason names the limiting factor so the startup log can say it
     static auto ReadWorkerCountInputs() -> WorkerCountInputs;
@@ -106,7 +144,29 @@ public:
     // item has completed. The first exception an item throws is rethrown here, on the owner, after the batch drained
     void RunBatch(string_view batch_name, size_t item_count, size_t min_items_per_chunk, const function<void(size_t)>& item_work);
 
+    static auto EstimateBackgroundStorage() -> size_t;
+
+    // Only the constructing thread manages groups; work owns its captures and runs only on existing workers
+    auto CreateBackgroundGroup() -> shared_ptr<BackgroundGroup>;
+    auto TrySubmitBackground(shared_ptr<BackgroundGroup> group, function<void()> work) -> shared_ptr<BackgroundTask>;
+    auto PollBackground(const shared_ptr<BackgroundTask>& task) const -> BackgroundResult;
+    void CancelBackground(shared_ptr<BackgroundGroup> group);
+    void DrainBackground(const shared_ptr<BackgroundGroup>& group);
+
 private:
+    struct BackgroundWork
+    {
+        shared_ptr<BackgroundTask> Task {};
+        function<void()> Work {};
+    };
+
+    struct BackgroundState
+    {
+        shared_ptr<uint8_t> Identity {};
+        vector<BackgroundWork> Queued {};
+        vector<shared_ptr<BackgroundTask>> Active {};
+    };
+
     struct Batch
     {
         nptr<const function<void(size_t)>> ItemWork {};
@@ -118,11 +178,16 @@ private:
     void RunClaimedChunks(const Batch& batch) noexcept;
     void RunChunkItems(const Batch& batch, size_t chunk_index);
     void WorkerEntry(int32_t worker_index) noexcept;
+    void RunBackgroundWork(BackgroundWork work) noexcept;
+    static void RetireCancelledWork(vector<BackgroundWork> work) noexcept;
     void StopWorkers() noexcept;
 
     string _name;
     int32_t _workerCount {};
     vector<thread> _workers {};
+    std::thread::id _ownerThread {std::this_thread::get_id()};
+    uint64_t _nextBackgroundGroupId {};
+    uint64_t _nextBackgroundTaskId {};
 
     // The batch is published under the mutex and copied by every worker the notify wakes; only the chunk cursor is
     // an atomic. It is closed once every participant left, so a late worker cannot claim into the batch after it
@@ -134,6 +199,7 @@ private:
     int32_t _activeParticipants FO_TSA_GUARDED_BY(_mutex) {};
     bool _batchActive FO_TSA_GUARDED_BY(_mutex) {};
     bool _finish FO_TSA_GUARDED_BY(_mutex) {};
+    unique_nptr<BackgroundState> _background FO_TSA_GUARDED_BY(_mutex) {};
     std::atomic<size_t> _nextChunk {};
     std::atomic<bool> _batchFailed {};
     mutex _failureLocker {};
@@ -144,3 +210,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

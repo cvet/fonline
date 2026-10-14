@@ -84,7 +84,11 @@ struct SpriteResourceImageData
     vector<ucolor> Pixels {};
 };
 
+auto EstimateSpriteResourceStorage(const_span<uint8_t> data, size_t limit) -> optional<size_t>;
+auto MeasureSpriteResourceStorage(const SpriteResourceData& resource, size_t limit) -> optional<size_t>;
+
 auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData;
 auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData;
 
 FO_END_NAMESPACE
+
