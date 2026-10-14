@@ -41,6 +41,33 @@ FO_BEGIN_NAMESPACE
 
 static constexpr ucolor PARTICLE_WIREFRAME_COLOR {255, 0, 255, 255};
 
+auto ParticleRuntimeSystem::GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics
+{
+    return {};
+}
+
+auto ParticleRuntimeSystem::CanUpdateCpu() const noexcept -> bool
+{
+    return false;
+}
+
+void ParticleRuntimeSystem::UpdateCpu(float32_t delta_seconds, bool worker, CpuUpdateDiagnostics& result)
+{
+    ignore_unused(delta_seconds);
+    ignore_unused(worker);
+    ignore_unused(result);
+    throw GenericException("Particle runtime does not support isolated CPU updates");
+}
+
+void ParticleRuntimeSystem::CommitCpuUpdate(const CpuUpdateDiagnostics& result) noexcept
+{
+    ignore_unused(result);
+}
+
+void ParticleRuntimeSystem::RetireCpuUpdate() noexcept
+{
+}
+
 auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>
 {
     if (!std::isfinite(position_min.x) || !std::isfinite(position_min.y) || !std::isfinite(position_min.z) || //

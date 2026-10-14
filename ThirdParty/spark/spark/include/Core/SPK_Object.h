@@ -109,6 +109,10 @@ namespace SPK
 		template<typename T>
 		static Ref<T> copy(const Ref<T>& ref);
 
+		// (FOnline Patch) Copy a graph into an explicitly owned CPU context.
+		template<typename T>
+		static Ref<T> copy(const Ref<T>& ref, SPKContext& destinationContext);
+
 		virtual ~SPKObject();
 
 		/** @brief Binds this object to one SPARK runtime context. */
@@ -232,7 +236,33 @@ namespace SPK
 		// * Having a static copyBuffer made the copy not thread safe (As concurrent copy of object would make concurrent read/write on the buffer)
 		// * Passing the copyBuffer to methods was too dirty and messed up the interface (Impossible to use the copy constructor anymore)
 		// Note that with this method the copy of the same object remains not thread safe but the copy of different object is
-		mutable std::map<SPKObject*,SPKObject*>* copyBuffer;
+		// (FOnline Patch) The destination travels with this owner-only copy operation, never through global state.
+		struct CopyBuffer
+		{
+			std::map<SPKObject*,SPKObject*> objects;
+			SPKContext* destinationContext;
+		};
+
+		struct CopyBinding
+		{
+			const SPKObject& object;
+			CopyBuffer* previous;
+
+			CopyBinding(const SPKObject& object, CopyBuffer* buffer) : object(object), previous(object.copyBuffer)
+			{
+				object.copyBuffer = buffer;
+			}
+
+			~CopyBinding()
+			{
+				object.copyBuffer = previous;
+			}
+		};
+
+		template<typename T>
+		static Ref<T> copyInto(const Ref<T>& ref, SPKContext* destinationContext);
+
+		mutable CopyBuffer* copyBuffer;
 
 		virtual Ref<SPKObject> clone() const = 0;
 	};
@@ -277,6 +307,12 @@ namespace SPK
 	template<typename T>
 	Ref<T> SPKObject::copy(const Ref<T>& ref)
 	{
+		return copyInto(ref, NULL);
+	}
+
+	template<typename T>
+	Ref<T> SPKObject::copyInto(const Ref<T>& ref, SPKContext* destinationContext)
+	{
 		if (!ref)
 			return ref;
 
@@ -286,11 +322,28 @@ namespace SPK
 			return SPK_NULL_REF;
 		}
 
-		ref->copyBuffer = new std::map<SPKObject*,SPKObject*>(); // Creates the copy buffer to allow correct copy of underlying SPARK objects
-        Ref<T> clone = staticCast<T>(staticCast<SPKObject>(ref)->clone());
-		delete ref->copyBuffer; // Deletes the copy buffer used for the copy
-		ref->copyBuffer = NULL;
-		return clone;
+		CopyBuffer buffer = {{}, destinationContext};
+		CopyBinding binding(*ref, &buffer);
+		return staticCast<T>(staticCast<SPKObject>(ref)->clone());
+	}
+
+	template<typename T>
+	Ref<T> SPKObject::copy(const Ref<T>& ref, SPKContext& destinationContext)
+	{
+		if (!ref)
+			return ref;
+
+		// Preserve the old constructor draws, including draws consumed before a throwing clone unwinds.
+		SPKContext& sourceContext = ref->getContext();
+		destinationContext.setRandomSeed(sourceContext.getRandomSeed());
+		struct SeedTransfer
+		{
+			SPKContext& source;
+			SPKContext& destination;
+			~SeedTransfer() { source.setRandomSeed(destination.getRandomSeed()); }
+		} transfer = {sourceContext, destinationContext};
+
+		return copyInto(ref, &destinationContext);
 	}
 
 	template<typename T>
@@ -308,15 +361,14 @@ namespace SPK
 			return SPK_NULL_REF;
 		}
 
-		std::map<SPKObject*,SPKObject*>::const_iterator it = copyBuffer->find(ref.get());
-		if (it != copyBuffer->end())
+		std::map<SPKObject*,SPKObject*>::const_iterator it = copyBuffer->objects.find(ref.get());
+		if (it != copyBuffer->objects.end())
 			return (T*) it->second; //! FOnline dynamic_cast<T*>(it->second);
 
-		ref->copyBuffer = copyBuffer; // Sets the copyBuffer of the child to the copyBuffer of the parent
+		CopyBinding binding(*ref, copyBuffer);
         Ref<SPKObject> clone = staticCast<SPKObject>(ref)->clone();
-		ref->copyBuffer = NULL; // Removes the reference to the copy buffer (the copy buffer is deleted by the top level copied object)
 
-		copyBuffer->insert(std::make_pair(ref.get(),clone.get()));
+		copyBuffer->objects.insert(std::make_pair(ref.get(),clone.get()));
         return staticCast<T>(clone);
 	}
 }

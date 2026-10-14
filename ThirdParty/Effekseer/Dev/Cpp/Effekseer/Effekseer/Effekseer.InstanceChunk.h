@@ -27,7 +27,10 @@ public:
 
 	void GenerateChildrenInRequired();
 
-	void UpdateInstancesByInstanceGlobal(const InstanceGlobal* global);
+	// (FOnline Patch) Pure admission scan; no lazy transform calculation or initialization is allowed here.
+	uint32_t CountCpuUpdateInstances(const InstanceGlobal* global, bool& parentsReady) const;
+
+	uint32_t UpdateInstancesByInstanceGlobal(const InstanceGlobal* global);
 
 	void GenerateChildrenInRequiredByInstanceGlobal(const InstanceGlobal* global);
 

@@ -58,8 +58,30 @@ void InstanceChunk::GenerateChildrenInRequired()
 	}
 }
 
-void InstanceChunk::UpdateInstancesByInstanceGlobal(const InstanceGlobal* global)
+uint32_t InstanceChunk::CountCpuUpdateInstances(const InstanceGlobal* global, bool& parentsReady) const
 {
+	uint32_t count = 0;
+	for (int32_t i = 0; i < InstancesOfChunk; i++)
+	{
+		if (instancesAlive_[i])
+		{
+			const auto* instance = reinterpret_cast<const Instance*>(instances_[i]);
+			if (global == instance->GetInstanceGlobal() && instance->IsActive())
+			{
+				count++;
+				if (instance->m_pParent != nullptr && !instance->m_pParent->m_GlobalMatrix43Calculated)
+				{
+					parentsReady = false;
+				}
+			}
+		}
+	}
+	return count;
+}
+
+uint32_t InstanceChunk::UpdateInstancesByInstanceGlobal(const InstanceGlobal* global)
+{
+	uint32_t updated = 0;
 	for (int32_t i = 0; i < InstancesOfChunk; i++)
 	{
 		if (instancesAlive_[i])
@@ -75,6 +97,7 @@ void InstanceChunk::UpdateInstancesByInstanceGlobal(const InstanceGlobal* global
 			{
 				auto deltaTime = global->GetNextDeltaFrame();
 				instance->Update(deltaTime, true);
+				updated++;
 			}
 			else if (instance->m_State == eInstanceState::INSTANCE_STATE_REMOVED)
 			{
@@ -89,6 +112,7 @@ void InstanceChunk::UpdateInstancesByInstanceGlobal(const InstanceGlobal* global
 			}
 		}
 	}
+	return updated;
 }
 
 void InstanceChunk::GenerateChildrenInRequiredByInstanceGlobal(const InstanceGlobal* global)

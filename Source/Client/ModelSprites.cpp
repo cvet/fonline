@@ -425,7 +425,7 @@ ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSe
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
-        })}
+        }, spr_mngr->GetWorkScheduler())}
 {
 }
 

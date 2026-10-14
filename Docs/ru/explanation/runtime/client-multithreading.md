@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"a916be9cf9602bbb5bb794305ce435f244420501fc91091d5e3ee12f96eac645"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"0fd246763cc927658bdcd734e7c7d7fbfa3356048da209149850dff52b895f1b"} -->
 
 # Необязательная многопоточность клиента
 
@@ -16,6 +16,7 @@ permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 - `Source/Client/FontManager.h`, `FontManager.cpp` и `Source/Tests/Test_FontLayout.cpp`
 - `Source/Client/MapLightCalculation.h`, `MapLightCalculation.cpp`, `MapView.cpp`, `FogOfWar.h` и `FogOfWar.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Client/ParticleRuntime.cpp`, `VisualParticles.cpp`, `SparkExtension.cpp` и `EffekseerExtension.cpp`
 - `Source/Tests/Test_WorkScheduler.cpp`, `Test_ModelAnimationPoseProcedural.cpp` и `Test_ClientEngine.cpp`
 
 ## Назначение
@@ -28,7 +29,9 @@ permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 
 `MapView` и `FogShape` также вычисляют dirty-источники света и сектора тумана по пассивным снимкам препятствий.
 
-Render thread, запись GPU-команд вне потока приложения, конкурентные скрипты, параллельные частицы и многопоточный Web не реализованы и не обещаются этим параметром.
+Через тот же scheduler клиента выполняются CPU-пакеты независимых SPARK-систем и chunks экземпляров Effekseer внутри поколения.
+
+Render thread, запись GPU-команд вне потока приложения, конкурентные скрипты и многопоточный Web не реализованы и не обещаются этим параметром.
 
 Ускорение не заявлено: необходимые сравнения времени кадра ещё предстоит собрать. Тесты установили идентичность поз и обход параллельной подготовки в последовательном режиме. Прежние проверки встраиваемого проекта сообщали одинаковые вердикты игроковых маршрутов в обоих режимах; они не подтверждают каждую последующую ревизию движка и платформу.
 
@@ -136,6 +139,33 @@ Ozz пишет в буферы конкретной pose: sampling contexts, tra
 
 Первый проход подбора размера кадра в `ModelSpriteFactory::DrawModelToAtlas` потребляет и завершает подготовленную позу. Дополнительные позы для сходимости размера остаются последовательными внутри GPU-стадии и редки после прогрева. Подготовленная поза сохраняет исходный кадр: повторная предварительная подгонка сдвинула бы корень уже вычисленного skeleton. `Render.ModelDirectDraw`, GUI previews и `Prewarm` используют однопроходный путь: они вычисляют позу по требованию во время рисования, без границы пакета.
 
+## CPU-обновление частиц
+
+Создание частиц, клонирование, respawn, доступ к ресурсам, transforms, prewarm, рисование и публикация lifecycle остаются у владельца. Workers выполняют только проверенные simulation kernels. `ClientEngine::WorkSched` переживает sprite/model factories и particle managers; ссылки на scheduler заимствованы, каждое обновление выполняет join до возврата. Второго пула частиц нет.
+
+| Backend | Параллельная единица | Граница владельца |
+|---|---|---|
+| SPARK | Независимые runtime systems, каждая со своим `SPKContext` | Owner setup, CPU update с join, owner-публикация timing/diagnostics. Sprite batch содержит только соседние draw-in-scene systems без pending prewarm. Атласные спрайты и неподходящие системы прерывают диапазон. |
+| Effekseer | Полезные активные instance chunks внутри одного поколения одного handle | Прежний manager сохраняет бюджет 16384 экземпляра. Handles обновляются последовательно; создание детей поколения, общие pools, global state, sounds, Begin/End/Flip и rendering остаются у владельца. |
+
+Частицы модели завершаются после join вычисления позы всей иерархии. Дети по-прежнему завершаются первыми. Соседние подходящие SPARK attachments образуют CPU batch; Effekseer attachments используют внутренний chunk executor во время обычного owner update. Delta позы применяется один раз, а повторные frame-layout poses с нулевой delta сохраняют прежнее значение update. Layout refresh и animation callbacks выполняются после завершения частиц. Рисование модели в атлас не происходит внутри attachment update span; standalone SPARK atlas updates сохраняют прежний порядок немедленного owner draw.
+
+Допуск SPARK обходит фактический граф, проверяет context bindings, отклоняет циклы и принимает точные проверенные встроенные типы, а не их подклассы. Начальная family включает System/Group; float/color DefaultInitializer, RandomInitializer, SimpleInterpolator, RandomInterpolator и GraphInterpolator; Point/Sphere/Plane/Ring/Box; Static/Random/Straight/Spheric/NormalEmitter; Gravity/Friction/Obstacle/LinearForce/Vortex/Rotator; точный engine quad renderer. Rotator требует interpolators ANGLE и ROTATION_SPEED до initialization и оба включённых runtime parameters после него. Cylinder, actions, неизвестные callbacks/types и custom renderers сохраняют direct execution. `SPK_DEBUG` также оставляет исполнение direct из-за общего состояния логирования; обычная Debug-конфигурация сама по себе не определяет этот макрос.
+
+Копирование в частный контекст сохраняет прежние вызовы производных конструкторов и случайные выборки source context, включая потреблённые выборки при раскрутке стека. DAG aliases сохраняются без добавления поддержки циклов. Requested system seed применяется на прежней более поздней границе. Создание контекстов и клонирование выполняются только владельцем между joins. См. [контракт сопровождения вендорных изменений](../../contributing/third-party/index.md#расширения-cpu-симуляции-частиц).
+
+Допуск Effekseer требует точные поддерживаемые families effect/node/model, immutable загруженные ресурсы, отсутствие local dynamic-equation VM, sound/GPU particle work, external collision requirement и non-file model spawning. Каждое поколение дополнительно проверяет готовность parent transforms без прогрева или изменения. Новый manager collision callback запрещает исполнение даже после допуска effect. Неизвестные графы и неготовые поколения сохраняют прежний owner-путь. Замена ресурса создаёт новый runtime и новое решение о допуске; respawn повторно использует immutable effect. Прежнее ограничение ненулевого look angle действует и для [model attachments](../../how-to/content/particle-format.md#runtime-контракт).
+
+Оба этапа требуют не менее двух полезных элементов до создания descriptors; это предварительный порог, а не измеренная точка выигрыша. False и zero-worker modes вызывают прежние kernels без новой per-frame queue или snapshot. Постоянные издержки остаются: допущенный SPARK runtime сохраняет частный context и в serial mode; runtimes хранят пассивные diagnostics и eligibility state. Scheduler borrows и padding также влияют на размер объектов. Это затраты хранения, а не измерение RSS или peak memory.
+
+В проверенной сборке Windows x64 MSVC `sizeof(CpuUpdateDiagnostics)` составляет 24 байта, scheduler borrow — 8 байт, eligibility flag — 1 байт. SPARK добавляет каждому runtime 8-байтный владелец контекста и выделяет 24-байтный `SPKContext` для допущенной системы. Контекст также владеет отдельно выделенным IO manager с картами зарегистрированных converters/objects; ленивый default zone и память аллокатора/контейнеров добавляются сверх этого. Поэтому размер контекста 24 байта не равен его полной heap-стоимости. Прежние копии графа и particle buffers учитываются отдельно. Effekseer хранит diagnostics/eligibility на runtime и один scheduler borrow в общем runtime state. `ModelManager` добавляет scheduler borrow; aggregation getter не добавляет поля в `ModelInstance`. Полные размеры объектов в этой сборке: `ParticleRuntimeServices` — 232 байта, `ModelManager` — 456, `ModelInstance` — 1952. Эти зависящие от ABI размеры включают прежние поля и padding; их нельзя складывать как оценку памяти одной частицы. Скрытый тест `[.particle-cpu-storage]` записывает размеры без кампании измерения памяти.
+
+`CpuUpdateDiagnostics` считает настоящие успешные owner/worker kernel calls; Effekseer также считает вызовы активных `Instance::Update`. Отфильтрованные и неактивные элементы не увеличивают этот счётчик. Результаты накапливаются отдельно для каждой job и суммируются владельцем после join. Отказавший update не публикует частичные результаты как успех. Native observation accessors не имеют script API, не разрешают неизвестные callbacks и не изменяют random state.
+
+При отказе Effekseer update синхронный executor сначала выполняет drain, владелец завершает успешно начатый update, инвалидирует affected handle и пытается выполнить прежний retirement из трёх lifecycle flips, после чего распространяется исходное исключение. Cleanup использует `safe_call`: повторяющийся отказ removal callback сообщается в диагностике и может помешать полному освобождению instance budget. Тест самосбрасывающегося callback подтверждает восстановление бюджета после его однократного отказа, но не доказывает восстановление при callback, который продолжает выбрасывать исключения. Сам `BeginUpdate` освобождает lock и сбрасывает flag при исключении automatic `Flip`. Некорректная delta отклоняется до мутации и не выводит handle. Функциональные тесты проверяют настоящее частичное состояние экземпляров и сохранение постороннего handle. В допущенных SPARK graphs не найден естественный восстанавливаемый worker fault; allocation failure завершает процесс. Drain/retire boundary имеет source и scheduler coverage, но фактический SPARK worker fault через consumer остаётся непроверенным. Эту оговорку нельзя заменять синтетическим GPU callback или расширением eligibility.
+
+`Test_ParticleCpuUpdates.cpp`, `Test_ParticleBaker.cpp` и `Test_EffekseerParticleRuntime.cpp` владеют fixtures direct state, constructor streams, runtime consumers и lifecycle. Их прохождение устанавливает функциональные границы, но не доказывает eligibility всего корпуса, выигрыш времени кадра или визуальную пригодность актуальных ресурсов встраивающего проекта.
+
 ## Геометрия спрайтов и глифов
 
 `SpriteManager` фиксирует прямоугольники атласа, цвета, выбранный кадр `SpriteSheet` и преобразования карты на потоке приложения. Он резервирует непересекающиеся диапазоны вершин/индексов и записывает `DipData` в порядке отрисовки. Пока векторы могут расти, команды хранят смещения, а не spans буферов. Неизменяемая топология mesh удерживается до завершения; последующая смена кадра или уничтожение sprite не меняет поставленный в очередь mesh.
@@ -159,7 +189,7 @@ Ozz пишет в буферы конкретной pose: sampling contexts, tra
 | `MapView::Process`, `CritterHexView::Process` | Изменяют сущности, поля карты и списки удаления. |
 | `MapView::DrawMap` | Перестраивает данные карты, вызывает скрипты между стадиями и записывает GPU-команды. |
 | Публикация света и тумана | Поля карты, владение источниками, счётчики видимости/global, заимствования смещений и переходы тумана остаются у владельца; workers вычисляют пассивные отметки и геометрию. |
-| Частицы | SPARK и Effekseer делят менеджеры, random state и resource callbacks. Потоки middleware и workers клиента должны учитываться в общем CPU-бюджете. |
+| Владение частицами | Loading, transforms, prewarm, неподдерживаемая simulation, lifecycle общего manager, создание детей и рисование остаются у владельца; workers используют только описанные выше проверенные kernels. |
 | Сеть | Stream decompression хранит состояние и порядок, handlers меняют сущности. Нужна упорядоченная передача bytes, а не parallel loop. |
 | Чтение и публикация ресурсов | Владелец читает bytes и публикует factories, cache, atlas и GPU. Workers `ResourcePreparation` только разбирают owned bytes; [лимиты и lifetime](../../how-to/content/image-format.md#ограниченная-cpu-подготовка-ресурсов) описаны отдельно. |
 | Скрипты, рендерер, GPU | По контракту имеют одного владельца. Конкурентные C# callbacks и render thread вне этой функции. Маска попадания модели уже приходит через [неблокирующее чтение текстуры](../rendering/index.md#reading-a-texture-back), поэтому picking не создаёт прежнюю синхронную остановку будущего render thread. |

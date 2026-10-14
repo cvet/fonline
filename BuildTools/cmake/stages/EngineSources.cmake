@@ -603,6 +603,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NoiseProtocol.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetSockets.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ParticleBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ParticleCpuUpdates.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EffekseerParticleRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoManager.cpp"

@@ -8,11 +8,15 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"fbee718beedd5455f85bac6993fb731333897dc8e87b9cab8248e99eef68cd12"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c078750302edf0b9c6b36a5fd3bc01d463f0a40a1a6ae763dfd6c36f176dee60"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Проверенный лимит полного AI-контекста увеличен на 12 KiB до 2 359 296 байт для полного описания владения CPU-частицами, ошибок и native-миграции; целые документы, исключения и отказ при переполнении сохранены.
+
+- Подходящие CPU-обновления частиц в `SpriteManager` и модельных attachments используют существующий клиентский пул. SPARK получает отдельные runtime contexts с сохранением прежних constructor/system random streams; Effekseer выполняет независимые полезные chunks внутри прежнего manager. Рисование, доступ к ресурсам, layout attachments и границы callbacks остаются у владельца. Неподдерживаемые graphs, SPARK atlas updates, малые batches и zero-worker paths сохраняют прямое выполнение. `Client.Multithreading` по умолчанию остаётся false; пороги предварительные, готовность по времени, пикам памяти, GPU или платформам не подразумевается. Исправлены неинициализированные результаты equations Effekseer при первом рождении. См. [миграцию CPU-частиц](#миграция-cpu-частиц).
 
 - Добавлена подготовка холодных спрайтов статической карты через владеющие асинхронные CPU-задачи существующего клиентского пула. Чтение, упорядоченная публикация sprite/cache/atlas и воспроизведение ошибок остаются владельцу. Ограничены просмотр следующих записей и reservation; завершённые отменённые запросы освобождаются без ожидания до cold capacity rejection; сохранены warm/direct/zero-worker пути, dispatch пользовательских фабрик, отмена generation и shutdown drain. Многопоточность остаётся выключенной по умолчанию; см. [миграцию ниже](#миграция-подготовки-ресурсов).
 
@@ -34,6 +38,12 @@ permalink: /Docs/ru/reference/changelog.html
 - Переоснован неопубликованный слой интеграции клиентских workers на опубликованный master 2026.1.36-dev с сохранением пяти экспериментальных настроек и 2578 классифицированных символов native-codegen. Примените пять промежуточных записей миграции ниже и пересоберите/перезапеките согласованные приложения и ресурсы; эта интеграция не меняет ABI или сетевую совместимость.
 
 - Добавлен скрытый эксперимент `ClientPoseBatchCost`: парный прямой и рабочий расчёт переданного запечённого rig с точной проверкой результатов и сырыми timing samples. См. [контракт входов](../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз). Обычный unit-прогон и runtime defaults не меняются.
+
+### Миграция CPU-частиц
+
+Переконфигурируйте и пересоберите всех native consumers вместе. Изменились virtual surface `ParticleRuntimeSystem` и layout `ParticleRuntimeServices`; `ModelManager` принимает заключительный scheduler borrow, а vendored Effekseer instance/chunk interfaces включают const-correct доступ к global. Не смешивайте native headers и libraries разных ревизий. Переданный scheduler должен жить дольше своих particle/model consumers. Native custom backends сохраняют direct execution, пока явно не реализуют контракт изолированного CPU-обновления.
+
+Новые script API, settings, resource schemas, преобразования сохранений и сети не вводятся; Managed ABI 9 и runtime compatibility не меняются. Упаковывайте согласованные пересобранные roles и baked resources. Оставляйте `Client.Multithreading=False` до workload qualification. Включение не гарантирует участия workers для каждого asset или кадра. SPARK debug logging, неизвестные callbacks и неготовые Effekseer parents остаются direct; прежнее ограничение look angle для модельного Effekseer сохраняется. Fault cleanup дожидается jobs и пытается освободить handle; граница при ошибке callback описана в [CPU-обновлениях частиц](../explanation/runtime/client-multithreading.md#cpu-обновление-частиц) и [сопровождении vendored кода](../contributing/third-party/index.md#расширения-cpu-симуляции-частиц). Откат восстанавливает согласованные прежние binaries/resources без преобразования сохранённых данных.
 
 ### Миграция подготовки ресурсов
 
@@ -684,3 +694,4 @@ Native-потребители `WorkScheduler`, `SpriteManager` и `DefaultSprite
 ## Предыдущая история
 
 Поддерживаемый журнал начинается с подключения версии движка. Предыдущая работа доступна в [истории репозитория](https://github.com/cvet/fonline/commits/master/) и [реестре изменений контрактов конкретных ревизий](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json). Это свидетельства аудита, а не восстановленная последовательность опубликованных выпусков Engine.
+

@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"d4fd6b559b2b116af073addae98a99a9e47e8ad44376eba8d63076b6e557fc08"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -259,6 +259,16 @@ RotY 90
 Particle path является глобальным путём запечённого ресурса, а не путём относительно `.fo3d`. Ссылайтесь на созданный `.spk` или `.efk`, а не на авторский `.spark` или `.efkproj`. Всегда задавайте корректную bone в `Link`: runtime-создание частиц требует её.
 
 `MoveX/Y/Z` и `RotY` определяют placement частицы. Instance живёт, пока активна точная пара layer/value, и удаляется при изменении композиции. XML, SPARK objects, renderer fields, effects/textures, runtime cache и визуальная проверка принадлежат [формату частиц](particle-format.md). Частицы на bones используют прямой путь 3D-композиции, а не selector atlas/direct-scene у `ParticleSprite`.
+
+Обновление attachments использует delta позы модели после join её вычисления.
+Сначала завершаются дети; joint transforms и runtime setup остаются только у владельца.
+Необязательные workers клиента могут обновлять соседние допущенные SPARK systems
+или полезные Effekseer chunks через прежний scheduler клиента. Владелец выполняет
+join до layout refresh, animation callbacks и рисования. Повторные layout poses
+с нулевой delta сохраняют прежнюю семантику simulation. Неподходящие графы остаются
+у владельца; прежний отказ Effekseer для ненулевого look angle также сохраняется.
+Eligibility, границы отказа и затраты хранения описаны в разделе
+[CPU-обновление частиц](../../explanation/runtime/client-multithreading.md#cpu-обновление-частиц).
 
 ## Преобразования и скорость
 

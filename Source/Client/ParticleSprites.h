@@ -56,6 +56,7 @@ public:
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDirectDraw() const -> bool override { return _drawInScene; }
     [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle; }
+    [[nodiscard]] auto CanUpdateParticleCpu() const noexcept -> bool;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     auto PlayWithSeed(int32_t seed) -> bool;

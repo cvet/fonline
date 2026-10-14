@@ -41,7 +41,8 @@ namespace SPK
 		nbReferences(0),
 		SHARE_POLICY(obj.SHARE_POLICY),
 		shared(obj.shared),
-		context(obj.context),
+		// (FOnline Patch) Bind before derived constructors run onContextSet, exactly once.
+		context(obj.copyBuffer && obj.copyBuffer->destinationContext ? obj.copyBuffer->destinationContext : obj.context),
 		copyBuffer(NULL)
 	{
 		SPK_LOG_DEBUG("Creation of SPKObject " << this << " from " << &obj);

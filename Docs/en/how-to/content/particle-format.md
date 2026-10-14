@@ -225,6 +225,13 @@ Effekseer currently uses direct-scene rendering. SPARK may use either atlas or
 direct-scene rendering. Both routes still depend on the embedding project's
 effect state, image resources, camera settings, and draw order.
 
+Effekseer rejects a nonzero `ParticleRuntimeSetup::LookDirectionAngle`; CPU
+parallelism does not widen this capability. A model's ordinary `RunParticle`
+captures its current look angle. Native model fixtures therefore establish a
+zero look angle with `SetDir(mdir {180}, false)` before creating an Effekseer
+attachment. This proves the supported model route, not support for every
+character direction. Model world transforms still apply through `Setup`.
+
 ## Integration
 
 `ParticleSpriteFactory` exposes all enabled runtime extensions to the generic

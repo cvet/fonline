@@ -94,8 +94,8 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
     return nullptr;
 }
 
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe)})},
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider, nptr<WorkScheduler> work_scheduler) :
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe), .Scheduler = work_scheduler})},
     _settings {settings},
     _gameTime {game_time}
 {
@@ -327,6 +327,27 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 
 void ParticleSystem::Update()
 {
+    Update(GetUpdateDelta());
+}
+
+auto ParticleSystem::CanUpdateCpu() const noexcept -> bool
+{
+    return _runtimeSystem->CanUpdateCpu();
+}
+
+auto ParticleSystem::PrepareCpuUpdate() -> float32_t
+{
+    return PrepareCpuUpdate(GetUpdateDelta());
+}
+
+auto ParticleSystem::PrepareCpuUpdate(float32_t delta_seconds) const -> float32_t
+{
+    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
+    return delta_seconds;
+}
+
+auto ParticleSystem::GetUpdateDelta() -> float32_t
+{
     nanotime time = GetTime();
     float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
 
@@ -335,12 +356,12 @@ void ParticleSystem::Update()
     }
 
     _lastUpdateTime = time;
-    Update(delta_seconds);
+    return delta_seconds;
 }
 
 void ParticleSystem::Update(float32_t delta_seconds)
 {
-    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
+    delta_seconds = PrepareCpuUpdate(delta_seconds);
     bool was_active = _runtimeSystem->IsActive();
 
     if (!was_active) {
@@ -348,7 +369,17 @@ void ParticleSystem::Update(float32_t delta_seconds)
     }
 
     _runtimeSystem->Update(delta_seconds);
+    CommitUpdate(delta_seconds);
+}
 
+void ParticleSystem::CommitCpuUpdate(float32_t delta_seconds, const CpuUpdateDiagnostics& result)
+{
+    _runtimeSystem->CommitCpuUpdate(result);
+    CommitUpdate(delta_seconds);
+}
+
+void ParticleSystem::CommitUpdate(float32_t delta_seconds)
+{
     bool is_active = _runtimeSystem->IsActive();
 
     if (delta_seconds > 0.0f || !is_active) {

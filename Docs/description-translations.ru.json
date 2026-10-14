@@ -15089,6 +15089,18 @@
           "source_sha256": "20713077c8007f8f2213797475b0f73aac322c798da64063a880d789b70af959",
           "translation": "Используйте Parent или Parent_<mesh> только в attached child; parent mesh должен уже предоставлять нужный texture slot/effect."
         },
+        "/rules/@id=model-format.rule.particle-cpu-order/name": {
+          "source_sha256": "a689fceb0453ff5aa2362b147740397f28d0ecdac81a74c1ea5144fdaabb1ae1",
+          "translation": "Порядок завершения CPU-обновления частиц"
+        },
+        "/rules/@id=model-format.rule.particle-cpu-order/rationale": {
+          "source_sha256": "bd1cccc562f24ced867e27a5942ca11c19a68de36c3f4ec4b17c909c306fde77",
+          "translation": "SPARK spans прикреплённых систем и внутренние Effekseer chunks используют общий клиентский scheduler; неподдерживаемые графы сохраняют прежний порядок на владельце."
+        },
+        "/rules/@id=model-format.rule.particle-cpu-order/requirement": {
+          "source_sha256": "7c81f3f31b6b53e46be192314d89dca55b8fbdf021a74722f9653c9911e20488",
+          "translation": "Завершайте дочерние модели до прикреплённых частиц. Подготавливайте преобразования суставов на владельце, используйте delta позы, дожидайтесь разрешённой CPU-работы частиц до обновления layout, animation callbacks и рисования; сохраняйте повторную подготовку layout с нулевым delta."
+        },
         "/rules/@id=model-format.rule.relative-paths/name": {
           "source_sha256": "9a719c6ba18e53c9bd70a34481fd79162911e915a3c4df2245f455608dad0603",
           "translation": "Владение paths"
@@ -16916,6 +16928,30 @@
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/requirement": {
           "source_sha256": "8f6031bcc99d4c4f2c0151f6629acefaeb4948d1dcbaef85e30909433ba6e6c1",
           "translation": "Считайте ParticleBounds3D.PositionMin/PositionMax мировыми позициями, преобразованными полной матрицей размещения, а BillboardRadius — ориентированным к камере запасом, преобразованным только масштабом размещения."
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/name": {
+          "source_sha256": "93b2a601083a592e0706b9ce6f30de38a597825192f5d8136c3115cec03bc83f",
+          "translation": "Необязательные CPU-этапы частиц"
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/rationale": {
+          "source_sha256": "e391bdeab0601b92c86f43864c7f7e53210d5e9a1ebbe9d5fd12f0b157f3cf50",
+          "translation": "Private contexts SPARK сохраняют случайные потоки конструкторов и систем; Effekseer сохраняет один manager и бюджет 16384 instances. Неизвестные графы, внешние callbacks и неготовые родители не допускаются на workers."
+        },
+        "/runtime_rules/@id=particle-format.runtime.cpu-stages/requirement": {
+          "source_sha256": "cd42a56ad862fba5ffb025d1ceacebe49e227b723f904e83a36863098991515a",
+          "translation": "Используйте существующий клиентский WorkScheduler для допущенных независимых SPARK systems или полезных Effekseer chunks одного generation. Создание, transforms, prewarm, общий lifecycle, child generation, рисование и публикация остаются на владельце; false, zero-worker и below-threshold маршруты остаются direct."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/name": {
+          "source_sha256": "2eefcd505657d1812212351c3d10f5da1c86b5637f832626ec1a98777723e4cd",
+          "translation": "Поддержка угла взгляда в Effekseer"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/rationale": {
+          "source_sha256": "240e9dd01119fde55802f9cc467838424f630d9322014dab6a5f12d1e9fda672",
+          "translation": "Прежний отказ setup по возможностям одинаков в direct и parallel исполнении; world transforms продолжают применяться."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-look-angle/requirement": {
+          "source_sha256": "509d5e34a499d64d9ea452bbe8698e5d076c4a9510d3ea79b687ba086cdf27e1",
+          "translation": "Effekseer runtime setup требует нулевой LookDirectionAngle. Model RunParticle сохраняет угол взгляда модели; поддержка workers не добавляет поддержку других направлений."
         },
         "/runtime_rules/@id=particle-format.runtime.extension-routing/name": {
           "source_sha256": "97c3da94e448c91b354aa0f8b5c7ef53d2754f59960c30039c005fdbccbef9e4",

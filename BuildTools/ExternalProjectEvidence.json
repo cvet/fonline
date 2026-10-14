@@ -20,7 +20,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "a336f2035146b98b553af8b80a26bac34f1bc84b",
+      "revision": "b33d97661e701b7f051184c60ab5e86e03ddbf56",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -273,16 +273,16 @@
         {"snapshot": "last-frontier", "path": "Docs/ContentWorkflow.md"},
         {"snapshot": "fonline-tla", "path": "Resources"}
       ],
-      "reusable_claim": "SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts.",
+      "reusable_claim": "SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts. Optional CPU simulation uses the existing client scheduler only for audited isolated SPARK graphs or disjoint ready Effekseer chunks, with owner lifecycle and callback boundaries.",
       "disposition": "promoted",
       "owner": "frontend",
       "priority": "P0",
-      "engine_targets": ["Docs/en/how-to/content/particle-format.md", "Docs/en/how-to/tools/particle-authoring.md", "Docs/en/reference/particle-format/index.md"],
+      "engine_targets": ["Docs/en/how-to/content/particle-format.md", "Docs/en/how-to/tools/particle-authoring.md", "Docs/en/reference/particle-format/index.md", "Docs/en/explanation/runtime/client-multithreading.md", "Docs/en/contributing/third-party/index.md"],
       "planned_targets": [],
       "external_targets": [],
       "required_reviews": ["frontend", "tooling", "content-data", "platform", "quality"],
-      "promotion_gate": "Both enabled backends pass source, bake, runtime, tool, and visible integration gates.",
-      "decision": "Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned."
+      "promotion_gate": "Enabled-backend functional and feature configurations must validate state, useful worker work, callback rejection, joined failure and lifetime. Separate ordinary rendered integration and matched performance qualification remain required before deployment claims.",
+      "decision": "Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned. CPU eligibility, destination-context copying, synchronous executor lifetime and failure boundaries are re-derived from Engine source and native tests. Project asset admission, seeded fixtures, map/model workloads, host permission, frame-time and RSS verdicts remain external; source or native success does not promote renderer, platform or production performance acceptance."
     },
     {
       "id": "font-audio-and-video",

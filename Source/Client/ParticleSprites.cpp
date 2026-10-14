@@ -139,6 +139,12 @@ auto ParticleSprite::Update() -> bool
     return _particle->IsActive();
 }
 
+auto ParticleSprite::CanUpdateParticleCpu() const noexcept -> bool
+{
+    // Atlas draws can observe later sprites through arbitrary render callbacks, so they remain owner barriers.
+    return _drawInScene && !_prewarmPending && _particle->CanUpdateCpu();
+}
+
 void ParticleSprite::DrawToAtlas()
 {
     _factory->DrawParticleToAtlas(this);
@@ -174,7 +180,7 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
-        }}
+        }, spr_mngr->GetWorkScheduler()}
 {
 }
 

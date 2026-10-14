@@ -33,6 +33,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ParticleCpuUpdates.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -1429,6 +1430,30 @@
       ]
     },
     {
+      "id": "model-format.rule.particle-cpu-order",
+      "name": "Particle CPU completion order",
+      "requirement": "Finalize children before attached particles. Prepare joint transforms on the owner, use the pose delta, join admitted particle CPU work before layout refresh, animation callbacks or drawing, and preserve zero-delta layout re-poses.",
+      "rationale": "SPARK attachment spans and Effekseer inner chunks share the client scheduler while unsupported graphs retain their original owner ordering.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "FinalizeAnimationPose",
+            "TryUpdateParticleCpuSpan",
+            "SetupParticle",
+            "RefreshConfigurationLayout"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ParticleCpuUpdates.cpp",
+          "anchors": [
+            "Model particles preserve geometry across direct and worker owners",
+            "model->PoseSpriteFrame(false)"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.runtime-composition",
       "name": "Layer changes rebuild composition",
       "requirement": "Treat model-layer arrays as composition state: changing a value may create or remove children and particles, change materials/effects, disable geometry, apply cuts, and regenerate combined meshes.",
@@ -1551,7 +1576,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 15,
+    "rule_count": 16,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1568,5 +1593,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "0e4447d99d7f65eaff9fd9874d94396c5cbe4b06fa08faa44eeb0e3c466819b3"
+  "contract_digest": "1525d5e0810102a2e5cecb691a0d31a0fc9acc78c112eec120de02d2f2e6c56e"
 }

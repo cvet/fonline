@@ -38,9 +38,18 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "WorkScheduler.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #include "Effekseer.h"
+#include "Effekseer/Effekseer.EffectImplemented.h"
+#include "Effekseer/Effekseer.EffectNodeRoot.h"
+#include "Effekseer/Effekseer.EffectNodeSprite.h"
+#include "Effekseer/Effekseer.EffectNodeRing.h"
+#include "Effekseer/Effekseer.EffectNodeRibbon.h"
+#include "Effekseer/Effekseer.EffectNodeTrack.h"
+#include "Effekseer/Effekseer.EffectNodeModel.h"
+#include "Effekseer/Effekseer.ManagerImplemented.h"
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
@@ -399,6 +408,7 @@ struct EffekseerParticleRuntimeSystem::Impl
         BakedPositionMax {position_max},
         BakedBillboardRadius {billboard_radius}
     {
+        CpuEligible = EffekseerParticleRuntimeSystem::IsCpuEffectSafe(Effect.Get());
     }
 
     void Fail(string_view reason)
@@ -421,6 +431,8 @@ struct EffekseerParticleRuntimeSystem::Impl
     vec3 BakedPositionMax {};
     float32_t BakedBillboardRadius {};
     random_generator RandomGenerator {};
+    CpuUpdateDiagnostics CpuDiagnostics {};
+    bool CpuEligible {};
     bool Failed {};
 };
 
@@ -933,6 +945,7 @@ static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl
     return EffekseerNodeTexture {.Texture = render_texture, .AtlasRect = texture->AtlasRect, .PointSampled = filter == Effekseer::TextureFilterType::Nearest && render_texture->LinearFiltered};
 }
 
+#if FO_ENABLE_3D
 // A displacement of (1, 0) in the distortion map moves the background along the tangent and (0, 1) along the
 // binormal; a billboard takes them from its camera-facing basis, a fixed quad from its own rotation
 static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> pair<vec3, vec3>
@@ -956,6 +969,7 @@ static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, co
 
     return {normalize_axis(basis[0], vec3 {1.0f, 0.0f, 0.0f}), normalize_axis(basis[1], vec3 {0.0f, 1.0f, 0.0f})};
 }
+#endif
 
 class FOnlineEffekseerSpriteRenderer final : public Effekseer::SpriteRenderer
 {
@@ -2896,9 +2910,63 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
     return ValidateEffectNode(path, effect->GetRoot(), effect);
 }
 
+static auto IsEffekseerCpuNodeSafe(ptr<Effekseer::EffectNode> node) -> bool
+{
+    const auto& type = typeid(*node);
+
+    if (type != typeid(Effekseer::EffectNodeRoot) && type != typeid(Effekseer::EffectNodeImplemented) &&
+        type != typeid(Effekseer::EffectNodeSprite) && type != typeid(Effekseer::EffectNodeRing) &&
+        type != typeid(Effekseer::EffectNodeRibbon) && type != typeid(Effekseer::EffectNodeTrack) && type != typeid(Effekseer::EffectNodeModel)) {
+        return false;
+    }
+
+    const auto& implementation = static_cast<const Effekseer::EffectNodeImplemented&>(*node);
+
+    if (implementation.Sound.SoundType == Effekseer::ParameterSoundType_Use || implementation.GpuParticlesResource || implementation.Collisions.IsSceneCollisionWithExternal) {
+        return false;
+    }
+    if (implementation.GenerationLocation.type == Effekseer::ParameterGenerationLocation::TYPE_MODEL &&
+        implementation.GenerationLocation.model.Reference != Effekseer::ModelReferenceType::File) {
+        return false;
+    }
+
+    for (int32_t index = 0; index < node->GetChildrenCount(); index++) {
+        if (!IsEffekseerCpuNodeSafe(node->GetChild(index))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto EffekseerParticleRuntimeSystem::IsCpuEffectSafe(ptr<Effekseer::Effect> effect) -> bool
+{
+    if (typeid(*effect) != typeid(Effekseer::EffectImplemented)) {
+        return false;
+    }
+
+    const auto& implementation = static_cast<const Effekseer::EffectImplemented&>(*effect);
+
+    for (const auto& equation : implementation.GetDynamicEquation()) {
+        if (equation.GetRunningPhase() == Effekseer::InternalScript::RunningPhaseType::Local) {
+            return false;
+        }
+    }
+
+    for (int32_t index = 0; index < effect->GetModelCount(); index++) {
+        auto model = effect->GetModel(index);
+
+        if (!model || typeid(*model.Get()) != typeid(Effekseer::Model)) {
+            return false;
+        }
+    }
+
+    return IsEffekseerCpuNodeSafe(effect->GetRoot());
+}
+
 struct EffekseerRuntimeState
 {
-    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider) :
+    EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider, nptr<WorkScheduler> work_scheduler) :
         Binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
         SceneBackgroundProvider {std::move(scene_background_provider)},
         Setting {Effekseer::Setting::Create()},
@@ -2910,7 +2978,8 @@ struct EffekseerRuntimeState
         RibbonRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRibbonRenderer>(effect_mngr, render, draw_wireframe, Binding)},
         RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, draw_wireframe, Binding)},
         TrackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, Binding)},
-        ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, Binding)}
+        ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, Binding)},
+        Scheduler {work_scheduler}
     {
         FO_TRACE_ZONE(Particles);
 
@@ -2941,34 +3010,40 @@ struct EffekseerRuntimeState
     Effekseer::RingRendererRef RingRenderer;
     Effekseer::TrackRendererRef TrackRenderer;
     Effekseer::ModelRendererRef ModelRenderer;
+    nptr<WorkScheduler> Scheduler;
 };
 
-static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> system)
+static void RetireEffekseerHandle(ptr<Effekseer::Manager> manager, int32_t& handle)
 {
     FO_TRACE_ZONE(Particles);
 
-    if (system->Handle < 0) {
+    if (handle < 0) {
         return;
     }
 
-    if (system->Runtime->Manager->Exists(system->Handle)) {
-        system->Runtime->Manager->StopEffect(system->Handle);
+    if (manager->Exists(handle)) {
+        manager->StopEffect(handle);
     }
 
     // Effekseer intentionally retires draw sets through two deferred GC queues.
     // Three flips cover an active draw set as well as both queue stages
     for (size_t flush_index = 0; flush_index < 3; flush_index++) {
-        system->Runtime->Manager->BeginUpdate();
-        system->Runtime->Manager->EndUpdate();
+        manager->BeginUpdate();
+        manager->EndUpdate();
     }
 
-    system->Handle = -1;
+    handle = -1;
+}
+
+static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> system)
+{
+    RetireEffekseerHandle(system->Runtime->Manager.Get(), system->Handle);
 }
 
 struct EffekseerParticleRuntimeBackend::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services) :
-        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
+        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider, services.Scheduler)},
         Resources {services.Resources}
     {
     }
@@ -2990,6 +3065,16 @@ EffekseerParticleRuntimeSystem::~EffekseerParticleRuntimeSystem()
 auto EffekseerParticleRuntimeSystem::IsActive() const -> bool
 {
     return !_impl->Failed && _impl->Handle >= 0 && _impl->Runtime->Manager->Exists(_impl->Handle);
+}
+
+auto EffekseerParticleRuntimeSystem::IsCpuEffectEligible() const noexcept -> bool
+{
+    return _impl->CpuEligible;
+}
+
+auto EffekseerParticleRuntimeSystem::GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics
+{
+    return _impl->CpuDiagnostics;
 }
 
 auto EffekseerParticleRuntimeSystem::GetDrawInScene() const -> bool
@@ -3092,27 +3177,88 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
     _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
 }
 
+void UpdateEffekseerParticleHandle(ptr<Effekseer::Manager> manager, int32_t& handle, const Effekseer::Matrix43& matrix,
+    float32_t delta_seconds, nptr<Effekseer::CpuUpdateExecutor> executor, Effekseer::CpuUpdateResult& result)
+{
+    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
+
+    if (handle < 0) {
+        return;
+    }
+    if (!manager->Exists(handle)) {
+        RetireEffekseerHandle(manager, handle);
+        return;
+    }
+
+    bool begun = false;
+    auto retire_failed_update = scope_fail([&]() noexcept {
+        // The synchronous executor has already joined before UpdateHandle can unwind into this owner scope.
+        if (begun) {
+            safe_call([&] { manager->EndUpdate(); });
+        }
+
+        int32_t failed_handle = std::exchange(handle, -1);
+        safe_call([&] { RetireEffekseerHandle(manager, failed_handle); });
+    });
+    Effekseer::CpuUpdateResult pending;
+    manager->SetMatrix(handle, matrix);
+    manager->BeginUpdate();
+    begun = true;
+    static_cast<Effekseer::ManagerImplemented&>(*manager).UpdateHandle(handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND, executor.get(), &pending);
+    manager->EndUpdate();
+    begun = false;
+
+    if (!manager->Exists(handle)) {
+        RetireEffekseerHandle(manager, handle);
+    }
+
+    result = pending;
+}
+
+class EffekseerWorkSchedulerExecutor final : public Effekseer::CpuUpdateExecutor
+{
+public:
+    explicit EffekseerWorkSchedulerExecutor(ptr<WorkScheduler> scheduler) :
+        _scheduler {scheduler},
+        _owner {std::this_thread::get_id()}
+    {
+    }
+
+    // This foreign ABI borrows the vendor's per-generation descriptors only until RunBatch has drained.
+    void Execute(size_t count, void* context, Job job) override
+    {
+        _scheduler->RunBatch("particles-effekseer-cpu", count, 1, [&](size_t index) {
+            (void)job(context, index, std::this_thread::get_id() != _owner);
+        });
+    }
+
+private:
+    ptr<WorkScheduler> _scheduler;
+    std::thread::id _owner;
+};
+
 void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
 {
     FO_TRACE_ZONE(Particles);
 
-    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
-    if (_impl->Failed || _impl->Handle < 0) {
-        return;
-    }
-    if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
-        RetireEffekseerHandle(_impl.as_ptr());
+    if (_impl->Failed) {
+        FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
         return;
     }
 
-    _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
-    _impl->Runtime->Manager->BeginUpdate();
-    _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
-    _impl->Runtime->Manager->EndUpdate();
-    if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
-        RetireEffekseerHandle(_impl.as_ptr());
-        return;
+    Effekseer::CpuUpdateResult result;
+
+    if (_impl->CpuEligible && _impl->Runtime->Scheduler && _impl->Runtime->Scheduler->IsParallel()) {
+        EffekseerWorkSchedulerExecutor executor {_impl->Runtime->Scheduler};
+        UpdateEffekseerParticleHandle(_impl->Runtime->Manager.Get(), _impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix), delta_seconds, &executor, result);
     }
+    else {
+        UpdateEffekseerParticleHandle(_impl->Runtime->Manager.Get(), _impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix), delta_seconds, nullptr, result);
+    }
+
+    _impl->CpuDiagnostics.OwnerKernelCalls += result.OwnerKernelCalls;
+    _impl->CpuDiagnostics.WorkerKernelCalls += result.WorkerKernelCalls;
+    _impl->CpuDiagnostics.UpdatedInstances += result.UpdatedInstances;
 }
 
 void EffekseerParticleRuntimeSystem::RefreshRenderTransform()

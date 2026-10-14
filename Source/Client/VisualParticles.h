@@ -87,6 +87,10 @@ public:
     auto Respawn(int32_t seed) -> bool;
     void Update();
     void Update(float32_t delta_seconds);
+    [[nodiscard]] auto CanUpdateCpu() const noexcept -> bool;
+    auto PrepareCpuUpdate() -> float32_t;
+    auto PrepareCpuUpdate(float32_t delta_seconds) const -> float32_t;
+    void CommitCpuUpdate(float32_t delta_seconds, const CpuUpdateDiagnostics& result);
     void RefreshRenderTransform();
     void Draw();
     void SetScale(float32_t scale);
@@ -95,9 +99,11 @@ private:
     explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
     [[nodiscard]] auto GetTime() const -> nanotime;
+    auto GetUpdateDelta() -> float32_t;
 
     void ApplyRuntimeSetup();
     void ResetTiming();
+    void CommitUpdate(float32_t delta_seconds);
 
     unique_ptr<ParticleRuntimeSystem> _runtimeSystem;
     ptr<ParticleManager> _particleMngr;
@@ -115,7 +121,7 @@ class ParticleManager final
     friend class ParticleSystem;
 
 public:
-    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider = nullptr);
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider = nullptr, nptr<WorkScheduler> work_scheduler = nullptr);
     ParticleManager(const ParticleManager&) = delete;
     ParticleManager(ParticleManager&&) noexcept = delete;
     auto operator=(const ParticleManager&) = delete;

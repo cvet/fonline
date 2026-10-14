@@ -299,6 +299,7 @@ private:
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void UpdateSprites();
+    auto TryUpdateParticleCpuSpan(size_t begin) -> size_t;
     void PrepareSpriteCpuUpdates();
     auto FillSpriteGeometry(ptr<const Sprite> sprite, const frect32& pos, const tuple<ucolor, ucolor>& colors, const PreparedSpriteTransform& transform = {}) -> size_t;
     auto FillSpriteRegionGeometry(ptr<const AtlasSprite> sprite, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) -> size_t;

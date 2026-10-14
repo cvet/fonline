@@ -115,6 +115,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
+    [[nodiscard]] auto GetParticleCpuUpdateDiagnostics() const -> CpuUpdateDiagnostics;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
@@ -206,6 +207,8 @@ private:
     void PrepareAnimationPose(float32_t elapsed, ipos32 pos, float32_t scale);
     void EvaluateAnimationPose();
     void FinalizeAnimationPose();
+    void SetupParticle(ModelParticleSystem& model_particle);
+    auto TryUpdateParticleCpuSpan(size_t begin, float32_t delta_seconds) -> size_t;
     void PrepareFramePose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;

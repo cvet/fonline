@@ -29,6 +29,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ParticleCpuUpdates.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -994,6 +995,16 @@
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": ["if (_animIndexes.count(anim_pair) != 0)", "continue;"]
         }
+      ]
+    },
+    {
+      "id": "model-format.rule.particle-cpu-order",
+      "name": "Particle CPU completion order",
+      "requirement": "Finalize children before attached particles. Prepare joint transforms on the owner, use the pose delta, join admitted particle CPU work before layout refresh, animation callbacks or drawing, and preserve zero-delta layout re-poses.",
+      "rationale": "SPARK attachment spans and Effekseer inner chunks share the client scheduler while unsupported graphs retain their original owner ordering.",
+      "source": [
+        {"path": "Source/Client/ModelInstance.cpp", "anchors": ["FinalizeAnimationPose", "TryUpdateParticleCpuSpan", "SetupParticle", "RefreshConfigurationLayout"]},
+        {"path": "Source/Tests/Test_ParticleCpuUpdates.cpp", "anchors": ["Model particles preserve geometry across direct and worker owners", "model->PoseSpriteFrame(false)"]}
       ]
     },
     {

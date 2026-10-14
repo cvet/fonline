@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"4cd0f52678a178f1a7664a8df5eabe17f0709873328ef7f0b91ca8906d8be4c0"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"99445ded53b6c2764d4dc9c3c71d4dec236155590416b94f57a191ff8dc35fed"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -223,6 +223,13 @@ Preview поддерживает фильтрацию ресурсов, разм
 Effekseer сейчас использует direct-scene rendering. SPARK может использовать атласный
 или direct-scene route. Оба маршрута всё равно зависят от состояния эффекта, image resources,
 настроек камеры и draw order встраивающего проекта.
+
+Effekseer отклоняет ненулевой `ParticleRuntimeSetup::LookDirectionAngle`; CPU-параллелизм
+не расширяет эту возможность. Обычный `RunParticle` модели сохраняет текущий look angle.
+Поэтому нативные model fixtures устанавливают нулевой look angle через
+`SetDir(mdir {180}, false)` до создания Effekseer attachment. Это доказывает поддерживаемый
+model route, а не поддержку всех направлений персонажа. World transforms модели
+по-прежнему применяются через `Setup`.
 
 ## Интеграция
 

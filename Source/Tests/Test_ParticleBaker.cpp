@@ -1383,4 +1383,170 @@ Bakers = Particle
 #endif
 }
 
+
+#if FO_SPARK_PARTICLES
+TEST_CASE("SPARK clone initialization baseline", "[particle][spark][.cpu-baseline]")
+{
+    SPK::SPKContext context;
+    context.setRandomSeed(123456U);
+    auto base = SPK::System::create(context, false);
+    auto group = base->createGroup(16);
+    group->setContext(context);
+    group->setLifeTime(0.6f, 1.2f);
+    auto emitter = SPK::StraightEmitter::create(SPK::Vector3D(0.0f, 1.0f, 0.0f), SPK_NULL_REF, true, 12, 7.0f, 0.5f, 1.5f);
+    emitter->setTank(8, 12);
+    group->addEmitter(emitter);
+    REQUIRE(emitter->getZone());
+    REQUIRE(&emitter->getZone()->getContext() == &context);
+
+    // Captured before destination-context copying existed. Constructor draws belong to the backend stream,
+    // so the same requested system seed deliberately does not make these three emission schedules identical.
+    constexpr array<uint32_t, 4> context_seeds {277396911U, 237697967U, 1772333975U, 1981022945U};
+    constexpr array<int32_t, 3> initial_tanks {8, 11, 11};
+    constexpr array<array<size_t, 6>, 3> particle_counts {{{0, 0, 1, 3, 3, 5}, {0, 0, 1, 3, 3, 6}, {0, 1, 2, 4, 4, 5}}};
+    constexpr array<array<uint32_t, 6>, 3> system_seeds {{{977U, 977U, 1100411457U, 1982395933U, 1982395933U, 1008878176U},
+        {977U, 977U, 1100411457U, 1982395933U, 1982395933U, 1668491683U},
+        {977U, 1100411457U, 217280010U, 538649845U, 538649845U, 1668491683U}}};
+
+    for (size_t recreate = 0; recreate < 3; recreate++) {
+        uint32_t before_copy = context.getRandomSeed();
+        auto system = SPK::SPKObject::copy(base);
+        uint32_t after_copy = context.getRandomSeed();
+        REQUIRE(system);
+        system->setRandomSeed(977U);
+        system->initialize();
+        REQUIRE(context.getRandomSeed() == after_copy);
+        CHECK(before_copy == context_seeds[recreate]);
+        CHECK(after_copy == context_seeds[recreate + 1]);
+        CHECK(system->getGroup(0)->getEmitter(0)->getCurrentTank() == initial_tanks[recreate]);
+        logging::write("SPARKBASE recreate={} contextBefore={} contextAfter={} tank={}", recreate, before_copy, after_copy, system->getGroup(0)->getEmitter(0)->getCurrentTank());
+
+        size_t step = 0;
+
+        for (float32_t delta : {0.0f, 0.0625f, 0.125f, 0.25f, 0.03125f, 0.5f}) {
+            if (delta > 0.0f) {
+                (void)system->updateParticles(delta);
+            }
+
+            REQUIRE(context.getRandomSeed() == after_copy);
+            CHECK(system->getNbParticles() == particle_counts[recreate][step]);
+            CHECK(system->getRandomSeed() == system_seeds[recreate][step]);
+            logging::write("SPARKSTEP delta={} count={} active={} seed={}", delta, system->getNbParticles(), system->isActive(), system->getRandomSeed());
+
+            for (size_t index = 0; index < system->getGroup(0)->getNbParticles(); index++) {
+                auto particle = system->getGroup(0)->getParticle(index);
+                logging::write("SPARKSTATE index={} pos=({},{},{}) vel=({},{},{}) age={} life={} rgba={}", index,
+                    particle.position().x, particle.position().y, particle.position().z,
+                    particle.velocity().x, particle.velocity().y, particle.velocity().z,
+                    particle.getAge(), particle.getLifeTime(), particle.getColor().getRGBA());
+            }
+
+            step++;
+        }
+    }
+}
+
+TEST_CASE("SPARK decoded graph census", "[.census]")
+{
+    std::filesystem::path corpus {"Baking/Visual/Particles"};
+
+    if (!std::filesystem::is_directory(corpus)) {
+        WARN("baked particle corpus is absent");
+        return;
+    }
+
+    size_t walked = 0;
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(corpus)) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".spk") {
+            continue;
+        }
+
+        string relative = strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
+        auto file = std::ifstream {entry.path(), std::ios::binary};
+        vector<char> data {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
+        SPK::SPKContext context;
+        SPK::FO::EnsureSparkParticleObjectsRegistered(context);
+        context.setRandomSeed(123456U);
+        auto base = context.getIOManager().loadFromBuffer("spk", data.data(), numeric_cast<unsigned int>(data.size()));
+        INFO(relative);
+        REQUIRE(base);
+
+        vector<SPK::Ref<SPK::SPKObject>> visited;
+        vector<SPK::Ref<SPK::SPKObject>> active;
+        set<string> classes;
+        size_t aliases = 0;
+        size_t cycles = 0;
+        size_t unbound = 0;
+        auto visit = [&](auto&& self, const SPK::Ref<SPK::SPKObject>& object) -> void {
+            if (!object) {
+                return;
+            }
+
+            if (std::find(active.begin(), active.end(), object) != active.end()) {
+                cycles++;
+                return;
+            }
+
+            if (std::find(visited.begin(), visited.end(), object) != visited.end()) {
+                aliases++;
+                return;
+            }
+
+            visited.emplace_back(object);
+            active.emplace_back(object);
+            classes.emplace(object->getClassName());
+            unbound += !object->hasContext();
+            auto descriptor = object->exportAttributes();
+
+            for (size_t index = 0; index < descriptor.getNbAttributes(); index++) {
+                const auto& attribute = descriptor.getAttribute(index);
+
+                if (!attribute.hasValue()) {
+                    continue;
+                }
+
+                if (attribute.getType() == SPK::IO::ATTRIBUTE_TYPE_REF) {
+                    self(self, attribute.getValueRef<SPK::SPKObject>());
+                }
+                else if (attribute.getType() == SPK::IO::ATTRIBUTE_TYPE_REFS) {
+                    for (const auto& child : attribute.getValuesRef<SPK::SPKObject>()) {
+                        self(self, child);
+                    }
+                }
+            }
+
+            active.pop_back();
+        };
+        visit(visit, base);
+        REQUIRE(cycles == 0);
+        REQUIRE(unbound == 0);
+
+        auto system = SPK::SPKObject::copy(base);
+        system->setRandomSeed(977U);
+        system->initialize();
+        size_t maximum_particles = 0;
+
+        for (int32_t frame = 0; frame < 120; frame++) {
+            (void)system->updateParticles(1.0f / 30.0f);
+            maximum_particles = std::max(maximum_particles, system->getNbParticles());
+        }
+
+        string class_list;
+
+        for (const auto& name : classes) {
+            class_list += strex("{};", name);
+        }
+
+        logging::write("SPARKCENSUS path=Particles/{} nodes={} aliases={} cycles={} unbound={} maximumParticles={} classes={}", relative,
+            visited.size(), aliases, cycles, unbound, maximum_particles, class_list);
+        walked++;
+    }
+
+    CHECK(walked != 0);
+    logging::write("SPARKCENSUSDONE walked={}", walked);
+}
+#endif
+
 FO_END_NAMESPACE
+

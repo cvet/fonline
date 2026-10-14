@@ -34,6 +34,7 @@
 #include "SpriteManager.h"
 #include "Application.h"
 #include "DefaultSprites.h"
+#include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -317,13 +318,88 @@ void SpriteManager::UpdateSprites()
         PrepareSpriteCpuUpdates();
     }
 
-    for (auto& spr : _liveUpdateSprites) {
+    for (size_t index = 0; index < _liveUpdateSprites.size();) {
+        if (_workScheduler && _workScheduler->IsParallel()) {
+            size_t updated = TryUpdateParticleCpuSpan(index);
+
+            if (updated != 0) {
+                index += updated;
+                continue;
+            }
+        }
+
+        auto& spr = _liveUpdateSprites[index];
+
         if (!spr->Update()) {
             _updateSprites.erase(make_ptr(spr.get()));
         }
+
+        index++;
     }
 
     _liveUpdateSprites.clear();
+}
+
+auto SpriteManager::TryUpdateParticleCpuSpan(size_t begin) -> size_t
+{
+    size_t end = begin;
+
+    while (end < _liveUpdateSprites.size()) {
+        auto particle = _liveUpdateSprites[end].as_ptr().dyn_cast<ParticleSprite>();
+
+        if (!particle || !particle->CanUpdateParticleCpu()) {
+            break;
+        }
+
+        end++;
+    }
+
+    size_t count = end - begin;
+
+    if (!_workScheduler->ShouldRunParallel(count, 2)) {
+        return 0;
+    }
+
+    struct ParticleUpdateJob
+    {
+        ptr<ParticleSystem> Particle;
+        float32_t Delta {};
+        CpuUpdateDiagnostics Result {};
+    };
+
+    // Nothing is allocated or copied until the complete contiguous span passes the threshold.
+    vector<ParticleUpdateJob> jobs;
+    jobs.reserve(count);
+    auto retire_on_failure = scope_fail([this, begin, end]() noexcept {
+        for (size_t index = begin; index < end; index++) {
+            auto sprite = _liveUpdateSprites[index].as_ptr().dyn_cast<ParticleSprite>();
+            sprite->GetParticle()->GetRuntimeSystem()->RetireCpuUpdate();
+        }
+    });
+
+    for (size_t index = begin; index < end; index++) {
+        auto sprite = _liveUpdateSprites[index].as_ptr().dyn_cast<ParticleSprite>();
+        ptr<ParticleSystem> particle = sprite->GetParticle();
+        float32_t delta = particle->PrepareCpuUpdate();
+        jobs.emplace_back(ParticleUpdateJob {particle, delta, {}});
+    }
+
+    std::thread::id owner_thread = std::this_thread::get_id();
+    _workScheduler->RunBatch("ParticleCpuUpdate", jobs.size(), 1, [&jobs, owner_thread](size_t index) {
+        auto& job = jobs[index];
+        job.Particle->GetRuntimeSystem()->UpdateCpu(job.Delta, std::this_thread::get_id() != owner_thread, job.Result);
+    });
+
+    for (size_t index = 0; index < jobs.size(); index++) {
+        auto& job = jobs[index];
+        job.Particle->CommitCpuUpdate(job.Delta, job.Result);
+
+        if (!job.Particle->IsActive()) {
+            _updateSprites.erase(make_ptr(_liveUpdateSprites[begin + index].get()));
+        }
+    }
+
+    return count;
 }
 
 void SpriteManager::PrepareSpriteCpuUpdates()

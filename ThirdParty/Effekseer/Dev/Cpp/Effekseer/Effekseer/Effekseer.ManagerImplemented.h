@@ -409,16 +409,23 @@ public:
 
 	void BeginUpdate() override;
 
+	// (FOnline Patch) Owner-thread observation of the existing update transaction.
+	bool IsUpdateInProgress() const { return isLockedWithRenderingMutex_; }
+
 	void EndUpdate() override;
 
 	void UpdateHandle(Handle handle, float deltaFrame = 1.0f) override;
+
+	// (FOnline Patch) The caller admits only immutable, audited CPU effect graphs. External collision callbacks
+	// still veto dispatch here. The executor and result are borrowed until this synchronous update completes.
+	void UpdateHandle(Handle handle, float deltaFrame, CpuUpdateExecutor* executor, CpuUpdateResult* result);
 
 	void UpdateHandleToMoveToFrame(Handle handle, float frame) override;
 
 	void SetRandomSeed(Handle handle, int32_t seed) override;
 
 private:
-	void UpdateInstancesByInstanceGlobal(const DrawSet& drawSet);
+	void UpdateInstancesByInstanceGlobal(const DrawSet& drawSet, CpuUpdateExecutor* executor = nullptr, CpuUpdateResult* result = nullptr);
 
 	//! update draw sets
 	void UpdateHandleInternal(DrawSet& drawSet);

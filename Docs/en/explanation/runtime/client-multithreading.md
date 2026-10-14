@@ -15,6 +15,7 @@ permalink: /Docs/en/explanation/runtime/client-multithreading.html
 - `Source/Client/FontManager.h`, `FontManager.cpp`, and `Source/Tests/Test_FontLayout.cpp`
 - `Source/Client/MapLightCalculation.h`, `MapLightCalculation.cpp`, `MapView.cpp`, `FogOfWar.h`, and `FogOfWar.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Client/ParticleRuntime.cpp`, `VisualParticles.cpp`, `SparkExtension.cpp`, and `EffekseerExtension.cpp`
 - `Source/Tests/Test_WorkScheduler.cpp`, `Test_ModelAnimationPoseProcedural.cpp`, and `Test_ClientEngine.cpp`
 
 ## What this is
@@ -30,8 +31,9 @@ What is implemented today:
 - [FontManager](../../../../Source/Client/FontManager.cpp): pure measurement and draw-layout preparation with owner-only cache publication.
 - [MapView](../../../../Source/Client/MapView.cpp) and [FogShape](../../../../Source/Client/FogOfWar.cpp): dirty light-source and fog-sector calculations over passive obstacle snapshots.
 - [ModelInstance](../../../../Source/Client/ModelInstance.cpp): prepare / evaluate / finalize poses; evaluation is one worker stage.
+- SPARK independent-system CPU batches and Effekseer per-generation instance chunks, through the same client scheduler.
 
-The option does not provide a render thread, GPU recording off the application thread, concurrent scripts, parallel particles or threaded Web. Their prerequisites and proposed order follow below.
+The option does not provide a render thread, GPU recording off the application thread, concurrent scripts or threaded Web. Their prerequisites and proposed order follow below.
 
 No frame-time speedup is claimed. Tests establish pose equality and serial bypass; earlier embedding-project player-path checks do not qualify later revisions or platforms. See [Measuring it](#measuring-it).
 
@@ -171,6 +173,108 @@ against — settling the frame again would move the root under an already evalua
 Direct-draw models (`Render.ModelDirectDraw`), GUI previews and `Prewarm` keep the single-pass path: their poses
 happen on demand, inside drawing, where no batch boundary exists.
 
+## Particle CPU Updates
+
+Particle creation, cloning, respawn, resource access, transforms, prewarm, drawing
+and lifecycle publication remain on the owner. Workers execute only the audited
+simulation kernels. `ClientEngine::WorkSched` outlives its sprite/model factories
+and particle managers; their scheduler references are borrowed, and each update
+joins before returning. There is no second particle pool.
+
+| Backend | Parallel unit | Owner boundary |
+|---|---|---|
+| SPARK | Independent runtime systems, each with a private `SPKContext` | Owner setup, joined CPU updates, owner timing/diagnostic publication. Sprite batches contain only contiguous draw-in-scene systems without pending prewarm. Atlas sprites and unsupported systems interrupt a span. |
+| Effekseer | Useful active instance chunks within one generation of one handle | The existing manager retains its 16384-instance budget. Handles update sequentially; generation children, shared pools, global state, sounds, Begin/End/Flip and rendering remain owner operations. |
+
+Model particles finalize after the hierarchy's pose evaluation joins. Children
+still finalize first. Contiguous eligible SPARK attachments share one CPU batch;
+Effekseer attachments use their inner chunk executor during the ordinary owner
+update. The pose's delta is used once, while zero-delta frame-layout re-poses
+retain the original update meaning. Layout refresh and animation callbacks run
+after particle completion. Model atlas drawing does not occur inside this
+attachment update span; standalone SPARK atlas updates retain their original
+immediate owner draw ordering.
+
+SPARK admission walks the actual graph, checks its context bindings, rejects
+cycles, and accepts exact audited built-in types rather than subclasses. The
+initial family includes System/Group; float and color DefaultInitializer,
+RandomInitializer, SimpleInterpolator, RandomInterpolator and GraphInterpolator;
+Point/Sphere/Plane/Ring/Box; Static/Random/Straight/Spheric/NormalEmitter;
+Gravity/Friction/Obstacle/LinearForce/Vortex/Rotator; and the exact engine quad
+renderer. Rotator requires both ANGLE and ROTATION_SPEED interpolators before
+initialization and both enabled runtime parameters afterwards. Cylinder,
+actions, unknown callbacks/types and custom renderers retain direct execution.
+`SPK_DEBUG` also forces direct execution because its logging has shared state;
+an ordinary Debug configuration does not by itself define that macro.
+
+Private-context copying preserves the existing derived constructor calls and
+source-context random draws, including consumed draws on unwinding. It preserves
+DAG aliases without adding cycle support. The requested system seed is applied
+at the original later boundary. Context creation and cloning remain owner-only
+between joins. See the [vendored maintenance contract](../../contributing/third-party/index.md#particle-cpu-extensions).
+
+Effekseer admission requires the exact supported effect/node/model families,
+immutable loaded resources, no local dynamic-equation VM, sound or GPU particle
+work, no external collision requirement and no non-file model spawning. Each
+generation additionally checks parent transform readiness without warming or
+changing it. A newly installed manager collision callback vetoes execution
+even after effect admission. Unknown graphs and unready generations keep their
+original owner path. A resource replacement creates a new runtime and admission
+decision; respawn reuses its immutable effect. The existing nonzero look-angle
+restriction still applies to [model attachments](../../how-to/content/particle-format.md#runtime-contract).
+
+Both stages require at least two useful items before creating descriptors; this
+threshold is provisional, not a measured crossover. False and zero-worker modes
+call the existing kernels without a new per-frame queue or snapshot. Persistent
+costs still exist: an admitted SPARK runtime retains a private context even in
+serial mode, and runtimes retain passive diagnostics and eligibility state.
+Scheduler borrows and padding also contribute to object size. These are storage
+costs, not an RSS or peak-memory measurement.
+
+On the verified Windows x64 MSVC build, `sizeof(CpuUpdateDiagnostics)` is 24 bytes,
+a scheduler borrow is 8 bytes and an eligibility flag is 1 byte. SPARK adds one
+8-byte context owner per runtime and allocates a 24-byte `SPKContext` for an
+admitted system. The context also owns a separately allocated IO manager with
+registered converter/object maps; a lazy default zone and allocator/container
+storage are additional costs. The 24-byte context size is therefore not its total
+heap cost. Existing graph copies and particle buffers are separate. Effekseer
+retains diagnostics/eligibility per runtime and one scheduler borrow in shared
+runtime state. `ModelManager` adds one scheduler borrow; the aggregation getter
+adds no field to `ModelInstance`. Full measured object sizes are 232 bytes for
+`ParticleRuntimeServices`, 456 for `ModelManager` and 1952 for `ModelInstance` in
+that build. These ABI-specific sizes include existing members and padding and
+must not be summed as a per-particle memory estimate. The hidden
+`[.particle-cpu-storage]` test records sizes without a memory campaign.
+
+`CpuUpdateDiagnostics` counts actual successful owner/worker kernel calls;
+Effekseer also counts actual active `Instance::Update` invocations. Filtered and
+inactive entries do not inflate that count. Results accumulate per job and are
+reduced by the owner after joining. A faulted update does not publish its partial
+results as success. Native observation accessors have no script API and do not
+enable unknown callbacks or alter random state.
+
+On an Effekseer update failure, the synchronous executor drains first, the owner
+ends an update that successfully began, invalidates the affected handle, and
+attempts its existing retirement sequence of three lifecycle flips before the
+original exception propagates. Cleanup uses `safe_call`: a persistent removal
+callback failure is reported and may prevent full instance-budget reclamation.
+The self-clearing callback fixture verifies successful reclamation after its
+one-shot failure; it does not prove recovery from a callback that keeps throwing.
+`BeginUpdate` itself releases its lock/reset flag when automatic `Flip` throws.
+Invalid deltas are rejected before mutation and do not retire a handle. The
+functional tests exercise real partial instance state and unrelated handle
+survival. For admitted SPARK graphs, no natural recoverable worker exception has
+been identified; allocation failure terminates. Its drain/retire boundary has
+source and scheduler coverage, but an actual SPARK worker fault through the
+consumer remains unverified. This qualification must not be replaced by a
+synthetic GPU callback or a broader eligibility exception.
+
+`Test_ParticleCpuUpdates.cpp`, `Test_ParticleBaker.cpp` and
+`Test_EffekseerParticleRuntime.cpp` own the direct-state, constructor-stream,
+runtime-consumer and lifecycle fixtures. Passing them establishes functional
+boundaries; it does not establish corpus-wide eligibility, frame-time gains or
+visual acceptance of an embedding project's current assets.
+
 ## Sprite and glyph geometry
 
 `SpriteManager` snapshots atlas rectangles, colors, the selected `SpriteSheet` frame and map transforms on the application thread. It reserves disjoint vertex/index ranges and records `DipData` in draw order. Commands retain offsets rather than buffer spans while the vectors can grow. Immutable mesh topology is held until completion; subsequent frame selection or sprite destruction cannot change a queued mesh.
@@ -194,7 +298,7 @@ With no workers, draw calls execute the kernel directly without queues or retain
 | `MapView::Process`, `CritterHexView::Process` | Iteration mutates entities, map fields and deletion lists. |
 | `MapView::DrawMap` | Rebuilds map data, fires script events between render stages, and records GPU work. |
 | Light/fog publication | Map fields, source ownership, visibility/global counters, offset borrows and fog transitions remain owner-only; workers calculate passive marks and geometry. |
-| Particles | SPARK and Effekseer share managers, random state and resource callbacks across systems. Middleware threading and client workers also have to be counted against one CPU budget, not enabled independently. |
+| Particle ownership | Loading, transforms, prewarm, unsupported simulation, shared-manager lifecycle, child generation and drawing stay on the owner; only the audited kernels above use workers. |
 | Network | Stream decompression is stateful and ordered, and packet handlers mutate client entities. A transport offload needs an ordered byte handoff, not a parallel loop. |
 | Resource acquisition/publication | The owner reads bytes and publishes factories, caches, atlas and GPU state. `ResourcePreparation` workers only decode owned bytes; see [limits and lifetime](../../how-to/content/image-format.md#bounded-cpu-resource-preparation). |
 | Scripts, renderer, GPU objects | Single-owner by design. Concurrent C# callbacks and a render thread are outside this feature. The frame path no longer reads the GPU back synchronously — a model's hit mask arrives through a non-blocking readback ([FrontendAndRendering.md](../rendering/index.md#reading-a-texture-back)) — so a future render thread would not be stalled by picking. |

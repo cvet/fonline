@@ -12,6 +12,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Increase the reviewed full AI-context capacity by 12 KiB to 2,359,296 bytes for complete particle CPU ownership, failure and native migration guidance; retain whole documents, exclusions and overflow rejection.
+
+- Run eligible particle CPU updates through the existing client worker pool in `SpriteManager` and model attachments. SPARK uses private runtime contexts while preserving the old constructor and system random streams; Effekseer executes independent useful chunks inside its existing manager. Drawing, resource access, attachment layout and callback boundaries remain on the owner. Unsupported graphs, SPARK atlas updates, small batches and zero-worker paths retain direct execution. `Client.Multithreading` remains false by default; thresholds are provisional and no timing, memory-peak, GPU or platform qualification is implied. Fix uninitialized Effekseer equation results at first birth. See [particle CPU migration](#particle-cpu-migration).
+
 - Prepare cold static-map sprite resources with owning asynchronous CPU decode tasks on the existing client worker pool. Acquisition, ordered sprite/cache/atlas publication and error replay stay on the owner. Bound lookahead and request reservations; reclaim terminal cancelled requests before cold capacity rejection without waiting; preserve warm/direct/zero-worker paths, custom factory dispatch, generation cancellation and shutdown drain. Multithreading remains off by default; see [migration below](#resource-preparation-migration).
 
 - Increase the reviewed full AI-context capacity by 8 KiB to 2,347,008 bytes for complete resource-preparation guidance; retain whole documents, exclusions and overflow rejection.
@@ -32,6 +36,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Rebase the unpublished client-worker integration onto published master 2026.1.36-dev, retaining all five experimental settings and 2,578 classified native-codegen symbols. Apply the five intervening migration records below and rebuild/rebake matching applications and resources; this integration adds no ABI or network-compatibility change.
 
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
+
+### Particle CPU migration
+
+Reconfigure and rebuild all native consumers together. The `ParticleRuntimeSystem` virtual surface and `ParticleRuntimeServices` layout changed; `ModelManager` accepts a trailing scheduler borrow, and vendored Effekseer instance/chunk interfaces include const-correct global access. Do not mix these native headers and libraries across revisions. A supplied scheduler must outlive its particle and model consumers. Native custom backends retain direct execution unless they explicitly implement the isolated CPU contract.
+
+No new script API, setting, resource schema, save or network conversion is introduced; Managed ABI 9 and runtime compatibility remain unchanged. Package matching rebuilt roles and baked resources. Keep `Client.Multithreading=False` until workload qualification. Enabling it does not guarantee worker participation for every asset or frame. SPARK debug logging, unknown callbacks and unready Effekseer parents remain direct; the existing Effekseer model look-angle restriction still applies. Fault cleanup drains jobs and attempts handle retirement, with the qualified callback-failure boundary described in [particle CPU updates](../explanation/runtime/client-multithreading.md#particle-cpu-updates) and [vendored maintenance](../contributing/third-party/index.md#particle-cpu-extensions). Rollback restores the preceding matching binaries/resources without persisted-data conversion.
 
 ### Resource preparation migration
 
@@ -672,3 +682,4 @@ Baseline: `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`); this reb
 ## Earlier history
 
 This maintained log begins with the adoption of Engine versioning. Earlier work is available in the [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound contract-change ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json). They are audit evidence, not a reconstructed series of published Engine releases.
+

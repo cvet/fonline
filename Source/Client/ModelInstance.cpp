@@ -42,6 +42,7 @@
 #include "ModelInformation.h"
 #include "ModelManager.h"
 #include "Settings.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -417,6 +418,26 @@ auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<
     }
 
     return std::nullopt;
+}
+
+auto ModelInstance::GetParticleCpuUpdateDiagnostics() const -> CpuUpdateDiagnostics
+{
+    CpuUpdateDiagnostics result;
+    auto accumulate = [&result](CpuUpdateDiagnostics value) {
+        result.OwnerKernelCalls += value.OwnerKernelCalls;
+        result.WorkerKernelCalls += value.WorkerKernelCalls;
+        result.UpdatedInstances += value.UpdatedInstances;
+    };
+
+    for (const auto& particle : _modelParticles) {
+        accumulate(particle.Particle->GetRuntimeSystem()->GetCpuUpdateDiagnostics());
+    }
+
+    for (const auto& child : _children) {
+        accumulate(child->GetParticleCpuUpdateDiagnostics());
+    }
+
+    return result;
 }
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
@@ -1553,6 +1574,72 @@ void ModelInstance::EvaluateAnimationPose()
     }
 }
 
+void ModelInstance::SetupParticle(ModelParticleSystem& model_particle)
+{
+    const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+    vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+
+    // The projection already carries the model tilt; applying it to the particle view would tilt it twice
+    bool tilt_in_proj = true;
+    FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+    const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
+
+    if (model_particle.Id == 0) {
+        model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
+    }
+    else {
+        model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
+    }
+}
+
+auto ModelInstance::TryUpdateParticleCpuSpan(size_t begin, float32_t delta_seconds) -> size_t
+{
+    size_t end = begin;
+
+    while (end < _modelParticles.size() && _modelParticles[end].Particle->CanUpdateCpu()) {
+        end++;
+    }
+
+    size_t count = end - begin;
+
+    if (!_modelMngr->_workScheduler->ShouldRunParallel(count, 2)) {
+        return 0;
+    }
+
+    struct ParticleUpdateJob
+    {
+        ptr<ParticleSystem> Particle;
+        CpuUpdateDiagnostics Result {};
+    };
+
+    vector<ParticleUpdateJob> jobs;
+    jobs.reserve(count);
+    auto retire_on_failure = scope_fail([this, begin, end]() noexcept {
+        for (size_t index = begin; index < end; index++) {
+            _modelParticles[index].Particle->GetRuntimeSystem()->RetireCpuUpdate();
+        }
+    });
+
+    for (size_t index = begin; index < end; index++) {
+        auto& attachment = _modelParticles[index];
+        SetupParticle(attachment);
+        (void)attachment.Particle->PrepareCpuUpdate(delta_seconds);
+        jobs.emplace_back(ParticleUpdateJob {attachment.Particle.as_ptr(), {}});
+    }
+
+    std::thread::id owner_thread = std::this_thread::get_id();
+    _modelMngr->_workScheduler->RunBatch("ModelParticleCpuUpdate", jobs.size(), 1, [&jobs, delta_seconds, owner_thread](size_t index) {
+        auto& job = jobs[index];
+        job.Particle->GetRuntimeSystem()->UpdateCpu(delta_seconds, std::this_thread::get_id() != owner_thread, job.Result);
+    });
+
+    for (auto& job : jobs) {
+        job.Particle->CommitCpuUpdate(delta_seconds, job.Result);
+    }
+
+    return count;
+}
+
 void ModelInstance::FinalizeAnimationPose()
 {
     FO_TRACE_ZONE(Model);
@@ -1564,26 +1651,20 @@ void ModelInstance::FinalizeAnimationPose()
 
     // Placed only after the whole hierarchy is posed: a child-joint effect left one pose behind is a harmless lag
     // while drawing, but makes the frame-sizing loop chase a stale box and never converge
-    for (auto& model_particle : _modelParticles) {
-        const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
-        vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+    for (size_t index = 0; index < _modelParticles.size();) {
+        float32_t delta_seconds = std::max(_poseElapsed, 0.0f);
 
-        // The tilt always arrives through the transform inherited from the model, so re-applying it in the view
-        // matrix would double-tilt the effect and leave the frame-sizing loop chasing a growing box
-        bool tilt_in_proj = true;
-        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
-        const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
-
-        if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
-        }
-        else {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
+        if (delta_seconds > 0.0f && _modelMngr->_workScheduler && _modelMngr->_workScheduler->IsParallel()) {
+            if (size_t count = TryUpdateParticleCpuSpan(index, delta_seconds); count != 0) {
+                index += count;
+                continue;
+            }
         }
 
-        // Model-attached effects have no update loop of their own, so they advance on the pose logical delta;
-        // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(_poseElapsed, 0.0f));
+        auto& model_particle = _modelParticles[index];
+        SetupParticle(model_particle);
+        model_particle.Particle->Update(delta_seconds);
+        index++;
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
