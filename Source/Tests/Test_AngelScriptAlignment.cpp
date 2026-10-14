@@ -470,4 +470,3 @@ TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
 FO_END_NAMESPACE
 
 #endif
-

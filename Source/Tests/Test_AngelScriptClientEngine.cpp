@@ -342,4 +342,3 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
 FO_END_NAMESPACE
 
 #endif
-

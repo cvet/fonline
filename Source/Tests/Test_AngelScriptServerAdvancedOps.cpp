@@ -1382,4 +1382,3 @@ TEST_CASE("ProtoAccessOperations")
 FO_END_NAMESPACE
 
 #endif
-

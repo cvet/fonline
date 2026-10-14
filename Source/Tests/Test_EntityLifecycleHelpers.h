@@ -757,4 +757,3 @@ namespace EntityLifecycle
 // ========== Entity Init Event Tests ==========
 
 FO_END_NAMESPACE
-

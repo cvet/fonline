@@ -498,4 +498,3 @@ TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
 FO_END_NAMESPACE
 
 #endif
-

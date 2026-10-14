@@ -1514,6 +1514,14 @@ class DocumentationValidatorTests(unittest.TestCase):
                         source["anchors"]
                     )
         audio_outputs = audio_manifest["outputs"]
+        audio_baker_fixture = "".join(
+            f'AddLoader(nullptr, {{"{extension}"}});\n'
+            for extension in audio_outputs["baker_extensions"]
+            if extension not in audio_outputs["decoder_extensions"]
+        )
+        for option, extensions in sorted(audio_outputs["optional_baker_extensions"].items()):
+            extension_list = ", ".join(f'"{extension}"' for extension in extensions)
+            audio_baker_fixture += f"#if {option}\nAddLoader(nullptr, {{{extension_list}}});\n#endif\n"
         sound_fixture = (
             "#if FO_WEB\n"
             f'_streamingPortion = {hex(audio_outputs["ogg"]["web_stream_chunk_bytes"])};\n'
@@ -1540,7 +1548,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         )
         audio_fixtures = {
             audio_manifest["sources"]["audio_manager"]: sound_fixture,
-            audio_manifest["sources"]["audio_baker"]: 'AddLoader(nullptr, {"wav"});\n',
+            audio_manifest["sources"]["audio_baker"]: audio_baker_fixture,
             audio_manifest["sources"]["audio_baker_header"]: 'NATIVE_EXTENSION = "ogg";\n',
             audio_manifest["sources"]["settings"]: settings_fixture,
             audio_manifest["sources"]["application"]: (

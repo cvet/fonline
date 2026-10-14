@@ -2222,4 +2222,3 @@ TEST_CASE("MapperConsoleCommands")
 }
 
 FO_END_NAMESPACE
-

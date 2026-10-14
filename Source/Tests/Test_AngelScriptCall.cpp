@@ -594,4 +594,3 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
 FO_END_NAMESPACE
 
 #endif
-

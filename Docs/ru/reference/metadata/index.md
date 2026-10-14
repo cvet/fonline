@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"122b9cd8112c83b5831e3dc67b67424dc178d8480cd9a7c6a294bde4976d7477"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"c0ecdbb3a63fc63f5d2d68adffb7631cc4bf024b96c6ffcf79bb8d06389adc2b"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -928,6 +928,8 @@ shapes не появится явный conversion contract.
 Правила миграции свойств содержат действие: `Property <Owner> Rename <Old> <New>` проверяет текущее целевое поле; `Property <Owner> Transform <Property> <Function>` проверяет существующее Persistent-свойство. Функция работает с документом БД до загрузки свойств сущности и получает исходный документ как контекст чтения. Связывание, подготовка результатов и запись описаны в [Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
 AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
+EntityHolder фильтруется по стороне до поиска типов; общий держатель на другой стороне сохраняет `Stub`-свойства. Неизвестный применимый тип отклоняется при запекании.
 
 ### Версия metadata
 

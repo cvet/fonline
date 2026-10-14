@@ -65,3 +65,7 @@ Continue with the [canonical English reference](en/reference/settings/configurat
 ## Optional archive providers
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#optional-archive-providers).
+
+## Resource loading failures
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#resource-loading-failures).

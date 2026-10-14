@@ -624,9 +624,6 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
         bool has_persistent = std::ranges::any_of(flags, [](auto&& f) { return f == "Persistent"; });
         auto sync = has_public_sync ? EntityHolderEntrySync::PublicSync : (has_owner_sync ? EntityHolderEntrySync::OwnerSync : EntityHolderEntrySync::NoSync);
 
-        if (!ctx.Meta.IsValidEntityType(holder_entity_hname)) {
-            throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown holder entity type", tag_desc.SourceFile, tag_desc.LineNumber, holder_entity_name);
-        }
         if (target == "Server" && (has_no_sync || has_owner_sync || has_public_sync)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: sync flags cannot be used with Server target", tag_desc.SourceFile, tag_desc.LineNumber);
         }
@@ -650,6 +647,9 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
             continue;
         }
 
+        if (!ctx.Meta.IsValidEntityType(holder_entity_hname)) {
+            throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown holder entity type", tag_desc.SourceFile, tag_desc.LineNumber, holder_entity_name);
+        }
         if (!ctx.Meta.IsValidEntityType(target_entity_hname)) {
             throw MetadataBakerException("Invalid EntityHolder codegen tag: unknown target entity type", tag_desc.SourceFile, tag_desc.LineNumber, target_entity_name);
         }

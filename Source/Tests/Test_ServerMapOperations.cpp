@@ -97,4 +97,3 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
 }
 
 FO_END_NAMESPACE
-

@@ -43,6 +43,40 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vector<vector<string>>>
+{
+    data_reader reader(output);
+    REQUIRE(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
+    REQUIRE(reader.read<uint16_t>() == METADATA_FILE_VERSION);
+    const auto version_size = reader.read<uint16_t>();
+    (void)reader.read_string_view(version_size);
+    const auto tag_count = reader.read<uint16_t>();
+    auto read_string = [&reader](uint16_t size) -> string {
+        string value;
+        value.resize(size);
+        reader.read_string_bytes(value);
+        return value;
+    };
+    map<string, vector<vector<string>>> tags;
+    for (uint16_t i = 0; i < tag_count; i++) {
+        const auto tag_name_len = reader.read<uint16_t>();
+        const string tag_name = read_string(tag_name_len);
+        const auto tag_value_count = reader.read<uint32_t>();
+        for (uint32_t j = 0; j < tag_value_count; j++) {
+            const auto value_parts_count = reader.read<uint32_t>();
+            vector<string> value_parts;
+            value_parts.reserve(value_parts_count);
+            for (uint32_t k = 0; k < value_parts_count; k++) {
+                const auto part_len = reader.read<uint16_t>();
+                value_parts.emplace_back(read_string(part_len));
+            }
+            tags[tag_name].emplace_back(std::move(value_parts));
+        }
+    }
+    reader.verify_end();
+    return tags;
+}
+
 #if FO_ANGELSCRIPT_SCRIPTING
 static void ExpectMetadataBakerError(string_view script, string_view message)
 {
@@ -77,40 +111,7 @@ TEST_CASE("MetadataBaker")
         reader.read_string_bytes(version);
         return version;
     };
-    auto read_baked_tags = [&skip_baked_header](const vector<uint8_t>& output) {
-        map<string, vector<vector<string>>> tags;
-        data_reader reader(output);
-        skip_baked_header(reader);
-        auto tag_count = reader.read<uint16_t>();
-        auto read_string = [&reader](uint16_t size) -> string {
-            string value;
-            value.resize(size);
-            reader.read_string_bytes(value);
-            return value;
-        };
-
-        for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.read<uint16_t>();
-            string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.read<uint32_t>();
-
-            for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.read<uint32_t>();
-                vector<string> value_parts;
-                value_parts.reserve(value_parts_count);
-
-                for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.read<uint16_t>();
-                    value_parts.emplace_back(read_string(part_len));
-                }
-
-                tags[tag_name].emplace_back(std::move(value_parts));
-            }
-        }
-
-        reader.verify_end();
-        return tags;
-    };
+    auto read_baked_tags = [](const vector<uint8_t>& output) { return ReadMetadataTags(output); };
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == MetadataBaker::NAME);
@@ -1427,6 +1428,59 @@ TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
         invalid.AddSourceFile("Scripts/InvalidMigration.cs", strex("///@ Property Critter Common hstring Transient Mutable PublicSync\n///@ MigrationRule {}\n", rule));
         MetadataBaker invalid_baker(invalid.MakeContext());
         CHECK_THROWS(invalid_baker.BakeFiles(invalid.GetAllSourceFiles(), ""));
+    }
+}
+
+TEST_CASE("MetadataBakerEntityHolderScopes")
+{
+    BakerTests::TestRig rig;
+    rig.AddSourceFile("Scripts/SideSpecificHolders.cs", R"(
+///@ Entity Server ScopeServerHolder
+///@ Entity Server ScopeServerChild
+///@ EntityHolder Server Game ScopeServerHolder ServerRoot Persistent
+///@ EntityHolder Server ScopeServerHolder ScopeServerChild Children Persistent
+///@ Entity Client ScopeClientHolder
+///@ Entity Client ScopeClientChild
+///@ EntityHolder Client Game ScopeClientHolder ClientRoot NoSync
+///@ EntityHolder Client ScopeClientHolder ScopeClientChild Children NoSync
+///@ Entity Mapper ScopeMapperHolder
+///@ Entity Mapper ScopeMapperChild
+///@ EntityHolder Mapper Game ScopeMapperHolder MapperRoot NoSync
+///@ EntityHolder Mapper ScopeMapperHolder ScopeMapperChild Children NoSync
+)");
+    MetadataBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    for (const auto& [target, side] : {pair<string_view, string_view> {"server", "Server"}, {"client", "Client"}, {"mapper", "Mapper"}}) {
+        const auto tags = ReadMetadataTags(rig.Outputs.at(strex("TestPack.fometa-{}", target)));
+        REQUIRE(tags.contains("Entity"));
+        REQUIRE(tags.contains("EntityHolder"));
+        const auto& entities = tags.at("Entity");
+        const auto& holders = tags.at("EntityHolder");
+        for (const string_view candidate : {"Server", "Client", "Mapper"}) {
+            const string holder = strex("Scope{}Holder", candidate);
+            const string child = strex("Scope{}Child", candidate);
+            const string flag = candidate == "Server" ? "Persistent" : "NoSync";
+            if (candidate == side) {
+                CHECK(std::ranges::count(entities, vector<string> {holder}) == 1);
+                CHECK(std::ranges::count(entities, vector<string> {child}) == 1);
+                CHECK(std::ranges::count(holders, vector<string> {string(candidate), holder, child, "Children", flag}) == 1);
+            }
+            else {
+                CHECK(std::ranges::count(entities, vector<string> {holder}) == 0);
+                CHECK(std::ranges::count(entities, vector<string> {child}) == 0);
+                CHECK(std::ranges::none_of(holders, [&holder](const auto& entry) { return entry[1] == holder; }));
+                CHECK(std::ranges::count(holders, vector<string> {"Stub", "Game", "", strex("{}Root", candidate), flag}) == 1);
+            }
+        }
+    }
+
+    SECTION("still rejects an unknown holder on its declared side")
+    {
+        BakerTests::TestRig invalid_rig;
+        invalid_rig.AddSourceFile("Scripts/UnknownHolder.cs", "///@ Entity Server ScopeTarget\n///@ EntityHolder Server MissingHolder ScopeTarget Children Persistent\n");
+        MetadataBaker invalid_baker(invalid_rig.MakeContext());
+        REQUIRE_THROWS_WITH(invalid_baker.BakeFiles(invalid_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("unknown holder entity type"));
     }
 }
 

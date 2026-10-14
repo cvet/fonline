@@ -1669,6 +1669,9 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
             MakePersistent(entity, true);
         }
     }
+    else if (_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent) {
+        MakePersistent(entity, true);
+    }
 
     ForEachCustomEntityView(entity, [entity_ = entity.as_ptr()](ptr<Player> player, bool owner) { player->Send_AddCustomEntity(entity_, owner); });
     return entity;

@@ -256,4 +256,3 @@ TEST_CASE("AngelScriptServerCritterLifecycleOperations")
 FO_END_NAMESPACE
 
 #endif
-

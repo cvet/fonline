@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/versioning.html
 ---
 
 # Версия движка и заметки о выпусках
-<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"4941443b33bcf46cc9ca999b64ad465c6d8974f736e0fbba5e6ad3d6f1356c30"} -->
+<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"fb65f6210df102c41e330f3ecafca86bb0276ec7046a0754a5b3092dc1be06b3"} -->
 Корневой [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт идентификатор движка. Эта политика CalVer с календарным годом, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md) и [процедура изменения контрактов](../../contributing/contract-change-management.md) обязательны для каждого обновления master. Перед обновлением игры прочитайте [историю изменений](../../reference/changelog.md).
 
 Навигация, маршруты и данные для ИИ ссылаются на `VERSION`, не копируя значение. Шаблон Jekyll включает корневой файл напрямую при сборке.
@@ -105,3 +105,4 @@ Engine поддерживает только актуальный API выбра
 - `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
 - `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
 
+CMake использует файловые Git-зависимости; `CONFIGURE_DEPENDS` обнаруживает packed-to-loose refs, проверенные в `test_engine_version.py`.

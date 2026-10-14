@@ -54,10 +54,16 @@ static auto MakeEntityLoadingSettings() -> GlobalSettings
 
 static auto MakeEntityLoadingResources() -> FileSystem
 {
-    // A persistent holder entry on the critter, so custom inner entities travel with it to the database and back
+    // Exercise critter, singleton and nested holder persistence with the same custom entity types
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({
-        {"Entity", {{"LoadingRecord"}}},
-        {"EntityHolder", {{"Server", "Critter", "LoadingRecord", "HeldRecords", "Persistent"}}},
+        {"Entity", {{"LoadingRecord"}, {"LoadingChild"}}},
+        {"EntityHolder",
+            {
+                {"Server", "Critter", "LoadingRecord", "HeldRecords", "Persistent"},
+                {"Server", "Game", "LoadingRecord", "PersistentRecords", "Persistent"},
+                {"Server", "Game", "LoadingRecord", "TemporaryRecords"},
+                {"Server", "LoadingRecord", "LoadingChild", "NestedRecords", "Persistent"},
+            }},
     });
     auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLoadingCompiler");
     compiler_source->AddFile("Metadata.fometa-server", metadata);
@@ -338,6 +344,38 @@ TEST_CASE("ServerLoadCritterPrunesMissingCustomInnerEntityAndKeepsItsSiblings", 
     CHECK(CollectCustomEntityIds(loaded, record_entry) == vector<ident_t> {kept_first_id, kept_last_id});
 
     DiscardLoadedCritter(server, loaded);
+}
+
+TEST_CASE("ServerGameHolderPersistsDeclaredChildren", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+    server->LockForPropertyAccess();
+    auto unlock_singleton = scope_exit([&server]() noexcept { server->UnlockForPropertyAccess(); });
+
+    auto persistent_entry = server->Hashes.to_hashed_string("PersistentRecords");
+    auto temporary_entry = server->Hashes.to_hashed_string("TemporaryRecords");
+    auto nested_entry = server->Hashes.to_hashed_string("NestedRecords");
+    auto persistent = server->EntityMngr.CreateCustomInnerEntity(server, persistent_entry, {});
+    auto nested = server->EntityMngr.CreateCustomInnerEntity(persistent, nested_entry, {});
+    auto temporary = server->EntityMngr.CreateCustomInnerEntity(server, temporary_entry, {});
+
+    CHECK(persistent->IsPersistent());
+    CHECK(nested->IsPersistent());
+    CHECK_FALSE(temporary->IsPersistent());
+    CHECK(persistent->GetEntityLock() == server->GetEntityLock());
+    CHECK(nested->GetEntityLock() == server->GetEntityLock());
+    CHECK(nested->GetCustomHolderId() == persistent->GetId());
+    CHECK(persistent->GetCustomHolderEntry() == persistent_entry);
+
+    server->DbStorage.WaitCommitChanges();
+    auto records_collection = server->Hashes.to_hashed_string("LoadingRecords");
+    auto children_collection = server->Hashes.to_hashed_string("LoadingChilds");
+    auto persistent_doc = server->DbStorage.Get(records_collection, persistent->GetId());
+    auto nested_doc = server->DbStorage.Get(children_collection, nested->GetId());
+    auto temporary_doc = server->DbStorage.Get(records_collection, temporary->GetId());
+    CHECK_FALSE(persistent_doc.Empty());
+    CHECK_FALSE(nested_doc.Empty());
+    CHECK(temporary_doc.Empty());
 }
 
 FO_END_NAMESPACE

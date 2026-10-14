@@ -333,4 +333,3 @@ TEST_CASE("AngelScriptLoadUnloadCritter")
 FO_END_NAMESPACE
 
 #endif
-

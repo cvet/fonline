@@ -243,4 +243,3 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
 FO_END_NAMESPACE
 
 #endif
-

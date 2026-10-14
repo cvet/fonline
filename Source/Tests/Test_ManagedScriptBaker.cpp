@@ -1816,4 +1816,3 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 FO_END_NAMESPACE
 
 #endif
-

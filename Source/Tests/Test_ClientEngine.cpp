@@ -1779,4 +1779,3 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 }
 
 FO_END_NAMESPACE
-

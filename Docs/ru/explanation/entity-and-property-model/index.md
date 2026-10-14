@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"bc1b789cb3d5c86a183f14572e6f9fa42d8813f84735775f8c92bbf5a6538471"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"a3dffc63053a41a2f6ca10c609ae30dc06b2de4510c6c27c2e21cc39f51a312c"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -180,11 +180,7 @@ Overlays, производные от прототипов, лениво соз�
 - `Sync` - `NoSync`, `OwnerSync` или `PublicSync`;
 - `Persistent` - участвует ли членство в holder в persistence.
 
-Persistent-поля custom child не делают его holder entry persistent. `EntityManager::ForEachPersistentChildEntity()`
-пропускает entries без этого флага; `CreateCustomInnerEntity()` делает нового child persistent только при persistent
-entry и holder. Проверяйте сохранённого child и членство через настоящий unload/load, а не прямой вызов скриптовой
-инициализации. Загрузка critter восстанавливает inner entities до `OnCritterPreLoad` и последующей инициализации;
-callbacks игры определяют, как восстановить или завершить загруженное состояние.
+Потомок сохраняется только через `Persistent`-запись постоянного держателя; для Game достаточно `Persistent` у записи. Постоянные потомки наследуют постоянство, обычные записи остаются временными. Проверяйте потомков и связи через unload/load. Внутренние сущности Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают их состояние.
 
 Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 

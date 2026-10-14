@@ -6,6 +6,10 @@ The canonical explanation moved to locale-specific paths.
 
 [English](en/explanation/rendering/index.md) | [Russian](ru/explanation/rendering/)
 
+## Bounded map view presentation
+
+Continue with the [canonical English explanation](en/explanation/rendering/#bounded-map-view-presentation).
+
 ## Contract status
 
 Continue with the [canonical English explanation](en/explanation/rendering/#contract-status).

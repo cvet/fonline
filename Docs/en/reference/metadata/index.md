@@ -941,6 +941,8 @@ Property migration rules have an explicit action: `Property <Owner> Rename <Old>
 
 AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../../how-to/scripting/style-and-refactoring.md#document-migrations).
 
+EntityHolder side filtering precedes type lookup; shared off-target holders keep `Stub` properties. Unknown active-side types fail baking.
+
 ### Metadata version
 
 **A server and every connected client must run metadata produced by one bake.** Entity payloads address properties by the registration order in that metadata, so different bakes can make the same index refer to different properties. Such divergence is rejected as a build or deployment defect, never treated as a supported compatibility mode.

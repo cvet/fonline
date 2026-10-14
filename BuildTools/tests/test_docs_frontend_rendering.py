@@ -117,13 +117,15 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(marker, tests)
         self.assertIn("ModelSpriteHitTestReadsItsMaskFromTheAtlas", model_tests)
+        self.assertIn('#if (FO_ENABLE_3D)\nTEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")', model_tests)
         self.assertNotIn("GetRenderTargetPixel", self._read("Source/Client/RenderTarget.h"))
         guide = self._read(GUIDE_PATH)
         for boundary in (
             "Before the first mask is ready, hit testing returns false",
             "blocking read at request time",
             "Outside frame recording",
-            "FO_ANGELSCRIPT_SCRIPTING",
+            "FO_ENABLE_3D",
+            "executes with either scripting backend",
             "not a server-authoritative hit",
         ):
             self.assertIn(boundary, guide)

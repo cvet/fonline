@@ -746,4 +746,3 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
 #endif
 
 FO_END_NAMESPACE
-

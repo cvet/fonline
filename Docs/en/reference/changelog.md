@@ -19,14 +19,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Register all test sources unconditionally and place backend guards inside their translation units. Keep native engine/entity/map/network/rendering checks available to both backends; split AngelScript binding checks into `Test_AngelScript*` suites with shared header fixtures.
 - Add real ManagedScriptBaker/runtime bridge coverage for server, client and Mapper: initialization, events, call marshalling, exceptions and isolation of simultaneous servers.
 
-### Migration
-
-- Base: `91d8bf21ac89e5342db17aab8e25332e049e900e` (`2026.1.36-dev`); next `2026.1.37-dev`. Reconfigure the test build after adopting the source split. Update path-based test tools to the `Test_AngelScript*` filenames and focused Catch2 filters to the prefixed names of split AngelScript cases. Managed runtime tests require the .NET SDK for the configured target framework and the managed runtime payload. Rebuild all enabled roles and test both backends; regenerate metadata, references and bake markers with matching binaries. No gameplay, script API, configuration, save or network conversion is required: existing dictionary signatures now use their existing bridge. Managed ABI `9`, runtime `0.0.72`, sprite v2, resource and network schemas retain their identity. Deploy matching binaries/runtime payloads together; rollback restores the preceding matching binaries without converting saved data.
-
 ### Fixed
 
 - Register managed `Dictionary<K,V>` native-call entry points using the existing dictionary bridge instead of skipping their signatures as unsupported, and copy dictionary callback results through the caller's accessor with managed objects rooted during conversion.
 - Await and capture the ASIO accept-callback test's detached exception report before restoring global test state, preventing its intentional diagnostic from contaminating later logging tests.
+- Track packed-to-loose Git refs with file-only CMake dependencies.
+- Filter EntityHolder sides before holder validation; retain shared-holder stubs.
+- Honor Game-holder Persistent children and descendants; ordinary children stay temporary.
+
+### Migration
+
+- Base: `91d8bf21ac89e5342db17aab8e25332e049e900e` (`2026.1.36-dev`); next `2026.1.37-dev`. Reconfigure the test build after adopting the source split. Update path-based test tools to the `Test_AngelScript*` filenames and focused Catch2 filters to the prefixed names of split AngelScript cases. Managed runtime tests require the .NET SDK for the configured target framework and the managed runtime payload. Rebuild all enabled roles and test both backends; regenerate metadata, references and bake markers with matching binaries. No gameplay, script API, configuration, save or network conversion is required: existing dictionary signatures now use their existing bridge. Managed ABI `9`, runtime `0.0.72`, sprite v2, resource and network schemas retain their identity. Deploy matching binaries/runtime payloads together; rollback restores the preceding matching binaries without converting saved data.
+- Rebuild server/baker and rebake metadata. Reconcile historical IDs of children that were never stored. Declarations, saved-document formats and protocol remain unchanged.
 
 ## 2026.1.36-dev - 2026-10-13
 

@@ -47,6 +47,54 @@ class EngineVersionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Current must be the first'):
             engine_version.validate_changelog_texts(new, notes)
 
+    @unittest.skipUnless(shutil.which("git") and shutil.which("cmake") and shutil.which("ninja"),
+                         "Git, CMake and Ninja are required")
+    def test_cmake_packed_branch_dependencies_and_next_loose_commit(self) -> None:
+        def git(root: Path, *args: str) -> str:
+            return subprocess.check_output(
+                ["git", "-C", str(root), "-c", "user.name=Version Test",
+                 "-c", "user.email=version@example.invalid", *args],
+                text=True, stderr=subprocess.STDOUT).strip()
+
+        with tempfile.TemporaryDirectory(prefix="engine-version-cmake-") as directory:
+            fixture = Path(directory).resolve()
+            repository = fixture / "engine"
+            repository.mkdir()
+            (repository / "BuildTools").mkdir()
+            shutil.copyfile(BUILDTOOLS / "engine_version.py", repository / "BuildTools/engine_version.py")
+            (repository / "VERSION").write_text("2026.1.13-dev\n", encoding="utf-8")
+            git(repository, "init", "-b", "main")
+            git(repository, "add", ".")
+            git(repository, "commit", "-m", "Initial fixture")
+            git(repository, "pack-refs", "--all", "--prune")
+            branch = repository / ".git/refs/heads/main"
+            self.assertFalse(branch.exists())
+            source = fixture / "project"
+            source.mkdir()
+            helper = (BUILDTOOLS / "cmake/helpers/EngineVersion.cmake").as_posix()
+            (source / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.22)\nproject(VersionDependencyFixture NONE)\n'
+                f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
+                f'include("{helper}")\n'
+                f'ReadEngineVersion("{repository.as_posix()}" version dependencies)\n'
+                'file(WRITE "${CMAKE_BINARY_DIR}/tracked.txt" "${dependencies}")\n'
+                'add_custom_command(OUTPUT version.stamp\n'
+                ' COMMAND "${CMAKE_COMMAND}" -E touch version.stamp DEPENDS ${dependencies})\n'
+                'add_custom_target(version_stamp ALL DEPENDS version.stamp)\n', encoding="utf-8")
+            build = fixture / "build"
+            subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(build)],
+                           check=True, capture_output=True, text=True)
+            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+            self.assertTrue(dependencies)
+            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
+            git(repository, "commit", "--allow-empty", "-m", "Next loose fixture commit")
+            self.assertTrue(branch.is_file())
+            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
+            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+            self.assertIn(branch.as_posix(), dependencies)
+            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+
     def test_notation_and_file_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

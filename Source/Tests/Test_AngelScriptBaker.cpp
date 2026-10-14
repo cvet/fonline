@@ -250,4 +250,3 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 FO_END_NAMESPACE
 
 #endif
-

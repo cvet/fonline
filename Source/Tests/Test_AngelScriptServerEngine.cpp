@@ -285,4 +285,3 @@ TEST_CASE("AngelScriptServerSnapshotRejectsSuspendedScript")
 FO_END_NAMESPACE
 
 #endif
-

@@ -2615,4 +2615,3 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
 }
 
 FO_END_NAMESPACE
-
