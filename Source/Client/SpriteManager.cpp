@@ -70,7 +70,7 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
-SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler) :
+SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler, ResourcePreparation::Decoder resource_decoder) :
     _settings {settings},
     _window {window},
     _resources {resources},
@@ -85,7 +85,8 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _spritesDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _primitiveDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _flushDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
-    _spriteEffectDrawBuf {window->GetRender()->CreateDrawBuffer(false)}
+    _spriteEffectDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
+    _resourceDecoder {std::move(resource_decoder)}
 {
     FO_TRACE_ZONE(Render);
 
@@ -660,7 +661,7 @@ auto SpriteManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type, b
     }
 
     if (!_resourcePreparation) {
-        _resourcePreparation = safe_alloc::make_unique<ResourcePreparation>(_workScheduler);
+        _resourcePreparation = safe_alloc::make_unique<ResourcePreparation>(_workScheduler, ResourcePreparation::Limits {}, std::move(_resourceDecoder));
     }
 
     ResourcePreparation::Key key {string(path.as_str()), as_quad ? ResourcePreparation::Kind::Quad : ResourcePreparation::Kind::Sprite, static_cast<uint32_t>(atlas_type), _resourceGeneration, _resourceEpoch};
@@ -669,7 +670,7 @@ auto SpriteManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type, b
         return true;
     }
 
-    if (_resourcePreparation->GetDiagnostics().Outstanding >= ResourcePreparation::Limits {}.Requests) {
+    if (!_resourcePreparation->HasAvailableRequestSlot()) {
         return false;
     }
 

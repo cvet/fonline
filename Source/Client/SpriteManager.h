@@ -187,7 +187,9 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler);
+
+    // The optional decoder has the owned passive CPU contract of ResourcePreparation::Decoder
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler, ResourcePreparation::Decoder resource_decoder = ReadSpriteResource);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -360,6 +362,7 @@ private:
 
     uint64_t _resourceGeneration {1};
     uint64_t _resourceEpoch {1};
+    ResourcePreparation::Decoder _resourceDecoder;
     bool _resourcePreparationStopped {};
     // Last member drains first during constructor unwind, before factories, atlases and provider borrows
     unique_nptr<ResourcePreparation> _resourcePreparation {};

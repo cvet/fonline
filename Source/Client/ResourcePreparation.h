@@ -122,6 +122,9 @@ public:
     ~ResourcePreparation();
 
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
+
+    // Reclaim terminal cancelled requests on the owner without waiting; active/publication charges remain
+    [[nodiscard]] auto HasAvailableRequestSlot() -> bool;
     [[nodiscard]] auto FindRequest(const Key& key) const -> uint64_t;
     [[nodiscard]] auto Poll(uint64_t ticket) const -> Completion;
 

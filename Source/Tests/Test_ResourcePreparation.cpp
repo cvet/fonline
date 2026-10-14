@@ -551,6 +551,8 @@ struct PreparationReadObservation
     nptr<MapView> Map {};
     std::thread::id Owner {std::this_thread::get_id()};
     vector<pair<string, size_t>> SpriteReads {};
+    size_t HeaderReads {};
+    size_t FileReads {};
     std::atomic<bool> ForeignRead {};
 };
 
@@ -565,7 +567,19 @@ public:
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _files.GetPackName(); }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _files.IsFileExists(path); }
-    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override { return _files.GetFileInfo(path, size, write_time); }
+    [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
+    {
+        auto observation = _observation;
+
+        if (std::this_thread::get_id() != observation->Owner) {
+            observation->ForeignRead.store(true);
+        }
+        else {
+            observation->HeaderReads++;
+        }
+
+        return _files.GetFileInfo(path, size, write_time);
+    }
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override { return _files.GetFileNames(dir, recursive, ext); }
 
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
@@ -575,8 +589,12 @@ public:
         if (std::this_thread::get_id() != observation->Owner) {
             observation->ForeignRead.store(true);
         }
-        else if (observation->Map && path.ends_with(".png")) {
-            observation->SpriteReads.emplace_back(string(path), observation->Map->GetItems().size());
+        else {
+            observation->FileReads++;
+
+            if (observation->Map && path.ends_with(".png")) {
+                observation->SpriteReads.emplace_back(string(path), observation->Map->GetItems().size());
+            }
         }
 
         return _files.OpenFile(path, size, write_time);
@@ -678,6 +696,115 @@ static auto ReadPreparationAtlasPixel(ptr<const Sprite> sprite) -> ucolor
     auto pixels = texture->GetTextureRegion(pixel, {1, 1});
     REQUIRE(pixels.size() == 1);
     return pixels[0];
+}
+
+TEST_CASE("ResourcePreparationSpriteManagerRecoversFullCancelledRequestsWithoutDrain", "[resource-preparation]")
+{
+    STATIC_REQUIRE(details::function_target_fits_inline<decltype(&ReadSpriteResource)>);
+
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    GlobalSettings settings {false};
+    settings.ApplyDefaultSettings();
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    auto window = GetAppWindowStub(settings);
+    FileSystem resources;
+    GameTimer timer {&settings};
+    hash_storage hashes;
+    EffectManager effects {&settings, &resources, window->GetRender()};
+    WorkScheduler scheduler {"preparation-recovery", 1};
+    auto gate = safe_alloc::make_shared<PreparationDecodeGate>();
+    SpriteManager sprites {&settings, window, &resources, &timer, &effects, &hashes, &scheduler, [gate](const_span<uint8_t> bytes) mutable {
+                               gate->Enter();
+                               return ReadSpriteResource(bytes);
+                           }};
+    auto unblock = scope_exit([&]() noexcept { gate->Open(); });
+    sprites.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&sprites));
+    auto observation = safe_alloc::make_shared<PreparationReadObservation>();
+    auto source = safe_alloc::make_unique<PreparationMapSource>(observation);
+    vector<hstring> paths;
+
+    for (size_t index = 0; index <= ResourcePreparation::Limits {}.Requests; index++) {
+        string path = strex("Recovery{}.png", index).str();
+        source->AddFile(path, MakePreparationInput(path).Bytes);
+        paths.push_back(hashes.to_hashed_string(path));
+    }
+
+    resources.AddCustomSource(std::move(source));
+    REQUIRE(sprites.PrefetchSpriteResource(paths.front(), AtlasType::MapSprites));
+    REQUIRE(gate->WaitEntered());
+
+    for (size_t index = 1; index < ResourcePreparation::Limits {}.Requests; index++) {
+        REQUIRE(sprites.PrefetchSpriteResource(paths[index], AtlasType::MapSprites));
+    }
+
+    auto full = sprites.GetResourcePreparationDiagnostics();
+    CHECK(full.Outstanding == 32);
+    CHECK(full.Submitted == 32);
+    REQUIRE(full.ReservedBytes > 0);
+
+    // All consumption is still pending: direct publication cancels each prepared request, but cannot reap it
+    for (size_t index = 0; index < ResourcePreparation::Limits {}.Requests; index++) {
+        auto sprite = sprites.LoadSprite(paths[index], AtlasType::MapSprites);
+        REQUIRE(sprite);
+        CHECK(ReadPreparationAtlasPixel(sprite.as_ptr()) == ucolor {17, 29, 43, 255});
+    }
+
+    CHECK(gate->GetCalls() == 1);
+    CHECK(sprites.GetResourcePreparationDiagnostics().Outstanding == full.Outstanding);
+    CHECK(sprites.GetResourcePreparationDiagnostics().ReservedBytes == full.ReservedBytes);
+    CHECK(sprites.GetResourcePreparationDiagnostics().Consumed == 0);
+    size_t headers = observation->HeaderReads;
+    size_t reads = observation->FileReads;
+    CHECK_FALSE(sprites.PrefetchSpriteResource(paths.back(), AtlasType::MapSprites));
+    CHECK(observation->HeaderReads == headers);
+    CHECK(observation->FileReads == reads);
+    CHECK(sprites.GetResourcePreparationDiagnostics().ReservedBytes == full.ReservedBytes);
+
+    gate->Open();
+
+    // A FIFO sentinel on the sole worker proves every earlier task is terminal without touching lane cleanup
+    auto sentinel_group = scheduler.CreateBackgroundGroup();
+    shared_ptr<WorkScheduler::BackgroundTask> sentinel;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {10};
+
+    while (!sentinel && std::chrono::steady_clock::now() < deadline) {
+        sentinel = scheduler.TrySubmitBackground(sentinel_group, []() {});
+        std::this_thread::yield();
+    }
+
+    REQUIRE(sentinel);
+
+    while (scheduler.PollBackground(sentinel).Status != WorkScheduler::BackgroundStatus::Completed && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    REQUIRE(scheduler.PollBackground(sentinel).Status == WorkScheduler::BackgroundStatus::Completed);
+    CHECK(gate->GetCalls() == 1);
+    CHECK(sprites.GetResourcePreparationDiagnostics().Outstanding == full.Outstanding);
+    CHECK_FALSE(sprites.PrefetchSpriteResource(paths.front(), AtlasType::MapSprites));
+    CHECK(observation->HeaderReads == headers);
+    CHECK(observation->FileReads == reads);
+    CHECK(sprites.GetResourcePreparationDiagnostics().ReservedBytes == full.ReservedBytes);
+
+    // Cold admission itself must reclaim the completed cancelled slots before its bounded provider read
+    REQUIRE(sprites.PrefetchSpriteResource(paths.back(), AtlasType::MapSprites));
+    CHECK(sprites.GetResourcePreparationDiagnostics().Outstanding == 1);
+    CHECK(sprites.GetResourcePreparationDiagnostics().Submitted == 33);
+    CHECK(sprites.GetResourcePreparationDiagnostics().ReservedBytes < full.ReservedBytes);
+    CHECK(observation->HeaderReads == headers + 1);
+    CHECK(observation->FileReads == reads + 1);
+    CHECK_FALSE(observation->ForeignRead.load());
+
+    sprites.DrainPreparedSpriteResources();
+    auto recovered = sprites.LoadSprite(paths.back(), AtlasType::MapSprites);
+    REQUIRE(recovered);
+    CHECK(ReadPreparationAtlasPixel(recovered.as_ptr()) == ucolor {17, 29, 43, 255});
+    CHECK(sprites.GetResourcePreparationDiagnostics().Consumed == 1);
+    CHECK(sprites.GetResourcePreparationDiagnostics().Outstanding == 0);
+    CHECK(sprites.GetResourcePreparationDiagnostics().ReservedBytes == 0);
 }
 
 class PreparationClientEngine final : public ClientEngine

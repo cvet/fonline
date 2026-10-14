@@ -8,13 +8,13 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"196eb24ab9d80f329da2ba6bd9dfe015aa47326707663c71ee0f877c90859e87"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"fbee718beedd5455f85bac6993fb731333897dc8e87b9cab8248e99eef68cd12"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-- Добавлена подготовка холодных спрайтов статической карты через владеющие асинхронные CPU-задачи существующего клиентского пула. Чтение, упорядоченная публикация sprite/cache/atlas и воспроизведение ошибок остаются владельцу. Ограничены просмотр следующих записей и reservation; сохранены warm/direct/zero-worker пути, dispatch пользовательских фабрик, отмена generation и shutdown drain. Многопоточность остаётся выключенной по умолчанию; см. [миграцию ниже](#миграция-подготовки-ресурсов).
+- Добавлена подготовка холодных спрайтов статической карты через владеющие асинхронные CPU-задачи существующего клиентского пула. Чтение, упорядоченная публикация sprite/cache/atlas и воспроизведение ошибок остаются владельцу. Ограничены просмотр следующих записей и reservation; завершённые отменённые запросы освобождаются без ожидания до cold capacity rejection; сохранены warm/direct/zero-worker пути, dispatch пользовательских фабрик, отмена generation и shutdown drain. Многопоточность остаётся выключенной по умолчанию; см. [миграцию ниже](#миграция-подготовки-ресурсов).
 
 - Проверенный предел полного AI-контекста увеличен на 8 KiB до 2 347 008 bytes для полного руководства по подготовке ресурсов; целые документы, исключения и отказ при переполнении сохранены.
 
@@ -37,7 +37,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Миграция подготовки ресурсов
 
-Native-потребители `WorkScheduler`, `SpriteManager` и `DefaultSpriteFactory` должны повторно сконфигурировать и собрать все включённые роли вместе: изменились member layouts, добавлен модуль `ResourcePreparation`. Существующие custom factory overrides сохраняют dispatch; в подготовку включается только точная встроенная фабрика. Lane API вызывается владельцем; CPU decoder владеет пассивными bytes/results и не захватывает providers, entities или renderer state. До уничтожения зависимостей требуется drain.
+Native-потребители `WorkScheduler`, `SpriteManager` и `DefaultSpriteFactory` должны повторно сконфигурировать и собрать все включённые роли вместе: изменились member layouts, native-конструктор `SpriteManager` получил необязательный владеющий CPU decoder, добавлен модуль `ResourcePreparation`. Существующие custom factory overrides сохраняют dispatch; в подготовку включается только точная встроенная фабрика. Lane API вызывается владельцем; CPU decoder владеет пассивными bytes/results и не захватывает providers, entities или renderer state. До уничтожения зависимостей требуется drain.
 
 Повторно запеките и упакуйте согласованные metadata/runtime payloads с новыми ролями. Конверсия script/configuration, resource-format, saves, network или Managed ABI не вводится. До квалификации нагрузки сохраняйте `Client.Multithreading=False`. Reservation 64 MiB квалифицирована для указанной MSVC STL; исключены allocator overhead, transient over-allocation, provider/GPU storage, retained exception diagnostics и произвольные decoder captures. Другие STL и производительность требуют отдельной квалификации; см. [подготовку ресурсов](../how-to/content/image-format.md#ограниченная-cpu-подготовка-ресурсов).
 

@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-- Prepare cold static-map sprite resources with owning asynchronous CPU decode tasks on the existing client worker pool. Acquisition, ordered sprite/cache/atlas publication and error replay stay on the owner. Bound lookahead and request reservations; preserve warm/direct/zero-worker paths, custom factory dispatch, generation cancellation and shutdown drain. Multithreading remains off by default; see [migration below](#resource-preparation-migration).
+- Prepare cold static-map sprite resources with owning asynchronous CPU decode tasks on the existing client worker pool. Acquisition, ordered sprite/cache/atlas publication and error replay stay on the owner. Bound lookahead and request reservations; reclaim terminal cancelled requests before cold capacity rejection without waiting; preserve warm/direct/zero-worker paths, custom factory dispatch, generation cancellation and shutdown drain. Multithreading remains off by default; see [migration below](#resource-preparation-migration).
 
 - Increase the reviewed full AI-context capacity by 8 KiB to 2,347,008 bytes for complete resource-preparation guidance; retain whole documents, exclusions and overflow rejection.
 
@@ -35,7 +35,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Resource preparation migration
 
-Native embedders using `WorkScheduler`, `SpriteManager` or `DefaultSpriteFactory` must reconfigure and rebuild all enabled consumers together: member layouts changed and `ResourcePreparation` is a new module. Existing custom factory overrides retain their dispatch; only the exact built-in factory opts into preparation. Call lane APIs on the owner; CPU decoders own passive bytes/results and cannot capture providers, entities or renderer state. Drain before destroying dependencies.
+Native embedders using `WorkScheduler`, `SpriteManager` or `DefaultSpriteFactory` must reconfigure and rebuild all enabled consumers together: member layouts changed, `SpriteManager` gains an optional owning CPU decoder constructor argument, and `ResourcePreparation` is a new module. Existing custom factory overrides retain their dispatch; only the exact built-in factory opts into preparation. Call lane APIs on the owner; CPU decoders own passive bytes/results and cannot capture providers, entities or renderer state. Drain before destroying dependencies.
 
 Rebake and package matching metadata/runtime payloads with the rebuilt roles. No script/configuration, resource-format, save, network or Managed ABI conversion is introduced. Keep `Client.Multithreading=False` until workload qualification. The 64 MiB reservation is qualified for the documented MSVC STL; allocator overhead, transient over-allocation, provider/GPU storage, retained exception diagnostics and arbitrary decoder captures are excluded. Other STL and performance require separate qualification; see [resource preparation](../how-to/content/image-format.md#bounded-cpu-resource-preparation).
 

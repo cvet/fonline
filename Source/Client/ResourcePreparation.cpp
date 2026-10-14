@@ -67,6 +67,14 @@ auto ResourcePreparation::GetDiagnostics() const -> Diagnostics
     return {_jobs.size(), _reservedBytes, _submitted, _consumed};
 }
 
+auto ResourcePreparation::HasAvailableRequestSlot() -> bool
+{
+    ValidateOwner();
+
+    ReapCancelled();
+    return !_stopped && _jobs.size() < _limits.Requests;
+}
+
 auto ResourcePreparation::FindRequest(const Key& key) const -> uint64_t
 {
     ValidateOwner();
