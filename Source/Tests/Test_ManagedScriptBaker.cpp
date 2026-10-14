@@ -860,7 +860,7 @@ TEST_CASE("ManagedScriptBaker")
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Critter", "OnManagedTouched", "Critter", "", "other", "int32", "", "power"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
             {"Property",
                 {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
-                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}, {"Critter", "Server", "any", "ManagedAnyValue", "Mutable"}, {"Critter", "Server", "any[]", "ManagedAnyList", "Mutable"}}},
+                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "int32", "Managed_Underscore", "Mutable"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}, {"Critter", "Server", "any", "ManagedAnyValue", "Mutable"}, {"Critter", "Server", "any[]", "ManagedAnyList", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
             {"RemoteCall", {{"ManagedMoveProbe", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedMoveProbeTwin", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedTextProbe", "UnitManaged.cs", "In", "string", "", "text", "Limits", "0", "0"}}},
         }));
@@ -1092,7 +1092,16 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("public static void AddPropertyDeferredSetter(CritterProperty property, global::System.Func<Critter, global::System.Threading.Tasks.Task> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetter<Critter, short> setter)") != string::npos);
     CHECK(server_entities.find("public static void AddPropertySetter(CritterProperty property, global::FOnline.PropertySetterWithProperty<Critter, CritterProperty, short> setter)") != string::npos);
-    CHECK(server_entities.find("global::FOnline.Native.AddPropertySetterWithProperty(\"Critter\", property.ToString(), setter);") != string::npos);
+    CHECK(server_entities.find("CritterProperty.ManagedProbe_Value => \"ManagedProbe.Value\",") != string::npos);
+    CHECK(server_entities.find("public int Managed_Underscore") != string::npos);
+    CHECK(server_entities.find("CritterProperty.Managed_Underscore =>") == string::npos);
+    CHECK(server_entities.find("_ => property.ToString(),") != string::npos);
+
+    for (string_view callback : {"SetPropertyGetter", "AddPropertyDeferredSetter", "AddPropertySetter", "AddPropertySetterWithProperty"}) {
+        string_view argument = callback == "SetPropertyGetter" ? "getter" : "setter";
+        CHECK(server_entities.find(strex("global::FOnline.Native.{}(\"Critter\", GetPropertyCallbackName(property), {});", callback, argument).str()) != string::npos);
+        CHECK(server_entities.find(strex("global::FOnline.Native.{}(\"Critter\", property.ToString(), {});", callback, argument).str()) == string::npos);
+    }
     CHECK(server_entities.find("public static Dictionary<string, string> ReadConfigSection(\n        string resourcePath,\n        string sectionName\n    )") != string::npos);
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(server_entities.find("return (Dictionary<string, string>)__result;") != string::npos);

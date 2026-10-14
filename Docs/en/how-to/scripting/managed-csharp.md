@@ -8,11 +8,11 @@ permalink: /Docs/en/how-to/scripting/managed-csharp.html
 
 # Managed C# Scripting
 
-> Engine-owned documentation. This guide describes the reusable Managed C# backend, its authoring contract, generated API, lifecycle, synchronization, build, delivery, and validation. Game modules and project-specific policy belong to the embedding project.
+> Engine-owned Managed C# guide; game modules and policy belong to the embedding project.
 
 ## Contract status
 
-Managed C# is an implemented scripting backend for server, client, Mapper, bakers, and tests. It embeds Mono, compiles project scripts with the configured .NET SDK, and exposes the same backend-neutral Engine metadata used by AngelScript. Native scripting remains an unimplemented source-root placeholder and is not an equivalent third backend.
+Managed C# embeds Mono and compiles scripts with the configured .NET SDK for server, client, Mapper, bakers and tests. It shares backend-neutral metadata with AngelScript. Native scripting is an unimplemented source-root placeholder.
 
 An embedding project selects its scripting backend at configure time. Enable `FO_MANAGED_SCRIPTING` and disable `FO_ANGELSCRIPT_SCRIPTING` when the project is fully managed. Do not enable a backend merely because its source directory exists; the project configuration, resource packs, generated metadata, script sources, packages, and tests must agree.
 
@@ -99,19 +99,19 @@ When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engin
 
 ## Authoring shape
 
-Use the namespace owned by the embedding project and import `FOnline` for generated Engine types. Engine CoreScripts use file-scoped `namespace FOnline;`; a game should not put its own domain types there.
+Use the project namespace and import `FOnline` for generated types. CoreScripts use file-scoped `namespace FOnline;`; game domain types belong outside it.
 
-Treat nullable reference types as part of the script/native contract. Generated reference and entity APIs distinguish nullable and non-nullable values. Narrow expected absence with an ordinary branch; use `Game.Verify` or `Game.VerifyNotNull` for violated invariants. A managed reference to an Engine entity does not own persistence or lifetime.
+Generated reference/entity APIs distinguish nullable values as part of the script/native contract. Branch on expected absence; use `Game.Verify` or `Game.VerifyNotNull` for invariant violations. Managed entity references own neither persistence nor lifetime.
 
-Avoid mutable process-wide state. Each backend has an isolated load context, but gameplay state still belongs to a `Game`, entity, property, ref type, or another explicit per-engine owner. Static constants and immutable type metadata are fine; a mutable cache, registry, timer gate, or collection is not made correctly owned merely by being in a C# static field.
+Each backend has an isolated load context, but gameplay state requires an explicit per-engine owner: `Game`, entity, property or ref type. Static constants and immutable type metadata are valid; mutable caches, registries, timer gates and collections do not gain ownership from C# static fields.
 
-Use fixed exception messages with dynamic values as context through the Engine verification helpers. Do not hardcode player-visible text in exceptions or logs and then surface it to the player; localization stays project-owned.
+Use fixed messages and dynamic context in Engine verification helpers. Localize any player-visible exception or log text in the project.
 
 ## Initialization and attributes
 
-`Initializator.InitializeEarly` runs before ordinary module initialization. It rejects every declared `async void` method, registers Engine attributed functions and remote calls, then runs project `[ScriptFuncRegistrar]` methods. A registrar must be static, parameterless, and return `void`; use it for project attributes that must be resolvable by bake-time reflection.
+Before module initialization, `Initializator.InitializeEarly` rejects declared `async void`, registers Engine attributed functions and remote calls, then runs project `[ScriptFuncRegistrar]` methods. Registrars are static, parameterless and return `void`; their project attributes must resolve through bake-time reflection.
 
-`Initializator.Initialize` runs static constructors, discovers `[ModuleInit(priority)]` methods, orders them by ascending priority, and invokes them. A module initializer must be static, parameterless, and return `void` or `Task`. A `Task` result is awaited in the initializer's private synchronous continuation context; a null task is an error.
+`Initializator.Initialize` runs static constructors, then static parameterless `[ModuleInit(priority)]` methods in ascending priority. They return `void` or `Task`; tasks are awaited in a private synchronous continuation context. A null task is an error.
 
 Managed marker attributes mirror the Engine dispatch roles rather than ordinary direct calls:
 
@@ -192,6 +192,8 @@ The bridge converts supported primitives, enums, strings, `hstring`, value types
 Managed `FOnline.any` is a value type holding the Engine's textual `any_t`, not `object` or `string`. Conversion into it is implicit for supported primitives, strings, enums, and generated value structs; conversion out is explicit and rejects invalid or out-of-range data. Empty text reads as zero/false/empty text, numeric enum reads validate the underlying range, and lowercase float suffixes are accepted for numeric reads. `ToEnum<T>()` accepts a qualified member, bare member, or numeric value. Equality compares the stored text; `IsEmpty` tests empty text. Use the explicit operators, not `System.Convert`/`IConvertible`. Collections use `List<any>` and `Dictionary<K, any>`, and generated `GetAsAny`/`SetAsAny` bridge properties. The managed ABI and baked assemblies must move together when this representation changes.
 
 Managed script property writes, including unboxed, fixed-list, and converting paths, use `Properties::SetValue`: validation/clamping happens first, unchanged stored bytes stop the write, and only a changed value runs setters and post-setters (persistence and client sync). `SetValueFromData` is for applying received network data, never a script assignment.
+
+Typed getter/setter callbacks map `ItemProperty.Weapon_UseMode` to `Weapon.UseMode`, preserving flat underscores, enum values and stored IDs. Do not replace underscores in `ToString()` to derive names.
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 

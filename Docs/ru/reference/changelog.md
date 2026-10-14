@@ -8,13 +8,23 @@ permalink: /Docs/ru/reference/changelog.html
 
 # История изменений движка
 
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8c0815752d476c8cc9ca3fff835e2ba73a651359fee985c4d026d845fd7701dd"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8fcee3a1f452240a58152ab3624012571dbb29aeb6b1f7bc5c949cadd05a6d0f"} -->
 
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-13
+## Current - 2026-10-14
+
+### Исправлено
+
+- Callbacks Managed C# регистрируют канонические имена компонентов (`Weapon.UseMode`), сохраняя обычные подчёркивания во всех перегрузках getter и setter.
+
+### Миграция
+
+- `4c594d1bef` (`2026.1.37-dev`) → `2026.1.38-dev`: пересоберите Baker; перевыпеките server/client/Mapper. Сигнатуры, IDs, сохранения, сетевые форматы, ABI `9` и runtime `0.0.72` неизменны. Выкатывайте согласованные сгенерированные исходники/сборки; откат возвращает прежний Baker/сборки. Миграция исходников/сохранений не нужна.
+
+## 2026.1.37-dev - 2026-10-14
 
 ### Изменено
 

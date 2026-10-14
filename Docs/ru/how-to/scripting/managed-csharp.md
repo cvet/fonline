@@ -7,12 +7,12 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"aaa829789240841ae53ec621b6016b232f3f06a148874b2be5dfacfe9bdd38f0"} -->
-> Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5b0a60439594d907eefef87e1876e1fb509b80a0dbf18997e0060bca96912fd1"} -->
+> Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
 
-Managed C# является реализованным скриптовым backend для сервера, клиента, Mapper, bakers и тестов. Он встраивает Mono, компилирует проектные скрипты настроенным .NET SDK и предоставляет те же backend-neutral метаданные движка, которые использует AngelScript. Native scripting остаётся нереализованной заготовкой source root и не является равноценным третьим backend.
+Managed C# встраивает Mono и компилирует скрипты настроенным .NET SDK для сервера, клиента, Mapper, bakers и тестов. Он использует общие backend-neutral метаданные с AngelScript. Native scripting — нереализованная заготовка source root.
 
 Подключающий проект выбирает скриптовый backend при конфигурации. Для полностью managed-проекта включите `FO_MANAGED_SCRIPTING` и отключите `FO_ANGELSCRIPT_SCRIPTING`. Наличие каталога исходников само по себе не включает backend: project configuration, resource packs, generated metadata, script sources, packages и tests должны совпадать.
 
@@ -100,19 +100,19 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 
 ## Форма авторского кода
 
-Используйте пространство имён подключающего проекта и импортируйте `FOnline` для generated Engine types. Engine CoreScripts используют file-scoped `namespace FOnline;`; игровые domain types не должны находиться там.
+Используйте пространство имён проекта и импортируйте `FOnline` для сгенерированных типов. CoreScripts используют file-scoped `namespace FOnline;`; игровые domain types принадлежат другому пространству.
 
-Считайте nullable reference types частью контракта script/native. Generated reference/entity API различает nullable и non-nullable значения. Ожидаемое отсутствие сужайте обычной веткой; нарушение инварианта проверяйте через `Game.Verify` или `Game.VerifyNotNull`. Managed reference на сущность движка не владеет её persistence или lifetime.
+Сгенерированные reference/entity API различают nullable значения как часть script/native контракта. Ожидаемое отсутствие обрабатывайте веткой; нарушение инварианта — через `Game.Verify` или `Game.VerifyNotNull`. Managed-ссылки на сущности не владеют их persistence или lifetime.
 
-Не храните изменяемое process-wide состояние. У каждого backend изолированный load context, но gameplay state всё равно принадлежит `Game`, entity, property, ref type или другому явному per-engine owner. Static constants и immutable type metadata допустимы; mutable cache, registry, timer gate или collection не получают правильное владение только потому, что записаны в C# static field.
+У каждого backend изолированный load context, но gameplay state требует явного per-engine owner: `Game`, entity, property или ref type. Static constants и immutable type metadata допустимы; mutable caches, registries, timer gates и collections не получают владение от C# static fields.
 
-Используйте фиксированные сообщения исключений и передавайте динамические значения как context через Engine verification helpers. Не превращайте hardcoded текст исключения или лога в player-visible строку; локализация остаётся проектной.
+Используйте фиксированные сообщения и динамический context в Engine verification helpers. Локализуйте в проекте весь player-visible текст исключений и логов.
 
 ## Инициализация и attributes
 
-`Initializator.InitializeEarly` выполняется до обычной module initialization. Он отвергает каждый объявленный `async void` method, регистрирует Engine attributed functions и remote calls, затем запускает проектные методы `[ScriptFuncRegistrar]`. Registrar должен быть static, parameterless и возвращать `void`; он нужен для проектных attributes, доступных bake-time reflection.
+До module initialization `Initializator.InitializeEarly` отвергает объявленные `async void`, регистрирует Engine attributed functions и remote calls, затем запускает проектные методы `[ScriptFuncRegistrar]`. Registrars статические, без аргументов и возвращают `void`; их проектные attributes должны разрешаться через bake-time reflection.
 
-`Initializator.Initialize` запускает static constructors, находит методы `[ModuleInit(priority)]`, сортирует их по возрастанию priority и вызывает. Module initializer должен быть static, parameterless и возвращать `void` или `Task`. Результат `Task` ожидается в private synchronous continuation context; null task является ошибкой.
+`Initializator.Initialize` запускает static constructors, затем статические методы `[ModuleInit(priority)]` без аргументов по возрастанию priority. Они возвращают `void` или `Task`; задачи ожидаются в private synchronous continuation context. Null task является ошибкой.
 
 Managed marker attributes соответствуют ролям Engine dispatcher, а не обычным direct calls:
 
@@ -193,6 +193,8 @@ Bridge преобразует поддерживаемые primitives, enums, st
 Managed `FOnline.any` — value type с текстовым представлением Engine `any_t`, не `object` и не `string`. Преобразование в него неявно для поддерживаемых primitives, strings, enums и generated value structs; обратное преобразование явно и отклоняет неверный или выходящий за диапазон текст. Пустой текст читается как zero/false/empty text, числовое значение enum проверяется по диапазону базового типа, а numeric read принимает суффикс `f` в нижнем регистре. `ToEnum<T>()` принимает qualified member, простое имя или число. Equality сравнивает текст; `IsEmpty` проверяет пустоту. Используйте explicit operators, а не `System.Convert`/`IConvertible`. Collections используют `List<any>` и `Dictionary<K, any>`, а generated `GetAsAny`/`SetAsAny` обслуживают properties. Изменение этого представления требует совместного обновления native ABI и baked assemblies.
 
 Записи managed script properties через unboxed, fixed-list и converting paths идут через `Properties::SetValue`: сначала validation/clamping, неизменившиеся bytes завершают запись, и только изменение вызывает setters/post-setters (persistence и client sync). `SetValueFromData` служит для применения полученных по сети данных, не для script assignment.
+
+Типизированные getter/setter callbacks отображают `ItemProperty.Weapon_UseMode` в `Weapon.UseMode`, сохраняя обычные подчёркивания, значения enum и хранимые IDs. Не выводите имена заменой подчёркиваний в `ToString()`.
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 

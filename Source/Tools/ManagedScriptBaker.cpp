@@ -2859,29 +2859,48 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         string entity_type = EscapeCsIdentifier(type_name);
         string enum_type = EscapeCsIdentifier(property_enum_name);
 
+        out << CS_INDENT << "private static string GetPropertyCallbackName(" << enum_type << " property)\n";
+        out << CS_INDENT << "{\n";
+        out << CS_INDENT << "    return property switch\n";
+        out << CS_INDENT << "    {\n";
+
+        for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+            auto prop = registrar->GetPropertyByIndexUnsafe(i);
+            string_view property_name = prop->GetName();
+
+            if (property_name.find('.') != string_view::npos) {
+                out << CS_INDENT << "        " << enum_type << "." << EscapeCsIdentifier(property_name)
+                    << " => \"" << EscapeCsStringLiteral(property_name) << "\",\n";
+            }
+        }
+
+        out << CS_INDENT << "        _ => property.ToString(),\n";
+        out << CS_INDENT << "    };\n";
+        out << CS_INDENT << "}\n\n";
+
         out << CS_INDENT << "public static void SetPropertyGetter<T>(" << enum_type << " property, global::System.Func<" << entity_type << ", T> getter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.SetPropertyGetter(\"" << type_name << "\", property.ToString(), getter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.SetPropertyGetter(\"" << type_name << "\", GetPropertyCallbackName(property), getter);\n";
         out << CS_INDENT << "}\n\n";
 
         // Deferred (post-set) reaction setter: receives only the entity, so a single non-generic
         // Action<Entity> overload covers every property of this type
         out << CS_INDENT << "public static void AddPropertyDeferredSetter(" << enum_type << " property, global::System.Action<" << entity_type << "> setter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", GetPropertyCallbackName(property), setter);\n";
         out << CS_INDENT << "}\n\n";
 
         // AngelScript's AddPropertySetter accepts both the value-transforming form and an entity-only post-set
         // reaction, so the managed side splits them by arity
         out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::System.Action<" << entity_type << "> setter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", GetPropertyCallbackName(property), setter);\n";
         out << CS_INDENT << "}\n\n";
 
         for (string_view method_name : {"AddPropertyDeferredSetter", "AddPropertySetter"}) {
             out << CS_INDENT << "public static void " << method_name << "(" << enum_type << " property, global::System.Func<" << entity_type << ", global::System.Threading.Tasks.Task> setter)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", GetPropertyCallbackName(property), setter);\n";
             out << CS_INDENT << "}\n\n";
         }
 
@@ -2914,12 +2933,12 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
         for (const string& value_type : value_types) {
             out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::FOnline.PropertySetter<" << entity_type << ", " << value_type << "> setter)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetter(\"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetter(\"" << type_name << "\", GetPropertyCallbackName(property), setter);\n";
             out << CS_INDENT << "}\n\n";
 
             out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::FOnline.PropertySetterWithProperty<" << entity_type << ", " << enum_type << ", " << value_type << "> setter)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetterWithProperty(\"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetterWithProperty(\"" << type_name << "\", GetPropertyCallbackName(property), setter);\n";
             out << CS_INDENT << "}\n\n";
         }
     }

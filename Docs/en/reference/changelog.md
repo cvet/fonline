@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-13
+## Current - 2026-10-14
+
+### Fixed
+
+- Managed C# callbacks register canonical component names (`Weapon.UseMode`), preserving flat underscores across getter and setter overloads.
+
+### Migration
+
+- `4c594d1bef` (`2026.1.37-dev`) → `2026.1.38-dev`: rebuild Baker; rebake server/client/Mapper. Signatures, IDs, saves, wire layouts, ABI `9` and runtime `0.0.72` stay unchanged. Deploy matching generated sources/assemblies; rollback restores old Baker/assemblies. No source/save migration.
+
+## 2026.1.37-dev - 2026-10-14
 
 ### Changed
 
