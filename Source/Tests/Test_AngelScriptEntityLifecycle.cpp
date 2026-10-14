@@ -761,6 +761,80 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         server->CrMngr.DestroyCritter(cr);
     }
 
+    SECTION("StopMoveRejectedDirectionCorrectsOwnerForActiveAndFinishedPlans")
+    {
+        bool after_end = GENERATE(false, true);
+        CAPTURE(after_end);
+
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDirCorrection");
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->RequireCurrentSyncContext()->SyncEntity(loc);
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        vector<uint16_t> control_steps {3};
+        server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        REQUIRE(cr->IsMoving());
+
+        if (after_end) {
+            server->StopCritterMoving(cr, MovingState::Success);
+            REQUIRE_FALSE(cr->IsMoving());
+            REQUIRE(cr->GetFinishedPlayerMoving());
+        }
+
+        mpos server_hex = cr->GetHex();
+        ipos16 server_offset = cr->GetHexOffset();
+        mdir server_dir = cr->GetDir();
+        mdir client_dir = server_dir.reverse();
+        REQUIRE(client_dir != server_dir);
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(7));
+        test_connection->Dispatch();
+        test_connection->ResetSentPacketCount();
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, server_offset, client_dir);
+
+        int32_t dir_calls = 0;
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        ctx->SyncEntities(sync_entities);
+        test_connection->Dispatch();
+
+        CHECK(cr->GetDir() == server_dir);
+        CHECK(cr->GetHex() == server_hex);
+        CHECK(cr->GetHexOffset() == server_offset);
+        CHECK_FALSE(cr->IsMoving());
+        REQUIRE(test_connection->GetSentMessageCount(NetMessage::CritterDir) == 1);
+        CHECK(test_connection->GetLastSentCritterDirId() == cr->GetId());
+        CHECK(test_connection->GetLastSentCritterDir() == server_dir);
+
+        REQUIRE(set_mode_func.Call(0));
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
+
     // Counterpart of the blocked case above: the guard must decline only a blocked rounding, so a rounding
     // into a passable neighbour still has to advance the logical hex instead of piling up as a sub-hex offset
 }

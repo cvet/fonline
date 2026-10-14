@@ -4803,6 +4803,9 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
     if (dir_result != EventResult::StopChain) {
         cr->ChangeDir(checked_dir);
     }
+    else {
+        player->Send_Dir(cr);
+    }
 
     if (cr->IsDestroyed() || map->IsDestroyed()) {
         return false;

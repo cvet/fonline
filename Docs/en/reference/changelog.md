@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Send authoritative `CritterDir` on direction rejection in active/finished stop reconciliation; positions unchanged.
+
+### Migration
+
+- `54f4e6393c60aad893dbd60b596a9b7c8088ba0c` (`2026.1.42-dev`) → `2026.1.43-dev`; compatibility `0.0.72` → `0.0.73`. Rebuild baker/server/clients/Mapper; regenerate metadata; rebake/deploy both resource sides together. Wire/API, Managed ABI 9, positions/directions and saves retain meaning; no conversion. Rollback restores matching baseline binaries/resources.
+
+## 2026.1.42-dev - 2026-10-15
+
+### Fixed
+
 - Reject static map blockers in server gag-aware path queries, including when a dynamic gag occupies the same cell. Honor per-instance static removal and preserve permitted dynamic-gag routes.
 - Correct the equal-screen-row test for hexagonal and square geometry.
 

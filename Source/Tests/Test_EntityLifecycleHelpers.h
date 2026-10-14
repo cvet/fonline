@@ -93,6 +93,9 @@ namespace EntityLifecycleTests
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
             _sentInfoMessageCount.store(0, std::memory_order_relaxed);
             _sentDisconnectCount.store(0, std::memory_order_relaxed);
+            _sentCritterDirCount.store(0, std::memory_order_relaxed);
+            _lastSentCritterDirId.store(ident_t {}, std::memory_order_relaxed);
+            _lastSentCritterDir.store(mdir {}, std::memory_order_relaxed);
             _lastSentInfoMessage.store(EngineInfoMessage::None, std::memory_order_relaxed);
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
@@ -108,10 +111,16 @@ namespace EntityLifecycleTests
                 return _sentRemoveCritterCount.load(std::memory_order_relaxed);
             case NetMessage::Disconnect:
                 return _sentDisconnectCount.load(std::memory_order_relaxed);
+            case NetMessage::CritterDir:
+                return _sentCritterDirCount.load(std::memory_order_acquire);
             default:
                 return 0;
             }
         }
+
+        [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
 
         [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
 
@@ -169,6 +178,17 @@ namespace EntityLifecycleTests
                     else if (message == NetMessage::RemoveCritter) {
                         _sentRemoveCritterCount.fetch_add(1, std::memory_order_relaxed);
                     }
+                    else if (message == NetMessage::CritterDir) {
+                        FO_VERIFY_AND_THROW(message_size == header_size + sizeof(ident_t) + sizeof(mdir), "Invalid outgoing direction message size", message_size);
+
+                        ident_t critter_id {};
+                        mdir critter_dir {};
+                        memory::copy(&critter_id, data.data() + offset + header_size, sizeof(critter_id));
+                        memory::copy(&critter_dir, data.data() + offset + header_size + sizeof(critter_id), sizeof(critter_dir));
+                        _lastSentCritterDirId.store(critter_id, std::memory_order_relaxed);
+                        _lastSentCritterDir.store(critter_dir, std::memory_order_relaxed);
+                        _sentCritterDirCount.fetch_add(1, std::memory_order_release);
+                    }
                     else if (message == NetMessage::InfoMessage) {
                         FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(EngineInfoMessage), "Truncated outgoing info message", message_size);
 
@@ -204,6 +224,9 @@ namespace EntityLifecycleTests
         std::atomic<size_t> _sentRemoveCritterCount {};
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
+        std::atomic<size_t> _sentCritterDirCount {};
+        std::atomic<ident_t> _lastSentCritterDirId {};
+        std::atomic<mdir> _lastSentCritterDir {};
         std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
         mutex _clientChannelLocker {};
         SecureChannel _clientChannel;
@@ -513,6 +536,9 @@ namespace EntityLifecycle
 
         if (PlayerEventMode == 4) {
             player.SwitchCritter(null);
+        }
+        if (PlayerEventMode == 7) {
+            return EventResult::StopChain;
         }
 
         return EventResult::ContinueChain;

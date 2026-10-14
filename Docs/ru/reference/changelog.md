@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"cf47a92b27d88a2f28fa5e3869cda00f983d96d0c1b8287ad753b3045b14092a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1b3afe353f7e9885363a9249f25139fc49dd5312245125d3183238c6056c3243"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-15
+
+### Исправлено
+
+- При отказе направления в согласовании активной/завершённой остановки отправляется авторитетный `CritterDir`; позиции прежние.
+
+### Миграция
+
+- `54f4e6393c60aad893dbd60b596a9b7c8088ba0c` (`2026.1.42-dev`) → `2026.1.43-dev`; совместимость `0.0.72` → `0.0.73`. Пересоберите baker/сервер/клиентов/Mapper; обновите метаданные, запеките и выложите серверные/клиентские ресурсы вместе. Формат и смысл пакетов/API, Managed ABI 9, позиции/направления и сохранения прежние; конверсия не нужна. Откат возвращает согласованные исходные binaries/ресурсы.
+
+## 2026.1.42-dev - 2026-10-15
 
 ### Исправлено
 
