@@ -40,6 +40,7 @@
 #include "MapView.h"
 #include "ResourcePreparation.h"
 #include "Test_BakerHelpers.h"
+#include "Test_ClientEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -826,108 +827,110 @@ TEST_CASE("ResourcePreparationActualStaticMapPreservesPixelsOrderAndFailurePrefi
         }
     }
 
-    GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
-    BakerTests::ApplySelfContainedClientSettings(settings);
-    BakerTests::OverrideSetting(settings.Common.Packaged, false);
-    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    BakerTests::OverrideSetting(settings.Client.Multithreading, mode != 0);
-    BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, mode == 1 ? 0 : 1);
-    auto observation = safe_alloc::make_shared<PreparationReadObservation>();
-    auto client = safe_alloc::make_refcounted<PreparationClientEngine>(&settings, MakePreparationMapResources(observation), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&]() noexcept { safe_call([&] { client->Shutdown(); }); });
-    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {5001}, client->GetProtoMap(client->Hashes.to_hashed_string("PreparationMap")), isize32 {320, 200});
-    observation->Map = map;
-    auto destroy_map = scope_exit([&]() noexcept {
-        observation->Map = nullptr;
-        safe_call([&] { map->DestroySelf(); });
-    });
-
-    if (remove_corrupt_record) {
-        map->SetRemovedStaticItemIds(vector<ident_t> {ident_t {102}});
-        REQUIRE_NOTHROW(map->LoadStaticData());
-    }
-    else {
-        CHECK_THROWS(map->LoadStaticData());
-    }
-
-    auto first = map->GetItem(ident_t {101});
-    REQUIRE(first);
-    CHECK(first->GetPicMap().as_str() == "First.png");
-    CHECK(first->GetAnim()->GetOffset() == ipos32 {3, -2});
-    CHECK(ReadPreparationAtlasPixel(first->GetAnim()) == ucolor {17, 29, 43, 255});
-    CHECK_FALSE(map->GetItem(ident_t {102}));
-    CHECK(map->GetItems().size() == (remove_corrupt_record ? 2 : 1));
-    CHECK(map->GetItems()[0]->GetId() == ident_t {101});
-    CHECK_FALSE(observation->ForeignRead.load());
-    REQUIRE(observation->SpriteReads.size() == (remove_corrupt_record ? 2 : 1));
-    CHECK(observation->SpriteReads[0] == pair<string, size_t> {"First.png", 0});
-
-    if (remove_corrupt_record) {
-        auto second = map->GetItem(ident_t {103});
-        REQUIRE(second);
-        CHECK(second->GetPicMap().as_str() == "Second.png");
-        CHECK(ReadPreparationAtlasPixel(second->GetAnim()) == ucolor {201, 19, 7, 255});
-        CHECK(map->GetItems()[1]->GetId() == ident_t {103});
-        CHECK(observation->SpriteReads[1] == pair<string, size_t> {"Second.png", mode == 2 ? 0 : 1});
-    }
-
-    auto diagnostics = client->SprMngr.GetResourcePreparationDiagnostics();
-    CHECK(diagnostics.Submitted == (mode == 2 ? remove_corrupt_record ? 2 : 1 : 0));
-    CHECK(diagnostics.Consumed == diagnostics.Submitted);
-    CHECK(diagnostics.Outstanding == 0);
-    CHECK(diagnostics.ReservedBytes == 0);
-
-    if (mode == 2 && remove_corrupt_record) {
-        hstring third_path = client->Hashes.to_hashed_string("Third.png");
-        REQUIRE(client->SprMngr.PrefetchSpriteResource(third_path, AtlasType::MapSprites));
-        REQUIRE(client->SprMngr.PrefetchSpriteResource(third_path, AtlasType::MapSprites));
-        client->SprMngr.DrainPreparedSpriteResources();
-        auto held = client->SprMngr.GetResourcePreparationDiagnostics();
-        REQUIRE(held.Outstanding == 1);
-        size_t reads_before_warm = observation->SpriteReads.size();
-        auto warm_map = safe_alloc::make_refcounted<MapView>(client, ident_t {5002}, client->GetProtoMap(client->Hashes.to_hashed_string("PreparationMap")), isize32 {320, 200});
-        observation->Map = warm_map;
-        auto destroy_warm_map = scope_exit([&]() noexcept {
-            observation->Map = map;
-            safe_call([&] { warm_map->DestroySelf(); });
+    ClientEngineTests::CheckMinimalClientDiagnostics([&] {
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyAutoSettings();
+        BakerTests::ApplySelfContainedClientSettings(settings);
+        BakerTests::OverrideSetting(settings.Common.Packaged, false);
+        BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+        BakerTests::OverrideSetting(settings.Client.Multithreading, mode != 0);
+        BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, mode == 1 ? 0 : 1);
+        auto observation = safe_alloc::make_shared<PreparationReadObservation>();
+        auto client = safe_alloc::make_refcounted<PreparationClientEngine>(&settings, MakePreparationMapResources(observation), &GetApp()->MainWindow);
+        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { client->Shutdown(); }); });
+        auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {5001}, client->GetProtoMap(client->Hashes.to_hashed_string("PreparationMap")), isize32 {320, 200});
+        observation->Map = map;
+        auto destroy_map = scope_exit([&]() noexcept {
+            observation->Map = nullptr;
+            safe_call([&] { map->DestroySelf(); });
         });
-        warm_map->SetRemovedStaticItemIds(vector<ident_t> {ident_t {102}});
-        REQUIRE_NOTHROW(warm_map->LoadStaticData());
-        REQUIRE(warm_map->GetItem(ident_t {103}));
-        CHECK(ReadPreparationAtlasPixel(warm_map->GetItem(ident_t {103})->GetAnim()) == ucolor {201, 19, 7, 255});
-        CHECK(observation->SpriteReads.size() == reads_before_warm);
-        auto after_warm = client->SprMngr.GetResourcePreparationDiagnostics();
-        CHECK(after_warm.Submitted == held.Submitted);
-        CHECK(after_warm.Consumed == held.Consumed);
-        CHECK(after_warm.Outstanding == 1);
-        CHECK(after_warm.ReservedBytes == held.ReservedBytes);
-        auto third = client->SprMngr.LoadSprite(third_path, AtlasType::MapSprites);
-        REQUIRE(third);
-        CHECK(ReadPreparationAtlasPixel(third.as_ptr()) == ucolor {77, 81, 99, 255});
-        CHECK(observation->SpriteReads.size() == reads_before_warm);
 
-        hstring fourth_path = client->Hashes.to_hashed_string("Fourth.png");
-        REQUIRE(client->SprMngr.PrefetchSpriteResource(fourth_path, AtlasType::MapSprites));
-        client->SprMngr.DrainPreparedSpriteResources();
-        bool cancelled_before_event = false;
-        Entity::EventCallbackData observer;
-        observer.Callback = [&](FuncCallData&) {
-            cancelled_before_event = client->SprMngr.GetResourcePreparationDiagnostics().Outstanding == 0;
-            return Entity::EventResult::ContinueChain;
-        };
-        observer.SubscriptionPtr = 1;
-        client->OnMapUnload.Subscribe(std::move(observer));
-        auto unsubscribe = scope_exit([&]() noexcept { client->OnMapUnload.Unsubscribe(1); });
-        client->UnloadMap();
-        CHECK(cancelled_before_event);
-        REQUIRE(client->SprMngr.PrefetchSpriteResource(fourth_path, AtlasType::MapSprites));
-        client->SprMngr.DrainPreparedSpriteResources();
-        auto fourth = client->SprMngr.LoadSprite(fourth_path, AtlasType::MapSprites);
-        REQUIRE(fourth);
-        CHECK(ReadPreparationAtlasPixel(fourth.as_ptr()) == ucolor {8, 27, 66, 255});
-    }
+        if (remove_corrupt_record) {
+            map->SetRemovedStaticItemIds(vector<ident_t> {ident_t {102}});
+            REQUIRE_NOTHROW(map->LoadStaticData());
+        }
+        else {
+            CHECK_THROWS_MATCHES(map->LoadStaticData(), DataReadingException, Catch::Matchers::Predicate<DataReadingException>([](const DataReadingException& ex) { return ex.message() == "Unexpected end of buffer"; }));
+        }
+
+        auto first = map->GetItem(ident_t {101});
+        REQUIRE(first);
+        CHECK(first->GetPicMap().as_str() == "First.png");
+        CHECK(first->GetAnim()->GetOffset() == ipos32 {3, -2});
+        CHECK(ReadPreparationAtlasPixel(first->GetAnim()) == ucolor {17, 29, 43, 255});
+        CHECK_FALSE(map->GetItem(ident_t {102}));
+        CHECK(map->GetItems().size() == (remove_corrupt_record ? 2 : 1));
+        CHECK(map->GetItems()[0]->GetId() == ident_t {101});
+        CHECK_FALSE(observation->ForeignRead.load());
+        REQUIRE(observation->SpriteReads.size() == (remove_corrupt_record ? 2 : 1));
+        CHECK(observation->SpriteReads[0] == pair<string, size_t> {"First.png", 0});
+
+        if (remove_corrupt_record) {
+            auto second = map->GetItem(ident_t {103});
+            REQUIRE(second);
+            CHECK(second->GetPicMap().as_str() == "Second.png");
+            CHECK(ReadPreparationAtlasPixel(second->GetAnim()) == ucolor {201, 19, 7, 255});
+            CHECK(map->GetItems()[1]->GetId() == ident_t {103});
+            CHECK(observation->SpriteReads[1] == pair<string, size_t> {"Second.png", mode == 2 ? 0 : 1});
+        }
+
+        auto diagnostics = client->SprMngr.GetResourcePreparationDiagnostics();
+        CHECK(diagnostics.Submitted == (mode == 2 ? remove_corrupt_record ? 2 : 1 : 0));
+        CHECK(diagnostics.Consumed == diagnostics.Submitted);
+        CHECK(diagnostics.Outstanding == 0);
+        CHECK(diagnostics.ReservedBytes == 0);
+
+        if (mode == 2 && remove_corrupt_record) {
+            hstring third_path = client->Hashes.to_hashed_string("Third.png");
+            REQUIRE(client->SprMngr.PrefetchSpriteResource(third_path, AtlasType::MapSprites));
+            REQUIRE(client->SprMngr.PrefetchSpriteResource(third_path, AtlasType::MapSprites));
+            client->SprMngr.DrainPreparedSpriteResources();
+            auto held = client->SprMngr.GetResourcePreparationDiagnostics();
+            REQUIRE(held.Outstanding == 1);
+            size_t reads_before_warm = observation->SpriteReads.size();
+            auto warm_map = safe_alloc::make_refcounted<MapView>(client, ident_t {5002}, client->GetProtoMap(client->Hashes.to_hashed_string("PreparationMap")), isize32 {320, 200});
+            observation->Map = warm_map;
+            auto destroy_warm_map = scope_exit([&]() noexcept {
+                observation->Map = map;
+                safe_call([&] { warm_map->DestroySelf(); });
+            });
+            warm_map->SetRemovedStaticItemIds(vector<ident_t> {ident_t {102}});
+            REQUIRE_NOTHROW(warm_map->LoadStaticData());
+            REQUIRE(warm_map->GetItem(ident_t {103}));
+            CHECK(ReadPreparationAtlasPixel(warm_map->GetItem(ident_t {103})->GetAnim()) == ucolor {201, 19, 7, 255});
+            CHECK(observation->SpriteReads.size() == reads_before_warm);
+            auto after_warm = client->SprMngr.GetResourcePreparationDiagnostics();
+            CHECK(after_warm.Submitted == held.Submitted);
+            CHECK(after_warm.Consumed == held.Consumed);
+            CHECK(after_warm.Outstanding == 1);
+            CHECK(after_warm.ReservedBytes == held.ReservedBytes);
+            auto third = client->SprMngr.LoadSprite(third_path, AtlasType::MapSprites);
+            REQUIRE(third);
+            CHECK(ReadPreparationAtlasPixel(third.as_ptr()) == ucolor {77, 81, 99, 255});
+            CHECK(observation->SpriteReads.size() == reads_before_warm);
+
+            hstring fourth_path = client->Hashes.to_hashed_string("Fourth.png");
+            REQUIRE(client->SprMngr.PrefetchSpriteResource(fourth_path, AtlasType::MapSprites));
+            client->SprMngr.DrainPreparedSpriteResources();
+            bool cancelled_before_event = false;
+            Entity::EventCallbackData observer;
+            observer.Callback = [&](FuncCallData&) {
+                cancelled_before_event = client->SprMngr.GetResourcePreparationDiagnostics().Outstanding == 0;
+                return Entity::EventResult::ContinueChain;
+            };
+            observer.SubscriptionPtr = 1;
+            client->OnMapUnload.Subscribe(std::move(observer));
+            auto unsubscribe = scope_exit([&]() noexcept { client->OnMapUnload.Unsubscribe(1); });
+            client->UnloadMap();
+            CHECK(cancelled_before_event);
+            REQUIRE(client->SprMngr.PrefetchSpriteResource(fourth_path, AtlasType::MapSprites));
+            client->SprMngr.DrainPreparedSpriteResources();
+            auto fourth = client->SprMngr.LoadSprite(fourth_path, AtlasType::MapSprites);
+            REQUIRE(fourth);
+            CHECK(ReadPreparationAtlasPixel(fourth.as_ptr()) == ucolor {8, 27, 66, 255});
+        }
+    });
 }
 
 FO_END_NAMESPACE

@@ -67,6 +67,97 @@ FO_BEGIN_NAMESPACE
 
 namespace ClientEngineTests
 {
+    template<typename Run>
+    void CheckMinimalClientDiagnostics(Run&& run, bool has_model_animation_info = false)
+    {
+        vector<pair<logging::type, string>> expected;
+
+        constexpr string_view effect_names[] = {
+            "ImGui_Default",
+            "2D_Default",
+            "2D_NoDepth",
+            "Primitive_Default",
+            "Primitive_Light",
+            "Primitive_Fog",
+            "Flush_RenderTarget",
+            "Flush_Primitive",
+            "Flush_Map",
+            "Flush_Light",
+            "Flush_Fog",
+#if FO_ENABLE_3D
+            "3D_Skinned",
+#endif
+#if FO_EFFEKSEER_PARTICLES
+            "Particles_ColorMulAtlas",
+            "Particles_ColorAddAtlas",
+            "Particles_ColorSubAtlas",
+#if FO_ENABLE_3D
+            "Particles_DistortionAtlas",
+            "Particles_DistortionAddAtlas",
+#endif
+#endif
+        };
+
+        for (string_view name : effect_names) {
+            for (string_view suffix : {".fofx", ".fofx-1-info"}) {
+                expected.emplace_back(logging::type::warning, strex("Effect file 'Effects/{}{}' not found", name, suffix).str());
+            }
+        }
+
+#if FO_ENABLE_3D
+        if (!has_model_animation_info) {
+            expected.emplace_back(logging::type::info, "Model animation info document 'ModelAnimationInfo.foinfo' is not present");
+        }
+#else
+        ignore_unused(has_model_animation_info);
+#endif
+#if FO_MANAGED_SCRIPTING
+        expected.emplace_back(logging::type::info, "No Managed assemblies found for target 'Client', skip");
+#endif
+
+        vector<pair<logging::type, string>> observed;
+
+        {
+            // Logger dispatch and removal share its lock; unregister flushes repeats and joins callback access.
+            // The callable must own all client/jobs so their teardown remains inside the observation scope
+            constexpr string_view callback_key = "ClientEngineTests::MinimalClientDiagnostics";
+            logging::set_callback(callback_key, [&observed](logging::type type, string_view message, nptr<const stack_trace::catched_data>) {
+                while (message.starts_with('[')) {
+                    size_t tag_end = message.find("] ");
+
+                    if (tag_end == string_view::npos) {
+                        break;
+                    }
+
+                    message.remove_prefix(tag_end + 2);
+                }
+
+                if (message.ends_with('\n')) {
+                    message.remove_suffix(1);
+                }
+
+                if (type == logging::type::info && (message.starts_with("Client multithreading: ") || message.starts_with("Client compatibility version: ") || message.starts_with("Client metadata version: "))) {
+                    return;
+                }
+
+                observed.emplace_back(type, string {message});
+            });
+            auto unregister = scope_exit([&]() noexcept { logging::set_callback(callback_key, {}); });
+
+            std::forward<Run>(run)();
+        }
+
+        std::sort(expected.begin(), expected.end());
+        std::sort(observed.begin(), observed.end());
+
+        for (const auto& diagnostic : observed) {
+            INFO(diagnostic.second);
+            CHECK(std::count(expected.begin(), expected.end(), diagnostic) == 1);
+        }
+
+        CHECK(observed == expected);
+    }
+
     struct RecordedQuadDraw
     {
         vector<Vertex2D> Vertices {};
