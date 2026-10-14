@@ -4294,10 +4294,6 @@
           "source_sha256": "2c7eaa32739a8077a235441994bc41c3e61d80d53b4789f4b4248d8a86d0979d",
           "translation": "Возвращает накопительный счётчик отправленных соединением байтов, суженный до uint32."
         },
-        "/symbols/@id=script.method.client.Game.CanPrepareTextLayoutsInParallel/description": {
-          "source_sha256": "b8c2b13fd6a798f45842f089ef0e38a7d28dd53542989b390c651f5ac2c52292",
-          "translation": "Сообщает, доступна ли подготовка компоновки текста на CPU workers; небольшие пакеты и прогретые кэши могут выполняться без заданий"
-        },
         "/symbols/@id=script.method.client.Game.CaptureScreenshot/description": {
           "source_sha256": "41811467f6fd9689b362863fb57dd533d280b76d87e002574bca9225275e2096",
           "translation": "Возвращает последний завершённый кадр как компактный RGB PNG в байтах; при положительном maxSide уменьшает изображение."
@@ -4637,10 +4633,6 @@
         "/symbols/@id=script.method.client.Game.Preload3dFiles/description": {
           "source_sha256": "fe46a4adb23f82a640acc2070619d7ee4d8499ce551939afefb29ec675d6efeb",
           "translation": "Предварительно загружает каждую именованную модель через менеджер 3D-моделей; выбрасывает исключение, если недоступны 3D-подсистема или фабрика спрайтов моделей."
-        },
-        "/symbols/@id=script.method.client.Game.PrepareTextLayouts/description": {
-          "source_sha256": "d8eda7481136da4c47df73847425b35eaf949b469563974ff07638d86a4b925f",
-          "translation": "Измеряет пакет текстов и готовит компоновку рисования в измеренных размерах с переданными цветами; результаты сохраняют порядок входов"
         },
         "/symbols/@id=script.method.client.Game.PresentOffscreenSurface%232119d712f785fe8c/description": {
           "source_sha256": "e3ed0a1199d5a189d15b7104a330043da54bf192bd143ad13a6d088aba87a7ab",
@@ -8954,18 +8946,6 @@
           "source_sha256": "242deb77254f90fe07879d04e2b13c92bee685e77664531a000c13b3a04e3336",
           "translation": "Число пропускаемых строк: по умолчанию сверху, а при установленном AlignBottom — снизу."
         },
-        "/symbols/@id=script.value-field.TextLayoutResult.Height/description": {
-          "source_sha256": "94256db6f1e166bff467729b5d15c3c2ba219f3faadccc0ebbc1f1524223afe7",
-          "translation": "Измеренная высота текста, используемая для подготовки компоновки рисования"
-        },
-        "/symbols/@id=script.value-field.TextLayoutResult.Lines/description": {
-          "source_sha256": "ea80faddf5d9c350ac131699bc7d88381df547f1291ae9da8b7762a6d87c5f9b",
-          "translation": "Число видимых строк в прямоугольнике измерения"
-        },
-        "/symbols/@id=script.value-field.TextLayoutResult.Width/description": {
-          "source_sha256": "17c8e8e8e4c2f0fd2b9a9b7546377b7e6b5af182477fd726771fe8a0124e9456",
-          "translation": "Измеренная ширина текста, используемая для подготовки компоновки рисования"
-        },
         "/symbols/@id=script.value-field.TextPackKey.Collection/description": {
           "source_sha256": "9228be538ddfbf1af7480856f9be889ba4fb4a78df7f06c2c6dc5d815bac9d4d",
           "translation": "Коллекция текстового пакета, в которой разрешается ключ."
@@ -9121,10 +9101,6 @@
         "/symbols/@id=script.value-type.TextFormat/description": {
           "source_sha256": "84dba9b3cf1288a173c4ea39036c6fbcc13c136549396e59b7a945fe52d0a292",
           "translation": "Набор параметров форматирования текста: слот шрифта, битовая маска FontFlag и счетчик пропуска строк.\n`SkipLines` по умолчанию пропускает строки сверху; при установленном FontFlag::AlignBottom строки пропускаются снизу (с конца)."
-        },
-        "/symbols/@id=script.value-type.TextLayoutResult/description": {
-          "source_sha256": "a3711f87e8683f78e965db1045d75a1db1189a817a32ca798dbec76abb5bc9dc",
-          "translation": "Измеренные размеры и число видимых строк одного элемента подготовленного пакета компоновки текста."
         },
         "/symbols/@id=script.value-type.TextPackKey/description": {
           "source_sha256": "aad5bf3b7c68dc0751e2667623cfc0f43b8a0cf4e00146018cc77b91fe0e58bf",
@@ -10050,10 +10026,6 @@
           "source_sha256": "5fa4323150c42ed136c2e451204ff83952651661633de8674dc03b16e5fbb922",
           "translation": "Если true, используется null renderer"
         },
-        "/symbols/@id=setting.common.Render.ParallelSpriteGeometryMinCount/description": {
-          "source_sha256": "d64be1149950c8607ff9c029f6580ca704caf8e978e218f997cf6fde54b95897",
-          "translation": "Предварительное минимальное число команд геометрии в CPU-пачке; перед настройкой порога измеряйте каждую нагрузку."
-        },
         "/symbols/@id=setting.common.Render.ParallelSpriteUpdateMinCount/description": {
           "source_sha256": "e949d9b0347a75278ad7243d475d747ad14a5d56eb06a6d4900f4af148df6b9e",
           "translation": "Минимальное число спрайтов с подготовленной CPU-работой в кадре, при котором Client.Multithreading распределяет работу; меньший пакет обходится дороже, чем экономит"
@@ -10397,23 +10369,39 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=setting.common.Render.ParallelSpriteGeometryMinCount/description": {
+          "source_sha256": "d64be1149950c8607ff9c029f6580ca704caf8e978e218f997cf6fde54b95897",
+          "translation": "Предварительное минимальное число команд геометрии в CPU-пачке; перед настройкой порога измеряйте каждую нагрузку."
+        },
+        "/symbols/@id=script.value-type.TextLayoutResult/description": {
+          "source_sha256": "a3711f87e8683f78e965db1045d75a1db1189a817a32ca798dbec76abb5bc9dc",
+          "translation": "Измеренные размеры и число видимых строк одного элемента подготовленного пакета компоновки текста."
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Lines/description": {
+          "source_sha256": "ea80faddf5d9c350ac131699bc7d88381df547f1291ae9da8b7762a6d87c5f9b",
+          "translation": "Число видимых строк в прямоугольнике измерения"
+        },
+        "/symbols/@id=script.method.client.Game.CanPrepareTextLayoutsInParallel/description": {
+          "source_sha256": "b8c2b13fd6a798f45842f089ef0e38a7d28dd53542989b390c651f5ac2c52292",
+          "translation": "Сообщает, доступна ли подготовка компоновки текста на CPU workers; небольшие пакеты и прогретые кэши могут выполняться без заданий"
+        },
+        "/symbols/@id=script.method.client.Game.PrepareTextLayouts/description": {
+          "source_sha256": "d8eda7481136da4c47df73847425b35eaf949b469563974ff07638d86a4b925f",
+          "translation": "Измеряет пакет текстов и готовит компоновку рисования в измеренных размерах с переданными цветами; результаты сохраняют порядок входов"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Width/description": {
+          "source_sha256": "17c8e8e8e4c2f0fd2b9a9b7546377b7e6b5af182477fd726771fe8a0124e9456",
+          "translation": "Измеренная ширина текста, используемая для подготовки компоновки рисования"
+        },
+        "/symbols/@id=script.value-field.TextLayoutResult.Height/description": {
+          "source_sha256": "94256db6f1e166bff467729b5d15c3c2ba219f3faadccc0ebbc1f1524223afe7",
+          "translation": "Измеренная высота текста, используемая для подготовки компоновки рисования"
         }
       }
     },
     "audio": {
       "entries": {
-        "/decoding_rules/@id=audio.decoding.acm-channels/name": {
-          "source_sha256": "a160c295afcf0dcf11bb90fb285d3565169eb351460056e78667b7a975ee4b53",
-          "translation": "Соглашение Fallout о каналах ACM"
-        },
-        "/decoding_rules/@id=audio.decoding.acm-channels/rationale": {
-          "source_sha256": "dc1d53b86fc91566cc14b24dda6aa3a3c29ca71775c48299578ca96bd9f7fb98",
-          "translation": "Заголовки эффектов Fallout могут заявлять стерео поверх моно-сэмплов. Декодер сохраняет арифметику оригинального unpacker и нулевое дополнение после усечённого тела; отдельные таблицы амплитуд разрешают параллельное запекание."
-        },
-        "/decoding_rules/@id=audio.decoding.acm-channels/requirement": {
-          "source_sha256": "ec8d5dd007521da728bafdbc02f5dab13bc4a45df849371d2c13e8a43ac16ff6",
-          "translation": "Для ACM трактуйте путь sound/music/ без учёта регистра как стерео, остальные пути как моно независимо от поля каналов в заголовке; сохраняйте положительную частоту и требуйте полные кадры при кодировании."
-        },
         "/decoding_rules/@id=audio.decoding.acm-shape/name": {
           "source_sha256": "fefbcdac09cac0cd39e133f8a33daf31439e6fc8c9e992a511f9e7a46b12a303",
           "translation": "Проверка запечённого payload"
@@ -10562,26 +10550,10 @@
           "source_sha256": "0f5a2ac07cca4b7711523b5970448354471a09551ce56079a20c3db85f756137",
           "translation": "Контракт с привязкой к исходному коду для запекания аудио FOnline, runtime-декодирования, handles воспроизведения, позиционирования, микширования, точек входа скриптов и границ проверки."
         },
-        "/formats/@id=audio.format.acm/name": {
-          "source_sha256": "1eee5c8e9635a388cfa900386a209c816c9e23b4a00b58f52120a124f7a4b6be",
-          "translation": "Формат Interplay ACM"
-        },
-        "/formats/@id=audio.format.acm/rationale": {
-          "source_sha256": "fb141f4f86aeca0c9f18e2f238c15a72ce085e2ced51d3e2be7172a263fe2aba",
-          "translation": "Импортёр Engine под guard декодирует ACM в signed 16-bit PCM и использует общий проверяемый кодировщик Vorbis, сохраняя авторский путь как для WAV. Runtime-декодера ACM нет."
-        },
-        "/formats/@id=audio.format.acm/requirement": {
-          "source_sha256": "8eb6529ad003049d66290291b496b51e491c061ffce4476beb655ef39b54f3e3",
-          "translation": "Включите FO_AUDIO_ACM перед запеканием Interplay ACM версии 1 через baker Audio; по умолчанию опция OFF, запросы при выключенном импортёре падают с авторским путём."
-        },
-        "/formats/@id=audio.format.acm/role": {
-          "source_sha256": "06d276f5ce04096942b0a2516868b2b19031a4af700cfb289229487bd55443c5",
-          "translation": "Опциональный авторский вход"
-        },
         "/formats/@id=audio.format.ogg/name": {
-          "preserve_source": true,
           "source_sha256": "0ef1d73187c66942ec82bdb4c758d80a6a2526fe540dcd22d73da1d0abe721da",
-          "translation": "Ogg Vorbis"
+          "translation": "Ogg Vorbis",
+          "preserve_source": true
         },
         "/formats/@id=audio.format.ogg/rationale": {
           "source_sha256": "0a7893878a1bd7ef7a0d8e7e0ebb8df63cc42502c3a809342905161d0d04b64d",
@@ -10596,9 +10568,9 @@
           "translation": "Нативный runtime-payload и авторский вход без перекодирования"
         },
         "/formats/@id=audio.format.wav/name": {
-          "preserve_source": true,
           "source_sha256": "5b20ae67c9a363d51cabf352b8a4e026427c8249e60b801d44a102ce0839a340",
-          "translation": "PCM WAV"
+          "translation": "PCM WAV",
+          "preserve_source": true
         },
         "/formats/@id=audio.format.wav/rationale": {
           "source_sha256": "13ce3d7e96611dfd3878bf6216ff50c137c7b0b4830628934caf97dc1a3350c1",
@@ -10637,9 +10609,9 @@
           "translation": "Не используйте true от PlayMusic или handle от PlaySound как доказательство существования ресурса при отключённом или недоступном аудио: PlayMusic остаётся успешной no-op операцией, а PlaySound возвращает нулевой handle."
         },
         "/playback_rules/@id=audio.playback.effect-api/name": {
-          "preserve_source": true,
           "source_sha256": "4d97f374e377beaf91ff91a2f28a04f3b62914ae314f0300aefbb2d30e5c78b5",
-          "translation": "Game.PlaySound"
+          "translation": "Game.PlaySound",
+          "preserve_source": true
         },
         "/playback_rules/@id=audio.playback.effect-api/rationale": {
           "source_sha256": "716b54726a22200fe6a6c66d0990f26b9c503e405f000390ef7998aed1c6c6e9",
@@ -10686,9 +10658,9 @@
           "translation": "Вызывайте Game.UpdateSound с живым handle, чтобы заменить attenuation и pan при движении источника или listener; false означает нулевой handle, неактивное аудио или уже завершившееся воспроизведение."
         },
         "/playback_rules/@id=audio.playback.music-api/name": {
-          "preserve_source": true,
           "source_sha256": "4b5adbaca59bd0eae749162c14d5a6f969158b453e997c920f1dd5f5cf7a3a30",
-          "translation": "Game.PlayMusic"
+          "translation": "Game.PlayMusic",
+          "preserve_source": true
         },
         "/playback_rules/@id=audio.playback.music-api/rationale": {
           "source_sha256": "b7afef8a191b2109baa8813bbb6b4a26c6d9b5acf4895bc03ebf1655246d4895",
@@ -10841,6 +10813,34 @@
         "/validation_rules/@id=audio.validation.visible-client/requirement": {
           "source_sha256": "9dd60203010a2d9a841e7559991e7e5f0732c46160b72bd1014e4ff696d3a3b3",
           "translation": "На каждой заявленной платформе используйте видимый клиент с включённым аудио: воспроизведите запечённый ресурс с WAV-путём и ресурс с нативным Ogg-путём, переместите позиционированный звук, замените музыку, проверьте отложенный и немедленный повтор и крайние значения громкости."
+        },
+        "/formats/@id=audio.format.acm/name": {
+          "source_sha256": "1eee5c8e9635a388cfa900386a209c816c9e23b4a00b58f52120a124f7a4b6be",
+          "translation": "Формат Interplay ACM"
+        },
+        "/formats/@id=audio.format.acm/role": {
+          "source_sha256": "06d276f5ce04096942b0a2516868b2b19031a4af700cfb289229487bd55443c5",
+          "translation": "Опциональный авторский вход"
+        },
+        "/formats/@id=audio.format.acm/requirement": {
+          "source_sha256": "8eb6529ad003049d66290291b496b51e491c061ffce4476beb655ef39b54f3e3",
+          "translation": "Включите FO_AUDIO_ACM перед запеканием Interplay ACM версии 1 через baker Audio; по умолчанию опция OFF, запросы при выключенном импортёре падают с авторским путём."
+        },
+        "/formats/@id=audio.format.acm/rationale": {
+          "source_sha256": "fb141f4f86aeca0c9f18e2f238c15a72ce085e2ced51d3e2be7172a263fe2aba",
+          "translation": "Импортёр Engine под guard декодирует ACM в signed 16-bit PCM и использует общий проверяемый кодировщик Vorbis, сохраняя авторский путь как для WAV. Runtime-декодера ACM нет."
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/name": {
+          "source_sha256": "a160c295afcf0dcf11bb90fb285d3565169eb351460056e78667b7a975ee4b53",
+          "translation": "Соглашение Fallout о каналах ACM"
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/requirement": {
+          "source_sha256": "ec8d5dd007521da728bafdbc02f5dab13bc4a45df849371d2c13e8a43ac16ff6",
+          "translation": "Для ACM трактуйте путь sound/music/ без учёта регистра как стерео, остальные пути как моно независимо от поля каналов в заголовке; сохраняйте положительную частоту и требуйте полные кадры при кодировании."
+        },
+        "/decoding_rules/@id=audio.decoding.acm-channels/rationale": {
+          "source_sha256": "dc1d53b86fc91566cc14b24dda6aa3a3c29ca71775c48299578ca96bd9f7fb98",
+          "translation": "Заголовки эффектов Fallout могут заявлять стерео поверх моно-сэмплов. Декодер сохраняет арифметику оригинального unpacker и нулевое дополнение после усечённого тела; отдельные таблицы амплитуд разрешают параллельное запекание."
         }
       }
     },
@@ -11049,10 +11049,6 @@
           "source_sha256": "c51d7f0d9b27a106400783bc54fa1e682ff032e0a306d393747daec1d774300f",
           "translation": "Задаёт значение подключающего проекта по умолчанию, только если переменная ещё не определена."
         },
-        "/helpers/@id=cmake.helper.TemporaryCompat/description": {
-          "source_sha256": "d0255ca6a9ec191b5990343734d320439e6094f6baae721a6cc0f9621a30a6bd",
-          "translation": "Помечает временные отказы сборки или платформенные ограничения общей датой удаления совместимости; temporary_compat.py проверяет истечение срока, включая неактивные ветки."
-        },
         "/option_override_precedence": {
           "source_sha256": "15d9c20d27971d43703748c8a1b39484f82e82e40b3030ef2b3b6d80ce947285",
           "translation": [
@@ -11069,10 +11065,6 @@
         "/options/@id=cmake.option.FO_APP_ICON/description": {
           "source_sha256": "d0e4c8c0223f0beba95bacb1877d0e6b6b2017418d4b35254050bb0e63b03b96",
           "translation": "Исходник значка приложения для сгенерированных платформенных целей."
-        },
-        "/options/@id=cmake.option.FO_AUDIO_ACM/description": {
-          "source_sha256": "ead2313fdc27b0f5d6ae192ceb6070ff069512726f5f2f286e9d636bd1679c76",
-          "translation": "Включить импортёр аудио ACM."
         },
         "/options/@id=cmake.option.FO_BINARY_OUTPUT_POSTFIX/description": {
           "source_sha256": "a86a45c8a7bd2e0d48506539b069a86c2b6a2bf368ac7e441e339a7a4399826e",
@@ -11106,26 +11098,6 @@
           "source_sha256": "b818c4b849bd0f9293f4b53ff45ffa5f2f309127b6fcc2f60d6e3cbe68221f47",
           "translation": "Стандарт языка C++ для компиляции проекта; значения ниже 20 не поддерживаются."
         },
-        "/options/@id=cmake.option.FO_DATABASE_JSON/description": {
-          "source_sha256": "1fc7ed6b77c4a5f4860c5d617a06b7abea1a34e9b7995e0281f9ef811b0e27ba",
-          "translation": "Включает файловый провайдер базы данных JSON."
-        },
-        "/options/@id=cmake.option.FO_DATABASE_MONGO/description": {
-          "source_sha256": "6063b7a1c4216071fefdb411212324e6fe0197be83c037744b22b84707c36c97",
-          "translation": "Включает провайдер MongoDB и его зависимости libbson/mongoc."
-        },
-        "/options/@id=cmake.option.FO_DATABASE_SQLITE/description": {
-          "source_sha256": "c4f7e8804aa45da47f5b8da5eac97f6276b66209ad18372afb51b232269c18c2",
-          "translation": "Включает провайдер SQLite с документами CBOR."
-        },
-        "/options/@id=cmake.option.FO_DATA_SOURCE_DAT/description": {
-          "source_sha256": "3299e269313978a31e420c05daa61c1d1768796cb2d85c21e39bcdfe0c7f9979",
-          "translation": "Включает ресурсные архивы DAT 2.0 и 2.1."
-        },
-        "/options/@id=cmake.option.FO_DATA_SOURCE_ZIP/description": {
-          "source_sha256": "380b38ad8b4aa5d0c5ac93f5cc7a9687b3f8bf2f9f01b8e2ea5122b924051211",
-          "translation": "Включает внешние ресурсные архивы ZIP и BOS."
-        },
         "/options/@id=cmake.option.FO_DEV_NAME/description": {
           "source_sha256": "47ebfc97c66c6ae1da7cd013e7ee7e9e98293c6f62783b5cd96243c3beacbdee",
           "translation": "Краткий идентификатор проекта, используемый как префикс сгенерированных целей и бинарных файлов."
@@ -11137,6 +11109,10 @@
         "/options/@id=cmake.option.FO_DISABLE_NAMESPACE/description": {
           "source_sha256": "b37699c017b0cb086cfa0cbdb1123b16051912fd809b3b26eeb48d40046df856",
           "translation": "Компилирует нативные символы движка без пространства имён FOnline."
+        },
+        "/options/@id=cmake.option.FO_MEMORY_DIAGNOSTICS/description": {
+          "source_sha256": "b9192e59ad08c23e8b0388cb86c22509e51e0499e3a5b239db009cb77a5ded7e",
+          "translation": "Включает статистику заполнения rpmalloc в обычных сборках; Debug и Tracy уже включают её при доступном rpmalloc."
         },
         "/options/@id=cmake.option.FO_DISABLE_RPMALLOC/description": {
           "source_sha256": "32cf386df267c9d9c885abd09313d2404817d760be1f8c2bee36a672a800128c",
@@ -11178,45 +11154,9 @@
           "source_sha256": "47d7d183ce4d04c2c823c62d73ab9d0d356bad09e5773d8b81e076cbf05adebc",
           "translation": "Режим геометрии сетки мира."
         },
-        "/options/@id=cmake.option.FO_IMAGE_ART/description": {
-          "source_sha256": "05c491363482ac153e7c7c87728f4af396d5d93735bac71e63790a2d94d30023",
-          "translation": "Включает загрузчик изображений ART."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_BAM/description": {
-          "source_sha256": "a38e5edc82b1eaf341bcfebc91cf5ac9fde3d65b8bdb1cef181be49779e0f8ab",
-          "translation": "Включает загрузчик изображений BAM."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_FRM/description": {
-          "source_sha256": "8b9a943b89ab3138cadf856a4e4e3b57234e0e7b4d13f2454c6d570428e2fa1d",
-          "translation": "Включает загрузчик изображений FRM."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_MOS/description": {
-          "source_sha256": "1fe332ac4e8ea7da673f0c80af8b5899b56c5d5c21ffd58d55ae8df62cdbab5c",
-          "translation": "Включает загрузчик изображений MOS."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_RIX/description": {
-          "source_sha256": "c587c5f406d4d43543c1eef13fe655e75f5beb327d0b29dc8748b3e266533c0d",
-          "translation": "Включает загрузчик изображений RIX."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_SPR/description": {
-          "source_sha256": "b780d3a04e3cb011d0c9f01d9f4312af22292b8f19cdff0be2e0860eafa4c757",
-          "translation": "Включает загрузчик изображений SPR."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_TIL/description": {
-          "source_sha256": "a3cbe434472c0cabd2f2f01e0e3571201826d75ca904567e3481147d40b7470b",
-          "translation": "Включает загрузчик изображений TIL."
-        },
-        "/options/@id=cmake.option.FO_IMAGE_ZAR/description": {
-          "source_sha256": "617625b7a7c39af2dfa14b92783b04723b416a8f3d9189480aec5efaa0b15467",
-          "translation": "Включает загрузчик изображений ZAR."
-        },
         "/options/@id=cmake.option.FO_MAIN_CONFIG/description": {
           "source_sha256": "92dd4c028c8bd44c5a74ab0cb62dcc07a07a0cb2ef640a9e16f6cdd24d271bf1",
           "translation": "Путь к основному файлу конфигурации .fomain подключающего проекта."
-        },
-        "/options/@id=cmake.option.FO_MANAGED_SCRIPTING/description": {
-          "source_sha256": "8f3352e6b2552155fd5e3380f59caff431b514cacbab5e2a5816125375f4030b",
-          "translation": "Компилирует скриптовый backend Managed C# и встроенную среду выполнения Mono."
         },
         "/options/@id=cmake.option.FO_MAP_CAMERA_ANGLE/description": {
           "source_sha256": "4e59adc5d69b5fa4e7f87aa208a55de700c21fdb12583b5773067e94336755d5",
@@ -11229,10 +11169,6 @@
         "/options/@id=cmake.option.FO_MAP_HEX_WIDTH/description": {
           "source_sha256": "78f6fd0cd5d984c627826ecdcc50fc69e145b5ccf06471e88248b5def972895a",
           "translation": "Ширина ячейки карты в пикселях."
-        },
-        "/options/@id=cmake.option.FO_MEMORY_DIAGNOSTICS/description": {
-          "source_sha256": "b9192e59ad08c23e8b0388cb86c22509e51e0499e3a5b239db009cb77a5ded7e",
-          "translation": "Включает статистику заполнения rpmalloc в обычных сборках; Debug и Tracy уже включают её при доступном rpmalloc."
         },
         "/options/@id=cmake.option.FO_MODEL_BONES_PER_VERTEX/description": {
           "source_sha256": "1204d1d23e8215ca61659114d1628619a68d2118edddd559d471424eb7bdfdd1",
@@ -11253,6 +11189,10 @@
         "/options/@id=cmake.option.FO_MSAN_IGNORELIST/description": {
           "source_sha256": "f0f071873a966922a27d61349ef6711865edd12f84d7fcbabc1a829ff4e695cf",
           "translation": "Путь к ignorelist MemorySanitizer."
+        },
+        "/options/@id=cmake.option.FO_MANAGED_SCRIPTING/description": {
+          "source_sha256": "8f3352e6b2552155fd5e3380f59caff431b514cacbab5e2a5816125375f4030b",
+          "translation": "Компилирует скриптовый backend Managed C# и встроенную среду выполнения Mono."
         },
         "/options/@id=cmake.option.FO_MSAN_LIBCXX_ROOT/description": {
           "source_sha256": "26921b8670691d4c39c8165efe1e288ec7a81e6e5c1a4d8292c46e349a2f4b6c",
@@ -11281,10 +11221,6 @@
         "/options/@id=cmake.option.FO_STRING_INLINE_CAPACITY/description": {
           "source_sha256": "9b0e5be982f4eb857ebe5b0a7744f16de56f221bd162be5fbe19f05e097be695",
           "translation": "Число символов, хранимых внутри строки движка до выделения памяти; значение должно быть на единицу меньше числа, кратного восьми."
-        },
-        "/options/@id=cmake.option.FO_TRACE_CATEGORIES/description": {
-          "source_sha256": "aef5fd542a0ee41ed2fdeab1e3f4cbc7fec1b6ecf0c1cbcafaddd13c544409cf",
-          "translation": "Выбирает категории профилирования Tracy, компилируемые в конфигурациях профилирования."
         },
         "/options/@id=cmake.option.FO_UNIT_TESTS/description": {
           "source_sha256": "0464a01fa3fd54b2aff8e9d664caa338c62bb09782be946b2ea8948d5a3b2746",
@@ -11354,6 +11290,70 @@
         "/stages/@id=cmake.stage.ThirdParty/description": {
           "source_sha256": "50cbc96bea400db66cd480c0a6d8b711effb2eae698341580583ee5ae1828851",
           "translation": "Регистрирует встроенные сторонние зависимости и изоляцию поиска пакетов."
+        },
+        "/options/@id=cmake.option.FO_DATA_SOURCE_DAT/description": {
+          "source_sha256": "3299e269313978a31e420c05daa61c1d1768796cb2d85c21e39bcdfe0c7f9979",
+          "translation": "Включает ресурсные архивы DAT 2.0 и 2.1."
+        },
+        "/options/@id=cmake.option.FO_DATA_SOURCE_ZIP/description": {
+          "source_sha256": "380b38ad8b4aa5d0c5ac93f5cc7a9687b3f8bf2f9f01b8e2ea5122b924051211",
+          "translation": "Включает внешние ресурсные архивы ZIP и BOS."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_JSON/description": {
+          "source_sha256": "1fc7ed6b77c4a5f4860c5d617a06b7abea1a34e9b7995e0281f9ef811b0e27ba",
+          "translation": "Включает файловый провайдер базы данных JSON."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_SQLITE/description": {
+          "source_sha256": "c4f7e8804aa45da47f5b8da5eac97f6276b66209ad18372afb51b232269c18c2",
+          "translation": "Включает провайдер SQLite с документами CBOR."
+        },
+        "/options/@id=cmake.option.FO_DATABASE_MONGO/description": {
+          "source_sha256": "6063b7a1c4216071fefdb411212324e6fe0197be83c037744b22b84707c36c97",
+          "translation": "Включает провайдер MongoDB и его зависимости libbson/mongoc."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_FRM/description": {
+          "source_sha256": "8b9a943b89ab3138cadf856a4e4e3b57234e0e7b4d13f2454c6d570428e2fa1d",
+          "translation": "Включает загрузчик изображений FRM."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_RIX/description": {
+          "source_sha256": "c587c5f406d4d43543c1eef13fe655e75f5beb327d0b29dc8748b3e266533c0d",
+          "translation": "Включает загрузчик изображений RIX."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_ART/description": {
+          "source_sha256": "05c491363482ac153e7c7c87728f4af396d5d93735bac71e63790a2d94d30023",
+          "translation": "Включает загрузчик изображений ART."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_SPR/description": {
+          "source_sha256": "b780d3a04e3cb011d0c9f01d9f4312af22292b8f19cdff0be2e0860eafa4c757",
+          "translation": "Включает загрузчик изображений SPR."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_ZAR/description": {
+          "source_sha256": "617625b7a7c39af2dfa14b92783b04723b416a8f3d9189480aec5efaa0b15467",
+          "translation": "Включает загрузчик изображений ZAR."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_TIL/description": {
+          "source_sha256": "a3cbe434472c0cabd2f2f01e0e3571201826d75ca904567e3481147d40b7470b",
+          "translation": "Включает загрузчик изображений TIL."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_MOS/description": {
+          "source_sha256": "1fe332ac4e8ea7da673f0c80af8b5899b56c5d5c21ffd58d55ae8df62cdbab5c",
+          "translation": "Включает загрузчик изображений MOS."
+        },
+        "/options/@id=cmake.option.FO_IMAGE_BAM/description": {
+          "source_sha256": "a38e5edc82b1eaf341bcfebc91cf5ac9fde3d65b8bdb1cef181be49779e0f8ab",
+          "translation": "Включает загрузчик изображений BAM."
+        },
+        "/options/@id=cmake.option.FO_TRACE_CATEGORIES/description": {
+          "source_sha256": "aef5fd542a0ee41ed2fdeab1e3f4cbc7fec1b6ecf0c1cbcafaddd13c544409cf",
+          "translation": "Выбирает категории профилирования Tracy, компилируемые в конфигурациях профилирования."
+        },
+        "/helpers/@id=cmake.helper.TemporaryCompat/description": {
+          "source_sha256": "d0255ca6a9ec191b5990343734d320439e6094f6baae721a6cc0f9621a30a6bd",
+          "translation": "Помечает временные отказы сборки или платформенные ограничения общей датой удаления совместимости; temporary_compat.py проверяет истечение срока, включая неактивные ветки."
+        },
+        "/options/@id=cmake.option.FO_AUDIO_ACM/description": {
+          "source_sha256": "ead2313fdc27b0f5d6ae192ceb6070ff069512726f5f2f286e9d636bd1679c76",
+          "translation": "Включить импортёр аудио ACM."
         }
       }
     },
@@ -11628,9 +11628,9 @@
           "translation": "Runtime предоставляет MainTex, IndoorMaskTex и BackgroundTex, а в 3D-сборках также ModelTex0..ModelTexN-1. BackgroundTex является переданным вызывающим кодом снимком сцены для рефракции. Другие отражённые имена sampler-ов RenderEffect не заполняет."
         },
         "/resources/@id=effect-format.resource.script-values/name": {
-          "preserve_source": true,
           "source_sha256": "8a99f3fe1eb75b544f5ce62caea85f4077cd89c3c3a528c1e64ef823ccc6c805",
-          "translation": "ScriptValueBuf"
+          "translation": "ScriptValueBuf",
+          "preserve_source": true
         },
         "/resources/@id=effect-format.resource.script-values/rationale": {
           "source_sha256": "94c9e9c9f22f91940e56bcc17c1de4ef666143e8ef84edd70d1e0c6f59dfb13e",
@@ -11855,9 +11855,9 @@
           "translation": "Входные offset/count и целевой диапазон проверяются до разрешения и записи эффекта."
         },
         "/sections/@id=effect-format.section.effect/name": {
-          "preserve_source": true,
           "source_sha256": "fa6c4d7fab7f0288a85b7f14415ee0fb8cd73d81c6a93b6773d1434289240bf5",
-          "translation": "[Effect]"
+          "translation": "[Effect]",
+          "preserve_source": true
         },
         "/sections/@id=effect-format.section.effect/rationale": {
           "source_sha256": "92ae25cb7e862a91c1c0b4c44a1d98af101d579ec7ac802ab5389c4dd283b8b7",
@@ -11868,9 +11868,9 @@
           "translation": "Каждый исходный файл .fofx должен содержать секцию Effect. В ней хранятся число проходов, версия шейдера, выбор теневого прохода и состояние рендеринга по умолчанию или для отдельных проходов."
         },
         "/sections/@id=effect-format.section.fragment/name": {
-          "preserve_source": true,
           "source_sha256": "1cc252bb4f54e2eceab8629b96040b7a1184d68e3445e22a2c46b90427f7f2b1",
-          "translation": "[FragmentShader] and [FragmentShader PassN]"
+          "translation": "[FragmentShader] and [FragmentShader PassN]",
+          "preserve_source": true
         },
         "/sections/@id=effect-format.section.fragment/rationale": {
           "source_sha256": "0a5a69a5b288a85703857260ed593b84ad68ee6d8eb4e7247bdd842271cbfddd",
@@ -11881,9 +11881,9 @@
           "translation": "Для каждого объявленного прохода нужен непустой текст фрагментного шейдера. Baker сначала читает FragmentShader PassN, а при пустой секции прохода использует общую секцию FragmentShader."
         },
         "/sections/@id=effect-format.section.shader-common/name": {
-          "preserve_source": true,
           "source_sha256": "4f2ddf262e542dcecd58060081b7fdef10a1723d8b588387d79ea5eb8016a9a1",
-          "translation": "[ShaderCommon]"
+          "translation": "[ShaderCommon]",
+          "preserve_source": true
         },
         "/sections/@id=effect-format.section.shader-common/rationale": {
           "source_sha256": "4c311fdb7cf19418d5274eb643704640aa0a4f68474ed2f9d95d87cf21fbaa5f",
@@ -11894,9 +11894,9 @@
           "translation": "ShaderCommon содержит необязательный исходный текст шейдера, добавляемый после пролога Engine перед обеими стадиями каждого прохода."
         },
         "/sections/@id=effect-format.section.vertex/name": {
-          "preserve_source": true,
           "source_sha256": "7e42b10240c6b35cfb7c309a7b8cbec1cb5ced160375107d38342172edf27815",
-          "translation": "[VertexShader] and [VertexShader PassN]"
+          "translation": "[VertexShader] and [VertexShader PassN]",
+          "preserve_source": true
         },
         "/sections/@id=effect-format.section.vertex/rationale": {
           "source_sha256": "c8c8d970dbec6ba60aba032d896ddea3bb37dec7ce1060e6ac69a028b00e2991",
@@ -12006,6 +12006,18 @@
     },
     "font-format": {
       "entries": {
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/name": {
+          "source_sha256": "c0fe6a731b144b0b0e173f76ab379f3c2313ff11ab8abfe1050a90afee14836b",
+          "translation": "Подготовленная владельцем геометрия глифов"
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/rationale": {
+          "source_sha256": "bd107a18b662c0baf00a3d0cf0a9ff99921c420c5e1c482eb5e05e1853c21302",
+          "translation": "Глифы используют общий чистый kernel геометрии спрайтов. Последовательный режим пишет напрямую; необязательные client workers обрабатывают непересекающиеся зарезервированные диапазоны без доступа к renderer или менеджеру шрифтов."
+        },
+        "/rendering_rules/@id=font-format.rendering.cpu-geometry/requirement": {
+          "source_sha256": "70774f9cd91a61f192812a8d64cec699052a0a4b9ddf283f664c3a3a8033267a",
+          "translation": "Компоновка и доступ к шрифтам остаются на потоке приложения; неизменяемые значения глифов передаются в порядке отрисовки, а их геометрия завершается до загрузки буфера."
+        },
         "/binding_rules/@id=font-format.binding.bind-time-scale/name": {
           "source_sha256": "1f5094833fd46338b8988f4b50d204a697cdc2971dfdf26211f98b2adbc31306",
           "translation": "Уменьшение при привязке"
@@ -12215,9 +12227,9 @@
           "translation": "Основанный на исходном коде контракт форматов ресурсов шрифтов, привязки, метрик, компоновки, отрисовки и проверки клиентского текста FOnline."
         },
         "/fofnt_fields/@id=font-format.fofnt.end-and-comments/name": {
-          "preserve_source": true,
           "source_sha256": "4e59d280b90503f292d4d9927e086a7a40d34461e57ad1f58f9340eee99bc2cd",
-          "translation": "End and comments"
+          "translation": "End and comments",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.end-and-comments/rationale": {
           "source_sha256": "24e4a83dd922b1be87cc1e8a9c5cb93d3e70babae188b84ca9fbed8be62826ef",
@@ -12228,9 +12240,9 @@
           "translation": "Завершите полезную часть дескриптора через End; # и ; начинают комментарий только внутри ключа, отделённого пробелами."
         },
         "/fofnt_fields/@id=font-format.fofnt.height/name": {
-          "preserve_source": true,
           "source_sha256": "bfe2eca401797325bc268f93c7397554551de4274d5d73ed421ee36fe9cd3ae0",
-          "translation": "Height"
+          "translation": "Height",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.height/rationale": {
           "source_sha256": "aab9b373e663dcba14a37554d7c4dcba5baa1ae43334b9f0bad3ed5db5e44ade",
@@ -12241,9 +12253,9 @@
           "translation": "Задайте высоту видимого прямоугольника глифа без однопиксельной рамки выборки."
         },
         "/fofnt_fields/@id=font-format.fofnt.image/name": {
-          "preserve_source": true,
           "source_sha256": "1aa4cb0bcca76e92e30677e809bb3d4b5c066715ef4d558184e319496bcc5125",
-          "translation": "Image"
+          "translation": "Image",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.image/rationale": {
           "source_sha256": "ecf0e8f842c7b6b7730639120d25a5906fcb058f35b12d37435c5ec98abf4034",
@@ -12254,9 +12266,9 @@
           "translation": "Укажите непустой ресурс изображения относительно дескриптора; добавьте * для нормализации серого и runtime-тонирования."
         },
         "/fofnt_fields/@id=font-format.fofnt.letter/name": {
-          "preserve_source": true,
           "source_sha256": "1bf163f269ae847bcc1f7d9fe26c27cbe20e5416ba8d6e6e8347324c428795d2",
-          "translation": "Letter"
+          "translation": "Letter",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.letter/rationale": {
           "source_sha256": "bf77e1fc37fa33087e3a0b0dd8eb27335efcb18b0c1a3fa096c44b1643692102",
@@ -12267,9 +12279,9 @@
           "translation": "Начинайте запись каждого глифа с Letter и одной корректной кодовой точки UTF-8 после первого апострофа."
         },
         "/fofnt_fields/@id=font-format.fofnt.line-height/name": {
-          "preserve_source": true,
           "source_sha256": "a6cbd7ab061ed3101c5e6e57bfa68720de01039b947e1175e5b6630cd98a7a31",
-          "translation": "LineHeight"
+          "translation": "LineHeight",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.line-height/rationale": {
           "source_sha256": "8d37dd3a640856302e909e63a94340444f7eb665efa7cb0865a46446d6b35324",
@@ -12280,9 +12292,9 @@
           "translation": "Задайте высоту строки глифов в пикселях или оставьте ноль/не задавайте, чтобы вывести максимальную высоту авторских глифов."
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-x/name": {
-          "preserve_source": true,
           "source_sha256": "90c34dc86b2e4be21b60e6899ae08595b0d096a69e3b6e463ab47a49ee81bbcb",
-          "translation": "OffsetX"
+          "translation": "OffsetX",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-x/rationale": {
           "source_sha256": "292631aedd839704e71574da5dc1c9827376e50bf2c24a37441769352b41116f",
@@ -12293,9 +12305,9 @@
           "translation": "Задайте знаковый горизонтальный вынос в координатах Engine; отрисовка размещает quad в позиции курсора X минус OffsetX."
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-y/name": {
-          "preserve_source": true,
           "source_sha256": "04780034bd7d3a0bbffb52e61cc01fd124edbb1f43d092086923fdebb79b5e64",
-          "translation": "OffsetY"
+          "translation": "OffsetY",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-y/rationale": {
           "source_sha256": "292631aedd839704e71574da5dc1c9827376e50bf2c24a37441769352b41116f",
@@ -12306,9 +12318,9 @@
           "translation": "Задайте знаковый вертикальный вынос в координатах Engine; отрисовка размещает quad в позиции курсора Y минус OffsetY."
         },
         "/fofnt_fields/@id=font-format.fofnt.position-x/name": {
-          "preserve_source": true,
           "source_sha256": "5fb879043910349bf64bda5fb748459a2abcbfe1163ec27280baf8e6e114f0bb",
-          "translation": "PositionX"
+          "translation": "PositionX",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.position-x/rationale": {
           "source_sha256": "7ae62cbfe9e14aa975c047b6e8636cd6c86f1a65c2ef66c31cd0c7349f0b57fa",
@@ -12319,9 +12331,9 @@
           "translation": "Задайте левую координату прямоугольника глифа в изображении."
         },
         "/fofnt_fields/@id=font-format.fofnt.position-y/name": {
-          "preserve_source": true,
           "source_sha256": "7dd0605fb089286dbffe7ae7a78ae273c473ff2818e816e3d6e6f0d86ab92f79",
-          "translation": "PositionY"
+          "translation": "PositionY",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.position-y/rationale": {
           "source_sha256": "7ae62cbfe9e14aa975c047b6e8636cd6c86f1a65c2ef66c31cd0c7349f0b57fa",
@@ -12332,9 +12344,9 @@
           "translation": "Задайте верхнюю координату прямоугольника глифа в изображении."
         },
         "/fofnt_fields/@id=font-format.fofnt.version/name": {
-          "preserve_source": true,
           "source_sha256": "dd167905de0defcaf72de673ee44c07431770d129ccffab286bd2edfdaf62396",
-          "translation": "Version"
+          "translation": "Version",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.version/rationale": {
           "source_sha256": "419105395e79b4c43574bbff9b1ca5fd9d21a4f34fab0e62760ebaf97f20a989",
@@ -12345,9 +12357,9 @@
           "translation": "Сделайте Version первым разбираемым ключом; для текущих ресурсов задавайте версию 2. Значения больше 2 отклоняются."
         },
         "/fofnt_fields/@id=font-format.fofnt.width/name": {
-          "preserve_source": true,
           "source_sha256": "3019947b6daf18b0534a15d8c7ac30ab587e36cc93fb45a6e7b750348006d620",
-          "translation": "Width"
+          "translation": "Width",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.width/rationale": {
           "source_sha256": "f8af9f05c18aaef11b98bb63822d5147d0937b741f35751a3c351e7d0845a435",
@@ -12358,9 +12370,9 @@
           "translation": "Задайте ширину видимого прямоугольника глифа без однопиксельной рамки выборки."
         },
         "/fofnt_fields/@id=font-format.fofnt.x-advance/name": {
-          "preserve_source": true,
           "source_sha256": "0e0118c464db8899b0d227d045fe954c20a4fe0719cb2873aa51e5287c4eb37b",
-          "translation": "XAdvance"
+          "translation": "XAdvance",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.x-advance/rationale": {
           "source_sha256": "034b19341f57a8894f7c05347d0dd533309d33aa804db6edfdfeed4100e8cb42",
@@ -12371,9 +12383,9 @@
           "translation": "Задайте горизонтальное продвижение курсора после глифа; добавьте явный глиф пробела, если пробелы должны занимать ширину."
         },
         "/fofnt_fields/@id=font-format.fofnt.y-advance/name": {
-          "preserve_source": true,
           "source_sha256": "d93206fecf6fcab91f11275e3f4102fdd860353a08dc7678bb6b8956408725cd",
-          "translation": "YAdvance"
+          "translation": "YAdvance",
+          "preserve_source": true
         },
         "/fofnt_fields/@id=font-format.fofnt.y-advance/rationale": {
           "source_sha256": "2d7f1d9a15c63151e041081d845d994f4a54860b515bb0c5db8c064c1ff3573c",
@@ -12575,18 +12587,6 @@
           "source_sha256": "1540de2e20060c310daa1e3f4faa6abf72dbce39df7189d3394189193d69420b",
           "translation": "Встроенный стандартный слот шрифта, используемый, когда не выбран проектный слот."
         },
-        "/rendering_rules/@id=font-format.rendering.batch-layout/name": {
-          "source_sha256": "fcc4b3964002096bb38c4ce7a3e6d2386ccf0c8e6fac38f58334e7947d664107",
-          "translation": "Пакетная подготовка измерения и компоновки рисования"
-        },
-        "/rendering_rules/@id=font-format.rendering.batch-layout/rationale": {
-          "source_sha256": "1680c5bfa2bf48f2e1beddfa133216e40b41da7e40ee79bd52571b6252b93d80",
-          "translation": "Новые уникальные промахи кэша выполняют чистую CPU-компоновку в два этапа; публикация кэша, его актуальность, brightness и порядок рисования остаются работой владельца, прогретый кэш не создаёт jobs."
-        },
-        "/rendering_rules/@id=font-format.rendering.batch-layout/requirement": {
-          "source_sha256": "19e56620fb3f3b3b88d528b5b60a7bd81cd5bea1d0e1898dc7562ec527017974",
-          "translation": "Передавайте списки текстов и цветов одинакового размера с общими bounds и format; рисуйте каждый элемент на потоке приложения в возвращённых размерах с теми же цветом и форматом."
-        },
         "/rendering_rules/@id=font-format.rendering.bind-time-resampling/name": {
           "source_sha256": "9c27199d0e42ee43034237fc5e39a37f7ef81a90c722c02819382d79a2380af7",
           "translation": "Уменьшение усреднением площади"
@@ -12610,18 +12610,6 @@
         "/rendering_rules/@id=font-format.rendering.bordered-copy/requirement": {
           "source_sha256": "1f072eae8b6b445c6f7dedce8f8c3f759cdcca77f4272c74f85712f5c6a13e37",
           "translation": "Резервируйте прозрачный отступ для однопиксельного чёрного расширения; FontFlag::Bordered выбирает сгенерированную вторую текстуру."
-        },
-        "/rendering_rules/@id=font-format.rendering.cpu-geometry/name": {
-          "source_sha256": "c0fe6a731b144b0b0e173f76ab379f3c2313ff11ab8abfe1050a90afee14836b",
-          "translation": "Подготовленная владельцем геометрия глифов"
-        },
-        "/rendering_rules/@id=font-format.rendering.cpu-geometry/rationale": {
-          "source_sha256": "bd107a18b662c0baf00a3d0cf0a9ff99921c420c5e1c482eb5e05e1853c21302",
-          "translation": "Глифы используют общий чистый kernel геометрии спрайтов. Последовательный режим пишет напрямую; необязательные client workers обрабатывают непересекающиеся зарезервированные диапазоны без доступа к renderer или менеджеру шрифтов."
-        },
-        "/rendering_rules/@id=font-format.rendering.cpu-geometry/requirement": {
-          "source_sha256": "70774f9cd91a61f192812a8d64cec699052a0a4b9ddf283f664c3a3a8033267a",
-          "translation": "Компоновка и доступ к шрифтам остаются на потоке приложения; неизменяемые значения глифов передаются в порядке отрисовки, а их геометрия завершается до загрузки буфера."
         },
         "/rendering_rules/@id=font-format.rendering.font-effect/name": {
           "source_sha256": "6d12ca2c259d76a4c6a780eb7150706d25abf49f40469aa4e6f6b78c3293f7c5",
@@ -12805,6 +12793,18 @@
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/requirement": {
           "source_sha256": "3d66e13d231f5a82addd560733a0fb847a6ed44d870ca68d42a2886f2bdb8dcf",
           "translation": "Учитывайте, что текущий загрузчик читает xoffset, yoffset и xadvance через GetLEUInt16, хотя поставляемые бинарные шрифты содержат отрицательные выносы."
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/name": {
+          "source_sha256": "fcc4b3964002096bb38c4ce7a3e6d2386ccf0c8e6fac38f58334e7947d664107",
+          "translation": "Пакетная подготовка измерения и компоновки рисования"
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/requirement": {
+          "source_sha256": "19e56620fb3f3b3b88d528b5b60a7bd81cd5bea1d0e1898dc7562ec527017974",
+          "translation": "Передавайте списки текстов и цветов одинакового размера с общими bounds и format; рисуйте каждый элемент на потоке приложения в возвращённых размерах с теми же цветом и форматом."
+        },
+        "/rendering_rules/@id=font-format.rendering.batch-layout/rationale": {
+          "source_sha256": "1680c5bfa2bf48f2e1beddfa133216e40b41da7e40ee79bd52571b6252b93d80",
+          "translation": "Новые уникальные промахи кэша выполняют чистую CPU-компоновку в два этапа; публикация кэша, его актуальность, brightness и порядок рисования остаются работой владельца, прогретый кэш не создаёт jobs."
         }
       }
     },
@@ -13143,9 +13143,9 @@
           "translation": "Очищает, собирает и формирует отчёты покрытия кода движка для сгенерированных тестовых целей."
         },
         "/helpers/@id=helper-cli.codecoverage/invocation_owner": {
-          "preserve_source": true,
           "source_sha256": "7e50b49ce99d12956be862b13c12ed853b00bdfaa6d365a76b63f6a08ce8a6c5",
-          "translation": "BuildTools/cmake/stages/Applications.cmake"
+          "translation": "BuildTools/cmake/stages/Applications.cmake",
+          "preserve_source": true
         },
         "/helpers/@id=helper-cli.codecoverage/name": {
           "source_sha256": "fe858ca3d2e33ec4e9d345b040f4572c13d0e04c4935dff0bde44d6c35fcb5a4",
@@ -13196,9 +13196,9 @@
           "translation": "Подробный режим."
         },
         "/helpers/@id=helper-cli.codegen/invocation_owner": {
-          "preserve_source": true,
           "source_sha256": "1c26af52cb53a4e7fa6c94d181152db19d790bee9f90a23e5af95a13b101c6f1",
-          "translation": "BuildTools/cmake/stages/Codegen.cmake"
+          "translation": "BuildTools/cmake/stages/Codegen.cmake",
+          "preserve_source": true
         },
         "/helpers/@id=helper-cli.codegen/name": {
           "source_sha256": "b8baf7166150288cd864c84fe302b404bfcfe7e341f636e3a5860d43a48848c3",
@@ -13272,13 +13272,13 @@
           "source_sha256": "ba820e17a98ac121a047225dfce65e7b4649a494414fa69d5dfdaf4e227edc12",
           "translation": "Проверяет совместимость импортов слинкованных PE-файлов с Windows 7 и по запросу требует флаг большого адресного пространства у исполняемых файлов."
         },
-        "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.binaries/description": {
-          "source_sha256": "23a5ed3d50ff93b7d50d3bf8289f1cc1b46cfdbc2e7e5594fc451c37281d344e",
-          "translation": "Проверяемый слинкованный исполняемый PE-файл или DLL."
-        },
         "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.require_large_address_aware/description": {
           "source_sha256": "743a32103531d7e2c4007292a72e971fa3007e94ef680bef0132b45622a5bc14",
           "translation": "Требовать флаг большого адресного пространства у проверяемых исполняемых файлов."
+        },
+        "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.binaries/description": {
+          "source_sha256": "23a5ed3d50ff93b7d50d3bf8289f1cc1b46cfdbc2e7e5594fc451c37281d344e",
+          "translation": "Проверяемый слинкованный исполняемый PE-файл или DLL."
         },
         "/helpers/@id=helper-cli.windows7-import-check/invocation_owner": {
           "source_sha256": "cb63fae5a48970683824fef1dadf41b3686d09074c4623c181dc296055923bba",
@@ -13435,22 +13435,10 @@
           "source_sha256": "527089e6b41fff1e8e13b6eec67f6fc178b792c38357b0b89a9f94c18b207a60",
           "translation": "Основанный на исходниках контракт импорта изображений FOnline, композиции FOFRM, полигональных sprite meshes, baked container, client sprites, atlas, cache и валидации."
         },
-        "/descriptor_fields/@id=image-format.field.alias/name": {
-          "source_sha256": "eace8c2f1ff12e69ab728b047d9df6d6a354b9300510bbc3f3188c6d4bac4b36",
-          "translation": "Псевдоним целого источника"
-        },
-        "/descriptor_fields/@id=image-format.field.alias/rationale": {
-          "source_sha256": "60b14bec4e81268206246d549a9e561214c01e15627bce1284b10ff28aa9ef27",
-          "translation": "Обычные ссылки frm разворачивают только дочерние кадры Main и теряют смещения дочерней последовательности."
-        },
-        "/descriptor_fields/@id=image-format.field.alias/requirement": {
-          "source_sha256": "54afa80e1211cc0e01c1108c73f19fbf79b9f2beb91dea166a6e3790bcc61e8c",
-          "translation": "Непустой корневой Alias передаёт один бинарный источник с сохранением направлений, смещений последовательностей, времени и смещений кадров под путём дескриптора. Остальные ключи композиции игнорируются; Alias не может ссылаться на другой FOFRM."
-        },
         "/descriptor_fields/@id=image-format.field.count/name": {
-          "preserve_source": true,
           "source_sha256": "868429ff9cb482a6349b41bf244d1aabad71e2075b8e238fc4f083a6b541f0d9",
-          "translation": "count / Count"
+          "translation": "count / Count",
+          "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.count/rationale": {
           "source_sha256": "6862d4ed5f2dcf6135621a8f9229556679cf0cef41bfdf53f11385aeec958bc2",
@@ -13461,9 +13449,9 @@
           "translation": "Count задаёт число ссылок descriptor в каждом направлении, по умолчанию равен единице и должен быть положительным; он не обязательно совпадает с итоговым числом кадров после flattening."
         },
         "/descriptor_fields/@id=image-format.field.direction-section/name": {
-          "preserve_source": true,
           "source_sha256": "c7ee0e86bd5aa8d7dbcb7c0784e1c001506ee03a2930b9085ffb797ecdae6fe1",
-          "translation": "[dir_N] / [Dir_N]"
+          "translation": "[dir_N] / [Dir_N]",
+          "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.direction-section/rationale": {
           "source_sha256": "51428a93d2ee95f3c448c9cee02cd7deba349db09c995dd46758f0743ac4af1c",
@@ -13474,9 +13462,9 @@
           "translation": "Descriptor либо однонаправленный, либо предоставляет каждое направление карты Engine; частичные наборы направлений и последующие разрывы отклоняются."
         },
         "/descriptor_fields/@id=image-format.field.effect/name": {
-          "preserve_source": true,
           "source_sha256": "9f45b2bd31acaa07b7cffed5dc7d4d26380d1126dc181e95c116362c031573cd",
-          "translation": "effect / Effect"
+          "translation": "effect / Effect",
+          "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.effect/rationale": {
           "source_sha256": "725bd4c195ba5cf3f7a579a8d2fb27b3174cf6034da0763e3ad822f0626be05a",
@@ -13499,9 +13487,9 @@
           "translation": "FOFRM добавляет последовательность Main каждого дочернего ресурса; наборы направлений и sequence offsets ребёнка не компонуются, а все авторские направления родителя должны давать одинаковое итоговое число кадров после flattening."
         },
         "/descriptor_fields/@id=image-format.field.fps/name": {
-          "preserve_source": true,
           "source_sha256": "1c016a4141cea372b702948466f319de7941330a4cc95967964aaae4a0d7c43c",
-          "translation": "fps / Fps"
+          "translation": "fps / Fps",
+          "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.fps/rationale": {
           "source_sha256": "793a4b1be5f73be8aea8acb6442432524ad3fc5b00801a26b7942adda7f4fed6",
@@ -13558,14 +13546,6 @@
         "/descriptor_fields/@id=image-format.field.timing/requirement": {
           "source_sha256": "4697084cb656acab14ac9901095a3302141573ddcab1619d304f12600217e8f0",
           "translation": "FOFRM вычисляет длительность всей последовательности по авторскому count descriptor, а не по расплющенному числу дочерних кадров; нулевой fps даёт нулевые ticks."
-        },
-        "/filename_options/@id=image-format.option.art-rotation/rationale": {
-          "source_sha256": "03744309572efb44cdba0e8acf678918ce3fe7ff5388b45353e50513d7686039",
-          "translation": "Параметры имени источника одинаково работают через Alias и обычные ссылки frm; FOFRM и общая диспетчеризация не разбирают параметры ART и не обходят зарегистрированный загрузчик."
-        },
-        "/filename_options/@id=image-format.option.art-rotation/requirement": {
-          "source_sha256": "99259fa4030e1899002d73271b33809c78c03e0e2f4f322e921559d939aff8de",
-          "translation": "Загрузчик ART разбирает r= или R= с ровно одной цифрой 0..7 как ротацию по часовой стрелке от севера и создаёт одно направление. Выбор палитры предшествует r=; параметры отражения, alpha и кадров могут идти следом. Неверные значения и последующие символы вне этих параметров отклоняются при запекании. Источник с одной ротацией повторно использует свой кадр с привязкой для выбранной ротации. Без знака равенства r/R игнорируется, а следующая цифра 0..3 по-прежнему выбирает палитру."
         },
         "/filename_options/@id=image-format.option.art/rationale": {
           "source_sha256": "fb6d8db8e8ebb0bf44d3d40f33c3c0fec4cd4e045a3efb4888671592619dd198",
@@ -13758,18 +13738,6 @@
         "/runtime_rules/@id=image-format.runtime.cache/requirement": {
           "source_sha256": "680389f751caa212205eb51903481d2e25a8a65708302010d97a18741ace315c",
           "translation": "Копируемые спрайты кэшируются по hashed path вместе с AtlasType; каждая загрузка, включая первую, возвращает MakeCopy. Clock и таблицы кадров SpriteSheet независимы; AtlasSprite сохраняет общие atlas pixels/geometry."
-        },
-        "/runtime_rules/@id=image-format.runtime.cpu-preparation/name": {
-          "source_sha256": "46e949d4f5a37a7bc7f181faaed30fca89c2309612599fda398b9ef20633479d",
-          "translation": "Ограниченная CPU-подготовка"
-        },
-        "/runtime_rules/@id=image-format.runtime.cpu-preparation/rationale": {
-          "source_sha256": "450fef11480cb4ef1438ba757ef34e9c3995c9d37243be6680b0fdd0d60e5d33",
-          "translation": "Reservation на 32 слота и 64 МиБ входов/decoded/control storage использует квалифицированный штатный decoder и исключает удерживаемый diagnostic exception payload, произвольные captures decoder, allocator/transient/provider/GPU storage и process RSS. Отказ по capacity возвращает обычную загрузку."
-        },
-        "/runtime_rules/@id=image-format.runtime.cpu-preparation/requirement": {
-          "source_sha256": "6bf96fccfa5a56c44292642bd75b8050ccbf6d1f0364bbd37f71a1678806ec9a",
-          "translation": "При наличии workers прочитанные владельцем bytes могут разбираться общим scheduler до публикации владельцем normal или quad результата. Сохраняются точный factory dispatch, исходные исключения, отзыв generation/epoch и reservation до завершения active/publishing работы."
         },
         "/runtime_rules/@id=image-format.runtime.decode/name": {
           "source_sha256": "18293e09282a72becf15f8649d1ab208653aa83adce644eacddc72443c573c41",
@@ -13973,6 +13941,38 @@
         "/validation_rules/@id=image-format.validation.tga-subset/requirement": {
           "source_sha256": "9ce469e38d6205f06c9b6b23785f44c8a071925ed5c1e1db273257e79f1684c8",
           "translation": "Не используйте image ID; задавайте bottom-left orientation, TrueColor type 2 или 10 и 24 либо 32 bpp. Indexed/grayscale/другие входы отклоняются или не соответствуют реализованным допущениям orientation."
+        },
+        "/descriptor_fields/@id=image-format.field.alias/name": {
+          "source_sha256": "eace8c2f1ff12e69ab728b047d9df6d6a354b9300510bbc3f3188c6d4bac4b36",
+          "translation": "Псевдоним целого источника"
+        },
+        "/descriptor_fields/@id=image-format.field.alias/rationale": {
+          "source_sha256": "60b14bec4e81268206246d549a9e561214c01e15627bce1284b10ff28aa9ef27",
+          "translation": "Обычные ссылки frm разворачивают только дочерние кадры Main и теряют смещения дочерней последовательности."
+        },
+        "/descriptor_fields/@id=image-format.field.alias/requirement": {
+          "source_sha256": "54afa80e1211cc0e01c1108c73f19fbf79b9f2beb91dea166a6e3790bcc61e8c",
+          "translation": "Непустой корневой Alias передаёт один бинарный источник с сохранением направлений, смещений последовательностей, времени и смещений кадров под путём дескриптора. Остальные ключи композиции игнорируются; Alias не может ссылаться на другой FOFRM."
+        },
+        "/filename_options/@id=image-format.option.art-rotation/requirement": {
+          "source_sha256": "99259fa4030e1899002d73271b33809c78c03e0e2f4f322e921559d939aff8de",
+          "translation": "Загрузчик ART разбирает r= или R= с ровно одной цифрой 0..7 как ротацию по часовой стрелке от севера и создаёт одно направление. Выбор палитры предшествует r=; параметры отражения, alpha и кадров могут идти следом. Неверные значения и последующие символы вне этих параметров отклоняются при запекании. Источник с одной ротацией повторно использует свой кадр с привязкой для выбранной ротации. Без знака равенства r/R игнорируется, а следующая цифра 0..3 по-прежнему выбирает палитру."
+        },
+        "/filename_options/@id=image-format.option.art-rotation/rationale": {
+          "source_sha256": "03744309572efb44cdba0e8acf678918ce3fe7ff5388b45353e50513d7686039",
+          "translation": "Параметры имени источника одинаково работают через Alias и обычные ссылки frm; FOFRM и общая диспетчеризация не разбирают параметры ART и не обходят зарегистрированный загрузчик."
+        },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/name": {
+          "source_sha256": "46e949d4f5a37a7bc7f181faaed30fca89c2309612599fda398b9ef20633479d",
+          "translation": "Ограниченная CPU-подготовка"
+        },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/rationale": {
+          "source_sha256": "450fef11480cb4ef1438ba757ef34e9c3995c9d37243be6680b0fdd0d60e5d33",
+          "translation": "Reservation на 32 слота и 64 МиБ входов/decoded/control storage использует квалифицированный штатный decoder и исключает удерживаемый diagnostic exception payload, произвольные captures decoder, allocator/transient/provider/GPU storage и process RSS. Отказ по capacity возвращает обычную загрузку."
+        },
+        "/runtime_rules/@id=image-format.runtime.cpu-preparation/requirement": {
+          "source_sha256": "6bf96fccfa5a56c44292642bd75b8050ccbf6d1f0364bbd37f71a1678806ec9a",
+          "translation": "При наличии workers прочитанные владельцем bytes могут разбираться общим scheduler до публикации владельцем normal или quad результата. Сохраняются точный factory dispatch, исходные исключения, отзыв generation/epoch и reservation до завершения active/publishing работы."
         }
       }
     },
@@ -13983,9 +13983,9 @@
           "translation": "Основанный на исходниках контракт авторинга, запекания и runtime для контейнеров карт FOnline."
         },
         "/directives/@id=map-format.directive.entity-id/applies_to": {
-          "preserve_source": true,
           "source_sha256": "55b3af12db25dbfc226e3dbd5caabbc9b5c9efe06dae9732268da69a419b8747",
-          "translation": "Critter, Item"
+          "translation": "Critter, Item",
+          "preserve_source": true
         },
         "/directives/@id=map-format.directive.entity-id/default": {
           "source_sha256": "77d23c793205359e4675cb88c3cc105f3230473cf1899e37ec3b2b4c3e95acbe",
@@ -13996,9 +13996,9 @@
           "translation": "Задаёт общую идентичность размещения для ссылок владения. Отсутствующие, неположительные и повторяющиеся ID исправляются при загрузке; авторские карты не должны полагаться на исправление."
         },
         "/directives/@id=map-format.directive.entity-proto/applies_to": {
-          "preserve_source": true,
           "source_sha256": "55b3af12db25dbfc226e3dbd5caabbc9b5c9efe06dae9732268da69a419b8747",
-          "translation": "Critter, Item"
+          "translation": "Critter, Item",
+          "preserve_source": true
         },
         "/directives/@id=map-format.directive.entity-proto/default": {
           "source_sha256": "140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe",
@@ -14009,9 +14009,9 @@
           "translation": "Разрешает базовый прототип Critter или Item до применения переопределений размещения."
         },
         "/directives/@id=map-format.directive.map-name/applies_to": {
-          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap"
+          "translation": "ProtoMap",
+          "preserve_source": true
         },
         "/directives/@id=map-format.directive.map-name/default": {
           "source_sha256": "d1ea356bf0e78aac795d58efff427842503407d6af5108812204fb3c75078d3f",
@@ -14022,9 +14022,9 @@
           "translation": "Выбирает ID прототипа Map и базовые имена обоих запечённых ресурсов. Без $Name якорь разрешается в базовое имя исходника; в контейнере с несколькими картами каждый якорь следует именовать явно."
         },
         "/directives/@id=map-format.directive.map-parent/applies_to": {
-          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap"
+          "translation": "ProtoMap",
+          "preserve_source": true
         },
         "/directives/@id=map-format.directive.map-parent/default": {
           "source_sha256": "5113b2beb2cdabb90509bff8987abf0294a2d6d019e0e75a96b2283dfa996925",
@@ -14035,9 +14035,9 @@
           "translation": "Использует обычное наследование прототипов Map при запекании прототипов. Сохранение в Mapper выпускает развёрнутый результат и не сохраняет эту директиву."
         },
         "/directives/@id=map-format.directive.map-text/applies_to": {
-          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap"
+          "translation": "ProtoMap",
+          "preserve_source": true
         },
         "/directives/@id=map-format.directive.map-text/default": {
           "source_sha256": "7bdb0408d8e92839a2420b909e034593a0fa278dc725b1ec81b212f7d1aaddaf",
@@ -14072,9 +14072,9 @@
           "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
         },
         "/properties/@id=map-format.property.Critter.AttachMaster/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.Condition/description": {
           "source_sha256": "2afcc291a8b5a505cd1930649d35673632251f86ff1ce75de5e9b6ec964f3e33",
@@ -14085,9 +14085,9 @@
           "translation": "Классифицирует криттера как управляемого игроком независимо от его текущего сетевого состояния."
         },
         "/properties/@id=map-format.property.Critter.ControlledByPlayer/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.CustomHolderEntry/description": {
           "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
@@ -14118,9 +14118,9 @@
           "translation": "Назначенный сервером идентификатор, общий для участников одной текущей поездки по глобальной карте."
         },
         "/properties/@id=map-format.property.Critter.GlobalMapTripId/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.Hex/description": {
           "source_sha256": "4673dc90632e2343fafd7d22411b309cb8670c1153963561fbbbf3bf76c08227",
@@ -14143,27 +14143,27 @@
           "translation": "Показывает, что этот криттер сейчас следует за другим криттером как прикреплённый."
         },
         "/properties/@id=map-format.property.Critter.IsAttached/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.IsChosen/description": {
           "source_sha256": "381e130d01d4c815747cf6091918b078756c0360817a237010518e9b5b3aee79",
           "translation": "Показывает, что этот криттер является локально выбранным на текущем клиенте."
         },
         "/properties/@id=map-format.property.Critter.IsChosen/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.IsPlayerOffline/description": {
           "source_sha256": "f153b3cf89aebef940af174bddc8a7f977265dfc401cd362959b2fc3a9246e71",
           "translation": "Клиентское состояние соединения, сообщённое для управляемого игроком криттера."
         },
         "/properties/@id=map-format.property.Critter.IsPlayerOffline/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.ItemIds/description": {
           "source_sha256": "b36a3cf283ea2690381cf7a72659b34381f660c9436d905a97d00694169ed90d",
@@ -14174,45 +14174,45 @@
           "translation": "Цвет RGBA, излучаемый клиентским источником света криттера."
         },
         "/properties/@id=map-format.property.Critter.LightColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.LightDistance/description": {
           "source_sha256": "f25441db4ccf37f9477696ec349a9229623d2e1b5d2d1a2a12e1d2f1cb062573",
           "translation": "Радиус действия клиентского источника света криттера в гексах."
         },
         "/properties/@id=map-format.property.Critter.LightDistance/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.LightFlags/description": {
           "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
           "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
         },
         "/properties/@id=map-format.property.Critter.LightFlags/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.LightIntensity/description": {
           "source_sha256": "f14dfed224d2691eccdc99cd59b5d17080fa909760b4424f94a30b2c9a361c0e",
           "translation": "Знаковая интенсивность клиентского источника света криттера в процентах."
         },
         "/properties/@id=map-format.property.Critter.LightIntensity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.LightSource/description": {
           "source_sha256": "81799139e0e90b3da0d8ff6cc9c815d3b7c033f5507e7a9d1eaa6e4673557b8c",
           "translation": "Включает клиентский источник света карты с центром на этом криттере."
         },
         "/properties/@id=map-format.property.Critter.LightSource/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.LookDistance/description": {
           "source_sha256": "c8034068f82917328834377f3d8b396d9ce4402ba0b433b81cadfbd44f8c031f",
@@ -14227,9 +14227,9 @@
           "translation": "Клиентские значения фиксированного размера, передаваемые слоям 3D-модели и обработчику анимации."
         },
         "/properties/@id=map-format.property.Critter.ModelLayers/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.ModelName/description": {
           "source_sha256": "69d124a0012e5742bdf62f5aee5c124f95d439b041e250f0006d87511f5ad63d",
@@ -14240,9 +14240,9 @@
           "translation": "Текущая серверная скорость активного движения."
         },
         "/properties/@id=map-format.property.Critter.MovingSpeed/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Critter.Multihex/description": {
           "source_sha256": "8243c8fafcd3fb39b49333e131ef30daff5ed37b5a7dd63c229c8facd67aaf19",
@@ -14273,9 +14273,9 @@
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
         "/properties/@id=map-format.property.Critter.VisibilityMode/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
@@ -14510,18 +14510,18 @@
           "translation": "Текущий клиентский цвет глобального дневного освещения, переданный через SetDayColors для скриптов и эффектов."
         },
         "/properties/@id=map-format.property.Map.GlobalDayColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.GlobalDayLightCapacity/description": {
           "source_sha256": "0e896da615c499ca6b6d72bbfb4ff6cce8634eee240e64afb1eb6f58bb28a46d",
           "translation": "Текущая дневная ёмкость источников света с флагом global в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=map-format.property.Map.GlobalDayLightCapacity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.InitScript/description": {
           "source_sha256": "b346fcb09dd09317254f8bd4a470e5686139f49d77fdddb12cc789c9b9a54fdf",
@@ -14544,18 +14544,18 @@
           "translation": "Текущий клиентский оттенок карты, переданный через SetDayColors и используемый отрисовкой карты."
         },
         "/properties/@id=map-format.property.Map.MapDayColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.MapDayLightCapacity/description": {
           "source_sha256": "a7905a27180f72a6d5c60e80fbd6a24dcd91c21834c106f7ffbd18129444961f",
           "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=map-format.property.Map.MapDayLightCapacity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.RemovedStaticItemIds/description": {
           "source_sha256": "10145eb732c492e95bd1f053d5f0dd6f9130a2d46594d4d1bdd479c2eed8351f",
@@ -14570,9 +14570,9 @@
           "translation": "Округлённое клиентское смещение области просмотра в пикселях пространства карты."
         },
         "/properties/@id=map-format.property.Map.ScrollOffset/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.Size/description": {
           "source_sha256": "55bb18dc4ab688f68beaf3fb1b2bfed3d1d671b87a6c09cf6816c70f83e77e49",
@@ -14583,18 +14583,18 @@
           "translation": "Текущий клиентский коэффициент масштаба спрайтов карты."
         },
         "/properties/@id=map-format.property.Map.SpritesZoom/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.SpritesZoomTarget/description": {
           "source_sha256": "5cc47384c7e656b8df01bf7003c3ca3f136e115eb89e50dc18affa7ba19589d1",
           "translation": "Целевой коэффициент масштаба, к которому интерполируется клиентский вид карты."
         },
         "/properties/@id=map-format.property.Map.SpritesZoomTarget/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=map-format.property.Map.WorkHex/description": {
           "source_sha256": "39e3f4def04bf163c5b07c4ede4f0dbe86be876eeee8e51712a36a3b3162a429",
@@ -14611,18 +14611,6 @@
         "/rules/@id=map-format.rule.bounds/requirement": {
           "source_sha256": "5b6244805d5f3af4243cc6936a8a4a6e94ac8cab28818df99b435db6e1a91fa6",
           "translation": "Значения Hex криттеров и предметов MapHex обязаны находиться внутри ProtoMap Size до runtime-загрузки."
-        },
-        "/rules/@id=map-format.rule.client-resource-preparation/description": {
-          "source_sha256": "56c9608d63820029ac1bfd7852897b98c998dc2d31d6a9535b7d951129ee29c8",
-          "translation": "Direct, нулевой бюджет workers и полностью тёплый кеш обходят lookahead, fences и смену epoch. Подготовка не меняет baked format, действующий PicMap, factory overrides или опубликованный префикс перед ошибкой."
-        },
-        "/rules/@id=map-format.rule.client-resource-preparation/name": {
-          "source_sha256": "0bf880c7401815c13767eedcf26b49fa7a8f4fd2dc1e2fd8de61a73e14e4dd8b",
-          "translation": "Подготовка ресурсов статики клиента"
-        },
-        "/rules/@id=map-format.rule.client-resource-preparation/requirement": {
-          "source_sha256": "8555665e0704f715a47e04f7052906fa31defa30be8435571c64c5c70e0315aa",
-          "translation": "После приёма холодного допустимого спрайта исходным replay проверяются не больше 64 записей, включая текущую, с пассивными owner properties; допустимые ресурсы подаются до единственного fence окна, затем сохраняется исходный порядок публикации предметов. Removed IDs пропускаются до восстановления свойств. Спекулятивные ошибки откладываются до исходного replay."
         },
         "/rules/@id=map-format.rule.closed-section-set/description": {
           "source_sha256": "1bdad5a1c6185f74ac3eb538be01e29ef981a2ec7f02904b7b7e3e32f6be3305",
@@ -14861,6 +14849,18 @@
         "/sections/@id=map-format.section.proto-map/description": {
           "source_sha256": "59683b5a18f46133a47288536f69d7312fb3bbf4e7e10a0ddbbab408ce9c0015",
           "translation": "Объявляет свойства уровня карты и начинает контекст для следующих секций [$Name/Critter] и [$Name/Item]."
+        },
+        "/rules/@id=map-format.rule.client-resource-preparation/description": {
+          "source_sha256": "56c9608d63820029ac1bfd7852897b98c998dc2d31d6a9535b7d951129ee29c8",
+          "translation": "Direct, нулевой бюджет workers и полностью тёплый кеш обходят lookahead, fences и смену epoch. Подготовка не меняет baked format, действующий PicMap, factory overrides или опубликованный префикс перед ошибкой."
+        },
+        "/rules/@id=map-format.rule.client-resource-preparation/name": {
+          "source_sha256": "0bf880c7401815c13767eedcf26b49fa7a8f4fd2dc1e2fd8de61a73e14e4dd8b",
+          "translation": "Подготовка ресурсов статики клиента"
+        },
+        "/rules/@id=map-format.rule.client-resource-preparation/requirement": {
+          "source_sha256": "8555665e0704f715a47e04f7052906fa31defa30be8435571c64c5c70e0315aa",
+          "translation": "После приёма холодного допустимого спрайта исходным replay проверяются не больше 64 записей, включая текущую, с пассивными owner properties; допустимые ресурсы подаются до единственного fence окна, затем сохраняется исходный порядок публикации предметов. Removed IDs пропускаются до восстановления свойств. Спекулятивные ошибки откладываются до исходного replay."
         }
       }
     },
@@ -14901,9 +14901,9 @@
           "translation": "Импортирует drawable hierarchy, имена material textures и skin data для mesh payload, а ModelSourceLoader извлекает source skeleton и animation clips, преобразуемые ModelInfoBaker в обязательный runtime rig."
         },
         "/assets/@id=model-format.asset.fbx/name": {
-          "preserve_source": true,
           "source_sha256": "e3883e2b36f66c0cfa0e48477a37e78342adbdffb4fbad9cc6330f8bf09ea52a",
-          "translation": "FBX mesh"
+          "translation": "FBX mesh",
+          "preserve_source": true
         },
         "/assets/@id=model-format.asset.fbx/requirements": {
           "source_sha256": "57b1dd3401d1a90d47270d043e1d3716368c321ed3c9737849625489bdddd5e1",
@@ -14919,9 +14919,9 @@
           "translation": "Импортирует static hierarchy и drawable mesh через тот же путь ufbx; отсутствующие vertex attributes получают детерминированные defaults."
         },
         "/assets/@id=model-format.asset.obj/name": {
-          "preserve_source": true,
           "source_sha256": "65de7b63ac2dbb4563f45ff1da9e4daee1c683d798080d4e15a7911d14b53b55",
-          "translation": "OBJ mesh"
+          "translation": "OBJ mesh",
+          "preserve_source": true
         },
         "/assets/@id=model-format.asset.obj/requirements": {
           "source_sha256": "fe1baa159a8334d3c4dff5d741850713da28329562f08a8016cd69031ba19f46",
@@ -15004,18 +15004,6 @@
         "/removed_legacy/@name=ViewSize/description": {
           "source_sha256": "a414e452981ef0107d530bb11ad71bfa11a44158e6ce76838d4eb834fe472d88",
           "translation": "Client проецирует baked model bounds и active child layers вместо authored interaction rectangle."
-        },
-        "/rules/@id=model-format.rule.baked-link-bounds/name": {
-          "source_sha256": "1aaf518bc8b33fa23cfcb9d27fc9d65b0a54333fbead663c7700c1a936e7127a",
-          "translation": "Запечённые bounds geometry link"
-        },
-        "/rules/@id=model-format.rule.baked-link-bounds/rationale": {
-          "source_sha256": "8f50f9cce65e96d54ad14f7932e3b5bb9270fe1d1cd17afc8c74eeaaaebcd095",
-          "translation": "Runtime framing выбирает bounds direct child для active parent clips и при их отсутствии использует aggregate link envelope вместо обхода и skinning combined-mesh vertices."
-        },
-        "/rules/@id=model-format.rule.baked-link-bounds/requirement": {
-          "source_sha256": "8f3577c8290270029dd8ed1002cab4f580134d2c1d8acc2458d0fd30a04f53d1",
-          "translation": "Каждый non-particle child link содержит проверенный aggregate root-space AABB и per-animation AABB mapped clips parent; default и particle links не содержат geometry payload."
         },
         "/rules/@id=model-format.rule.first-animation-wins/name": {
           "source_sha256": "2b12d8e38b381cab1614f933ecfb4cb2dc0c323a7cd9a98adf03fb4d04eb2abe",
@@ -15124,6 +15112,18 @@
         "/rules/@id=model-format.rule.runtime-composition/requirement": {
           "source_sha256": "55636344a8bcef69935b1384d57108e9f0a16191abbf698bcfa047d4faf8f34d",
           "translation": "Считайте model-layer arrays состоянием композиции: значение может создать/удалить children и particles, изменить materials/effects, geometry, cuts и combined meshes."
+        },
+        "/rules/@id=model-format.rule.baked-link-bounds/name": {
+          "source_sha256": "1aaf518bc8b33fa23cfcb9d27fc9d65b0a54333fbead663c7700c1a936e7127a",
+          "translation": "Запечённые bounds geometry link"
+        },
+        "/rules/@id=model-format.rule.baked-link-bounds/rationale": {
+          "source_sha256": "8f50f9cce65e96d54ad14f7932e3b5bb9270fe1d1cd17afc8c74eeaaaebcd095",
+          "translation": "Runtime framing выбирает bounds direct child для active parent clips и при их отсутствии использует aggregate link envelope вместо обхода и skinning combined-mesh vertices."
+        },
+        "/rules/@id=model-format.rule.baked-link-bounds/requirement": {
+          "source_sha256": "8f3577c8290270029dd8ed1002cab4f580134d2c1d8acc2458d0fd30a04f53d1",
+          "translation": "Каждый non-particle child link содержит проверенный aggregate root-space AABB и per-animation AABB mapped clips parent; default и particle links не содержат geometry payload."
         },
         "/rules/@id=model-format.rule.selector-order/name": {
           "source_sha256": "6030dfb7525b1ac3baa9f794922bbb56536e01a6a9129b92c70f1e4d3cc0e388",
@@ -15665,13 +15665,13 @@
           "source_sha256": "1db447979446c1832dc28d82b16cbb174aad3b02f41b48cada1c99dfede5433c",
           "translation": "суффикс, добавляемый к именам каталогов выходных бинарных файлов"
         },
-        "/cli/arguments/@id=package.cli.argument.buildhash/description": {
-          "source_sha256": "f9266c7f36c9ffabb805ff021eb8db871069d6b2c60da6f85321cb611eefb61a",
-          "translation": "хеш сборки"
-        },
         "/cli/arguments/@id=package.cli.argument.bundle_compress_level/description": {
           "source_sha256": "c43e9ea3f9e604aa2dc432064c47f293c71983ae1ea5992128d33df69dddffc0",
           "translation": "переопределить уровень сжатия внешнего пакета (шкала zlib: 0 без сжатия, 9 максимально)"
+        },
+        "/cli/arguments/@id=package.cli.argument.buildhash/description": {
+          "source_sha256": "f9266c7f36c9ffabb805ff021eb8db871069d6b2c60da6f85321cb611eefb61a",
+          "translation": "хеш сборки"
         },
         "/cli/arguments/@id=package.cli.argument.config/description": {
           "source_sha256": "8c398af6b2e17beee40d8ad430d470d9e3e2792bc4c1787f0ccf4419e2f46209",
@@ -16002,9 +16002,9 @@
           "translation": "Загружайте спрайты частиц через ParticleSpriteFactory и позволяйте подсистеме выбирать рендеринг через атлас или напрямую в сцену."
         },
         "/object_families/@id=particle-format.family.actions/name": {
-          "preserve_source": true,
           "source_sha256": "ff8059dc6752afdd30d275932b1d5031a2ec854b387a8c57ecc6689915293a43",
-          "translation": "Actions"
+          "translation": "Actions",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.actions/rationale": {
           "source_sha256": "48d3fb573fb5d17b7732f8a7c7b9f25724b3236532b6d94ec363959ea94973cd",
@@ -16015,9 +16015,9 @@
           "translation": "Ссылки действий рождения и смерти могут использовать ActionSet и SpawnParticlesAction."
         },
         "/object_families/@id=particle-format.family.core/name": {
-          "preserve_source": true,
           "source_sha256": "70ea1983c983deacc1b61805aea3d43648afd932f346fb2e5d9b15facd4035c2",
-          "translation": "Core"
+          "translation": "Core",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.core/rationale": {
           "source_sha256": "7681364f252a03c3aa2e94a59e425128fd468546ad07e8bc8e36c8513e78d585",
@@ -16028,9 +16028,9 @@
           "translation": "Создавайте ровно один корневой объект System и включайте под его атрибутом groups один или несколько объектов Group."
         },
         "/object_families/@id=particle-format.family.effekseer/name": {
-          "preserve_source": true,
           "source_sha256": "99138381e7a246590be4c396c31f1afa1820417d0a7a2a1cdf2daf849fb47c4e",
-          "translation": "Effekseer backend"
+          "translation": "Effekseer backend",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.effekseer/rationale": {
           "source_sha256": "b080552ba9fb9c9f7f59f6c6edaac655f401d8182300ac3ff570ee8050ee6d21",
@@ -16041,9 +16041,9 @@
           "translation": "Включите FO_EFFEKSEER_PARTICLES, чтобы собрать компилятор проектов с фиксированным профилем и runtime-подсистему Effekseer."
         },
         "/object_families/@id=particle-format.family.emitters/name": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.emitters/rationale": {
           "source_sha256": "3beb0cff368100953ea420b4def3f516b6fb344688e3a5f679a36bd570182eaf",
@@ -16054,9 +16054,9 @@
           "translation": "Группы могут содержать пять зарегистрированных тегов эмиттеров."
         },
         "/object_families/@id=particle-format.family.interpolators/name": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.interpolators/rationale": {
           "source_sha256": "451bcfcd02a61b4c14e97733624da271ce262a996b0a08172781fb106c243a1d",
@@ -16067,9 +16067,9 @@
           "translation": "Для изменения параметров частиц используйте только зарегистрированные теги инициализаторов и интерполяторов типов float и color."
         },
         "/object_families/@id=particle-format.family.modifiers/name": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.modifiers/rationale": {
           "source_sha256": "b61943e29b844cc0da81bccfbace1683a35fec707baa6d045e725e7b939fd4b1",
@@ -16080,9 +16080,9 @@
           "translation": "Группы могут содержать одиннадцать зарегистрированных тегов модификаторов."
         },
         "/object_families/@id=particle-format.family.renderer/name": {
-          "preserve_source": true,
           "source_sha256": "9deb780b4331c60e997ac3b4855911f7e0fc8c432d7607992e566cb0087e7ca2",
-          "translation": "Renderer"
+          "translation": "Renderer",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.renderer/rationale": {
           "source_sha256": "c314172baa66b2debe8e62415719bb567627172a38791dd28f6e8b7c6ce6345a",
@@ -16093,9 +16093,9 @@
           "translation": "Для рендеринга частиц используйте принадлежащий движку тег SparkQuadRenderer."
         },
         "/object_families/@id=particle-format.family.spark/name": {
-          "preserve_source": true,
           "source_sha256": "ba36567f0f58e7bbaf3608ec300aa5b40bd7dd52f3c117c946c0fc48e739a5d6",
-          "translation": "SPARK backend"
+          "translation": "SPARK backend",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.spark/rationale": {
           "source_sha256": "1c4c87694247a36e68310858e6bdac9e4dba27268793274797586bd6b8861a1c",
@@ -16106,9 +16106,9 @@
           "translation": "Включите FO_SPARK_PARTICLES, чтобы собрать бейкер SPARK, runtime-подсистему и встроенный редактор частиц в Mapper."
         },
         "/object_families/@id=particle-format.family.zones/name": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/object_families/@id=particle-format.family.zones/rationale": {
           "source_sha256": "4891344753515509f24bbaf335e192ec0caef647bad9edc396c53d8f9977b56d",
@@ -16119,9 +16119,9 @@
           "translation": "Ссылки эмиттеров и зональных модификаторов могут использовать шесть зарегистрированных тегов геометрических зон."
         },
         "/objects/@id=particle-format.object.action-set/family": {
-          "preserve_source": true,
           "source_sha256": "ff8059dc6752afdd30d275932b1d5031a2ec854b387a8c57ecc6689915293a43",
-          "translation": "Actions"
+          "translation": "Actions",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.action-set/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16132,9 +16132,9 @@
           "translation": "XML-тег <ActionSet> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.box/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.box/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16145,9 +16145,9 @@
           "translation": "XML-тег <Box> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.collider/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.collider/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16158,9 +16158,9 @@
           "translation": "XML-тег <Collider> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.color-default-initializer/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.color-default-initializer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16171,9 +16171,9 @@
           "translation": "XML-тег <ColorDefaultInitializer> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.color-graph-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.color-graph-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16184,9 +16184,9 @@
           "translation": "XML-тег <ColorGraphInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.color-random-initializer/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.color-random-initializer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16197,9 +16197,9 @@
           "translation": "XML-тег <ColorRandomInitializer> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.color-random-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.color-random-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16210,9 +16210,9 @@
           "translation": "XML-тег <ColorRandomInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.color-simple-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.color-simple-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16223,9 +16223,9 @@
           "translation": "XML-тег <ColorSimpleInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.cylinder/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.cylinder/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16236,9 +16236,9 @@
           "translation": "XML-тег <Cylinder> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.destroyer/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.destroyer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16265,9 +16265,9 @@
           "translation": "Создавайте эффекты Effekseer как текстовые проекты .efkproj, а из игрового контента ссылайтесь на соответствующий путь .efk."
         },
         "/objects/@id=particle-format.object.emitter-attacher/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.emitter-attacher/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16278,9 +16278,9 @@
           "translation": "XML-тег <EmitterAttacher> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.float-default-initializer/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.float-default-initializer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16291,9 +16291,9 @@
           "translation": "XML-тег <FloatDefaultInitializer> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.float-graph-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.float-graph-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16304,9 +16304,9 @@
           "translation": "XML-тег <FloatGraphInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.float-random-initializer/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.float-random-initializer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16317,9 +16317,9 @@
           "translation": "XML-тег <FloatRandomInitializer> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.float-random-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.float-random-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16330,9 +16330,9 @@
           "translation": "XML-тег <FloatRandomInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.float-simple-interpolator/family": {
-          "preserve_source": true,
           "source_sha256": "69567eaba190631a3c1db5effc7fafbc8ef6324b35587e1b954430a1a96f8739",
-          "translation": "Interpolators"
+          "translation": "Interpolators",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.float-simple-interpolator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16343,9 +16343,9 @@
           "translation": "XML-тег <FloatSimpleInterpolator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.friction/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.friction/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16356,9 +16356,9 @@
           "translation": "XML-тег <Friction> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.gravity/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.gravity/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16369,9 +16369,9 @@
           "translation": "XML-тег <Gravity> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.group/family": {
-          "preserve_source": true,
           "source_sha256": "70ea1983c983deacc1b61805aea3d43648afd932f346fb2e5d9b15facd4035c2",
-          "translation": "Core"
+          "translation": "Core",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.group/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16382,9 +16382,9 @@
           "translation": "XML-тег <Group> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.linear-force/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.linear-force/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16395,9 +16395,9 @@
           "translation": "XML-тег <LinearForce> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.normal-emitter/family": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.normal-emitter/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16408,9 +16408,9 @@
           "translation": "XML-тег <NormalEmitter> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.obstacle/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.obstacle/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16421,9 +16421,9 @@
           "translation": "XML-тег <Obstacle> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.plane/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.plane/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16434,9 +16434,9 @@
           "translation": "XML-тег <Plane> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.point-mass/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.point-mass/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16447,9 +16447,9 @@
           "translation": "XML-тег <PointMass> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.point/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.point/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16460,9 +16460,9 @@
           "translation": "XML-тег <Point> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.random-emitter/family": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.random-emitter/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16473,9 +16473,9 @@
           "translation": "XML-тег <RandomEmitter> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.random-force/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.random-force/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16486,9 +16486,9 @@
           "translation": "XML-тег <RandomForce> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.ring/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.ring/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16499,9 +16499,9 @@
           "translation": "XML-тег <Ring> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.rotator/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.rotator/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16512,9 +16512,9 @@
           "translation": "XML-тег <Rotator> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.spark-quad-renderer/family": {
-          "preserve_source": true,
           "source_sha256": "9deb780b4331c60e997ac3b4855911f7e0fc8c432d7607992e566cb0087e7ca2",
-          "translation": "Renderer"
+          "translation": "Renderer",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.spark-quad-renderer/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16541,9 +16541,9 @@
           "translation": "Создавайте системы SPARK как XML в файлах .spark, а из игрового контента ссылайтесь на соответствующий путь .spk."
         },
         "/objects/@id=particle-format.object.spawn-particles-action/family": {
-          "preserve_source": true,
           "source_sha256": "ff8059dc6752afdd30d275932b1d5031a2ec854b387a8c57ecc6689915293a43",
-          "translation": "Actions"
+          "translation": "Actions",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.spawn-particles-action/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16554,9 +16554,9 @@
           "translation": "XML-тег <SpawnParticlesAction> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.sphere/family": {
-          "preserve_source": true,
           "source_sha256": "a53aa373c5e23e694a5498ab4d49bb604e15c7c77ba1aab4bc1423fc7fce7fe6",
-          "translation": "Zones"
+          "translation": "Zones",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.sphere/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16567,9 +16567,9 @@
           "translation": "XML-тег <Sphere> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.spheric-emitter/family": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.spheric-emitter/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16580,9 +16580,9 @@
           "translation": "XML-тег <SphericEmitter> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.static-emitter/family": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.static-emitter/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16593,9 +16593,9 @@
           "translation": "XML-тег <StaticEmitter> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.straight-emitter/family": {
-          "preserve_source": true,
           "source_sha256": "b024842ed6364750562e78d0121ca7ce82eea7af2a79aa6189595ca89c169c9b",
-          "translation": "Emitters"
+          "translation": "Emitters",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.straight-emitter/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16606,9 +16606,9 @@
           "translation": "XML-тег <StraightEmitter> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.system/family": {
-          "preserve_source": true,
           "source_sha256": "70ea1983c983deacc1b61805aea3d43648afd932f346fb2e5d9b15facd4035c2",
-          "translation": "Core"
+          "translation": "Core",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.system/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16619,9 +16619,9 @@
           "translation": "XML-тег <System> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/objects/@id=particle-format.object.vortex/family": {
-          "preserve_source": true,
           "source_sha256": "072da57facdcc631f41c5d886717e71197314fb5518d7c4b51033dbe11f7ffff",
-          "translation": "Modifiers"
+          "translation": "Modifiers",
+          "preserve_source": true
         },
         "/objects/@id=particle-format.object.vortex/rationale": {
           "source_sha256": "bc2c4073b709105a0aebc0a38111937dfbcac3f6f9aec7962023d497103b5e08",
@@ -16632,9 +16632,9 @@
           "translation": "XML-тег <Vortex> зарегистрирован и доступен для редактирования в штатном редакторе частиц."
         },
         "/renderer_fields/@id=particle-format.renderer.atlas-dimensions/default": {
-          "preserve_source": true,
           "source_sha256": "ac4750dbb83d4a51542912ea8135f5e1107464ecc7892381c90b21d02d1b9d35",
-          "translation": "1;1"
+          "translation": "1;1",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.atlas-dimensions/rationale": {
           "source_sha256": "e8dac3c4befd2c12806ee02bcd4759fdd53266af0dc936c9d6f8aa24a62af733",
@@ -16657,9 +16657,9 @@
           "translation": "Не задавайте blend mode: дескриптор объявляет его, но SparkQuadRenderer не импортирует, не экспортирует и не применяет поле. Выбирайте смешивание в эффекте .fofx."
         },
         "/renderer_fields/@id=particle-format.renderer.draw-in-scene/default": {
-          "preserve_source": true,
           "source_sha256": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
-          "translation": "false"
+          "translation": "false",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.draw-in-scene/rationale": {
           "source_sha256": "2523e98bc9e95a5cfe1ab174d850e98fd1987487de8c0edd0bbc1bd3ae5312cf",
@@ -16694,9 +16694,9 @@
           "translation": "Sprite и Ring могут использовать стабильную сортировку по глубине камеры; Ribbon, Track и Model не допускают Z-sort. ZTest/ZWrite каждого узла выбирают вариант эффекта по глубине, а отсечение граней Model выбирает режим отсечения отрисовки движка."
         },
         "/renderer_fields/@id=particle-format.renderer.effekseer-direct-scene/default": {
-          "preserve_source": true,
           "source_sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
-          "translation": "true"
+          "translation": "true",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.effekseer-direct-scene/rationale": {
           "source_sha256": "bd7db56e26544324d229384b82b961217e1c6b5be67f491b1bcf082614e6cb1c",
@@ -16755,9 +16755,9 @@
           "translation": "Используйте материал Default, смешивание Normal/Add/Sub, фильтрацию nearest или linear и адресацию Clamp или Repeat. Смешивание Multiply, зеркальная адресация, дополнительные слоты текстур, пользовательские материалы, soft particles, falloff и интерполяция flipbook отклоняются."
         },
         "/renderer_fields/@id=particle-format.renderer.locked-axis/default": {
-          "preserve_source": true,
           "source_sha256": "3868b9b6608cd4114727cc4b9c82a6d181b593d36953fd528eba9211926d1ba8",
-          "translation": "LOCK_UP"
+          "translation": "LOCK_UP",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.locked-axis/rationale": {
           "source_sha256": "021b9856ec91874189dfa4bdfbb6c236a7c8271ae3531321ac41ca320d720b61",
@@ -16768,9 +16768,9 @@
           "translation": "Используйте LOCK_LOOK или LOCK_UP, когда режиму ориентации по оси требуется зафиксировать один вектор."
         },
         "/renderer_fields/@id=particle-format.renderer.locked-look-vector/default": {
-          "preserve_source": true,
           "source_sha256": "8d82467b7686f652efdcf792dff0763f739cb8fc051f68d968b4e53cbc5d0387",
-          "translation": "(0,0,1)"
+          "translation": "(0,0,1)",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.locked-look-vector/rationale": {
           "source_sha256": "2c6f3a1f7449e4c7b992a30ec78e3d8c5c5aaeebdf69d8098418c1565d6f6c6a",
@@ -16781,9 +16781,9 @@
           "translation": "Укажите мировой или локальный вектор взгляда для выбранного режима ориентированного четырёхугольника."
         },
         "/renderer_fields/@id=particle-format.renderer.locked-up-vector/default": {
-          "preserve_source": true,
           "source_sha256": "de66332d4f7284a3fb59f87ec95d0976ebe86ee643587d76f9762158ed7ea8c5",
-          "translation": "(0,1,0)"
+          "translation": "(0,1,0)",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.locked-up-vector/rationale": {
           "source_sha256": "641168786e7cb5e6f851cc51745aabce743c71a63896beff4229c9a03c845392",
@@ -16794,9 +16794,9 @@
           "translation": "Укажите мировой или локальный вектор вверх для выбранного режима ориентированного четырёхугольника."
         },
         "/renderer_fields/@id=particle-format.renderer.look-orientation/default": {
-          "preserve_source": true,
           "source_sha256": "a3e6e81dcd6e2b7565d71b2c45672808fdb0c8d79c0a6ad428786c4aee38f550",
-          "translation": "LOOK_CAMERA_PLANE"
+          "translation": "LOOK_CAMERA_PLANE",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.look-orientation/rationale": {
           "source_sha256": "83044f93d37eeb4d869d65aa1a7299350779a008c25706df2ce8423a66ee44e8",
@@ -16807,9 +16807,9 @@
           "translation": "Используйте одно из четырёх распознаваемых имён ориентации взгляда; другие строки не меняют ориентацию по умолчанию."
         },
         "/renderer_fields/@id=particle-format.renderer.scale/default": {
-          "preserve_source": true,
           "source_sha256": "ac4750dbb83d4a51542912ea8135f5e1107464ecc7892381c90b21d02d1b9d35",
-          "translation": "1;1"
+          "translation": "1;1",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.scale/rationale": {
           "source_sha256": "b30a292f0a5331b0a006615c6d2349b2836c230019c530dc70863dcc17b679ad",
@@ -16820,9 +16820,9 @@
           "translation": "Одно значение изменяет X, сохраняя Y по умолчанию; два значения задают масштаб X и Y четырёхугольника частицы."
         },
         "/renderer_fields/@id=particle-format.renderer.spark-draw-route/default": {
-          "preserve_source": true,
           "source_sha256": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
-          "translation": "false"
+          "translation": "false",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.spark-draw-route/rationale": {
           "source_sha256": "37452d37af983936402102f31aadae2e9d79dfaa9fe9835891dba09bfc1ea473",
@@ -16857,9 +16857,9 @@
           "translation": "Разрешите поддерживаемый ресурс спрайта относительно каталога исходного .spark и загрузите его текстуру атласа через предоставленный загрузчик текстур."
         },
         "/renderer_fields/@id=particle-format.renderer.up-orientation/default": {
-          "preserve_source": true,
           "source_sha256": "f4ec58aaed5bec18833a9cf511b25985f21388b64385bb4633d1082f366744a3",
-          "translation": "UP_CAMERA"
+          "translation": "UP_CAMERA",
+          "preserve_source": true
         },
         "/renderer_fields/@id=particle-format.renderer.up-orientation/rationale": {
           "source_sha256": "c81e45b6d7a97fd4fa059e5cd99925c76a91d0d8fa383643f6ba626ccc479e82",
@@ -16942,9 +16942,9 @@
           "translation": "GetLiveBounds возвращает преобразованные запечённые границы, только пока в подсистеме есть активные частицы или экземпляры; неактивные и завершённые системы не резервируют пространство кадра модели."
         },
         "/runtime_rules/@id=particle-format.runtime.prewarm/name": {
-          "preserve_source": true,
           "source_sha256": "aa3007c02fc4b5c35552d56bbdf8a5d4187733dc6d17a86bf36bfcee644039ac",
-          "translation": "Prewarm"
+          "translation": "Prewarm",
+          "preserve_source": true
         },
         "/runtime_rules/@id=particle-format.runtime.prewarm/rationale": {
           "source_sha256": "66012978e33b93c2ff14953d44613f93f8be64b910b1a8fd98aa1635d297eeef",
@@ -17384,9 +17384,9 @@
           "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
         },
         "/properties/@id=prototype-format.property.Critter.AttachMaster/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.Condition/description": {
           "source_sha256": "2afcc291a8b5a505cd1930649d35673632251f86ff1ce75de5e9b6ec964f3e33",
@@ -17397,9 +17397,9 @@
           "translation": "Классифицирует криттера как управляемого игроком независимо от его текущего сетевого состояния."
         },
         "/properties/@id=prototype-format.property.Critter.ControlledByPlayer/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.CustomHolderEntry/description": {
           "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
@@ -17430,9 +17430,9 @@
           "translation": "Назначенный сервером идентификатор, общий для участников одной текущей поездки по глобальной карте."
         },
         "/properties/@id=prototype-format.property.Critter.GlobalMapTripId/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.Hex/description": {
           "source_sha256": "4673dc90632e2343fafd7d22411b309cb8670c1153963561fbbbf3bf76c08227",
@@ -17455,27 +17455,27 @@
           "translation": "Показывает, что этот криттер сейчас следует за другим криттером как прикреплённый."
         },
         "/properties/@id=prototype-format.property.Critter.IsAttached/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.IsChosen/description": {
           "source_sha256": "381e130d01d4c815747cf6091918b078756c0360817a237010518e9b5b3aee79",
           "translation": "Показывает, что этот криттер является локально выбранным на текущем клиенте."
         },
         "/properties/@id=prototype-format.property.Critter.IsChosen/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.IsPlayerOffline/description": {
           "source_sha256": "f153b3cf89aebef940af174bddc8a7f977265dfc401cd362959b2fc3a9246e71",
           "translation": "Клиентское состояние соединения, сообщённое для управляемого игроком криттера."
         },
         "/properties/@id=prototype-format.property.Critter.IsPlayerOffline/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.ItemIds/description": {
           "source_sha256": "b36a3cf283ea2690381cf7a72659b34381f660c9436d905a97d00694169ed90d",
@@ -17486,45 +17486,45 @@
           "translation": "Цвет RGBA, излучаемый клиентским источником света криттера."
         },
         "/properties/@id=prototype-format.property.Critter.LightColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.LightDistance/description": {
           "source_sha256": "f25441db4ccf37f9477696ec349a9229623d2e1b5d2d1a2a12e1d2f1cb062573",
           "translation": "Радиус действия клиентского источника света криттера в гексах."
         },
         "/properties/@id=prototype-format.property.Critter.LightDistance/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.LightFlags/description": {
           "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
           "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
         },
         "/properties/@id=prototype-format.property.Critter.LightFlags/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.LightIntensity/description": {
           "source_sha256": "f14dfed224d2691eccdc99cd59b5d17080fa909760b4424f94a30b2c9a361c0e",
           "translation": "Знаковая интенсивность клиентского источника света криттера в процентах."
         },
         "/properties/@id=prototype-format.property.Critter.LightIntensity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.LightSource/description": {
           "source_sha256": "81799139e0e90b3da0d8ff6cc9c815d3b7c033f5507e7a9d1eaa6e4673557b8c",
           "translation": "Включает клиентский источник света карты с центром на этом криттере."
         },
         "/properties/@id=prototype-format.property.Critter.LightSource/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.LookDistance/description": {
           "source_sha256": "c8034068f82917328834377f3d8b396d9ce4402ba0b433b81cadfbd44f8c031f",
@@ -17539,9 +17539,9 @@
           "translation": "Клиентские значения фиксированного размера, передаваемые слоям 3D-модели и обработчику анимации."
         },
         "/properties/@id=prototype-format.property.Critter.ModelLayers/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.ModelName/description": {
           "source_sha256": "69d124a0012e5742bdf62f5aee5c124f95d439b041e250f0006d87511f5ad63d",
@@ -17552,9 +17552,9 @@
           "translation": "Текущая серверная скорость активного движения."
         },
         "/properties/@id=prototype-format.property.Critter.MovingSpeed/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Critter.Multihex/description": {
           "source_sha256": "8243c8fafcd3fb39b49333e131ef30daff5ed37b5a7dd63c229c8facd67aaf19",
@@ -17585,9 +17585,9 @@
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
         "/properties/@id=prototype-format.property.Critter.VisibilityMode/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
@@ -17842,18 +17842,18 @@
           "translation": "Текущий клиентский цвет глобального дневного освещения, переданный через SetDayColors для скриптов и эффектов."
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayLightCapacity/description": {
           "source_sha256": "0e896da615c499ca6b6d72bbfb4ff6cce8634eee240e64afb1eb6f58bb28a46d",
           "translation": "Текущая дневная ёмкость источников света с флагом global в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayLightCapacity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.InitScript/description": {
           "source_sha256": "b346fcb09dd09317254f8bd4a470e5686139f49d77fdddb12cc789c9b9a54fdf",
@@ -17876,18 +17876,18 @@
           "translation": "Текущий клиентский оттенок карты, переданный через SetDayColors и используемый отрисовкой карты."
         },
         "/properties/@id=prototype-format.property.Map.MapDayColor/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.MapDayLightCapacity/description": {
           "source_sha256": "a7905a27180f72a6d5c60e80fbd6a24dcd91c21834c106f7ffbd18129444961f",
           "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=prototype-format.property.Map.MapDayLightCapacity/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.RemovedStaticItemIds/description": {
           "source_sha256": "10145eb732c492e95bd1f053d5f0dd6f9130a2d46594d4d1bdd479c2eed8351f",
@@ -17902,9 +17902,9 @@
           "translation": "Округлённое клиентское смещение области просмотра в пикселях пространства карты."
         },
         "/properties/@id=prototype-format.property.Map.ScrollOffset/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.Size/description": {
           "source_sha256": "55bb18dc4ab688f68beaf3fb1b2bfed3d1d671b87a6c09cf6816c70f83e77e49",
@@ -17915,18 +17915,18 @@
           "translation": "Текущий клиентский коэффициент масштаба спрайтов карты."
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoom/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoomTarget/description": {
           "source_sha256": "5cc47384c7e656b8df01bf7003c3ca3f136e115eb89e50dc18affa7ba19589d1",
           "translation": "Целевой коэффициент масштаба, к которому интерполируется клиентский вид карты."
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoomTarget/excluded_reason": {
-          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary"
+          "translation": "temporary",
+          "preserve_source": true
         },
         "/properties/@id=prototype-format.property.Map.WorkHex/description": {
           "source_sha256": "39e3f4def04bf163c5b07c4ede4f0dbe86be876eeee8e51712a36a3b3162a429",
@@ -17943,6 +17943,18 @@
         "/rules/@id=prototype-format.rule.acyclic-inheritance/requirement": {
           "source_sha256": "bf22407129f7bb17b9d8044328a848c6c525b3fd834a234d78c465ef8c3b9d7d",
           "translation": "Граф родителей прототипов должен быть ациклическим."
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/name": {
+          "source_sha256": "3b7e486bfe39fde3fe810e8fa50b87ec0bf15e4a030b54bf4ec0023a96bcae86",
+          "translation": "Повторяющиеся ancestors"
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/description": {
+          "source_sha256": "49fc1cc07ea1b731fbd9045d6e4393b2c1437894cda80fba5fe3a383e2d8363b",
+          "translation": "Default permissive; задайте option false, если проект должен отклонять каждый inheritance diamond. ProtoBaker и ProtoTextBaker применяют одно правило."
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/requirement": {
+          "source_sha256": "ad9bcd40019167e91db1c5f6b54182cf5bb66797cd85c1072ecd4fd3197cc387",
+          "translation": "Parent, достигнутый по нескольким inheritance paths, добавляет поля только при первом достижении; Baking.AllowRepeatedProtoParents определяет, пропустить или отклонить поздний повтор."
         },
         "/rules/@id=prototype-format.rule.config-syntax/description": {
           "source_sha256": "02a95a175613626cecc94aceaeff6be8b3e3d78aeccc63715a4ca6aab09b0dba",
@@ -18028,18 +18040,6 @@
           "source_sha256": "5c3a76a9664b0ddf8429feaf38db44926abf7bcb5ebfee72f9b79e68f365eaf3",
           "translation": "Непустое встроенное свойство InitScript у Item, Critter, Map или Location должно разрешаться в глобальный void callback, принимающий тип этой сущности и bool firstTime."
         },
-        "/rules/@id=prototype-format.rule.property-migration/description": {
-          "source_sha256": "bf453e3b2c1bf6121f5ff1bce4dda4cb683a5ea7a32db3dfc3d0413d554032ee",
-          "translation": "Объявляйте MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator> или Remove <Old>. Property и Proto имеют общие записи Rename/Transform из пяти частей и Remove из четырёх. Старые значения пропускаются при загрузке документа/текста; bake и финализация метаданных отклоняют повторное имя."
-        },
-        "/rules/@id=prototype-format.rule.property-migration/name": {
-          "source_sha256": "da829260a47d3ceac8d95d856dd36e7e5c1952ae88ce84774643cd9c68af7c48",
-          "translation": "Действия миграции свойств"
-        },
-        "/rules/@id=prototype-format.rule.property-migration/requirement": {
-          "source_sha256": "93855f298e8d67ba0a54283730f0d572ef298728ef77d62149220fc35c52d5ed",
-          "translation": "Property Rename требует существующего назначения; Transform — существующего Persistent-свойства; Remove навсегда запрещает удалённое имя у того же владельца, включая поля RefType."
-        },
         "/rules/@id=prototype-format.rule.property-resolution/description": {
           "source_sha256": "18095fb7f65adf8b52e5b8f99923c0dde2a18bb10fadd4bed14433e3489aab99",
           "translation": "Неизвестные, отключённые для стороны, virtual и temporary свойства отклоняются; свойства только противоположной стороны пропускаются для этой стороны."
@@ -18075,18 +18075,6 @@
         "/rules/@id=prototype-format.rule.proto-reference/requirement": {
           "source_sha256": "d5c08397b2e94007068881bd23f42d4df47a0a538b13c12ddae387a051e1372d",
           "translation": "Ссылки свойств на сущности FixedType и Proto должны разрешаться после миграции, кроме nullable-свойства с пустым авторским значением."
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/description": {
-          "source_sha256": "49fc1cc07ea1b731fbd9045d6e4393b2c1437894cda80fba5fe3a383e2d8363b",
-          "translation": "Default permissive; задайте option false, если проект должен отклонять каждый inheritance diamond. ProtoBaker и ProtoTextBaker применяют одно правило."
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/name": {
-          "source_sha256": "3b7e486bfe39fde3fe810e8fa50b87ec0bf15e4a030b54bf4ec0023a96bcae86",
-          "translation": "Повторяющиеся ancestors"
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/requirement": {
-          "source_sha256": "ad9bcd40019167e91db1c5f6b54182cf5bb66797cd85c1072ecd4fd3197cc387",
-          "translation": "Parent, достигнутый по нескольким inheritance paths, добавляет поля только при первом достижении; Baking.AllowRepeatedProtoParents определяет, пропустить или отклонить поздний повтор."
         },
         "/rules/@id=prototype-format.rule.side-specific-output/description": {
           "source_sha256": "ea46ce8437e05b825c0848d267c2a049ec5f7db8a9639f77ee36a9e1a7c17023",
@@ -18148,9 +18136,9 @@
           "translation": "Каждая верхнеуровневая секция ProtoMap объявляет прототип Map. Вложенные секции размещения $Name/Item и $Name/Critter пропускаются ProtoBaker и обрабатываются MapBaker."
         },
         "/section_forms/@id=prototype-format.section.fomap-proto-map/resolves_to": {
-          "preserve_source": true,
           "source_sha256": "be176b0015c424b78e9f343f8bc3014a7a701cc2eb9000b6acbc04d67dbecb8f",
-          "translation": "Map"
+          "translation": "Map",
+          "preserve_source": true
         },
         "/section_forms/@id=prototype-format.section.proto-entity/description": {
           "source_sha256": "2ebf8283c65528d01a5d504b46ab727c900113a289d854dde04bf905f2ae0fc8",
@@ -18159,6 +18147,18 @@
         "/section_forms/@id=prototype-format.section.proto-entity/resolves_to": {
           "source_sha256": "6753cd36a218d5a6bdfbfcffea370f97f38d19f423e90df73859fa67f8dea9f6",
           "translation": "Метаданные сущности типа <Type> с HasProtos"
+        },
+        "/rules/@id=prototype-format.rule.property-migration/name": {
+          "source_sha256": "da829260a47d3ceac8d95d856dd36e7e5c1952ae88ce84774643cd9c68af7c48",
+          "translation": "Действия миграции свойств"
+        },
+        "/rules/@id=prototype-format.rule.property-migration/requirement": {
+          "source_sha256": "93855f298e8d67ba0a54283730f0d572ef298728ef77d62149220fc35c52d5ed",
+          "translation": "Property Rename требует существующего назначения; Transform — существующего Persistent-свойства; Remove навсегда запрещает удалённое имя у того же владельца, включая поля RefType."
+        },
+        "/rules/@id=prototype-format.rule.property-migration/description": {
+          "source_sha256": "bf453e3b2c1bf6121f5ff1bce4dda4cb683a5ea7a32db3dfc3d0413d554032ee",
+          "translation": "Объявляйте MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator> или Remove <Old>. Property и Proto имеют общие записи Rename/Transform из пяти частей и Remove из четырёх. Старые значения пропускаются при загрузке документа/текста; bake и финализация метаданных отклоняют повторное имя."
         }
       }
     },
@@ -18220,21 +18220,6 @@
     },
     "support-matrix": {
       "entries": {
-        "/platforms/@id=android-arm-clients/applications": {
-          "source_sha256": "a41dea1e2edd649e2ea650e8b149c6ef78ae378140c13b230935d4ac1d2badb3",
-          "translation": [
-            "входные данные динамической библиотеки или пакета клиента"
-          ]
-        },
-        "/platforms/@id=android-arm-clients/compiler": {
-          "preserve_source": true,
-          "source_sha256": "c4ad472b34d4877ce2759074ba6c63507493a49aebc8156b35fd043f5360d13c",
-          "translation": "Android NDK Clang"
-        },
-        "/platforms/@id=android-arm-clients/host": {
-          "source_sha256": "154b05b164ebc0dfd381aa476e63aed23daf95f603ff7c580671600917d824a1",
-          "translation": "хост кросс-сборки Ubuntu 24.04"
-        },
         "/platforms/@id=android-arm-clients/limitations": {
           "source_sha256": "011f82f296ef71e437685209ca098d2ba1d26132e089702b921688f724f3b871",
           "translation": "За сборку APK, подписание, доставку через магазины, GPU, ввод и звук на устройстве, приостановку и возобновление, а также приёмку сети отвечает проект."
@@ -18242,25 +18227,6 @@
         "/platforms/@id=android-arm-clients/runtime_evidence": {
           "source_sha256": "99d371dae23b1151f6a793188b6c20bb7e5f4c37094cab16f5d71b57b4c87387",
           "translation": "Smoke-маршрут на эмуляторе или физическом устройстве не требуется."
-        },
-        "/platforms/@id=android-arm-clients/target": {
-          "source_sha256": "1711622632e550bb3567cb7ff4c073b57c7def6b4dbbf66b93d3c17adb6cfe17",
-          "translation": "Android armeabi-v7a и arm64-v8a"
-        },
-        "/platforms/@id=android-x86-client/applications": {
-          "source_sha256": "a41dea1e2edd649e2ea650e8b149c6ef78ae378140c13b230935d4ac1d2badb3",
-          "translation": [
-            "входные данные динамической библиотеки или пакета клиента"
-          ]
-        },
-        "/platforms/@id=android-x86-client/compiler": {
-          "preserve_source": true,
-          "source_sha256": "c4ad472b34d4877ce2759074ba6c63507493a49aebc8156b35fd043f5360d13c",
-          "translation": "Android NDK Clang"
-        },
-        "/platforms/@id=android-x86-client/host": {
-          "source_sha256": "3839c7250ae97171fbcd65ffd59e03d916d6fd9d5e8167b79243d041c4a92b50",
-          "translation": "хост кросс-сборки"
         },
         "/platforms/@id=android-x86-client/limitations": {
           "source_sha256": "9ae997c1c587fe028e8ae38093ac1b10f39a931b0ff5cedb347d12ef0e1deb09",
@@ -18270,26 +18236,6 @@
           "source_sha256": "64ab21a448088cbe5dc1a48586da01797ce3670a3202343545b236b577c7f8fb",
           "translation": "Обязательная линия CI или runtime отсутствует."
         },
-        "/platforms/@id=android-x86-client/target": {
-          "preserve_source": true,
-          "source_sha256": "f186e93da44327f649ff33b2c0ed2b7dddebd2cab788eb4bb83db83030a5eb49",
-          "translation": "Android x86"
-        },
-        "/platforms/@id=ios-client/applications": {
-          "source_sha256": "96d7b76b5f74b2f35e0f2b61a9c2cac7caf381a28969fc21aa2f1eb1aaeab2d9",
-          "translation": [
-            "входные данные библиотеки клиента или пакета приложения"
-          ]
-        },
-        "/platforms/@id=ios-client/compiler": {
-          "preserve_source": true,
-          "source_sha256": "8cad4368acf2e09467e16f73fb5c4ffd771a0270117d6d654d93f09178394d6a",
-          "translation": "AppleClang"
-        },
-        "/platforms/@id=ios-client/host": {
-          "source_sha256": "5ebbaecac7121ccb2cc024fbe553e6946b50a870c911d45ad7a70b4a09b52326",
-          "translation": "runner-ы macOS 26 для Intel и Apple Silicon"
-        },
         "/platforms/@id=ios-client/limitations": {
           "source_sha256": "d31b61a5d8228d718ec23810bae5bfbe64359b68e74b73f7163251084b293310",
           "translation": "За provisioning, подписание, доставку через App Store, ввод и звук на устройстве, сеть и приёмку lifecycle отвечает проект."
@@ -18297,29 +18243,6 @@
         "/platforms/@id=ios-client/runtime_evidence": {
           "source_sha256": "a675a173fec8ea573da1e521d0676c7fffbeb572d4dfe6bbd9e7771e796693f2",
           "translation": "Smoke-маршрут на симуляторе или устройстве не требуется."
-        },
-        "/platforms/@id=ios-client/target": {
-          "source_sha256": "a2bde82c01a19aed73290c9d61a8c8e4bb4d4f770b39230e81413047da8d3a45",
-          "translation": "клиент iOS"
-        },
-        "/platforms/@id=linux-x64-clang/applications": {
-          "source_sha256": "536c6c987d6744afb3c76c1a5b2cfbdbf6e7b75cdf9c54ab23b3c760b31bd170",
-          "translation": [
-            "настольный и headless-клиент",
-            "сервер, headless-сервер и daemon",
-            "Mapper, AnimationViewer и ParticleViewer",
-            "компилятор AngelScript",
-            "Baker ресурсов"
-          ]
-        },
-        "/platforms/@id=linux-x64-clang/compiler": {
-          "source_sha256": "4e3d40d2b63b6cd4666b7009f3ad22293aa303347dbff00f3e6149b86bb29e67",
-          "translation": "Clang 20 или новее"
-        },
-        "/platforms/@id=linux-x64-clang/host": {
-          "preserve_source": true,
-          "source_sha256": "f62cbb2d1c9fc506fce3c8988d30ff746dd3b91dd3a0a88852b39eef48b105dc",
-          "translation": "Ubuntu 24.04"
         },
         "/platforms/@id=linux-x64-clang/limitations": {
           "source_sha256": "f03786568b253d3aad79de51fc3b977c8d3d235e8e6b5e1da1864100f7a2f464",
@@ -18329,30 +18252,6 @@
           "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
           "translation": "Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута."
         },
-        "/platforms/@id=linux-x64-clang/target": {
-          "preserve_source": true,
-          "source_sha256": "0b89754e2450f9d4e963b32bf6ea1475c55bd3b4620dcebd0576e7785379d314",
-          "translation": "Linux x64"
-        },
-        "/platforms/@id=linux-x64-gcc/applications": {
-          "source_sha256": "536c6c987d6744afb3c76c1a5b2cfbdbf6e7b75cdf9c54ab23b3c760b31bd170",
-          "translation": [
-            "настольный и headless-клиент",
-            "сервер, headless-сервер и daemon",
-            "Mapper, AnimationViewer и ParticleViewer",
-            "компилятор AngelScript",
-            "Baker ресурсов"
-          ]
-        },
-        "/platforms/@id=linux-x64-gcc/compiler": {
-          "source_sha256": "50f1526da53f14906ec268c5a3c97a4c805ac6ba27bf67960683ec0be0a8c830",
-          "translation": "GCC 13 или новее"
-        },
-        "/platforms/@id=linux-x64-gcc/host": {
-          "preserve_source": true,
-          "source_sha256": "f62cbb2d1c9fc506fce3c8988d30ff746dd3b91dd3a0a88852b39eef48b105dc",
-          "translation": "Ubuntu 24.04"
-        },
         "/platforms/@id=linux-x64-gcc/limitations": {
           "source_sha256": "1d478a1f596aad18d61c6b829ccddd8946d49b60a384adb47ba089f842ac3bdb",
           "translation": "Runtime-квалификация обеспечивается линией Clang; проекту, который зависит от поведения GCC, нужна собственная smoke-линия."
@@ -18360,26 +18259,6 @@
         "/platforms/@id=linux-x64-gcc/runtime_evidence": {
           "source_sha256": "616ff970f9eedbff523ccf5554ee02aa3ac16d04942191df874bf202b7ab55c6",
           "translation": "Отдельный процессный smoke-маршрут для GCC не требуется."
-        },
-        "/platforms/@id=linux-x64-gcc/target": {
-          "preserve_source": true,
-          "source_sha256": "0b89754e2450f9d4e963b32bf6ea1475c55bd3b4620dcebd0576e7785379d314",
-          "translation": "Linux x64"
-        },
-        "/platforms/@id=macos-client/applications": {
-          "source_sha256": "f0e05e48c11c13a93d18f7a5edd02dfd6b88e4780caf594e61adee6c5468480f",
-          "translation": [
-            "настольный клиент"
-          ]
-        },
-        "/platforms/@id=macos-client/compiler": {
-          "preserve_source": true,
-          "source_sha256": "8cad4368acf2e09467e16f73fb5c4ffd771a0270117d6d654d93f09178394d6a",
-          "translation": "AppleClang"
-        },
-        "/platforms/@id=macos-client/host": {
-          "source_sha256": "5ebbaecac7121ccb2cc024fbe553e6946b50a870c911d45ad7a70b4a09b52326",
-          "translation": "runner-ы macOS 26 для Intel и Apple Silicon"
         },
         "/platforms/@id=macos-client/limitations": {
           "source_sha256": "3c2a2ed829a6fa64cb2c10d8b9e76f9d8120cb211fc8471166a9bbd4f4cd2c9d",
@@ -18389,25 +18268,6 @@
           "source_sha256": "703ac788c7b77f7a492795b1a63b61cc3af7447e37fb9135e64fade6c1c774a5",
           "translation": "Процессный smoke-маршрут клиента не требуется."
         },
-        "/platforms/@id=macos-client/target": {
-          "source_sha256": "6251e3df09ecda30103ab5665f83e66e93cc96b2dee00338cc8460164897399c",
-          "translation": "macOS x64 и arm64"
-        },
-        "/platforms/@id=web-client/applications": {
-          "source_sha256": "5695009f5f9d9f139d48eea79b5ad931bd7167cab589a662464dad2429bc43c0",
-          "translation": [
-            "браузерный клиент"
-          ]
-        },
-        "/platforms/@id=web-client/compiler": {
-          "preserve_source": true,
-          "source_sha256": "77f1c128336aa26eac646af3f4f1facb64882c78a38418190197c83d67739365",
-          "translation": "Emscripten Clang"
-        },
-        "/platforms/@id=web-client/host": {
-          "source_sha256": "154b05b164ebc0dfd381aa476e63aed23daf95f603ff7c580671600917d824a1",
-          "translation": "хост кросс-сборки Ubuntu 24.04"
-        },
         "/platforms/@id=web-client/limitations": {
           "source_sha256": "ace456af947eefced39ca4c5410ac8b03d940b771e954298003cdee224e26ca2",
           "translation": "Штатная Web-цель поддерживает только клиент WebGL 2. Линия сборки не квалифицирует пары браузеров и GPU либо production hosting, заголовки, хранение, активацию звука, развёртывание, CDN, подписание или откат; эти приёмочные gates остаются ответственностью проекта."
@@ -18415,29 +18275,6 @@
         "/platforms/@id=web-client/runtime_evidence": {
           "source_sha256": "8deaffd8bbe65c727205735168b5f68b2f3623f52761217cc3d5a9ee05beb0f8",
           "translation": "Проверяемый реестр валидации BuildTools не требует браузерного процессного smoke-маршрута."
-        },
-        "/platforms/@id=web-client/target": {
-          "preserve_source": true,
-          "source_sha256": "3cc64514d3abed3dc3b2e415611859ab78d3b9603db4ea43cea997437a1d3c94",
-          "translation": "WebAssembly"
-        },
-        "/platforms/@id=windows-x64-clangcl/applications": {
-          "source_sha256": "77768aaccc065b658d44a8a26466730932538f19c041f158702960d481d52129",
-          "translation": [
-            "настольный клиент",
-            "сервер",
-            "компилятор AngelScript",
-            "Baker ресурсов"
-          ]
-        },
-        "/platforms/@id=windows-x64-clangcl/compiler": {
-          "source_sha256": "b6226d6598e7f5cd2b7f5b85273a886d96159b30827bda75a081460c9c4b6317",
-          "translation": "ClangCL 20 или новее"
-        },
-        "/platforms/@id=windows-x64-clangcl/host": {
-          "preserve_source": true,
-          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
-          "translation": "Windows"
         },
         "/platforms/@id=windows-x64-clangcl/limitations": {
           "source_sha256": "007bb0e1a07d9a2550ca4d272784e674f5dced7fcc60123da156ed3b62bceb0f",
@@ -18447,30 +18284,6 @@
           "source_sha256": "64ab21a448088cbe5dc1a48586da01797ce3670a3202343545b236b577c7f8fb",
           "translation": "Обязательная линия CI или runtime отсутствует."
         },
-        "/platforms/@id=windows-x64-clangcl/target": {
-          "preserve_source": true,
-          "source_sha256": "e40abbc83ba24de80b8abec9aef47f03140b3b36695ea69db71bb4a9843afc91",
-          "translation": "Windows x64"
-        },
-        "/platforms/@id=windows-x64-msvc/applications": {
-          "source_sha256": "b8bcc6f7062ced90abdda51db169fec7a588d35c792d09dae8ac34a365926ee7",
-          "translation": [
-            "настольный и headless-клиент",
-            "сервер, headless-сервер и Windows Service",
-            "Mapper, AnimationViewer и ParticleViewer",
-            "компилятор AngelScript",
-            "Baker ресурсов"
-          ]
-        },
-        "/platforms/@id=windows-x64-msvc/compiler": {
-          "source_sha256": "a4b36114e3a904c4f7369bc8aab7680b7760fe6b2ce271e3b1606d834faa6610",
-          "translation": "MSVC 19.44 или новее"
-        },
-        "/platforms/@id=windows-x64-msvc/host": {
-          "preserve_source": true,
-          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
-          "translation": "Windows"
-        },
         "/platforms/@id=windows-x64-msvc/limitations": {
           "source_sha256": "f8ee591ee091ed2592adda0fe4a89a1b789db4b0e8fcd7b589b4fad328124166",
           "translation": "Обязательная линия подтверждает конфигурацию и компиляцию, но не поведение рендерера, драйвера, базы данных, установщика, подписания, магазина, развёртывания, отката или runtime lifecycle."
@@ -18479,26 +18292,6 @@
           "source_sha256": "bc4c9eca7f920efb63c901da4510a6c60e556f8b6a16b6e49ef7909385d44e5a",
           "translation": "Проверяемый реестр валидации BuildTools не требует процессного smoke-маршрута."
         },
-        "/platforms/@id=windows-x64-msvc/target": {
-          "preserve_source": true,
-          "source_sha256": "e40abbc83ba24de80b8abec9aef47f03140b3b36695ea69db71bb4a9843afc91",
-          "translation": "Windows x64"
-        },
-        "/platforms/@id=windows-x86-msvc/applications": {
-          "source_sha256": "f0e05e48c11c13a93d18f7a5edd02dfd6b88e4780caf594e61adee6c5468480f",
-          "translation": [
-            "настольный клиент"
-          ]
-        },
-        "/platforms/@id=windows-x86-msvc/compiler": {
-          "source_sha256": "a4b36114e3a904c4f7369bc8aab7680b7760fe6b2ce271e3b1606d834faa6610",
-          "translation": "MSVC 19.44 или новее"
-        },
-        "/platforms/@id=windows-x86-msvc/host": {
-          "preserve_source": true,
-          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
-          "translation": "Windows"
-        },
         "/platforms/@id=windows-x86-msvc/limitations": {
           "source_sha256": "76fefaa7769e0d813106d1fb882e0d18074cb2d8cc11a20259fd76dada42ba05",
           "translation": "Серверные и инструментальные приложения не входят в опубликованную поверхность проверки x86."
@@ -18506,11 +18299,6 @@
         "/platforms/@id=windows-x86-msvc/runtime_evidence": {
           "source_sha256": "8c019fd9d7ee8f6615bc4aec939d1aab330c3034ea40a64e3a4813bc0a02dd8e",
           "translation": "Процессный smoke-маршрут не требуется."
-        },
-        "/platforms/@id=windows-x86-msvc/target": {
-          "preserve_source": true,
-          "source_sha256": "0e11b18f4686e5f8eda60cc052a7cfa76196252538632fad2eaa7a675f2e5dd8",
-          "translation": "Windows x86"
         },
         "/policy/build_gated": {
           "source_sha256": "030970cc514382c2c8b0c4dd3210bd2eb476d62519b2ed5a2479321544c4205b",
@@ -18532,23 +18320,14 @@
           "source_sha256": "015e9de5e0afbc80a72b4bddc7e3ef6f984257cd13010cafb8ed944d9a9d841e",
           "translation": "OpenGL ES и возможности платформы; Vulkan и SDL_GPU вне Web остаются опциональными на этапе компиляции"
         },
-        "/renderer_policy/@platforms=Android%20and%20iOS/platforms": {
-          "source_sha256": "eca2d740063bd7cc9238df265e11d7d2135db3b988fbd0509754fd948febd391",
-          "translation": "Android и iOS"
-        },
         "/renderer_policy/@platforms=Android%20and%20iOS/qualification": {
           "source_sha256": "5c79aa172af0992f6b0650f44536c67cf9b3863425006f13ccdbccbb1f110555",
           "translation": "Требуется приёмка на устройстве."
         },
         "/renderer_policy/@platforms=Web/compiled_backends": {
-          "preserve_source": true,
           "source_sha256": "83d3fbfd290e7355b3a04b690d34c65c4ab0b3f8098b90b29c9d1d4b6252b322",
-          "translation": "WebGL 2"
-        },
-        "/renderer_policy/@platforms=Web/platforms": {
-          "preserve_source": true,
-          "source_sha256": "2975104784a401e3880e2215550e9490eda7e67db5fc2b35e1a244acb092ced3",
-          "translation": "Web"
+          "translation": "WebGL 2",
+          "preserve_source": true
         },
         "/renderer_policy/@platforms=Web/qualification": {
           "source_sha256": "8ced349bd0399a748f4570a90e4bbca7b23bf1cbd5b8506211f4770850845c83",
@@ -18558,11 +18337,6 @@
           "source_sha256": "c38411fdba74adaf73cf66d04a94579399d148cfd3df8c2376849cda7d7ea400",
           "translation": "платформенный OpenGL, а также отключаемые Vulkan и SDL_GPU, если исходный backend может инициализироваться"
         },
-        "/renderer_policy/@platforms=Windows%2C%20Linux%2C%20macOS/platforms": {
-          "preserve_source": true,
-          "source_sha256": "58d2747484a948f6e54b712994e86cb91376a5cf4d803adb6b1670ed0c88bb65",
-          "translation": "Windows, Linux, macOS"
-        },
         "/renderer_policy/@platforms=Windows%2C%20Linux%2C%20macOS/qualification": {
           "source_sha256": "e84d9586b79bac5ecceebc411c314945c124541a23521dff0a64917eee0230e3",
           "translation": "Покрытие сборки не означает покрытие рендерера, runtime или драйвера; каждому поставляемому backend нужна видимая проектная сцена."
@@ -18571,13 +18345,239 @@
           "source_sha256": "1d4f1c3ff1d52220a78e69a2b3bc4bc6b9851ca05af0786ae22635b35120fc8b",
           "translation": "frontend null/headless"
         },
-        "/renderer_policy/@platforms=headless%20applications/platforms": {
-          "source_sha256": "fa6962f37255a1280fd78ba205fa9b82a196b621cc98828bb3bba4d087cdc5f6",
-          "translation": "headless-приложения"
-        },
         "/renderer_policy/@platforms=headless%20applications/qualification": {
           "source_sha256": "c112665b40a162d5e65fdee0726cdf02f6d899743ac839002a57dd20b0315164",
           "translation": "Не делайте вывод о поддержке видимого рендеринга или звука по headless smoke-тесту."
+        },
+        "/platforms/@id=android-arm-clients/applications": {
+          "source_sha256": "a41dea1e2edd649e2ea650e8b149c6ef78ae378140c13b230935d4ac1d2badb3",
+          "translation": [
+            "входные данные динамической библиотеки или пакета клиента"
+          ]
+        },
+        "/platforms/@id=android-arm-clients/compiler": {
+          "source_sha256": "c4ad472b34d4877ce2759074ba6c63507493a49aebc8156b35fd043f5360d13c",
+          "translation": "Android NDK Clang",
+          "preserve_source": true
+        },
+        "/platforms/@id=android-arm-clients/host": {
+          "source_sha256": "154b05b164ebc0dfd381aa476e63aed23daf95f603ff7c580671600917d824a1",
+          "translation": "хост кросс-сборки Ubuntu 24.04"
+        },
+        "/platforms/@id=android-arm-clients/target": {
+          "source_sha256": "1711622632e550bb3567cb7ff4c073b57c7def6b4dbbf66b93d3c17adb6cfe17",
+          "translation": "Android armeabi-v7a и arm64-v8a"
+        },
+        "/platforms/@id=android-x86-client/applications": {
+          "source_sha256": "a41dea1e2edd649e2ea650e8b149c6ef78ae378140c13b230935d4ac1d2badb3",
+          "translation": [
+            "входные данные динамической библиотеки или пакета клиента"
+          ]
+        },
+        "/platforms/@id=android-x86-client/compiler": {
+          "source_sha256": "c4ad472b34d4877ce2759074ba6c63507493a49aebc8156b35fd043f5360d13c",
+          "translation": "Android NDK Clang",
+          "preserve_source": true
+        },
+        "/platforms/@id=android-x86-client/host": {
+          "source_sha256": "3839c7250ae97171fbcd65ffd59e03d916d6fd9d5e8167b79243d041c4a92b50",
+          "translation": "хост кросс-сборки"
+        },
+        "/platforms/@id=android-x86-client/target": {
+          "source_sha256": "f186e93da44327f649ff33b2c0ed2b7dddebd2cab788eb4bb83db83030a5eb49",
+          "translation": "Android x86",
+          "preserve_source": true
+        },
+        "/platforms/@id=ios-client/applications": {
+          "source_sha256": "96d7b76b5f74b2f35e0f2b61a9c2cac7caf381a28969fc21aa2f1eb1aaeab2d9",
+          "translation": [
+            "входные данные библиотеки клиента или пакета приложения"
+          ]
+        },
+        "/platforms/@id=ios-client/compiler": {
+          "source_sha256": "8cad4368acf2e09467e16f73fb5c4ffd771a0270117d6d654d93f09178394d6a",
+          "translation": "AppleClang",
+          "preserve_source": true
+        },
+        "/platforms/@id=ios-client/host": {
+          "source_sha256": "5ebbaecac7121ccb2cc024fbe553e6946b50a870c911d45ad7a70b4a09b52326",
+          "translation": "runner-ы macOS 26 для Intel и Apple Silicon"
+        },
+        "/platforms/@id=ios-client/target": {
+          "source_sha256": "a2bde82c01a19aed73290c9d61a8c8e4bb4d4f770b39230e81413047da8d3a45",
+          "translation": "клиент iOS"
+        },
+        "/platforms/@id=linux-x64-clang/applications": {
+          "source_sha256": "536c6c987d6744afb3c76c1a5b2cfbdbf6e7b75cdf9c54ab23b3c760b31bd170",
+          "translation": [
+            "настольный и headless-клиент",
+            "сервер, headless-сервер и daemon",
+            "Mapper, AnimationViewer и ParticleViewer",
+            "компилятор AngelScript",
+            "Baker ресурсов"
+          ]
+        },
+        "/platforms/@id=linux-x64-clang/compiler": {
+          "source_sha256": "4e3d40d2b63b6cd4666b7009f3ad22293aa303347dbff00f3e6149b86bb29e67",
+          "translation": "Clang 20 или новее"
+        },
+        "/platforms/@id=linux-x64-clang/host": {
+          "source_sha256": "f62cbb2d1c9fc506fce3c8988d30ff746dd3b91dd3a0a88852b39eef48b105dc",
+          "translation": "Ubuntu 24.04",
+          "preserve_source": true
+        },
+        "/platforms/@id=linux-x64-clang/target": {
+          "source_sha256": "0b89754e2450f9d4e963b32bf6ea1475c55bd3b4620dcebd0576e7785379d314",
+          "translation": "Linux x64",
+          "preserve_source": true
+        },
+        "/platforms/@id=linux-x64-gcc/applications": {
+          "source_sha256": "536c6c987d6744afb3c76c1a5b2cfbdbf6e7b75cdf9c54ab23b3c760b31bd170",
+          "translation": [
+            "настольный и headless-клиент",
+            "сервер, headless-сервер и daemon",
+            "Mapper, AnimationViewer и ParticleViewer",
+            "компилятор AngelScript",
+            "Baker ресурсов"
+          ]
+        },
+        "/platforms/@id=linux-x64-gcc/compiler": {
+          "source_sha256": "50f1526da53f14906ec268c5a3c97a4c805ac6ba27bf67960683ec0be0a8c830",
+          "translation": "GCC 13 или новее"
+        },
+        "/platforms/@id=linux-x64-gcc/host": {
+          "source_sha256": "f62cbb2d1c9fc506fce3c8988d30ff746dd3b91dd3a0a88852b39eef48b105dc",
+          "translation": "Ubuntu 24.04",
+          "preserve_source": true
+        },
+        "/platforms/@id=linux-x64-gcc/target": {
+          "source_sha256": "0b89754e2450f9d4e963b32bf6ea1475c55bd3b4620dcebd0576e7785379d314",
+          "translation": "Linux x64",
+          "preserve_source": true
+        },
+        "/platforms/@id=macos-client/applications": {
+          "source_sha256": "f0e05e48c11c13a93d18f7a5edd02dfd6b88e4780caf594e61adee6c5468480f",
+          "translation": [
+            "настольный клиент"
+          ]
+        },
+        "/platforms/@id=macos-client/compiler": {
+          "source_sha256": "8cad4368acf2e09467e16f73fb5c4ffd771a0270117d6d654d93f09178394d6a",
+          "translation": "AppleClang",
+          "preserve_source": true
+        },
+        "/platforms/@id=macos-client/host": {
+          "source_sha256": "5ebbaecac7121ccb2cc024fbe553e6946b50a870c911d45ad7a70b4a09b52326",
+          "translation": "runner-ы macOS 26 для Intel и Apple Silicon"
+        },
+        "/platforms/@id=macos-client/target": {
+          "source_sha256": "6251e3df09ecda30103ab5665f83e66e93cc96b2dee00338cc8460164897399c",
+          "translation": "macOS x64 и arm64"
+        },
+        "/platforms/@id=web-client/applications": {
+          "source_sha256": "5695009f5f9d9f139d48eea79b5ad931bd7167cab589a662464dad2429bc43c0",
+          "translation": [
+            "браузерный клиент"
+          ]
+        },
+        "/platforms/@id=web-client/compiler": {
+          "source_sha256": "77f1c128336aa26eac646af3f4f1facb64882c78a38418190197c83d67739365",
+          "translation": "Emscripten Clang",
+          "preserve_source": true
+        },
+        "/platforms/@id=web-client/host": {
+          "source_sha256": "154b05b164ebc0dfd381aa476e63aed23daf95f603ff7c580671600917d824a1",
+          "translation": "хост кросс-сборки Ubuntu 24.04"
+        },
+        "/platforms/@id=web-client/target": {
+          "source_sha256": "3cc64514d3abed3dc3b2e415611859ab78d3b9603db4ea43cea997437a1d3c94",
+          "translation": "WebAssembly",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x64-clangcl/applications": {
+          "source_sha256": "77768aaccc065b658d44a8a26466730932538f19c041f158702960d481d52129",
+          "translation": [
+            "настольный клиент",
+            "сервер",
+            "компилятор AngelScript",
+            "Baker ресурсов"
+          ]
+        },
+        "/platforms/@id=windows-x64-clangcl/compiler": {
+          "source_sha256": "b6226d6598e7f5cd2b7f5b85273a886d96159b30827bda75a081460c9c4b6317",
+          "translation": "ClangCL 20 или новее"
+        },
+        "/platforms/@id=windows-x64-clangcl/host": {
+          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
+          "translation": "Windows",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x64-clangcl/target": {
+          "source_sha256": "e40abbc83ba24de80b8abec9aef47f03140b3b36695ea69db71bb4a9843afc91",
+          "translation": "Windows x64",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x64-msvc/applications": {
+          "source_sha256": "b8bcc6f7062ced90abdda51db169fec7a588d35c792d09dae8ac34a365926ee7",
+          "translation": [
+            "настольный и headless-клиент",
+            "сервер, headless-сервер и Windows Service",
+            "Mapper, AnimationViewer и ParticleViewer",
+            "компилятор AngelScript",
+            "Baker ресурсов"
+          ]
+        },
+        "/platforms/@id=windows-x64-msvc/compiler": {
+          "source_sha256": "a4b36114e3a904c4f7369bc8aab7680b7760fe6b2ce271e3b1606d834faa6610",
+          "translation": "MSVC 19.44 или новее"
+        },
+        "/platforms/@id=windows-x64-msvc/host": {
+          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
+          "translation": "Windows",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x64-msvc/target": {
+          "source_sha256": "e40abbc83ba24de80b8abec9aef47f03140b3b36695ea69db71bb4a9843afc91",
+          "translation": "Windows x64",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x86-msvc/applications": {
+          "source_sha256": "f0e05e48c11c13a93d18f7a5edd02dfd6b88e4780caf594e61adee6c5468480f",
+          "translation": [
+            "настольный клиент"
+          ]
+        },
+        "/platforms/@id=windows-x86-msvc/compiler": {
+          "source_sha256": "a4b36114e3a904c4f7369bc8aab7680b7760fe6b2ce271e3b1606d834faa6610",
+          "translation": "MSVC 19.44 или новее"
+        },
+        "/platforms/@id=windows-x86-msvc/host": {
+          "source_sha256": "d598026a9cbc60505f138ce53ac78088d582100c196d0f70c7e2538d4a8d7e10",
+          "translation": "Windows",
+          "preserve_source": true
+        },
+        "/platforms/@id=windows-x86-msvc/target": {
+          "source_sha256": "0e11b18f4686e5f8eda60cc052a7cfa76196252538632fad2eaa7a675f2e5dd8",
+          "translation": "Windows x86",
+          "preserve_source": true
+        },
+        "/renderer_policy/@platforms=Android%20and%20iOS/platforms": {
+          "source_sha256": "eca2d740063bd7cc9238df265e11d7d2135db3b988fbd0509754fd948febd391",
+          "translation": "Android и iOS"
+        },
+        "/renderer_policy/@platforms=Web/platforms": {
+          "source_sha256": "2975104784a401e3880e2215550e9490eda7e67db5fc2b35e1a244acb092ced3",
+          "translation": "Web",
+          "preserve_source": true
+        },
+        "/renderer_policy/@platforms=Windows%2C%20Linux%2C%20macOS/platforms": {
+          "source_sha256": "58d2747484a948f6e54b712994e86cb91376a5cf4d803adb6b1670ed0c88bb65",
+          "translation": "Windows, Linux, macOS",
+          "preserve_source": true
+        },
+        "/renderer_policy/@platforms=headless%20applications/platforms": {
+          "source_sha256": "fa6962f37255a1280fd78ba205fa9b82a196b621cc98828bb3bba4d087cdc5f6",
+          "translation": "headless-приложения"
         }
       }
     },
@@ -18611,6 +18611,18 @@
           "source_sha256": "bee84be6fbcd68bc4bb0f9cc61ce1ad7cb41d4102a0b4200629527abbaa4ee3b",
           "translation": "Baking.BakeLanguages не может быть пустым, а его первый bare language является базой нормализации по умолчанию."
         },
+        "/language_rules/@id=text-format.language.fallback-declaration/name": {
+          "source_sha256": "f6efe1b291c9204040dd870ce92a59c971c363a3a8d0c6897b4e551a3802c2c2",
+          "translation": "Объявление fallback"
+        },
+        "/language_rules/@id=text-format.language.fallback-declaration/rationale": {
+          "source_sha256": "2f7a2d3b15cf95bc65b19e430c5ac1a5d985d9d78b8de76f4b9a0cc4ccba8ea4",
+          "translation": "Явный parent создаёт упорядоченную bake-time fallback chain, а bare language после первого использует fallback на первый язык."
+        },
+        "/language_rules/@id=text-format.language.fallback-declaration/requirement": {
+          "source_sha256": "976bab4149eed65aa614e5792dd9ce9a006453e0fe21947accc6d2344e58683d",
+          "translation": "Каждая запись BakeLanguages имеет форму language или child:parent; имена уникальны, а parent обязан находиться раньше child."
+        },
         "/language_rules/@id=text-format.language.binary-name/name": {
           "source_sha256": "bbb97ebc584ed556d259d0be9b3d1e2226d3bd65a4011669d6cf637b9c60b464",
           "translation": "Имя запечённого файла"
@@ -18634,18 +18646,6 @@
         "/language_rules/@id=text-format.language.default-source-required/requirement": {
           "source_sha256": "604c7f0da81bf0561e906f03dfc6c90050f2ad5bae8443563b35855995223eda",
           "translation": "Для каждого изменённого исходного текстового пакета выбранный набор файлов должен содержать исходник базового языка."
-        },
-        "/language_rules/@id=text-format.language.fallback-declaration/name": {
-          "source_sha256": "f6efe1b291c9204040dd870ce92a59c971c363a3a8d0c6897b4e551a3802c2c2",
-          "translation": "Объявление fallback"
-        },
-        "/language_rules/@id=text-format.language.fallback-declaration/rationale": {
-          "source_sha256": "2f7a2d3b15cf95bc65b19e430c5ac1a5d985d9d78b8de76f4b9a0cc4ccba8ea4",
-          "translation": "Явный parent создаёт упорядоченную bake-time fallback chain, а bare language после первого использует fallback на первый язык."
-        },
-        "/language_rules/@id=text-format.language.fallback-declaration/requirement": {
-          "source_sha256": "976bab4149eed65aa614e5792dd9ce9a006453e0fe21947accc6d2344e58683d",
-          "translation": "Каждая запись BakeLanguages имеет форму language или child:parent; имена уникальны, а parent обязан находиться раньше child."
         },
         "/language_rules/@id=text-format.language.filename/name": {
           "source_sha256": "3fc6620c9672ff2eb08b49fac810300f7bf7ae5fa1cf7d1c7e707ca486f40ce2",
@@ -18816,9 +18816,9 @@
           "translation": "Клиентский рендерер шрифтов распознаёт @color:HEX@ для добавления цвета из шести или восьми шестнадцатеричных цифр и @color@ для восстановления предыдущего цвета."
         },
         "/rendering_rules/@id=text-format.rendering.no-colorize/name": {
-          "preserve_source": true,
           "source_sha256": "d83a2423cf5a57981d68e5cecc6a49f417d8e9c441d5a468735403d3d07683b9",
-          "translation": "NoColorize"
+          "translation": "NoColorize",
+          "preserve_source": true
         },
         "/rendering_rules/@id=text-format.rendering.no-colorize/rationale": {
           "source_sha256": "263e5bc2cc71ee6e6d51057ef5fecae6d7726124e11b0c4773bbb49ff8c30b98",
