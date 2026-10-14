@@ -239,8 +239,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto map_item_writer = make_ptr(&map_item_data_writer);
                 map_item_writer->write_byte_vector(props_data);
 
-                bool is_static = proto->GetStatic();
-                bool is_hidden = proto->GetHidden();
+                ItemProperties item_props {props};
+                bool is_static = item_props.GetStatic();
+                bool is_hidden = item_props.GetHidden();
 
                 if (is_static) {
                     auto client_proto = client_engine.GetProtoItem(proto->GetProtoId());

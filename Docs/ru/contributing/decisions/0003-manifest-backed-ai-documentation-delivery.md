@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-ai-documentation-delivery
 permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
 ---
-<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"682034e3efdf2ab3926411aa7f37728908818d172b909b455add75cf8251c2dc"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"025a36bfcec3c63819c768be29c01afd6d80c3a137875ffa8e387d599212e08a"} -->
 # ADR-0003: доставка документации для ИИ на основе манифеста
 
 - Статус: принято
@@ -34,7 +34,7 @@ permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation
    - `docs-manifest.json`: публичную машиночитаемую проекцию исходного манифеста.
 3. `llms-full.txt` включает полные авторские публичные актуальные документы и index pages сгенерированных справочников. Сгенерированные detail pages исключаются, поскольку их канонические JSON-модели точнее. Проверенный список `exclude_document_ids` может исключить избыточную routing/index page, сохранив её в `llms.txt`, поиске, сайте для людей и `docs-manifest.json`; стартовые и неизвестные или неактуальные IDs исключать нельзя.
    Каждый полный документ сохраняет ID, путь исходника и заголовок канонической ссылки `URL:`; краткие метки сохраняют лимит размера.
-4. Исходный манифест проверяет до записи утверждённый лимит 2 MiB + 192 KiB (2 293 760 байт). Превышение даёт fail-closed отказ: без обрезания документа или непроверенного повышения. Состав, исключения routing pages и правило generated index сохраняются. Ограниченные прибавки сохраняли целиком владеющие руководства:
+4. Исходный манифест проверяет до записи утверждённый лимит 2 MiB + 224 KiB (2 326 528 байт). Превышение даёт fail-closed отказ: без обрезания документа или непроверенного повышения. Состав, исключения routing pages и правило generated index сохраняются. Ограниченные прибавки сохраняли целиком владеющие руководства:
 
    | Дата / ревизия | Байт в полном пакете | Проверенная прибавка и причина |
    |---|---:|---|
@@ -44,6 +44,7 @@ permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation
    | 2026-10-05 | 2 197 968 | +32 KiB для сохранённых пояснений по baking/тестам, миграций и сгенерированных справочников сборки. |
    | 2026-10-09, опубликованная версия 20 | 2 228 855; 112 полных документов | +32 KiB; превышение прежнего лимита на 631 байт. Все актуальные владельцы и обязательная история миграций сохранены. |
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2 282 913 | +32 KiB для необязательных компонентов, baking-lock и миграций; превышение прежнего лимита на 21 921 байт. Ёмкость уже объявлена опубликованным манифестом. |
+   | 2026-10-13, отбор размещений | 2 294 456 до этой строки ADR | +32 KiB для итоговых свойств размещения и обязательной миграции версии 38; превышение прежнего лимита на 696 байт. Состав и исключения не меняются. |
 
    Измерение e1 оставляло 10 847 байт до соответствующей правки документации; перегенерированный результат измеряется заново. Действующие исключения сохраняют своих владельцев-заменителей: `tools` после отдельных руководств Mapper/viewer/particles; `ScriptMethodsMap.md` после сгенерированных `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` и native API index; `BuildTools/README.md` после сгенерированных CLI/helper/package references и `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Все исключённые страницы остаются в `llms.txt`, поиске и публичном манифесте. Руководство по проверяемой managed-арифметике и миграции используют этот лимит без нового повышения или исключения.
 5. Публичный манифест включает каждый публичный документ, в том числе видимые placeholder routes, чтобы клиенты могли отличить актуальный контракт от маршрута миграции. Внутренние планы и отчёты проверки исключаются.

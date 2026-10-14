@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Respect placement overrides of `Static` and `Hidden` when selecting client map items. Cover both directions with a native regression checking exact item IDs.
+- Retain the complete documentation bundle with a reviewed 32 KiB budget increment; preserve document membership and oversize rejection.
+
+### Migration
+
+- Base: `48c437b01e85858e7c702c4be834dd647cd180cb` (`2026.1.38-dev`); next `2026.1.39-dev`. Rebuild Baker, rebake all maps and ship matched server/client pairs. Saved maps load the updated static layer. No API, configuration, binary/network schema, managed ABI or save conversion; existing placement properties retain their authored meaning. Rollback restores the previous Baker/maps without save conversion.
+
+## 2026.1.38-dev - 2026-10-14
+
+### Fixed
+
 - Managed C# callbacks register canonical component names (`Weapon.UseMode`), preserving flat underscores across getter and setter overloads.
 
 ### Migration

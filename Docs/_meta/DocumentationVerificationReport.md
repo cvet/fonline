@@ -2,6 +2,18 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-14 - Move placement fixes onto master
+
+- Preserve the thirteen-file placement-fix snapshot while switching from detached `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` to master at published `48c437b01e85858e7c702c4be834dd647cd180cb`. Fast-forward the old local master; retain published ancestry. Review both incoming commits and their complete source/test/documentation range: holder-side filtering, Game-holder persistence, Git-ref build dependencies, canonical Managed component callback names, paired guidance and focused regressions.
+- Nine carried files are byte-identical after restoring their original line endings. Reconcile the verification history and bilingual changelog without dropping either side; prepare the placement fix as `2026.1.39-dev` from published version 38. The index is empty, and the safety stash is retained. No authored commit or push is performed.
+- Earlier native, bake and live-client evidence below belongs to the detached baseline plus its placement fix. The transfer does not establish fresh native/runtime acceptance of the two incoming commits. Version/migration validation passes against master HEAD; documentation preparation passes for 15 outputs and validation for 411 Markdown entries. Focused delivery/governance/version tests pass 29 cases plus 62 subtests; the enforced comparison against the detached baseline passes with zero changes across 17 contract domains and no missing dispositions. The existing missing Ruby/Bundler limitation remains.
+
+## 2026-10-13 - Client map placement overrides
+
+- The native MapBaker placement test reaches its intended RED: zero client records instead of exact IDs 21/22. Effective `Static` and server-only `Hidden` are now read after applying instance properties; the binary layout and existing field meanings are unchanged. The post-fix MapBaker/MapLoader cases pass 237 assertions. All enabled native roles build without compiler warnings; all maps are rebaked successfully. A live native client displays the previously missing static placements, and both binary streams contain their expected IDs. This embedding runtime inspection supplements the reusable native regression; it does not define an engine test dependency on embedding content.
+- Update paired map-format guidance and the version-38 migration record. The complete eligible AI bundle measured 2,294,456 bytes, 696 above the previous bound. Independent review confirms the existing next-32-KiB policy: set 2,326,528 bytes in the manifest, paired ADR and both repository-budget assertions. Keep the independent 100-byte oversize fixture, generator rejection and document membership unchanged; remeasure after recording this growth.
+- Preparation passes for 15 outputs at 2,294,828 full-context bytes; validation passes 411 Markdown entries, and focused delivery/governance/version tests pass 28 cases plus 62 subtests. Local Ruby/Bundler are unavailable (site build WinError 2); generated checks do not establish rendered Jekyll or browser acceptance. No publication is performed.
+
 
 
 ## 2026-10-13 - Integrate version 36 and prepare preserved scripting work as version 37

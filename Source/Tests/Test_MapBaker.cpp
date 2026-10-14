@@ -98,7 +98,7 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 #endif
 }
 
-static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_view map_proto_name, string_view critter_proto_name, string_view visible_item_proto_name, string_view hidden_item_proto_name)
+static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_view map_proto_name, string_view critter_proto_name, string_view visible_item_proto_name, string_view hidden_item_proto_name, bool visible_item_static = true)
 {
     AddMapBakerMetadataAndProto(rig, map_proto_name);
 
@@ -114,10 +114,10 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
 
     rig.AddBakedFile("MapBakerCritters.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(server_proto_engine, server_critter_type, critter_protos));
 
-    auto make_item_protos = [](auto& proto_engine, hstring item_type, string_view visible_proto, string_view hidden_proto, bool set_hidden) {
+    auto make_item_protos = [visible_item_static](auto& proto_engine, hstring item_type, string_view visible_proto, string_view hidden_proto, bool set_hidden) {
         vector<pair<string, function<void(ProtoItem&)>>> item_protos;
-        item_protos.emplace_back(string(visible_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
-            proto.SetStatic(true);
+        item_protos.emplace_back(string(visible_proto), [&proto_engine, set_hidden, visible_item_static](ProtoItem& proto) {
+            proto.SetStatic(visible_item_static);
 
             if (set_hidden) {
                 proto.SetHidden(false);
@@ -160,6 +160,7 @@ struct BakedMapClientSummary
 {
     uint32_t Hashes {};
     uint32_t Items {};
+    vector<ident_t> ItemIds {};
 };
 
 static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
@@ -206,7 +207,14 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
     summary.Hashes = reader.read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Items = reader.read<uint32_t>();
-    SkipBakedMapEntities(reader, summary.Items);
+
+    for (uint32_t i = 0; i < summary.Items; i++) {
+        summary.ItemIds.emplace_back(reader.read<ident_t::underlying_type>());
+        (void)reader.read<hstring::hash_t>();
+        uint32_t props_size = reader.read<uint32_t>();
+        (void)reader.read_bytes(props_size);
+    }
+
     reader.verify_end();
 
     return summary;
@@ -448,6 +456,51 @@ TEST_CASE("MapBaker")
         CHECK(client_strings.contains("MapBakerCritterOverride"));
         CHECK(client_strings.contains("MapBakerVisibleItemOverride"));
         CHECK(client_strings.contains("MapBakerHiddenItemOverride"));
+    }
+
+    SECTION("ItemPlacementOverridesControlClientStaticItems")
+    {
+        TestRig local_rig;
+        ConfigureMapSourceExtensions(local_rig);
+        AddMapBakerMetadataAndEntityProtos(local_rig, "OverrideMap", "MapBakerCritter", "MapBakerDynamicItem", "MapBakerHiddenItem", false);
+        local_rig.AddSourceFile("OverrideMap.fomap",
+            "[ProtoMap]\n"
+            "$Name = OverrideMap\n"
+            "[$Name/Item]\n"
+            "$Id = 21\n"
+            "$Proto = MapBakerDynamicItem\n"
+            "Hex = 12 13\n"
+            "PicMap = MapBakerVisibleItemOverride\n"
+            "Static = True\n"
+            "[$Name/Item]\n"
+            "$Id = 22\n"
+            "$Proto = MapBakerHiddenItem\n"
+            "Hex = 14 15\n"
+            "PicMap = MapBakerHiddenItemOverride\n"
+            "Hidden = False\n"
+            "[$Name/Item]\n"
+            "$Id = 23\n"
+            "$Proto = MapBakerHiddenItem\n"
+            "Hex = 16 17\n"
+            "PicMap = MapBakerHiddenItemOverride\n"
+            "Static = False\n"
+            "Hidden = False\n"
+            "[$Name/Item]\n"
+            "$Id = 24\n"
+            "$Proto = MapBakerDynamicItem\n"
+            "Hex = 18 19\n"
+            "PicMap = MapBakerVisibleItemOverride\n"
+            "Static = True\n"
+            "Hidden = True\n");
+
+        MapBaker baker(local_rig.MakeContext("Maps"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-server"), "OverrideMap");
+        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-client"), "OverrideMap");
+        CHECK(server_summary.Items == 4);
+        REQUIRE(client_summary.Items == 2);
+        CHECK(client_summary.ItemIds[0] == ident_t {21});
+        CHECK(client_summary.ItemIds[1] == ident_t {22});
     }
 
     SECTION("RejectsValidationErrors")

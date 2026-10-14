@@ -176,6 +176,8 @@ Choose deliberately:
 
 Hidden static items are omitted as client item records, but their client property strings are still collected into the hash dictionary. This lets server-only static logic retain identifiers needed by the client-side hash resolver without exposing a visible map entity.
 
+Client static records use the placement's effective server-side `Static` and `Hidden`, after overrides. Thus `Static = True` can make a dynamic prototype static, `Static = False` excludes a static prototype from this layer, and `Hidden` overrides decide visibility. When adopting this fix, rebuild Baker and rebake maps as matched server/client pairs.
+
 The client dictionary also contains all strings collected for the server map blob: authored `Server`
 property values and critter/dynamic-item overrides included. Only strings are added, not server entities
 or property records. They enter the client's pool only when this map loads; sending a map-only hash
