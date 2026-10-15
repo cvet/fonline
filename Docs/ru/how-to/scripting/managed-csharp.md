@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a33807ab80cb58e45ffd6ac64ba4abcbda9de507395ccff5a818c6f0ed867ba8"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"c1180c5b276577fa9749efb7e1fe78015a551d28017260089a4682e99c6ce716"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -144,13 +144,13 @@ Inbound remote-call handlers могут возвращать `void`, `Task` ил
 
 ## Async и планирование continuations
 
-`Game.YieldAsync(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
+`ScriptTask.Delay(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
 
 Каждый backend владеет отдельной очередью continuation. `BaseEngine::FrameAdvance` обрабатывает только свои backend после освобождения frame-property lock. Каждая продолженная continuation снова входит в свой Engine через `RunScriptContext`; на сервере это создаёт новый synchronization context. Новая continuation ждёт следующего frame, поэтому yielding loop не может занять весь текущий frame.
 
 `Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
-Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
+Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `ScriptTask.Delay` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
 `ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel` и ручная отправка работы в ThreadPool намеренно обходят Engine synchronization context. Там можно выполнять изолированные вычисления, но нельзя вызывать Engine API. Привязка entry assembly к backend всё ещё позволяет определить Engine из такого thread, поэтому ошибка не обязана проявляться на каждом native call; надёжно её отклоняют только чувствительные к синхронизации маршруты, например server entity access. Подключающий проект должен статически запрещать эти escape API и возвращаться в захваченный Engine context до обращения к состоянию движка.
 
@@ -412,7 +412,7 @@ Source port завершён только тогда, когда перенес�
 
 Сохраняйте public metadata names, declarations remote-call wire, property layouts, persisted identifiers и behavior, если migration намеренно их не меняет. Backend-neutral metadata не должна меняться только из-за нового синтаксиса. Запускайте оба backend во временном сравнительном lane только по явному плану проекта; не допускайте случайно двух handlers одного event или remote call.
 
-Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
+Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
 
 ## Граница документации проекта
 

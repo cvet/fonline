@@ -2,6 +2,7 @@ namespace EngineTests;
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using FOnline;
 
 public static class ManagedRuntimeProbe
@@ -10,6 +11,14 @@ public static class ManagedRuntimeProbe
 #if SERVER
     private static int CritterInitCalls;
     private static long LastCritterId;
+    private const int PropertyCallbackSlots = 22;
+    private static readonly int[] PropertyCalls = new int[PropertyCallbackSlots];
+    private static readonly int[] PropertyValues = new int[PropertyCallbackSlots];
+    private static readonly int[] PropertyCompletions = new int[PropertyCallbackSlots];
+    private static readonly int[] PropertyReverseIndices = new int[PropertyCallbackSlots];
+    private static readonly int[] PropertyReverseIdentities = new int[PropertyCallbackSlots];
+    private static readonly long[] PropertyOwners = new long[PropertyCallbackSlots];
+    private static readonly string?[] PropertyFailures = new string?[PropertyCallbackSlots];
 #endif
 
     [ModuleInit]
@@ -46,6 +55,152 @@ public static class ManagedRuntimeProbe
     {
         value = first.Id == second.Id ? "same:" + value : "different:" + value;
     }
+
+    [CallableFromNative]
+    internal static List<int> GetCallbackPropertyIndices() => new List<int> {
+        (int)CritterProperty.Callback_Probe_Getter_Value,
+        (int)CritterProperty.Callback_Probe_Deferred_Action,
+        (int)CritterProperty.Callback_Probe_Alias_Action,
+        (int)CritterProperty.Callback_Probe_Deferred_Task,
+        (int)CritterProperty.Callback_Probe_Alias_Task,
+        (int)CritterProperty.Callback_Probe_Transform_Value,
+        (int)CritterProperty.Callback_Probe_With_Property,
+        (int)CritterProperty.RuntimeGetter,
+        (int)CritterProperty.RuntimeDeferredAction,
+        (int)CritterProperty.RuntimeAliasAction,
+        (int)CritterProperty.RuntimeDeferredTask,
+        (int)CritterProperty.RuntimeAliasTask,
+        (int)CritterProperty.RuntimeTransform,
+        (int)CritterProperty.RuntimeWithProperty,
+        (int)CritterProperty.RuntimeRecoveryGetter,
+        (int)CritterProperty.RuntimeRecoveryDeferredAction,
+        (int)CritterProperty.RuntimeRecoveryAliasAction,
+        (int)CritterProperty.RuntimeRecoveryDeferredTask,
+        (int)CritterProperty.RuntimeRecoveryAliasTask,
+        (int)CritterProperty.RuntimeRecoveryTransform,
+        (int)CritterProperty.RuntimeRecoveryWithProperty,
+        (int)CritterProperty.Runtime_Plain_Underscore,
+    };
+
+    [CallableFromNative]
+    internal static bool HasCallbackComponent(Critter critter) =>
+        critter.HasCallback_Probe && critter.Callback_Probe.Deferred_Action == 0;
+
+    [CallableFromNative]
+    internal static List<int> GetPropertyCallbackState(int slot) => new List<int> {
+        PropertyCalls[slot], PropertyValues[slot], PropertyCompletions[slot],
+        PropertyReverseIndices[slot], PropertyReverseIdentities[slot],
+    };
+
+    [CallableFromNative]
+    internal static long GetPropertyCallbackOwner(int slot) => PropertyOwners[slot];
+
+    [CallableFromNative]
+    internal static string GetPropertyCallbackFailure(int slot) => PropertyFailures[slot] ?? string.Empty;
+
+    [CallableFromNative]
+    internal static string RegisterPropertyCallback(int slot, int form, int propertyIndex)
+    {
+        CritterProperty property = (CritterProperty)propertyIndex;
+
+        try {
+            switch (form) {
+            case 0:
+                Game.SetPropertyGetter<int>(property, critter => {
+                    int value = 731 + slot;
+                    RecordPropertyCallback(critter, slot, value);
+                    return value;
+                });
+                break;
+            case 1:
+                Action<Critter> deferredAction = critter =>
+                    RecordPropertyCallback(critter, slot, ReadCallbackProperty(critter, property));
+                Game.AddPropertyDeferredSetter(property, deferredAction);
+                break;
+            case 2:
+                Action<Critter> aliasAction = critter =>
+                    RecordPropertyCallback(critter, slot, ReadCallbackProperty(critter, property));
+                Game.AddPropertySetter(property, aliasAction);
+                break;
+            case 3:
+                Func<Critter, Task> deferredTask = critter => RunAsyncPropertyCallback(critter, slot, property);
+                Game.AddPropertyDeferredSetter(property, deferredTask);
+                break;
+            case 4:
+                Func<Critter, Task> aliasTask = critter => RunAsyncPropertyCallback(critter, slot, property);
+                Game.AddPropertySetter(property, aliasTask);
+                break;
+            case 5:
+                PropertySetter<Critter, int> valueSetter = (Critter critter, ref int value) => {
+                    value += 10;
+                    RecordPropertyCallback(critter, slot, value);
+                };
+                Game.AddPropertySetter(property, valueSetter);
+                break;
+            case 6:
+                PropertySetterWithProperty<Critter, CritterProperty, int> propertySetter = (Critter critter, CritterProperty actualProperty, ref int value) => {
+                    value += 20;
+                    PropertyReverseIndices[slot] = (int)actualProperty;
+                    PropertyReverseIdentities[slot] = actualProperty == property ? 1 : 0;
+                    RecordPropertyCallback(critter, slot, value);
+                };
+                Game.AddPropertySetter(property, propertySetter);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(form));
+            }
+
+            return string.Empty;
+        }
+        catch (Exception exception) {
+            // The test distinguishes the published native rejection from acceptance or a different failure
+            return exception.GetType().Name + "|" + exception.Message;
+        }
+    }
+
+    private static void RecordPropertyCallback(Critter critter, int slot, int value)
+    {
+        PropertyCalls[slot]++;
+        PropertyValues[slot] = value;
+        PropertyOwners[slot] = critter.Id.value;
+        PropertyCompletions[slot]++;
+    }
+
+    private static async Task RunAsyncPropertyCallback(Critter critter, int slot, CritterProperty property)
+    {
+        try {
+            PropertyCalls[slot]++;
+            PropertyOwners[slot] = critter.Id.value;
+            await ScriptTask.Delay(20);
+
+            if (!await Sync.Lock(critter)) {
+                PropertyFailures[slot] = "Callback entity became unavailable";
+                return;
+            }
+
+            PropertyValues[slot] = ReadCallbackProperty(critter, property);
+            PropertyCompletions[slot]++;
+        }
+        catch (Exception exception) {
+            PropertyFailures[slot] = exception.ToString();
+        }
+    }
+
+    private static int ReadCallbackProperty(Critter critter, CritterProperty property) => property switch {
+        CritterProperty.Callback_Probe_Deferred_Action => critter.Callback_Probe.Deferred_Action,
+        CritterProperty.Callback_Probe_Alias_Action => critter.Callback_Probe.Alias_Action,
+        CritterProperty.Callback_Probe_Deferred_Task => critter.Callback_Probe.Deferred_Task,
+        CritterProperty.Callback_Probe_Alias_Task => critter.Callback_Probe.Alias_Task,
+        CritterProperty.RuntimeDeferredAction => critter.RuntimeDeferredAction,
+        CritterProperty.RuntimeAliasAction => critter.RuntimeAliasAction,
+        CritterProperty.RuntimeDeferredTask => critter.RuntimeDeferredTask,
+        CritterProperty.RuntimeAliasTask => critter.RuntimeAliasTask,
+        CritterProperty.RuntimeRecoveryDeferredAction => critter.RuntimeRecoveryDeferredAction,
+        CritterProperty.RuntimeRecoveryAliasAction => critter.RuntimeRecoveryAliasAction,
+        CritterProperty.RuntimeRecoveryDeferredTask => critter.RuntimeRecoveryDeferredTask,
+        CritterProperty.RuntimeRecoveryAliasTask => critter.RuntimeRecoveryAliasTask,
+        _ => throw new InvalidOperationException("Property has no entity-only callback fixture"),
+    };
 #endif
 
     [CallableFromNative]

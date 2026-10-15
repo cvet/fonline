@@ -74,7 +74,7 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             "ManagedScriptBaker",
             "ManagedScript.TargetFramework",
             "[ModuleInit]",
-            "Game.YieldAsync",
+            "ScriptTask.Delay",
             "ScriptSynchronizationContext",
             "[RequiresCover]",
             "[ProvidesCover]",
@@ -89,6 +89,8 @@ class ManagedCSharpDocumentationTests(unittest.TestCase):
             self.assertIn(contract, english)
             self.assertIn(contract, russian)
 
+        self.assertNotIn("Game.YieldAsync", english)
+        self.assertNotIn("Game.YieldAsync", russian)
         self.assertNotIn("FO_MONO_SCRIPTING", english)
         self.assertNotIn("FO_MONO_SCRIPTING", russian)
         self.assertEqual(

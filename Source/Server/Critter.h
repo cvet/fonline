@@ -217,6 +217,8 @@ public:
     FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
+    friend class ServerEngine;
+
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
@@ -243,6 +245,7 @@ private:
     unordered_set<ident_t> _visibleItems {};
     shared_ptr<GlobalMapGroup> _globalMapGroup {};
     int32_t _lockMapTransfers {};
+    bool _persistUnloadEvent {};
     EntityLock _ownedLock {};
 };
 

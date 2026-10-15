@@ -5,9 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"7edb99cbbda46950691727cf7c24808b15cd8f6d8524f8089839681e13e46995"} -->
-
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"aa3713f91c989a9aecb4f27b564b54658728d85b7e2e53c6d6f0a9ab4b2a18e9"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -202,7 +200,7 @@ Static site публикует три generated root endpoints, route catalog и
 | Route | Назначение |
 |---|---|
 | `https://fonline.ru/llms.txt` | Краткая карта всех public current pages по типам Diataxis и canonical generated JSON models |
-| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle public current authored pages и generated reference indexes, лимит 2 MiB + 240 KiB |
+| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle public current authored pages и generated reference indexes, лимит 2 MiB + 244 KiB |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, provenance, byte size и SHA-256 hashes |
 | `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version/locale policy, canonical target ownership и legacy redirects |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, evidence checks, success rate, MRR и failures |

@@ -42,6 +42,28 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto RuntimeCallbackPropertyNames() -> vector<string_view>
+{
+    return {
+        "Callback_Probe.Getter_Value", "Callback_Probe.Deferred_Action", "Callback_Probe.Alias_Action", "Callback_Probe.Deferred_Task", "Callback_Probe.Alias_Task", "Callback_Probe.Transform_Value", "Callback_Probe.With_Property",
+        "RuntimeGetter", "RuntimeDeferredAction", "RuntimeAliasAction", "RuntimeDeferredTask", "RuntimeAliasTask", "RuntimeTransform", "RuntimeWithProperty",
+        "RuntimeRecoveryGetter", "RuntimeRecoveryDeferredAction", "RuntimeRecoveryAliasAction", "RuntimeRecoveryDeferredTask", "RuntimeRecoveryAliasTask", "RuntimeRecoveryTransform", "RuntimeRecoveryWithProperty",
+        "Runtime_Plain_Underscore",
+    };
+}
+
+static auto MakeRuntimeCallbackMetadata() -> vector<uint8_t>
+{
+    vector<vector<string_view>> properties {{"Critter", "Server", "bool", "Callback_Probe", "Mutable", "Component"}};
+    auto names = RuntimeCallbackPropertyNames();
+
+    for (size_t i = 0; i < names.size(); i++) {
+        properties.emplace_back(vector<string_view> {"Critter", "Server", "int32", names[i], i < 21 && i % 7 == 0 ? "Virtual" : "Mutable"});
+    }
+
+    return BakerTests::MakeMetadataBlob({{"Property", properties}});
+}
+
 class ManagedRuntimeTestResources final
 {
 public:
@@ -68,9 +90,9 @@ public:
                 fs::path_to_string(engine_root / "Source/Tests/Fixtures"),
             });
 
-        for (string_view target : {"server", "client", "mapper"}) {
-            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), BakerTests::MakeEmptyMetadataBlob());
-        }
+        Rig.AddBakedFile("Metadata.fometa-server", ServerMetadata);
+        Rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+        Rig.AddBakedFile("Metadata.fometa-mapper", BakerTests::MakeEmptyMetadataBlob());
 
         ManagedScriptBaker baker {Rig.MakeContext("RuntimeProbe")};
         baker.BakeFiles(BakerTests::TestRig::MakeEmptyFiles(), "");
@@ -83,6 +105,8 @@ public:
     auto operator=(const ManagedRuntimeTestResources&) = delete;
     auto operator=(ManagedRuntimeTestResources&&) noexcept = delete;
     ~ManagedRuntimeTestResources() { (void)fs::remove_dir_tree(fs::path_to_string(Root)); }
+
+    auto GetServerMetadata() const -> const vector<uint8_t>& { return ServerMetadata; }
 
     void AddTo(FileSystem& resources) const
     {
@@ -97,6 +121,7 @@ public:
 
 private:
     std::filesystem::path Root;
+    const vector<uint8_t> ServerMetadata {MakeRuntimeCallbackMetadata()};
     BakerTests::TestRig Rig {};
 };
 
@@ -105,7 +130,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     ManagedRuntimeTestResources assemblies;
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, assemblies.GetServerMetadata());
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -197,7 +222,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     // A second live engine must initialize its own assembly statics and event subscriptions
     auto second_settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(second_settings.Network.DisableInterthreadCommunication, true);
-    auto second_resources = ServerEngineTests::MakeServerTestResources();
+    auto second_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, assemblies.GetServerMetadata());
     assemblies.AddTo(second_resources);
     auto second = safe_alloc::make_refcounted<ServerEngine>(&second_settings, std::move(second_resources));
     auto shutdown_second = scope_exit([&second]() noexcept { safe_call([&second] { second->Shutdown(); }); });
@@ -238,6 +263,189 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     auto shutdown_mapper = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
     REQUIRE(mapper->CallFunc(mapper->Hashes.to_hashed_string("ManagedRuntimeProbe::GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
+}
+
+TEST_CASE("ManagedPropertyCallbacksUseCanonicalNames", "[managed][scripting][property]")
+{
+    ManagedRuntimeTestResources assemblies;
+    auto settings = ServerEngineTests::MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, assemblies.GetServerMetadata());
+    assemblies.AddTo(resources);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    bool locked = server->Lock(timespan {std::chrono::seconds {10}});
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    });
+    REQUIRE(locked);
+    auto name = [&server](string_view method) { return server->Hashes.to_hashed_string(strex("ManagedRuntimeProbe::{}", method).str()); };
+    auto indices = server->FindFunc<vector<int32_t>>(name("GetCallbackPropertyIndices"));
+    auto register_callback = server->FindFunc<string, int32_t, int32_t, int32_t>(name("RegisterPropertyCallback"));
+    auto state = server->FindFunc<vector<int32_t>, int32_t>(name("GetPropertyCallbackState"));
+    auto failure = server->FindFunc<string, int32_t>(name("GetPropertyCallbackFailure"));
+    auto owner = server->FindFunc<int64_t, int32_t>(name("GetPropertyCallbackOwner"));
+    auto component = server->FindFunc<bool, ptr<Critter>>(name("HasCallbackComponent"));
+    REQUIRE(indices);
+    REQUIRE(register_callback);
+    REQUIRE(state);
+    REQUIRE(failure);
+    REQUIRE(owner);
+    REQUIRE(component);
+    REQUIRE(indices.Call());
+    auto property_indices = indices.GetResult();
+    auto property_names = RuntimeCallbackPropertyNames();
+    REQUIRE(property_indices.size() == property_names.size());
+    auto registrar = server->GetPropertyRegistrar("Critter");
+    REQUIRE(registrar);
+
+    // Both the compiled enum and the live registrar must describe this exact metadata layout
+    for (size_t slot = 0; slot < property_names.size(); slot++) {
+        auto prop = registrar->FindProperty(property_names[slot]);
+        INFO(property_names[slot]);
+        REQUIRE(prop);
+        REQUIRE(property_indices[slot] == prop->GetRegIndex());
+        REQUIRE(property_indices[slot] != 0);
+        REQUIRE(property_indices[slot] != std::numeric_limits<uint16_t>::max());
+    }
+    REQUIRE_FALSE(registrar->FindProperty("Callback_Probe_Getter_Value"));
+    auto marker = registrar->FindProperty("Callback_Probe");
+    REQUIRE(marker);
+    auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false).hold_ref();
+    server->RequireCurrentSyncContext()->SyncEntity(critter);
+    critter->SetValueAsInt(marker, 1);
+    REQUIRE(component.Call(critter));
+    REQUIRE(component.GetResult());
+    vector<int32_t> calls(property_names.size(), 0);
+
+    auto register_valid = [&](int32_t slot, int32_t form) {
+        INFO(strex("register {} form {}", property_names[slot], form).str());
+        REQUIRE(register_callback.Call(slot, form, property_indices[slot]));
+        string error = register_callback.GetResult();
+        INFO(error);
+        CHECK(error.empty());
+        return error.empty();
+    };
+    auto reject_invalid = [&](int32_t slot, int32_t form, int32_t invalid) {
+        INFO(strex("reject enum {} form {}", invalid, form).str());
+        REQUIRE(register_callback.Call(slot, form, invalid));
+        string error = register_callback.GetResult();
+        INFO(error);
+        CHECK(error.starts_with("NativeCallException|"));
+        CHECK(error.find("Managed property not found") != string::npos);
+    };
+    auto exercise = [&](int32_t slot, int32_t form, int32_t input) {
+        INFO(strex("execute {} form {} input {}", property_names[slot], form, input).str());
+        int32_t expected_calls = ++calls[slot];
+        int32_t expected_value = form == 0 ? 731 + slot : input + (form == 5 ? 10 : (form == 6 ? 20 : 0));
+        auto prop = registrar->FindProperty(property_names[slot]);
+        REQUIRE(prop);
+
+        if (form == 0) {
+            CHECK(critter->GetValueAsInt(prop) == expected_value);
+        }
+        else {
+            critter->SetValueAsInt(prop, input);
+        }
+
+        REQUIRE(state.Call(slot));
+        REQUIRE(state.GetResult().size() == 5);
+        CHECK(state.GetResult()[0] == expected_calls);
+
+        if (form == 3 || form == 4) {
+            // An actual Engine timer cannot complete while the caller still holds the server lock
+            CHECK(state.GetResult()[2] == expected_calls - 1);
+        }
+
+        auto started = nanotime::now();
+        timespan timeout {std::chrono::seconds {5}};
+
+        for (;;) {
+            REQUIRE(failure.Call(slot));
+            INFO(failure.GetResult());
+            REQUIRE(failure.GetResult().empty());
+            REQUIRE(state.Call(slot));
+            auto observed = state.GetResult();
+            REQUIRE(observed.size() == 5);
+            CHECK(observed[0] == expected_calls);
+            REQUIRE(observed[2] <= expected_calls);
+
+            if (observed[2] == expected_calls) {
+                CHECK(observed[1] == expected_value);
+
+                if (form == 6) {
+                    CHECK(observed[3] == property_indices[slot]);
+                    CHECK(observed[4] == 1);
+                }
+                break;
+            }
+
+            server->Unlock();
+            locked = false;
+            coarse_sleep(std::chrono::milliseconds {1});
+
+            // FrameTimeJob advances timers and pumps managed continuations; never pump a live server manually
+            while (!locked) {
+                auto elapsed = nanotime::now() - started;
+                REQUIRE(elapsed < timeout);
+                locked = server->Lock(std::min(timeout - elapsed, timespan {std::chrono::milliseconds {20}}));
+
+                if (!locked) {
+                    coarse_sleep(std::chrono::milliseconds {1});
+                }
+            }
+
+            server->RequireCurrentSyncContext()->SyncEntity(critter);
+        }
+
+        REQUIRE(owner.Call(slot));
+        CHECK(owner.GetResult() == critter->GetId().underlying_value());
+
+        if (form != 0) {
+            CHECK(critter->GetValueAsInt(prop) == expected_value);
+        }
+    };
+
+    for (int32_t form = 0; form < 7; form++) {
+        int32_t plain = 7 + form;
+        REQUIRE(register_valid(plain, form));
+        exercise(plain, form, 100 + form);
+        reject_invalid(form, form, 0);
+        exercise(plain, form, 200 + form);
+
+        bool component_registered = register_valid(form, form);
+
+        if (component_registered) {
+            exercise(form, form, 300 + form);
+        }
+
+        reject_invalid(14 + form, form, std::numeric_limits<uint16_t>::max());
+        exercise(plain, form, 400 + form);
+
+        if (component_registered) {
+            exercise(form, form, 500 + form);
+        }
+
+        REQUIRE(register_valid(14 + form, form));
+        exercise(14 + form, form, 600 + form);
+    }
+
+    REQUIRE(register_valid(21, 6));
+    exercise(21, 6, 700);
+
+    // No registration or failed enum lookup may attach a callback to a neighbouring property
+    for (size_t slot = 0; slot < property_names.size(); slot++) {
+        INFO(property_names[slot]);
+        REQUIRE(state.Call(numeric_cast<int32_t>(slot)));
+        REQUIRE(state.GetResult().size() == 5);
+        CHECK(state.GetResult()[0] == calls[slot]);
+        CHECK(state.GetResult()[2] == calls[slot]);
+    }
 }
 
 FO_END_NAMESPACE

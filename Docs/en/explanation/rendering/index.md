@@ -283,6 +283,8 @@ The request itself is not universally non-blocking; the following fallbacks rema
 
 `ModelSpriteHitMask` owns the pending request, refresh demand/deadline and completed alpha mask. If requesting or collecting pixels throws, it releases the request, marks the mask stale, restores refresh demand and propagates the error; later render updates retry subject to the copy interval. Redraws and refresh demand received during an outstanding request survive its completion. `ModelSpriteHitMaskRetriesFailedReadback` covers the first mask and replacement of a completed mask; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` pins redraw ordering. `ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels` uses deterministic time to verify the 99/100 ms boundary, immediate completion polling and no repeated copies without demand. `ModelSpritePreparesItsHitMaskDuringRenderUpdate` verifies first preparation and query-only picking with the Null renderer; a visible-backend check must separately verify first clicks with and without prior hover.
 
+Readback and model-mask tests are backend-neutral. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` in `Source/Tests/Test_ClientEngine.cpp` requires `FO_ENABLE_3D`, not `FO_ANGELSCRIPT_SCRIPTING`; AngelScript-only client tests live separately in `Source/Tests/Test_AngelScriptClientEngine.cpp`. Selecting a scripting backend must not remove the native rendering coverage.
+
 ### Sprite and model atlas geometry
 
 `EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex

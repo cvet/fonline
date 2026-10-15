@@ -2544,7 +2544,13 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
     cr->MarkAsDestroying();
 
-    OnCritterUnload.Fire(cr);
+    {
+        cr->_persistUnloadEvent = true;
+        auto restore_persistence = scope_exit([cr]() mutable noexcept { cr->_persistUnloadEvent = false; });
+
+        OnCritterUnload.Fire(cr);
+    }
+
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
@@ -4252,8 +4258,16 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
             return;
         }
 
-        if (server_entity->IsDestroying() || server_entity->IsDestroyed()) {
+        if (server_entity->IsDestroyed()) {
             return;
+        }
+        if (server_entity->IsDestroying()) {
+            auto critter = server_entity.dyn_cast<Critter>();
+
+            // Only the unload callback changes a retained record; native teardown must not overwrite its position
+            if (!critter || !critter->_persistUnloadEvent) {
+                return;
+            }
         }
 
         entry_id = server_entity->GetId();
