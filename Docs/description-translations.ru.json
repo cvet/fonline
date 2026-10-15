@@ -7499,8 +7499,8 @@
           "translation": "SyncScope: требует self; читает только флаг сохраняемости."
         },
         "/symbols/@id=script.method.server.Entity.MakePersistent/description": {
-          "source_sha256": "bf60d6de45563242a543f3cc8157483132600552431547ea7dbf699ed8568cdc",
-          "translation": "SyncScope: требует self; каскад сохранения может self-синхронизировать покрытые дочерние сущности."
+          "source_sha256": "97dfa172a41b7e1a7ae6b852ce45280aa33845ffedfcc3720530a2ee021a9bce",
+          "translation": "SyncScope: требует self и непосредственного владельца предмета; каскад сохранения может self-синхронизировать покрытые дочерние сущности."
         },
         "/symbols/@id=script.method.server.Entity.RepeatTimeEvent%2328154675b58100aa/description": {
           "source_sha256": "372d0c49974ec68ac83487482de811e90af45979e07e9cada13506a616111fc2",

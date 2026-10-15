@@ -75947,7 +75947,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.MakePersistent(bool persistent)",
-      "description": "SyncScope: requires self; persistence cascade may self-sync covered child entities",
+      "description": "SyncScope: requires self and an item's immediate holder; persistence cascade may self-sync covered child entities",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",

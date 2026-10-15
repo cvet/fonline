@@ -1354,7 +1354,14 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
 {
     FO_TRACE_ZONE(Entity);
 
+    ValidateEntityAccess(entity);
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
+
+    if (entity.dyn_cast<Item>()) {
+        if (auto holder = entity->GetParent()) {
+            ValidateEntityAccess(holder);
+        }
+    }
 
     if (auto player = entity.dyn_cast<Player>()) {
         throw EntityManagerException("Can't change persistence of player", player->GetId());
@@ -1393,6 +1400,10 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
         entity->SetPersistent(true);
     }
 
+    if (auto item = entity.dyn_cast<Item>()) {
+        UpdateItemHolderPersistence(item, true);
+    }
+
     ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakePersistentRecursive(child, processed); });
 }
 
@@ -1411,6 +1422,43 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
     if (entity->IsPersistent()) {
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
+    }
+
+    if (auto item = entity.dyn_cast<Item>()) {
+        UpdateItemHolderPersistence(item, false);
+    }
+}
+
+void EntityManager::UpdateItemHolderPersistence(ptr<Item> item, bool persistent)
+{
+    FO_TRACE_ZONE(Entity);
+
+    auto holder = item->GetParent();
+
+    if (!holder) {
+        return;
+    }
+
+    ValidateEntityAccess(holder);
+    auto update_ids = [item, persistent](vector<ident_t> ids) {
+        if (persistent) {
+            vec_safe_add_unique_value(ids, item->GetId());
+        }
+        else {
+            vec_safe_remove_unique_value(ids, item->GetId());
+        }
+
+        return ids;
+    };
+
+    if (auto map = holder.dyn_cast<Map>()) {
+        map->SetItemIds(update_ids(map->GetItemIds()));
+    }
+    else if (auto cr = holder.dyn_cast<Critter>()) {
+        cr->SetItemIds(update_ids(cr->GetItemIds()));
+    }
+    else if (auto container = holder.dyn_cast<Item>()) {
+        container->SetInnerItemIds(update_ids(container->GetInnerItemIds()));
     }
 }
 

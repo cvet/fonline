@@ -729,7 +729,14 @@ void Map::RemoveItem(ident_t item_id)
     item->SetHex({});
 
     auto item_ids = GetItemIds();
-    vec_remove_unique_value(item_ids, item->GetId());
+
+    if (item->IsPersistent()) {
+        vec_remove_unique_value(item_ids, item->GetId());
+    }
+    else {
+        vec_safe_remove_unique_value(item_ids, item->GetId());
+    }
+
     SetItemIds(item_ids);
     RefreshAreaSpectators(item, true);
 

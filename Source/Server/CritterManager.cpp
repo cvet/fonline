@@ -106,7 +106,14 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
     cr->RemoveItem(item);
 
     auto item_ids = cr->GetItemIds();
-    vec_remove_unique_value(item_ids, item->GetId());
+
+    if (item->IsPersistent()) {
+        vec_remove_unique_value(item_ids, item->GetId());
+    }
+    else {
+        vec_safe_remove_unique_value(item_ids, item->GetId());
+    }
+
     cr->SetItemIds(item_ids);
 
     item->SetOwnership(ItemOwnership::Nowhere);

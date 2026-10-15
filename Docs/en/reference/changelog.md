@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-23
 
+### Fixed
+
+- Keep map, critter-inventory and nested-container restore indexes consistent when an item changes persistence. Temporary items retain their live holder until normal removal; promotion adds the restore dependency once.
+- Validate the item's immediate holder before changing persistence flags, storage or restore membership. Cover rejection in both directions with two workers, and real inventory/container removal and unload/load.
+
+### Migration
+
+- Base `268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629` (`2026.1.60-dev`); local update `2026.1.61-dev`. `MakePersistent(bool)` retains its argument and persistence meaning. Cover the existing item and its immediate holder before calling it, as required by the complete native call graph; review held-item callers before adoption. An uncovered holder raises `Entity access without sync` before mutation. Native callers need the same cover.
+- Rebuild matching server/baker and native consumers, regenerate the API reference and rebake project scripts. Property IDs, declared document layouts, network messages, Managed ABI `9`, runtime `0.0.77` and resource schemas are unchanged. New saves exclude temporary-item restore IDs. Already missing records remain load errors; there is no startup pruning or implicit repair. Preserve coherent binaries/storage and review pre-existing inconsistencies through an isolated restore. Rollback uses the preceding matching binaries/data without a new conversion.
+
+## 2026.1.60-dev - 2026-10-23
+
 ### Added
 
 - Add the `Game.LoadCritter(crId, forPlayer, map)` overload on both scripting backends. Restore a player-controllable critter or NPC directly onto its stored map/hex/direction, preserving preload/init/load ordering, inventory, duplicate rejection and recoverable records on a failed detached load. The existing two-argument overload keeps global-map behavior; both overloads now declare their existing return-cover guarantee with `FO_PROVIDES_COVER`. Preliminary stored-field lookup uses `Game.DbGetRecord`. Local restoration emits `OnMapCritterIn` before init; initial visibility follows init so its subscriptions receive the first appearances. A callback that relocates the restored critter makes the local restore throw while preserving its valid side effects. Item-visibility fan-out stops when its observer is destroyed or leaves the map.

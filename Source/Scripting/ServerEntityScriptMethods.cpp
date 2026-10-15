@@ -46,7 +46,7 @@ FO_SCRIPT_API bool Server_Entity_IsPersistent(ptr<ServerEntity> self)
     return self->IsPersistent();
 }
 
-// SyncScope: requires self; persistence cascade may self-sync covered child entities
+// SyncScope: requires self and an item's immediate holder; persistence cascade may self-sync covered child entities
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Entity_MakePersistent(ptr<ServerEntity> self, bool persistent)
 {

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"25ee298a8c27567f969d64c668770ec1caa92bc8450f868921095903a6ccaacb"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"b7740597f9f8b82c2c3da8378419a9df8c5a4a2772c37a67cfc2d49734253b14"} -->
 ## Ограниченный обзор карты
 
 `Player.ViewMapArea(map, hex, radius)` наблюдает область гексного радиуса с включённой границей без размещения персонажа на карте. Управляемый персонаж может оставаться на глобальной карте; отсоединённые вызовы также поддерживаются. `ViewMap` сохраняет прежний отсоединённый полный обзор. Обоим API требуется покрытие игрока, карты и локации. Границы и подписки существуют только в рантайме.
@@ -383,6 +383,8 @@ Item trees восстанавливаются по уровням. `LoadItems()`
 Custom inner entities так же читаются batch-ом на holder entry: `LoadInnerEntitiesEntry()` передаёт список ids в `LoadCustomEntities()`, а отсутствующая запись удаляется без потери siblings.
 
 Пользовательские сущности, непосредственно принадлежащие глобальному игровому объекту, используют его единственный `EntityLock`. Managed scripts захватывают его через `using GameLock scope = GameLock.Acquire();`; raw `Game.Lock()` / `Game.Unlock()` зарезервированы за wrapper. Когда операция движка синхронизирует такую сущность внутри scope, текущий context повторно использует singleton acquisition, а не учитывает одну физическую блокировку дважды, и disposal scope полностью освобождает её.
+
+После отключения постоянства предмет остаётся у своего владельца и видимым в текущем мире, но его ID удаляется из списка восстановления владельца (`Map.ItemIds`, `Critter.ItemIds` или `Item.InnerItemIds`). Повторное включение постоянства добавляет ID однократно. Перед изменением постоянства или списка `MakePersistent()` требует покрытие предмета и его непосредственного владельца. Отсутствующие записи при загрузке остаются ошибками; перевод во временное состояние удаляет сохраняемую ссылку на границе записи.
 
 Изменения сущности сохраняются при записи соответствующих свойств методом `ServerEngine::OnSaveEntityValue()` через `PropertiesSerializer`. Фасад базы данных и реализации описаны в [сохранении данных](../persistence/).
 

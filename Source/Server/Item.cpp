@@ -256,7 +256,14 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
     }
 
     auto inner_item_ids = GetInnerItemIds();
-    vec_remove_unique_value(inner_item_ids, item->GetId());
+
+    if (item->IsPersistent()) {
+        vec_remove_unique_value(inner_item_ids, item->GetId());
+    }
+    else {
+        vec_safe_remove_unique_value(inner_item_ids, item->GetId());
+    }
+
     SetInnerItemIds(inner_item_ids);
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {

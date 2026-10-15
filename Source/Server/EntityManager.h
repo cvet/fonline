@@ -153,6 +153,7 @@ public:
 private:
     void MakePersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
     void MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
+    void UpdateItemHolderPersistence(ptr<Item> item, bool persistent);
     void ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const;
 
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
