@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4f5a4c7cec8301db0fcc05548b0512fc5b2263356e3ec5e4cc10352116be6318"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"f3b4160a69da6d3ea1a6f42ed3224ceca9e6b5bedf0e43b1b8c1df7bf91f6249"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -322,7 +322,7 @@ Generated CMake target `CompileManagedScripts` запускает standalone `<P
 
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.
 
-Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно. Runtime source build отключает live NuGet advisory audit: reproducible dependency set задаёт pinned source revision, а не более позднее обновление feed. Перед каждым runtime build BuildTools удаляет target-dependent repo-local tasks semaphore dotnet, чтобы переход от desktop build к Android не переиспользовал неполный набор tasks. Настроенный workspace cache хранит только проверенное published runtime tree под target/toolchain-specific ключом; локальные runtime source checkouts не публикуются, неполный cache hit пересобирается, а stale SDK bootstrap без соответствующего shared runtime удаляется перед повтором setup.
+`SetupManagedRuntime` готовит toolchain; `PrepareManagedRuntimePayload` публикует subset и `runtime.manifest`. Setup изолирует `DOTNET_*`, NuGet и SDK state. POSIX source build задаёт дочернему процессу `LC_ALL=C` для согласованного порядка `sort`/`comm`, сохраняя локаль родителя. Source build отключает live NuGet audit, сохраняя pinned dependencies. Перед каждым runtime build BuildTools удаляет target-dependent repo-local tasks semaphore dotnet, предотвращая переиспользование неполных tasks между desktop/Android targets. Workspace cache хранит проверенные published trees под target/toolchain-specific ключами, исключает source checkouts, пересобирает неполные hits и удаляет SDK bootstrap без соответствующего shared runtime перед повтором. Изменение build code инвалидирует ключи workspace cache.
 
 Setup проверяет непустые заголовки, включаемые managed backend, `System.Private.CoreLib.dll` и `System.Runtime.dll`, а также все архивы платформы из CMake: component stubs, `minipal`, системные shims и Web interpreter archives. Архивы Windows имеют расширение `.lib`, остальных платформ — имена `lib*.a` независимо от ОС runner. Браузерному дереву дополнительно нужен непустой glue `lib/es6/dotnet.es6.*.js`. Это устанавливает комплектность входов; компиляция, линковка и baking проверяют их при использовании.
 
@@ -383,7 +383,7 @@ Managed backend передаёт фиксированный native context, mana
 
 | Изменение | Обязательные доказательства |
 | --- | --- |
-| Managed CoreScripts или backend | C# format/style checks, CoreScripts tests, generated project build и focused native unit tests. |
+| Managed CoreScripts или backend | C#-стиль из `Source/.clang-format` (включая фикстуры), CoreScripts tests, generated project build и native unit tests. |
 | Динамические сборки или live compiler | `test_managed_dynamic_assemblies.py`, `test_managed_script_compiler.py`, проверка target package/closure и проектная runtime-проверка авторизации и выполнения. |
 | Patch-point weaving или live patches | `test_managed_patch_points.py`, входы managed baker/incremental build, bake точного target и проектные проверки применения, отката и авторизации каждой включённой стороны; производительность каждого runtime измеряется отдельно. |
 | Ошибки синхронизации | `FOnline.Sync.Tests.csproj`, тесты анализатора и поведение проектных подписчиков/журналов. |

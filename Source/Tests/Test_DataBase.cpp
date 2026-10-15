@@ -1566,7 +1566,7 @@ TEST_CASE("DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes")
     db.WaitCommitChanges();
 
     auto committed_ids = db.GetAllDocumentIds(collection);
-    std::ranges::sort(committed_ids);
+    std::ranges::sort(committed_ids, std::less<> {});
     CHECK(committed_ids == pending_ids);
 }
 

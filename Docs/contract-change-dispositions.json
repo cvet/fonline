@@ -10752,6 +10752,18 @@
       "release_note": "Docs/en/reference/changelog.md 2026.1.40-dev and its Russian mirror record batch loading, bounded decoding, success-only sorting, conditional scope_success noexcept and random-variant documentation correction.",
       "compatibility": "Baked text bytes, language filtering, collection substitution, callable API, runtime compatibility 0.0.72, Managed ABI identity 9 and persisted data are unchanged for valid inputs. Deploy matching rebuilt binaries/normal bake output; rollback restores baseline binaries without save conversion.",
       "owner": "text-format"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.6fe11bed09d447df",
+      "baseline_contract_sha256": "d9639e9cde093d0662133bd8362f4c4c08032f1f5a289faf3ed5e25c9a347c04",
+      "current_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "classification": "breaking",
+      "rationale": "Restore the existing deterministic SPARK bounds guarantee. Emitter copies initialized their emission fraction from the time-seeded shared context before per-system updates; a per-file RandomSeedScope fixes initialization and restores the shared stream on exit.",
+      "migration": "Follow the 2026.1.36-dev migration in Docs/en/reference/changelog.md and its Russian mirror: rebuild native roles, rebake SPARK packs and check continuous-emitter bounds across repeated bakes and effect order. No authored XML, configuration, script or save conversion is required. Retain the baseline binaries and matching packs for rollback.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026.1.36-dev and Docs/ru/reference/changelog.md; owning particle-format guides and the generic ContinuousEmitterBoundsIgnoreEarlierBakes native regression.",
+      "compatibility": "Runtime compatibility 0.0.72, Managed ABI 9 and resource grammar are unchanged from published cd5c1168f8f4bdab63a2909ceacb049ba87e070a / 2026.1.35-dev. Measured bounds can change to their reproducible result; deploy matching generated metadata and packs with rebuilt binaries. Rollback restores matching baseline artifacts without save conversion.",
+      "owner": "particle-format"
     }
   ]
 }

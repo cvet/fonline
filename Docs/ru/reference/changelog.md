@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f85660b7b6953391ac4bb1139b6ce60ec778d3b51fe77c9253fba5bb6be0f3e5"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4be4ad4311342a4837994550eb65306b93fd02d3880225a9ac8ede352a1855e1"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-14
+## Current - 2026-10-15
+
+### Исправлено
+
+- Исправлены ссылки/границы SPARK, C#-стиль/EOF, локальные типы, DB sort/POSIX startup; описан перенос lock.
+
+### Миграция
+
+- `c727e6f549fe54095e21dad4c272b99761083e0f` (40-dev) → 41-dev. API/конфигурация/данные, ABI 9, runtime 0.0.72 прежние. Пересоберите роли/runtime cache, перезапеките SPARK, обновите docs. Проверьте эти исправления и порядок эффектов. Откат: согласованные бинарники/docs/пакеты базы.
+
+## 2026.1.40-dev - 2026-10-14
 
 ### Изменено
 

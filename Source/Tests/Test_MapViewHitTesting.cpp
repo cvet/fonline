@@ -135,8 +135,8 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         CHECK(Client_Map_GetItemsOnHex(map, outside_hex).empty());
         map->RebuildMap();
         auto outside_sprite = outside->GetMapSprite();
-        auto outside_rect = outside_sprite->GetDrawRect();
-        auto outside_pixel = map->MapToScreenPos({outside_rect.x + outside_rect.width / 2, outside_rect.y + outside_rect.height / 2});
+        irect32 outside_rect = outside_sprite->GetDrawRect();
+        ipos32 outside_pixel = map->MapToScreenPos({outside_rect.x + outside_rect.width / 2, outside_rect.y + outside_rect.height / 2});
         CHECK_FALSE(map->GetEntityAtScreen(outside_pixel, 0, false).first);
         mpos hit_hex {};
         CHECK_FALSE(map->GetHexAtScreen(outside_pixel, hit_hex, nullptr));

@@ -28,7 +28,7 @@ function(ReadEngineVersion engineRoot outputVariable gitDependenciesVariable)
                 if(EXISTS "${gitPath}")
                     list(APPEND gitDependencies "${gitPath}")
                 elseif(ref STREQUAL branch)
-                    # Detect a packed branch becoming loose without exporting a directory as a file dependency.
+                    # Detect a packed branch becoming loose without exporting a directory as a file dependency
                     file(GLOB looseBranchRef CONFIGURE_DEPENDS "${gitPath}")
                     list(APPEND gitDependencies ${looseBranchRef})
                 endif()

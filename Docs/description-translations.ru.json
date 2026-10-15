@@ -9182,8 +9182,8 @@
           "translation": "Статически измеренные границы заменяют ручные размеры отрисовки и не требуют пересчитывать AABB частиц каждый кадр."
         },
         "/runtime_rules/@id=particle-format.runtime.baked-bounds/requirement": {
-          "source_sha256": "460a5cda7929b7b55f4e3e26ab1e2daa52c1bce28568ff853c67c1d28cac2536",
-          "translation": "Запекайте для каждой системы частиц смоделированный параллелепипед позиций и максимальный радиус billboard в runtime-ресурс. SPARK отклоняет систему, которая ни разу не показала частицу; Effekseer добавляет и проверяет обязательный trailer границ."
+          "source_sha256": "78b9509f9b8473cf1f6fa209f52bb210b4b86870d8a063219b7f335818ddd4be",
+          "translation": "Запекайте воспроизводимый параллелепипед позиций и максимальный радиус billboard в каждый runtime-ресурс. SPARK задаёт seed перед инициализацией копий эмиттеров и отклоняет системы без видимых частиц; Effekseer добавляет и проверяет обязательный trailer границ."
         },
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/name": {
           "source_sha256": "84d8592be0066dd21e6c04bac2dc3805c7c132ad93ef592dc15622c7ce98c509",

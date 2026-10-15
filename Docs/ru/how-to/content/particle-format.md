@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"4cd0f52678a178f1a7664a8df5eabe17f0709873328ef7f0b91ca8906d8be4c0"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"0c18b98c371f2e22f83ace80ae794918a37f9817785b64e2d6cf7d019a9b482a"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -69,13 +69,13 @@ SetOptionValues(
 исходный формат не запекается, а runtime-расширение не объявляется
 `ParticleSpriteFactory`.
 
-Обе запечённые формы содержат обязательные измеренные bounds. Baker симулирует
-детерминированный instance, отдельно записывает прямоугольник позиций
-частиц и наибольший радиус билборда, обращённого к камере, и хранит
-результат в `.spk` или в trailer Engine, добавленном к `.efk`. Runtime-framing спрайта
-и видимость модели используют эти значения вместо авторского draw rectangle.
-Перезапеките частицы после обновления на ревизию, вводящую или меняющую
-этот контракт: старый `.efk` без валидного bounds trailer отклоняется.
+Оба формата требуют измеренных симуляцией границ позиций частиц и отдельного
+максимального радиуса билборда, обращённого к камере (`.spk` или trailer Engine
+в `.efk`). SPARK задаёт seed перед инициализацией копий эмиттеров, устраняя
+зависимость границ от времени процесса и порядка эффектов. Runtime-framing
+спрайта и видимость модели используют сохранённые bounds вместо авторских
+прямоугольников. После изменения контракта перезапеките частицы; `.efk` без
+валидного trailer отклоняется.
 
 ### Инкрементальное запекание Effekseer
 

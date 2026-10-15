@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"a3dffc63053a41a2f6ca10c609ae30dc06b2de4510c6c27c2e21cc39f51a312c"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"e9999a9e690fb0f3872920865ac15c3b0d814809cbf2ff49d7f814b2fa32d595"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -180,7 +180,7 @@ Overlays, производные от прототипов, лениво соз�
 - `Sync` - `NoSync`, `OwnerSync` или `PublicSync`;
 - `Persistent` - участвует ли членство в holder в persistence.
 
-Потомок сохраняется только через `Persistent`-запись постоянного держателя; для Game достаточно `Persistent` у записи. Постоянные потомки наследуют постоянство, обычные записи остаются временными. Проверяйте потомков и связи через unload/load. Внутренние сущности Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают их состояние.
+`Persistent`-записи сохраняют потомков постоянных держателей или Game; остальные записи временные. Проверяйте потомков и связи через unload/load. Потомки Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают состояние.
 
 Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 

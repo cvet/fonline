@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-14
+## Current - 2026-10-15
+
+### Fixed
+
+- Fix links/SPARK bounds, C# style/EOF, locals, DB sort/POSIX startup; document lock transfer.
+
+### Migration
+
+- `c727e6f549fe54095e21dad4c272b99761083e0f` (40-dev) → 41-dev. API/config/data, ABI 9, runtime 0.0.72 unchanged. Rebuild roles/runtime cache; rebake SPARK; regenerate docs. Validate these fixes and effect order. Rollback: matching base binaries/docs/packs.
+
+## 2026.1.40-dev - 2026-10-14
 
 ### Changed
 

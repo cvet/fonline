@@ -69,13 +69,10 @@ runtime request never falls back to an authoring file. When a backend is
 disabled, its source format is not baked and its runtime extension is not
 advertised by `ParticleSpriteFactory`.
 
-Both baked forms carry mandatory measured bounds. The baker simulates a
-deterministic instance, records the particle-position box separately from the
-largest camera-facing billboard radius, and stores the result in `.spk` or in
-an Engine trailer appended to `.efk`. Runtime sprite framing and model
-visibility use these values instead of an authored draw rectangle. Rebake
-particles after updating to a revision that introduces or changes this
-contract; an old `.efk` without a valid bounds trailer is rejected.
+Both formats store simulated position bounds and maximum camera-facing billboard
+radius (`.spk` or an Engine `.efk` trailer) for sprite framing and model visibility.
+SPARK seeds emitter copying; bounds ignore process time and effect order. Rebake
+after contract changes; `.efk` without a valid trailer fails.
 
 ### Incremental Effekseer baking
 

@@ -352,9 +352,9 @@ TEST_CASE("ServerGameHolderPersistsDeclaredChildren", "[server][entity][database
     server->LockForPropertyAccess();
     auto unlock_singleton = scope_exit([&server]() noexcept { server->UnlockForPropertyAccess(); });
 
-    auto persistent_entry = server->Hashes.to_hashed_string("PersistentRecords");
-    auto temporary_entry = server->Hashes.to_hashed_string("TemporaryRecords");
-    auto nested_entry = server->Hashes.to_hashed_string("NestedRecords");
+    hstring persistent_entry = server->Hashes.to_hashed_string("PersistentRecords");
+    hstring temporary_entry = server->Hashes.to_hashed_string("TemporaryRecords");
+    hstring nested_entry = server->Hashes.to_hashed_string("NestedRecords");
     auto persistent = server->EntityMngr.CreateCustomInnerEntity(server, persistent_entry, {});
     auto nested = server->EntityMngr.CreateCustomInnerEntity(persistent, nested_entry, {});
     auto temporary = server->EntityMngr.CreateCustomInnerEntity(server, temporary_entry, {});
@@ -368,8 +368,8 @@ TEST_CASE("ServerGameHolderPersistsDeclaredChildren", "[server][entity][database
     CHECK(persistent->GetCustomHolderEntry() == persistent_entry);
 
     server->DbStorage.WaitCommitChanges();
-    auto records_collection = server->Hashes.to_hashed_string("LoadingRecords");
-    auto children_collection = server->Hashes.to_hashed_string("LoadingChilds");
+    hstring records_collection = server->Hashes.to_hashed_string("LoadingRecords");
+    hstring children_collection = server->Hashes.to_hashed_string("LoadingChilds");
     auto persistent_doc = server->DbStorage.Get(records_collection, persistent->GetId());
     auto nested_doc = server->DbStorage.Get(children_collection, nested->GetId());
     auto temporary_doc = server->DbStorage.Get(records_collection, temporary->GetId());

@@ -61,14 +61,14 @@ TEST_CASE("DiskFileSystem")
         REQUIRE(first.owns_lock());
         CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());
         auto moved = std::move(first);
-        CHECK_FALSE(first.owns_lock());
+        CHECK_FALSE(first.owns_lock()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-from lock ownership contract
         CHECK(moved.owns_lock());
         CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());
 
         auto assigned = fs::try_lock_file(other_path);
         REQUIRE(assigned.owns_lock());
         assigned = std::move(moved);
-        CHECK_FALSE(moved.owns_lock());
+        CHECK_FALSE(moved.owns_lock()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-from lock ownership contract
         CHECK(assigned.owns_lock());
         CHECK(fs::try_lock_file(other_path).owns_lock());
         CHECK_FALSE(fs::try_lock_file(lock_path).owns_lock());

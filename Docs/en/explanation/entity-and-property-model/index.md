@@ -180,7 +180,7 @@ Entities can hold other entities under named entries. Holder metadata lives in `
 - `Sync` — `NoSync`, `OwnerSync`, or `PublicSync`;
 - `Persistent` — whether holder membership participates in persistence.
 
-A child persists only through a `Persistent` entry on a persistent holder; Game entries need only `Persistent`. Persistent descendants inherit persistence; ordinary entries stay temporary. Verify membership and children through unload/load. Critter inner entities restore before `OnCritterPreLoad`; game callbacks restore or finish their state.
+`Persistent` entries store children of persistent holders or Game; other entries stay temporary. Validate children and membership through unload/load. Critter children restore before `OnCritterPreLoad`; game callbacks restore or finish state.
 
 The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
 

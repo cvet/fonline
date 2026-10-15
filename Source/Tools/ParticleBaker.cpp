@@ -467,6 +467,10 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
     ValidateSparkTexturePaths(file, system);
 
+    // Emitter copies consume context randomness before per-system updates
+    uint32_t bake_seed = 1;
+    SPK::RandomSeedScope bake_seed_scope {system->getContext(), bake_seed};
+
     // Use a deterministic run of a throwaway copy to bake emitter-local positions separately from the absolute billboard radius
     // Runtime transforms only the positions
     {

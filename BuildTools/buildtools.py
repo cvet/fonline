@@ -1044,6 +1044,8 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 		build_env.pop('SDKROOT', None)
 
 	if os.name != 'nt':
+		# Runtime argument intersections need byte ordering shared by sort and comm
+		build_env['LC_ALL'] = 'C'
 		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
 		# subset turns that into a hard error, so the inherited job-control flags are dropped here
 		run(['./build.sh', *build_args], cwd=runtime_root, env=build_env)

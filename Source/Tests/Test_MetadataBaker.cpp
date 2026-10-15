@@ -48,9 +48,9 @@ static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vecto
     data_reader reader(output);
     REQUIRE(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
     REQUIRE(reader.read<uint16_t>() == METADATA_FILE_VERSION);
-    const auto version_size = reader.read<uint16_t>();
+    uint16_t version_size = reader.read<uint16_t>();
     (void)reader.read_string_view(version_size);
-    const auto tag_count = reader.read<uint16_t>();
+    uint16_t tag_count = reader.read<uint16_t>();
     auto read_string = [&reader](uint16_t size) -> string {
         string value;
         value.resize(size);
@@ -59,15 +59,15 @@ static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vecto
     };
     map<string, vector<vector<string>>> tags;
     for (uint16_t i = 0; i < tag_count; i++) {
-        const auto tag_name_len = reader.read<uint16_t>();
-        const string tag_name = read_string(tag_name_len);
-        const auto tag_value_count = reader.read<uint32_t>();
+        uint16_t tag_name_len = reader.read<uint16_t>();
+        string tag_name = read_string(tag_name_len);
+        uint32_t tag_value_count = reader.read<uint32_t>();
         for (uint32_t j = 0; j < tag_value_count; j++) {
-            const auto value_parts_count = reader.read<uint32_t>();
+            uint32_t value_parts_count = reader.read<uint32_t>();
             vector<string> value_parts;
             value_parts.reserve(value_parts_count);
             for (uint32_t k = 0; k < value_parts_count; k++) {
-                const auto part_len = reader.read<uint16_t>();
+                uint16_t part_len = reader.read<uint16_t>();
                 value_parts.emplace_back(read_string(part_len));
             }
             tags[tag_name].emplace_back(std::move(value_parts));
@@ -1452,15 +1452,15 @@ TEST_CASE("MetadataBakerEntityHolderScopes")
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     for (const auto& [target, side] : {pair<string_view, string_view> {"server", "Server"}, {"client", "Client"}, {"mapper", "Mapper"}}) {
-        const auto tags = ReadMetadataTags(rig.Outputs.at(strex("TestPack.fometa-{}", target)));
+        auto tags = ReadMetadataTags(rig.Outputs.at(strex("TestPack.fometa-{}", target)));
         REQUIRE(tags.contains("Entity"));
         REQUIRE(tags.contains("EntityHolder"));
         const auto& entities = tags.at("Entity");
         const auto& holders = tags.at("EntityHolder");
-        for (const string_view candidate : {"Server", "Client", "Mapper"}) {
-            const string holder = strex("Scope{}Holder", candidate);
-            const string child = strex("Scope{}Child", candidate);
-            const string flag = candidate == "Server" ? "Persistent" : "NoSync";
+        for (string_view candidate : {"Server", "Client", "Mapper"}) {
+            string holder = strex("Scope{}Holder", candidate);
+            string child = strex("Scope{}Child", candidate);
+            string flag = candidate == "Server" ? "Persistent" : "NoSync";
             if (candidate == side) {
                 CHECK(std::ranges::count(entities, vector<string> {holder}) == 1);
                 CHECK(std::ranges::count(entities, vector<string> {child}) == 1);

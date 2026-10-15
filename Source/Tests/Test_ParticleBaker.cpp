@@ -87,6 +87,77 @@ static constexpr string_view ValidParticle = R"PARTICLE(
 </SPARK>
 )PARTICLE";
 
+static constexpr string_view ContinuousParticle = R"PARTICLE(
+<SPARK>
+	<System name="UnitContinuousParticle">
+		<attrib id="transform" value="-1;0;0;0;0;1;-0;0;0;0;1;0;0;0;0;1" />
+		<attrib id="groups">
+			<Group name="Smoke">
+				<attrib id="capacity" value="100" />
+				<attrib id="life time" value="0.8;1" />
+				<attrib id="radius" value="1.2" />
+				<attrib id="color interpolator">
+					<ColorGraphInterpolator>
+						<attrib id="graph keys" value="0;0.1;0.6;1" />
+						<attrib id="graph values" value="0x40404000;0x404040F0;0x404040F0;0x40404000" />
+						<attrib id="graph values 2" value="0x60606000;0x606060FF;0x606060FF;0x60606000" />
+						<attrib id="looping enabled" value="false" />
+					</ColorGraphInterpolator>
+				</attrib>
+				<attrib id="scale interpolator">
+					<FloatRandomInterpolator>
+						<attrib id="values" value="0.3;0.4;0.5;0.7" />
+					</FloatRandomInterpolator>
+				</attrib>
+				<attrib id="angle interpolator">
+					<FloatRandomInterpolator>
+						<attrib id="values" value="0;1.5708;0;1.5708" />
+					</FloatRandomInterpolator>
+				</attrib>
+				<attrib id="texture index interpolator">
+					<FloatRandomInitializer>
+						<attrib id="values" value="0;4" />
+					</FloatRandomInitializer>
+				</attrib>
+				<attrib id="emitters">
+					<RandomEmitter>
+						<attrib id="tank" value="-1" />
+						<attrib id="flow" value="10" />
+						<attrib id="force" value="0.06;0.12" />
+						<attrib id="zone">
+							<Sphere>
+								<attrib id="position" value="(0,0,0)" />
+								<attrib id="radius" value="0" />
+							</Sphere>
+						</attrib>
+					</RandomEmitter>
+				</attrib>
+				<attrib id="modifiers">
+					<Gravity>
+						<attrib id="local" value="true" />
+						<attrib id="value" value="(0,2,0)" />
+					</Gravity>
+				</attrib>
+				<attrib id="renderer">
+					<SparkQuadRenderer>
+						<attrib id="active" value="true" />
+						<attrib id="effect" value="Effects/Particles_ColorAdd.fofx" />
+						<attrib id="texture" value="TestParticle.png" />
+						<attrib id="scale" value="1;1" />
+						<attrib id="atlas dimensions" value="2;2" />
+						<attrib id="look orientation" value="LOOK_CAMERA_PLANE" />
+						<attrib id="up orientation" value="UP_CAMERA" />
+						<attrib id="locked axis" value="LOCK_UP" />
+						<attrib id="locked look vector" value="(0,0,1)" />
+						<attrib id="locked up vector" value="(0,1,0)" />
+					</SparkQuadRenderer>
+				</attrib>
+			</Group>
+		</attrib>
+	</System>
+</SPARK>
+)PARTICLE";
+
 static constexpr string_view NonEmittingParticle = R"PARTICLE(
 <SPARK>
   <System name="NonEmittingParticle">
@@ -696,6 +767,22 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         CHECK(renderer_data.ScaleY == Catch::Approx(2.0f));
         CHECK(renderer_data.AtlasDimensionX == 2);
         CHECK(renderer_data.AtlasDimensionY == 3);
+    }
+
+    SECTION("ContinuousEmitterBoundsIgnoreEarlierBakes")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Particles/Continuous.spark", ContinuousParticle, 10);
+        ParticleBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+        vector<uint8_t> first_binary = rig.Outputs.at("Particles/Continuous.spk");
+        REQUIRE_FALSE(first_binary.empty());
+
+        for (size_t repeat = 0; repeat < 8; repeat++) {
+            CAPTURE(repeat);
+            baker.BakeFiles(rig.GetAllSourceFiles(), "");
+            CHECK(rig.Outputs.at("Particles/Continuous.spk") == first_binary);
+        }
     }
 
     SECTION("BakesOnlyExplicitParticleTarget")

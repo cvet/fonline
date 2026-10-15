@@ -273,7 +273,7 @@ TEST_CASE("AudioBaker")
     SECTION("OptionalAcmImporter")
     {
         // The stereo header deliberately describes mono effect data, as Fallout assets commonly do
-        const std::array<uint8_t, 18> acm = {0x97, 0x28, 0x03, 0x01, 0x20, 0, 0, 0, 2, 0, 0x22, 0x56, 0, 2, 0, 0, 0, 0};
+        std::array<uint8_t, 18> acm = {0x97, 0x28, 0x03, 0x01, 0x20, 0, 0, 0, 2, 0, 0x22, 0x56, 0, 2, 0, 0, 0, 0};
         TestRig rig;
         rig.AddSourceFile("sound/SFX/Synthetic.ACM", vector<uint8_t>(acm.begin(), acm.end()));
         rig.AddSourceFile("Sound/Music/Synthetic.acm", vector<uint8_t>(acm.begin(), acm.end()));

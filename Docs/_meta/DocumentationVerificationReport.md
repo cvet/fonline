@@ -11715,3 +11715,84 @@ Completed local validation:
 - The complete documentation suite executes 575 tests with one localization freshness failure while source docs change. After final ordered generation, the complete seven-case localization suite passes and standalone validation passes 411 Markdown entries. Retain the failed aggregate receipt separately; do not describe it as a passing 575-case run.
 - Full resource baking succeeds for all 33 selected packs and 16 bakers, including all three Managed roles, text/prototype data and 662 maps. An initial NuGet audit transport failure is resolved by an ordinary restore fetching current advisories with zero warnings; auditing remains enabled. A subsequent normal incremental bake changes no files or bytes and deletes no outputs, retaining the same build/configuration hashes.
 - Embedding acceptance reaches an ordinary visible local-map client and switches all four configured languages through the GUI. Screenshots show translated labels; successful client results verify indexed/unindexed text lookup, count and simultaneous language caches. This is functional Windows evidence, not a performance, package, graceful-stop, public-site or deployment qualification. Safety copies and local review changes are retained; no commit or publication is performed.
+
+## 2026-10-14 — POSIX runtime source-build locale
+
+- Trace pinned dotnet/runtime startup to its action intersection in `eng/build.sh:159`. Local uutils 0.10.0 `sort` honors non-byte collation, while `comm` compares bytes. Set only the POSIX child's `LC_ALL=C` in `run_runtime_build`; parent locale, Windows invocation and processor budgeting retain their behavior. The inspected CI diagnostics do not identify remote coreutils or locale.
+- Add a real Bash/`sort`/`comm` regression through BuildTools with Release/Debug CI arguments and implicit/explicit actions: four failures before the assignment, four passes after. Full immutable upstream `-help` probes reproduce the failure and pass through the corrected boundary without SDK restore or compilation.
+- Runtime preparation suites: 610 passed, one skipped, two existing iOS host-SDK-discovery failures. Both fail identically with the published function loaded in memory; they are not qualified by this change. Full runtime builds, Windows and all-platform CI remain separate acceptance.
+- Reconcile the EN/RU Managed C# guide and current 38-dev change/migration notes; retain every published 37-dev-and-older changelog body. Refresh translation hashes and generated documentation in dependency order. Managed/localization/site/AI checks pass 39 tests plus two subtests; standalone validation accepts 412 Markdown entries. Complete AI delivery uses 2293647 of 2293760 bytes with 398 public documents.
+- The runtime build-code fingerprint changes automatically. The retained Release CI identity predicts archive suffix `178c103a457f09ac837b7826e6890357`, replacing `7f96cd3d1a968f5295c7bdd7020e97f4`; no cache artifact is built or published. See [the internal plan](RuntimeBuildLocalePlan.md) for exact evidence and boundaries.
+
+## 2026-10-14 — Holder/metadata adoption on 4c594d
+
+- Adopt published `b497070377b3e1f8be6b9d0b91ebad71e9987a3d..4c594d1bef5660cb2d5058b87fe2a2f9891520cf`, retaining the unpublished working 38-dev fixes. Preserve all incoming and local verification/disposition records. Retain published release bodies; refresh only the local Current migration base/date and reviewed translations.
+- Normalize explicit primitive/hash locals and redundant local const in the new native regressions. The four affected translation units pass the AST checks with no findings. Exception-safety checks all 7444 functions cleanly; three reviewed functions retain Basic and receive updated body hashes.
+- Build all six embedding native targets on the exact selected sources. Focused metadata/Game-holder checks pass 61 assertions in two cases; the complete enabled native suite passes 729214 assertions in 655 cases. The new holder readback uses the Memory backend; it does not establish disk-provider or restart acceptance.
+- Focused BuildTools/documentation coverage passes 83 tests. Ordered documentation preparation, source inventory, snippets, complete localization, description overlays, site/search, retrieval, AI delivery, standalone validation and public-index freshness pass. Translation status is 194/194 current; the full AI bundle is 2293736 bytes at the unchanged 2293760-byte limit. The comparison with b497 has one change across 17 domains and its required disposition.
+- A clang-format 20 control rejects the published C++-only style for the C# fixture and accepts the retained root C# profile with identical output bytes. Published 4c594d version validation fails because its minor did not advance; the working 38-dev transition validates against that base. Historical failure is preserved, without rewriting the published commit or implying a remote rerun.
+- Independent read-only review accepts the focused holder/metadata contract and tests. All-role forced baking on these binaries is in progress; managed gameplay, physical package qualification and deployment remain pending. These observations are scoped to the selected worktree, not reusable production or all-platform acceptance.
+### 2026-10-14 — current 48c437 integration, watcher v113
+
+Native outputs were rebuilt for embedding root `ba2ce3e8932472b65e0bfbe7f71fa7c9dd2199dc`,
+Engine `48c437b01e85858e7c702c4be834dd647cd180cb` and working `2026.1.39-dev`.
+All six native targets completed with actual exit 0. The focused
+`ManagedScriptBaker,MetadataBakerEntityHolderScopes,ServerGameHolderPersistsDeclaredChildren`
+run passed 3 cases / 535 assertions; the complete native run passed
+655 cases / 729226 assertions. Source guards, binary and log hashes were verified,
+and the controller and every child were absent at acceptance.
+
+This is native Linux Managed validation. The holder case uses real Memory-backend
+readback, not disk recovery or restart. Actual current server/client/Mapper
+assemblies, gameplay consumers, rendering and other platform/backend runs remain
+separate acceptance boundaries. Current all-role baking is running; its outputs
+are not yet qualified. Published historical records remain unchanged.
+
+### 2026-10-14 — current 92ee4c integration, watcher v117
+
+Reconcile the complete published `48c437b01e85858e7c702c4be834dd647cd180cb..92ee4cb67d66e586c026e181e576b830deb7112a`
+range and retain the local fixes as working `2026.1.40-dev`. The selected embedding
+root is `22111a02b3a31cc76e747f655c5b49a61ca544ee`. All six native targets build with
+actual exit 0. The focused `MapBaker,MapLoader,DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes,ManagedScriptBaker,MetadataBakerEntityHolderScopes,ServerGameHolderPersistsDeclaredChildren`
+selection passes 6 cases / 774 assertions; the complete enabled native suite
+passes 655 cases / 729225 assertions. Source, native binary and log hashes are
+reverified after all controller and child processes exit. Effective placement
+Static/Hidden regression includes both positive IDs and both negative overrides.
+
+Ordered documentation preparation and ten subsequent source/document gates pass.
+Focused AI-delivery, governance and version coverage passes 29 tests / 62 subtests.
+The full-context artifact is 2295074 bytes at the incoming published 2326528-byte
+limit; the local work does not increase that budget. Comparison against 92ee4c
+reports one change across 17 domains with its required disposition present.
+The separate embedding exception-safety audit accepts all 7444 functions after
+the single reviewed MapBaker body-hash reconciliation, retaining Basic.
+
+These are Linux Managed native and documentation observations. Memory-holder
+readback remains distinct from disk-provider/restart acceptance. Fresh all-role
+baking and embedding gameplay are separate pending checks; the prior ba2/48
+assemblies and map outputs do not qualify the new base. Public CI, packages,
+other renderers/platforms and production are not accepted by this record.
+
+### 2026-10-14 — 92ee4c all-role and embedding follow-up, watcher v118
+
+The selected 22111a02/92ee4c/working-40 source snapshot completes all-role baking
+with actual exit 0 in 1098859 ms. All 19068 files in 33 packs are rehashed:
+90 physical changes, no additions/removals; the three role metadata versions
+remain ed8d8457f7502371. Effective placement overrides are visible in full
+client/server map reads to EOF: the new authored static stations occur on both
+sides, while the two placements overriding Static to false leave client baked
+static records. Dynamic replication remains a separate runtime path.
+
+Six selected embedding gameplay partitions pass 75 expectations with native and
+checker exit 0 and no exceptions, skips or timeouts. Complete immutable source,
+native and pack inventories are checked after process exit. This includes the
+ten-expectation station access fixture, real logout and dynamic compiler consumer.
+One rendered native client frame on Vulkan/llvmpipe shows the loaded static
+station art; it does not qualify the complete renderer/platform matrix.
+
+That client separately exposes an embedding observation-filter defect: three
+loaded static CraftTool items are excluded from its candidate cache. The first
+private observer controller exits 1 because it misreads the event envelope; its
+failure is retained, and matching event/server-log output provides only partial
+data evidence. A corrected controller exits 0 with the same data and a screenshot.
+The engine map fix is not reverted or bypassed to hide the embedding defect.

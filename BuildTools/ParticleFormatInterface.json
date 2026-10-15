@@ -2406,7 +2406,7 @@
       "id": "particle-format.runtime.baked-bounds",
       "name": "Mandatory baked bounds",
       "stability": "experimental",
-      "requirement": "Bake each particle system's simulated position box and maximum billboard radius into the runtime resource. SPARK rejects a system that never shows a particle; Effekseer appends and validates a mandatory bounds trailer.",
+      "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles; Effekseer appends and validates a mandatory bounds trailer.",
       "rationale": "Static measured bounds replace manual draw dimensions and avoid recomputing a particle AABB every frame.",
       "source": [
         {
@@ -2415,7 +2415,8 @@
             "deterministic run of a throwaway copy",
             "SPARK particle system showed no visible particles while baking its bounds",
             "SimulateEffekseerBounds",
-            "AppendEffekseerBoundsTrailer"
+            "AppendEffekseerBoundsTrailer",
+            "SPK::RandomSeedScope bake_seed_scope"
           ]
         },
         {
@@ -2423,6 +2424,12 @@
           "anchors": [
             "ReadEffekseerBoundsTrailer",
             "Baked Effekseer binary is missing its mandatory bounds trailer magic"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ParticleBaker.cpp",
+          "anchors": [
+            "ContinuousEmitterBoundsIgnoreEarlierBakes"
           ]
         }
       ]

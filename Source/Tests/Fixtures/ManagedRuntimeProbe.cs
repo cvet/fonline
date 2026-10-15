@@ -100,4 +100,3 @@ public static class ManagedRuntimeProbe
     [CallableFromNative]
     internal static void ThrowFromScript() => throw new InvalidOperationException("Managed runtime probe failure");
 }
-
