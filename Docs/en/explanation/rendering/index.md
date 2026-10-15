@@ -274,6 +274,8 @@ The request itself is not universally non-blocking; the following fallbacks rema
 
 `ModelSpriteHitMask` owns the pending request and completed alpha mask. If requesting or collecting pixels throws, it releases the request, marks the mask stale and propagates the error. The next hit test requests a fresh copy while retaining the last completed mask. A redraw during an outstanding request still requires another copy after that request completes. `ModelSpriteHitMaskRetriesFailedReadback` covers both the first mask and replacement of a completed mask; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` pins the redraw ordering.
 
+Readback and model-mask tests are backend-neutral. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` in `Source/Tests/Test_ClientEngine.cpp` requires `FO_ENABLE_3D`, not `FO_ANGELSCRIPT_SCRIPTING`; AngelScript-only client tests live separately in `Source/Tests/Test_AngelScriptClientEngine.cpp`. Selecting a scripting backend must not remove the native rendering coverage.
+
 ### Sprite and model atlas geometry
 
 `EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex

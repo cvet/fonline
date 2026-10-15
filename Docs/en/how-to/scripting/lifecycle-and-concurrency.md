@@ -192,6 +192,29 @@ A value-transforming property setter runs before storage: it receives the propos
 
 The callback runs with map transfers locked. Limit it to normalizing the critter's own persisted properties and inventory: the rest of the world may still be only partially restored, and resolving, loading, or relocating other persisted entities is not supported at this phase. A handler may explicitly destroy the critter to drop a stale persisted graph. Throwing or stopping the event chain instead marks the load as failed and leaves the persisted record available for diagnosis. See [Server Runtime](../../explanation/runtime/server.md) for the full load order and player-bound behavior.
 
+### Persistence during critter unload
+
+`ServerEngine::UnloadCritter` requires the critter to be detached from its
+player and marks it destroying before `Game.OnCritterUnload`. Synchronous
+changes to that critter's own persistent properties during this exact event
+are written to its retained database record and survive a later load. This
+permission belongs to the critter instance under its entity cover, ends when
+the event returns, and does not apply to another destroying entity or to a
+continuation after suspension.
+
+Native map removal and the rest of unload teardown do not save their temporary
+property changes: the stored map/hex fields remain those from before teardown.
+The ordinary load path still clears `MapId` before preload and starts through
+global-map entry; preserving the stored fields does not change that policy.
+Ordinary destruction and writes after `IsDestroyed` never update or recreate
+the record. Actual logout and actual critter unload remain separate events;
+the embedding game owns when an offline body is unloaded.
+
+Engine-owned `ServerCritterUnloadPersistsCallbackChanges` and
+`ServerCritterFinishDoesNotPersistChangesOrRecreateRecords` in
+`Source/Tests/Test_ServerEntityLifetime.cpp` cover the callback/teardown
+boundary, a write back to a default value, real reload and ordinary finish.
+
 ## Entity `InitScript` callbacks
 
 `Item`, `Critter`, `Map`, and `Location` have a server-side persistent `InitScript` property. It names a global callback with the corresponding entity plus `bool firstTime`; authored values are signature-checked during server baking. The exact signatures and prototype-authoring rules are in [Prototype Format](../content/prototype-format.md#init-scripts).
@@ -336,7 +359,7 @@ Managed C# enters the same backend-neutral `ScriptSystem`, entity, property, eve
 - Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC007` and `FOSYNC009` catch invalid targets, missing propagation, entry declarations, covered collections, and locks crossing `await`.
 - Cover normally does not survive `await`. Preserve it only through the explicit `[PreservesCover]` contract supported by the called operation; otherwise re-resolve mutable state and reacquire the complete cover after resumption.
 - Named invocation requires `[CallableByName]`. Administrative and internal named-call allowlists are separate boundaries; do not widen one to satisfy the other.
-- Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Native reference objects retained by managed code must follow the generated `__AddRef` / `__Release` ownership contract.
+- Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Ref-counted native wrappers automatically acquire or adopt a lease at the generated boundary. Retain the wrapper across calls and use `using` / `Dispose()` for deterministic release; `__AddRef` / `__Release` are private implementation details, not script ownership calls.
 
 The full generated-project, value-marshalling, runtime-isolation, packaging, platform, and migration details are in [Managed C# Scripting](managed-csharp.md). This section is intentionally the lifecycle crosswalk, not a second competing C# manual.
 

@@ -24,18 +24,36 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
     def test_revision_update_guides_preserve_published_history(self) -> None:
         guides = {
             "en": (
-                "Rebase unpublished commits onto the fetched base",
-                "including on branches with an upstream",
-                "Keep already-pushed tips as ancestors",
-                "merge only diverged published histories",
+                "branch with a remote tip",
+                "preserve the entire history, including unpublished commits",
+                "with an ordinary merge",
+                "never rebase, reset or amend",
+                "No force-push or remote-branch deletion",
+                "published tip on the publication's first-parent chain",
+                "integration branch from the published tip",
+                "published tip is an ancestor",
                 "After integration",
             ),
             "ru": (
-                "Незалитые коммиты обязательно переносите rebase",
-                "даже при наличии upstream",
-                "Уже залитые tip сохраняйте в предках",
-                "merge нужен только для разошедшихся опубликованных историй",
+                "ветке с удалённым tip",
+                "сохраняйте всю историю, включая неопубликованные коммиты",
+                "обычным merge",
+                "никогда не применяйте к этой ветке rebase, reset или amend",
+                "Force-push и удаление удалённых веток запрещены",
+                "опубликованный tip в цепочке first-parent публикации",
+                "integration branch от опубликованного tip",
+                "опубликованный tip назначения является предком",
                 "После интеграции",
+            ),
+        }
+        obsolete_instructions = {
+            "en": (
+                "Rebase unpublished commits onto the fetched base",
+                "merge only diverged published histories",
+            ),
+            "ru": (
+                "Незалитые коммиты обязательно переносите rebase",
+                "merge нужен только для разошедшихся опубликованных историй",
             ),
         }
         for locale, markers in guides.items():
@@ -43,6 +61,8 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
                 guide = (ROOT / f"Docs/{locale}/contributing/documentation/index.md").read_text(encoding="utf-8")
                 section = guide.split("<old-engine-sha>", 1)[0].rsplit("\n## ", 1)[-1]
                 self.assertNotIn("fast-forward/rebase", section)
+                for instruction in obsolete_instructions[locale]:
+                    self.assertNotIn(instruction, section)
                 for marker in markers:
                     self.assertIn(marker, section)
 
@@ -101,8 +121,8 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
 
         delivery = manifest["ai_delivery"]
         self.assertEqual(delivery["source_ref"], "master")
-        self.assertEqual(delivery["full_context"]["max_bytes"], 2 * 1024 * 1024 + 192 * 1024)
-        self.assertIn("2 MiB + 192 KiB (2,293,760 bytes)", adr3)
+        self.assertEqual(delivery["full_context"]["max_bytes"], 2 * 1024 * 1024 + 208 * 1024)
+        self.assertIn("2 MiB + 208 KiB (2,310,144 bytes)", adr3)
         for path in ("llms.txt", "llms-full.txt", "docs-manifest.json"):
             self.assertIn(f"`{path}`", adr3)
         self.assertEqual(

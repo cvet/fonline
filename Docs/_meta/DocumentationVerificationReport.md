@@ -11490,6 +11490,73 @@ Completed local validation:
 - Regenerate the public index, snippet/localization state, site/search/routes, AI evaluation and delivery artifacts in dependency order. Preserve source-owned classification and limits. The existing version suite passes all ten cases and the working-tree comparison against the exact published baseline accepts the new minor.
 - This documentation correction does not independently qualify the newly published movement implementation or an embedding project's adoption. Native builds, controlling/observing-client movement and delayed-link checks retain their separate evidence boundaries.
 
+## 2026-10-10 — Preserve published grid/display updates and retained integration
+
+- Published baseline: `9ca3e5c986a38713cacf1a01661649861b9934ed`
+  (`2026.1.24-dev`). Retained integration:
+  `f684889580bf00f6a2c8a382a2a4eb1f00cd1111` (`2026.1.22-dev`).
+  Merge version `2026.1.25-dev` keeps the published baseline as first parent
+  and the retained integration as second parent. Both histories and their
+  complete bilingual migration notes remain reachable.
+- Reviewed all three incoming commits from the retained integration: chunked
+  client fields and string server grid selectors, public example configuration,
+  and optional display-size/mode queries. Regenerated API and map models,
+  public index, localized documentation delivery, site/search/routes and AI
+  artifacts in dependency order. The aggregate seventeen-domain contract diff
+  has seven API changes, three required dispositions and zero missing
+  dispositions; the other sixteen domains are unchanged.
+- Full source documentation validation, exact baseline version comparison,
+  generated model/index freshness and eight focused engine-owned unittest
+  modules pass (85 tests). AI evaluation passes 28 tasks and 67 retrieval
+  checks with 100% success and 0.930 mean reciprocal rank.
+- Fresh Windows native unit compilation and execution pass 552 test cases and
+  667305 assertions. Additional engine-owned probes pass client field access
+  twice, dynamic-grid memory, chunked-grid memory and server grid operation
+  cost. The cost probe checks matching result hashes across all nine
+  combinations with five warmed samples; its timing report is not a general
+  performance guarantee. Native roles were compiled together against the
+  version 25 source cohort; embedding-project runtime acceptance is recorded
+  separately by that project.
+- Jekyll rendering was attempted and could not start: `bundle` is absent
+  (`WinError 2`), with no Ruby installation or WSL available. Source/site
+  models and search/AI checks pass; no new rendered-site or browser-audit
+  acceptance is claimed. Existing dated rendered-site proofs remain historical.
+- These checks precede the merge commit and use the exact tracked working-tree
+  source cohort. The later verification-record edit changes documentation only.
+  Safety stashes remain retained. No push, release or production publication
+  was performed.
+
+## 2026-10-10 — Persist retained critter changes during unload
+
+- Baseline `a131717f8373b78f251c331699d15a4ab285eeca`
+  (`2026.1.25-dev`); correction `2026.1.26-dev`. A private per-critter
+  permission admits synchronous persistent-property writes only during its
+  `OnCritterUnload` dispatch and ends before native map/body teardown.
+  Ordinary destroying and finished entities continue rejecting persistence.
+- Two backend-independent engine-owned regressions reproduce lost callback
+  values before the fix and run successfully after it: 29 assertions, no
+  failure, error or skip. They verify actual load, resetting a property to
+  its default, saved map/hex preservation before load, and no finish-time
+  write or recreation of a deleted database record. Ordinary load still
+  clears local-map membership and enters the global map.
+- Clean Windows native compilation and the full embedding-generated engine
+  unit target pass 554 cases and 667334 assertions. An initial const-capture
+  compiler failure is retained separately; acceptance uses the subsequent
+  mutable unwind guard and unchanged source cohort.
+- The dated English/Russian migration notes and lifecycle guide describe the
+  precise synchronous boundary, private native-layout rebuild, unchanged
+  stored identities/API/formats and project-owned data reconciliation.
+  Generated API/map/index, complete source documentation validation
+  (414 Markdown entries), and 25 lifecycle/localization/version fixtures pass.
+  The seventeen-domain contract diff has zero changes and zero required or
+  missing dispositions. Site/search/routes and AI artifacts are regenerated
+  in dependency order.
+- Jekyll remains unavailable in this environment: no bundle/Ruby or WSL.
+  No fresh rendered-site or browser acceptance is claimed. Gameplay-specific
+  persisted outcomes remain the embedding project's evidence boundary.
+  Completion/report edits follow native validation and alter documentation
+  only. No push, release or production publication is performed.
+
 ## 2026-10-10 — lf-6 Engine update verification
 
 - Baseline: `5f5e2df9f03e3b977dfd1181af5f8d4cf608e768` (`2026.1.16-dev`).

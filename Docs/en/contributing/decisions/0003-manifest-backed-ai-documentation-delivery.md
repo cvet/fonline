@@ -40,7 +40,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
    Each complete document keeps its ID, source path and canonical `URL:` header; compact labels preserve the byte budget.
-4. The manifest checks the reviewed 2 MiB + 192 KiB (2,293,760 bytes) before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Reviewed growth:
+4. The manifest checks the reviewed 2 MiB + 208 KiB (2,310,144 bytes) before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Reviewed growth:
 
    | Date / revision | Complete bundle bytes | Reviewed growth and reason |
    |---|---:|---|
@@ -50,6 +50,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    | 2026-10-05 | 2,197,968 | +32 KiB: retained baking/testing explanations, migration notes and generated build references. |
    | 2026-10-09, published version 20 | 2,228,855; 112 complete documents | +32 KiB; 631 bytes over the prior limit. Retain current owners and required migration history. |
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2,282,913 | +32 KiB: optional-component, baking-lock and migration guides; 21,921 bytes over the prior limit. Already in the published manifest. |
+   | 2026-10-14, merged 2026.1.38-dev | 2,301,630 before this policy note; 112 complete documents | +16 KiB after explicit policy review: the published baseline was 2,293,475 bytes; preserving required migration history and retained lifecycle guidance adds 8,155 bytes, exceeding the old bound by 7,870. Membership, exclusions and indexes-only policy are unchanged; further growth still fails closed. |
 
    The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Omitted pages remain in `llms.txt`, search and the public manifest. Checked managed-arithmetic guides/migration notes use this bound without another increase or exclusion.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.

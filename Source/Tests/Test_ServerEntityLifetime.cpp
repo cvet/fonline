@@ -913,6 +913,182 @@ TEST_CASE("ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart", "[server]
     CHECK(server->GetLastEntityId().underlying_value() >= cr->GetId().underlying_value());
 }
 
+TEST_CASE("ServerCritterUnloadPersistsCallbackChanges", "[server][entity][lifetime][persistence]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true));
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto loc = server->MapMngr.CreateLocation(fn("LifetimeLocation"), vector<hstring> {fn("LifetimeMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
+
+    auto cr = server->CreateCritter(fn("LifetimeCritter"), true).hold_ref();
+    cr->SetLookDistance(12);
+    cr->SetHideSprite(true);
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    ident_t cr_id = cr->GetId();
+    hstring collection = fn("Critters");
+    auto saved_before = server->DbStorage.Get(collection, cr_id);
+    REQUIRE(saved_before.Contains("MapId"));
+    REQUIRE(saved_before.Contains("Hex"));
+    bool callback_called = false;
+
+    {
+        Entity::EventCallbackData callback;
+        callback.Callback = [&cr, &callback_called](FuncCallData&) {
+            callback_called = cr->IsDestroying() && !cr->IsDestroyed();
+            cr->SetLookDistance(42);
+            cr->SetHideSprite(false);
+            return Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&callback_called);
+        server->OnCritterUnload.Subscribe(std::move(callback));
+        auto unsubscribe = scope_exit([&server, &callback_called]() noexcept { server->OnCritterUnload.Unsubscribe(reinterpret_cast<uintptr_t>(&callback_called)); });
+
+        REQUIRE_NOTHROW(server->UnloadCritter(cr));
+    }
+
+    CHECK(callback_called);
+    CHECK(cr->IsDestroyed());
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+    auto saved_after = server->DbStorage.Get(collection, cr_id);
+    CHECK(saved_after["MapId"] == saved_before["MapId"]);
+    CHECK(saved_after["Hex"] == saved_before["Hex"]);
+
+    auto loaded_cr = server->LoadCritter(cr_id, true);
+    CHECK(loaded_cr->GetId() == cr_id);
+    CHECK(loaded_cr->GetLookDistance() == 42);
+    CHECK_FALSE(loaded_cr->GetHideSprite());
+
+    server->UnloadCritter(loaded_cr);
+    server->DestroyUnloadedCritter(cr_id);
+    server->MapMngr.DestroyLocation(loc);
+}
+
+TEST_CASE("ServerCritterFinishDoesNotPersistChangesOrRecreateRecords", "[server][entity][lifetime][persistence]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring collection = server->Hashes.to_hashed_string("Critters");
+    auto cr = server->CreateCritter(server->Hashes.to_hashed_string("LifetimeCritter"), false).hold_ref();
+    cr->SetLookDistance(12);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    ident_t cr_id = cr->GetId();
+    bool callback_called = false;
+    int64_t retained_value = -1;
+
+    Entity::EventCallbackData callback;
+    callback.Callback = [&server, &cr, &callback_called, &retained_value, collection, cr_id](FuncCallData&) {
+        callback_called = cr->IsDestroying() && !cr->IsDestroyed();
+        cr->SetLookDistance(99);
+        auto doc = server->DbStorage.Get(collection, cr_id);
+        retained_value = doc["LookDistance"].AsInt64();
+        return Entity::EventResult::ContinueChain;
+    };
+    callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&callback_called);
+    server->OnCritterFinish.Subscribe(std::move(callback));
+    auto unsubscribe = scope_exit([&server, &callback_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&callback_called)); });
+
+    REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(cr));
+    CHECK(callback_called);
+    CHECK(retained_value == 12);
+    CHECK(cr->GetLookDistance() == 99);
+    CHECK(cr->IsDestroyed());
+    CHECK(server->DbStorage.Get(collection, cr_id).Empty());
+    server->DbStorage.WaitCommitChanges();
+    CHECK(server->DbStorage.Get(collection, cr_id).Empty());
+}
+
+TEST_CASE("ServerCritterAttachmentsDetachDuringFinish", "[server][entity][lifetime]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring proto = server->Hashes.to_hashed_string("LifetimeCritter");
+    auto master = server->CreateCritter(proto, false).hold_ref();
+    auto attached = server->CreateCritter(proto, false).hold_ref();
+    REQUIRE_NOTHROW(attached->AttachToCritter(master));
+    REQUIRE(attached->GetIsAttached());
+    REQUIRE(master->HasAttachedCritters());
+
+    SECTION("OrdinaryDetach")
+    {
+        REQUIRE_NOTHROW(attached->DetachFromCritter());
+        CHECK_FALSE(attached->GetIsAttached());
+        CHECK_FALSE(attached->GetAttachMaster());
+        CHECK_FALSE(master->HasAttachedCritters());
+    }
+    SECTION("DestroyAttachedCritter")
+    {
+        bool finish_called = false;
+        bool detached = false;
+        Entity::EventCallbackData callback;
+        callback.Callback = [&attached, &finish_called, &detached](FuncCallData&) {
+            finish_called = attached->IsDestroying() && !attached->IsDestroyed();
+            attached->DetachFromCritter();
+            detached = true;
+            return Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
+        server->OnCritterFinish.Subscribe(std::move(callback));
+        auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+
+        REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(attached));
+        CHECK(finish_called);
+        CHECK(detached);
+        CHECK(attached->IsDestroyed());
+        CHECK_FALSE(master->HasAttachedCritters());
+    }
+    SECTION("DestroyMasterCritter")
+    {
+        bool finish_called = false;
+        bool detached = false;
+        Entity::EventCallbackData callback;
+        callback.Callback = [&master, &attached, &finish_called, &detached](FuncCallData&) {
+            finish_called = master->IsDestroying() && !master->IsDestroyed();
+            attached->DetachFromCritter();
+            detached = true;
+            return Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
+        server->OnCritterFinish.Subscribe(std::move(callback));
+        auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+
+        REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(master));
+        CHECK(finish_called);
+        CHECK(detached);
+        CHECK(master->IsDestroyed());
+        CHECK_FALSE(attached->GetIsAttached());
+        CHECK_FALSE(attached->GetAttachMaster());
+    }
+
+    if (!attached->IsDestroyed()) {
+        server->CrMngr.DestroyCritter(attached);
+    }
+    if (!master->IsDestroyed()) {
+        server->CrMngr.DestroyCritter(master);
+    }
+}
+
 TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();

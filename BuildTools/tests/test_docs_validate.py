@@ -1538,9 +1538,17 @@ class DocumentationValidatorTests(unittest.TestCase):
             f'SETTING(int32_t, Audio, SoundVolume, {audio_outputs["audio_settings"]["SoundVolume"]})\n'
             f'SETTING(int32_t, Audio, MusicVolume, {audio_outputs["audio_settings"]["MusicVolume"]})\n'
         )
+        audio_baker_fixture = 'AddLoader(nullptr, {"wav"});\n'
+        for option, extensions in audio_outputs["optional_baker_extensions"].items():
+            audio_baker_fixture += (
+                f"#if {option}\n"
+                + "AddLoader(nullptr, {"
+                + ", ".join(f'"{extension}"' for extension in extensions)
+                + "});\n#endif\n"
+            )
         audio_fixtures = {
             audio_manifest["sources"]["audio_manager"]: sound_fixture,
-            audio_manifest["sources"]["audio_baker"]: 'AddLoader(nullptr, {"wav"});\n',
+            audio_manifest["sources"]["audio_baker"]: audio_baker_fixture,
             audio_manifest["sources"]["audio_baker_header"]: 'NATIVE_EXTENSION = "ogg";\n',
             audio_manifest["sources"]["settings"]: settings_fixture,
             audio_manifest["sources"]["application"]: (

@@ -12,7 +12,59 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-13
+## Current - 2026-10-15
+
+### Changed
+
+- Merge published `b497070377b3e1f8be6b9d0b91ebad71e9987a3d`
+  (`2026.1.37-dev`) with retained `3ab93d4c7c1e1294b019edf42bd691dd3f18ebe6`
+  (`2026.1.26-dev`), preserving both histories. Keep synchronous retained-critter
+  property persistence inside `OnCritterUnload` and process-private unit caches.
+- Reconcile attachment teardown with the published live-endpoint-only notification
+  contract; the sender retains its strict non-destroying guard. Preserve native
+  attachment and unload/destruction regressions alongside the new backend split.
+- Preserve both exact-digest contract disposition histories and reconcile native
+  and AngelScript lifecycle test ownership in both documentation locales.
+
+### Migration
+
+- The complete incoming range is `9ca3e5c986a38713cacf1a01661649861b9934ed`
+  through published `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` (13 commits).
+  Apply the distinct published versions 25–37 below in order; retained branch
+  notes remain separately labelled, with their original revision boundaries.
+  This merge adds no callable API, configuration key, persisted identity,
+  unit, network format or resource-schema replacement beyond those versions.
+- Explicitly select required positive database/archive/image/ACM options; remove
+  retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` entries from options, environment
+  and caches. Keep PNG/TGA/FOFRM, WAV/Ogg and Memory as mandatory components.
+  Old JSON Extended JSON and SQLite BSON storage cannot be opened as the new
+  plain JSON/CBOR format: use fresh storage and retain old binaries/storage
+  together. Mongo representation and the retained unload callback's exact
+  synchronous persistence boundary are unchanged; no business-data conversion
+  is supplied by this merge.
+- Adopt factory-backed `new` and automatic RefType leases; replace removed manual
+  `__Factory`, `__AddRef` and `__Release` calls with the documented constructors
+  and `Dispose`/`using` lifetime. Retain holders while native rendering borrows
+  their fields and call `StopDraw` before disposing an active holder. Rebuild
+  all native roles/extensions, managed assemblies and runtime payload together;
+  Managed ABI is 9 and the runtime marker is `0.0.72`. Do not mix earlier binaries,
+  bindings, snapshots or metadata with this cohort.
+- Reconfigure and regenerate native/script metadata, fully bake with the matching
+  baker, and retain both successful build/configuration stamps. The sibling bake
+  lock is an OS lock, not a stale-file sentinel. Bounded map observation requires
+  matching server/client wire format and the core fog effect. Corrected ART inputs
+  and sprite copies require the preceding version-specific acceptance checks.
+- Regenerate affected source-owned models and exact contract dispositions, then
+  snippets, reviewed EN/RU hashes, site/search/routes and AI artifacts. Run native
+  attachment/unload, providers/codecs, managed runtime/lifetime, baker locks,
+  image/audio and bounded-view checks on the selected components. Native/headless
+  checks do not replace visible or audible acceptance. The known managed
+  component-property callback name issue is not fixed by this merge.
+- Rollback restores the complete preceding matching native/resource/storage
+  package; do not reinterpret fresh CBOR records as old BSON. No release, push
+  or production publication is implied.
+
+## 2026.1.37-dev - 2026-10-13
 
 ### Changed
 
@@ -221,6 +273,46 @@ Baseline: `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`); this reb
 - Reconfigure and rebuild native clients, servers and unit tests, then rebake the embedding project's resources before validation. No project caller or data conversion is required. API, settings, network compatibility `0.0.69`, ABI, resource schemas and saves retain their current meanings; no migration rule is needed.
 - Regenerate documentation snippets, translation state, site/search/routes, AI evaluation and AI delivery after integrating this update.
 
+## Retained branch 2026.1.26-dev - 2026-10-10
+
+### Fixed
+
+- Persist synchronous changes to a retained critter's own properties in
+  `OnCritterUnload`, while keeping native unload teardown and ordinary
+  destruction outside that permission. A reloaded critter receives the
+  callback's values, including explicit writes back to defaults.
+
+### Migration
+
+- Upgrade from `2026.1.25-dev` at `a131717f8373b78f251c331699d15a4ab285eeca`.
+  The correction fulfills the existing unload callback contract; no script API,
+  setting, saved-property identity, unit, database conversion, network marker
+  (`0.0.69`) or resource-schema change is introduced. Only the synchronous
+  callback for the exact unloading critter may save while destroying; do not
+  suspend and expect the permission to persist. Logout alone is unaffected.
+- Reconfigure and rebuild Engine and consuming native server roles together
+  for the private critter layout and version/revision metadata. Rebake matching
+  scripts/resources when adopting dependent gameplay changes. Preserve the
+  stored map/hex fields during teardown; the existing global-map load policy
+  is unchanged. Already lost callback values cannot be reconstructed; an
+  embedding project owns any business-data reconciliation. Roll back using
+  the previous complete package, accepting its previous unload behavior.
+- Regenerate/check source-owned references, localization, site/search/routes
+  and AI artifacts. Run the backend-independent native unload/finish
+  regressions and the complete engine unit target; embedding games own their
+  exact persisted gameplay acceptance.
+
+## Retained branch 2026.1.25-dev - 2026-10-10
+
+### Changed
+
+- Merge published display-query and map-grid updates `9ca3e5c986` with retained collection-event integration `f684889580`, preserving both histories. The published `2026.1.24-dev` tip is the first parent; retained integration notes are preserved under version 22.
+
+### Migration
+
+- Apply versions 22–24 below in order. Replace removed boolean map-grid settings with their exact string selectors, regenerate bindings and rebuild native clients, embedded clients, Mapper, servers and tests; bake matching metadata before packaging. Existing coordinates, field results, collection writeback, saved values, network marker `0.0.69` and resource schemas retain their meanings. Display information remains optional and embedding projects own the fallback.
+- This merge introduces no additional API, setting, stored-data conversion or ABI change beyond those incoming versions. Regenerate source-owned references and public index, then snippets, localization, site/search/routes, AI evaluation and delivery. Keep safety copies until both repositories validate.
+
 ## 2026.1.24-dev - 2026-10-10
 
 ### Added
@@ -254,6 +346,14 @@ Baseline: `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`); this reb
   rules are unchanged; no data conversion is needed.
 
 ## 2026.1.22-dev - 2026-10-10
+
+### Changed
+
+- Merge published collection-event support `cfa468f17b` with retained integration `24da100693`, preserving both histories and all version 21 migration notes.
+
+### Migration
+
+- Adopt the version 21 collection writeback and full-context budget changes below. Rebuild native backends and matching embedding roles, rebake scripts and metadata, and regenerate documentation, translation state, site/search/routes and AI delivery. Handler signatures, scalar ABI, saved values and `0.0.69` remain unchanged by this merge. Keep safety copies through embedding validation.
 
 ### Added
 

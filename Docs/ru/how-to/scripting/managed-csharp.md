@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"aaa829789240841ae53ec621b6016b232f3f06a148874b2be5dfacfe9bdd38f0"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b66cae58c2a7f6b3ac58b7c6369c45d0b6eec624cce7c99760212a18f8b4fa7a"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -227,7 +227,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
 очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
 Пересоберите согласованные нативные компоненты и перевыпеките все managed-роли с ABI identity `9`;
-совместимость runtime — `0.0.71`.
+совместимость runtime задаёт текущий маркер в `Source/Common/Common.h` (`0.0.72`).
 
 `hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 

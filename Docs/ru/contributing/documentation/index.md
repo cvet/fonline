@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"e7f170fbee13ab6fbe6f6b4cf793b06f58bff870667576df2b225bee0d9f2e86"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"5d75ab0dd16489b69a335d913e7e52e32116b24da41799484cf5a247fef45320"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -270,8 +270,8 @@ Markdown-ссылки документации движка должны раз�
 2. Сохраните dirty worktree в именованном stash или отдельном worktree, включая untracked generated documentation, и не удаляйте safety copy до успешной проверки.
 3. Сохраните текущую generated JSON model в ignored `Workspace/`, если её нет в committed baseline.
 
-Незалитые коммиты обязательно переносите rebase на полученную базу, даже при наличии upstream.
-Уже залитые tip сохраняйте в предках; merge нужен только для разошедшихся опубликованных историй.
+В каждой ветке с удалённым tip сохраняйте всю историю, включая неопубликованные коммиты. Присоединяйте входящие изменения обычным merge; никогда не применяйте к этой ветке rebase, reset или amend. Force-push и удаление удалённых веток запрещены.
+Сохраняйте последний опубликованный tip в цепочке first-parent публикации. При расхождении историй создайте integration branch от опубликованного tip и объедините с ней сохранённую локальную ветку. Перед публикацией проверьте, что опубликованный tip назначения является предком итогового локального tip.
 Правило отдельно действует для Engine и embedding project.
 
 После интеграции:

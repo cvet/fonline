@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"bfa5d83284c841c1ddafbf7f046d0d920ab878f2018e965fba341fe0c392cfc5"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"2d9ab280140447f6b3e5d623e72bb55999b4ec54beef745a3d5f5233987c132e"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -194,6 +194,31 @@ Event dispatch может запускать пользовательские ca
 
 Callback выполняется при заблокированных map transfers. Ограничьте его нормализацией собственных сохранённых свойств и инвентаря криттера: остальной мир может быть восстановлен лишь частично, а разрешение, загрузка или перемещение других сохранённых сущностей на этой фазе не поддерживаются. Handler может явно уничтожить криттера, чтобы отбросить устаревший сохранённый граф. Исключение или остановка цепочки событий вместо этого помечает загрузку неуспешной и оставляет сохранённую запись для диагностики. Полный порядок загрузки и поведение player-bound описаны в [серверном runtime](../../explanation/runtime/server.md).
 
+### Персистентность при выгрузке криттера
+
+`ServerEngine::UnloadCritter` требует отсоединить криттера от его игрока
+и помечает тело уничтожаемым перед `Game.OnCritterUnload`. Синхронные
+изменения собственных persistent properties криттера в пределах этого
+события записываются в сохранённую запись БД и переживают последующую
+загрузку. Разрешение принадлежит экземпляру криттера под его entity cover,
+заканчивается при возврате из события и не распространяется на другую
+уничтожаемую сущность или продолжение после приостановки.
+
+Нативное удаление с карты и остальные этапы выгрузки не сохраняют свои
+временные изменения свойств: поля карты и гекса в БД остаются такими,
+какими были до разборки тела. Обычная загрузка по-прежнему очищает `MapId`
+перед preload и начинает через вход на глобальную карту; сохранение полей
+в БД не меняет эту политику. Обычное уничтожение и запись после
+`IsDestroyed` не обновляют и не создают запись заново. Выход из учётной
+записи и фактическая выгрузка криттера остаются разными событиями;
+момент выгрузки оставшегося в мире тела определяет игра.
+
+Engine-owned проверки `ServerCritterUnloadPersistsCallbackChanges` и
+`ServerCritterFinishDoesNotPersistChangesOrRecreateRecords` в
+`Source/Tests/Test_ServerEntityLifetime.cpp` проверяют границу callback
+и разборки тела, возврат свойства к значению по умолчанию, настоящую
+загрузку и обычное завершение сущности.
+
 ## Callbacks `InitScript` сущности
 
 `Item`, `Critter`, `Map` и `Location` имеют серверное persistent property `InitScript`. Оно называет глобальный callback с соответствующей сущностью и `bool firstTime`; авторские значения проверяются на сигнатуру при server baking. Точные сигнатуры и правила авторинга прототипов находятся в [Формате прототипов](../content/prototype-format.md#init-scripts).
@@ -338,7 +363,7 @@ Managed C# входит в те же независимые от backend кон�
 - Server cover объявляется и проверяется через `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]` и `CoverReach`. Roslyn-диагностики `FOSYNC001`–`FOSYNC007` и `FOSYNC009` находят неверные targets, пропущенное распространение, entry declarations, покрытые collections и locks, пересекающие `await`.
 - Cover обычно не переживает `await`. Сохраняйте его только через явный `[PreservesCover]` contract поддерживаемой операции; иначе после resumption заново разрешите mutable state и получите полный cover.
 - Named invocation требует `[CallableByName]`. Allowlist административных и внутренних named calls — разные границы; не расширяйте одну ради другой.
-- Delegates, сохраняемые после вызова, являются GC roots managed backend. Для отписки timer нужна та же identity delegate. Native reference objects, удерживаемые managed-кодом, следуют generated-контракту владения `__AddRef` / `__Release`.
+- Delegates, сохраняемые после вызова, являются GC roots managed backend. Для отписки timer нужна та же identity delegate. Обёртки native objects с подсчётом ссылок автоматически получают или принимают lease на generated-границе. Сохраняйте обёртку между вызовами и используйте `using` / `Dispose()` для детерминированного освобождения; `__AddRef` / `__Release` — закрытые детали реализации, а не script-вызовы управления владением.
 
 Полные детали generated project, marshalling значений, runtime isolation, packaging, платформ и миграции находятся в [Скриптах Managed C#](managed-csharp.md). Этот раздел является lifecycle crosswalk, а не вторым конкурирующим руководством C#.
 

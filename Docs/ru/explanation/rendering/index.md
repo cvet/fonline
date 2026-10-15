@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"ec95530725cf98716c7704064c8b1efa2f01f8c1ff59670f0826ec446e3e69d0"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"c4fc1a1efc1a53caf9df0ac36e80edf801601f889d76eb04337c90d0000994f7"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -336,6 +336,8 @@ buffers до передачи shader files конкретному backend.
 `ModelSprite::IsHitTest` использует CPU `vector<bool>` alpha mask изображения модели в atlas вместо чтения GPU pixel для каждого запроса. `DrawToAtlas` помечает mask устаревшей; следующий hit test обновляет её, держа не более одного readback in flight и сохраняя последнюю готовую mask до получения новой. **До готовности первой mask hit testing возвращает false.** Силуэт движущейся или анимированной модели может отставать от rendered pose, обычно на frame или два, но фиксированный срок завершения не гарантируется. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит mask из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
 
 `ModelSpriteHitMask` владеет незавершённым запросом и готовой альфа-маской. Если запрос или получение пикселей бросает исключение, он освобождает запрос, помечает маску устаревшей и передаёт ошибку вызывающему коду. Следующая проверка попадания запрашивает свежую копию, сохраняя последнюю готовую маску. Перерисовка во время незавершённого запроса по-прежнему требует ещё одной копии после его завершения. `ModelSpriteHitMaskRetriesFailedReadback` проверяет первую маску и обновление уже готовой; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` закрепляет порядок обновления после перерисовки.
+
+Тесты readback и маски модели не зависят от scripting backend. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` в `Source/Tests/Test_ClientEngine.cpp` требует `FO_ENABLE_3D`, а не `FO_ANGELSCRIPT_SCRIPTING`; отдельные клиентские тесты AngelScript находятся в `Source/Tests/Test_AngelScriptClientEngine.cpp`. Выбор scripting backend не должен убирать проверку нативного рендеринга.
 
 ### Геометрия atlas спрайтов и моделей
 
