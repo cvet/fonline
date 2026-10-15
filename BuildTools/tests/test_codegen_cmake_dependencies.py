@@ -49,9 +49,12 @@ with (output / 'invocations').open('a') as stream:
     stream.write('run\\n')
 ''')
         stage = Path(__file__).resolve().parents[1] / 'cmake/stages/Codegen.cmake'
-        cmake = '''cmake_minimum_required(VERSION 3.22)
-project(CodegenDependencyTest NONE)
-macro(SetValue name)
+        helper_dir = Path(__file__).resolve().parents[1] / 'cmake/helpers'
+        cmake = ('cmake_minimum_required(VERSION 3.22)\n'
+                 'project(CodegenDependencyTest NONE)\n'
+                 f'include("{(helper_dir / "Options.cmake").as_posix()}")\n'
+                 f'include("{(helper_dir / "Build.cmake").as_posix()}")\n')
+        cmake += '''macro(SetValue name)
     set(${name} ${ARGN})
 endmacro()
 macro(AppendList name)

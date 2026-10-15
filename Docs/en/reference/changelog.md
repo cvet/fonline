@@ -14,6 +14,23 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-14
 
+### Changed
+
+- Append matching text packs before one stable sort; grow capacity geometrically and bound binary sizes. Sort on success only; failures preserve their error and may leave dirty entries. Successful retries restore order.
+- Accept `const_span<uint8_t>` in native `TextPack::LoadFromBinaryData` and its append helper; decoded strings own their storage.
+- Sort text packs explicitly after successful loading; the single completion path needs no scope guard.
+- Make `scope_success` destruction conditionally `noexcept`: callback failures propagate on success; unwind skips the callback.
+- Correct docs/export comments: no-index `GetText` already chooses uniformly random variants; indexed selection retains load order.
+- Normalize Windows separators in environment-supplied `FO_DOTNET_DIR` before CMake evaluation; retain cache precedence. Make directory checks compare paths and give codegen fixtures the real helper definitions.
+
+### Migration
+
+- Base `92ee4cb67d66e586c026e181e576b830deb7112a` (`2026.1.39-dev`); update `2026.1.40-dev`. Rebuild all native consumers/baker for the guard header, refresh metadata and bake. No script/config/content/save conversion; text layout, language filtering, collection substitution and duplicate order remain.
+- Invalid sizes raise `DataReadingException` before allocation; failed loads do not sort/rollback, and dirty reads reject. Check guard throw/unwind/return, batch equivalence, retry and configured languages. Runtime `0.0.72`, Managed ABI 9 and schemas remain; rollback needs no save conversion.
+- Recompile native callers of `TextPack::LoadFromBinaryData`; vector arguments convert implicitly. Update explicitly typed member-function pointers to the span signature. Encoded bytes and script APIs remain unchanged.
+
+## 2026.1.39-dev - 2026-10-14
+
 ### Fixed
 
 - Respect placement overrides of `Static` and `Hidden` when selecting client map items. Cover both directions with a native regression checking exact item IDs.

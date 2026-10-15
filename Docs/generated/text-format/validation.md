@@ -21,6 +21,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-text-format-validation-proto-intersection-be92726636"></a>
 - [`entry-text-format-validation-proto-intersection-be92726636`](../../en/reference/text-format/validation.md#entry-text-format-validation-proto-intersection-be92726636)
 
+<a id="entry-text-format-validation-binary-payload-77f23b2c90"></a>
+- [`entry-text-format-validation-binary-payload-77f23b2c90`](../../en/reference/text-format/validation.md#entry-text-format-validation-binary-payload-77f23b2c90)
+
 ## Validation commands
 
 Continue with the [canonical reference](../../en/reference/text-format/validation.md).

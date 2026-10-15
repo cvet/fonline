@@ -6186,8 +6186,8 @@
           "translation": "Возвращает ноль при отсутствии ключа."
         },
         "/runtime_methods/@id=text-format.runtime.get-current-text/behavior": {
-          "source_sha256": "911e0920196df3deb80c1e055c255d2e6e6bd4b6ea75e115c4e7025d8664c05e",
-          "translation": "Возвращает первый вариант из текущего языка клиента."
+          "source_sha256": "8bdb4c238619b78eb9a5d1bca6cf7f565c69cd3305f7bb5e7ad90f8f3cc3e7fa",
+          "translation": "Возвращает случайный вариант текущего клиентского языка с равными вероятностями; единственный вариант возвращается непосредственно."
         },
         "/runtime_methods/@id=text-format.runtime.get-current-text/missing_behavior": {
           "source_sha256": "ff62b56c2cd974242c614b4579c9c1ec2e8a306601577182a4b463a62d48f247",
@@ -6202,8 +6202,8 @@
           "translation": "Отсутствующий ключ или выход за диапазон возвращает пустую строку; отрицательный индекс вызывает исключение."
         },
         "/runtime_methods/@id=text-format.runtime.get-language-text/behavior": {
-          "source_sha256": "d3c92c778d4e54ac93931c93700449813774b2f545646599df1177a96fe9e635",
-          "translation": "Пустой langName или текущий язык использует текущий пакет; другой langName загружает либо повторно использует кешированный пакет и возвращает первый вариант."
+          "source_sha256": "839954b4e1f7631a8735e345a15d42b088bf8598a68c4494d58828886f541eec",
+          "translation": "Пустой langName или текущий язык используют текущий пакет; другой langName загружает и кеширует указанный пакет. Его варианты выбираются случайно с равными вероятностями."
         },
         "/runtime_methods/@id=text-format.runtime.get-language-text/missing_behavior": {
           "source_sha256": "b00677854a19946bff0e20f017fc8cd74f9c35a646e4bb8c5317cc6f055e8e0b",
@@ -6336,8 +6336,8 @@
           "translation": "Количество вариантов и выбор по индексу используют один binary-search range; нормализация языков не выравнивает количество дубликатов, а read paths никогда не исправляют разделяемое состояние."
         },
         "/syntax_rules/@id=text-format.syntax.variants/requirement": {
-          "source_sha256": "71af492d6b6565fc9f27bed9de6f72cadb05a6912e59ab97f07c185c1d11e5ae",
-          "translation": "Несколько записей могут использовать один полный TextPackKey и оставаться соседними упорядоченными вариантами в отсортированном backing vector."
+          "source_sha256": "a883d16d9ad7ddbcc5666ef8d90fd861fc6a39869674d2bbdfcc504cffd773f7",
+          "translation": "Повторы полных ключей остаются соседними упорядоченными вариантами. Загрузка ресурсов добавляет все выбранные пакеты до одной стабильной сортировки, сохраняя прежние строки и порядок файлов/записей внутри ключа; ёмкость растёт геометрически."
         },
         "/validation_rules/@id=text-format.validation.empty-languages/name": {
           "source_sha256": "943645405467d854f91a78bb3838c4ff2d921ef0c81f9caaf48570000bb10c14",
@@ -6398,6 +6398,18 @@
         "/validation_rules/@id=text-format.validation.raw-unsupported-warning/requirement": {
           "source_sha256": "d76964659bc744dd6a42358fa1c868afd175b8866f8be399e54092f11f8889ff",
           "translation": "Файлы неподдерживаемого исходного языка создают предупреждение и не создают выход для этого языка."
+        },
+        "/validation_rules/@id=text-format.validation.binary-payload/name": {
+          "source_sha256": "656d822527bb6bc9e5cbfc5509e30fa96d8ccaf46d1c187779b88dbbf983e2ef",
+          "translation": "Ограниченное бинарное декодирование и состояние после отказа загрузки"
+        },
+        "/validation_rules/@id=text-format.validation.binary-payload/requirement": {
+          "source_sha256": "d16247ab2c0fc15e454ff2181ad587edb1706c91e8f148942244d1b8fa089994",
+          "translation": "Ограничивайте бинарные числа записей и длины до выделения памяти; неверные данные вызывают DataReadingException. Сортируйте только успешную загрузку; отказ не сортирует и не откатывает. Чтение неотсортированного пакета отклоняется; успешный повтор сортирует сохранённые записи. Ошибки сортировки передаются вызывающему коду. Пустые пакеты и байты в конце допустимы."
+        },
+        "/validation_rules/@id=text-format.validation.binary-payload/rationale": {
+          "source_sha256": "8918aed8820b846647425a5672148ee201e59df86dcdea47e16fb663555f402f",
+          "translation": "Сортируйте явно после успешного декодирования; предшествующее исключение сохраняет исходную ошибку загрузки. Частично загруженный при отказе пакет не обязан быть читаемым."
         }
       }
     },
@@ -13548,12 +13560,12 @@
           "translation": "Возвращает вариант текста текущего языка для ключа по индексу с нуля; выход за диапазон даёт пустую строку, а отрицательный индекс вызывает исключение."
         },
         "/symbols/@id=script.method.client.Game.GetText%23513ec7ba7fb47b7c/description": {
-          "source_sha256": "7a028a82868d9385951f386f04617e5317a8ce27b3090c15e4c9c071c8226967",
-          "translation": "Возвращает текст ключа из запрошенного языкового пакета, используя текущий пакет для пустого или текущего имени языка и кешируя остальные загруженные пакеты."
+          "source_sha256": "338bec2f0a1d0690dd6440a71307f7b2cfe4fa41a58f807ea2683c3fc6664a05",
+          "translation": "Возвращает равномерно случайный текстовый вариант запрошенного языкового пакета; при пустом или текущем имени использует текущий пакет, остальные загруженные пакеты кеширует"
         },
         "/symbols/@id=script.method.client.Game.GetText%236f20bf83e45a6a6d/description": {
-          "source_sha256": "f15a8a26f595928a7e20b3b7308d1db0c5738e04d20a484c428e6ea6384a7a01",
-          "translation": "Возвращает первый вариант текста текущего языка для ключа."
+          "source_sha256": "49e91617f797ba32c2fe9ae0c0702ab9932d091de3e08840a755f7fd377f0d2e",
+          "translation": "Возвращает равномерно случайный текстовый вариант текущего языка для ключа"
         },
         "/symbols/@id=script.method.client.Game.GetTextCount/description": {
           "source_sha256": "bed40a8bb69089c09427df69b85702110e0ab2326ca4cc425d44cdbfde5f5461",

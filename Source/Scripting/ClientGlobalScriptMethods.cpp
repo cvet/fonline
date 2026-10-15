@@ -810,14 +810,14 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<
     }
 }
 
-// Returns the text for a key from the requested language pack, using the current pack for an empty or current language name and caching other loaded packs
+// Returns a uniformly random text variant from the requested language pack, using the current pack for an empty or current language name and caching other loaded packs
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, string_view langName, TextPackKey textKey)
 {
     return string(client->GetLangPack(langName).GetText(textKey));
 }
 
-// Returns the first current-language text variant for a key
+// Returns a uniformly random current-language text variant for a key
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ptr<ClientEngine> client, TextPackKey textKey)
 {

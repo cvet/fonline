@@ -142,7 +142,7 @@
     {
       "id": "text-format.syntax.variants",
       "name": "Duplicate-key variants",
-      "requirement": "Multiple entries may share the same complete TextPackKey and remain adjacent ordered variants in the sorted backing vector.",
+      "requirement": "Duplicate complete keys remain adjacent ordered variants. Resource loading appends every selected pack before one stable sort, preserving prior entries and file/entry order within each key; capacity grows geometrically.",
       "rationale": "Variant count and indexed selection use one binary-search range; duplicate cardinality is not language-normalized and read paths never repair shared state.",
       "stability": "experimental",
       "source": [
@@ -158,6 +158,21 @@
           "anchors": [
             "CHECK(restored.GetStrCount(dialogs_twenty) == 2);",
             "CHECK(restored.GetStr(dialogs_twenty, 1) == \"Gamma\");"
+          ]
+        },
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "void TextPack::AppendBinaryData",
+            "_strData.capacity() * 2",
+            "auto TextPack::LoadFromBinaryData(const_span<uint8_t> data, string_view collection) -> bool",
+            "void TextPack::LoadFromResources(FileSystem& resources, string_view language)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextPack.cpp",
+          "anchors": [
+            "TextPackResourceBatchMatchesSequentialLoads"
           ]
         }
       ]
@@ -535,7 +550,7 @@
       "name": "Game.GetText current language",
       "signature": "string Game.GetText(TextPackKey textKey)",
       "sides": ["client", "mapper"],
-      "behavior": "Returns the first variant from the current client language.",
+      "behavior": "Returns a uniformly random variant from the current client language; a single variant is returned directly.",
       "missing_behavior": "A missing key returns an empty string.",
       "stability": "experimental",
       "source": [
@@ -572,7 +587,7 @@
       "name": "Game.GetText explicit language",
       "signature": "string Game.GetText(string langName, TextPackKey textKey)",
       "sides": ["client", "mapper"],
-      "behavior": "An empty langName or the current language uses the current pack; another langName loads or reuses a cached pack and returns its first variant.",
+      "behavior": "An empty langName or the current language uses the current pack; another langName loads/caches that pack. Selection is uniformly random among its variants.",
       "missing_behavior": "An absent or unsupported non-empty language has no automatic fallback and therefore yields an empty string for the key.",
       "stability": "experimental",
       "source": [
@@ -837,6 +852,31 @@
           "path": "Source/Tests/Test_ProtoTextBaker.cpp",
           "anchors": [
             "ProtoTextIntersection"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-format.validation.binary-payload",
+      "name": "Bounded binary decoding and failed-load state",
+      "requirement": "Bound binary counts/lengths before allocation; invalid data raises DataReadingException. Sort on successful loads only; failures do not sort or roll back. Dirty reads reject; successful retries sort retained entries. Sort errors propagate. Empty packs and trailing bytes remain accepted.",
+      "rationale": "Sort explicitly after successful decoding; an earlier exception preserves the original load error. Failed partial loads need not be readable.",
+      "stability": "internal",
+      "source": [
+        {
+          "path": "Source/Common/TextPack.cpp",
+          "anchors": [
+            "reader.verify_payload_count(count, 5 * sizeof(uint32_t))",
+            "reader.read_string()",
+            "reader.read_string_view(str_len)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_TextPack.cpp",
+          "anchors": [
+            "TextPackDecodeFailureSkipsSortUntilRetry",
+            "TextPackBinaryRejectsImpossibleSizesBeforeAllocation",
+            "TextPackBatchPreservesEmptyAndFilteredInputs"
           ]
         }
       ]

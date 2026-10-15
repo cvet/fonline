@@ -46,7 +46,7 @@ Scripted-event fan-out (`Game.OnX.Fire(...)`, `entity->OnX.Fire(...)`) is **noex
 
 The client has the same recovery shape at frame granularity, plus a rendering obligation. `MainEntry` catches a `std::exception` from `ClientEngine::MainLoop`, reports it, and continues with the next frame only after `Application::EndFrame`, which requires no render target to remain bound. `ClientEngine::MainLoop` therefore guards the draw block with a `scope_fail` that calls `SpriteManager::AbortScene`: partial draws are dropped and the scissor/render-target stacks are unwound. Any new frame-scoped render-target binding owes the same cleanup.
 
-`AbortScene` is `noexcept` because it runs during unwind. Infallible manager state is reset directly, while backend release uses `safe_call` so a lost render context is reported without replacing the original exception. The backend operation itself remains throwing on the normal path. `EndScene` likewise stays an ordinary call rather than a `scope_success`: its invariant checks must throw while the `scope_fail` guard is still armed, not from an implicitly `noexcept` destructor.
+`AbortScene` is `noexcept` because it runs during unwind. Infallible state resets directly; backend release uses `safe_call` to report a lost render context without replacing the original exception. Normal backend operations remain fallible. `EndScene` stays an ordinary call: its checks must throw before releasing `scope_fail`, rather than from a later success callback.
 
 ### Nothing outside `std::exception` may be thrown
 
@@ -193,7 +193,8 @@ Persistence note: DB writes (`DbStorage.Insert/Update/Delete`) are **enqueue-onl
 
 ## 6. Primitives
 
-- `scope_exit` / `scope_fail` / `scope_success` (`Source/Essentials/BasicCore.h`): RAII guards. `scope_fail` runs only on stack unwinding (an in-flight exception) and static-asserts its callback is `noexcept`.
+- `scope_exit` / `scope_fail` (`Source/Essentials/BasicCore.h`): RAII cleanup, statically `noexcept`; `scope_fail` runs on unwind only.
+- `scope_success`: runs on successful scope exit, skips unwind. Its destructor is conditionally `noexcept` on callback invocation/destruction, so a fallible success callback can propagate.
 - `safe_call(callable, …)` (`Source/Essentials/CommonHelpers.h`): invoke a callable, swallowing any exception — use to make a rollback/teardown body `noexcept`.
 - `copy_hold_ref(container)`: snapshot a server-entity collection by ref-count so elements survive a loop that fires re-entrant events.
 - Inline teardown-progress guard (no shared class): seed `size_t prev_deps = std::numeric_limits<size_t>::max()`, and at the end of each destruction-loop pass `FO_STRONG_ASSERT(remaining_deps < prev_deps, …)` then `prev_deps = remaining_deps`. Detects non-convergence by *progress*, not by an iteration cap, so a slow-but-progressing teardown is never falsely killed (§3.1).

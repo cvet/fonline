@@ -917,7 +917,7 @@ if(FO_MANAGED_SCRIPTING)
     # override — point it at a short path, and it doubles as the place the runtime's own markers make
     # a repeat build a no-op
     if(NOT FO_DOTNET_DIR AND NOT "$ENV{FO_DOTNET_DIR}" STREQUAL "")
-        SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+        file(TO_CMAKE_PATH "$ENV{FO_DOTNET_DIR}" FO_DOTNET_DIR)
     endif()
     if(NOT FO_DOTNET_DIR)
         SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)

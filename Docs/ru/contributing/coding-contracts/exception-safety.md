@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"b52c3c4f0e29304b1a2a6deeffabafc9c2a8ac73981d5fa7b995544c156dafc7"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"30f8752b0f99c5fbb3c565405a8a07513c6abdce8613b195cb533069af68490a"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -111,7 +111,7 @@ state у `std::future`, `std::promise` и `std::packaged_task`, `std::thread`,
 
 У клиента та же форма восстановления на уровне кадра, но есть дополнительное обязательство renderer-а. `MainEntry` ловит `std::exception` из `ClientEngine::MainLoop`, сообщает о нём и продолжает следующим кадром только после `Application::EndFrame`, который требует отсутствия привязанного render target. Поэтому draw-блок в `ClientEngine::MainLoop` защищён `scope_fail`, вызывающим `SpriteManager::AbortScene`: частичный draw отбрасывается, а stacks scissor и render target полностью снимаются. Любая новая frame-scoped привязка render target обязана обеспечить такую же очистку.
 
-`AbortScene` является `noexcept`, поскольку выполняется во время unwind. Неотказное состояние manager сбрасывается напрямую, а освобождение backend идёт через `safe_call`, чтобы потерянный render context был зарегистрирован, но не заменил исходное исключение. Сам backend operation остаётся throwing на обычном пути. `EndScene` также остаётся обычным вызовом, а не переносится в `scope_success`: его проверки инвариантов должны бросать, пока `scope_fail` ещё активен, а не из неявно `noexcept` destructor-а.
+`AbortScene` является `noexcept`, поскольку выполняется при раскрутке стека. Неотказное состояние сбрасывается напрямую, а освобождение backend идёт через `safe_call`: потеря контекста отрисовки регистрируется, но не заменяет исходное исключение. Обычные операции backend могут бросать. `EndScene` остаётся обычным вызовом: его проверки должны бросать до снятия `scope_fail`, а не из более позднего callback успешного выхода.
 
 ### Нельзя бросать значения вне `std::exception`
 
@@ -332,9 +332,11 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 6. Примитивы
 
-- `scope_exit`, `scope_fail`, `scope_success` из
-  `Source/Essentials/BasicCore.h` являются RAII guard-ами; `scope_fail`
-  выполняется при unwinding и статически требует `noexcept` callback.
+- `scope_exit` и `scope_fail` из `Source/Essentials/BasicCore.h` — RAII-очистка
+  со статическим требованием `noexcept`; `scope_fail` выполняется только при отказе.
+- `scope_success` выполняется при успешном выходе и пропускается при раскрутке стека.
+  Его деструктор условно `noexcept` по вызову и уничтожению callback, поэтому
+  исключение из завершающей операции может уйти вызывающему коду.
 - `safe_call` из `Source/Essentials/CommonHelpers.h` вызывает функцию, поглощая
   исключения, и делает rollback/teardown body небросающим.
 - `copy_hold_ref(container)` снимает ref-counted snapshot коллекции сущностей

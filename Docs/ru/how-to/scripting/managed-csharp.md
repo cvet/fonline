@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5b0a60439594d907eefef87e1876e1fb509b80a0dbf18997e0060bca96912fd1"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4f5a4c7cec8301db0fcc05548b0512fc5b2263356e3ec5e4cc10352116be6318"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -229,7 +229,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
 очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
 Пересоберите согласованные нативные компоненты и перевыпеките все managed-роли с ABI identity `9`;
-совместимость runtime — `0.0.71`.
+совместимость runtime — `0.0.72`.
 
 `hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 
@@ -313,6 +313,8 @@ Shutdown сначала вызывает `BeginManagedTeardown`, который 
 Single-threaded browser runtime не имеет пригодных managed thread pool и finalizer thread. Поэтому browser shutdown выполняет один inline collect/wait pass; `GC.WaitForPendingFinalizers()` возвращает сразу, finalizers позднее выполняются как main-thread jobs, а промежуточное число wrappers сообщается, но не проверяется. Поздний post не может выполниться на disposed Engine. Managed exceptions учитываются и логируются общим script exception path; deferred task fault наблюдается один раз. Managed frames и вложенные managed causes встраиваются в общий native stack trace, а native exceptions при проходе через managed code сохраняют identity через GC handles.
 
 ## Сборка и baking
+
+`FO_DOTNET_DIR` выбирает рабочий каталог runtime toolchain: непустое значение CMake имеет приоритет перед окружением, затем используется `dotnet` в дереве сборки. Путь из окружения допускает разделители Windows и пробелы; CMake нормализует разделители до вычисления путей runtime и payload. Смена рабочего каталога не меняет контракт runtime.
 
 Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
 

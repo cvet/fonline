@@ -10716,6 +10716,42 @@
       "release_note": "Docs/en/reference/changelog.md and reviewed Russian mirror, ordered versions 14 through 37",
       "compatibility": "Sprite container v2 and unaffected input meanings remain unchanged; rebuild relevant baker/runtime consumers and rebake affected assets.",
       "owner": "Engine metadata, storage and image-import contracts"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.6b17ec10f7bf37c7",
+      "baseline_contract_sha256": "66edfa30d81966b50e7949eca17b8b10371983ec6251061689f37fd7fa3f3cb5",
+      "current_contract_sha256": "3aaa8b023560b51d84f22f0a625b71e9c67309d3888c95f56dc95a2b4280ad81",
+      "classification": "breaking",
+      "rationale": "Correct the model to current source and its existing RandomVariantPickIsUniformAcrossTheWholeSet regression: no-index lookup already chooses uniformly among variants. This changes documentation, not the selection algorithm or callable API.",
+      "migration": "Follow Docs/en/reference/changelog.md 2026.1.40-dev and the text guide: rebuild all native consumers/baker for the scope_success header fix, refresh metadata and bake. No script/config/content/save conversion. Indexed order and uniformly random lookup remain. Invalid sizes raise DataReadingException; failed loads skip sorting and may retain dirty entries. Test guard throw/unwind/return, batch equivalence and retry; use configured languages in a visible client.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.40-dev and its Russian mirror record batch loading, bounded decoding, success-only sorting, conditional scope_success noexcept and random-variant documentation correction.",
+      "compatibility": "Baked text bytes, language filtering, collection substitution, callable API, runtime compatibility 0.0.72, Managed ABI identity 9 and persisted data are unchanged for valid inputs. Deploy matching rebuilt binaries/normal bake output; rollback restores baseline binaries without save conversion.",
+      "owner": "text-format"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.d1b808fe2698f60a",
+      "baseline_contract_sha256": "66edfa30d81966b50e7949eca17b8b10371983ec6251061689f37fd7fa3f3cb5",
+      "current_contract_sha256": "3aaa8b023560b51d84f22f0a625b71e9c67309d3888c95f56dc95a2b4280ad81",
+      "classification": "breaking",
+      "rationale": "Correct the model to current source and its existing RandomVariantPickIsUniformAcrossTheWholeSet regression: no-index lookup already chooses uniformly among variants. This changes documentation, not the selection algorithm or callable API.",
+      "migration": "Follow Docs/en/reference/changelog.md 2026.1.40-dev and the text guide: rebuild all native consumers/baker for the scope_success header fix, refresh metadata and bake. No script/config/content/save conversion. Indexed order and uniformly random lookup remain. Invalid sizes raise DataReadingException; failed loads skip sorting and may retain dirty entries. Test guard throw/unwind/return, batch equivalence and retry; use configured languages in a visible client.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.40-dev and its Russian mirror record batch loading, bounded decoding, success-only sorting, conditional scope_success noexcept and random-variant documentation correction.",
+      "compatibility": "Baked text bytes, language filtering, collection substitution, callable API, runtime compatibility 0.0.72, Managed ABI identity 9 and persisted data are unchanged for valid inputs. Deploy matching rebuilt binaries/normal bake output; rollback restores baseline binaries without save conversion.",
+      "owner": "text-format"
+    },
+    {
+      "domain": "text-format",
+      "change_id": "text-format-change.modified.94c0d8c3317cd0f6",
+      "baseline_contract_sha256": "66edfa30d81966b50e7949eca17b8b10371983ec6251061689f37fd7fa3f3cb5",
+      "current_contract_sha256": "3aaa8b023560b51d84f22f0a625b71e9c67309d3888c95f56dc95a2b4280ad81",
+      "classification": "breaking",
+      "rationale": "Batch append/geometric capacity preserve key and variant order. An explicit final call sorts once only on successful loading. Failed loads keep their original error and may leave a dirty accepted prefix, without rollback. Successful retries normalize retained entries; reads reject dirty state.",
+      "migration": "Follow Docs/en/reference/changelog.md 2026.1.40-dev and the text guide: rebuild all native consumers/baker for the scope_success header fix, refresh metadata and bake. No script/config/content/save conversion. Indexed order and uniformly random lookup remain. Invalid sizes raise DataReadingException; failed loads skip sorting and may retain dirty entries. Test guard throw/unwind/return, batch equivalence and retry; use configured languages in a visible client.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.40-dev and its Russian mirror record batch loading, bounded decoding, success-only sorting, conditional scope_success noexcept and random-variant documentation correction.",
+      "compatibility": "Baked text bytes, language filtering, collection substitution, callable API, runtime compatibility 0.0.72, Managed ABI identity 9 and persisted data are unchanged for valid inputs. Deploy matching rebuilt binaries/normal bake output; rollback restores baseline binaries without save conversion.",
+      "owner": "text-format"
     }
   ]
 }

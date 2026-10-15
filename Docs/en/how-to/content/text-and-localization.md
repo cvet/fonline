@@ -8,18 +8,12 @@ permalink: /Docs/en/how-to/content/text-and-localization.html
 
 # Text And Localization
 
-This guide documents the reusable FOnline Engine contract for raw `.fotxt`
-files, prototype-localized `$Text` fields, language baking, runtime lookup, and
-renderer-owned inline color tags. Use the generated
-[text-format reference](../../reference/text-format/index.md) and [canonical JSON
-model](../../../generated/text-format.json) for the exact current-revision rule set.
-Bitmap-font descriptors, slot binding, glyph coverage, measurement, wrapping,
-and the complete renderer flag contract are owned by
-[Font Formats And Text Layout](font-format.md).
-
-An embedding game owns its language priorities, pack catalog, semantic key
-names, translation workflow, and any formatter layered on top of retrieved
-strings. Engine documentation must not depend on one project's packs or lexems.
+Engine owns raw `.fotxt`, prototype `$Text`, baking, lookup and inline color tags.
+Exact rules: [text-format reference](../../reference/text-format/index.md) and
+[JSON](../../../generated/text-format.json). [Font Formats And Text Layout](font-format.md)
+owns bitmap descriptors, slots, glyphs, measurement, wrapping and render flags.
+Projects own languages, catalogs, keys, translations and formatters; this contract
+does not depend on a project's packs or lexems.
 
 ## Text pack model
 
@@ -33,12 +27,13 @@ Collection + Key1 + Key2 + Key3
 Language is deliberately not part of the key. The same key may therefore exist
 in each baked language pack.
 
-The backing container is a vector sorted by the complete key. Multiple adjacent
-values under one key are variants. Every load, merge, and fallback-repair path
-restores the order before returning; read methods verify the invariant and use
-one binary-search range rather than mutating or repairing shared state. This
-keeps concurrent reads safe. `Game.GetTextCount(key)` reports the variant count
-and `Game.GetText(key, index)` performs zero-based indexed selection.
+A complete-key-sorted vector stores adjacent variants. Successful loads, merges
+and fallback repair restore order; reads verify it and binary-search without repairing shared
+state. `Game.GetTextCount(key)` counts variants; `Game.GetText(key, index)` indexes from zero.
+
+Native `TextPack::LoadFromBinaryData` takes `const_span<uint8_t>` by value. It reads
+the buffer during the call and stores owned strings; it does not retain the view.
+Vectors, arrays and slices of larger buffers can supply the encoded bytes.
 
 ## Raw `.fotxt` files
 
@@ -48,10 +43,8 @@ Name every source:
 <TextPack>.<Language>.fotxt
 ```
 
-The basename must contain exactly those two dot-separated segments. The Engine
-treats the language suffix as an opaque string and does not require a
-four-character locale code. Projects may adopt a naming convention, but it is
-not part of the reusable parser contract.
+Require exactly two basename segments. Language is opaque, with no four-character
+restriction; additional naming conventions are project-owned.
 
 Each logical entry has three brace-delimited fields:
 
@@ -72,23 +65,15 @@ The filename supplies `Collection`; raw entries supply `Key1`, `Key2`, and the
 value. `Key3` remains empty. `Collection` and `Key1` must be non-empty. `Key2`
 and the text value may be empty.
 
-Only the third field may continue across physical lines. The parser appends
-newline characters until it finds the first closing brace. There is no escape
-for a literal closing brace inside the value, and trailing data after the third
-field is not part of the entry.
+Only Text spans lines: append newlines until its first closing brace. There is no
+closing-brace escape; data after the third field is ignored.
 
 ### Comment boundary
 
-Raw text parsing has no comment-token grammar. A physical line is skipped only
-when the parser cannot find the first opening brace. A project may use
-brace-free headings or `#` lines for readability, but a supposed comment that
-contains brace groups can become an entry or make the bake fail.
-
-Treat this as a content-review rule:
-
-- keep comments and headings free of `{` and `}`;
-- demonstrate key shapes in fenced documentation, not inside `.fotxt` comments;
-- reject editor tooling that inserts annotation braces into text-pack sources.
+There is no comment-token grammar. Only lines without an opening brace are skipped.
+Use brace-free headings/comments; brace groups in a supposed comment can create
+an entry or fail baking. Keep key examples in fenced docs and reject tools that
+insert annotation braces into `.fotxt` comments.
 
 ### Variants
 
@@ -99,10 +84,9 @@ Duplicate complete keys remain separate variants:
 {Ambient}{Dust}{A sheet of dust hides the horizon.}
 ```
 
-The script API does not choose randomly by default. `Game.GetText(key)` selects
-the first variant. For deliberate random selection,
-query `Game.GetTextCount(key)`, select an index in project code, and pass that
-index to `Game.GetText(key, index)`.
+`Game.GetText(key)` selects a uniformly random variant; explicit-language lookup
+does so too. Use `Game.GetText(key, index)` for stable zero-based selection; query
+`Game.GetTextCount(key)` before choosing a project-owned index.
 
 Do not assume that every language has the same number or ordering of variants.
 Language normalization aligns key presence, not duplicate cardinality.
@@ -140,7 +124,14 @@ The binary name is:
 <ResourcePack>.<TextPack>.<Language>.fotxt-bin
 ```
 
-`TextPack::LoadFromResources` requires exactly those three basename segments.
+`TextPack::LoadFromResources` requires those three basename segments. It appends
+all language-matching files before one stable sort; duplicates retain existing,
+file and entry order. Empty language selects every language without fallback.
+Storage grows geometrically. Counts/key/value lengths are bounded before
+allocation. Decode errors raise `DataReadingException`. An explicit final
+`EnsureSorted()` sorts only completed loads; failures neither sort nor roll back. Dirty reads reject;
+a successful retry sorts retained entries. Sort errors propagate normally.
+Empty packs and unused trailing bytes remain accepted.
 
 ## Prototype `$Text` fields
 
@@ -193,31 +184,27 @@ signatures. The important behavioral contract is:
 | API | Sides | Behavior |
 |---|---|---|
 | `Game.GetLanguage()` | server, client, mapper | Return the current `Language` setting as `LanguageName`. |
-| `Game.GetText(key)` | client, mapper | Return the first variant from the current language. A missing key returns an empty string. |
+| `Game.GetText(key)` | client, mapper | Return a uniformly random variant from the current language. A missing key returns an empty string. |
 | `Game.GetText(key, index)` | client, mapper | Return the zero-based indexed variant from the current language. Missing or out-of-range returns an empty string; negative index throws. |
-| `Game.GetText(langName, key)` | client, mapper | Use the current pack when `langName` is empty or current; otherwise load/cache that language and return its first variant. No runtime fallback is applied for an absent non-empty language. |
+| `Game.GetText(langName, key)` | client, mapper | Use the current pack when `langName` is empty or current; otherwise load/cache that language and select uniformly among its variants. No runtime fallback is applied for an absent non-empty language. |
 | `Game.GetTextCount(key)` | server, client, mapper | Return variant count, or zero when absent. |
 | `Game.IsTextPresent(key)` | server, client, mapper | Return whether at least one variant exists. |
 | `Game.ChangeLanguage(langName)` | client, mapper | Replace the current runtime pack; the immutable startup setting is unchanged. |
 
-The client loads `Client.Language` during startup, then owns the current language as live engine state exposed by `Game.CurrentLanguage` / `Game.GetLanguage()`. `Game.ChangeLanguage` does
-not validate the identifier and does not invoke a game GUI refresh callback.
-An embedding project owns its allowed-language selector, persistence policy,
-and refresh/rebuild sequence.
+Startup `Client.Language` initializes live `Game.CurrentLanguage`/`GetLanguage()`
+state. `ChangeLanguage` validates no identifier and calls no GUI refresh callback.
+Projects own selection, persistence and GUI refresh/rebuild.
 
-The server loads one pack from the startup `Client.Language` setting and then owns the same current-language state. It exposes only presence and
-count queries to scripts; there is no server-side script `Game.GetText`
-overload in the Engine contract.
+The server initializes the same language state from `Client.Language`; scripts
+expose presence/count only, with no server-side `Game.GetText` overload.
 
 ## Engine and project formatting boundary
 
-`TextPack` stores opaque strings. The Engine does not define `@pname@`,
-`@nname@`, `@sex@`, `@rnd@`, `@arg@`, `@text@`, variant separators, named
-argument serialization, or dialog-specific lexem expansion. Those features,
-when present, belong to the embedding project's scripts and documentation.
+`TextPack` stores opaque strings. Engine does not define `@pname@`, `@nname@`,
+`@sex@`, `@rnd@`, `@arg@`, `@text@`, variant separators, named-argument serialization
+or dialog lexems; those belong to project scripts/docs.
 
-The client font renderer does own inline color tags. The exact byte-order and
-flag interaction is also pinned in the generated
+Client font rendering owns inline colors; see byte order/flags in the
 [font rendering reference](../../reference/font-format/rendering.md):
 
 ```text
@@ -228,31 +215,20 @@ flag interaction is also pinned in the generated
 @color@
 ```
 
-Six hex digits set a color without an explicit alpha byte; eight include alpha.
-The empty `@color@` tag restores the previous color. Tags are stripped during
-font formatting. With `FontFlag.NoColorize`, valid tags are still stripped but
-all text uses the base color.
+Six hex digits omit alpha, eight include it; `@color@` restores the prior color.
+Formatting strips tags. `FontFlag.NoColorize` still strips valid tags but uses the base color.
 
-If a project adds another formatting pass, document and test:
-
-- which side performs it;
-- whether it runs before or after text retrieval;
-- whether nested lookups are allowed;
-- escaping and malformed-input behavior;
-- random-selection ownership;
-- interaction with renderer color tags.
+For project formatting, document/test its side, order relative to retrieval,
+nested lookups, escaping/invalid input, random-choice owner and color-tag interaction.
 
 ## Authoring workflow
 
-1. Choose the owning text pack and a semantic complete key.
-2. Author the base language first.
-3. Add configured translations without inventing keys absent from the base.
-4. Use duplicate keys only when the caller deliberately handles variants.
-5. Keep raw `.fotxt` comments brace-free.
-6. Use prototype `$Text` for prototype-owned names and descriptions.
-7. Bake resources and treat every parser, missing-base, or intersection error
-   as a source-content failure.
-8. Exercise language switching and every project formatter in a visible client.
+1. Choose the owning pack and semantic complete key.
+2. Author the base language, then configured translations using its keys.
+3. Use duplicates only for deliberate variants; keep `.fotxt` comments brace-free.
+4. Use `$Text` for prototype-owned names/descriptions.
+5. Bake; repair parser, missing-base and intersection failures in sources.
+6. Visually check language switching and every project formatter.
 
 ## Validation workflow
 

@@ -226,7 +226,7 @@ last rendered use, call `StopDraw()`, then `Dispose()`. A `using` scope must cov
 The entry-assembly registry retains ownership records rather than wrappers. Shutdown closes it and
 cleans queued and live leases before final entity collection/unbind; late finalizers do nothing.
 Rebuild matching native components and rebake every managed role with ABI generator identity `9`;
-runtime compatibility is `0.0.71`.
+runtime compatibility is `0.0.72`.
 
 `hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the Engine metadata bound to the entry assembly, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
 
@@ -309,6 +309,8 @@ Shutdown then closes the continuation scheduler and discards queued work before 
 The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. Its shutdown therefore performs one inline collect/wait pass; `GC.WaitForPendingFinalizers()` returns immediately, finalizers run later as main-thread jobs, and the interim wrapper count is reported but not verified. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
 ## Build and bake workflow
+
+`FO_DOTNET_DIR` selects the runtime toolchain workspace: a nonempty CMake value takes precedence over the environment, then the default is the build tree's `dotnet` directory. Environment paths accept Windows separators and spaces; CMake normalizes the separators before deriving runtime and payload paths. Changing the workspace does not change the runtime contract.
 
 The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
 

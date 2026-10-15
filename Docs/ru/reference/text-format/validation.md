@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-text-format-validation","locale":"ru","source_path":"Docs/en/reference/text-format/validation.md","source_sha256":"1f6b951212a6495dfb96ef5a46904f82440baa56dcba9fc7188e6bad75a05da5"} -->
+<!-- docs-translation: {"document_id":"generated-text-format-validation","locale":"ru","source_path":"Docs/en/reference/text-format/validation.md","source_sha256":"a8e326a31e765fd0b5cdd61c1c63a1575ec4cc2df3e601ec088782606fe4821f"} -->
 
 # Проверка формата текста
 
@@ -20,6 +20,7 @@ generated: true
 | <a id="entry-text-format-validation-raw-unsupported-warning-869bf64e2b"></a><code>text-format.validation.raw-unsupported-warning</code> | Предупреждение о неподдерживаемом исходном языке | Файлы неподдерживаемого исходного языка создают предупреждение и не создают выход для этого языка. | Проекты могут хранить несвязанные исходники в более широком дереве входов, не публикуя их молча. | [Source/Tools/TextBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/TextBaker.cpp) |
 | <a id="entry-text-format-validation-proto-token-count-4cb7b434c3"></a><code>text-format.validation.proto-token-count</code> | Число токенов ключа прототипа | Ключ $Text прототипа, содержащий после $Text больше Language, Key2 и Key3, приводит к ошибке запекания. | У TextPackKey нет дополнительного поля ключа. | [Source/Tools/ProtoTextBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoTextBaker.cpp), [Source/Tests/Test_ProtoTextBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tests/Test_ProtoTextBaker.cpp) |
 | <a id="entry-text-format-validation-proto-intersection-be92726636"></a><code>text-format.validation.proto-intersection</code> | Пересечение выходов прототипов | Повторяющиеся полные ключи, созданные исходниками разных типов прототипов в одном выходном пакете, приводят к ошибке запекания. | Сгенерированный пакет не должен зависеть от порядка обхода каталогов типов. | [Source/Tools/ProtoTextBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/ProtoTextBaker.cpp), [Source/Tests/Test_ProtoTextBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tests/Test_ProtoTextBaker.cpp) |
+| <a id="entry-text-format-validation-binary-payload-77f23b2c90"></a><code>text-format.validation.binary-payload</code> | Ограниченное бинарное декодирование и состояние после отказа загрузки | Ограничивайте бинарные числа записей и длины до выделения памяти; неверные данные вызывают DataReadingException. Сортируйте только успешную загрузку; отказ не сортирует и не откатывает. Чтение неотсортированного пакета отклоняется; успешный повтор сортирует сохранённые записи. Ошибки сортировки передаются вызывающему коду. Пустые пакеты и байты в конце допустимы. | Сортируйте явно после успешного декодирования; предшествующее исключение сохраняет исходную ошибку загрузки. Частично загруженный при отказе пакет не обязан быть читаемым. | [Source/Common/TextPack.cpp](https://github.com/cvet/fonline/blob/master/Source/Common/TextPack.cpp), [Source/Tests/Test_TextPack.cpp](https://github.com/cvet/fonline/blob/master/Source/Tests/Test_TextPack.cpp) |
 
 ## Команды проверки
 

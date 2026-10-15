@@ -53,4 +53,4 @@ def test_runtime_directory_resolution_preserves_configuration_input(
     assert result.returncode == 0, result.stdout + result.stderr
     assert "CMake Warning" not in result.stdout + result.stderr
     expected = tmp_path / expected_source if expected_source else build / "dotnet"
-    assert (build / "resolved.txt").read_text() == str(expected)
+    assert Path((build / "resolved.txt").read_text()) == expected

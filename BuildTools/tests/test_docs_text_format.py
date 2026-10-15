@@ -77,7 +77,7 @@ class TextFormatDocumentationTests(unittest.TestCase):
         }
 
         current = methods["text-format.runtime.get-current-text"]
-        self.assertIn("first variant", current["behavior"])
+        self.assertIn("uniformly random variant", current["behavior"])
         self.assertIn("missing key returns an empty string", current["missing_behavior"].lower())
         self.assertEqual(current["sides"], ["client", "mapper"])
         indexed = methods["text-format.runtime.get-indexed-text"]

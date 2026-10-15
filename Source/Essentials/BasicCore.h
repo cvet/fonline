@@ -527,7 +527,7 @@ template<std::invocable T>
 class [[nodiscard]] scope_exit
 {
 public:
-    static_assert(std::is_nothrow_invocable_v<T>);
+    static_assert(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>);
 
     explicit scope_exit(T callback) noexcept :
         _callback {std::move(callback)}
@@ -567,7 +567,7 @@ public:
     auto operator=(const scope_success& other) = delete;
     auto operator=(scope_success&& other) noexcept = delete;
 
-    ~scope_success()
+    ~scope_success() noexcept(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>)
     {
         if (!_released && !_stack_unwind) {
             _callback();
@@ -585,7 +585,7 @@ private:
 template<std::invocable T>
 class [[nodiscard]] scope_fail
 {
-    static_assert(std::is_nothrow_invocable_v<T>);
+    static_assert(std::is_nothrow_invocable_v<T> && std::is_nothrow_destructible_v<T>);
 
 public:
     explicit scope_fail(T callback) noexcept :

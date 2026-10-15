@@ -47,8 +47,8 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["summary"]["domain_count"], 19)
         self.assertEqual(first["enforcement"], "complete")
-        self.assertEqual(first["summary"]["entry_count"], 4871)
-        self.assertEqual(first["summary"]["current_count"], 4871)
+        self.assertEqual(first["summary"]["entry_count"], 4874)
+        self.assertEqual(first["summary"]["current_count"], 4874)
         self.assertEqual(first["summary"]["missing_count"], 0)
         self.assertTrue(first["summary"]["complete"])
         for domain, count in (
@@ -69,7 +69,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ("prototype-format", 193),
             ("public-examples", 13),
             ("support-matrix", 76),
-            ("text-format", 116),
+            ("text-format", 119),
             ("video", 106),
         ):
             with self.subTest(domain=domain):

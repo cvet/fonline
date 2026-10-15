@@ -141,7 +141,7 @@ public:
     [[nodiscard]] auto CheckIntersections(TextPack& other) -> bool;
     [[nodiscard]] auto GetBinaryData() -> vector<uint8_t>;
 
-    auto LoadFromBinaryData(const vector<uint8_t>& data, string_view collection = {}) -> bool;
+    auto LoadFromBinaryData(const_span<uint8_t> data, string_view collection = {}) -> bool;
     auto LoadFromString(const string& str, string_view collection = {}) -> bool;
     void LoadFromMap(const map<string, string>& kv, string_view collection = {});
     void LoadFromResources(FileSystem& resources, string_view language = {});
@@ -161,6 +161,7 @@ private:
     auto MakeKeyPart(string_view value) -> hstring;
     void WriteKeyPart(data_writer& writer, hstring part) const;
     auto ReadKeyPart(data_reader& reader) -> hstring;
+    void AppendBinaryData(const_span<uint8_t> data, string_view collection);
     void EnsureSorted();
     auto SortedEntries() const -> const_span<pair<TextPackKey, string>>;
     auto FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>;

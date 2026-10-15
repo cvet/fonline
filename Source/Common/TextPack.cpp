@@ -201,7 +201,16 @@ auto TextPack::GetBinaryData() -> vector<uint8_t>
     return data;
 }
 
-auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view collection) -> bool
+auto TextPack::LoadFromBinaryData(const_span<uint8_t> data, string_view collection) -> bool
+{
+    FO_TRACE_ZONE(Core);
+
+    AppendBinaryData(data, collection);
+    EnsureSorted();
+    return true;
+}
+
+void TextPack::AppendBinaryData(const_span<uint8_t> data, string_view collection)
 {
     FO_TRACE_ZONE(Core);
 
@@ -210,7 +219,13 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
     auto count = reader.read<uint32_t>();
 
-    _strData.reserve(_strData.size() + count);
+    // Each entry has four key-part lengths and one value length, even when all strings are empty
+    reader.verify_payload_count(count, 5 * sizeof(uint32_t));
+    size_t required_size = _strData.size() + count;
+
+    if (_strData.capacity() < required_size) {
+        _strData.reserve(std::max(required_size, std::min(_strData.capacity() * 2, _strData.max_size())));
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         TextPackKey key;
@@ -224,24 +239,9 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
             key.Collection = collection_key;
         }
 
-        auto str_len = reader.read<uint32_t>();
-
-        string str;
-
-        if (str_len != 0) {
-            str.resize(str_len);
-            reader.read_string_bytes(str);
-        }
-        else {
-            str.resize(0);
-        }
-
+        string str = reader.read_string();
         AddStr(key, std::move(str));
     }
-
-    EnsureSorted();
-
-    return true;
 }
 
 auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
@@ -328,10 +328,10 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
             continue;
         }
 
-        if (!LoadFromBinaryData(text_file.GetData(), pack_name_str)) {
-            throw TextPackException("Invalid binary text file", text_file.GetPath());
-        }
+        AppendBinaryData(text_file.GetData(), pack_name_str);
     }
+
+    EnsureSorted();
 }
 
 void TextPack::AddStr(TextPackKey key, string_view str)
@@ -560,16 +560,8 @@ void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 
 auto TextPack::ReadKeyPart(data_reader& reader) -> hstring
 {
-    auto str_len = reader.read<uint32_t>();
-
-    if (str_len == 0) {
-        return {};
-    }
-
-    string str;
-    str.resize(str_len);
-    reader.read_string_bytes(str);
-    return MakeKeyPart(str);
+    uint32_t str_len = reader.read<uint32_t>();
+    return MakeKeyPart(reader.read_string_view(str_len));
 }
 
 FO_END_NAMESPACE
