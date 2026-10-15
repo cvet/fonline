@@ -33,6 +33,8 @@
 
 #include "Common.h"
 
+#include "Item.h"
+#include "Location.h"
 #include "Test_ServerMapOperationsHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -94,6 +96,60 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     CHECK(std::ranges::find(hidden_field.StaticItems, hidden_item) != hidden_field.StaticItems.end());
     CHECK(hidden_field.MoveBlocked);
     CHECK(hidden_field.ShootBlocked);
+}
+
+TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+    string startup_error = WaitForStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    array<hstring, 1> map_pids {server->Hashes.to_hashed_string("StaticMap")};
+    auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
+    auto maps = location->GetMaps();
+    REQUIRE(maps.size() == 1);
+    auto map = maps.front();
+    auto allow_gag = [](ptr<const Item>) { return true; };
+
+    for (mpos hex : {mpos {12, 13}, mpos {14, 15}, mpos {11, 14}}) {
+        auto gag = server->ItemMngr.CreateItemOnHex(map, hex, server->Hashes.to_hashed_string("TestItem"), nullptr);
+        gag->SetNoBlock(false);
+        gag->SetShootThru(true);
+        gag->SetIsGag(true);
+    }
+
+    CHECK(map->IsHexMovable(mpos {11, 13}));
+    CHECK_FALSE(map->IsHexMovable(mpos {11, 14}));
+    CHECK_FALSE(map->CheckGagItem(mpos {11, 14}, {}));
+    CHECK(map->CheckGagItem(mpos {11, 14}, allow_gag));
+    CHECK(server->MapMngr.FindPath(map, nullptr, mpos {11, 13}, mpos {11, 14}, 0, 0, {}, allow_gag).Result == FindPathOutput::ResultType::Ok);
+
+    for (mpos target : {mpos {12, 13}, mpos {14, 15}}) {
+        CHECK_FALSE(map->IsHexMovable(target));
+        CHECK_FALSE(map->CheckGagItem(target, {}));
+        CHECK_FALSE(map->CheckGagItem(target, allow_gag));
+        CHECK(server->MapMngr.FindPath(map, nullptr, mpos {11, 13}, target, 0, 0, {}, allow_gag).Result == FindPathOutput::ResultType::HexBusy);
+    }
+
+    array<mpos, 3> targets {mpos {12, 13}, mpos {14, 15}, mpos {11, 14}};
+    CHECK(server->MapMngr.FindReachableHexes(map, mpos {11, 13}, targets, allow_gag) == vector<mpos> {mpos {11, 14}});
+
+    REQUIRE(map->RemoveStaticItem(ident_t {21}));
+    CHECK_FALSE(map->IsHexMovable(mpos {12, 13}));
+    CHECK(map->CheckGagItem(mpos {12, 13}, allow_gag));
+    CHECK(server->MapMngr.FindPath(map, nullptr, mpos {11, 13}, mpos {12, 13}, 0, 0, {}, allow_gag).Result == FindPathOutput::ResultType::Ok);
+    CHECK_FALSE(map->CheckGagItem(mpos {14, 15}, allow_gag));
 }
 
 FO_END_NAMESPACE

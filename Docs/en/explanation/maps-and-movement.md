@@ -252,6 +252,13 @@ server `Map.GetPathLength` script overloads with a `gagCallback` expose the
 same choice; a caller can therefore distinguish a route sealed by a wall from
 one that passes a door it is allowed to open.
 
+Server gag checks reject `MoveBlocked` in the instance's current static field
+before considering dynamic gag items. An accepting predicate cannot override a
+static wall. Removing that static item through the instance overlay releases
+its blocking contribution; a remaining dynamic gag still needs an accepting
+predicate. `MapPathGagChecksRespectStaticBlockers` covers exact path queries,
+batch reachability and the removal transition using baked static items.
+
 ## Static item removal
 
 Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
@@ -328,6 +335,15 @@ Movement is therefore a reusable time-based plan, not just a list of positions. 
 `_offsetTime` tells an observer how far a plan has already progressed: server-to-client movement includes it, while a client's initial move request does not. The server therefore starts the player's plan one uplink transit later than the client. On ordinary completion, the client reports its arrival and the server reconciles along that same plan before processing the next ordered request; see [Networking](authority-and-networking/#the-client-reports-a-movement-it-finished-predicting).
 
 Server and client runtime processing keep `MovingContext` active regardless of `CritterCondition`. Game scripts own condition-based movement permissions, so a game can represent knockout falls, dead-body slides, or custom state movement while still relying on the same path, offset, and completion state machinery. Attached critters are still stopped by runtime processing because attachment is a transport/ownership relationship rather than a critter condition.
+
+## Sparse field storage
+
+`DynamicTwoDimensionalGrid` stores cells created by writes. `Resize` validates
+the new bounds, visits only stored cells and erases those outside the new size.
+Values inside the overlap remain intact; growth does not materialize missing
+cells, and previously erased cells do not return. Its work scales with stored
+cells rather than the old or new map area. `TwoDimensionalGrid` tests cover
+shrink/grow preservation and removal independently of map geometry.
 
 ## Map loading
 

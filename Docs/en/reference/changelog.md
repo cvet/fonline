@@ -16,6 +16,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Reject static map blockers in server gag-aware path queries, including when a dynamic gag occupies the same cell. Honor per-instance static removal and preserve permitted dynamic-gag routes.
+- Correct the equal-screen-row test for hexagonal and square geometry.
+
+### Changed
+
+- Resize sparse two-dimensional grids by visiting stored cells instead of scanning the old and new map areas; preserve overlap values and discard out-of-bounds cells.
+
+### Migration
+
+- Base `eedcaa955ff4be79e43384766f7a47cbda0788d1` (`2026.1.41-dev`); update `2026.1.42-dev`. Rebuild native consumers and run the normal bake to refresh revision metadata. Map sources, baked formats, script signatures, configuration, persisted data, runtime `0.0.72` and Managed ABI `9` remain unchanged; no data conversion is required.
+- Static blocking retains its existing meaning: gag predicates can permit dynamic gag items, but cannot bypass an intact static blocker. Remove workarounds that depend on false-positive routes through static walls; use instance static removal when the static item is actually removed. Verify blocked exact targets, batch reachability, dynamic gags and the removal transition. Rollback restores matching base binaries/resources without save conversion.
+
+## 2026.1.41-dev - 2026-10-15
+
+### Fixed
+
 - Fix links/SPARK bounds, C# style/EOF, locals, DB sort/POSIX startup; document lock transfer.
 
 ### Migration

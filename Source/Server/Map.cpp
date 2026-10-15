@@ -1672,6 +1672,12 @@ auto Map::CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const 
 auto Map::CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_callback) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    const auto& static_field = GetStaticField(hex);
+
+    if (static_field.MoveBlocked) {
+        return false;
+    }
+
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (!field.MovableWithGag) {
