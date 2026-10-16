@@ -7,12 +7,26 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d37c088deb3d40a55e5ffc4d01348d8fb7a386a7b6b6d9b22df8e6951357fcc7"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"50981c4feff933f6fad3ddd704b63e79b40f65c92ed3c201d4a527bd187c05e4"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-16
+
+### Исправлено
+
+- Генератор регистрации Managed C# callbacks свойств приведён к объявленному C++-профилю форматирования. Имена callbacks и байты генерируемого C# сохраняются.
+- Null renderer допускает начало scissor за пределами render target, согласуя обрезку частично скрытых панелей GUI с GPU backend. Отрицательные размеры scissor и выход за границы текстуры при чтении/записи остаются ошибками.
+
+- Из комментариев Windows-замены файлов убраны завершающие точки по правилам авторского текста; нативное поведение прежнее.
+
+### Миграция
+
+- База `5cc571ef888291d132de3fdab30ac0914a10ef48` (`2026.1.44-dev`); следующее обновление `2026.1.45-dev`. Конверсия API, настроек, скриптов, авторского контента, сохранений, runtime `0.0.73` и Managed ABI `9` не требуется.
+- Переконфигурируйте и пересоберите инструменты и headless-приложения для новой версии Engine и исправления Null scissor; проверьте формат, существующую регрессию имён callbacks и `NullRenderer`. Откат использует согласованные артефакты 44-dev без преобразования сохранений и возвращает более строгую проверку начала scissor в Null. Черновик не означает публикацию или платформенную приёмку.
+
+## 2026.1.44-dev - 2026-10-16
 
 ### Исправлено
 

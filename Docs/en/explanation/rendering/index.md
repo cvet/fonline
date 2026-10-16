@@ -539,6 +539,8 @@ Direct3D, and platform flags are selected by the platform branch in
 
 Use it for tests, headless flows, and validation that should not require a GPU. It still validates dimensions, buffer counts, render-target state, and texture region access, so it is useful for catching many API misuse errors.
 
+Scissor origins may be negative, and a scissor may extend beyond the render target, as on the GPU backends. This supports partially offscreen GUI panels. Negative widths and heights remain invalid; texture read/write regions still require in-bounds coordinates. The `NullRenderer` scissor sections cover both contracts.
+
 ### OpenGL renderer
 
 `Source/Frontend/Rendering-OpenGL.cpp` implements the OpenGL/WebGL path.

@@ -78,6 +78,22 @@ TEST_CASE("NullRenderer")
     AppScreenState screen {.Size = {320, 200}, .Fullscreen = false};
     renderer.Init(settings, &screen, nullptr);
 
+    SECTION("ScissorMayCrossTheRenderTargetEdges")
+    {
+        CHECK_NOTHROW(renderer.EnableScissor({-24, 10, 80, 40}));
+        CHECK_NOTHROW(renderer.EnableScissor({10, -24, 80, 40}));
+        CHECK_NOTHROW(renderer.EnableScissor({-24, -24, 400, 300}));
+        CHECK_NOTHROW(renderer.EnableScissor({400, 300, 20, 20}));
+        CHECK_NOTHROW(renderer.DisableScissor());
+    }
+
+    SECTION("ScissorStillRejectsNegativeExtents")
+    {
+        CHECK_THROWS(renderer.EnableScissor({0, 0, -1, 20}));
+        CHECK_THROWS(renderer.EnableScissor({0, 0, 20, -1}));
+        CHECK_NOTHROW(renderer.EnableScissor({-24, -24, 0, 0}));
+    }
+
     SECTION("TextureReadWriteAndClear")
     {
         auto tex = renderer.CreateTexture({4, 4}, false, false);

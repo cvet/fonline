@@ -16,6 +16,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Apply the declared C++ formatting profile to the Managed C# property-callback registrar generator. Emitted callback names and C# bytes remain unchanged.
+- Accept scissor origins outside the render target in the Null renderer, matching GPU backend clipping for partially offscreen GUI panels. Negative scissor extents and out-of-bounds texture access remain invalid.
+
+- Remove terminal periods from Windows file-replacement comments to follow the authored-comment policy; native behavior is unchanged.
+
+### Migration
+
+- Base `5cc571ef888291d132de3fdab30ac0914a10ef48` (`2026.1.44-dev`); next update `2026.1.45-dev`. No API, setting, script, authored content, persisted data, runtime `0.0.73`, or Managed ABI `9` conversion is required.
+- Reconfigure/rebuild tools and headless applications to carry the new Engine version and Null scissor fix; check formatting, the existing callback-name regression, and `NullRenderer`. Rollback uses the matching 44-dev artifacts without save conversion and restores its stricter Null scissor-origin validation. No publication or platform qualification is implied by this draft.
+
+## 2026.1.44-dev - 2026-10-16
+
+### Fixed
+
 - Make `fs::write_file` the sole atomic whole-file helper for strings and byte spans, including embedded NUL and empty input. Exclusive sibling staging, flush and atomic replacement preserve the previous destination on failure and retain open readers/mapped DLLs. `disk_write_mode::create_new` rejects existing paths; no `write_file_atomic` alias remains.
 - Apply the shared helper to cache entries, managed staging, client session/bootstrap markers, Baker outputs/reports/fingerprints, particle dependency snapshots, JSON records and SQLite restore scratch files. Failed cache publication retains the existing entry; `RemoveEntry` is explicit invalidation. Windows rename names are NUL-terminated, and the standalone path probe remains independent of Engine linkage.
 - Reconcile cumulative contract dispositions without removing earlier review records. Retain complete owning guides and migration history in the reviewed 2 MiB + 224 KiB AI bundle; align its manifest, EN/RU guides and policy tests. Required start routes, membership and oversize rejection remain unchanged.

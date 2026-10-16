@@ -57,8 +57,7 @@ static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 
 static void ValidateScissorRect(irect32 rect)
 {
-    FO_VERIFY_AND_THROW(rect.x >= 0, "Rectangle x is negative", rect.x);
-    FO_VERIFY_AND_THROW(rect.y >= 0, "Rectangle y is negative", rect.y);
+    // Scissors may cross a render-target edge; GPU backends clip the visible intersection
     FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
 }

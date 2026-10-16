@@ -552,7 +552,7 @@ auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
     }
 
     // A mapped DLL cannot be truncated or replaced with MoveFileEx. POSIX rename keeps the old readers alive
-    // while publishing the new name, without a gap or a backup that needs a fallible rollback.
+    // while publishing the new name, without a gap or a backup that needs a fallible rollback
     HANDLE handle = ::CreateFileW(from_wide.c_str(), DELETE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
     if (handle == INVALID_HANDLE_VALUE) {
@@ -566,7 +566,7 @@ auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
         return false;
     }
 
-    // SetFileInformationByHandle consumes a NUL-terminated name even though FileNameLength excludes it.
+    // SetFileInformationByHandle consumes a NUL-terminated name even though FileNameLength excludes it
     size_t buffer_size = offsetof(FILE_RENAME_INFO, FileName) + name_bytes + sizeof(wchar_t);
     vector<uint64_t> buffer((buffer_size + sizeof(uint64_t) - 1) / sizeof(uint64_t));
     auto info = make_ptr(buffer.data()).reinterpret_as<FILE_RENAME_INFO>();
@@ -574,7 +574,7 @@ auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
     info->RootDirectory = nullptr;
     info->FileNameLength = static_cast<DWORD>(name_bytes);
     memory::copy(make_ptr(info->FileName).reinterpret_as<uint8_t>(), make_ptr(to_wide.data()).reinterpret_as<const uint8_t>(), name_bytes);
-    // The SDK hides this enum entry when compiling for an older Windows baseline.
+    // The SDK hides this enum entry when compiling for an older Windows baseline
     constexpr FILE_INFO_BY_HANDLE_CLASS rename_info_ex = static_cast<FILE_INFO_BY_HANDLE_CLASS>(22);
     return ::SetFileInformationByHandle(handle, rename_info_ex, info.get(), static_cast<DWORD>(buffer_size)) != 0;
 }
@@ -582,7 +582,7 @@ auto winapi::replace_file(const string& from, const string& to) noexcept -> bool
 auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
 {
     wstring path_wide = strex(path).to_wide_char();
-    // CRT sharing modes omit FILE_SHARE_DELETE, which prevents replacing a file while a reader holds it.
+    // CRT sharing modes omit FILE_SHARE_DELETE, which prevents replacing a file while a reader holds it
     HANDLE handle = ::CreateFileW(path_wide.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
     if (handle == INVALID_HANDLE_VALUE) {

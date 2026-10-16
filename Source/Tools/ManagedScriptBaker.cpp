@@ -2869,8 +2869,7 @@ static void AppendPropertyCallbackRegistrars(ostringstream& out, const EngineMet
             string_view property_name = prop->GetName();
 
             if (property_name.find('.') != string_view::npos) {
-                out << CS_INDENT << "        " << enum_type << "." << EscapeCsIdentifier(property_name)
-                    << " => \"" << EscapeCsStringLiteral(property_name) << "\",\n";
+                out << CS_INDENT << "        " << enum_type << "." << EscapeCsIdentifier(property_name) << " => \"" << EscapeCsStringLiteral(property_name) << "\",\n";
             }
         }
 

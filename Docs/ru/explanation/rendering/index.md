@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"ec95530725cf98716c7704064c8b1efa2f01f8c1ff59670f0826ec446e3e69d0"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"09ac79874c14f3999d9a1051e38be41e286fc353a07d6dc246509f7c11af4606"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -572,6 +572,12 @@ platform flags задаёт platform branch в `BuildTools/cmake/stages/Init.cma
 `Null_DrawBuffer` и `Null_Effect`. Backend нужен tests/headless flows без GPU,
 но всё равно проверяет dimensions, buffer counts, render-target state и доступ
 к texture regions, поэтому ловит многие нарушения API.
+
+Начало scissor может иметь отрицательные координаты, а сама область — выходить
+за пределы render target, как на GPU backend. Это поддерживает частично скрытые
+за краем экрана панели GUI. Отрицательные ширина и высота остаются ошибкой;
+области чтения и записи текстуры по-прежнему требуют координат внутри неё.
+Оба условия покрыты секциями scissor в `NullRenderer`.
 
 ### OpenGL renderer
 
