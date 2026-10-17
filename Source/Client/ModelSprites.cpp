@@ -52,19 +52,22 @@ auto ModelSpriteHitMask::IsHitTest(ipos32 pos) const -> bool
     return _mask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_maskSize.width) + numeric_cast<size_t>(pos.x)];
 }
 
-void ModelSpriteHitMask::Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit)
+void ModelSpriteHitMask::Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit, nanotime now)
 {
     FO_TRACE_ZONE(Render);
 
     auto discard_readback_on_fail = scope_fail([this]() noexcept {
         _readback.reset();
         _stale = true;
+        _refreshRequested = true;
     });
 
-    if (!_readback && _stale) {
+    if (!_readback && _stale && _refreshRequested && now >= _nextRefreshTime) {
         _readback = texture->RequestTextureRegion(pos, size);
         _readbackSize = size;
         _stale = false;
+        _refreshRequested = false;
+        _nextRefreshTime = now + std::chrono::milliseconds {100};
     }
 
     if (!_readback) {
@@ -114,17 +117,17 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    RefreshHitMask();
+    _hitMask.RequestRefresh();
 
     return _hitMask.IsHitTest(pos);
 }
 
-// The mask trails the drawn picture by the frame or two a readback takes, a lag picking under a moving cursor absorbs
+// New copies are throttled; pending readbacks are polled independently until their pixels arrive
 void ModelSprite::RefreshHitMask() const
 {
     ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
     ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
-    _hitMask.Refresh(atlas_tex, atlas_pos, _size, [this](int32_t value) { return _sprMngr->CheckHitTest(value); });
+    _hitMask.Refresh(atlas_tex, atlas_pos, _size, [this](int32_t value) { return _sprMngr->CheckHitTest(value); }, _sprMngr->GetTimer().GetFrameTime());
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
@@ -216,6 +219,8 @@ auto ModelSprite::Update() -> bool
         DrawToAtlas();
     }
 
+    RefreshHitMask();
+
     return true;
 }
 
@@ -237,7 +242,7 @@ void ModelSprite::DrawToAtlas()
 {
     _factory->DrawModelToAtlas(this);
 
-    // The mask now shows the previous picture, and the next hit test asks for this one
+    // Redraws alone do not request readback; picking asks for a newer mask when needed
     _hitMask.MarkStale();
 }
 

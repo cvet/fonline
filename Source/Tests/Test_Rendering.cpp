@@ -263,6 +263,11 @@ TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
     ModelSpriteHitMask mask;
     function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
     bool had_mask = false;
+    nanotime now {};
+    auto refresh = [&] {
+        mask.Refresh(&texture, {}, texture.Size, check_hit, now);
+        now += std::chrono::milliseconds {100};
+    };
 
     SECTION("BeforeTheFirstMask")
     {
@@ -271,8 +276,8 @@ TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
     }
     SECTION("ReplacingACompletedMask")
     {
-        mask.Refresh(&texture, {}, texture.Size, check_hit);
-        mask.Refresh(&texture, {}, texture.Size, check_hit);
+        refresh();
+        refresh();
         had_mask = true;
         REQUIRE(mask.IsHitTest({0, 0}));
         REQUIRE_FALSE(mask.IsHitTest({1, 0}));
@@ -281,32 +286,33 @@ TEST_CASE("ModelSpriteHitMaskRetriesFailedReadback")
     state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
     state.FailNext = true;
     mask.MarkStale();
+    mask.RequestRefresh();
     size_t previous_requests = state.Requests;
 
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    refresh();
     CHECK(state.Requests == previous_requests + 1);
     CHECK(state.Readers == 1);
     CHECK(mask.IsHitTest({0, 0}) == had_mask);
     CHECK_FALSE(mask.IsHitTest({1, 0}));
 
-    REQUIRE_THROWS_WITH(mask.Refresh(&texture, {}, texture.Size, check_hit), Catch::Matchers::ContainsSubstring("Injected texture readback failure"));
+    REQUIRE_THROWS_WITH(refresh(), Catch::Matchers::ContainsSubstring("Injected texture readback failure"));
     CHECK(state.Readers == 0);
     CHECK(mask.IsHitTest({0, 0}) == had_mask);
     CHECK_FALSE(mask.IsHitTest({1, 0}));
 
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    refresh();
     CHECK(state.Requests == previous_requests + 2);
     CHECK(state.Readers == 1);
     CHECK(mask.IsHitTest({0, 0}) == had_mask);
     CHECK_FALSE(mask.IsHitTest({1, 0}));
 
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    refresh();
     CHECK(state.Readers == 0);
     CHECK_FALSE(mask.IsHitTest({0, 0}));
     CHECK(mask.IsHitTest({1, 0}));
     CHECK_FALSE(mask.IsHitTest({-1, 0}));
     CHECK_FALSE(mask.IsHitTest({2, 0}));
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    refresh();
     CHECK(state.Requests == previous_requests + 2);
 }
 
@@ -316,19 +322,64 @@ TEST_CASE("ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending")
     HitMaskTestTexture texture {&state};
     ModelSpriteHitMask mask;
     function<bool(int32_t)> check_hit = [](int32_t value) { return value > 127; };
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    auto update = [&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, check_hit, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); };
+    update(0);
     state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
     mask.MarkStale();
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    mask.RequestRefresh();
+    update(1);
     REQUIRE(mask.IsHitTest({0, 0}));
     REQUIRE_FALSE(mask.IsHitTest({1, 0}));
 
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
-    mask.Refresh(&texture, {}, texture.Size, check_hit);
+    update(100);
+    update(101);
     CHECK(state.Requests == 2);
     CHECK(state.Readers == 0);
     CHECK_FALSE(mask.IsHitTest({0, 0}));
     CHECK(mask.IsHitTest({1, 0}));
+}
+
+TEST_CASE("ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels")
+{
+    HitMaskTestState state {.Pixels = {ucolor {0, 0, 0, 255}, ucolor {0, 0, 0, 0}}};
+    HitMaskTestTexture texture {&state};
+    ModelSpriteHitMask mask;
+    auto update = [&](int64_t milliseconds) { mask.Refresh(&texture, {}, texture.Size, [](int32_t alpha) { return alpha > 127; }, nanotime {timespan {std::chrono::milliseconds {milliseconds}}}); };
+
+    // The initial copy needs no hover. Completion polling is independent of the new-copy interval
+    update(0);
+    REQUIRE(state.Requests == 1);
+    REQUIRE(state.Readers == 1);
+    update(1);
+    REQUIRE(state.Readers == 0);
+    REQUIRE(mask.IsHitTest({0, 0}));
+
+    state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
+    mask.MarkStale();
+    mask.RequestRefresh();
+    for (int64_t now = 2; now < 100; now++) {
+        mask.RequestRefresh();
+        update(now);
+    }
+    CHECK(state.Requests == 1);
+    CHECK(mask.IsHitTest({0, 0}));
+    update(100);
+    REQUIRE(state.Requests == 2);
+    REQUIRE(state.Readers == 1);
+    mask.MarkStale();
+    update(101);
+    CHECK(state.Readers == 0);
+    CHECK_FALSE(mask.IsHitTest({0, 0}));
+    CHECK(mask.IsHitTest({1, 0}));
+
+    // Animation alone must not keep copying after picking stops
+    update(1000);
+    CHECK(state.Requests == 2);
+    mask.RequestRefresh();
+    update(1000);
+    CHECK(state.Requests == 3);
+    update(1001);
+    CHECK(state.Readers == 0);
 }
 
 TEST_CASE("ModelSpriteFrameSizeIsBounded")

@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Prepare a 3D model sprite's first alpha hit mask during sprite updates, before the first hover or click. Picking only reads the completed mask and requests refresh; render updates start later copies on demand, at most once per 100 ms, and poll pending pixels every frame. This prevents a background item from being selected while the first mask is cold and keeps hovered silhouettes current without per-frame copies.
+
+### Migration
+
+- Base `617a0d6f1af16a6bcf3da951e5299ddf31c26158` (`2026.1.47-dev`); update `2026.1.48-dev`. Rebuild native client/Mapper consumers and tests; run the embedding project's normal bake to refresh revision metadata. No script, configuration, prototype, baked-format or persisted-data migration is required: pixel-precise alpha picking and all existing input meanings are preserved. Network compatibility `0.0.73` and Managed ABI `9` are unchanged; no new mixed-version restriction or deployment ordering is introduced. Rollback restores baseline native binaries without data conversion.
+- Validate `ModelSpritePreparesItsHitMaskDuringRenderUpdate`, `ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels`, the retry/redraw tests, and first clicks with and without prior hover in a visible client. Bound the embedding game's cursor-entity cache lifetime so a cached background item cannot hide a newly completed mask. Verify the interaction window separately from command submission. Picking adds no rectangle fallback or GPU wait; asynchronous readiness polling remains independent of the 100 ms copy interval.
+
+## 2026.1.47-dev - 2026-10-17
+
+### Fixed
+
 - Move the `ConfigFile` `ParseLargeConfig` sampling benchmark into the opt-in `ConfigFilePerformance` case (`[!benchmark][config]`), matching the hidden-benchmark layout of `TextureAtlasLayoutPerformance` and `PropertiesPerformance`. Ordinary functional selection no longer repeats the measurement on each of the 29 `SECTION` paths; the explicit `ConfigFilePerformance` case retains the unchanged `ParseLargeConfig` measurement on the `128x12` input. No CI-wide speedup is measured or claimed.
 - Acknowledge a pending `work_thread` clear request on the worker before queue inspection, dispatch or wait. Queued jobs are discarded and `clear()` returns for every queue shape, including empty and future-dated queues and across pause/resume; a request landing around an earlier acknowledgement notification no longer strands `clear()` on the worker's done signal.
 

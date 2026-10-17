@@ -911,6 +911,44 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ModelSpritePreparesItsHitMaskDuringRenderUpdate")
+{
+    constexpr string_view MESH_PATH = "Models/InitialHitMask.fbx";
+    constexpr string_view MODEL_PATH = "Models/InitialHitMask.fo3d";
+
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+    auto model_spr = sprite.dyn_cast<ModelSprite>();
+    REQUIRE(static_cast<bool>(model_spr));
+    REQUIRE(model_spr->Update());
+
+    SECTION("FirstPictureIsPreparedBeforePicking")
+    {
+    }
+    SECTION("PickingARedrawnPictureDoesNotStartAReadback")
+    {
+        model_spr->DrawToAtlas();
+    }
+
+    // Picking must use the completed mask even after a redraw. GPU work belongs to the render update
+    ptr<RenderTexture> atlas_tex = model_spr->GetAtlas()->GetTexture();
+    ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
+    atlas_tex->UpdateTextureRegion(origin, {1, 1}, vector<ucolor>(1, ucolor {255, 255, 255, 255}));
+
+    CHECK_FALSE(model_spr->IsHitTest({0, 0}));
+}
+#endif
+
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
 {
     // A model sprite has no pixels on the CPU until its atlas picture comes back from the GPU. The null renderer reads
@@ -953,6 +991,8 @@ TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
     ipos32 second {1, 1};
     ipos32 origin = draw_with_opaque_pixel(first);
 
+    CHECK_FALSE(model_spr->IsHitTest(first));
+    REQUIRE(model_spr->Update());
     CHECK(model_spr->IsHitTest(first));
     CHECK_FALSE(model_spr->IsHitTest(second));
 
@@ -963,9 +1003,14 @@ TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
     CHECK(model_spr->IsHitTest(first));
     CHECK_FALSE(model_spr->IsHitTest(second));
 
-    // A redraw leaves the mask stale, and the next hit test takes the new picture
+    // A redraw leaves the mask stale; picking only requests a copy for the next render update
+    coarse_sleep(std::chrono::milliseconds {110});
+    client->GameTime.FrameAdvance(false);
     draw_with_opaque_pixel(second);
 
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
+    REQUIRE(model_spr->Update());
     CHECK_FALSE(model_spr->IsHitTest(first));
     CHECK(model_spr->IsHitTest(second));
     CHECK_FALSE(model_spr->IsHitTest({-1, 0}));

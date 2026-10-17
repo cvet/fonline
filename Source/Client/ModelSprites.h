@@ -53,7 +53,8 @@ class ModelSpriteHitMask final
 public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool;
 
-    void Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit);
+    void Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit, nanotime now);
+    void RequestRefresh() noexcept { _refreshRequested = true; }
     void MarkStale() noexcept { _stale = true; }
 
 private:
@@ -62,6 +63,8 @@ private:
     unique_nptr<RenderTextureReadback> _readback {};
     isize32 _readbackSize {};
     bool _stale {true};
+    bool _refreshRequested {true};
+    nanotime _nextRefreshTime {};
 };
 
 class ModelSprite final : public AtlasSprite
@@ -123,8 +126,7 @@ private:
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
 
-    // A hit test reads a mask of the drawn picture that arrives without waiting for the GPU. Picking is a query,
-    // so the cache it keeps is mutable
+    // Picking reads the completed mask and requests a refresh; render updates own the readback
     mutable ModelSpriteHitMask _hitMask {};
 };
 
