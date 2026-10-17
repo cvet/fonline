@@ -122,6 +122,15 @@ Use `RowMajor`/`ColumnMajor` naming only for explicit boundary conversion with e
 
 `InitApp()` and `LoadAppSettings()` in `Source/Frontend/ApplicationInit.cpp` prepare global settings and application services before the client/server/tool app creates its engine object.
 
+Windows console Ctrl+C and Ctrl+Break handling is installed unconditionally
+after frontend initialization. The handler only latches a quit flag; each
+application chooses safe exit points by servicing `IsQuitRequested()`. Batch
+tools and tests that do not observe quit can finish their current work (no
+immediate cancellation guarantee). POSIX signal registration is unchanged.
+Custom native loops that need cooperative early termination should poll
+`IsQuitRequested()`. See [Release Operations](../../how-to/release/operations.md#stop-safely)
+for the shutdown boundary.
+
 Notable responsibilities:
 
 - parse command-line and local configuration;

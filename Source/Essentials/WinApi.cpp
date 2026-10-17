@@ -57,6 +57,7 @@ FO_BEGIN_NAMESPACE
 
 static auto WINAPI on_unhandled_exception(EXCEPTION_POINTERS* info) -> LONG;
 static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD;
+static auto WINAPI on_console_interrupt(DWORD event) noexcept -> BOOL;
 static void on_abort_signal(int32_t signum);
 static void on_invalid_parameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, uint32_t line, uintptr_t reserved);
 static void on_pure_call();
@@ -72,6 +73,10 @@ static HANDLE crash_report_requested {};
 static HANDLE crash_report_done {};
 static HANDLE crash_thread {};
 static CONTEXT crash_context {};
+
+// Console interrupts belong to the process, independently of any engine instance or its lifetime
+static std::atomic<bool> console_interrupt_received {};
+static_assert(std::atomic<bool>::is_always_lock_free);
 
 static auto resolve_kernel_entry(const char* func_name) noexcept -> FARPROC
 {
@@ -340,6 +345,17 @@ auto winapi::fill_system_random(span<uint8_t> buf) noexcept -> bool
     }
 
     return true;
+}
+
+auto winapi::install_console_interrupt_handler() noexcept -> bool
+{
+    console_interrupt_received.store(false, std::memory_order_release);
+    return ::SetConsoleCtrlHandler(on_console_interrupt, TRUE) != FALSE;
+}
+
+auto winapi::is_console_interrupt_received() noexcept -> bool
+{
+    return console_interrupt_received.load(std::memory_order_acquire);
 }
 
 auto winapi::load_library(const string& path) noexcept -> nptr<void>
@@ -934,6 +950,16 @@ static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD
 
     (void)::SetEvent(crash_report_done);
     return 0;
+}
+
+static auto WINAPI on_console_interrupt(DWORD event) noexcept -> BOOL
+{
+    if (event != CTRL_C_EVENT && event != CTRL_BREAK_EVENT) {
+        return FALSE;
+    }
+
+    console_interrupt_received.store(true, std::memory_order_release);
+    return TRUE;
 }
 
 // After the handler returns, abort ends the process itself

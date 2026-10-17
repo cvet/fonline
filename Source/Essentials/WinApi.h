@@ -74,6 +74,8 @@ namespace winapi
     auto get_active_processor_count() noexcept -> uint32_t;
     auto get_system_cpu_times() noexcept -> optional<cpu_core_times>;
     auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
+    auto install_console_interrupt_handler() noexcept -> bool;
+    auto is_console_interrupt_received() noexcept -> bool;
 
     auto load_library(const string& path) noexcept -> nptr<void>;
     // Loaded and pinned: FreeLibrary no longer unmaps it, and it stays until the process exits

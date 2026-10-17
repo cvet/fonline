@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"6e49c6333753b1847402ce48210c52c77c1cacf75f18cffa27ae98e2c41c1112"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"d1f65368f9bb0b9bd1b37c478b398ed1cb12c06064df1603325e5c992d208e96"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -144,6 +144,15 @@ wrapping flags. Этой границей и точным поведением �
 `InitApp()` и `LoadAppSettings()` в `Source/Frontend/ApplicationInit.cpp`
 готовят global settings и application services до создания engine object
 клиентом, сервером или инструментом.
+
+Обработка Windows console Ctrl+C и Ctrl+Break устанавливается безусловно после
+инициализации frontend. Handler только устанавливает флаг выхода; каждое
+приложение выбирает безопасные точки выхода, обслуживая `IsQuitRequested()`.
+Batch-инструменты и тесты, не наблюдающие выход, могут завершить текущую работу
+(без гарантии немедленной отмены). Регистрация POSIX signals не меняется.
+Собственные native-циклы, которым нужен кооперативный ранний выход, должны
+опрашивать `IsQuitRequested()`. Граница shutdown описана в
+[эксплуатации релиза](../../how-to/release/operations.md#остановите-безопасно).
 
 Основные обязанности:
 

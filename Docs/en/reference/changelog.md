@@ -16,6 +16,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Route Windows console Ctrl+C and Ctrl+Break through normal application quit after frontend initialization. The handler only latches a process-wide atomic flag; console-close/logoff/shutdown events and forced termination retain their existing behavior.
+- Enforce the existing read-only contract for startup `Common.UserWritablePath`: reject nonempty config assignments before substitution or append parsing, and keep empty generated assignments from clearing the resolved root.
+
+### Migration
+
+- Base `c7a19d2c833c3b16c741fb02cf170c14e5c251c5` (`2026.1.48-dev`); update `2026.1.49-dev`. Search authored inputs with `rg -n 'Common\.UserWritablePath\s*=' --glob '*.fomain*' --glob '*.cfg'`. Remove every nonempty assignment from main/sub-configs, local-config cache entries and packaged internal config sources; supply `--Common.UserWritablePath <path>` at process startup instead. Nonempty assignments now fail with `SettingsException: Writable root is resolved before settings` at runtime or baking. Inspect local-cache content through its owning configuration tool; an opaque cache file is not a text config. Empty generated assignments remain valid no-ops. CLI priority, `*`, installer-marker selection and portable empty-root behavior are unchanged.
+- Rebuild native applications and Baker, then run the normal bake to refresh revision metadata and validate packaged configs. Verify CLI resolution, empty config values, main/sub/local rejection, and normal shutdown after both console events using a dedicated child process/console. Windows service control and POSIX signals are unchanged; a GUI application without a console still uses its ordinary quit action. No script API, persisted-data, map/resource-schema, network compatibility marker, runtime `0.0.73` or Managed ABI `9` change is required. Roll back matching binaries/resources without save conversion.
+- Windows console Ctrl+C and Ctrl+Break handling is installed unconditionally after frontend initialization. The handler only latches a quit flag; each application chooses safe exit points by servicing `IsQuitRequested()`. Custom native loops that need cooperative early termination should poll `IsQuitRequested()`. Batch tools and tests that do not observe quit can finish their current work (no immediate cancellation guarantee). POSIX signal setup and Windows service control are unchanged. The subprocess matrix covers both Windows events for application-loop quit and deferred observation.
+
+## 2026.1.48-dev - 2026-10-17
+
+### Fixed
+
 - Prepare a 3D model sprite's first alpha hit mask during sprite updates, before the first hover or click. Picking only reads the completed mask and requests refresh; render updates start later copies on demand, at most once per 100 ms, and poll pending pixels every frame. This prevents a background item from being selected while the first mask is cold and keeps hovered silhouettes current without per-frame copies.
 
 ### Migration

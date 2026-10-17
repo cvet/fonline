@@ -32,7 +32,7 @@ An immutable release unit contains the accepted server binary, baked resources/c
 
 The optional health file uses an executable-derived name below the same
 writable root as the log. The read-only `Common.UserWritablePath` is resolved
-before the log or config is opened, from `--UserWritablePath` or the
+before the log or config is opened, from `--Common.UserWritablePath` or the
 executable's `INSTALLED` marker; when non-empty it roots the log, health file,
 cache, resource overlay, self-updated binaries, and server database. Set the
 working directory and any writable-path override explicitly; launch
@@ -100,6 +100,15 @@ Before traffic returns, check [Client Runtime Split and Updater](../../explanati
 ## Stop safely
 
 On Linux/macOS, send `SIGTERM` or `SIGINT` to headless or the daemon child; the loop converts the latched signal to quit. On Windows service use `SERVICE_CONTROL_STOP`. Forced termination bypasses Engine shutdown.
+
+Windows console Ctrl+C and Ctrl+Break handling is installed unconditionally
+after frontend initialization. The handler only latches a quit flag; each
+application chooses safe exit points by servicing `IsQuitRequested()`. Custom
+native loops that need cooperative early termination should poll
+`IsQuitRequested()`. Batch tools and tests that do not observe quit can finish
+their current work (no immediate cancellation guarantee). This does not handle
+console close, logoff, system shutdown, or forced termination. A GUI process
+without an attached console uses its normal window/application quit controls.
 
 `ServerEngine::Shutdown()` stops networking/jobs, fires `OnFinish`, destroys entities/backends, flushes identity/time, waits for database commits, disconnects players, and logs `Server stopped!`.
 

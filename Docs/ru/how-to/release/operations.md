@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/operations.html
 ---
 
 # Эксплуатация релиза
-<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"e477cc4cbfab3218cb4dcd3d3b80050ff7fec9505aaa29942ee85889c9934388"} -->
+<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"ec945927453961a6037102c286b49560bb69d76cff2924c818bf7883d131fa7b"} -->
 Это руководство описывает переиспользуемый жизненный цикл сервера FOnline: готовность, развёртывание, остановку и откат. [Упаковка и выпуск](packaging.md) владеет артефактами; [Persistence](../../explanation/persistence/) — механикой базы данных; [резервное копирование и восстановление](backup-and-recovery.md) — нейтральной к провайдеру процедурой восстановления. Игра владеет инфраструктурой, политикой данных, целевыми показателями и инцидентами.
 
 ## Решение о rollout
@@ -33,7 +33,7 @@ Engine создаёт бинарные файлы, но не создаёт се
 
 Необязательный health-файл получает имя от executable и размещается под тем же
 writable root, что и log. Read-only `Common.UserWritablePath` разрешается до
-открытия log или config из `--UserWritablePath` либо marker `INSTALLED`
+открытия log или config из `--Common.UserWritablePath` либо marker `INSTALLED`
 рядом с executable; если путь непустой, под ним размещаются log,
 health-файл, cache, resource overlay, self-updated binaries и server database.
 Задавайте working directory и любое переопределение writable path явно:
@@ -101,6 +101,15 @@ Engine не предоставляет HTTP endpoint для health/drain и не
 ## Остановите безопасно
 
 На Linux/macOS отправьте `SIGTERM` или `SIGINT` headless-процессу либо дочернему процессу daemon; цикл преобразует зафиксированный signal в запрос выхода. Для Windows service используйте `SERVICE_CONTROL_STOP`. Принудительное завершение обходит shutdown Engine.
+
+Обработка Windows console Ctrl+C и Ctrl+Break устанавливается безусловно после
+инициализации frontend. Handler только устанавливает флаг выхода; каждое
+приложение выбирает безопасные точки выхода, обслуживая `IsQuitRequested()`.
+Собственные native-циклы, которым нужен кооперативный ранний выход, должны
+опрашивать `IsQuitRequested()`. Batch-инструменты и тесты, не наблюдающие выход,
+могут завершить текущую работу (без гарантии немедленной отмены). Закрытие
+консоли, выход из системы, остановка ОС и принудительное завершение сюда не
+входят. GUI-процесс без консоли использует обычные элементы выхода окна/приложения.
 
 `ServerEngine::Shutdown()` останавливает networking и jobs, вызывает `OnFinish`, уничтожает сущности и backends, сохраняет identity/time, ожидает commits базы данных, отключает игроков и пишет `Server stopped!`.
 

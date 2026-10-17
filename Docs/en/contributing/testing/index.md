@@ -324,6 +324,21 @@ Use these ownership groups to choose a starting area; the filenames are represen
 
 - `Source/Tests/Test_ApplicationHeadless.cpp`
 
+The hidden `ApplicationConsoleInterrupt` probe is driven by
+`BuildTools/tests/test_console_interrupt.py` on Windows. Set
+`FONLINE_TEST_EXECUTABLE` to an absolute generated UnitTests executable and run
+that pytest module. Each Ctrl+C/Ctrl+Break case uses a private hidden console,
+waits for the real initialized application, and requires an ordinary successful
+quit plus a completion marker. The default native suite excludes this probe;
+the Python module skips explicitly on other platforms or without the executable.
+
+The matrix also drives the hidden `ApplicationConsoleInterruptDeferred` probe
+for both events. It waits for a release marker without observing application
+quit; Python requires it to stay alive after the event, then releases it to
+verify the latched quit request and successful completion. Both probes use
+ordinary application initialization without an interrupt-handling opt-in.
+The outer watchdog owns its worker tree and forcibly stops that tree on timeout.
+
 - `Source/Tests/Test_AnyData.cpp`
 - `Source/Tests/Test_Common.cpp`
 - `Source/Tests/Test_EngineMetadata.cpp`

@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"bdfc5d9ed0978510ed32cb773a867bc78ea6a78bb9a0a6b276e57850f3305f59"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"847e3046bb9bfa4e4a1c5d7eaadf26763d05db2d06dba718820b7eead95c078f"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -140,7 +140,15 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 `Baking.BakeLanguages` является упорядоченным контрактом контента, а не неупорядоченным locale allowlist: text baking использует первое значение как базу нормализации. `Client.Language` выбирает начальный client text pack. Точное поведение `.fotxt`, `$Text`, fallback и runtime lookup описано в разделе [Текст и локализация](../../how-to/content/text-and-localization.md).
 
-До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--UserWritablePath <path>` (принимается и dotted-форма `--Common.UserWritablePath`), marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `Platform::GetUserDataBase()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
+До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `Platform::GetUserDataBase()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
+
+Любое непустое `Common.UserWritablePath` в основном config, sub-config,
+local-config cache или упакованном internal config вызывает `SettingsException`
+с сообщением `Writable root is resolved before settings`, в том числе при baking.
+Удалите такое присваивание и передайте нужный root через startup command line.
+Пустое сгенерированное присваивание ничего не меняет и сохраняет разрешённое
+значение; обычный CLI-pass тоже оставляет его прежним. Проверка выполняется до
+подстановок setting и разбора append.
 
 Обычный command line по-прежнему применяется к live settings ровно **один раз**, после config, sub-config и local config, поэтому имеет окончательный приоритет, а `+`-append overrides (`-Setting +value`) не накапливаются дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. Settings, чьи имена содержат token из `Common.SecretSettingTokens` (регистронезависимые подстроки, default `secret token password apikey`), журналируются как `Set <name> to ***`. Это не общая защита credentials: raw process arguments и значения settings остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 

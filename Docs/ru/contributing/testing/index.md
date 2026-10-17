@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bf55ea18f8f3e0ea65790f803c57f98e965b1fc1d70298756f1a178290e42dc9"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"464ef466c169f7b574030d0288682dabb7d9cf1ff6e9867fd953f3de1c438a30"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -38,6 +38,22 @@ permalink: /Docs/ru/contributing/testing/
 Он требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, выставляет
 `IsTestingInProgress` и передает выполнение в
 `Catch::Session().run(argc, argv)`.
+
+Скрытую пробу `ApplicationConsoleInterrupt` запускает Windows-тест
+`BuildTools/tests/test_console_interrupt.py`. Задайте в `FONLINE_TEST_EXECUTABLE`
+абсолютный путь к сгенерированному UnitTests executable и запустите этот pytest
+module. Каждый случай Ctrl+C/Ctrl+Break использует отдельную скрытую консоль,
+дожидается настоящего инициализированного приложения и требует обычного успешного
+выхода с маркером завершения. Штатный native suite исключает эту пробу; Python
+module явно пропускается на других платформах или без заданного executable.
+
+Матрица также запускает скрытую пробу `ApplicationConsoleInterruptDeferred`
+для обоих events. Она ждёт маркер разрешения, не проверяя application quit;
+Python требует, чтобы процесс оставался жив после события, затем разрешает
+ему проверить сохранённый запрос выхода и успешно завершиться. Обе пробы
+используют обычную инициализацию приложения без opt-in обработки прерываний.
+Внешний watchdog владеет деревом worker-процессов и принудительно останавливает
+его при timeout.
 
 `EngineSources.cmake` владеет явным списком `FO_TESTS_SOURCE`.
 `Applications.cmake` строит executable через `SetupTestBuild(name)`:

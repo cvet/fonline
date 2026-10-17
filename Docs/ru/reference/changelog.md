@@ -7,12 +7,25 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9afbf6124f394726db0e3ee15508f7c7c44b1680785fbcd63a8e7e05befaf549"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9b91a3efc92f4c77c99b6eb61a1d3d79311c0fe3ece331878423b938af1c41b2"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-17
+
+### Исправлено
+
+- Windows console Ctrl+C и Ctrl+Break после инициализации frontend запрашивают обычный выход приложения. Handler только устанавливает общий для процесса атомарный флаг; закрытие консоли, выход из системы, остановка ОС и принудительное завершение сохраняют прежнее поведение.
+- Закреплён существующий read-only контракт startup `Common.UserWritablePath`: непустое присваивание из config отклоняется до подстановок и append-разбора, а пустое сгенерированное присваивание не сбрасывает разрешённый root.
+
+### Миграция
+
+- База `c7a19d2c833c3b16c741fb02cf170c14e5c251c5` (`2026.1.48-dev`); обновление `2026.1.49-dev`. Найдите авторские входы командой `rg -n 'Common\.UserWritablePath\s*=' --glob '*.fomain*' --glob '*.cfg'`. Удалите каждое непустое присваивание из main/sub-configs, записей local-config cache и исходников упакованного internal config; передавайте `--Common.UserWritablePath <path>` при запуске процесса. Непустое присваивание теперь вызывает `SettingsException: Writable root is resolved before settings` при runtime или baking. Просматривайте local cache через владеющий им инструмент конфигурации; непрозрачный cache-файл не является текстовым config. Пустые сгенерированные присваивания остаются допустимыми no-op. Приоритет CLI, `*`, выбор через installer marker и portable-поведение с пустым root не меняются.
+- Пересоберите нативные приложения и Baker, затем выполните обычную выпечку для обновления метаданных ревизии и проверки упакованных configs. Проверьте разрешение CLI, пустые значения config, отказ main/sub/local-присваиваний и обычный shutdown после обоих console events в отдельном дочернем процессе/консоли. Windows service control и POSIX signals прежние; GUI-приложение без консоли использует обычное действие выхода. Изменений script API, persisted data, map/resource schema, network compatibility marker, runtime `0.0.73` и Managed ABI `9` не требуется. Откат — согласованные binaries/resources без преобразования сохранений.
+- Обработка Windows console Ctrl+C и Ctrl+Break устанавливается безусловно после инициализации frontend. Handler только устанавливает флаг выхода; каждое приложение выбирает безопасные точки выхода, обслуживая `IsQuitRequested()`. Собственные native-циклы, которым нужен кооперативный ранний выход, должны опрашивать `IsQuitRequested()`. Batch-инструменты и тесты, не наблюдающие выход, могут завершить текущую работу (без гарантии немедленной отмены). POSIX signal setup и Windows service control не меняются. Subprocess-матрица проверяет оба Windows events для application-loop quit и deferred observation.
+
+## 2026.1.48-dev - 2026-10-17
 
 ### Исправлено
 

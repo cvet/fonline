@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"0e6bb6a86c751af1113de88989428c6972bb340f21d376944afb0903e6caa6dd"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"890f5da56c0c61d9675016ac14a9e4db0cf6ff32451f2e6111bab575705dd959"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -447,7 +447,7 @@ version с версией, загруженной server. Server исполня�
 | `ServerNetwork.UpdateFilesInMemory` | top-level и `[SubConfig]` | `True` держит packaged payload в RAM, `False` читает portions с disk; default `False` |
 | `Network.ForceMetadataVersion` | top-level | только для tests: переопределяет metadata version, сообщаемую client, чтобы смоделировать mismatch без второй bake; в shipped configs должна быть empty |
 | `Baking.PlatformBinaries` | top-level | каталог чтения и package staging target-specific runtime, default `PlatformBinaries` |
-| `Common.UserWritablePath` | common | **Read-only** writable root для всех runtime-записей: logs, cache, resource overlay, self-updated binaries и server database. Он разрешается до чтения config и не задаётся в нём: `--UserWritablePath <path>` указывает путь; иначе marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс имя проекта; при отсутствии обоих значение остаётся пустым и пути считаются от working directory. |
+| `Common.UserWritablePath` | common | **Read-only** writable root для всех runtime-записей: logs, cache, resource overlay, self-updated binaries и server database. Он разрешается до чтения config и не задаётся в нём: `--Common.UserWritablePath <path>` указывает путь; иначе marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс имя проекта; при отсутствии обоих значение остаётся пустым и пути считаются от working directory. |
 
 Автоматического выбора memory/disk mode в C++ нет. Проект задаёт режим явно для
 каждого окружения и подтверждает его нагрузочными измерениями.
@@ -458,7 +458,7 @@ Portable build хранит cache, log и self-update относительно w
 
 `ResolveWritableRoot(args)` из `Source/Frontend/ApplicationInit.cpp` определяет этот root независимо от settings: log, cache и local-config cache сами могут находиться под ним, поэтому ни один прочитанный с disk файл не должен выбирать их расположение. Resolution выполняется до поиска config и открытия log. Приоритеты:
 
-1. **`--UserWritablePath <path>` в command line**; принимается и dotted-форма `--Common.UserWritablePath`. Аргументы сканируются напрямую до settings parser. Так Android передаёт platform internal storage, а test изолирует run. Config file не может задать этот path. Значение `*` запрашивает тот же per-user directory, что и marker.
+1. **`--Common.UserWritablePath <path>` в command line**. Аргументы сканируются напрямую до settings parser. Так Android передаёт platform internal storage, а test изолирует run. Config file не может задать этот path. Значение `*` запрашивает тот же per-user directory, что и marker.
 2. **Marker `INSTALLED` рядом с executable** выбирает per-OS base через `Platform::GetUserDataBase()`: Windows `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` либо `~/.local/share`; затем добавляется `FO_NICE_NAME`. На Android вместо этого используется SDL internal-storage path. Compile-time project name нужен потому, что config-значение `Common.GameName` ещё неизвестно.
 3. **Иначе portable**: root остаётся пустым, а writable paths считаются от working directory — той же базы, из которой ищутся main config и относительные resource/cache directories.
 

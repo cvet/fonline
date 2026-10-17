@@ -489,6 +489,14 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
 {
+    if (setting_name == "Common.UserWritablePath") {
+        if (!setting_value.empty()) {
+            throw SettingsException("Writable root is resolved before settings", setting_name);
+        }
+
+        return;
+    }
+
     bool append = !setting_value.empty() && setting_value[0] == '+';
     string_view value = append ? string_view(setting_value).substr(1) : setting_value;
 

@@ -40,6 +40,43 @@
 
 FO_BEGIN_NAMESPACE
 
+TEST_CASE("ApplicationConsoleInterrupt", "[.][console-interrupt]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    REQUIRE(fs::write_file("console-interrupt.ready", "ready"));
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+
+    while (!app->IsQuitRequested() && std::chrono::steady_clock::now() < deadline) {
+        app->BeginFrame();
+        app->EndFrame();
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(app->IsQuitRequested());
+    REQUIRE(app->GetRequestedQuitSuccess());
+    REQUIRE(fs::write_file("console-interrupt.quit", "quit"));
+}
+
+TEST_CASE("ApplicationConsoleInterruptDeferred", "[.][console-interrupt-deferred]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    REQUIRE(fs::write_file("console-interrupt-deferred.ready", "ready"));
+
+    // Wait for the release marker without touching quit state: the control event must only latch
+    // the flag, never terminate work on its own
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+
+    while (!fs::exists("console-interrupt-deferred.release") && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {10});
+    }
+
+    REQUIRE(fs::exists("console-interrupt-deferred.release"));
+    REQUIRE(app->IsQuitRequested());
+    REQUIRE(fs::write_file("console-interrupt-deferred.quit", "quit"));
+}
+
 TEST_CASE("ApplicationChildWindowLifecycle")
 {
     ptr<Application> app = GetApp();

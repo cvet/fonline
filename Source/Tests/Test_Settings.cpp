@@ -644,6 +644,65 @@ TEST_CASE("Settings")
     }
 }
 
+TEST_CASE("WritableRootConfigCannotReplaceStartupResolution")
+{
+    for (bool baking_mode : {false, true}) {
+        GlobalSettings settings {baking_mode};
+        settings.ApplyDefaultSettings();
+        settings.ApplyWritableRoot("resolved/startup/root");
+
+        for (string_view value : {"other/root", "+other/root", "*", "$ENV{FONLINE_UNUSED_WRITABLE_ROOT}"}) {
+            CAPTURE(baking_mode, value);
+            ConfigFile config {strex("Common.UserWritablePath = {}\n", value)};
+
+            CHECK_THROWS_AS(settings.ApplyConfigFile(config, ""), SettingsException);
+            CHECK(settings.Common.UserWritablePath == "resolved/startup/root");
+            CHECK(settings.GetRuntimeSetting("Common.UserWritablePath") == "resolved/startup/root");
+        }
+
+        ConfigFile empty_config {"Common.UserWritablePath =\n"};
+
+        CHECK_NOTHROW(settings.ApplyConfigFile(empty_config, ""));
+        CHECK(settings.Common.UserWritablePath == "resolved/startup/root");
+        CHECK(settings.GetRuntimeSetting("Common.UserWritablePath") == "resolved/startup/root");
+    }
+}
+
+TEST_CASE("ApplicationWritableRootRejectsLateConfigSources")
+{
+    string root = MakeTempSettingsDir("application_writable_root");
+    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
+    string config_path = strex(root).combine_path("Startup.fomain").str();
+    string config = "Render.Sleep = 7\n";
+    char program[] = "settings_test";
+    char apply_config[] = "--ApplyConfig";
+    char writable_path[] = "--Common.UserWritablePath";
+    char apply_subconfig[] = "--ApplySubConfig";
+    char subconfig_name[] = "Late";
+    vector<CommandLineArg> args = {program, apply_config, config_path.data(), writable_path, root.data()};
+
+    SECTION("MainConfig")
+    {
+        config += "Common.UserWritablePath = other/root\n";
+    }
+
+    SECTION("SubConfig")
+    {
+        config += "[SubConfig]\nName = Late\nCommon.UserWritablePath = other/root\n";
+        args.emplace_back(apply_subconfig);
+        args.emplace_back(subconfig_name);
+    }
+
+    SECTION("LocalConfig")
+    {
+        CacheStorage cache {strex(root).combine_path("Cache").str()};
+        cache.SetString(LOCAL_CONFIG_NAME, "Common.UserWritablePath = other/root\n");
+    }
+
+    REQUIRE(fs::write_file(config_path, config));
+    CHECK_THROWS_AS(LoadAppSettings(CommandLineArgs {args}), SettingsException);
+}
+
 TEST_CASE("ApplicationSettings")
 {
     string root = MakeTempSettingsDir("application_settings");
@@ -668,6 +727,7 @@ TEST_CASE("ApplicationSettings")
     CHECK(std::ranges::find(configured.Common.SecretSettingTokens, "token") != configured.Common.SecretSettingTokens.end());
     CHECK(configured.Network.NetBufferSize == 8192);
     CHECK(configured.Render.Sleep == 7);
+    CHECK(configured.Common.UserWritablePath == fs::resolve_path(root));
 
     char apply_subconfig[] = "--ApplySubConfig";
     char subconfig_name[] = "Override";
@@ -679,11 +739,12 @@ TEST_CASE("ApplicationSettings")
 
     {
         CacheStorage cache(strex(root).combine_path("Cache").str());
-        cache.SetString(LOCAL_CONFIG_NAME, "Render.Sleep = 13\n");
+        cache.SetString(LOCAL_CONFIG_NAME, "Render.Sleep = 13\nCommon.UserWritablePath =\n");
     }
 
     auto cached = LoadAppSettings(CommandLineArgs {args});
     CHECK(cached.Render.Sleep == 13);
+    CHECK(cached.Common.UserWritablePath == fs::resolve_path(root));
     CHECK(cached.ServerNetwork.ClientPingTime == 10000);
 
     char sleep_setting[] = "--Render.Sleep";

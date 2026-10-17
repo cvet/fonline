@@ -463,6 +463,8 @@ auto IsQuitSignalReceived() noexcept -> bool
 {
 #if FO_LINUX || FO_MAC
     return QuitSignalReceived.load(std::memory_order_acquire);
+#elif FO_WINDOWS
+    return winapi::is_console_interrupt_received();
 #else
     return false;
 #endif
@@ -473,6 +475,10 @@ static void SetupSignals()
 #if FO_LINUX || FO_MAC
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
+#elif FO_WINDOWS
+    if (!winapi::install_console_interrupt_handler()) {
+        logging::write(logging::type::warning, "Unable to install the console interrupt handler");
+    }
 #endif
 }
 
