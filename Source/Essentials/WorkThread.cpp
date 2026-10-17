@@ -218,11 +218,15 @@ void work_thread::thread_entry() noexcept
                     }
                 }
 
-                if (_jobs.empty()) {
-                    if (_clear_jobs) {
-                        _clear_jobs = false;
-                    }
+                // A clear landing around the unlocked acknowledgements above is answered here on every queue
+                // shape, before dispatch or wait. Resetting _clear_jobs without _done_signal strands clear()
+                if (_clear_jobs) {
+                    _jobs.clear();
+                    _clear_jobs = false;
+                    _done_signal.notify_all();
+                }
 
+                if (_jobs.empty()) {
                     if (_finish) {
                         break;
                     }

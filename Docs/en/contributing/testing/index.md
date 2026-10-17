@@ -152,6 +152,8 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. Test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` or `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
 
+Normal functional `SECTION` blocks contain the assertions, while sampling benchmarks live in separate opt-in `[!benchmark]` cases, so a measurement is not rerun on every `SECTION` path of a functional case. `ConfigFile` keeps its functional tests, and an explicit `ConfigFilePerformance` selection runs the unchanged `ParseLargeConfig` measurement once per selection instead of once per section path, for example `<ProjectDevName>_UnitTests ConfigFilePerformance`.
+
 Atlas and render-target dump tests use `TexDumpArtifacts` from
 `Source/Tests/Test_DumpArtifacts.h`. A test snapshots the existing
 `TexDump_*` directories before it invokes production dumping, then removes only

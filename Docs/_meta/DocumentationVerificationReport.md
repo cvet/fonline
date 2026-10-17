@@ -12345,3 +12345,80 @@ production qualification is asserted by this record. No push is authorized.
   The embedding task records the new commit mapping, content-equivalence and
   fresh version/documentation checks; no new native, platform or runtime
   qualification is implied by rewriting history.
+
+
+## 2026-10-17 - Separate ConfigFile sampling from functional sections
+
+Scope: preserve the 29 functional `ConfigFile` section paths and move the unchanged
+`ParseLargeConfig` measurement on its 128-by-12 input into the explicitly selected
+`ConfigFilePerformance` case with `[!benchmark][config]`. The owning EN/RU testing
+guides and draft change/migration notes describe this scheduling boundary.
+
+Sources reviewed: `Source/Tests/Test_ConfigFile.cpp`, benchmark wrappers in
+`Test_TextureAtlas.cpp` and `Test_Properties.cpp`, bundled Catch2 hidden-tag
+handling, and `Source/Applications/TestingApp.cpp` argument forwarding.
+
+Native qualification against the preserved pre-update source snapshot passed:
+`ConfigFile` has 136 assertions and zero measurements; explicit
+`ConfigFilePerformance` has one measurement; the full ordinary suite has 732256
+assertions in 664 passing cases. The earlier native control repeated the
+measurement 29 times. Limited sampling proves selection and execution count;
+no CI-wide speedup is claimed. Production code and authored resource inputs are
+unchanged. Version fixtures pass 12 cases and all 194 translations are current.
+
+The first reviewer harness incorrectly expected the functional-case prose for a
+benchmark-only Catch2 summary; both native selections had already exited zero.
+The corrected harness accepts `test cases: 1 | 1 passed`. Ordered documentation
+preparation, aggregate validation and site qualification follow this source review;
+their results are retained with the maintainer's exact-snapshot evidence.
+
+
+## 2026-10-17 - Acknowledge residual work-thread clear requests
+
+Review `Source/Essentials/WorkThread.cpp`, its header, `Threading.h`,
+`TimeRelated.h`, and the existing `Source/Tests/Test_WorkThread.cpp` cases.
+After the paused loop, service any pending clear request under the held state
+lock before queue inspection, dispatch or waiting; discard queued jobs, reset
+the request and notify done waiters for both empty and future-dated queues.
+Existing API, active-job completion, exception handling and repeat scheduling
+are preserved. Reconcile EN/RU Essentials and the current 47-dev migration.
+
+The original two public-API regressions both fail against the preserved old
+Core with native exit 42 and watchdog/progress assertions, without process
+timeout. The original corrected Core passes 6 and 7 assertions. Reviewer
+refinements keep rescue wakeups active until all helper clears leave, correct
+the exact `work_thread::clear()` symbol, and apply the declared formatting.
+
+A first reviewer repeat incorrectly preserved an old source mtime, so Ninja
+retained the fixed object; its negative-control results are invalid and retained
+as harness evidence. Corrected staging forces source freshness and verifies
+actual compilation of the Core object on each switch. Both final old-Core
+controls again fail with exit 42, both fixed controls pass, and the complete
+`WorkThread` case passes 38 assertions. Source guards remain unchanged.
+The future-workload failure is observed; a separate wait-until stack was not
+captured, so that path's explanation remains source-derived.
+
+These causal controls use a preserved pre-adoption native snapshot whose
+work-thread owners match the current base. They do not qualify all incoming
+Engine sources or application roles. Complete current-base native, backend,
+bake and runtime qualification remains separate. No format, API, settings,
+saved-data, runtime 0.0.73 or Managed ABI 9 conversion is introduced.
+
+
+## 2026-10-17 - Current-source native and managed-bake qualification
+
+After adopting the current published base plus the reviewed 47-dev work, build
+all native application roles and the generated engine unit target on Linux.
+The build exits zero without compiler or configuration warnings. WorkThread
+and ConfigFile pass 174 assertions in two cases; the explicit hidden ConfigFile
+benchmark runs once. The full ordinary unit suite passes 732410 assertions in
+671 cases. Complete resource baking then exits zero with a successful report,
+no failed baker invocations, and nonempty Server, Client and Mapper assemblies.
+
+Hash guards cover the exact source snapshot and an inventory check confirms
+no added or missing declared inputs. The isolated checkout retains its earlier
+Git metadata; these results qualify source bytes, not a newly published release.
+The long managed-build interval was sampled with the official managed stack
+tool; its cause was not established, and the perturbed wall time is not an
+unattended performance baseline. Cross-configuration and gameplay qualification
+remain separately owned gates. No new ThreadSanitizer verdict is claimed.

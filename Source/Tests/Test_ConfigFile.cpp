@@ -428,7 +428,10 @@ TEST_CASE("ConfigFile")
         CHECK_FALSE(config.HasKey("Good", string_view {}));
         CHECK(config.GetAsStr("Good", "Key") == "Value");
     }
+}
 
+TEST_CASE("ConfigFilePerformance", "[!benchmark][config]")
+{
     string benchmark_input = BuildConfigBenchmarkInput(128, 12);
 
     BENCHMARK("ParseLargeConfig")

@@ -16,6 +16,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Move the `ConfigFile` `ParseLargeConfig` sampling benchmark into the opt-in `ConfigFilePerformance` case (`[!benchmark][config]`), matching the hidden-benchmark layout of `TextureAtlasLayoutPerformance` and `PropertiesPerformance`. Ordinary functional selection no longer repeats the measurement on each of the 29 `SECTION` paths; the explicit `ConfigFilePerformance` case retains the unchanged `ParseLargeConfig` measurement on the `128x12` input. No CI-wide speedup is measured or claimed.
+- Acknowledge a pending `work_thread` clear request on the worker before queue inspection, dispatch or wait. Queued jobs are discarded and `clear()` returns for every queue shape, including empty and future-dated queues and across pause/resume; a request landing around an earlier acknowledgement notification no longer strands `clear()` on the worker's done signal.
+
+### Migration
+
+- Base `d498fcf07d1425cf31e71b060fe8aeae87aeb37d` (`2026.1.46-dev`); next update `2026.1.47-dev`. Rebuild the test executable; the existing functional `ConfigFile` filter still runs the same 136 assertions, and performance consumers select `ConfigFilePerformance` (or the explicit benchmark tag) instead of relying on `ConfigFile`'s incidental sampling. Parser, API, settings, scripts, content, save, network, updater and resource-schema contracts, Managed ABI `9` and runtime `0.0.73` remain unchanged; no game or data migration and no rebake is required solely for this test scheduling fix. Rollback restores the previous test layout without data conversion. No publication is implied by this draft.
+- Rebuild Essentials and the native consumers and tests that link it, including the focused `WorkThread` suite with its new clear-acknowledgement liveness regression. API, settings, scripts, content, save, network, updater and resource-schema contracts, Managed ABI `9` and runtime `0.0.73` remain unchanged; no data conversion and no resource-format migration. Embedding projects keep their ordinary revision-metadata update and bake qualification for this Engine revision; nothing here changes authored content, so that qualification is the normal validation step rather than a format migration. Rollback restores the matching prior artifacts without data conversion and restores the clear-acknowledgement defect. No publication or release qualification is implied by this draft.
+
+## 2026.1.46-dev - 2026-10-17
+
+### Fixed
+
 - Generate nested Managed and AngelScript setting access from shared canonical path parsing. Preserve full runtime keys; built-ins stay read-only, Managed properties stay get-only, and AngelScript custom settings retain their setters.
 - Keep AngelScript group paths with underscores distinct and reject property/group collisions before script use. Reject empty segments in the shared parser; Managed also checks escaped C# name collisions.
 - Normalize environment `FO_DOTNET_DIR` paths only on Windows, preserving POSIX path characters and the derived runtime, payload and stamp locations.

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"05ccd1b8e229a14ae77ad6dc13c885ba7aff91855852f3dbd2a7a387c3982ad0"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bf55ea18f8f3e0ea65790f803c57f98e965b1fc1d70298756f1a178290e42dc9"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -189,6 +189,13 @@ Executable можно вызвать напрямую с аргументами 
 `Binaries/Tests-*`, например
 `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe` или
 `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`.
+
+Функциональные блоки `SECTION` содержат проверки, а измерения производительности
+размещаются в отдельных, запускаемых явно кейсах `[!benchmark]`. Тогда измерение
+не повторяется при проходе каждого пути `SECTION` функционального кейса.
+`ConfigFile` сохраняет функциональные тесты; явный выбор `ConfigFilePerformance`
+однократно запускает прежний benchmark `ParseLargeConfig`, например
+`<ProjectDevName>_UnitTests ConfigFilePerformance`.
 
 Tests dump-ов atlas и render target используют `TexDumpArtifacts` из
 `Source/Tests/Test_DumpArtifacts.h`. До production dump test сохраняет snapshot
