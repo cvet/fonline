@@ -220,12 +220,7 @@ timestamp behavior.
 
 Both `MasterBaker` outputs and `BakerDataSource::WriteData` use this publication path. Baking reports, the successful `Resources.build-hash` marker and Effekseer dependency-cache snapshots also publish complete files atomically; their contents, successful-bake ordering and unchanged-resource timestamp rules are preserved.
 
-Windows replacement supports DLLs with active memory mappings through POSIX rename
-semantics. Truncating such a DLL in place fails with error 1224, including when a
-validation engine inside the Baker has loaded it. Shared disk readers permit name
-replacement while retaining their open file, as on POSIX systems. The atomic-write
-helper flushes the temporary file; it does not add directory synchronization or
-claim power-loss durability for the rename.
+Windows attempts an OS/filesystem-specific POSIX rename path when ordinary replacement fails. This does not guarantee replacement of every loaded image or CRT-held file: an open consumer may still refuse publication, and the Baker must report failure while retaining the previous output. Engine disk readers permit delete sharing and retain their old bytes after successful replacement. Validate managed assembly publication through the actual backend/bake route; a shared reader test alone does not prove every mapping mode. The helper flushes the stage without adding directory synchronization or promising power-loss durability for the rename.
 
 `Source/Tests/Test_DiskFileSystem.cpp` covers replacement with an existing reader,
 exclusive creation without truncation, destination preservation and temporary-file

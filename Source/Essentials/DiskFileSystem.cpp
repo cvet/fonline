@@ -333,8 +333,16 @@ auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
 {
     FO_TRACE_ZONE(FileSystem);
 
-    size_t separator = path.find_last_of("/\\");
-    string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
+    std::error_code ec;
+    auto native_path = fs_make_io_path(path, ec);
+
+    if (ec) {
+        return false;
+    }
+
+    auto native_parent = native_path.parent_path();
+    auto parent_utf8 = native_parent.u8string();
+    string dir {parent_utf8.begin(), parent_utf8.end()};
 
     if (!dir.empty() && !fs::create_directories(dir)) {
         return false;
@@ -356,7 +364,8 @@ auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
 
     for (uint32_t attempt = 0; attempt < 100; ++attempt) {
         string temporary_name = strex("._write-{}-{}-{}.tmp", process_id, stamp, attempt).str();
-        temporary_path = strex(dir).combine_path(temporary_name).str();
+        auto temporary_utf8 = (native_parent / fs::make_path(temporary_name)).u8string();
+        temporary_path.assign(temporary_utf8.begin(), temporary_utf8.end());
         fs::disk_write_file writer {temporary_path, fs::disk_write_mode::create_new};
 
         if (!writer) {
@@ -374,7 +383,13 @@ auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
         }
 
         writer.close();
-        return fs::replace_file(temporary_path, path);
+
+        if (fs::replace_file(temporary_path, path)) {
+            created = false;
+            return true;
+        }
+
+        return false;
     }
 
     return false;

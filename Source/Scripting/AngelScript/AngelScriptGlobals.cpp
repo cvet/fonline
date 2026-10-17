@@ -699,32 +699,12 @@ static void Setting_GetGroup(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) void*(obj.get());
 }
 
-static auto SplitSettingPath(string_view setting_name) -> vector<string>
-{
-    vector<string> path;
-    size_t prev_pos = 0;
-
-    while (prev_pos <= setting_name.size()) {
-        auto pos = setting_name.find('.', prev_pos);
-
-        if (pos == string_view::npos) {
-            path.emplace_back(setting_name.substr(prev_pos));
-            break;
-        }
-
-        path.emplace_back(setting_name.substr(prev_pos, pos - prev_pos));
-        prev_pos = pos + 1;
-    }
-
-    return path;
-}
-
 static auto MakeScriptSettingGroupTypeName(const vector<string>& path) -> string
 {
     string result = "GlobalSettingsGroup";
 
     for (const auto& part : path) {
-        result += '_';
+        result += strex("_{}_", part.size()).str();
         result += part;
     }
 
@@ -829,6 +809,13 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     // Settings
+    unordered_set<string> setting_names;
+
+    for (const auto& setting_name : meta->GetGameSettings() | std::views::keys) {
+        (void)SplitSettingPath(setting_name);
+        setting_names.emplace(setting_name);
+    }
+
     FO_AS_VERIFY(as_engine->RegisterObjectType("GlobalSettings", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOHANDLE));
     FO_AS_VERIFY(as_engine->RegisterGlobalProperty("GlobalSettings Settings", make_nptr(meta.get()).void_cast()));
 
@@ -847,6 +834,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             }
 
             current_path += part;
+            FO_VERIFY_AND_THROW(!setting_names.contains(current_path), "AngelScript setting name is both a property and a group", current_path);
 
             if (!setting_group_types.contains(current_path)) {
                 auto partial_path = SplitSettingPath(current_path);
@@ -865,8 +853,9 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         return setting_group_types.at(current_path);
     };
 
-    auto register_engine_setting = [&]<typename T>(string_view owner_type, string_view name, T& data, bool writeble) {
-        string owner_type_str(owner_type);
+    auto register_engine_setting = [&]<typename T>(string_view group_name, string_view name, T& data, bool writeble) {
+        setting_names.emplace(strex("{}.{}", group_name, name).str());
+        string owner_type_str(ensure_setting_group(vector<string> {string(group_name)}));
         string name_str(name);
 
         if constexpr (!SettingScalarTypeNames<T>::ScalarName.empty()) {
@@ -890,7 +879,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     static GlobalSettings dummy_settings(false);
     auto settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : make_ptr(&dummy_settings);
 
-#define SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, const_cast<type&>(settings->group.name), false)
+#define SETTING(type, group, name, ...) register_engine_setting.operator()<type>(#group, #name, const_cast<type&>(settings->group.name), false)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"

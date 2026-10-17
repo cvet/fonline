@@ -10773,7 +10773,7 @@
       "classification": "breaking",
       "rationale": "Reconcile the source-backed model with the runtime compatibility gate already published in 1d88ee229d / 2026.1.43-dev. Rejected stop-direction requests now receive the authoritative CritterDir reply. The stable migration symbol ID and callable APIs are unchanged; the model previously still described Version 0 0 72.",
       "migration": "Apply the 2026.1.43-dev migration in Docs/en/reference/changelog.md and its Russian mirror, then the current 44-dev atomic-write migration. Reconfigure/rebuild Baker, server, clients and Mapper; regenerate metadata and rebake/deploy both resource sides together. No authored coordinate, direction, property, save or resource-format conversion is introduced. Rollback restores matching baseline binaries and packs.",
-      "release_note": "Docs/en/reference/changelog.md 2026.1.43-dev and Current 2026.1.44-dev, plus their Russian mirrors; Source/Common/Common.h owns the Version 0 0 73 gate.",
+      "release_note": "Docs/en/reference/changelog.md 2026.1.43-dev and 2026.1.44-dev, plus their Russian mirrors; Source/Common/Common.h owns the Version 0 0 73 gate.",
       "compatibility": "Runtime gate advances from 0.0.72 to 0.0.73 at published 43-dev. Mixed endpoints are rejected; wire field layouts, existing positions/directions, Managed ABI identity 9 and persisted data retain meaning. The preserved local atomic-write patch introduces no additional gate or data conversion.",
       "owner": "Engine movement authority and migration contracts"
     }

@@ -247,6 +247,101 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 #endif
 }
 
+TEST_CASE("AngelScriptNestedSettingsBake")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    auto metadata = MakeMetadataBlob({{"Setting", {{"Example.Value", "int32", "7"}, {"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.Value", "string", "metadata"}, {"Example.Deep.Level.Enabled", "bool", "true"}, {"Ungrouped", "string", "legacy"}}}});
+
+    for (string_view side : {"server", "client", "mapper"}) {
+        rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
+    }
+
+    rig.AddSourceFile("Scripts/Nested.fos", R"(
+namespace NestedSettings
+{
+    bool Read()
+    {
+        return Settings.Example.Value == 7 && Settings.Example.Deep.Level.Enabled &&
+            Settings.Android.GradleDependency.Sample == "sample:dependency:1" &&
+            Settings.Android.ManifestMetaData.Value == "metadata" && Settings.Ungrouped == "legacy";
+    }
+}
+)");
+    AngelScriptBaker baker(rig.MakeContext("NestedSettings"));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    for (string_view side : {"server", "client", "mapper"}) {
+        CHECK_FALSE(rig.Outputs.at(strex("NestedSettings.fos-bin-{}", side).str()).empty());
+    }
+}
+
+TEST_CASE("AngelScriptNestedSettingsDistinctGroupPaths")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    auto metadata = MakeMetadataBlob({{"Setting", {{"SettingsPath.A_B.Value", "string", "flat"}, {"SettingsPath.A.B.Value", "string", "nested"}}}});
+
+    for (string_view side : {"server", "client", "mapper"}) {
+        rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
+    }
+
+    rig.AddSourceFile("Scripts/Distinct.fos", "bool Distinct() { return Settings.SettingsPath.A_B.Value != Settings.SettingsPath.A.B.Value; }\n");
+    AngelScriptBaker baker(rig.MakeContext("DistinctSettings"));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    CHECK(rig.Outputs.size() == 3);
+}
+
+TEST_CASE("AngelScriptNestedSettingsRejectsEmptySegments")
+{
+    using namespace BakerTests;
+
+    string name = GENERATE(string {".Android.Name"}, string {"Android..Name"}, string {"Android.Name."}, string {});
+    CAPTURE(name);
+    TestRig rig;
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{name, "string", "value"}}}}));
+    rig.AddSourceFile("Scripts/Invalid.fos", "void Read() {}\n");
+    AngelScriptBaker baker(rig.MakeContext("InvalidSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Setting path"));
+}
+
+TEST_CASE("AngelScriptNestedSettingsRejectsPropertyGroupCollision")
+{
+    using namespace BakerTests;
+
+    string nested_setting = GENERATE(string {"Android.Group.Name"}, string {"Network.ServerPort.Name"});
+    CAPTURE(nested_setting);
+    TestRig rig;
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.Group", "string", "leaf"}, {nested_setting, "string", "nested"}}}}));
+    rig.AddSourceFile("Scripts/Collision.fos", "void Read() {}\n");
+    AngelScriptBaker baker(rig.MakeContext("CollisionSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("both a property and a group"));
+}
+
+TEST_CASE("AngelScriptNestedSettingsKeepsBuiltinsReadOnly")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    AddAngelScriptMetadataForAllSides(rig);
+    rig.AddSourceFile("Scripts/ReadOnly.fos", "void Write() { Settings.Network.ServerPort = 1234; }\n");
+    AngelScriptBaker baker(rig.MakeContext("ReadOnlySettings"));
+    CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
+}
+
+TEST_CASE("AngelScriptNestedSettingsRejectsOldGroupTypeNames")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string", "dependency"}}}}));
+    rig.AddSourceFile("Scripts/OldType.fos", "string Hold() { GlobalSettingsGroup_Android_GradleDependency value = Settings.Android.GradleDependency; return value.Sample; }\n");
+    AngelScriptBaker baker(rig.MakeContext("OldGroupType", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
+}
+
 FO_END_NAMESPACE
 
 #endif

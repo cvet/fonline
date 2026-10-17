@@ -41,6 +41,7 @@
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -982,18 +983,40 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         out << "public static partial class Settings\n";
         out << "{\n";
 
-        // A setting `Domain.Name` is read as `Settings.Domain.Name`: the domain becomes a nested class
-        map<string, vector<pair<string, ComplexTypeDesc>>> settings_by_domain;
+        // Each namespace segment becomes a nested class; the runtime key remains unchanged
+        struct SettingDomain
+        {
+            map<string, SettingDomain> Children;
+            vector<pair<string, ComplexTypeDesc>> Settings;
+        };
+        SettingDomain settings_root;
+        unordered_set<string> setting_names;
 
         auto add_setting = [&](const string& setting_name, ComplexTypeDesc setting_type) {
-            size_t separator = setting_name.find('.');
-            bool is_domain_form = separator != string::npos && separator != 0 && separator + 1 != setting_name.size() && setting_name.find('.', separator + 1) == string::npos;
+            vector<string> path;
 
-            if (!is_domain_form) {
-                throw ManagedScriptBakerException("Managed setting name must have the Domain.Name form", setting_name);
+            try {
+                path = SplitSettingPath(setting_name);
+            }
+            catch (const SettingsException& ex) {
+                throw ManagedScriptBakerException("Managed setting name must have non-empty namespace and property segments", setting_name, ex.what());
             }
 
-            settings_by_domain[setting_name.substr(0, separator)].emplace_back(setting_name, std::move(setting_type));
+            if (path.size() < 2) {
+                throw ManagedScriptBakerException("Managed setting name must have non-empty namespace and property segments", setting_name);
+            }
+
+            if (!setting_names.emplace(setting_name).second) {
+                return;
+            }
+
+            ptr<SettingDomain> domain = &settings_root;
+
+            for (size_t index = 0; index + 1 < path.size(); index++) {
+                domain = &domain->Children[path[index]];
+            }
+
+            domain->Settings.emplace_back(setting_name, std::move(setting_type));
         };
 
         map<string, const BaseTypeDesc*> sorted_settings;
@@ -1024,20 +1047,35 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             add_setting(setting_name, meta.ResolveComplexType(type_name));
         }
 
-        string domain_indent = strex("{}{}", CS_INDENT, CS_INDENT).str();
-        bool first_domain = true;
-
-        for (const auto& [domain_name, domain_settings] : settings_by_domain) {
-            if (!first_domain) {
-                out << "\n";
-            }
-
-            first_domain = false;
+        auto append_domain = [&](auto&& self, const SettingDomain& domain, const string& domain_name, const string& indent) -> void {
+            string escaped_domain_name = EscapeCsIdentifier(domain_name);
+            out << indent << "public static class " << escaped_domain_name << "\n";
+            out << indent << "{\n";
+            string member_indent = indent + string(CS_INDENT);
             unordered_set<string> member_names;
             ostringstream members;
 
-            for (const auto& [setting_name, setting_type] : domain_settings) {
-                AppendSettingProperty(members, domain_indent, setting_type, EscapeCsIdentifier(setting_name.substr(domain_name.size() + 1)), setting_name, member_names, FindManagedAbiSetting(abi, setting_name));
+            for (const auto& child : domain.Children) {
+                string child_name = EscapeCsIdentifier(child.first);
+
+                if (child_name == escaped_domain_name) {
+                    throw ManagedScriptBakerException("Managed setting namespace cannot have its enclosing class name", domain_name, child.first);
+                }
+                if (!member_names.emplace(child_name).second) {
+                    throw ManagedScriptBakerException("Managed setting namespaces collide after C# identifier escaping", domain_name, child.first);
+                }
+            }
+            for (const auto& [setting_name, setting_type] : domain.Settings) {
+                string property_name = EscapeCsIdentifier(setting_name.substr(setting_name.rfind('.') + 1));
+
+                if (property_name == escaped_domain_name) {
+                    throw ManagedScriptBakerException("Managed setting property cannot have its enclosing class name", setting_name);
+                }
+                if (member_names.contains(property_name)) {
+                    throw ManagedScriptBakerException("Managed setting property collides after C# identifier escaping", setting_name);
+                }
+
+                AppendSettingProperty(members, member_indent, setting_type, property_name, setting_name, member_names, FindManagedAbiSetting(abi, setting_name));
             }
 
             string members_text {members.view()};
@@ -1047,10 +1085,38 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 members_text.pop_back();
             }
 
-            out << CS_INDENT << "public static class " << EscapeCsIdentifier(domain_name) << "\n";
-            out << CS_INDENT << "{\n";
             out << members_text;
-            out << CS_INDENT << "}\n";
+            bool first_child = members_text.empty();
+
+            for (const auto& [child_name, child] : domain.Children) {
+                if (!first_child) {
+                    out << "\n";
+                }
+
+                first_child = false;
+                self(self, child, child_name, member_indent);
+            }
+
+            out << indent << "}\n";
+        };
+        bool first_domain = true;
+        unordered_set<string> domain_names;
+
+        for (const auto& [domain_name, domain] : settings_root.Children) {
+            string escaped_domain_name = EscapeCsIdentifier(domain_name);
+
+            if (escaped_domain_name == "Settings") {
+                throw ManagedScriptBakerException("Managed setting namespace cannot have its enclosing class name", domain_name);
+            }
+            if (!domain_names.emplace(escaped_domain_name).second) {
+                throw ManagedScriptBakerException("Managed setting namespaces collide after C# identifier escaping", domain_name);
+            }
+            if (!first_domain) {
+                out << "\n";
+            }
+
+            first_domain = false;
+            append_domain(append_domain, domain, domain_name, string(CS_INDENT));
         }
 
         out << "}\n";

@@ -36,11 +36,11 @@ The Engine owns:
 - `Analyzers/FOnline.Analyzers.csproj`: compile-time entity-cover analysis;
 - `Source/Tools/ManagedScriptBaker.*`: generated project/API and assembly production.
 
-The embedding project owns game scripts, its namespace, project-only attributes and registrars, higher-level libraries such as a GUI object model, its resource-pack selection, target framework, analyzers, tests, and release qualification. The Engine no longer ships the former AngelScript high-level CoreScripts library; copying that library into Engine under C# would cross the same ownership boundary.
+Projects own game scripts/namespaces, custom attributes/registrars, high-level libraries (including GUI), pack selection, target framework, analyzers, tests and release qualification. The former AngelScript high-level CoreScripts library is project-owned; do not reintroduce it into Engine as C#.
 
 ## Configure the backend
 
-The CMake switch is `FO_MANAGED_SCRIPTING`. It adds the managed runtime, backend, baker, CoreScripts tests, and managed application wiring. `FO_NATIVE_SCRIPTING`, `FO_ANGELSCRIPT_SCRIPTING`, and `FO_MANAGED_SCRIPTING` are independent build options, but a production project should deliberately select one gameplay backend unless it is testing cross-backend invocation.
+`FO_MANAGED_SCRIPTING` enables the runtime, backend, baker, CoreScripts tests and application wiring. It is independent of `FO_NATIVE_SCRIPTING` and `FO_ANGELSCRIPT_SCRIPTING`. Production projects select one gameplay backend; cross-backend invocation tests may enable more.
 
 The immutable startup settings in the `ManagedScript` group define the generated project:
 
@@ -63,11 +63,11 @@ The immutable startup settings in the `ManagedScript` group define the generated
 | `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Per-side runtime permission to apply patches; both default to `false`. Each client reads its own switch. Weaving cost is independent of these switches. |
 | `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics that name still-live entity wrappers; ordinary live-wrapper counting is always enabled. |
 
-Add a resource pack whose `Bakers` list contains `Managed`. The pack inputs must include Engine `CoreScripts`, the project script roots, and the `///@` metadata sources needed by those scripts. The assembly, target, pack, and metadata selection are one contract: compiling a loose project that differs from the baker input is not Engine validation.
+`Managed` packs include Engine `CoreScripts`, game sources and their `///@` metadata. Assembly, target, pack and metadata selections form one contract; a loose project with different inputs cannot validate it.
 
 ## Generated project and assemblies
 
-`ManagedScriptBaker` generates target API files, one SDK-style project, and a solution under the configured generated directory. Generated filenames carry `.gen`, an auto-generated banner, and their own nullable directive. Stale generated files not present in the new set are removed. Do not commit or hand-edit these outputs unless an embedding project explicitly treats a generated input as authored.
+`ManagedScriptBaker` writes target APIs, one SDK-style project and a solution under the configured generated directory. Files carry `.gen`, a generated banner and a nullable directive; stale files are removed. Do not edit/commit outputs unless the project explicitly treats them as authored inputs.
 
 The generated project enables nullable analysis, warnings as errors, Engine code style, configured analyzers, and the sources/references selected for each assembly and runtime target. API generation covers:
 
@@ -77,7 +77,9 @@ The generated project enables nullable analysis, warnings as errors, Engine code
 - remote-call sender facades and inbound handler registration;
 - native ref-type wrappers with explicit reference management where a borrow outlives the call.
 
-Unsupported type or member shapes fail baking with `ManagedScriptBakerException`; the baker must not emit a placeholder that fails only when gameplay reaches it.
+Unsupported types/members fail baking with `ManagedScriptBakerException`, before gameplay.
+
+`Domain.Name` generates `Settings.Domain.Name`; keys such as `Android.GradleDependency.Sample` add nested classes with read-only leaves. Runtime keys stay unchanged. Empty segments or escaped C# name collisions fail baking; identical keys emit once.
 
 ### Compiler checks
 
@@ -93,9 +95,9 @@ packed RGBA bit pattern. The `ucolor` constructor packs masked bytes directly in
 preserving the low byte of each component. Floating-point arithmetic still follows IEEE 754 and may
 produce NaN or infinity; validate finiteness at the relevant invariant boundary.
 
-Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. MSBuild writes intermediate files under `Assemblies/<Target>Assemblies/`. The baker publishes the entry assembly and its sibling dependencies under the pack's `Assemblies/Assemblies-<target>/` resources, where the target is lowercase: `server`, `client`, or `mapper`. Runtime lookup and packaging use these published resources; the normal baker removes intermediate files during outdated-output cleanup.
+`<Pack>.Server.dll`, `<Pack>.Client.dll` and `<Pack>.Mapper.dll` are role-specific. MSBuild intermediates live in `Assemblies/<Target>Assemblies/`; published entries and sibling dependencies are pack resources under `Assemblies/Assemblies-<target>/` (`server`, `client`, `mapper`). Runtime/packaging read those resources; outdated-output cleanup removes intermediates.
 
-When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engine-owned Mono.Cecil weaver on the intermediate server and client assemblies after compilation, before the later copy/package steps. The weaver and its sources participate in incremental bake/build inputs, so changing them recompiles and reweaves the scripts. An already woven assembly is left alone. The weaver is built as a tool, not shipped as a script dependency.
+`ManagedScript.PatchPointWeaver` runs the Engine Mono.Cecil tool on intermediate server/client assemblies after compilation and before copy/packaging. Weaver sources and inputs trigger recompilation and reweaving; already woven assemblies are skipped. The tool is not shipped as a script dependency.
 
 ## Authoring shape
 
@@ -228,7 +230,7 @@ cleans queued and live leases before final entity collection/unbind; late finali
 Rebuild matching native components and rebake every managed role with ABI generator identity `9`;
 runtime compatibility is `0.0.73`.
 
-`hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the Engine metadata bound to the entry assembly, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
+`hstring` is an eight-byte blittable native intern-entry pointer. Frames/value types copy it unchanged; property/RPC storage converts it to/from 64-bit hashes. Interning and text lookup use the entry assembly’s exact Engine metadata, never a process-wide hash table. Static fields initialize per load context.
 
 Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
 
@@ -312,7 +314,7 @@ The single-threaded browser runtime has neither a usable managed thread pool nor
 
 ## Build and bake workflow
 
-`FO_DOTNET_DIR` selects the runtime toolchain workspace: a nonempty CMake value takes precedence over the environment, then the default is the build tree's `dotnet` directory. Environment paths accept Windows separators and spaces; CMake normalizes the separators before deriving runtime and payload paths. Changing the workspace does not change the runtime contract.
+`FO_DOTNET_DIR` selects the runtime toolchain workspace: a nonempty CMake value takes precedence over the environment, then the default is the build tree's `dotnet` directory. On Windows, CMake normalizes environment path separators before deriving runtime, payload and stamp paths; spaces and directory selection are preserved. Other hosts retain their path characters. Changing the workspace does not change the runtime contract.
 
 The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
 

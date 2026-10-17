@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"16693f019462b831a705a07b319f8168fc0e8ca8229b7b7d6b2e91e3a8ce27e9"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a33807ab80cb58e45ffd6ac64ba4abcbda9de507395ccff5a818c6f0ed867ba8"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -36,11 +36,11 @@ Managed C# встраивает Mono и компилирует скрипты н
 - `Analyzers/FOnline.Analyzers.csproj` — compile-time анализ synchronization cover сущностей;
 - `Source/Tools/ManagedScriptBaker.*` — генерация project/API и assemblies.
 
-Подключающий проект владеет игровыми скриптами, своим пространством имён, проектными attributes и registrars, высокоуровневыми библиотеками вроде GUI object model, выбором resource packs, target framework, analyzers, tests и release qualification. Движок больше не поставляет прежнюю высокоуровневую библиотеку AngelScript CoreScripts; перенос её копии в Engine под C# нарушил бы ту же границу владения.
+Проект владеет игровыми скриптами/пространством имён, своими attributes/registrars, высокоуровневыми библиотеками (включая GUI), выбором пакетов, target framework, analyzers, tests и release qualification. Прежняя высокоуровневая AngelScript CoreScripts принадлежит проекту; не возвращайте её в Engine в виде C#.
 
 ## Настройка backend
 
-CMake-переключатель — `FO_MANAGED_SCRIPTING`. Он подключает managed runtime, backend, baker, tests CoreScripts и wiring приложений. `FO_NATIVE_SCRIPTING`, `FO_ANGELSCRIPT_SCRIPTING` и `FO_MANAGED_SCRIPTING` являются независимыми build options, но production-проект должен осознанно выбрать один gameplay backend, если он не проверяет cross-backend invocation.
+`FO_MANAGED_SCRIPTING` включает runtime, backend, baker, тесты CoreScripts и wiring приложений. Он независим от `FO_NATIVE_SCRIPTING` и `FO_ANGELSCRIPT_SCRIPTING`. Production-проекты выбирают один gameplay backend; тесты cross-backend invocation могут включать несколько.
 
 Immutable startup settings группы `ManagedScript` определяют generated project:
 
@@ -63,11 +63,11 @@ Immutable startup settings группы `ManagedScript` определяют gen
 | `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Разрешение применять патчи отдельно на сервере и клиенте; оба значения по умолчанию `false`. Каждый клиент читает собственный переключатель. Стоимость вплетённых точек от них не зависит. |
 | `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics с именами живых entity wrappers; обычный счётчик активен всегда. |
 
-Добавьте resource pack с `Managed` в списке `Bakers`. Inputs этого pack должны включать Engine `CoreScripts`, project script roots и источники `///@` metadata, которые нужны этим скриптам. Выбор assembly, target, pack и metadata является единым контрактом: сборка отдельного project, отличающегося от входов baker, не является проверкой движка.
+Пакеты `Managed` включают Engine `CoreScripts`, игровые исходники и их `///@` metadata. Выбор assembly, target, pack и metadata образует один контракт; отдельный project с другими входами его не проверяет.
 
 ## Generated project и assemblies
 
-`ManagedScriptBaker` создаёт target API files, один SDK-style project и solution в настроенном generated directory. Generated filenames содержат `.gen`, auto-generated banner и собственную nullable directive. Устаревшие generated files, которых нет в новом наборе, удаляются. Не коммитьте и не редактируйте эти outputs вручную, если подключающий проект явно не считает конкретный generated input авторским.
+`ManagedScriptBaker` создаёт target API, один SDK-style project и solution в настроенном generated directory. Файлы содержат `.gen`, generated banner и nullable directive; устаревшие удаляются. Не правьте/коммитьте outputs, если проект явно не считает их авторскими inputs.
 
 Generated project включает nullable analysis, warnings as errors, стиль движка, настроенные analyzers и sources/references выбранных assembly и runtime target. Генерация API покрывает:
 
@@ -77,7 +77,9 @@ Generated project включает nullable analysis, warnings as errors, сти
 - sender facades remote calls и регистрацию inbound handlers;
 - native ref-type wrappers с явным управлением ссылкой, когда borrow живёт дольше вызова.
 
-Неподдерживаемая форма type/member останавливает baking через `ManagedScriptBakerException`; baker не должен создавать placeholder, который упадёт только при выполнении gameplay.
+Неподдерживаемые types/members останавливают baking через `ManagedScriptBakerException` до gameplay.
+
+`Domain.Name` создаёт `Settings.Domain.Name`; ключи вроде `Android.GradleDependency.Sample` добавляют вложенные классы с read-only свойствами. Runtime keys не меняются. Пустые сегменты или коллизии после C# escaping останавливают baking; одинаковый ключ создаёт одно свойство.
 
 ### Проверки компилятора
 
@@ -94,9 +96,9 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 Арифметика floating point сохраняет правила IEEE 754 и может давать NaN или infinity; проверяйте
 конечность числа на соответствующей границе инварианта.
 
-Основные сборки зависят от роли: например, `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. MSBuild записывает промежуточные файлы в `Assemblies/<Target>Assemblies/`. Baker публикует основную сборку и соседние зависимости в ресурсах пакета `Assemblies/Assemblies-<target>/`, где роль записывается строчными буквами: `server`, `client` или `mapper`. Загрузка при запуске и упаковка используют опубликованные ресурсы; обычный baker удаляет промежуточные файлы при очистке устаревших выходов.
+`<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll` зависят от роли. MSBuild intermediates находятся в `Assemblies/<Target>Assemblies/`; опубликованные entry assemblies и соседние зависимости — в ресурсах пакета `Assemblies/Assemblies-<target>/` (`server`, `client`, `mapper`). Runtime/packaging читает эти ресурсы; очистка устаревших outputs удаляет intermediates.
 
-При заданном `ManagedScript.PatchPointWeaver` generated build после компиляции запускает принадлежащий движку Mono.Cecil weaver на промежуточных серверной и клиентской assemblies, до последующего копирования и упаковки. Проект weaver и его исходники входят во входы incremental bake/build: их изменение перекомпилирует и заново обрабатывает скрипты. Уже обработанная assembly не меняется. Weaver собирается как инструмент и не попадает в зависимости скриптов.
+`ManagedScript.PatchPointWeaver` запускает Engine Mono.Cecil tool на промежуточных server/client assemblies после компиляции, до копирования/упаковки. Исходники и inputs weaver вызывают перекомпиляцию и повторную обработку; уже обработанные assemblies пропускаются. Инструмент не поставляется как script dependency.
 
 ## Форма авторского кода
 
@@ -231,7 +233,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 Пересоберите согласованные нативные компоненты и перевыпеките все managed-роли с ABI identity `9`;
 совместимость runtime — `0.0.73`.
 
-`hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
+`hstring` — восьмибайтовый blittable указатель на native intern entry. Frames/value types копируют его без изменений; property/RPC storage преобразует его в 64-bit hash и обратно. Interning и поиск текста используют точные Engine metadata entry assembly, без process-wide hash table. Static fields инициализируются отдельно в каждом load context.
 
 Массивы primitives, enums, `hstring` и зарегистрированных value types проходят как raw bytes через `GetPropertyList<T>` / `SetPropertyList<T>`. Длинный read повторяется прямо в итоговый storage списка при сохранённом cover. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values и другие structured forms остаются на converting bridge, но generated access выбирает property по registrar index и не передаёт имена owner/property повторно.
 
@@ -316,7 +318,7 @@ Single-threaded browser runtime не имеет пригодных managed threa
 
 ## Сборка и baking
 
-`FO_DOTNET_DIR` выбирает рабочий каталог runtime toolchain: непустое значение CMake имеет приоритет перед окружением, затем используется `dotnet` в дереве сборки. Путь из окружения допускает разделители Windows и пробелы; CMake нормализует разделители до вычисления путей runtime и payload. Смена рабочего каталога не меняет контракт runtime.
+`FO_DOTNET_DIR` выбирает рабочий каталог runtime toolchain: непустое значение CMake имеет приоритет перед окружением, затем используется `dotnet` в дереве сборки. На Windows CMake нормализует разделители пути из окружения до вычисления путей runtime, payload и stamp; пробелы и выбранный каталог сохраняются. На других хостах символы пути не меняются. Смена рабочего каталога не меняет контракт runtime.
 
 Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
 

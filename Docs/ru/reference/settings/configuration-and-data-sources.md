@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ebed21992b4ac0921468a625580996ec7d672d394375be1b9bb1c67243884766"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"bdfc5d9ed0978510ed32cb773a867bc78ea6a78bb9a0a6b276e57850f3305f59"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -131,6 +131,8 @@ allow-list **auto-settings**. Runtime-only settings (platform/build flags, ра�
 остаётся доступен для project-owned custom settings.
 
 Managed getters numeric, boolean и enum settings используют typed indexed ABI. Built-in entry читает immutable field `GlobalSettings`, а project entry `///@ Setting` — custom map. Custom value один раз разбирается в typed cell записи ABI и переиспользуется, пока не изменится `GlobalSettings::GetCustomSettingsGeneration()`. Каждый writer custom map (`SetRuntimeSetting`, `SetCustomSetting`, `SetValue`, `CopyFrom`) увеличивает generation. String/list settings сохраняют name-based helpers; оба пути после hash dispatch проверяют полное имя setting, поэтому коллизия hash custom setting не может затенить built-in.
+
+Оба скриптовых бэкенда предоставляют вложенные пути: `Android.GradleDependency.Sample` доступен как `Settings.Android.GradleDependency.Sample`. Полный dotted runtime-ключ сохраняется. Оба бэкенда используют `SplitSettingPath()` из `Source/Common/Settings.*` для разбиения канонических путей и отказа пустых сегментов; объявления классов/handles принадлежат языковым генераторам. Built-in настройки в обоих бэкендах read-only; custom настройки AngelScript сохраняют прежние getters/setters, а Managed properties имеют только getter. Внутренние группы AngelScript кодируют длины сегментов, поэтому `SettingsPath.A_B.Value` и `SettingsPath.A.B.Value` остаются разными. Пустые сегменты и конфликты имён property/group дают ошибку при регистрации/bake. Используйте прямой доступ через `Settings`, не указывая сгенерированные типы `GlobalSettingsGroup_*`; после смены их идентичности согласованно пересоберите native-компоненты и запеките все роли AngelScript.
 
 У custom settings есть две формы чтения. Используйте `FindCustomSetting()`, когда отсутствие ключа нормально и должно оставаться в nullable pointer vocabulary. Используйте `GetCustomSetting()` только для совместимости с историческим non-null sentinel behavior: при наличии ключа он возвращает сохраненное значение, иначе `_emptySetting`.
 

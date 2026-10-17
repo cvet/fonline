@@ -38,6 +38,30 @@
 
 FO_BEGIN_NAMESPACE
 
+auto SplitSettingPath(string_view setting_name) -> vector<string>
+{
+    vector<string> path;
+    size_t prev_pos = 0;
+
+    while (prev_pos <= setting_name.size()) {
+        size_t pos = setting_name.find('.', prev_pos);
+
+        if (pos == string_view::npos) {
+            path.emplace_back(setting_name.substr(prev_pos));
+            break;
+        }
+
+        path.emplace_back(setting_name.substr(prev_pos, pos - prev_pos));
+        prev_pos = pos + 1;
+    }
+
+    if (std::ranges::any_of(path, [](const string& part) { return part.empty(); })) {
+        throw SettingsException("Setting path contains an empty segment", setting_name);
+    }
+
+    return path;
+}
+
 template<typename T>
 static auto FixedSettingForEdit(const T& value) noexcept -> ptr<T>
 {

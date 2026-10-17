@@ -192,6 +192,182 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs::list_dir_file_names(temp_dir, true).size() == 1);
     }
 
+    SECTION("AtomicWritePublishesIntoADirectoryWithALiteralLeadingSpace")
+    {
+        string dir_name = strex(" fo_diskfs_literal_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+        auto cleanup = scope_exit([&dir_name]() noexcept { (void)fs::remove_dir_tree(dir_name); });
+        REQUIRE(fs::create_directories(dir_name));
+
+        // Raw concatenation on purpose: a path combiner normalizes the literal leading space away
+        string file_path = dir_name + "/data.bin";
+        array<uint8_t, 3> before = {'o', 'l', 'd'};
+        array<uint8_t, 3> after = {'n', 'e', 'w'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.write(before));
+            REQUIRE(writer.flush());
+        }
+
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+        array<uint8_t, 3> seeded {};
+        REQUIRE(reader.read_at(0, seeded));
+        CHECK(seeded == before);
+
+        REQUIRE(fs::write_file(file_path, after));
+        CHECK(fs::compare_file_content(file_path, after));
+        array<uint8_t, 3> old_bytes {};
+        REQUIRE(reader.read_at(0, old_bytes));
+        CHECK(old_bytes == before);
+        reader.close();
+        CHECK(fs::list_dir_file_names(dir_name).size() == 1);
+    }
+
+#if !FO_WINDOWS
+    SECTION("AtomicWritePublishesIntoADirectoryWithALiteralBackslashSegment")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_backslash_dir");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+
+        // Raw strings throughout: fs::path_to_string and combine_path normalize the literal backslash away
+        string dir_path = temp_dir + "/back\\slash";
+        string file_path = dir_path + "/data.bin";
+        REQUIRE(fs::create_directories(dir_path));
+        array<uint8_t, 3> before = {'o', 'l', 'd'};
+        array<uint8_t, 3> after = {'n', 'e', 'w'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.write(before));
+            REQUIRE(writer.flush());
+        }
+
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+        array<uint8_t, 3> seeded {};
+        REQUIRE(reader.read_at(0, seeded));
+        CHECK(seeded == before);
+
+        REQUIRE(fs::write_file(file_path, after));
+        CHECK(fs::compare_file_content(file_path, after));
+        array<uint8_t, 3> old_bytes {};
+        REQUIRE(reader.read_at(0, old_bytes));
+        CHECK(old_bytes == before);
+        reader.close();
+        CHECK(fs::list_dir_file_names(temp_dir, true).size() == 1);
+        CHECK_FALSE(fs::is_dir(temp_dir + "/back"));
+    }
+
+    SECTION("AtomicWritePublishesToAFileNameWithALiteralBackslash")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_backslash_name");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::create_directories(temp_dir));
+
+        // Raw concatenation on purpose: a path combiner normalizes the literal backslash away
+        string file_path = temp_dir + "/na\\me.bin";
+        array<uint8_t, 3> before = {'o', 'l', 'd'};
+        array<uint8_t, 3> after = {'n', 'e', 'w'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.write(before));
+            REQUIRE(writer.flush());
+        }
+
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+        array<uint8_t, 3> seeded {};
+        REQUIRE(reader.read_at(0, seeded));
+        CHECK(seeded == before);
+
+        REQUIRE(fs::write_file(file_path, after));
+        CHECK(fs::compare_file_content(file_path, after));
+        array<uint8_t, 3> old_bytes {};
+        REQUIRE(reader.read_at(0, old_bytes));
+        CHECK(old_bytes == before);
+        reader.close();
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 1);
+        CHECK_FALSE(fs::is_dir(temp_dir + "/na"));
+    }
+#endif
+
+#if FO_WINDOWS
+    SECTION("AtomicWriteRefusesCrtReadersWithoutDeleteSharingAndPreservesTheDestination")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_crt_reader");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        array<uint8_t, 3> before {'o', 'l', 'd'};
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+
+        for (size_t name_length = 1; name_length <= 4; ++name_length) {
+            string file_path = strex(temp_dir).combine_path(string(name_length, 'x') + ".bin").str();
+            string probe_path = file_path + ".probe";
+            CAPTURE(file_path);
+            REQUIRE(fs::write_file(file_path, before));
+            auto reader = fs::open_ifstream(file_path);
+            REQUIRE(reader.is_open());
+            REQUIRE(fs::write_file(probe_path, after));
+
+            REQUIRE_FALSE(fs::rename(probe_path, file_path));
+            CHECK_FALSE(fs::write_file(file_path, after));
+            CHECK(fs::compare_file_content(file_path, before));
+            array<uint8_t, 3> old_bytes {};
+            REQUIRE(fs::stream_read_exact(reader, old_bytes));
+            CHECK(old_bytes == before);
+            reader.close();
+            REQUIRE(fs::remove_file(probe_path));
+            REQUIRE(fs::write_file(file_path, after));
+            CHECK(fs::compare_file_content(file_path, after));
+        }
+
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 4);
+    }
+
+    SECTION("AtomicPublicationPreservesMappedLibrariesAndTheDestinationOnRefusal")
+    {
+        auto system_root = winapi::get_environment_variable("SystemRoot");
+        REQUIRE(system_root.has_value());
+        string library_path = strex(*system_root).combine_path("System32/version.dll").str();
+        auto image = fs::read_file(library_path);
+        REQUIRE(image.has_value());
+        string temp_dir = MakeTempTestDir("diskfs_atomic_mapped_image");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+
+        for (size_t name_length = 1; name_length <= 4; ++name_length) {
+            string file_path = strex(temp_dir).combine_path(string(name_length, 'x') + ".dll").str();
+            CAPTURE(file_path);
+            REQUIRE(fs::write_file(file_path, *image));
+
+            {
+                auto module = winapi::load_library(file_path);
+                REQUIRE(static_cast<bool>(module));
+                auto unload = scope_exit([module]() noexcept { winapi::free_library(module); });
+                CHECK(*module.reinterpret_as<const uint8_t>() == 'M');
+
+                if (fs::write_file(file_path, after)) {
+                    CHECK(fs::compare_file_content(file_path, after));
+                }
+                else {
+                    CHECK(fs::read_file(file_path) == image);
+                }
+
+                CHECK(*module.reinterpret_as<const uint8_t>() == 'M');
+            }
+
+            REQUIRE(fs::write_file(file_path, after));
+            CHECK(fs::compare_file_content(file_path, after));
+        }
+
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 4);
+    }
+#endif
+
     SECTION("ExclusiveWriterDoesNotTruncateAnExistingFile")
     {
         string temp_dir = MakeTempTestDir("diskfs_exclusive");

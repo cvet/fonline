@@ -350,4 +350,36 @@ TEST_CASE("ClientRuntimeBootstrapPublishesCompleteSelectorsAndRetainsThePrevious
     CHECK(fs::list_dir_file_names(root).size() == 1);
 }
 
+#if FO_WINDOWS
+TEST_CASE("ClientRuntimeBootstrapPublicationFailurePreservesThePreviousSelector")
+{
+    auto root_path = std::filesystem::temp_directory_path() / std::format("fo_bootstrap_readonly_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string root = fs::path_to_string(root_path);
+    string selector = fs::path_to_string(root_path / "runtime.fo-runtime");
+    string first_target = fs::path_to_string(root_path / "first" / "Runtime.dll");
+    string second_target = fs::path_to_string(root_path / "second" / "Runtime.dll");
+
+    // Restored before removal: Windows refuses to delete a readonly file
+    auto cleanup = scope_exit([&]() noexcept {
+        std::error_code restore_error;
+        std::filesystem::permissions(std::filesystem::path {fs::make_path(selector)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
+
+        (void)fs::remove_dir_tree(root);
+    });
+
+    REQUIRE(WriteClientRuntimeBootstrapTarget(selector, first_target, "Runtime.dll"));
+    auto previous = fs::read_file(selector);
+    REQUIRE(previous.has_value());
+
+    std::error_code perms_error;
+    std::filesystem::permissions(std::filesystem::path {fs::make_path(selector)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, perms_error);
+    REQUIRE_FALSE(perms_error);
+
+    REQUIRE_FALSE(WriteClientRuntimeBootstrapTarget(selector, second_target, "Runtime.dll"));
+    CHECK(fs::read_file(selector) == previous);
+    CHECK(ReadClientRuntimeBootstrapTarget(selector, "Runtime.dll") == optional<string> {fs::resolve_path(first_target)});
+    CHECK(fs::list_dir_file_names(root).size() == 1);
+}
+#endif
+
 FO_END_NAMESPACE

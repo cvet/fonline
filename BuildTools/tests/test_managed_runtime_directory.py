@@ -34,8 +34,12 @@ def test_runtime_directory_resolution_preserves_configuration_input(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(ManagedRuntimeDirectory NONE)\n"
         f'include("{(BUILDTOOLS_DIR / "Init.cmake").as_posix()}")\n'
+        'SetValue(FO_MONO_TRIPLET "test-triplet")\n'
         + directory_resolution
-        + '\nfile(WRITE "${CMAKE_BINARY_DIR}/resolved.txt" "${FO_DOTNET_DIR}")\n',
+        + '\nfile(WRITE "${CMAKE_BINARY_DIR}/resolved.txt" "${FO_DOTNET_DIR}")\n'
+        + 'file(WRITE "${CMAKE_BINARY_DIR}/runtime.txt" "${FO_MANAGED_RUNTIME_DIR}")\n'
+        + 'file(WRITE "${CMAKE_BINARY_DIR}/payload.txt" "${FO_MANAGED_RUNTIME_PAYLOAD_DIR}")\n'
+        + 'file(WRITE "${CMAKE_BINARY_DIR}/stamp.txt" "${FO_MANAGED_RUNTIME_PAYLOAD_STAMP}")\n',
         encoding="utf-8",
     )
     build = tmp_path / "build"
@@ -54,3 +58,6 @@ def test_runtime_directory_resolution_preserves_configuration_input(
     assert "CMake Warning" not in result.stdout + result.stderr
     expected = tmp_path / expected_source if expected_source else build / "dotnet"
     assert Path((build / "resolved.txt").read_text()) == expected
+    assert Path((build / "runtime.txt").read_text()) == expected / "output/mono/test-triplet"
+    assert Path((build / "payload.txt").read_text()) == expected / "output/managed-runtime/test-triplet"
+    assert Path((build / "stamp.txt").read_text()) == expected / "output/managed-runtime/test-triplet.ready"

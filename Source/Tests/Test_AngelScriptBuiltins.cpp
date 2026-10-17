@@ -2594,6 +2594,19 @@ namespace ScriptBuiltins
         return 1;
     }
 
+    int GlobalNestedSettingOps(string expectedText, int expectedCount)
+    {
+        if (Settings.NestedSettings.Deep.Text != expectedText) return -1;
+        if (Settings.NestedSettings.Deep.Count != expectedCount) return -2;
+        if (!Settings.NestedSettings.Deep.Enabled) return -3;
+        if (Settings.NestedSettings.Sibling.Text != "neighbor") return -4;
+
+        Settings.NestedSettings.Deep.Text = "script";
+        Settings.NestedSettings.Deep.Count = expectedCount + 1;
+        Settings.NestedSettings.Deep.Enabled = false;
+        return 1;
+    }
+
     void GlobalThrowNoArgsThrows()
     {
         throw("Global throw with no context");
@@ -3153,6 +3166,10 @@ namespace ScriptBuiltins
         std::pair<string_view, string_view> {"TestSettings.Float64Value", "float64"},
         std::pair<string_view, string_view> {"TestSettings.EnumValue", "GenderType"},
         std::pair<string_view, string_view> {"UngroupedTestSetting", "int32"},
+        std::pair<string_view, string_view> {"NestedSettings.Deep.Text", "string"},
+        std::pair<string_view, string_view> {"NestedSettings.Deep.Count", "int32"},
+        std::pair<string_view, string_view> {"NestedSettings.Deep.Enabled", "bool"},
+        std::pair<string_view, string_view> {"NestedSettings.Sibling.Text", "string"},
     };
 
     // One critter property per shape the property/script object converters have to handle
@@ -4629,6 +4646,47 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
     run_throwing_func("ScriptBuiltins::GlobalNameOfNonFunctionThrows", "argument must be a function reference");
     run_throwing_func("ScriptBuiltins::GlobalNameOfNullThrows", "function reference is null");
     run_throwing_func("ScriptBuiltins::GlobalInvokeMissingFuncThrows", "Script function not found");
+}
+
+TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
+{
+    auto settings = MakeSettings();
+    settings.SetCustomSetting("NestedSettings.Deep.Text", any_t("native-first"));
+    settings.SetCustomSetting("NestedSettings.Deep.Count", any_t("41"));
+    settings.SetCustomSetting("NestedSettings.Deep.Enabled", any_t("true"));
+    settings.SetCustomSetting("NestedSettings.Sibling.Text", any_t("neighbor"));
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto func = server->FindFunc<int32_t, string, int32_t>(server->Hashes.to_hashed_string("ScriptBuiltins::GlobalNestedSettingOps"));
+    REQUIRE(func);
+    REQUIRE(func.Call(string {"native-first"}, int32_t {41}));
+    CHECK(func.GetResult() == 1);
+    CHECK(string(settings.GetCustomSetting("NestedSettings.Deep.Text")) == "script");
+    CHECK(string(settings.GetCustomSetting("NestedSettings.Deep.Count")) == "42");
+    CHECK_FALSE(strvex(string(settings.GetCustomSetting("NestedSettings.Deep.Enabled"))).to_bool());
+
+    settings.SetCustomSetting("NestedSettings.Deep.Text", any_t("native-second"));
+    settings.SetCustomSetting("NestedSettings.Deep.Count", any_t("99"));
+    settings.SetCustomSetting("NestedSettings.Deep.Enabled", any_t("true"));
+    REQUIRE(func.Call(string {"native-second"}, int32_t {99}));
+    CHECK(func.GetResult() == 1);
+    CHECK(string(settings.GetCustomSetting("NestedSettings.Deep.Text")) == "script");
+    CHECK(string(settings.GetCustomSetting("NestedSettings.Deep.Count")) == "100");
+    CHECK(string(settings.GetCustomSetting("NestedSettings.Sibling.Text")) == "neighbor");
+    CHECK_FALSE(settings.FindCustomSetting("Text"));
+    CHECK_FALSE(settings.FindCustomSetting("NestedSettings_Deep_Text"));
 }
 
 // Lives here because this rig is the one that declares game settings in its metadata blob. Pins

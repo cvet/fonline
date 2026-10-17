@@ -47,6 +47,18 @@ static auto MakeTempSettingsDir(string_view name) -> string
     return fs::path_to_string(base);
 }
 
+TEST_CASE("SettingPathParsing")
+{
+    CHECK(SplitSettingPath("Android.GradleDependency.Sample") == (vector<string> {"Android", "GradleDependency", "Sample"}));
+    CHECK(SplitSettingPath("A_B.A.B") == (vector<string> {"A_B", "A", "B"}));
+    CHECK(SplitSettingPath("Ungrouped") == (vector<string> {"Ungrouped"}));
+
+    for (string_view name : {"", ".Name", "Name.", "Domain..Name", ".", "Domain...Name"}) {
+        CAPTURE(name);
+        CHECK_THROWS_AS(SplitSettingPath(name), SettingsException);
+    }
+}
+
 TEST_CASE("Settings")
 {
     SECTION("GetResourcePacksThrowsWhenNothingApplied")

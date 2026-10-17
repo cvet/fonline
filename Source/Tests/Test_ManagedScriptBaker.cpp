@@ -864,7 +864,7 @@ TEST_CASE("ManagedScriptBaker")
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
             {"RemoteCall", {{"ManagedMoveProbe", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedMoveProbeTwin", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedTextProbe", "UnitManaged.cs", "In", "string", "", "text", "Limits", "0", "0"}}},
         }));
-    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-client", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.class", "string", "metadata"}}}}));
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
 
     ManagedScriptBaker baker(rig.MakeContext());
@@ -1190,6 +1190,10 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingValue<") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.SetSettingValue<") == string::npos);
+    CHECK(client_settings.find("    public static class Android\n    {\n        public static class GradleDependency\n") != string::npos);
+    CHECK(client_settings.find("public static string Sample\n") != string::npos);
+    CHECK(client_settings.find("\"Android.GradleDependency.Sample\"") != string::npos);
+    CHECK(client_settings.find("public static string @class\n") != string::npos);
 
     string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
     CHECK(client_types.find("private static MapSpriteHolder __Factory()") != string::npos);
@@ -1408,6 +1412,193 @@ TEST_CASE("ManagedScriptBaker rejects flattened dynamic RefType property collisi
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
     REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed dynamic RefType property name collision"));
 #endif
+}
+
+TEST_CASE("ManagedScriptBaker rejects invalid nested setting names")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    string setting_name = GENERATE(string {}, string {"Ungrouped"}, string {"Android..Name"}, string {".Android.Name"}, string {"Android.Name."}, string {"Android.Group"}, string {"Game.Game.Value"}, string {"Android.Android"}, string {"Settings.Name"}, string {"Example._1.1.Flag"});
+    CAPTURE(setting_name);
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{setting_name, "string", "value"}, {"Android.Group.Name", "string", "nested"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed setting"));
+}
+
+TEST_CASE("ManagedScriptBaker rejects escaped nested namespace collisions")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    string second_setting = GENERATE(string {"Example._1.Other"});
+    CAPTURE(second_setting);
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed setting"));
+    CHECK_FALSE(std::filesystem::exists(script_dir / "ServerSettings.gen.cs"));
+}
+
+TEST_CASE("ManagedScriptBaker rejects escaped nested namespace and property collisions")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    string second_setting = GENERATE(string {"Example._1"});
+    CAPTURE(second_setting);
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed setting"));
+    CHECK_FALSE(std::filesystem::exists(script_dir / "ServerSettings.gen.cs"));
+}
+
+TEST_CASE("ManagedScriptBaker rejects escaped root namespace collisions")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    string second_setting = GENERATE(string {"_1.Group.Other"});
+    CAPTURE(second_setting);
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"1.Group.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed setting"));
+    CHECK_FALSE(std::filesystem::exists(script_dir / "ServerSettings.gen.cs"));
+}
+
+TEST_CASE("ManagedScriptBaker rejects escaped setting property collisions")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    string second_setting = GENERATE(string {"Example._1"});
+    CAPTURE(second_setting);
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed setting"));
+    CHECK_FALSE(std::filesystem::exists(script_dir / "ServerSettings.gen.cs"));
+}
+
+TEST_CASE("ManagedScriptBaker preserves duplicate canonical settings from metadata and exports")
+{
+    using namespace BakerTests;
+
+    ScopedTempDirectory temp_dir;
+    std::filesystem::path core_dir = temp_dir.Path() / "CoreScripts";
+    std::filesystem::path script_dir = temp_dir.Path() / "Scripts";
+    WriteTextFile(core_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
+    WriteTextFile(core_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(temp_dir.Path() / "ManagedHost" / "ManagedLoadContextHost.cs", "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
+    WriteTextFile(script_dir / "Shared.cs", "namespace Demo { public static class Shared {} }\n");
+    ScopedCurrentPath current_path(temp_dir.Path());
+
+    TestRig rig;
+    OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
+    OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {string(core_dir.string()), string(script_dir.string())});
+    OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Common.GameName", "string", "UnitManaged"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
+    rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
+    ManagedScriptBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Metadata.fometa-server"));
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    string settings = ReadTextFile(script_dir / "ServerSettings.gen.cs");
+    size_t property = settings.find("public static string GameName\n");
+    REQUIRE(property != string::npos);
+    CHECK(settings.find("public static string GameName\n", property + 1) == string::npos);
+    CHECK(settings.find("\"Common.GameName\"") != string::npos);
 }
 
 TEST_CASE("ManagedScriptBaker rebakes when an editorconfig above the sources changes")

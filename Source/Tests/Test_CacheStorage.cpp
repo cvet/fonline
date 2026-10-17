@@ -73,6 +73,43 @@ TEST_CASE("CacheStorage")
         CHECK(fs::list_dir_file_names(temp_dir).size() == 2);
     }
 
+#if FO_WINDOWS
+    SECTION("FailedPublicationOnReadonlyDestinationsPreservesPriorValues")
+    {
+        string temp_dir = MakeTempCacheDir("cache_storage_readonly");
+        string text_path = strex(temp_dir).combine_path("text").str();
+        string data_path = strex(temp_dir).combine_path("data").str();
+
+        // Restored before removal: Windows refuses to delete a readonly file
+        auto cleanup = scope_exit([&]() noexcept {
+            std::error_code restore_error;
+            std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
+            std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
+
+            (void)fs::remove_dir_tree(temp_dir);
+        });
+        CacheStorage cache {temp_dir};
+        cache.SetString("text", "old");
+        array<uint8_t, 3> before {'o', 'l', 'd'};
+        array<uint8_t, 3> after {'n', 'e', 'w'};
+        REQUIRE(cache.SetDataChecked("data", before));
+        REQUIRE(cache.GetString("text") == "old");
+
+        std::error_code text_error;
+        std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, text_error);
+        REQUIRE_FALSE(text_error);
+        std::error_code data_error;
+        std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, data_error);
+        REQUIRE_FALSE(data_error);
+
+        cache.SetString("text", "new");
+        CHECK_FALSE(cache.SetDataChecked("data", after));
+        CHECK(cache.GetString("text") == "old");
+        CHECK(cache.GetData("data") == vector<uint8_t>(before.begin(), before.end()));
+        CHECK(fs::list_dir_file_names(temp_dir).size() == 2);
+    }
+#endif
+
     SECTION("StringAndBinaryEntriesRoundtrip")
     {
         string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");

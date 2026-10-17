@@ -12,7 +12,28 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-16
+## Current - 2026-10-17
+
+### Fixed
+
+- Generate nested Managed and AngelScript setting access from shared canonical path parsing. Preserve full runtime keys; built-ins stay read-only, Managed properties stay get-only, and AngelScript custom settings retain their setters.
+- Keep AngelScript group paths with underscores distinct and reject property/group collisions before script use. Reject empty segments in the shared parser; Managed also checks escaped C# name collisions.
+- Normalize environment `FO_DOTNET_DIR` paths only on Windows, preserving POSIX path characters and the derived runtime, payload and stamp locations.
+- Build full-file stages from the native filesystem parent, preserving literal leading spaces, POSIX backslashes and platform path interpretation. Resource-path trimming and separator normalization no longer affect disk filenames.
+- Release cleanup ownership of a stage name after successful publication, so a later writer reclaiming that name cannot be unlinked by the completed writer.
+- Cover literal-path replacement, readonly cache/bootstrap publication refusal, CRT readers without delete sharing and loaded-library safety. Qualify Windows in-use publication: a successful replacement is atomic, but an open stream or image can still make publication fail without changing the destination.
+
+### Migration
+
+- `a627da59d2b408e4b618b125bcd7766879c03d41` (`2026.1.45-dev`) → `2026.1.46-dev`: `Domain.Name` stays `Settings.Domain.Name`; `Android.GradleDependency.Sample` now generates nested Managed access; AngelScript keeps nested access with unambiguous group types. `SettingsPath.A_B.Value` and `SettingsPath.A.B.Value` are distinct. Empty segments raise `Setting path` (wrapped as `Managed setting` by the Managed baker); correct the authored key. Managed namespace/property collisions after C# escaping also raise `Managed setting`. Existing valid grouped paths keep their meaning; AngelScript still accepts valid ungrouped custom settings. Identical canonical Managed keys still deduplicate.
+- AngelScript internal `GlobalSettingsGroup_*` types now frame segment lengths. Replace explicit generated types with direct access: `GlobalSettingsGroup_Android_GradleDependency group = Settings.Android.GradleDependency; string value = group.Sample;` becomes `string value = Settings.Android.GradleDependency.Sample;`. Old explicit type names fail compilation; there are no aliases. Search authored scripts for `GlobalSettingsGroup_` before rebuilding.
+- Reconfigure; rebuild native components and Baker; regenerate/compile Server/Client/Mapper, including all AngelScript bytecode; run full then incremental baking. Deploy matching sources/assemblies/bytecode/resources; rollback restores the prior matching set. No configuration renaming or save conversion. Script leaf signatures, IDs, configuration value meaning, save/wire formats, Managed ABI `9` and runtime `0.0.73` stay unchanged. See [configuration and data sources](settings/configuration-and-data-sources.md).
+- Native `fs::write_file` string/byte-span signatures and `fs::replace_file` remain current; no script-backend, role or project caller rename is required. Existing path spelling keeps its native meaning. A valid relative `" dir/data.bin"` now writes into that exact directory; POSIX `"/tmp/back\\slash/data.bin"` retains its literal backslash instead of treating it as a separator.
+- Reconfigure/rebuild native roles and Baker, then regenerate and rebake all affected sides with the matching Engine revision. Check `DiskFileSystem`, `DiskFilePrimitives`, `CacheStorage`, `ClientRuntimeBootstrap*` and `NullRenderer`, plus the enabled scripting backend and embedding bake/runtime routes. Windows-only tests do not qualify POSIX execution.
+- `false` still means no new file was published: retain the previous value/selector, close blocking readers when appropriate, or use `fs::disk_read_file` for delete-sharing reads. Native loaded DLL images and CRT streams are not promised replaceable on every Windows version/filesystem. Do not implement delete-then-rename or a fallible rollback around this helper.
+- No setting, property, prototype, save, network, updater or resource-schema conversion; runtime `0.0.73`, Managed ABI `9`, serialized values and successful-bake ordering remain unchanged. Atomic visibility is not power-loss directory durability. Rollback restores matching 45-dev binaries/resources without save conversion and restores its literal-path rejection defect. See [Essentials](native/essentials.md#filesystem-compression-sockets-and-work-threads) and [baking](../explanation/content-pipeline/baking.md).
+
+## 2026.1.45-dev - 2026-10-16
 
 ### Fixed
 

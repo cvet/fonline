@@ -166,6 +166,7 @@ struct NumericSettingAccess
     float64_t (*ReadFloat)(ptr<const GlobalSettings>) {};
 };
 
-[[nodiscard]] auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>;
+auto SplitSettingPath(string_view setting_name) -> vector<string>;
+auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>;
 
 FO_END_NAMESPACE

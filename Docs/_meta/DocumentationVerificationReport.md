@@ -12147,3 +12147,201 @@ The engine map fix is not reverted or bypassed to hide the embedding defect.
   Receipts are retained under the embedding ignored
   `Workspace/UpdateProjectEngine-20261010/`. All safety copies remain;
   Authoring is not operated on, no push or new feature commit is performed.
+## 2026-10-14 — Nested Managed settings on current published master
+
+- Reconcile the complete incoming range `b497070377b3e1f8be6b9d0b91ebad71e9987a3d..48c437b01e85858e7c702c4be834dd647cd180cb`: two commits and 70 paths, including 39 EOF-only paths. Retain the file-only Git dependencies, side-filtered EntityHolder validation, Game-holder persistence and canonical component callback names with their native regressions.
+- Reapply the local nested-setting generator and positive/negative tests onto the published 2026.1.38-dev tip; advance the local update to 2026.1.39-dev. Existing two-segment settings, runtime key/value meaning, read-only access, stored IDs, Managed ABI 9 and runtime compatibility 0.0.72 remain unchanged. Reconcile the English/Russian guide and provenance stamp together.
+- Preserve the existing FileReader CopyData negative-case audit marker; it changes no runtime behavior. Keep source/history safety copies until the final matching native, resource and documentation checks complete.
+- Historical publication validation for the incoming range fails because published `4c594d1bef` did not increment the previous 2026.1.37-dev version; the endpoint comparison passes. Published history is immutable. Validate this local update separately from the 2026.1.38-dev tip; do not report the historical gate as passing.
+
+Validation of the final local source, generated contracts, native roles and resources is pending; earlier upstream or embedding-project results do not qualify this worktree.
+
+## 2026-10-15 — Rebase nested Managed settings onto version 41
+
+- Preserve the exact twelve-path working snapshot from `48c437b01e85858e7c702c4be834dd647cd180cb` under local safety refs and an independent byte/hash backup. Retain the original stash and all earlier safety copies. Fetch Engine `origin/master` explicitly without recursive submodule operations, then fast-forward/rebase to `eedcaa955ff4be79e43384766f7a47cbda0788d1`; no published commit is rewritten.
+- Audit all three incoming commits and 72 changed paths: effective map-placement Static/Hidden overrides, batched/bounded TextPack decoding and its const-span native signature, deterministic SPARK bake seeding, conditional scope-success exception specification, POSIX runtime child collation, C# formatting, generated contracts and bilingual source documentation. Keep their complete published notes and verification history. The historical version-37 publication failure remains immutable evidence.
+- Reapply nested setting classes, canonical-key deduplication and escaped property/namespace/enclosing/root collision checks. Preserve the upstream POSIX locale and runtime-cache documentation while limiting environment path normalization to Windows and retaining derived-directory tests. Freeze published version 41 and prepare version `2026.1.42-dev` in both changelogs. No additional save, wire, Managed ABI or runtime compatibility identity change is introduced by this local slice.
+- The earlier version-39 native/resource/site receipts qualify that previous source snapshot only. Current-source results, including the final complete native run, are recorded below.
+
+### Current-source qualification observations
+
+The selected snapshot is published `eedcaa955ff4be79e43384766f7a47cbda0788d1`
+plus the working version-42 slice. Receipts are retained under
+`Workspace/engine42-integration/`. Local version 41 to 42 validation passes.
+The historical version-37 non-increment in `4c594d1bef` remains RED. A fresh
+history check of `48c437b01e..eedcaa955f` also reports the immutable c727 release
+note dated 14 October before its 15 October UTC commit. Neither historical
+failure is rewritten or represented as a local endpoint failure.
+
+Native configure exits 0 in 235.76 seconds; Root VERSION stays `0.3.1578`.
+All seven selected Windows RelWithDebInfo roles build with exit 0 in
+2693.256583 seconds, without compiler warning/error lines. The focused run
+passes 4831 assertions in 31 cases. Its internal-wildcard CustomInner selector
+matches no cases; a separate run of both exact CustomInner names passes all
+56 assertions in two cases. See `native/configure-results.json`,
+`native/build-results.json` and `native/small-retry-results.json`.
+
+The first complete native run is RED: 672 of 673 cases and 734817 of 734818
+assertions pass. Its sole failure is the unchanged short-sleep upper bound,
+8.2994 ms versus less than 5 ms for a 500-microsecond request. The second
+complete run is also RED: 672 of 673 cases and 734822 of 734823 assertions
+pass; its only failure is the separate coarse-sleep bound, 11.2381 ms versus
+less than 6 ms. Both original raw logs remain in
+`native/unit-full-red.raw.log` and `native/unit-full-retry-red.raw.log`.
+The whole isolated Threading case subsequently passes all 11 assertions in
+0.136648 seconds. Fresh guards after that run confirm all 1119 recorded
+native/build input hashes unchanged and Root VERSION unchanged. Scheduling
+contention is an inference supported by active compiler/host load and these
+isolated results; neither isolated pass closed the complete native gate.
+No source, threshold, priority, affinity, environment or deadline
+was changed to obtain a pass. See `native/threading-timing-review.md` and
+`native/threading-all-results.json`.
+
+Three later admission windows remain RED: each fails the local heuristic of
+12 total-CPU samples all below 60 percent. No native test was started by
+those windows. The third records ten samples between 17 and 57 percent and
+two samples of 60 and 93 percent. A subsequent explicit owner-authorized
+decision permits one standard whole Threading run followed, only on success,
+by one standard complete run under this materially changed mixed load. This
+changes the admission decision, not an Engine test bound, and does not claim
+quiet-host qualification. See `native/quiet-window-final1.json`,
+`native/quiet-window-final2.json` and `native/quiet-window-final3.json`.
+
+The whole Threading run passes all 11 assertions in one case, exit 0 in
+0.1740115 seconds. The following unchanged, unfiltered `RunUnitTests` command
+passes all 734836 assertions in all 673 cases, actual exit 0 in 179.8413931
+seconds, from 2026-10-15 15:54:07.019525 through 15:57:06.860930 UTC. The
+original two full-run REDs remain retained. This full mixed-load pass closes
+the current-source complete native gate. Before/after guards confirm all
+1119 native/build inputs unchanged and Root VERSION unchanged at `0.3.1578`.
+See `native/threading-final-results.json`, `native/full-final-results.json`,
+`native/unit-full-final.raw.log`, `native/source-full-final-before.json`,
+`native/source-full-final-after.json` and `native/full-final-root-version.json`.
+
+The current Managed Python full attempt records 618 passed, 27 skipped,
+two failed and 24 errors. All 26 nonpassing cases are preparation timeouts.
+Their selected retry passes all 26 cases with unchanged deadlines: 92.79
+seconds in pytest, wrapper exit 0 in 96.339447 seconds. Combined coverage is
+644 passed and 27 skipped. This is a retained first full RED followed by a
+successful selected retry, rather than a clean one-shot full-suite result.
+The earlier interrupted retry is retained separately. See
+`docs/managed-full.log`, `docs/managed-retry-interrupted.json` and
+`docs/managed-quiet-retry-results.json`.
+
+Focused documentation fixtures pass 61 cases. External preparation produces
+15 outputs with all 4874 descriptions present. Current owner checks pass for
+the API, CMake, public API, reference projections, all 194 translation pairs,
+site routing/search, AI retrieval and AI delivery. The deterministic AI suite
+passes 67 checks for 28 tasks, with 100-percent task success and 0.930 MRR.
+Standalone validation inventories 412 Markdown entries. Aggregate comparison
+has no missing dispositions across 17 domains: zero local contract changes,
+and seven complete incoming changes with four required dispositions. The
+older 575-fixture documentation receipts belong to the previous snapshot;
+they are not described as a fresh complete run here. See
+`docs/docs-focused.log`, `docs/generation-results.json` and
+`docs/freshness-results.json`.
+
+The exact-byte 8584-file source snapshot renders successfully with pinned
+Ruby 3.3.4, github-pages 232 and Jekyll 3.10.0: 1699 output files, actual
+Jekyll exit 0, 141.989 seconds of rendering and 165.267979 seconds of wrapper
+time. Strict rendered-artifact validation passes 592 routes, 41 static
+endpoints and 85636 local references. The installed artifact matches the
+retained archive hash
+`ab1cca628b93588d856500a4fa9bac689399c63bfe74966fe1e4244857d68450`.
+See `docs/site42-render-result.json`, `docs/site-rendered42-transfer.json`
+and `docs/site42-static.json`.
+
+The complete current browser audit exits 0 after 1432.800488 seconds:
+592 routes in each desktop, mobile and 200-percent profile, 1776 page checks,
+15 interaction profiles, 23 screenshots and zero errors. Its recorded runtime
+is Node 24.16.0, Playwright 1.62.0, Chromium 151.0.7922.34 and axe-core 4.12.1.
+Leading viewport regions of all 23 captures were reviewed, with three
+representative captures inspected at readable size. The bilingual current
+notes, migration wrapping, navigation, diagrams and keyboard focus show no
+unintended overlap or clipping in those reviewed regions. See
+`docs/browser42.json`, `docs/site-browser42-results.json` and
+`docs/browser42-review/review.md`. This internal report is excluded by
+`Docs/Site/_config.yml`; metadata-only updates do not change published files.
+
+These are local snapshot observations. The complete native gate passes on
+the final unchanged mixed-load run; the three quiet admission windows remain
+RED. The Engine slice is ready for its authorized local commit after final
+diff, source and documentation checks. Embedding compilation, resource baking and runtime
+acceptance belong to their separate matching-source receipts. No package,
+public CI, publication, complete human accessibility, other-platform or
+production qualification is asserted by this record. No push is authorized.
+
+## 2026-10-15 — Rebase nested Managed settings onto version 43
+
+- Rebase the sole unpublished local commit `db91366aca1ab8ed2cbeb0394f66f5ee3a503b20` onto published `1d88ee229d2d5208dd6c4c86814e032598a06e4c` (`2026.1.43-dev`); retain safety ref `refs/safety/nordraid-engine-before-main16` and the original conflict snapshots. Published history is unchanged.
+- Audit both incoming commits and all 18 paths: sparse-grid resizing, static blockers in gag-aware paths, rejected stop-direction correction, native regressions, documentation, contract dispositions and versions. Preserve the complete published version-42 and version-43 migration entries. Check the post-callback lifetime/identity guards before the new owner direction message.
+- Preserve the local Managed baker, runtime-path and test changes without code conflicts; prepare `2026.1.44-dev`. Runtime compatibility `0.0.73`, Managed ABI `9`, valid existing settings, persisted data and wire formats retain their meaning.
+- Earlier version-42 build, bake and site receipts remain evidence for their original inputs. Fresh checks for this version-44 source and the coupled project are pending; this entry does not claim completed runtime, site, publication or production acceptance.
+
+## 2026-10-15 — Version 44 precommit qualification
+
+- Configure and the eight coupled native targets passed. The initial verification helper requested a nonexistent `LF_MapperHeadless` target after building the valid targets; preserve that failed invocation and the corrected `build-r2` receipt using `LF_ManagedScriptBaker`. This is a helper mistake, not a compiler or runtime failure. All 1119 native/codegen inputs match before/after.
+- Managed Python checks: 644 passed, 27 platform/configuration skips. Documentation tests: 575 passed. Refreshed API/reference/localization/site/AI artifacts pass; 194/194 translations are current, standalone validation covers 412 documents, both exact contract comparisons have zero missing dispositions. Repair the published marker-72 generated reference to the already-published marker 73 without another runtime identity change.
+- Managed-config native tests: focused 17 cases/1437 assertions; full standard set 674 cases/734878 assertions, actual exit0. Two named focused filters were not present in this backend. Separately build the canonical validation-project with AngelScript, hexagonal 2D and SPARK disabled: `AngelScriptPlayerRegistrationCppApi` / `StopMoveRejectedDirectionCorrectsOwnerForActiveAndFinishedPlans` passes 48 assertions, with both captured `after_end` values and exactly one owner correction; `GetHexScreenRow` passes 11 assertions. This is focused AS evidence, not a full AS/platform qualification.
+- Render the exact 8584-file version-44 snapshot: 1699 output files; static validation passes 592 routes, 41 endpoints and 85636 local references. Browser validation passes 1776 page checks, 15 interaction profiles and 23 captures. The original pre-disposition render and the failed missing-disposition check remain separate historical receipts.
+- Evidence: `Workspace/engine44-integration/` and the task-owned `C:/Users/cvet/AppData/Local/Temp/lf9-final16-20261015/engine-as-*` receipts. Builds identify published `1d88ee229d2d5208dd6c4c86814e032598a06e4c` plus dirty version-44 sources. This commit preserves those exact native source bytes; the project will rebuild/rebake its final committed identities separately. No publication, release package, performance or production qualification is claimed.
+
+## 2026-10-16 — Shared setting paths across scripting backends
+
+- At the owner's request, return unpublished `90c87572db5fd0eb176ccee9fcabf3e01f05b921` to the worktree on published `1d88ee229d2d5208dd6c4c86814e032598a06e4c`. Preserve all 22 affected files byte-for-byte and retain `refs/safety/engine-settings-before-uncommit-20261016`. The combined work remains version `2026.1.44-dev`; no separate version 45 is introduced.
+- Both generators consume `SplitSettingPath` from `Source/Common/Settings.*`. Empty segments fail before use, canonical keys keep their meaning, and backend-specific emission remains local. AngelScript group types frame each segment length; distinct underscore paths cannot alias. Property/group conflicts fail during registration. Preserve AngelScript custom setters, valid ungrouped custom settings and read-only built-ins; Managed remains get-only. Reconcile both settings guides and the bilingual migration record, including explicit generated-type migration without aliases.
+- Preserve real pre-fix RED for AS property/group collisions, distinct underscore paths, empty segments and old explicit group types. Separately demonstrate shared-parser RED: six invalid paths fail their expected exception assertions, while three valid paths pass; four AS empty-path assertions also fail before the common guard. The first invalid explicit-handle probe and helper exit-code mistakes remain separate evidence and receive no acceptance credit.
+- Current native/codegen inputs and HEAD remain unchanged through successful builds and tests. AS focused regressions pass 8 cases /39 assertions, including real Server/Client/Mapper bytecode and runtime native/script/native round-trips; its full standard set passes 612 cases /736169 assertions. The Managed configuration rebuilds all eight native targets; focused regressions pass 14 cases /1124 assertions and the full standard set passes 675 cases /734899 assertions. Native/codegen builds introduce no warnings.
+- Managed Python tests pass 644 cases with 27 explicit platform/configuration skips; documentation tests pass 575 cases. Version, generated API/CMake/public references, localization194/194, site/AI delivery and standalone validation pass. Exact contract comparisons report the existing marker73 reference repair with zero missing dispositions.
+- Local WSL is unavailable. Render the exact 8584-file snapshot in an isolated Ruby3.3.4 /Bundler2.5.11 /github-pages232 Docker environment; input hashes match. The 1699-file artifact passes 592 routes, 41 endpoints and 85638 local references. Pinned browser validation passes 1776 page checks, 15 interaction profiles and 23 captures. System configuration, services and publication state are unchanged.
+- Evidence is retained under the task-owned `Workspace/AngelScriptNestedSettings20261016/` artifact directory in the embedding workspace. The worktree is uncommitted; these checks qualify its recorded hashes, not a future commit, release package, performance result or production deployment.
+
+## 2026-10-16 - Preserve literal native publication paths after master adoption
+
+- Audited complete incoming Engine range `1d88ee229d2d5208dd6c4c86814e032598a06e4c`
+  through published `a627da59d2b408e4b618b125bcd7766879c03d41`: atomic whole-file
+  publication, platform adapters, cache/JSON/bootstrap callers, probes, native tests,
+  Null scissors and matching EN/RU owners. Rebased only the unpublished shared
+  Managed/AngelScript settings fix as `7ed4494a50c2f636ba987cd643ce01fa2d868b9b`
+  (`2026.1.46-dev`), preserving published 44/45 steps and cumulative dispositions.
+- The next `2026.1.47-dev` fixes native staging composition and successful cleanup
+  ownership. Native path parents and UTF-8 filename bytes remain at the filesystem
+  adapter; resource-path trim/slash normalization must not reinterpret them.
+  No script signature, setting, persisted data, resource schema, runtime 0.0.73
+  or Managed ABI 9 change is introduced by this step.
+- Native source-owned regression evidence: the original literal-leading-space
+  fixture seeded/read old bytes, then failed exactly at `fs::write_file` publication
+  (7 assertions passed, one failed, native failure exit 42). Original cache/bootstrap
+  refusal tests compiled and passed 53 assertions / 2 cases. The initial external
+  verifier incorrectly expected exit 1; that verifier failure and actual exit 42
+  remain recorded and are not attributed to the test author.
+- After native composition and stage-ownership corrections, filesystem/primitives,
+  cache, bootstrap and Null renderer focused tests passed 471 assertions / 6 cases.
+  Windows CRT and native-image experiments establish refusal safety, not a blanket
+  ability to replace every in-use file. Corrected an extra POSIX test's missing
+  parent-directory seed and qualified the previous overly broad Windows prose.
+  POSIX execution and Windows 7/native-device qualification are not claimed.
+- Regenerated/checkable source models and public references; EN/RU owners were
+  reviewed together and translation hashes refreshed. Prepared localization,
+  site/search/routes and AI delivery; retrieval evaluation passed 28 tasks /
+  67 checks, 100 percent, 0.938 MRR. No new aggregate contract shape is expected;
+  exact disposition/freshness checks, final native/backend/bake/runtime validation
+  and rendered-site/browser evidence still follow on committed revisions.
+- The final committed identifiers, source hashes and closing checks belong to the
+  external qualification receipt. This entry records observed focused evidence and
+  the remaining gates, not a completed publication or cross-platform qualification.
+
+## 2026-10-17 - Consolidate the unpublished settings and publication fixes
+
+- The owner requested one commit in place of unpublished settings commit
+  `7ed4494a50c2f636ba987cd643ce01fa2d868b9b` and publication-path commit
+  `ae058fbc29d06b436b183e9ebd9cec39bc0d5b3d`. The fetched published master
+  remains `a627da59d2b408e4b618b125bcd7766879c03d41` (`2026.1.45-dev`).
+- Consolidate both change and migration records into one dated `2026.1.46-dev`
+  step. The former local 47-dev identity was never published. Source, tests,
+  bindings, build tools and contract dispositions are preserved byte for byte;
+  only version and documentation bookkeeping change from the qualified tree.
+- Earlier reports and receipts remain evidence for their recorded revisions.
+  The embedding task records the new commit mapping, content-equivalence and
+  fresh version/documentation checks; no new native, platform or runtime
+  qualification is implied by rewriting history.

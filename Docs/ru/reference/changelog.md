@@ -7,12 +7,33 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"50981c4feff933f6fad3ddd704b63e79b40f65c92ed3c201d4a527bd187c05e4"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"5277b3e563c9e05b0fa1653e54538bec0e8745b4504bb3ac3b7e07571ef0a15e"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-16
+## Current - 2026-10-17
+
+### Исправлено
+
+- Вложенный доступ к настройкам Managed и AngelScript использует общий разбор канонических путей. Полные runtime-ключи сохраняются; built-in настройки остаются read-only, Managed properties — get-only, а custom настройки AngelScript сохраняют setters.
+- Пути групп AngelScript с подчёркиваниями различаются; конфликты property/group отклоняются до использования скриптом. Общий парсер отвергает пустые сегменты; Managed дополнительно проверяет коллизии экранированных C#-имён.
+- Пути environment `FO_DOTNET_DIR` нормализуются только на Windows, сохраняя символы POSIX-пути и производные каталоги runtime, payload и stamp.
+- Стадия полной записи строится от нативного родителя файлового пути, сохраняя буквальные ведущие пробелы, POSIX backslash и платформенное толкование пути. Обрезание пробелов и нормализация ресурсных разделителей больше не меняют дисковые имена.
+- После успешной публикации cleanup освобождает владение именем стадии: завершившийся писатель не удаляет файл следующего писателя, занявшего то же имя.
+- Добавлены проверки буквальных путей, отказа readonly cache/bootstrap, CRT readers без delete sharing и безопасности загруженных библиотек. Уточнена граница Windows: успешная замена атомарна, но открытый поток или образ может отклонить публикацию без изменения назначения.
+
+### Миграция
+
+- `a627da59d2b408e4b618b125bcd7766879c03d41` (`2026.1.45-dev`) → `2026.1.46-dev`: `Domain.Name` сохраняет `Settings.Domain.Name`; `Android.GradleDependency.Sample` теперь порождает вложенный доступ Managed; AngelScript сохраняет вложенный доступ с однозначными типами групп. `SettingsPath.A_B.Value` и `SettingsPath.A.B.Value` различаются. Пустые сегменты дают `Setting path` (Managed baker оборачивает её в `Managed setting`); исправьте авторский ключ. Конфликты namespace/property после экранирования C# также дают `Managed setting`. Смысл прежних корректных группированных путей сохраняется; AngelScript по-прежнему принимает корректные негруппированные custom настройки. Одинаковые канонические ключи Managed дедуплицируются.
+- Внутренние типы AngelScript `GlobalSettingsGroup_*` теперь обрамляют сегменты их длинами. Замените явные сгенерированные типы прямым доступом: `GlobalSettingsGroup_Android_GradleDependency group = Settings.Android.GradleDependency; string value = group.Sample;` заменяется на `string value = Settings.Android.GradleDependency.Sample;`. Старые явные имена типов дают ошибку компиляции; алиасов нет. Перед пересборкой найдите `GlobalSettingsGroup_` в авторских скриптах.
+- Повторите configure; пересоберите native-компоненты и Baker; регенерируйте и скомпилируйте Server/Client/Mapper, включая весь bytecode AngelScript; выполните полный, затем инкрементальный bake. Разворачивайте согласованные sources/assemblies/bytecode/resources; rollback восстанавливает предыдущий комплект. Переименование конфигурации и конверсия сохранений не нужны. Сигнатуры листовых свойств скриптов, ID, смысл значений конфигурации, save/wire форматы, Managed ABI `9` и runtime `0.0.73` сохраняются. См. [конфигурацию и источники данных](settings/configuration-and-data-sources.md).
+- Native-сигнатуры строковой/байтовой `fs::write_file` и `fs::replace_file` сохраняются; переименование вызывающего кода, backend или роли не требуется. Прежнее написание пути сохраняет нативный смысл. Корректный относительный `" dir/data.bin"` записывается именно в этот каталог; POSIX `"/tmp/back\\slash/data.bin"` сохраняет буквальный backslash вместо разделителя.
+- Повторите configure/сборку native-ролей и Baker, затем регенерацию и выпечку всех затронутых сторон с согласованной Engine-ревизией. Проверьте `DiskFileSystem`, `DiskFilePrimitives`, `CacheStorage`, `ClientRuntimeBootstrap*`, `NullRenderer`, включённый scripting backend и интеграционные bake/runtime. Windows-only тесты не квалифицируют POSIX-исполнение.
+- `false` по-прежнему означает, что новый файл не опубликован: сохраняйте прежнее значение/selector, при необходимости закрывайте блокирующих читателей либо используйте delete-sharing `fs::disk_read_file`. Замена native loaded DLL images и CRT streams не обещается на любой Windows/файловой системе. Не добавляйте delete-then-rename или откат, который сам может отказать.
+- Конверсия settings, properties, prototypes, saves, network, updater и resource schema не нужна; runtime `0.0.73`, Managed ABI `9`, сохраняемые значения и порядок успешного bake прежние. Атомарная видимость не обещает directory durability при отключении питания. Rollback возвращает согласованные бинарники/ресурсы 45-dev без конверсии сохранений и возвращает её отказ на буквальных путях. См. [Essentials](native/essentials.md#файловая-система-сжатие-сокеты-и-рабочие-потоки) и [baking](../explanation/content-pipeline/baking.md).
+
+## 2026.1.45-dev - 2026-10-16
 
 ### Исправлено
 

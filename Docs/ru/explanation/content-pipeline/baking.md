@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"c9135473ca7ff4438cb2ba61e9ca532396e800f19f8bbbe126b1ce24394b8826"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"02fc683607372cd5677e520c61921d8e9dc0cd9bcb0003dc18cbfa06128581cd"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -220,12 +220,7 @@ AddBakingTarget(Game_PublicResources
 
 Этот путь публикации используют и outputs `MasterBaker`, и `BakerDataSource::WriteData`. Отчёты запекания, маркер успешного завершения `Resources.build-hash` и снимки dependency cache Effekseer также публикуются целиком атомарно. Их содержимое, порядок подтверждения успешного запекания и правила timestamp для неизменённых ресурсов сохраняются.
 
-В Windows замена поддерживает DLL с активными memory mappings через POSIX rename
-semantics. Обрезание такой DLL на месте завершается ошибкой 1224, в том числе когда
-её загрузил проверочный engine внутри Baker. Общие читатели диска разрешают замену
-имени, удерживая открытый файл, как в POSIX. Helper сбрасывает временный файл, но
-не добавляет directory synchronization и не обещает сохранность rename при
-внезапном отключении питания.
+Windows пытается применить OS/filesystem-specific POSIX rename при отказе обычной замены. Это не гарантирует замену любого загруженного образа или CRT-held файла: открытый потребитель может отклонить публикацию, и Baker обязан сообщить об отказе, сохранив прежний результат. Engine disk readers разрешают delete sharing и сохраняют прежние байты после успешной замены. Публикацию managed assemblies проверяйте настоящим backend/bake-маршрутом; один shared-reader тест не доказывает все режимы mapping. Helper сбрасывает стадию без directory synchronization и обещаний сохранности rename при отключении питания.
 
 `Source/Tests/Test_DiskFileSystem.cpp` проверяет замену при открытом читателе,
 эксклюзивное создание без обрезания, сохранность назначения и удаление временного
