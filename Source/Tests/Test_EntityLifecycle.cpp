@@ -39,6 +39,9 @@ FO_BEGIN_NAMESPACE
 
 using namespace EntityLifecycleTests;
 
+// Same declaration shape as the other script exports driven directly from native tests
+bool Server_Critter_MapTransfersLocked(ptr<Critter> self);
+
 TEST_CASE("EntityManagerCppApi")
 {
     auto settings = MakeSettings();
@@ -169,6 +172,44 @@ TEST_CASE("EntityManagerCppApi")
     SECTION("MapsCountIsZero")
     {
         CHECK(server->EntityMngr.GetMapsCount() == 0);
+    }
+
+    SECTION("MapTransfersLockedExportObservesNestedLocks")
+    {
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
+
+        // Balances any lock still held if an assertion unwinds before the explicit unlock path completes
+        int32_t held_locks = 0;
+        auto balance_locks = scope_exit([&cr, &held_locks]() noexcept {
+            while (held_locks > 0) {
+                cr->UnlockMapTransfers();
+                held_locks--;
+            }
+        });
+
+        CHECK_FALSE(Server_Critter_MapTransfersLocked(cr));
+
+        cr->LockMapTransfers();
+        held_locks++;
+        CHECK(Server_Critter_MapTransfersLocked(cr));
+
+        cr->LockMapTransfers();
+        held_locks++;
+
+        // Repeated reads are snapshots: neither read releases nor resets the nesting counter
+        CHECK(Server_Critter_MapTransfersLocked(cr));
+        CHECK(Server_Critter_MapTransfersLocked(cr));
+
+        cr->UnlockMapTransfers();
+        held_locks--;
+        CHECK(Server_Critter_MapTransfersLocked(cr));
+
+        cr->UnlockMapTransfers();
+        held_locks--;
+        CHECK_FALSE(Server_Critter_MapTransfersLocked(cr));
+
+        REQUIRE(held_locks == 0);
+        server->CrMngr.DestroyCritter(cr);
     }
 }
 

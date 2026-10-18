@@ -10776,6 +10776,18 @@
       "release_note": "Docs/en/reference/changelog.md 2026.1.43-dev and 2026.1.44-dev, plus their Russian mirrors; Source/Common/Common.h owns the Version 0 0 73 gate.",
       "compatibility": "Runtime gate advances from 0.0.72 to 0.0.73 at published 43-dev. Mixed endpoints are rejected; wire field layouts, existing positions/directions, Managed ABI identity 9 and persisted data retain meaning. The preserved local atomic-write patch introduces no additional gate or data conversion.",
       "owner": "Engine movement authority and migration contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.116ce35989cd9130",
+      "baseline_contract_sha256": "bf6805f014e079c9568a00fca6fc7dab09f9e63f7ceb5369be91587329d3c1b6",
+      "current_contract_sha256": "e9adc99825d7dc124ff140e3a8095e68b24c564f7eb13ff4b4ccc85562794e67",
+      "classification": "breaking",
+      "rationale": "Extend the reviewed native-codegen inventory by one server-only readonly Critter.MapTransfersLocked getter. The comparator marks scope inventory changes as breaking; all previous symbols and their meanings remain unchanged. The getter directly observes the existing native counter without adding stored state.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-10-18 (2026.1.52-dev): rebuild native consumers and rebake scripts/resources to refresh metadata and method bindings. Read under live critter cover without yielding before the transfer. No saved-data conversion or old-call replacement is needed.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-10-18 and its Russian mirror describe the computed getter, transient cover boundary and unchanged native guards.",
+      "compatibility": "Additive script getter; network migration version 0.0.73, Managed ABI 9 and persisted/resource schemas remain unchanged. The generated client/server compatibility fingerprint and Managed method manifest change with the new export. Rebuild, deploy and roll back matching server/client binaries and baked scripts; do not mix baseline and updated artifacts. No saved-data conversion is required.",
+      "owner": "runtime"
     }
   ]
 }

@@ -14,6 +14,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-18
 
+### Added
+
+- Expose server-only readonly `Critter.MapTransfersLocked` in both scripting backends. It reads the existing native nesting counter under critter cover, allowing a caller to defer a transfer before invoking its native guard. It creates no stored property or new lock; the native guard remains authoritative.
+
+### Migration
+
+- Base `219fbd7568f2388f4a3b47e5a22fb38b8e259a0d` (`2026.1.51-dev`); update `2026.1.52-dev`. Rebuild native consumers and rebake scripts/resources together to regenerate metadata and Managed method bindings. Existing script calls and input meanings remain valid; persisted data, resource formats, network migration version `0.0.73` and Managed ABI `9` are unchanged. No saved-data conversion is required. The new export changes generated client/server compatibility and Managed method-manifest hashes even though their schema versions are unchanged. Rebuild and deploy matching server/client binaries and rebaked scripts; do not mix baseline and updated artifacts. Rollback restores the matching baseline artifacts without data conversion.
+- Read the property under live critter cover immediately before the transfer, with no yield or cover release between the check and call. A true value is transient: release cover before waiting and revalidate the operation after reacquiring it. The getter does not reserve a future transfer. Validate nested lock reads through `EntityManagerCppApi/MapTransfersLockedExportObservesNestedLocks` and the embedding project's transfer continuation path.
+- Increase the reviewed full-context documentation capacity by 16 KiB to 2,342,912 bytes so the complete accumulated migration notes remain available. The generator still fails on overflow; no document is truncated or excluded by this capacity update. Runtime and saved data are unaffected.
+
+
+## 2026.1.51-dev - 2026-10-18
+
 ### Fixed
 
 - Retain persistent NPC and inventory database records during critter unload and failed restoration cleanup. Explicit NPC destruction still deletes its records; player-character ownership no longer decides whether unregistering deletes a database document.

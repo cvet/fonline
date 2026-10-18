@@ -41,6 +41,19 @@ Keep this document focused on reusable engine behavior. Put project-specific ite
 
 For generated metadata and registration flow, see [GeneratedApiAndMetadata.md](../../reference/metadata/index.md).
 
+## Transient server transfer state
+
+The server-only readonly script property `Critter.MapTransfersLocked` is a computed getter over
+`Critter::IsMapTransfersLocked()`, not a stored, replicated or persisted entity property.
+It is true while the native transfer-lock nesting counter is nonzero, including after an inner
+transfer releases its own lock while an outer transfer is still active. Reading it requires cover
+of the live critter and does not change that counter or acquire cover.
+
+Use the value as a current-state check under the same cover immediately before a transfer.
+A yield or cover release invalidates that observation; revalidate the entities and read again.
+The getter is not a reservation and does not replace native transfer guards. To defer an operation,
+release cover before waiting so the outer native stack can finish, then revalidate the full operation.
+
 ## Entity base class
 
 `Entity` is the shared base for all runtime/prototype entities. It owns:

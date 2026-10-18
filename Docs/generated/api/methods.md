@@ -2218,6 +2218,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-makecontrollable-2c101c1a96"></a>
 - [`symbol-script-method-server-critter-makecontrollable-2c101c1a96`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-makecontrollable-2c101c1a96)
 
+<a id="symbol-script-method-server-critter-maptransferslocked-e4e6a40d54"></a>
+- [`symbol-script-method-server-critter-maptransferslocked-e4e6a40d54`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-maptransferslocked-e4e6a40d54)
+
 <a id="symbol-script-method-server-critter-movetohex-59785332969dbd15-a14f3e1e0b"></a>
 - [`symbol-script-method-server-critter-movetohex-59785332969dbd15-a14f3e1e0b`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-movetohex-59785332969dbd15-a14f3e1e0b)
 

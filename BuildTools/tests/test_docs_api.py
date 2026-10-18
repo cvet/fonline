@@ -377,12 +377,19 @@ class DocumentationApiModelTests(unittest.TestCase):
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
         self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 3)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2573)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2574)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2572, "internal": 1},
+            {"experimental": 2573, "internal": 1},
         )
+        transfer_state = next(
+            symbol for symbol in model["symbols"]
+            if symbol["id"] == "script.method.server.Critter.MapTransfersLocked"
+        )
+        self.assertEqual(transfer_state["flags"], ["Getter"])
+        self.assertEqual(transfer_state["runtime_sides"], ["server"])
+        self.assertEqual(transfer_state["return"], {"type": "bool", "nullable": False})
         debugger_symbol = next(
             symbol for symbol in model["symbols"] if symbol["id"] == "script.method.common.Game.BreakIntoDebugger"
         )

@@ -141,6 +141,14 @@ FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
     }
 }
 
+// SyncScope: requires self; returns a transient snapshot of the transfer-lock nesting counter and neither
+// acquires cover nor reserves the lock state against a later change
+///@ ExportMethod Getter
+FO_SCRIPT_API bool Server_Critter_MapTransfersLocked(ptr<Critter> self)
+{
+    return self->IsMapTransfersLocked();
+}
+
 // SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)

@@ -19418,6 +19418,10 @@
         "/symbols/@id=script.method.server.Player.ViewMapArea/description": {
           "source_sha256": "0d982fc7967c8fabc1830287ef26b58e35e797bc1a60edff3c0162e64147f96b",
           "translation": "SyncScope: требуются self, карта и её локация; управляемый персонаж должен оставаться на глобальной карте"
+        },
+        "/symbols/@id=script.method.server.Critter.MapTransfersLocked/description": {
+          "source_sha256": "8c7648eaf382694639b9103e3eb318692ed29378841ee627dfa22fdd78b8ab68",
+          "translation": "SyncScope: требует self; возвращает временный снимок счётчика вложенных блокировок переноса, не приобретая покрытие и не резервируя состояние блокировки от последующего изменения."
         }
       }
     }

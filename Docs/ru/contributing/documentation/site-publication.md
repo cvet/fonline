@@ -6,7 +6,7 @@ document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
 
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"25dff3bf04bb932440538911b84c6ce1a4d338f66e4655cf7291397d31b176a1"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"7edb99cbbda46950691727cf7c24808b15cd8f6d8524f8089839681e13e46995"} -->
 
 # Публикация сайта документации
 
@@ -202,7 +202,7 @@ Static site публикует три generated root endpoints, route catalog и
 | Route | Назначение |
 |---|---|
 | `https://fonline.ru/llms.txt` | Краткая карта всех public current pages по типам Diataxis и canonical generated JSON models |
-| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle public current authored pages и generated reference indexes, лимит 2 MiB + 224 KiB |
+| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle public current authored pages и generated reference indexes, лимит 2 MiB + 240 KiB |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, provenance, byte size и SHA-256 hashes |
 | `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version/locale policy, canonical target ownership и legacy redirects |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, evidence checks, success rate, MRR и failures |
