@@ -175,10 +175,12 @@ The loader follows Fallout's channel convention: a case-insensitive
 `sound/music/` prefix means stereo; every other ACM path means mono, regardless
 of its header. Keep this directory layout when moving source assets. The
 declared sample rate must be positive and the decoded sample count must form
-complete non-empty frames. The unpacker preserves 16-bit wrapping and zero-bit
-padding past a truncated body; it rejects bad signatures, unsupported versions,
-empty blocks and undefined coding indices. Each decoder owns its amplitude
-table and decodes once, allowing independent files to bake concurrently.
+complete non-empty frames. A zero declared sample count fails before decoding;
+loader failures include the authored path. The unpacker preserves 16-bit
+wrapping and zero-bit padding past a truncated body; it rejects bad signatures,
+unsupported versions, empty blocks and undefined coding indices. Each decoder
+owns its amplitude table and decodes once, allowing independent files to bake
+concurrently.
 
 ### Ogg Vorbis runtime
 

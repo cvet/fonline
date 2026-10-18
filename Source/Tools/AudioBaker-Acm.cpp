@@ -747,6 +747,7 @@ namespace AudioBakerAcm
         try {
             Decoder decoder {reader.GetDataSpan()};
             FO_VERIFY_AND_THROW(decoder.GetSampleRate() > 0, "ACM stream declares no sample rate");
+            FO_VERIFY_AND_THROW(decoder.GetSampleCount() > 0, "ACM stream declares no samples");
 
             bool is_music = strex(fname).lower().str().starts_with(MUSIC_DIR);
 

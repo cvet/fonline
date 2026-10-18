@@ -300,6 +300,25 @@ TEST_CASE("AudioBaker")
 #endif
     }
 
+#if FO_AUDIO_ACM
+    SECTION("RejectsEmptyAcmWithoutWritingOutput")
+    {
+        std::array<uint8_t, 18> acm = {0x97, 0x28, 0x03, 0x01, 0, 0, 0, 0, 2, 0, 0x22, 0x56, 0, 2, 0, 0, 0, 0};
+
+        for (string_view path : {"sound/SFX/Empty.acm", "Sound/Music/Empty.acm"}) {
+            TestRig rig;
+            rig.AddSourceFile(path, vector<uint8_t>(acm.begin(), acm.end()));
+
+            AudioBaker baker(rig.MakeContext());
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AudioBakerException);
+            CHECK(rig.Outputs.empty());
+
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), AudioBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+#endif
+
     SECTION("EncodesWavToVorbisUnderTheAuthoredPath")
     {
         vector<int16_t> samples = MakeSineFrames(frame_count, 1, sample_rate);

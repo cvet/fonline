@@ -173,6 +173,16 @@ TEST_CASE("AudioBakerAcm: loader follows the Fallout channel convention")
         CHECK(pcm.Samples.size() == 32);
     }
 
+    SECTION("RejectsEmptySampleDataWithTheFilePath")
+    {
+        std::array<uint8_t, 32> stream = STREAM_UNTRANSFORMED;
+        std::fill(stream.begin() + 4, stream.begin() + 8, uint8_t {0});
+
+        for (string_view path : {"sound/SFX/EMPTY.ACM", "Sound/Music/Empty.acm"}) {
+            CHECK_THROWS_WITH(Load(path, FileReader {const_span<uint8_t> {stream.data(), stream.size()}}), Catch::Matchers::ContainsSubstring(std::string {path}));
+        }
+    }
+
     SECTION("FailureNamesTheFile")
     {
         std::array<uint8_t, 4> garbage = {1, 2, 3, 4};

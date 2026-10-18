@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-17
+## Current - 2026-10-18
+
+### Fixed
+
+- Reject ACM streams declaring zero samples before decoding or writing baked output. Both effect and music paths retain path-qualified failures, and the focused loader/baker regressions cover whole-pack and selected-file baking without creating an output for the rejected source.
+
+### Migration
+
+- Base `370b268aa01099e731a2d93a8ae65222eb06c816` (`2026.1.49-dev`); update `2026.1.50-dev`. Rebuild the ACM-enabled Baker and native tests and run `AudioBaker` and `AudioBakerAcm`; repair any source rejected with `ACM stream declares no samples` and rebake affected ACM input. Valid non-empty streams retain their sample, rate, channel-path and truncated-body padding meanings. No script, setting, prototype, persisted-data or resource-schema migration is required. Network compatibility `0.0.73`, Managed ABI `9` and updater boundaries are unchanged; no new mixed-version restriction or deployment order is introduced. Rollback restores the matching previous binaries/resources without data conversion; it also restores acceptance of the invalid empty stream. These instructions do not claim a completed native/runtime qualification.
+
+## 2026.1.49-dev - 2026-10-17
 
 ### Fixed
 

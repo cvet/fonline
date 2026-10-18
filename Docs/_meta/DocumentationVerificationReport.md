@@ -12422,3 +12422,24 @@ The long managed-build interval was sampled with the official managed stack
 tool; its cause was not established, and the perturbed wall time is not an
 unattended performance baseline. Cross-configuration and gameplay qualification
 remain separately owned gates. No new ThreadSanitizer verdict is claimed.
+
+## 2026-10-18 - Console-update rebase of the empty-ACM fix
+
+Reconcile the unpublished empty-ACM fix from
+`e2c98abaef2372aed104d80ff8fc571f74432f51` onto published master
+`370b268aa01099e731a2d93a8ae65222eb06c816` (incoming range
+`c7a19d2c833c3b16c741fb02cf170c14e5c251c5..370b268aa01099e731a2d93a8ae65222eb06c816`,
+one commit, twenty files). Read the complete incoming source/test changes and
+their bilingual testing, rendering, updater, operations, settings and changelog
+documentation. The console handler latches a process-wide atomic flag; native
+loops choose when to observe quit. Nonempty config assignments to the existing
+read-only writable root fail before substitution; empty assignments preserve
+startup resolution. Preserve both contracts and the separate ACM source/tests.
+
+Freeze the published notes as `2026.1.49-dev` and advance the rebased local ACM
+update to `2026.1.50-dev`, with the new exact migration base in both locales.
+Regenerate documentation delivery after resolving the source changelog. No
+script API, resource schema, runtime `0.0.73` or Managed ABI `9` change is added
+by this rebase. Documentation/version checks and source-patch identity qualify
+the integration only; a fresh native build, console-event subprocess matrix,
+resource bake and runtime qualification remain unperformed for this revision.
