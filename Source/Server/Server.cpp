@@ -2493,7 +2493,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
             cr->MarkAsDestroying();
             UnloadCritterInnerEntities(cr);
             cr->MarkAsDestroyed();
-            EntityMngr.UnregisterCritter(cr);
+            EntityMngr.UnregisterCritter(cr, false);
         }
 
         throw GenericException("Critter data base loading error");
@@ -2569,7 +2569,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
     UnloadCritterInnerEntities(cr);
     cr->MarkAsDestroyed();
-    EntityMngr.UnregisterCritter(cr);
+    EntityMngr.UnregisterCritter(cr, false);
 }
 
 void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)

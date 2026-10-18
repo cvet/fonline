@@ -130,7 +130,7 @@ public:
     void RegisterMap(ptr<Map> map);
     void UnregisterMap(ptr<Map> map);
     void RegisterCritter(ptr<Critter> cr);
-    void UnregisterCritter(ptr<Critter> cr);
+    void UnregisterCritter(ptr<Critter> cr, bool delete_from_db);
     void RegisterItem(ptr<Item> item);
     void UnregisterItem(ptr<Item> item, bool delete_from_db);
     void RegisterCustomEntity(ptr<CustomEntity> custom_entity);

@@ -368,6 +368,10 @@ A persisted entity whose proto resolves through a `Proto <Type> Remove <Name>` m
 
 Persisted properties whose base type is a proto reference use the same distinction while their owning entity is restored. A rename stores the replacement proto id in memory. An empty replacement produced by a `Remove` rule clears the value only when the property is `Nullable`; a non-nullable property still rejects it because the embedding project must provide a valid replacement. An unknown proto with no migration rule remains an error. This conversion happens before script load events, so a script migration can repair related nullable fields after the entity is structurally loadable.
 
+`ServerEngine::UnloadCritter()` removes the live critter and its inventory graph from the registry while retaining their persistent database documents. This applies equally to player characters and NPCs. Registration removal takes an explicit database-deletion choice, as item and custom-entity removal already do; being an NPC is not a reason to delete a record during unload. `CritterManager::DestroyCritter()` remains the NPC-only permanent-deletion path and deletes the critter and inventory documents.
+
+If database restoration reports an error to `ServerEngine::LoadCritter()`, that branch releases partially loaded entities without deleting their surviving documents. The loader may prune a missing inventory id from the owner document; a later load can then recover the remaining graph. `ServerUnloadLoadKeepsPersistentNpcAndItemRecordsUntilDestroy` and `ServerFailedNpcLoadKeepsRecoverableRecords` in `Source/Tests/Test_ServerEntityLoading.cpp` cover these boundaries with actual NPCs, storage commits, unload/load operations and final destruction.
+
 ## Player and connection flow
 
 A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes a not-logged-in `Player` through `CreateNotLoggedInPlayer()`.

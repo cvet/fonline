@@ -16,6 +16,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Retain persistent NPC and inventory database records during critter unload and failed restoration cleanup. Explicit NPC destruction still deletes its records; player-character ownership no longer decides whether unregistering deletes a database document.
+- Cover persistent NPC unload/load, carried item ownership, permanent destruction and recovery after a missing inventory record with native regressions.
+
+### Migration
+
+- Base `1f2f8e4e55b51899ba07ad83f9e05287d365a78f` (`2026.1.50-dev`); update `2026.1.51-dev`. The internal native declaration in `Source/Server/EntityManager.h` changes from `UnregisterCritter(ptr<Critter> cr)` to `UnregisterCritter(ptr<Critter> cr, bool delete_from_db)`. Find custom native callers with `rg -n 'UnregisterCritter\(' Source <native-extension-directory>`: replace `UnregisterCritter(cr)` with `UnregisterCritter(cr, false)` for unload/failed-load cleanup, or `UnregisterCritter(cr, true)` only for permanent NPC destruction. The old one-argument call fails compilation; no default argument or compatibility overload is provided. Keep the NPC-only destruction precondition and inventory teardown ordering. Script APIs and unaffected native callers retain their meaning.
+- Reconfigure and rebuild native server and tests; refresh revision metadata through the normal matching Baker/resource workflow. Run `ServerUnloadLoadKeepsPersistentNpcAndItemRecordsUntilDestroy` and `ServerFailedNpcLoadKeepsRecoverableRecords`, checking committed critter/item documents before unload, after unload, after reload and after final destruction. NPCs must already be explicitly persistent; following a player does not promote a temporary entity. No property, configuration, authored-content, database-format, resource-schema, Managed ABI `9` or runtime compatibility `0.0.73` change is introduced. Existing IDs, item ownership and temporary-entity semantics are preserved; no saved-data conversion is required, and previously deleted documents cannot be reconstructed by this fix.
+- Deploy matching rebuilt artifacts. Rollback restores the preceding binaries/resources without data conversion and restores the old NPC-record deletion defect. Earlier runtime acceptance does not qualify a newer Engine base; this local history transfer does not claim a new build, gameplay qualification or publication.
+
+## 2026.1.50-dev - 2026-10-18
+
+### Fixed
+
 - Reject ACM streams declaring zero samples before decoding or writing baked output. Both effect and music paths retain path-qualified failures, and the focused loader/baker regressions cover whole-pack and selected-file baking without creating an output for the rejected source.
 
 ### Migration

@@ -292,7 +292,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
     _engine->TimeEventMngr.CancelAllForEntity(cr);
     cr->SetParent(nullptr);
     cr->MarkAsDestroyed();
-    _engine->EntityMngr.UnregisterCritter(cr);
+    _engine->EntityMngr.UnregisterCritter(cr, true);
 }
 
 void CritterManager::DestroyInventory(ptr<Critter> cr)

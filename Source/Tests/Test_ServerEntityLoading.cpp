@@ -124,7 +124,7 @@ static void DiscardLoadedCritter(ptr<ServerEngine> server, ptr<Critter> cr)
     cr->MarkAsDestroying();
     server->UnloadCritterInnerEntities(cr);
     cr->MarkAsDestroyed();
-    server->EntityMngr.UnregisterCritter(cr);
+    server->EntityMngr.UnregisterCritter(cr, false);
 }
 
 #define MAKE_ENTITY_LOADING_SERVER() \
@@ -376,6 +376,98 @@ TEST_CASE("ServerGameHolderPersistsDeclaredChildren", "[server][entity][database
     CHECK_FALSE(persistent_doc.Empty());
     CHECK_FALSE(nested_doc.Empty());
     CHECK(temporary_doc.Empty());
+}
+
+// Unloading a persistent NPC keeps its critter and carried item records for the next load; destroy is what deletes them
+TEST_CASE("ServerUnloadLoadKeepsPersistentNpcAndItemRecordsUntilDestroy", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    ptr<Critter> cr = server->CreateCritter(critter_pid, false);
+    REQUIRE_FALSE(cr->GetControlledByPlayer());
+
+    ptr<Item> item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    ident_t cr_id = cr->GetId();
+    ident_t item_id = item->GetId();
+    hstring critters_collection = server->Hashes.to_hashed_string("Critters");
+    hstring items_collection = server->Hashes.to_hashed_string("Items");
+
+    REQUIRE(server->DbStorage.Valid(critters_collection, cr_id));
+    REQUIRE(server->DbStorage.Valid(items_collection, item_id));
+
+    server->UnloadCritter(cr);
+    server->DbStorage.WaitCommitChanges();
+
+    REQUIRE_FALSE(server->EntityMngr.GetCritter(cr_id));
+    REQUIRE_FALSE(server->EntityMngr.GetItem(item_id));
+
+    REQUIRE(server->DbStorage.Valid(critters_collection, cr_id));
+    REQUIRE(server->DbStorage.Valid(items_collection, item_id));
+
+    ptr<Critter> loaded = server->LoadCritter(cr_id, false);
+    REQUIRE_FALSE(loaded->GetControlledByPlayer());
+    CHECK(loaded->GetId() == cr_id);
+    CHECK(loaded->GetItemIds() == vector<ident_t> {item_id});
+    CHECK(CollectItemIds(loaded->GetInvItems()) == vector<ident_t> {item_id});
+
+    auto loaded_item = server->EntityMngr.GetItem(item_id);
+    REQUIRE(loaded_item);
+    CHECK(loaded_item->GetCritterId() == cr_id);
+    CHECK(loaded_item->GetOwnership() == ItemOwnership::CritterInventory);
+
+    server->CrMngr.DestroyCritter(loaded);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+    CHECK_FALSE(server->EntityMngr.GetItem(item_id));
+    CHECK_FALSE(server->DbStorage.Valid(critters_collection, cr_id));
+    CHECK_FALSE(server->DbStorage.Valid(items_collection, item_id));
+}
+
+TEST_CASE("ServerFailedNpcLoadKeepsRecoverableRecords", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    ptr<Critter> cr = server->CreateCritter(critter_pid, false);
+    REQUIRE_FALSE(cr->GetControlledByPlayer());
+    ptr<Item> kept = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+    ptr<Item> missing = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+    REQUIRE(cr->GetInvItems().size() == 2);
+
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    ident_t cr_id = cr->GetId();
+    ident_t kept_id = kept->GetId();
+    ident_t missing_id = missing->GetId();
+    hstring critters_collection = server->Hashes.to_hashed_string("Critters");
+    hstring items_collection = server->Hashes.to_hashed_string("Items");
+    server->UnloadCritter(cr);
+    server->DbStorage.Delete(items_collection, missing_id);
+    server->DbStorage.WaitCommitChanges();
+    REQUIRE_FALSE(server->DbStorage.Valid(items_collection, missing_id));
+
+    CHECK_THROWS_AS(server->LoadCritter(cr_id, false), GenericException);
+    server->DbStorage.WaitCommitChanges();
+    CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+    CHECK_FALSE(server->EntityMngr.GetItem(kept_id));
+    REQUIRE(server->DbStorage.Valid(critters_collection, cr_id));
+    REQUIRE(server->DbStorage.Valid(items_collection, kept_id));
+
+    ptr<Critter> loaded = server->LoadCritter(cr_id, false);
+    CHECK_FALSE(loaded->GetControlledByPlayer());
+    CHECK(loaded->GetItemIds() == vector<ident_t> {kept_id});
+    auto loaded_item = server->EntityMngr.GetItem(kept_id);
+    REQUIRE(loaded_item);
+    CHECK(loaded_item->GetCritterId() == cr_id);
+    server->CrMngr.DestroyCritter(loaded);
+    server->DbStorage.WaitCommitChanges();
+    CHECK_FALSE(server->DbStorage.Valid(critters_collection, cr_id));
+    CHECK_FALSE(server->DbStorage.Valid(items_collection, kept_id));
 }
 
 FO_END_NAMESPACE

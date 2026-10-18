@@ -96,7 +96,7 @@ TEST_CASE("LoadUnloadCritter")
         loaded->MarkAsDestroying();
         server->UnloadCritterInnerEntities(loaded);
         loaded->MarkAsDestroyed();
-        server->EntityMngr.UnregisterCritter(loaded);
+        server->EntityMngr.UnregisterCritter(loaded, false);
 
         CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     }

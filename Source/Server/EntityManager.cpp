@@ -1257,7 +1257,7 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
     FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
 }
 
-void EntityManager::UnregisterCritter(ptr<Critter> cr)
+void EntityManager::UnregisterCritter(ptr<Critter> cr, bool delete_from_db)
 {
     FO_TRACE_ZONE(Entity);
 
@@ -1266,7 +1266,7 @@ void EntityManager::UnregisterCritter(ptr<Critter> cr)
     auto it = _allCritters.find(cr->GetId());
     FO_STRONG_ASSERT(it != _allCritters.end(), "Lookup failed in all critters");
     _allCritters.erase(it);
-    UnregisterEntity(cr, !cr->GetControlledByPlayer());
+    UnregisterEntity(cr, delete_from_db);
 }
 
 void EntityManager::RegisterItem(ptr<Item> item)
