@@ -10941,6 +10941,10 @@
         "/symbols/@id=script.method.client.Critter.GetBonePosWithOffset/description": {
           "source_sha256": "8b6368f9a9efc6461c19626a9449d2cb181d3946b049a2d753fd2c8db6d8071a",
           "translation": "Проецирует локальную точку кости в авторских единицах модели в логические пиксели относительно спрайта; возвращает false при отсутствии модели/кости, некорректной или непредставимой точке, оставляя смещение спрайта; выбрасывает исключение вне карты."
+        },
+        "/symbols/@id=script.event.server.Game.OnPlayerMovementAuthority/description": {
+          "source_sha256": "f78d9c7662aaff2db76c088597e10e1d7d09883d1321adbf470e1296225a496b",
+          "translation": "Проверяет право игрока на движение; начальное `allowed` истинно только для выбранного актора, а `StopChain` запрещает запрос."
         }
       }
     },

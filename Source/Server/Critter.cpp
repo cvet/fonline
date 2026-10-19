@@ -225,6 +225,24 @@ auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingCont
     return _moving;
 }
 
+auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    ValidateEntityAccess(player);
+
+    if (player->IsDestroyed() || _playerMovingUid == 0 || _playerMovingPlayerId != player->GetId() || _playerMovementIdentity != player->GetMovementIdentity()) {
+        return false;
+    }
+
+    auto actor = player->GetControlledCritter();
+
+    if (!actor || actor->IsDestroyed() || actor->GetId() != _playerMovingActorId || player->GetMovementControlRevision() != _playerControlRevision || actor->GetAttachmentRevision() != _playerAttachmentRevision) {
+        return false;
+    }
+
+    return _movingUid == _playerMovingUid || (!_moving && _lastMoving && _movingUid == _playerMovingUid + 1 && _lastMoving->GetCompleteReason() == MovingState::Success);
+}
+
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -434,12 +452,20 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
-void Critter::MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift)
+void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
 
+    auto actor = player->GetControlledCritter();
+    FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
+
     _playerMovingUid = _movingUid;
+    _playerMovingPlayerId = player->GetId();
+    _playerMovingActorId = actor->GetId();
+    _playerMovementIdentity = player->GetMovementIdentity();
+    _playerControlRevision = player->GetMovementControlRevision();
+    _playerAttachmentRevision = actor->GetAttachmentRevision();
     _playerPlanSeq = plan_seq;
     _playerPlanDistanceShift = plan_distance_shift;
 }
@@ -451,6 +477,9 @@ void Critter::StopMoving(MovingState reason)
 
     if (reason != MovingState::Success) {
         _playerMovingUid = 0;
+        _playerMovingPlayerId = {};
+        _playerMovingActorId = {};
+        _playerMovementIdentity.reset();
         _playerPlanSeq = 0;
     }
 
@@ -499,6 +528,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
     }
 
     cr->AddAttachedCritter(this);
+    _attachmentRevision++;
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -518,6 +548,7 @@ void Critter::DetachFromCritter()
     FO_VERIFY_AND_THROW(cr, "Attach master not found");
 
     cr->RemoveAttachedCritter(this);
+    _attachmentRevision++;
     SetIsAttached(false);
     SetAttachMaster({});
 

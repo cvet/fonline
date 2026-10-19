@@ -119,6 +119,7 @@ namespace
         {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);", 1, "player relogin gate"},
         {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
         {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "Entity::EventResult result = _engine->OnPlayerMovementAuthority.Fire(_player, _cr, allowed);", 1, "explicit player movement authority with retained actor and revision revalidation"},
         {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},
         {"Source/Server/Server.cpp", "EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 2, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 1, "post-move guarded"},

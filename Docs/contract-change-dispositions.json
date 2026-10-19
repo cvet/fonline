@@ -14736,6 +14736,30 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate a dated next-minor entry during eventual master integration.",
       "compatibility": "The API inventory scope changes and requires a matching Engine revision/generated metadata. This is additive; existing GetBonePos signatures, network marker and persistent data remain unchanged. Roll back matching binaries/resources together; no save conversion.",
       "owner": "Engine scripting and model rendering contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.6e4e0c5ef8715a04",
+      "baseline_contract_sha256": "bf6805f014e079c9568a00fca6fc7dab09f9e63f7ceb5369be91587329d3c1b6",
+      "current_contract_sha256": "25ff7c88c4ff979af79eb291eebed8589a18caec51f1f4b8daf0118c4cac5fd0",
+      "classification": "breaking",
+      "rationale": "Introduce explicit indirect movement authority instead of relying on a permissive speed event followed by selected-actor equality. Bind player plans to their initiator and selection/attachment revisions across move, stop, direction, lease, arrival and movement jobs. Review the expanded experimental API inventory together with the additive bone-local point method.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Docs/en/explanation/authority-and-networking/index.md#player-movement-authority, plus Russian mirrors. Subscribe to OnPlayerMovementAuthority for game-owned indirect targets; apply owner/passenger policy synchronously. Rebuild matching server, client, Mapper, viewers, Baker and tests, then regenerate and rebake both metadata/script sides. No saved-property conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the dated next-minor entry during eventual master integration.",
+      "compatibility": "Advance Source/Common/Common.h runtime gate from 0.0.73 to 0.0.74. Mixed endpoints are rejected. Wire fields and persisted properties retain their format; authority loss now retires player plans. Rollback restores matching binaries, metadata and packs together; no old-API bridge is added.",
+      "owner": "Engine movement authority and native-codegen contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.a54bbce3bd63e358",
+      "baseline_contract_sha256": "bf6805f014e079c9568a00fca6fc7dab09f9e63f7ceb5369be91587329d3c1b6",
+      "current_contract_sha256": "25ff7c88c4ff979af79eb291eebed8589a18caec51f1f4b8daf0118c4cac5fd0",
+      "classification": "breaking",
+      "rationale": "Introduce explicit indirect movement authority instead of relying on a permissive speed event followed by selected-actor equality. Bind player plans to their initiator and selection/attachment revisions across move, stop, direction, lease, arrival and movement jobs. Review the expanded experimental API inventory together with the additive bone-local point method.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Docs/en/explanation/authority-and-networking/index.md#player-movement-authority, plus Russian mirrors. Subscribe to OnPlayerMovementAuthority for game-owned indirect targets; apply owner/passenger policy synchronously. Rebuild matching server, client, Mapper, viewers, Baker and tests, then regenerate and rebake both metadata/script sides. No saved-property conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the dated next-minor entry during eventual master integration.",
+      "compatibility": "Advance Source/Common/Common.h runtime gate from 0.0.73 to 0.0.74. Mixed endpoints are rejected. Wire fields and persisted properties retain their format; authority loss now retires player plans. Rollback restores matching binaries, metadata and packs together; no old-API bridge is added.",
+      "owner": "Engine movement authority and native-codegen contracts"
     }
   ]
 }
