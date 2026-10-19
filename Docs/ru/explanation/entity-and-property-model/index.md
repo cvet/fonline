@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"238fbd00254ee9a8e9e37c0f7af3e7166d7eaacf39fd3a273c73b125a7250b90"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"e65e09cb6248b894c63db50ac048b57fc3ae16e5b7112a5f0d7c529e8ed9e10d"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -125,6 +125,8 @@ NaN и infinity являются ошибкой, а не значениями д
 Хранилище raw-данных свойств имеет естественное выравнивание: storage blob и буферы `PropertyRawData` начинаются с максимального выравнивания, регистрация layout структуры проверяет выравнивание смещений полей, а overlay/POD offsets следуют выравниванию данных каждого свойства. Поэтому readers свойств используют обычные типизированные загрузки без обходов unaligned access и runtime-проверок выравнивания; нарушение контракта обнаруживают sanitizer-сборки. Равенство raw payload проверяется побайтно (`MemCompare`): общая длина payload не повышает требования к его выравниванию.
 
 Повторная запись того же значения скриптом ничего не делает. `Properties::SetValue` выполняет validation/clamping, сравнивает сохранённые bytes и при равенстве возвращается до setters, post-setters, persistence и client sync. Оба scripting backend и `SetAsInt`/`SetAsAny` идут этим путём; повторное присваивание не может вызвать callback или resend. `SetValueFromData` безусловно применяет полученное по сети значение. У virtual property нет сохранённого значения для сравнения. Native typed writes для string/`any_t` и vectors также не сравнивают равенство; raw payload сравнивается побайтно, а native floating-point typed write использует `is_float_equal`.
+
+Компоненты группируют поля с точкой в существующем владельце, включая Critter и Location. См. [компоненты свойств](../../how-to/content/prototype-format.md#компоненты-свойств): маркеры, Managed-проверка наличия, наследование и миграция сохраняемых имён.
 
 ## Runtime свойств
 

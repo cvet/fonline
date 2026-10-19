@@ -126,6 +126,8 @@ Property raw data storage is naturally aligned: the storage blob and `PropertyRa
 
 An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
 
+Components group qualified properties on the same owner, including Critter and Location. See [property components](../../how-to/content/prototype-format.md#property-components) for marker semantics, managed presence checks, inheritance and stored-name migrations.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:

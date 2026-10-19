@@ -1584,6 +1584,13 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 
     // Shutdown skips the destroy flows (database deletes, events for scripts already gone) but not their unlinking, done here while the
     // registry still holds every entity, so nothing dies mid-sweep and each destructor verifies the same empty state as usual
+    // Only runtime references are released: persistent holder IDs and child documents must survive shutdown.
+    _engine->ClearInnerEntities();
+
+    for (auto& entity : _allEntities | std::views::values) {
+        entity->ClearInnerEntities();
+    }
+
     for (auto& player : _allPlayers | std::views::values) {
         player->ClearAllAssociations();
     }

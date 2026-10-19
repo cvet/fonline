@@ -12,7 +12,24 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-18
+## Current - 2026-10-19
+
+### Fixed
+
+- Preserve persistent custom-entity trees during graceful server shutdown. Runtime teardown releases the singleton's and registered holders' inner references before dropping parent links and registry ownership; it does not run ordinary custom-entity deletion or change durable holder IDs.
+
+### Documentation
+
+- Clarify native property components for Critter, Location and other entity owners: bool markers, qualified fields, inherited disabling, managed Has accessors and persisted-name migrations.
+
+### Migration
+
+- Baseline `2860bb2755621976d199883e254d66808a659ec1` (`2026.1.52-dev`) to this `2026.1.53-dev` working change. The affected path is `ServerEngine::Shutdown` → `EntityManager::DestroyAllEntities`, shared by scripting backends and database providers. Ordinary gameplay `DestroyCustomEntity` still deletes the explicitly destroyed entity and its children.
+- No callable, setting, property, identifier, storage format, network compatibility marker (`0.0.73`) or Managed ABI (`9`) changes; no project source or data conversion is required. Existing persistent holder IDs and child documents must survive stopping the process. Reconfigure and rebuild affected native server/test roles, regenerate metadata and rebake the matching resource set after the version/revision change.
+- Previously deleted documents cannot be reconstructed from surviving secondary indexes. Restore a verified backup through the owning project's recovery procedure when affected data has already been lost; do not erase indexes to hide missing entities. Rollback uses matching binaries/resources and a verified backup; the preceding build retains the destructive shutdown defect.
+- Acceptance owner: `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` in `Source/Tests/Test_ServerEngine.cpp`. It must preserve exact IDs, holder shape and marker values through two graceful restarts using real JSON storage, including a custom child of a persistent NPC. Embedding projects must also verify their used backend and account-entry path on an isolated database.
+
+## 2026.1.52-dev - 2026-10-18
 
 ### Added
 

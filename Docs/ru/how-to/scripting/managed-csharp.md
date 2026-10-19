@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a33807ab80cb58e45ffd6ac64ba4abcbda9de507395ccff5a818c6f0ed867ba8"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"c7b8909ed1416c4019a5b31b32c6835169f635461ce0ab6240b568a1a0232da4"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -99,6 +99,8 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll` зависят от роли. MSBuild intermediates находятся в `Assemblies/<Target>Assemblies/`; опубликованные entry assemblies и соседние зависимости — в ресурсах пакета `Assemblies/Assemblies-<target>/` (`server`, `client`, `mapper`). Runtime/packaging читает эти ресурсы; очистка устаревших outputs удаляет intermediates.
 
 `ManagedScript.PatchPointWeaver` запускает Engine Mono.Cecil tool на промежуточных server/client assemblies после компиляции, до копирования/упаковки. Исходники и inputs weaver вызывают перекомпиляцию и повторную обработку; уже обработанные assemblies пропускаются. Инструмент не поставляется как script dependency.
+
+Компоненты свойств создают Has и доступ к полям для сущностей и их прототипов; см. [авторинг и миграцию компонентов](../content/prototype-format.md#компоненты-свойств). Механизм не ограничен предметами.
 
 ## Форма авторского кода
 

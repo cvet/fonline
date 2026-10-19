@@ -99,6 +99,8 @@ produce NaN or infinity; validate finiteness at the relevant invariant boundary.
 
 `ManagedScript.PatchPointWeaver` runs the Engine Mono.Cecil tool on intermediate server/client assemblies after compilation and before copy/packaging. Weaver sources and inputs trigger recompilation and reweaving; already woven assemblies are skipped. The tool is not shipped as a script dependency.
 
+Property components also generate Has/qualified-field accessors for entities and their prototypes; see the [component authoring and migration contract](../content/prototype-format.md#property-components). They are not restricted to items.
+
 ## Authoring shape
 
 Use the project namespace and import `FOnline` for generated types. CoreScripts use file-scoped `namespace FOnline;`; game domain types belong outside it.

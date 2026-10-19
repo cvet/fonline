@@ -765,6 +765,145 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         ignore_unused(critter_id);
     }
 }
+TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
+{
+    auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_custom_shutdown_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    std::filesystem::create_directories(storage_dir);
+
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept {
+        safe_call([storage_dir] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_dir, ignored);
+        });
+    });
+
+    auto metadata = BakerTests::MakeMetadataBlob({
+        {"Entity", {{"ShutdownRoot"}, {"ShutdownLeaf"}}},
+        {"EntityHolder",
+            {
+                {"Server", "Game", "ShutdownRoot", "RootState", "Persistent"},
+                {"Server", "ShutdownRoot", "ShutdownLeaf", "LeafState", "Persistent"},
+                {"Server", "Critter", "ShutdownLeaf", "CritterState", "Persistent"},
+            }},
+        {"Property",
+            {
+                {"ShutdownRoot", "Server", "int32", "Marker", "Mutable", "Persistent"},
+                {"ShutdownLeaf", "Server", "int32", "Marker", "Mutable", "Persistent"},
+            }},
+    });
+
+    ident_t root_id;
+    ident_t leaf_id;
+    ident_t location_id;
+    ident_t map_id;
+    ident_t critter_id;
+    ident_t critter_leaf_id;
+
+    for (int32_t attempt = 0; attempt < 3; attempt++) {
+        INFO(attempt);
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("JSON {}", storage_dir.generic_string()).str());
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources(ServerTestScriptMode::Default, metadata));
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->LockSingleton(server->GetEntityLock());
+
+            auto hash = [&server](string_view value) { return server->Hashes.to_hashed_string(value); };
+            auto root_entry = hash("RootState");
+            auto leaf_entry = hash("LeafState");
+            auto critter_entry = hash("CritterState");
+
+            auto marker_property = [&server](ptr<Entity> entity) {
+                auto prop = server->GetPropertyRegistrar(entity->GetTypeName())->FindProperty("Marker");
+                REQUIRE(prop);
+                return prop;
+            };
+
+            if (attempt == 0) {
+                auto root = server->EntityMngr.CreateCustomInnerEntity(server, root_entry, {});
+                auto leaf = server->EntityMngr.CreateCustomInnerEntity(root, leaf_entry, {});
+                root->GetPropertiesForEdit()->SetValue(marker_property(root), int32_t {101});
+                leaf->GetPropertiesForEdit()->SetValue(marker_property(leaf), int32_t {-202});
+                root_id = root->GetId();
+                leaf_id = leaf->GetId();
+
+                auto location = server->MapMngr.CreateLocation(hash("UnitTestLocation"), vector<hstring> {hash("UnitTestMap")});
+                auto map = location->GetMapByIndex(0);
+                REQUIRE(map);
+                server->EntityMngr.MakePersistent(location, true, true);
+                auto critter = server->CreateCritter(hash("UnitTestRat"), false);
+                server->MapMngr.TransferToMap(critter, map, mpos {20, 20}, mdir {}, std::nullopt);
+                server->EntityMngr.MakePersistent(critter, true, true);
+                auto leaf_on_critter = server->EntityMngr.CreateCustomInnerEntity(critter, critter_entry, {});
+                leaf_on_critter->GetPropertiesForEdit()->SetValue(marker_property(leaf_on_critter), int32_t {303});
+                location_id = location->GetId();
+                map_id = map->GetId();
+                critter_id = critter->GetId();
+                critter_leaf_id = leaf_on_critter->GetId();
+            }
+
+            auto root = server->EntityMngr.GetCustomEntity(hash("ShutdownRoot"), root_id);
+            auto leaf = server->EntityMngr.GetCustomEntity(hash("ShutdownLeaf"), leaf_id);
+            auto leaf_on_critter = server->EntityMngr.GetCustomEntity(hash("ShutdownLeaf"), critter_leaf_id);
+            auto critter = server->EntityMngr.GetCritter(critter_id);
+            auto location = server->EntityMngr.GetLocation(location_id);
+            REQUIRE(root);
+            REQUIRE(leaf);
+            REQUIRE(leaf_on_critter);
+            REQUIRE(critter);
+            REQUIRE(location);
+            ctx->UnlockSingleton(server->GetEntityLock());
+            ctx->SyncEntity(location);
+            ctx->LockSingleton(server->GetEntityLock());
+
+            auto check_holder = [](ptr<Entity> holder, hstring entry, ident_t expected_id) {
+                auto children = holder->GetInnerEntities(entry);
+                REQUIRE(children);
+                REQUIRE(children->size() == 1);
+                CHECK(children->front()->GetId() == expected_id);
+            };
+            check_holder(server, root_entry, root_id);
+            check_holder(root, leaf_entry, leaf_id);
+            check_holder(critter, critter_entry, critter_leaf_id);
+
+            CHECK(root->IsPersistent());
+            CHECK(leaf->IsPersistent());
+            CHECK(leaf_on_critter->IsPersistent());
+
+            CHECK(root->GetCustomHolderId() == ident_t {});
+            CHECK(root->GetCustomHolderEntry() == root_entry);
+            CHECK(leaf->GetCustomHolderId() == root_id);
+            CHECK(leaf->GetCustomHolderEntry() == leaf_entry);
+            CHECK(leaf_on_critter->GetCustomHolderId() == critter_id);
+            CHECK(leaf_on_critter->GetCustomHolderEntry() == critter_entry);
+
+            CHECK(critter->GetMapId() == map_id);
+            REQUIRE(location->GetMapByIndex(0));
+            CHECK(location->GetMapByIndex(0)->GetId() == map_id);
+
+            CHECK(root->GetProperties()->GetValueFast<int32_t>(marker_property(root)) == 101);
+            CHECK(leaf->GetProperties()->GetValueFast<int32_t>(marker_property(leaf)) == -202);
+            CHECK(leaf_on_critter->GetProperties()->GetValueFast<int32_t>(marker_property(leaf_on_critter)) == 303);
+        }
+
+        // Every pass ends through the real graceful path; the next pass reads the same files.
+        server->Shutdown();
+    }
+}
 #endif
 
 TEST_CASE("ServerEngineCustomCollectionStartupValidation")

@@ -1217,8 +1217,6 @@ void ServerEngine::Shutdown()
     logging::write("Shutdown stage: TimeEventMngr.ClearTimeEvents (late, expected no-op)");
     TimeEventMngr.ClearTimeEvents();
 
-    logging::write("Shutdown stage: DestroyInnerEntities");
-    EntityMngr.DestroyInnerEntities(this);
     logging::write("Shutdown stage: DestroyAllEntities (count={})", EntityMngr.GetEntitiesCount());
     EntityMngr.DestroyAllEntities();
     logging::write("Shutdown stage: ShutdownBackends");

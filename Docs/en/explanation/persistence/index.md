@@ -20,6 +20,10 @@ The engine owns the reusable database abstraction, backend implementations, and 
 
 Do not put live credentials, production connection strings, or host-specific recovery steps in this engine document.
 
+## Graceful shutdown and entity ownership
+
+Persistent entity-holder properties describe durable ownership. `ServerEngine::Shutdown` must leave those IDs and custom-entity documents intact. `EntityManager::DestroyAllEntities` clears runtime inner references while the registry still retains every entity, then drops parent links and registry ownership. This is distinct from ordinary `DestroyCustomEntity`, which updates holder IDs and deletes documents. The distinction applies to Game-owned trees and custom children of standard holders alike. `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` exercises the boundary through two real file-backed restarts; a live-world read before shutdown is not durability evidence.
+
 ## Public database facade
 
 `Source/Server/DataBase.h` defines the public facade `DataBase`. It wraps a `DataBaseImpl` backend and exposes collection/document operations:
