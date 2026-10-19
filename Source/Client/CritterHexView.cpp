@@ -594,7 +594,11 @@ void CritterHexView::Process()
 
         int32_t frm_index;
 
-        if (root_motion_drive) {
+        if (!_curAnim.has_value() && GetCondition() == CritterCondition::Dead) {
+            // Keep the corpse on the final frame after the queued death animation completes.
+            frm_index = cur_anim.Frames->GetFramesCount() - 1;
+        }
+        else if (root_motion_drive) {
             frm_index = EvaluateMovementFrameIndex(cur_anim.Frames);
         }
         else {

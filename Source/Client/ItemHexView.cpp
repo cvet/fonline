@@ -103,7 +103,8 @@ void ItemHexView::Process()
 
     if (_isMoving) {
         nanotime time = _engine->GameTime.GetFrameTime();
-        float32_t dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
+        // Keep sub-millisecond steps: truncation would discard motion on high-refresh clients
+        float32_t dt = (time - _moveUpdateLastTime).div<float32_t>(std::chrono::milliseconds {1});
         _moveUpdateLastTime = time;
 
         _moveCurOffset += _moveStepOffset * _moveSpeed * dt;

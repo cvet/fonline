@@ -507,6 +507,7 @@ void SpriteSheet::SetTime(float32_t normalized_time)
 void SpriteSheet::SetDir(mdir dir)
 {
     _curDir = dir.hex();
+    RefreshParams();
 }
 
 void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
@@ -578,6 +579,19 @@ void SpriteSheet::RefreshParams()
 
     _size = cur_spr->GetSize();
     _offset = cur_spr->GetOffset();
+
+    ptr<const SpriteSheet> dir_sheet = this;
+
+    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
+        dir_sheet = _dirs[_curDir.value() - 1];
+    }
+
+    // Item animations use frame zero as their anchor, as legacy ItemHex::SetAnimOffs did.
+    // Recompute from the selected frame so seeking, reverse playback and looping cannot accumulate drift.
+    // Raw GetSpr() frames remain unchanged: critters apply their own root-motion offsets.
+    for (int32_t i = 1; i <= _curIndex; i++) {
+        _offset += dir_sheet->_sprOffset[i];
+    }
 }
 
 auto SpriteSheet::GetSpr(int32_t num_frm) const -> ptr<const Sprite>
