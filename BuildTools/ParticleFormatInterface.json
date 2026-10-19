@@ -2407,7 +2407,7 @@
       "name": "Mandatory baked bounds",
       "stability": "experimental",
       "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles; Effekseer appends and validates a mandatory bounds trailer.",
-      "rationale": "Static measured bounds replace manual draw dimensions and avoid recomputing a particle AABB every frame.",
+      "rationale": "Reproducible baseline dimensions provide stable atlas layout without manual authoring; model trails can extend the baseline with current live instances.",
       "source": [
         {
           "path": "Source/Tools/ParticleBaker.cpp",
@@ -2455,7 +2455,7 @@
       "id": "particle-format.runtime.live-bounds",
       "name": "Live bounds",
       "stability": "experimental",
-      "requirement": "GetLiveBounds returns transformed baked bounds only while the backend has live particles or instances; dormant and finished systems reserve no model-frame space.",
+      "requirement": "While instances live, retain the transformed baked envelope and extend Effekseer model bounds with current Sprite/Ribbon/Ring/Track/Model positions and shape radii. Cache the CPU probe until setup or simulation changes; do not advance time, RNG, GPU draws or scene-background capture. Expired instances release their envelope.",
       "rationale": "Occasional attached effects must expand their owning model only while visible.",
       "source": [
         {
@@ -2479,6 +2479,60 @@
           "anchors": [
             "model_particle.Particle->GetLiveBounds()",
             "force_full_frame = true"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer live bounds measure each supported renderer family",
+            "Effekseer bounds queries preserve future seeded generations",
+            "Effekseer bounds queries do not acquire a distortion scene background"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-placement",
+      "name": "Effekseer model placement",
+      "stability": "experimental",
+      "requirement": "World is the complete model-bone pose. Accept a finite LookDirectionAngle as an unused legacy hint without applying a second yaw; reject non-finite hints. Existing zero-hint placement is unchanged.",
+      "rationale": "A model already supplies its facing in the bone pose.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::Setup",
+            "look-direction hint is not finite"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer model placement accepts facing hints without rotating the bone pose twice"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.world-rebase",
+      "name": "Atlas-origin rebase",
+      "stability": "experimental",
+      "requirement": "RebaseWorldParticles translates existing Effekseer instances once through a rendering base while compensating the simulation root. Pair it with the new absolute Setup and zero-time RefreshRenderTransform. Ignore invalid deltas before mutation; respawn and retirement reset the translation base.",
+      "rationale": "Atlas-coordinate changes must preserve world-space tails without aging particles or moving future births twice.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::RebaseWorldParticles",
+            "ApplyEffekseerRootMatrix",
+            "SetBaseMatrix"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer atlas rebases move each live particle once without advancing generation",
+            "Effekseer rejects nonfinite hints and ignores invalid rebases without mutation"
           ]
         }
       ]

@@ -1487,6 +1487,10 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Update world matrix, only for root
     if (!_parent) {
         _parentMatrix = MakeRootTransformation(pos, scale, _directSceneDraw);
+
+        // Direct poses omit the atlas pivot, supersample and camera tilt. Keep their conversion with the pose:
+        // _directSceneDraw is restored after drawing, while script callbacks can query the retained matrices later.
+        _poseToSpriteFrame = _directSceneDraw ? MakeRootTransformation(pos, const_numeric_cast<float32_t>(FRAME_SCALE), false) * glm::inverse(_parentMatrix) : mat44 {1.0f};
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -2658,30 +2662,44 @@ void ModelInstance::DrawAllParticles()
     }
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
+auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset) const -> optional<ipos32>
 {
+    if (!std::isfinite(local_offset.x) || !std::isfinite(local_offset.y) || !std::isfinite(local_offset.z)) {
+        return std::nullopt;
+    }
+
     auto binding = FindPoseJoint(bone_name);
 
     if (!binding) {
         return std::nullopt;
     }
 
-    vec3 pos {};
-    quaternion rot {};
-    vec3 scale {};
-    vec3 skew {};
-    glm::vec<4, float32_t, glm::defaultp> perspective {};
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
-    glm::decompose(binding->Owner->GetWorldMatrix(binding->JointIndex), scale, rot, pos, skew, perspective);
 
-    ipos32 p = Convert3dTo2d(pos);
-    // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
-    // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction
+    auto frame_pos = _poseToSpriteFrame * binding->Owner->GetWorldMatrix(binding->JointIndex) * glm::vec4 {local_offset, 1.0f};
+    vec3 pos {frame_pos.x, frame_pos.y, frame_pos.z};
+
+    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)) {
+        return std::nullopt;
+    }
+
+    const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
+    vec3 screen_pos {};
+
+    if (!ProjectPoint(pos, mat44 {1.0f}, _frameProj, viewport, screen_pos) || !std::isfinite(screen_pos.x) || !std::isfinite(screen_pos.y)) {
+        return std::nullopt;
+    }
+
+    // Match Convert3dTo2d's rounding before applying the integer pivot, while rejecting unrepresentable points.
     int32_t frame_height = _frameSize.height / FRAME_SCALE;
-    int32_t x = p.x - _framePivot.x;
-    int32_t y = -(p.y - (frame_height - _framePivot.y));
+    float64_t x = std::round(numeric_cast<float64_t>(screen_pos.x / const_numeric_cast<float32_t>(FRAME_SCALE))) - _framePivot.x;
+    float64_t y = frame_height - _framePivot.y - std::round(numeric_cast<float64_t>(screen_pos.y / const_numeric_cast<float32_t>(FRAME_SCALE)));
 
-    return ipos32 {x, y};
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    return ipos32 {iround<int32_t>(x), iround<int32_t>(y)};
 }
 
 auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>

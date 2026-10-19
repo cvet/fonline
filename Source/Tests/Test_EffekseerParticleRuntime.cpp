@@ -2038,6 +2038,392 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     }
 }
 
+static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval, string_view location = "<X>0</X><Y>0</Y><Z>0</Z>") -> unique_ptr<EffekseerRuntimeTestRig>
+{
+    string project = strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root><Name>Root</Name><Children><Node>
+    <CommonValues>
+      <MaxGeneration><Value>{}</Value></MaxGeneration>
+      <Life><Max>{}</Max><Min>{}</Min></Life>
+      <Generation><GenerationTime><Max>{}</Max><Min>{}</Min></GenerationTime></Generation>
+      <LocationEffectType>1</LocationEffectType>
+      <RotationEffectType>1</RotationEffectType>
+      <ScaleEffectType>1</ScaleEffectType>
+    </CommonValues>
+    <LocationValues><Type>0</Type><Fixed><Location>{}</Location></Fixed></LocationValues>
+    <RendererCommonValues><AlphaBlend>1</AlphaBlend></RendererCommonValues>
+    <DrawingValues><Type>2</Type><Sprite>
+      <Billboard>2</Billboard><Position>1</Position>
+      <Position_Fixed_LL><X>-0.25</X><Y>-0.25</Y></Position_Fixed_LL>
+      <Position_Fixed_LR><X>0.25</X><Y>-0.25</Y></Position_Fixed_LR>
+      <Position_Fixed_UL><X>-0.25</X><Y>0.25</Y></Position_Fixed_UL>
+      <Position_Fixed_UR><X>0.25</X><Y>0.25</Y></Position_Fixed_UR>
+    </Sprite></DrawingValues>
+    <Name>ModelTrail</Name><Children />
+  </Node></Children></Root>
+  <ToolVersion>1.80.5</ToolVersion><Version>3</Version>
+  <StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFFEKSEER", count, life, life, interval, interval, location).str();
+    EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/ModelTrail.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+
+    return safe_alloc::make_unique<EffekseerRuntimeTestRig>("Particles/EffekseerTests/ModelTrail.efk", std::move(compiled.Binary));
+}
+
+static auto DrawModelTrail(EffekseerRuntimeTestRig& rig, ParticleRuntimeSystem& system) -> vector<CapturedEffekseerDraw>
+{
+    rig.ClearDraws();
+    system.Draw();
+
+    return rig.GetDraws();
+}
+
+static void CheckLiveBoundsContainDraws(const ParticleBounds3D& bounds, const vector<CapturedEffekseerDraw>& draws)
+{
+    REQUIRE(!draws.empty());
+
+    for (const CapturedEffekseerDraw& draw : draws) {
+        for (const Vertex2D& vertex : draw.Vertices) {
+            CHECK(vertex.PosX >= bounds.PositionMin.x - bounds.BillboardRadius - 0.001f);
+            CHECK(vertex.PosX <= bounds.PositionMax.x + bounds.BillboardRadius + 0.001f);
+            CHECK(vertex.PosY >= bounds.PositionMin.y - bounds.BillboardRadius - 0.001f);
+            CHECK(vertex.PosY <= bounds.PositionMax.y + bounds.BillboardRadius + 0.001f);
+            CHECK(vertex.PosZ >= bounds.PositionMin.z - bounds.BillboardRadius - 0.001f);
+            CHECK(vertex.PosZ <= bounds.PositionMax.z + bounds.BillboardRadius + 0.001f);
+        }
+    }
+}
+
+TEST_CASE("Effekseer model placement accepts facing hints without rotating the bone pose twice", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    for (float32_t facing : {0.0f, 60.0f, 120.0f, 180.0f, 240.0f, 300.0f}) {
+        for (float32_t scale : {1.0f, 2.0f}) {
+            CAPTURE(facing, scale);
+
+            unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>2</X><Y>3</Y><Z>4</Z>");
+            unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+            ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+            setup.World = glm::translate(mat44 {1.0f}, vec3 {7.0f, 11.0f, 13.0f}) * glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+            setup.PositionOffset = {0.25f, 0.5f, 0.75f};
+            setup.LookDirectionAngle = facing;
+            setup.Scale = scale;
+            system->Setup(setup);
+            system->Respawn(541);
+
+            REQUIRE(system->IsActive());
+
+            system->Update(1.0f / 60.0f);
+            vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+            REQUIRE(draws.size() == 1);
+            REQUIRE(draws.front().Vertices.size() == 4);
+
+            vec3 center {};
+
+            for (const Vertex2D& vertex : draws.front().Vertices) {
+                center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ} / 4.0f;
+            }
+
+            vec3 expected = scale == 1.0f ? vec3 {11.75f, 14.5f, 10.75f} : vec3 {15.75f, 17.5f, 8.75f};
+            CHECK(center.x == Catch::Approx(expected.x).margin(0.001f));
+            CHECK(center.y == Catch::Approx(expected.y).margin(0.001f));
+            CHECK(center.z == Catch::Approx(expected.z).margin(0.001f));
+        }
+    }
+}
+
+TEST_CASE("Effekseer model bounds include old world particles and release their expired envelope", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(6, 2, 4.0f);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    setup.Scale = 4.0f;
+    system->Setup(setup);
+    system->Respawn(541);
+    system->Update(1.0f / 60.0f);
+    vector<CapturedEffekseerDraw> first = DrawModelTrail(*rig, *system);
+    REQUIRE(first.size() == 1);
+    REQUIRE(first.front().Vertices.size() == 4);
+
+    setup.World = glm::translate(mat44 {1.0f}, vec3 {100.0f, 0.0f, 0.0f});
+    setup.Scale = 0.25f;
+    system->Setup(setup);
+    system->Update(4.0f / 60.0f);
+    vector<CapturedEffekseerDraw> both = DrawModelTrail(*rig, *system);
+    REQUIRE(both.size() == 1);
+    REQUIRE(both.front().Vertices.size() == 8);
+
+    bool near_origin = false;
+    bool near_moved = false;
+
+    for (const Vertex2D& vertex : both.front().Vertices) {
+        near_origin |= std::abs(vertex.PosX) < 2.0f;
+        near_moved |= std::abs(vertex.PosX - 100.0f) < 2.0f;
+    }
+
+    REQUIRE(near_origin);
+    REQUIRE(near_moved);
+
+    rig->ClearDraws();
+    optional<ParticleBounds3D> live = system->GetLiveBounds();
+    REQUIRE(live);
+    CHECK(rig->GetDraws().empty());
+
+    CheckLiveBoundsContainDraws(*live, both);
+
+    CHECK(live->BillboardRadius >= 1.4f);
+    CHECK(live->BillboardRadius < 2.1f);
+
+    system->Update(3.0f / 60.0f);
+    vector<CapturedEffekseerDraw> last = DrawModelTrail(*rig, *system);
+    REQUIRE(last.size() == 1);
+    REQUIRE(last.front().Vertices.size() == 4);
+
+    live = system->GetLiveBounds();
+
+    REQUIRE(live);
+    CHECK(live->PositionMin.x - live->BillboardRadius > 50.0f);
+
+    for (int32_t frame = 0; frame < 20; frame++) {
+        system->Update(1.0f / 60.0f);
+    }
+
+    CHECK_FALSE(system->GetLiveBounds());
+}
+
+TEST_CASE("Effekseer atlas rebases move each live particle once without advancing generation", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 2, 4.0f);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    system->Setup(setup);
+    system->Respawn(541);
+    system->Update(1.0f / 60.0f);
+    vec3 total {};
+
+    for (vec3 delta : {vec3 {10.0f, 20.0f, 30.0f}, vec3 {-3.0f, 4.0f, 7.0f}, vec3 {1.0f, -2.0f, 3.0f}, vec3 {-1.0f, 2.0f, -3.0f}}) {
+        total += delta;
+        system->RebaseWorldParticles(delta);
+        setup.World = glm::translate(mat44 {1.0f}, total);
+        system->Setup(setup);
+        system->RefreshRenderTransform();
+        vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+        REQUIRE(draws.size() == 1);
+        REQUIRE(draws.front().Vertices.size() == 4);
+
+        vec3 center {};
+
+        for (const Vertex2D& vertex : draws.front().Vertices) {
+            center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ} / 4.0f;
+        }
+
+        CHECK(center.x == Catch::Approx(total.x).margin(0.001f));
+        CHECK(center.y == Catch::Approx(total.y).margin(0.001f));
+        CHECK(center.z == Catch::Approx(total.z).margin(0.001f));
+
+        optional<ParticleBounds3D> live = system->GetLiveBounds();
+        REQUIRE(live);
+
+        CheckLiveBoundsContainDraws(*live, draws);
+        system->Setup(setup);
+        system->RefreshRenderTransform();
+        CheckEffekseerDrawsEqual(draws, DrawModelTrail(*rig, *system));
+    }
+
+    system->Respawn(541);
+    system->Update(1.0f / 60.0f);
+    vector<CapturedEffekseerDraw> restarted = DrawModelTrail(*rig, *system);
+    REQUIRE(restarted.size() == 1);
+    REQUIRE(restarted.front().Vertices.size() == 4);
+
+    vec3 center {};
+
+    for (const Vertex2D& vertex : restarted.front().Vertices) {
+        center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ} / 4.0f;
+    }
+
+    CHECK(center.x == Catch::Approx(total.x).margin(0.001f));
+    CHECK(center.y == Catch::Approx(total.y).margin(0.001f));
+    CHECK(center.z == Catch::Approx(total.z).margin(0.001f));
+}
+
+TEST_CASE("Effekseer live bounds preserve a valid static envelope and shared draw renderers", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f);
+    unique_ptr<ParticleRuntimeSystem> first = rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> second = rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    setup.World = glm::translate(mat44 {1.0f}, vec3 {3.0f, 4.0f, 5.0f});
+    setup.Scale = 2.0f;
+    first->Setup(setup);
+    first->Respawn(541);
+    first->Update(1.0f / 60.0f);
+    setup.World = glm::translate(mat44 {1.0f}, vec3 {100.0f, 0.0f, 0.0f});
+    second->Setup(setup);
+    second->Respawn(542);
+    second->Update(1.0f / 60.0f);
+    vector<CapturedEffekseerDraw> second_before = DrawModelTrail(*rig, *second);
+    REQUIRE(!second_before.empty());
+
+    rig->ClearDraws();
+    optional<ParticleBounds3D> live = first->GetLiveBounds();
+    REQUIRE(live);
+    CHECK(live->PositionMin == vec3 {1.0f, 2.0f, 3.0f});
+    CHECK(live->PositionMax == vec3 {5.0f, 6.0f, 7.0f});
+    CHECK(live->BillboardRadius == Catch::Approx(1.0f));
+
+    optional<ParticleBounds3D> baked = first->GetBakedBounds();
+    REQUIRE(baked);
+    CHECK(baked->PositionMin == vec3 {-1.0f, -1.0f, -1.0f});
+    CHECK(baked->PositionMax == vec3 {1.0f, 1.0f, 1.0f});
+    CHECK(baked->BillboardRadius == Catch::Approx(0.5f));
+    CHECK(rig->GetDraws().empty());
+
+    CheckEffekseerDrawsEqual(second_before, DrawModelTrail(*rig, *second));
+}
+
+TEST_CASE("Effekseer rejects nonfinite hints and ignores invalid rebases without mutation", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    for (float32_t hint : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity()}) {
+        unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f);
+        unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+        setup.LookDirectionAngle = hint;
+        system->Setup(setup);
+        system->Respawn(541);
+
+        CHECK_FALSE(system->IsActive());
+    }
+
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 2, 4.0f);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Respawn(541);
+    system->Update(1.0f / 60.0f);
+    vector<CapturedEffekseerDraw> before = DrawModelTrail(*rig, *system);
+    REQUIRE(before.size() == 1);
+    REQUIRE(before.front().Vertices.size() == 4);
+
+    for (vec3 delta : {vec3 {std::numeric_limits<float32_t>::quiet_NaN(), 0.0f, 0.0f}, vec3 {0.0f, std::numeric_limits<float32_t>::infinity(), 0.0f}}) {
+        system->RebaseWorldParticles(delta);
+        system->RefreshRenderTransform();
+
+        REQUIRE(system->IsActive());
+
+        CheckEffekseerDrawsEqual(before, DrawModelTrail(*rig, *system));
+    }
+}
+
+TEST_CASE("Effekseer bounds queries do not acquire a distortion scene background", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
+    rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Unavailable);
+    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Respawn(541);
+    system->Update(1.0f / 60.0f);
+    optional<ParticleBounds3D> live = system->GetLiveBounds();
+    REQUIRE(live);
+    REQUIRE(system->IsActive());
+    CHECK(rig->GetDraws().empty());
+
+    live = system->GetLiveBounds();
+
+    REQUIRE(live);
+
+    rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Available);
+    vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+    REQUIRE(!draws.empty());
+    CHECK(draws.front().HasBackgroundTexture);
+}
+
+TEST_CASE("Effekseer live bounds measure each supported renderer family", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    for (int32_t type : {2, 3, 4, 5, 6}) {
+        CAPTURE(type);
+
+        string drawing;
+
+        switch (type) {
+        case 2:
+            drawing = "<Type>2</Type><Sprite />";
+            break;
+        case 3:
+            drawing = "<Type>3</Type><Ribbon><ViewpointDependent>False</ViewpointDependent></Ribbon>";
+            break;
+        case 4:
+            drawing = "<Type>4</Type><Ring><Billboard>2</Billboard><VertexCount>16</VertexCount></Ring>";
+            break;
+        case 5:
+            drawing = "<Type>5</Type><Model><Model>Model/Fixture.efkmodel</Model><Billboard>2</Billboard><Culling>2</Culling></Model>";
+            break;
+        case 6:
+            drawing = "<Type>6</Type><TrailSmoothing>0</TrailSmoothing><Track />";
+            break;
+        }
+
+        string project = strex(ParticleTests::StripProjectTemplate, drawing).str();
+        size_t drawing_position = project.find("<DrawingValues>");
+
+        REQUIRE(drawing_position != string::npos);
+
+        project.insert(drawing_position, "<ScalingValues><Type>0</Type><Fixed><Scale><X>16</X><Y>16</Y><Z>16</Z></Scale></Fixed></ScalingValues>");
+        EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/ShapeBounds.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+        map<string, vector<uint8_t>> dependencies;
+        dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", ParticleTests::MakeFixtureModelPayload());
+        EffekseerRuntimeTestRig rig {"Particles/EffekseerTests/ShapeBounds.efk", std::move(compiled.Binary), dependencies};
+        unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+        setup.Scale = 0.25f;
+        system->Setup(setup);
+        system->Respawn(541);
+
+        for (int32_t frame = 0; frame < 6; frame++) {
+            system->Update(1.0f / 60.0f);
+        }
+
+        optional<ParticleBounds3D> live = system->GetLiveBounds();
+        REQUIRE(live);
+        CHECK(rig.GetDraws().empty());
+
+        vector<CapturedEffekseerDraw> draws = DrawModelTrail(rig, *system);
+        REQUIRE(!draws.empty());
+        REQUIRE(!draws.front().Vertices.empty());
+
+        CheckLiveBoundsContainDraws(*live, draws);
+
+        CHECK(live->BillboardRadius > 1.0f);
+    }
+}
+
+TEST_CASE("Effekseer bounds queries preserve future seeded generations", "[particle][effekseer-runtime][model-particle-integration]")
+{
+    EffekseerRuntimeTestRig queried_rig;
+    EffekseerRuntimeTestRig control_rig;
+    unique_ptr<ParticleRuntimeSystem> queried = queried_rig.CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control = control_rig.CreateSystem();
+    queried->Setup(MakeEffekseerIdentitySetup());
+    control->Setup(MakeEffekseerIdentitySetup());
+    queried->Respawn(173);
+    control->Respawn(173);
+
+    for (int32_t frame = 0; frame < 12; frame++) {
+        queried->Update(1.0f / 60.0f);
+        control->Update(1.0f / 60.0f);
+        optional<ParticleBounds3D> first_query = queried->GetLiveBounds();
+        optional<ParticleBounds3D> second_query = queried->GetLiveBounds();
+        REQUIRE(first_query);
+        REQUIRE(second_query);
+        CHECK(queried_rig.GetDraws().empty());
+    }
+
+    vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(queried_rig, *queried);
+    vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(control_rig, *control);
+    REQUIRE(!queried_draws.empty());
+
+    CheckEffekseerDrawsEqual(queried_draws, control_draws);
+}
+
 #endif
 
 FO_END_NAMESPACE

@@ -43,7 +43,7 @@ class ParticleFormatDocumentationTests(unittest.TestCase):
             outputs["bake_transforms"], {"spark": "spk", "efkproj": "efk"}
         )
         self.assertTrue(outputs["authored_binaries_rejected"])
-        self.assertEqual(self.model["summary"]["entry_count"], 113)
+        self.assertEqual(self.model["summary"]["entry_count"], 115)
         self.assertEqual(self.model["summary"]["format_count"], 4)
         self.assertEqual(self.model["summary"]["graph_object_count"], 37)
 
@@ -90,9 +90,12 @@ class ParticleFormatDocumentationTests(unittest.TestCase):
             runtime["particle-format.runtime.baked-bounds"]["requirement"],
         )
         self.assertIn(
-            "only while the backend has live particles or instances",
+            "While instances live",
             runtime["particle-format.runtime.live-bounds"]["requirement"],
         )
+        self.assertIn("Sprite/Ribbon/Ring/Track/Model", runtime["particle-format.runtime.live-bounds"]["requirement"])
+        self.assertIn("zero-time RefreshRenderTransform", runtime["particle-format.runtime.world-rebase"]["requirement"])
+        self.assertIn("without applying a second yaw", runtime["particle-format.runtime.effekseer-placement"]["requirement"])
 
     def test_effekseer_profile_is_explicit_and_fail_closed(self) -> None:
         renderer = {

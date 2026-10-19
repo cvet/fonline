@@ -202,8 +202,8 @@ drawing. `ParticleSystem` adds the shared timing and control facade. Its explici
 - `Prewarm` advances an effect before ordinary playback;
 - `SetScale` reapplies runtime setup without replacing the effect;
 - `GetBakedBounds` exposes the validated position box and billboard radius;
-- `GetLiveBounds` returns transformed baked bounds only while particles are
-  visible;
+- `GetLiveBounds` retains transformed baked bounds while instances live and
+  extends them with current Effekseer instance positions and shape radii;
 - `ComputeSpriteFrame` projects baked bounds through the map camera and derives
   sprite allocation, emitter offset, and world transform;
 - `GetDrawInScene` selects the atlas or direct-scene rendering route.
@@ -214,12 +214,32 @@ scale but remains camera-facing, so callers add it as view-plane padding and do
 not rotate it as another world-space point. Attached model particles expand the
 model frame only while their backend reports live particles or instances.
 
+Effekseer model placement treats `ParticleRuntimeSetup.World` as the complete
+bone pose. A finite `LookDirectionAngle` is accepted as a legacy hint without
+applying a second yaw; a non-finite hint rejects the effect. Orient the effect
+through `World` or its authored nodes.
+
+For emitters bound at particle creation, moving or shrinking the emitter does
+not move or shrink older particles. Live bounds therefore union the current
+baked envelope with Sprite/Ribbon/Ring/Track/Model instance geometry. A cached
+CPU callback pass measures those instances without GPU packets, scene-background
+capture, simulation advancement or random generation. Expired particles stop
+extending the frame; the existing model texture-size cap still applies.
+
+`RebaseWorldParticles(delta)` changes the internal atlas origin, separately from
+ordinary emitter movement. The model pairs it with its new absolute `Setup`
+and zero-time `RefreshRenderTransform`; old particles translate once while a
+compensating simulation root keeps future births at the current emitter.
+Non-finite deltas or overflowing accumulated coordinates are ignored before
+mutation. Respawn and handle retirement clear the old translation base.
+
 The same seed is deterministic only with the same resource, backend revision,
 setup, and update sequence. Do not use seeded replay as a cross-version visual
 compatibility promise.
 
-Effekseer currently uses direct-scene rendering. SPARK may use either atlas or
-direct-scene rendering. Both routes still depend on the embedding project's
+Standalone Effekseer particle sprites use direct-scene rendering. SPARK sprites
+may use either atlas or direct-scene rendering. Model-bone particles follow the
+model atlas/direct-scene route, including GUI atlas previews. Both routes still depend on the embedding project's
 effect state, image resources, camera settings, and draw order.
 
 ## Integration

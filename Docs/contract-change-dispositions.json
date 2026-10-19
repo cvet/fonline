@@ -14700,6 +14700,42 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-10-29",
       "compatibility": "Matching binaries, generated metadata, assemblies and resources; runtime marker 0.0.84, Managed ABI 9. Preserve the preceding matching complete artifact/data set for rollback.",
       "owner": "Engine native-codegen and client rendering maintainers"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.f8acc7866e17acf9",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "e5235217351025847efbb817c50e3cd3ddf1106eb91f841ba46a9ae6288e601b",
+      "classification": "breaking",
+      "rationale": "Preserve the reproducible baked baseline while measuring current model trails: the former baked-only rule clipped moved emitters and previous particle scales. Cached CPU renderer probes have semantic RED/GREEN controls for all five renderer families.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and its Russian mirror: rebuild matching roles and bake metadata; retain paired RebaseWorldParticles, absolute Setup and zero-time refresh ordering. No authored or persisted data conversion is introduced.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor during eventual master integration.",
+      "compatibility": "The experimental bounds behavior expands valid model frames; static baked envelopes, resource payload/trailer, grammar, network marker and Managed ABI remain unchanged. Native tests pass; embedding-project GPU/platform gates remain explicit.",
+      "owner": "Engine particle runtime and model integration contracts"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.63f7395ae8d10474",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "e5235217351025847efbb817c50e3cd3ddf1106eb91f841ba46a9ae6288e601b",
+      "classification": "breaking",
+      "rationale": "Preserve the reproducible baked baseline while measuring current model trails: the former baked-only rule clipped moved emitters and previous particle scales. Cached CPU renderer probes have semantic RED/GREEN controls for all five renderer families.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and its Russian mirror: rebuild matching roles and bake metadata; retain paired RebaseWorldParticles, absolute Setup and zero-time refresh ordering. No authored or persisted data conversion is introduced.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor during eventual master integration.",
+      "compatibility": "The experimental bounds behavior expands valid model frames; static baked envelopes, resource payload/trailer, grammar, network marker and Managed ABI remain unchanged. Native tests pass; embedding-project GPU/platform gates remain explicit.",
+      "owner": "Engine particle runtime and model integration contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.8eef47949319e245",
+      "baseline_contract_sha256": "bf6805f014e079c9568a00fca6fc7dab09f9e63f7ceb5369be91587329d3c1b6",
+      "current_contract_sha256": "85500cdd3ea634b1089528490b6b9d4e3d167b9118dae4d804ee0b052fa6b13a",
+      "classification": "breaking",
+      "rationale": "Review one additive native-codegen method, Critter.GetBonePosWithOffset, for projecting a model-local point through the current bone pose. Existing symbol IDs and signatures remain present; the experimental inventory pin advances by one.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and its Russian mirror: rebuild matching client/Mapper and metadata owners, regenerate and bake scripts. Callers pass authored model units, check false for missing/invalid/unrepresentable positions and avoid screen-space directional approximations.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate a dated next-minor entry during eventual master integration.",
+      "compatibility": "The API inventory scope changes and requires a matching Engine revision/generated metadata. This is additive; existing GetBonePos signatures, network marker and persistent data remain unchanged. Roll back matching binaries/resources together; no save conversion.",
+      "owner": "Engine scripting and model rendering contracts"
     }
   ]
 }

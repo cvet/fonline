@@ -10937,6 +10937,10 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.method.client.Critter.GetBonePosWithOffset/description": {
+          "source_sha256": "8b6368f9a9efc6461c19626a9449d2cb181d3946b049a2d753fd2c8db6d8071a",
+          "translation": "Проецирует локальную точку кости в авторских единицах модели в логические пиксели относительно спрайта; возвращает false при отсутствии модели/кости, некорректной или непредставимой точке, оставляя смещение спрайта; выбрасывает исключение вне карты."
         }
       }
     },
@@ -17805,8 +17809,8 @@
           "translation": "Обязательные запечённые границы"
         },
         "/runtime_rules/@id=particle-format.runtime.baked-bounds/rationale": {
-          "source_sha256": "f1dae483e1dc422d0b350ca11d37793d13bdd537f5865ad0ca7198fe0bf297c9",
-          "translation": "Статически измеренные границы заменяют ручные размеры отрисовки и не требуют пересчитывать AABB частиц каждый кадр."
+          "source_sha256": "afbdde93d2b67dca06aa482a9ca569ee92c937115a8809ce14684e5efca28568",
+          "translation": "Воспроизводимые исходные размеры дают стабильную раскладку атласа без ручного авторинга; модельные шлейфы могут расширять эту рамку текущими живыми экземплярами."
         },
         "/runtime_rules/@id=particle-format.runtime.baked-bounds/requirement": {
           "source_sha256": "78b9509f9b8473cf1f6fa209f52bb210b4b86870d8a063219b7f335818ddd4be",
@@ -17823,6 +17827,18 @@
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/requirement": {
           "source_sha256": "8f6031bcc99d4c4f2c0151f6629acefaeb4948d1dcbaef85e30909433ba6e6c1",
           "translation": "Считайте ParticleBounds3D.PositionMin/PositionMax мировыми позициями, преобразованными полной матрицей размещения, а BillboardRadius — ориентированным к камере запасом, преобразованным только масштабом размещения."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/name": {
+          "source_sha256": "c1022a8420438ee6f7d1ab164a4dea87915d42fb0722b52247c2476186f97d9b",
+          "translation": "Размещение Effekseer на модели"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/rationale": {
+          "source_sha256": "5533225c549ffc8a9796318bcce79bbcaa9a3d3896a8d643f994c9b65cf29448",
+          "translation": "Модель уже передаёт своё направление в позе кости."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/requirement": {
+          "source_sha256": "7d1584cb2a74995df9f860777f2b6284ccd686e28107b555b55616a9066b7b56",
+          "translation": "World задаёт полную позу кости модели. Принимайте конечный LookDirectionAngle как неиспользуемую прежнюю подсказку без второго yaw; отклоняйте неконечную подсказку. Прежнее размещение с нулевой подсказкой не меняется."
         },
         "/runtime_rules/@id=particle-format.runtime.extension-routing/name": {
           "source_sha256": "97c3da94e448c91b354aa0f8b5c7ef53d2754f59960c30039c005fdbccbef9e4",
@@ -17845,8 +17861,8 @@
           "translation": "Периодические прикреплённые эффекты должны расширять содержащую их модель только во время видимости."
         },
         "/runtime_rules/@id=particle-format.runtime.live-bounds/requirement": {
-          "source_sha256": "de21a3048bbf72b3ea7069208027372c253f2d57472ac52f0f6c2d9508b6d22d",
-          "translation": "GetLiveBounds возвращает преобразованные запечённые границы, только пока в подсистеме есть активные частицы или экземпляры; неактивные и завершённые системы не резервируют пространство кадра модели."
+          "source_sha256": "f3f7c9c6867a435da941dd2c5104122ada17316a292e38ebfda9f0e94c1fce71",
+          "translation": "Пока экземпляры живы, сохраняйте преобразованную baked-рамку и расширяйте границы модели Effekseer текущими позициями и радиусами геометрии Sprite/Ribbon/Ring/Track/Model. Кешируйте CPU-измерение до изменения setup или симуляции; не продвигайте время и RNG, не рисуйте GPU-пакеты и не захватывайте фон сцены. Истёкшие экземпляры освобождают свой вклад в рамку."
         },
         "/runtime_rules/@id=particle-format.runtime.prewarm/name": {
           "source_sha256": "aa3007c02fc4b5c35552d56bbdf8a5d4187733dc6d17a86bf36bfcee644039ac",
@@ -17932,6 +17948,18 @@
         "/runtime_rules/@id=particle-format.runtime.update-cadence/requirement": {
           "source_sha256": "61829bdc1bb9b2f5b748de3b1325ceca4b78676413e87bf57adeeae3eb9d8829",
           "translation": "Render.Animation3dFPS задаёт порог обновления частиц в миллисекундах; ноль оставляет нулевой порог и тем самым допускает обновление каждый кадр."
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/name": {
+          "source_sha256": "775d7b45f5d2704e466ce0ce561098563989c0a138139bbaa379de489d6b2c64",
+          "translation": "Перенос начала координат атласа"
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/rationale": {
+          "source_sha256": "d474c96f8d787b89f9ecaa3c65421262e6a28cd407915893a52a136e83555a0e",
+          "translation": "Изменения координат атласа должны сохранять мировые шлейфы без старения частиц и двойного перемещения будущих рождений."
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/requirement": {
+          "source_sha256": "a6ba985c039cf7f25de44613e46eefffd3b403067be1b5a145a48e121978649f",
+          "translation": "RebaseWorldParticles переносит существующие экземпляры Effekseer один раз через базу отрисовки с компенсацией корня симуляции. Сочетайте его с новым абсолютным Setup и RefreshRenderTransform с нулевым временем. Игнорируйте некорректные delta до изменения состояния; respawn и освобождение handle сбрасывают базу переноса."
         },
         "/runtime_rules/@id=particle-format.runtime.world-scale/name": {
           "source_sha256": "d7279f62766bcc3c71a20f73f9a37e80de59c4d50f56db94b42fa8790bb7ba2d",

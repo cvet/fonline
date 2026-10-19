@@ -910,6 +910,76 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->NeedDraw());
     }
 
+    SECTION("BoneOffsetsKeepSpriteCoordinatesAfterDirectSceneDraw")
+    {
+        // ModelManager names the physical root after the loaded mesh resource.
+        hstring root_bone = client->Hashes.to_hashed_string(MESH_PATH);
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone")));
+
+        ignore_unused(model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr, 0.0f, ModelAnimFlags::Freeze));
+        model->StartMeshGeneration();
+
+        for (ipos32 pivot : {ipos32 {64, 96}, ipos32 {23, 71}}) {
+            model->SetupFrame(isize32 {128, 128}, pivot);
+            model->PoseSpriteFrame(false);
+            auto atlas_offset = model->GetBonePos(root_bone);
+            REQUIRE(atlas_offset);
+
+            // The independently posed atlas is the reference, including authored/default layer transforms.
+            for (float32_t scene_scale : {0.5f, 2.0f}) {
+                mat44 proj = client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+                model->DrawInScene(proj, scene_scale);
+                auto direct_offset = model->GetBonePos(root_bone);
+                REQUIRE(direct_offset);
+                CHECK(direct_offset->x == atlas_offset->x);
+                CHECK(direct_offset->y == atlas_offset->y);
+            }
+
+            model->PoseSpriteFrame(false);
+
+            CHECK(model->GetBonePos(root_bone) == atlas_offset);
+        }
+    }
+
+    SECTION("BoneLocalPointsRotateAndKeepSpriteCoordinatesAfterDirectDraw")
+    {
+        hstring root_bone = client->Hashes.to_hashed_string(MESH_PATH);
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->StartMeshGeneration();
+        auto point = vec3 {0.7f, 0.4f, 0.3f};
+        optional<ipos32> previous;
+
+        for (int16_t angle : {int16_t {0}, int16_t {90}, int16_t {180}}) {
+            model->SetDir(mdir {angle}, false);
+            model->PoseSpriteFrame(false);
+            auto origin = model->GetBonePos(root_bone);
+            auto shifted = model->GetBonePos(root_bone, point);
+            REQUIRE(origin);
+            REQUIRE(shifted);
+            CHECK(shifted != origin);
+            CHECK(model->GetBonePos(root_bone, vec3 {0.0f}) == origin);
+
+            if (previous) {
+                CHECK(shifted != previous);
+            }
+
+            previous = shifted;
+
+            for (float32_t scene_scale : {0.5f, 2.0f}) {
+                mat44 proj = client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+                model->DrawInScene(proj, scene_scale);
+
+                CHECK(model->GetBonePos(root_bone, point) == shifted);
+            }
+        }
+
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone"), point));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {std::numeric_limits<float32_t>::quiet_NaN(), 0.0f, 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {0.0f, std::numeric_limits<float32_t>::infinity(), 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {1.0e20f, 0.0f, 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {-1.0e20f, 0.0f, 0.0f}));
+    }
+
     SECTION("TheInstanceDrawsThroughTheHeadlessRenderer")
     {
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});

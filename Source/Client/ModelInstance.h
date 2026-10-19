@@ -112,7 +112,7 @@ public:
     [[nodiscard]] auto GetFramePivot() const noexcept -> ipos32 { return _framePivot; }
     [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
-    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset = vec3 {0.0f}) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
@@ -295,6 +295,7 @@ private:
     nptr<ModelInstance> _parent {};
     uint32_t _parentJointIndex {std::numeric_limits<uint32_t>::max()};
     mat44 _parentMatrix {};
+    mat44 _poseToSpriteFrame {1.0f};
     vector<ModelPoseJointLink> _linkJoints {};
     ModelAnimationData _animLink {};
     bool _childChecker {};

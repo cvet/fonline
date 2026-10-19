@@ -990,6 +990,30 @@ The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDra
 
 `ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data and deliberately uses the entire automatically calculated logical frame, so the cached draw rectangle cannot cull a continuously updated direct pose. Model-bone SPARK and Effekseer particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth; Effekseer distortion attachments additionally pull the direct replay's scene-background snapshot on demand. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
 
+`ModelInstance::GetBonePos` returns a logical pixel offset relative to the model
+sprite origin after either atlas or direct scene posing. The direct pose retains
+its conversion to the atlas coordinate frame, including pivot, supersampling and
+camera tilt; resetting the draw-mode flag does not change the meaning of retained
+bone matrices. `Critter.GetBonePos` adds the critter sprite offset through the same
+native route. A missing bone or a non-finite posed position returns no offset.
+
+`Critter.GetBonePosWithOffset(boneName, moveX, moveY, moveZ, boneOffset)`
+projects a point in that bone's local coordinates through the complete current
+bone transform before the same sprite conversion. The offset uses the model's
+authored units and axes, including its descriptor transforms; it is not a pixel
+offset or a map position. Use this for a rigid mesh that has no dedicated socket,
+and prefer an existing authored socket where one is available. Missing bones,
+non-finite inputs and positions outside the representable pixel range return
+`false` and leave `boneOffset` at the critter sprite offset. Zero local offset
+matches `GetBonePos`. Pose the model before querying either method.
+
+Effekseer attachments use the complete bone pose without applying the legacy
+look-direction hint again. Their frame includes live world-space trails and
+previous particle scales through CPU renderer probes; these bounds queries do
+not draw GPU packets or capture a distortion background. Atlas-origin rebases
+translate old particles once and compensate the emitter root before its paired
+absolute setup and zero-time refresh. See the [particle runtime contract](../../how-to/content/particle-format.md#runtime-contract).
+
 Cached model-sprite frames use the resolved logical cap: the minimum of
 `Render.ModelSpriteMaxTextureWidth` / `Height` and the current machine's
 `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT`, divided by `FRAME_SCALE` because the

@@ -420,6 +420,47 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
 #endif
 }
 
+// Projects a bone-local point in authored model units to sprite-relative logical pixels; returns false for missing models/bones or invalid/unrepresentable points, leaving the sprite offset; throws off-map
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBonePosWithOffset(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset)
+{
+    auto hex_cr = RequireHexCritter(self);
+    boneOffset = hex_cr->GetSpriteOffset();
+
+#if FO_ENABLE_3D
+    auto model = hex_cr->GetModel();
+
+    if (!model) {
+        return false;
+    }
+
+    auto point = model->GetBonePos(boneName, vec3 {moveX, moveY, moveZ});
+
+    if (!point) {
+        return false;
+    }
+
+    int64_t x = numeric_cast<int64_t>(boneOffset.x) + point->x;
+    int64_t y = numeric_cast<int64_t>(boneOffset.y) + point->y;
+
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
+        return false;
+    }
+
+    boneOffset = ipos32 {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+
+    return true;
+
+#else
+    ignore_unused(boneName);
+    ignore_unused(moveX);
+    ignore_unused(moveY);
+    ignore_unused(moveZ);
+
+    return false;
+#endif
+}
+
 // Starts local movement exactly to the target hex and clamped sub-hex offset, returning the movement context or null when no movement remains; throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)

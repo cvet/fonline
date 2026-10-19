@@ -31,6 +31,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-getbonepos-e97f807758"></a>
 - [`symbol-script-method-client-critter-getbonepos-e97f807758`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonepos-e97f807758)
 
+<a id="symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a"></a>
+- [`symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a)
+
 <a id="symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a"></a>
 - [`symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a)
 

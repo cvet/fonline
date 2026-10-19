@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"8ffb17e1197f82778180abc133818e8be20fcd44edec9a29321606e4b9a12cdd"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"db01875afad9c32186e74f9f70e0441ea52a9c1c1156a22f8381dfd9a913891a"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -207,7 +207,8 @@ Preview поддерживает фильтрацию ресурсов, разм
 - `Prewarm` продвигает эффект вперёд до обычного воспроизведения;
 - `SetScale` повторно применяет runtime-setup без замены эффекта;
 - `GetBakedBounds` предоставляет валидированные прямоугольник позиций и радиус билборда;
-- `GetLiveBounds` возвращает трансформированные baked bounds только пока частицы видимы;
+- `GetLiveBounds` сохраняет трансформированные baked bounds, пока живы instances,
+  и расширяет их текущими позициями и радиусами геометрии Effekseer;
 - `ComputeSpriteFrame` проецирует baked bounds через камеру карты и выводит выделение
   спрайта, offset эмиттера и world transform;
 - `GetDrawInScene` выбирает атласный или direct-scene rendering route.
@@ -218,12 +219,32 @@ Preview поддерживает фильтрацию ресурсов, разм
 вида и не вращают как ещё одну точку world space. Прикреплённые к модели частицы
 расширяют кадр модели только пока backend сообщает о живых частицах или instances.
 
+Для модельного Effekseer `ParticleRuntimeSetup.World` задаёт полную позу кости.
+Конечный `LookDirectionAngle` принимается как прежняя подсказка без второго yaw;
+неконечный угол отклоняет эффект. Поворот эффекта задаётся через `World` либо
+авторские узлы.
+
+Если привязка эмиттера фиксируется при рождении, его движение или уменьшение
+не двигает и не уменьшает старые частицы. Поэтому live bounds объединяют текущую
+baked-рамку с геометрией instances Sprite/Ribbon/Ring/Track/Model. Кешируемый
+проход CPU callbacks измеряет их без GPU-пакетов, захвата фона сцены, продвижения
+симуляции и генерации случайных значений. Истёкшие частицы перестают расширять
+кадр; прежний лимит текстуры модели сохраняется.
+
+`RebaseWorldParticles(delta)` меняет внутреннее начало координат атласа отдельно
+от обычного движения эмиттера. Модель сочетает его с новым абсолютным `Setup`
+и `RefreshRenderTransform` с нулевым временем: старые частицы сдвигаются один раз,
+а компенсация корня симуляции сохраняет место рождения новых частиц у эмиттера.
+Неконечный delta либо переполнение суммы координат игнорируются до изменения
+состояния. Respawn и освобождение handle очищают прежнюю базу переноса.
+
 Одинаковый seed детерминирован только с тем же ресурсом, ревизией backend, setup
 и последовательностью обновлений. Не используйте seeded replay как межверсионное
 обещание визуальной совместимости.
 
-Effekseer сейчас использует direct-scene rendering. SPARK может использовать атласный
-или direct-scene route. Оба маршрута всё равно зависят от состояния эффекта, image resources,
+Самостоятельные спрайты частиц Effekseer используют direct-scene rendering.
+Спрайты SPARK могут использовать атласный или direct-scene route. Частицы на
+костях следуют atlas/direct-scene режиму модели, включая GUI-превью в атласе. Оба маршрута всё равно зависят от состояния эффекта, image resources,
 настроек камеры и draw order встраивающего проекта.
 
 ## Интеграция
