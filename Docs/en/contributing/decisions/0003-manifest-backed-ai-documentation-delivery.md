@@ -40,7 +40,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
    Each complete document keeps its ID, source path and canonical `URL:` header; compact labels preserve the byte budget.
-4. The manifest checks the reviewed 2 MiB + 224 KiB (2,326,528 bytes) before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Reviewed growth:
+4. The reviewed size limit is owned by `ai_delivery.full_context.max_bytes` in the [documentation manifest](../../../documentation-manifest.json). The generator checks it before output. Oversize fails closed: no truncation or unreviewed increase. Whole-document membership, exclusions and generated indexes stay unchanged. Earlier reviewed growth:
 
    | Date / revision | Complete bundle bytes | Reviewed growth and reason |
    |---|---:|---|
@@ -52,7 +52,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2,282,913 | +32 KiB: optional-component, baking-lock and migration guides; 21,921 bytes over the prior limit. Already in the published manifest. |
    | 2026-10-13, placement selection | 2,294,456 before this ADR row | +32 KiB: retain the effective-placement contract and required version-38 migration record; 696 bytes over the previous limit. No membership or exclusion changes. |
 
-   The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Omitted pages remain in `llms.txt`, search and the public manifest. Checked managed-arithmetic guides/migration notes use this bound without another increase or exclusion.
+   The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Omitted pages remain in `llms.txt`, search and the public manifest. Budget review retains complete owning guides and required migration notes.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.

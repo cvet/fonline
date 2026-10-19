@@ -1233,15 +1233,16 @@ a2i_IPADDRESS_NC(const char *ipasc)
 	ASN1_OCTET_STRING *ret = NULL;
 	unsigned char ipout[32];
 	char *iptmp = NULL, *p;
+	const char *slash; /* (FOnline Patch) Search const input, mutate only its owned copy. */
 	int iplen1, iplen2;
 
-	p = strchr(ipasc, '/');
-	if (!p)
+	slash = strchr(ipasc, '/');
+	if (!slash)
 		return NULL;
 	iptmp = strdup(ipasc);
 	if (!iptmp)
 		return NULL;
-	p = iptmp + (p - ipasc);
+	p = iptmp + (slash - ipasc);
 	*p++ = 0;
 
 	iplen1 = a2i_ipadd(ipout, iptmp);

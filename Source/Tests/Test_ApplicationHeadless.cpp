@@ -45,7 +45,7 @@ TEST_CASE("ApplicationConsoleInterrupt", "[.][console-interrupt]")
     ptr<Application> app = GetApp();
     REQUIRE_FALSE(app->IsQuitRequested());
     REQUIRE(fs::write_file("console-interrupt.ready", "ready"));
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
 
     while (!app->IsQuitRequested() && std::chrono::steady_clock::now() < deadline) {
         app->BeginFrame();
@@ -66,7 +66,7 @@ TEST_CASE("ApplicationConsoleInterruptDeferred", "[.][console-interrupt-deferred
 
     // Wait for the release marker without touching quit state: the control event must only latch
     // the flag, never terminate work on its own
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
 
     while (!fs::exists("console-interrupt-deferred.release") && std::chrono::steady_clock::now() < deadline) {
         coarse_sleep(std::chrono::milliseconds {10});

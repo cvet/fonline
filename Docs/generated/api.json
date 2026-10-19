@@ -1132,7 +1132,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 73",
+      "signature": "Version 0 0 74",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1154,7 +1154,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "73"
+      "replacement": "74"
     },
     {
       "id": "script.entity.Critter",

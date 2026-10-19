@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import io
 import json
 import os
@@ -328,3 +329,130 @@ def test_single_zip_merge_rejects_conflicting_package_entries(tmp_path: Path) ->
 
     with pytest.raises(AssertionError, match="Conflicting zip entry while merging package parts: shared.dll"):
         _package.make_zip(archive_path, second_part, 6, "a")
+
+
+def _distribution_packager(tmp_path: Path, packs: set[str]) -> _package.Packager:
+    import argparse
+
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.args = argparse.Namespace(target="Client", config="Cleanup", platform="Windows")
+    packager.pack_args = packs | {"NoRes", "Raw"}
+    packager.output_path = str(tmp_path / "output")
+    Path(packager.output_path).mkdir()
+    packager.target_output_path = str(Path(packager.output_path) / "FO-Client-Cleanup")
+    packager.bundle_compress_level = 6
+    packager.logical_file_modes = {}
+
+    def populate() -> None:
+        (Path(packager.target_output_path) / "payload.txt").write_bytes(b"package payload")
+
+    packager.select_platform_packager = lambda: populate
+    packager.sign_windows_binaries = lambda: None
+    packager.persist_logical_file_modes = lambda: None
+    return packager
+
+
+def test_failed_bundle_cleanup_removes_partial_zip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    packager = _distribution_packager(tmp_path, {"Zip"})
+    archive_path = Path(packager.target_output_path + ".zip")
+    disk_full = OSError(errno.ENOSPC, "injected disk exhaustion")
+    real_write = zipfile.ZipFile.write
+    wrote_payload = []
+
+    def write_then_fail(archive, *args, **kwargs):
+        real_write(archive, *args, **kwargs)
+        wrote_payload.append(archive_path.is_file())
+        raise disk_full
+
+    monkeypatch.setattr(zipfile.ZipFile, "write", write_then_fail)
+    with pytest.raises(OSError) as raised:
+        packager.run()
+
+    assert raised.value is disk_full
+    assert wrote_payload == [True]
+    assert not Path(packager.target_output_path).exists()
+    assert not archive_path.exists()
+
+
+def test_failed_bundle_cleanup_removes_zip_after_later_installer_error(tmp_path: Path) -> None:
+    packager = _distribution_packager(tmp_path, {"Zip", "Wix"})
+    archive_path = Path(packager.target_output_path + ".zip")
+    installer_error = RuntimeError("injected installer error")
+
+    def fail_installer():
+        assert archive_path.is_file()
+        raise installer_error
+
+    packager.make_wix_installer = fail_installer
+    with pytest.raises(RuntimeError) as raised:
+        packager.run()
+
+    assert raised.value is installer_error
+    assert not archive_path.exists()
+
+
+def test_failed_bundle_cleanup_keeps_primary_error_if_zip_removal_fails(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    packager = _distribution_packager(tmp_path, {"Zip", "Wix"})
+    archive_path = Path(packager.target_output_path + ".zip")
+    primary_error = RuntimeError("injected installer error")
+    real_remove = os.remove
+
+    def fail_installer():
+        raise primary_error
+
+    def deny_archive_removal(path, *args, **kwargs):
+        if str(path) == str(archive_path):
+            raise PermissionError(errno.EACCES, "injected locked archive")
+        return real_remove(path, *args, **kwargs)
+
+    packager.make_wix_installer = fail_installer
+    monkeypatch.setattr(_package.os, "remove", deny_archive_removal)
+    with pytest.raises(RuntimeError) as raised:
+        packager.run()
+
+    assert raised.value is primary_error
+    assert archive_path.is_file()
+    assert "injected locked archive" in capsys.readouterr().out
+
+
+def test_failed_bundle_before_zip_creation_keeps_primary_error(tmp_path: Path) -> None:
+    packager = _distribution_packager(tmp_path, {"Zip"})
+    primary_error = RuntimeError("injected platform error")
+
+    def fail_platform():
+        raise primary_error
+
+    packager.select_platform_packager = lambda: fail_platform
+    with pytest.raises(RuntimeError) as raised:
+        packager.run()
+
+    assert raised.value is primary_error
+    assert not Path(packager.target_output_path + ".zip").exists()
+
+
+def test_failed_bundle_cleanup_keeps_single_zip_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    packager = _distribution_packager(tmp_path, {"SingleZip"})
+    aggregate = Path(packager.output_path) / (Path(packager.output_path).name + ".zip")
+    with zipfile.ZipFile(aggregate, "w") as archive:
+        archive.writestr("previous-part.txt", b"previous successful part")
+    real_write = zipfile.ZipFile.write
+
+    def write_then_fail(archive, *args, **kwargs):
+        real_write(archive, *args, **kwargs)
+        raise OSError(errno.ENOSPC, "injected disk exhaustion")
+
+    monkeypatch.setattr(zipfile.ZipFile, "write", write_then_fail)
+    with pytest.raises(OSError, match="injected disk exhaustion"):
+        packager.run()
+
+    with zipfile.ZipFile(aggregate) as archive:
+        assert archive.read("previous-part.txt") == b"previous successful part"
+
+
+def test_successful_bundle_keeps_dedicated_zip(tmp_path: Path) -> None:
+    packager = _distribution_packager(tmp_path, {"Zip"})
+    packager.run()
+
+    with zipfile.ZipFile(packager.target_output_path + ".zip") as archive:
+        assert archive.read("payload.txt") == b"package payload"

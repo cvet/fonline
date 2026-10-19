@@ -743,6 +743,151 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
         client_thread.join();
     }
 }
+
+// A real client abort overlapping repeated engine-thread teardown must report the disconnect exactly once, and a
+// wrapper retained past its endpoint must stay safe while its close runs queued on the endpoint io thread
+TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    static constexpr int32_t CONNECTION_ROUNDS = 3;
+    static constexpr int32_t DISCONNECT_CALLS = 8;
+
+    for (int32_t round = 0; round != CONNECTION_ROUNDS; ++round) {
+        // Declared ahead of the endpoint so the wrapper outlives it, exercising the queued close against a backend
+        // connection that is already gone
+        vector<uint8_t> payload {1, 2, 3};
+        vector<uint8_t> received;
+        mutex state_mutex;
+        std::atomic_int disconnect_count {};
+        shared_ptr<NetworkServerConnection> accepted_conn;
+
+        uint16_t port = 0;
+        unique_nptr<NetworkServer> server;
+        string startup_error;
+
+        for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+            port = TestServerPort.fetch_add(1);
+            BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+            try {
+                server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                    conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
+                        [&](const_span<uint8_t> buf) {
+                            scoped_lock lock {state_mutex};
+                            received.insert(received.end(), buf.begin(), buf.end());
+                        },
+                        [&]() { disconnect_count.fetch_add(1); });
+
+                    scoped_lock lock {state_mutex};
+                    accepted_conn = std::move(conn);
+                });
+            }
+            catch (const std::exception& ex) {
+                startup_error = ex.what();
+            }
+        }
+
+        CAPTURE(startup_error);
+        CAPTURE(round);
+        REQUIRE(server);
+
+        auto shutdown_server = scope_exit([&server]() noexcept {
+            if (server) {
+                safe_call([&server] { server->Shutdown(); });
+            }
+        });
+
+        websocketpp::client<websocketpp::config::asio_client> client;
+        client.clear_access_channels(websocketpp::log::alevel::all);
+        client.clear_error_channels(websocketpp::log::elevel::all);
+        client.init_asio();
+
+        client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
+            std::error_code send_error;
+            client.send(hdl, payload.data(), payload.size(), websocketpp::frame::opcode::binary, send_error);
+            ignore_unused(send_error);
+        });
+
+        std::error_code connect_error;
+        auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
+        REQUIRE_FALSE(connect_error);
+
+        std::error_code subprotocol_error;
+        connection->add_subprotocol("binary", subprotocol_error);
+        REQUIRE_FALSE(subprotocol_error);
+
+        client.connect(connection);
+
+        std::exception_ptr client_error;
+        std::thread client_thread {[&client, &client_error] {
+            try {
+                client.run();
+            }
+            catch (const std::exception&) {
+                client_error = std::current_exception();
+            }
+            catch (...) {
+                FO_UNKNOWN_EXCEPTION();
+            }
+        }};
+        auto stop_client = scope_exit([&client, &client_thread]() noexcept {
+            safe_call([&client] { client.stop(); });
+            safe_call([&client_thread] {
+                if (client_thread.joinable()) {
+                    client_thread.join();
+                }
+            });
+        });
+
+        REQUIRE(WaitForCondition(
+            [&] {
+                scoped_lock lock {state_mutex};
+                return accepted_conn && received.size() >= payload.size();
+            },
+            std::chrono::milliseconds {5000}));
+
+        {
+            scoped_lock lock {state_mutex};
+            CHECK(received == payload);
+        }
+
+        // Stop and join the client io loop before closing its socket so the abort comes from the transport alone
+        client.stop();
+
+        if (client_thread.joinable()) {
+            client_thread.join();
+        }
+
+        if (client_error) {
+            std::rethrow_exception(client_error);
+        }
+
+        std::error_code socket_close_error;
+        connection->get_raw_socket().close(socket_close_error);
+        ignore_unused(socket_close_error);
+
+        // Repeated teardown from the engine thread overlaps the abort the server io thread is still processing
+        for (int32_t call = 0; call != DISCONNECT_CALLS; ++call) {
+            accepted_conn->Disconnect();
+        }
+
+        CHECK(disconnect_count.load() == 1);
+        CHECK(accepted_conn->IsDisconnected());
+
+        server->Shutdown();
+        server.reset();
+
+        accepted_conn->Disconnect();
+
+        CHECK(disconnect_count.load() == 1);
+        CHECK(accepted_conn->IsDisconnected());
+    }
+}
+
 #endif
 
 FO_END_NAMESPACE

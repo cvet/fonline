@@ -1371,6 +1371,14 @@ class Packager:
 	def cleanup_output(self) -> None:
 		if self.target_output_path:
 			shutil.rmtree(self.target_output_path, True)
+			if self.has_pack('Zip'):
+				archive_path = self.target_output_path + '.zip'
+				try:
+					os.remove(archive_path)
+				except FileNotFoundError:
+					pass
+				except OSError as error:
+					log('Failed to clean package zip after packaging error:', archive_path, error)
 
 	def record_logical_file_mode(self, file_path: str | Path, logical_mode: int) -> None:
 		assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')

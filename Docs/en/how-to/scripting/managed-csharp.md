@@ -230,7 +230,8 @@ last rendered use, call `StopDraw()`, then `Dispose()`. A `using` scope must cov
 The entry-assembly registry retains ownership records rather than wrappers. Shutdown closes it and
 cleans queued and live leases before final entity collection/unbind; late finalizers do nothing.
 Rebuild matching native components and rebake every managed role with ABI generator identity `9`;
-runtime compatibility is `0.0.73`.
+runtime compatibility follows the central `MigrationRule Version` marker in
+[`Common.h`](../../../../Source/Common/Common.h).
 
 `hstring` is an eight-byte blittable native intern-entry pointer. Frames/value types copy it unchanged; property/RPC storage converts it to/from 64-bit hashes. Interning and text lookup use the entry assembly’s exact Engine metadata, never a process-wide hash table. Static fields initialize per load context.
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"b40a35594e5fefbd33d6f810e7807fdb37f1575faf615b910da799f65332acfb"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -159,6 +159,14 @@ notices, attribution и approval third-party payload остаются обяза
    inputs.
 7. Сохраните полный package log и отклоняйте assertions, warnings-as-errors,
    signing failures, missing symbols, configs или resource packs.
+
+После перехваченной ошибки упаковки packager удаляет staged-каталог target и
+её отдельный результат `Zip`, включая незавершённый ZIP и ZIP, созданный перед
+последующей ошибкой установщика. Удаление ZIP выполняется по возможности:
+ошибка файловой системы записывается в журнал, исходное исключение упаковки
+сохраняется. Строки только с `SingleZip` не очищают общий архив. Перед публикацией
+проверьте все результаты неудачного candidate; вместимость хранилища и решение
+о повторе остаются ответственностью встраивающего проекта.
 
 Конкретные target names выбирает проект. Типичная multi-config sequence:
 

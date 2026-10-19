@@ -348,17 +348,25 @@ connection wrapper's lifetime must be disciplined:
   transport gets this for free by capturing `shared_from_this()` in every async read/write handler. The
   WebSockets transport wires its persistent websocketpp handlers post-construction (a `Start()` method,
   because `weak_from_this()` is unusable in the constructor) and each handler locks a `weak_from_this()`
-  before touching the wrapper — a raw `this` capture is a use-after-free.
-- **Cross-thread teardown must use the transport's thread-safe path.** For WebSockets that is
-  `connection->close()` (it posts to the io service), never the io-thread-only `connection->terminate()`.
+  before touching the wrapper; an unguarded raw `this` capture permits use-after-free.
+- **Transport close-state changes must run on its I/O thread.** The WebSockets backend uses
+  `asio::post(connection->get_raw_socket().get_executor(), ...)` to enqueue `connection->close()` from
+  both disconnect and wrapper destruction. The backend currently has one dedicated I/O thread, so close
+  cannot overlap its read/termination handlers. Direct `close()` on an engine thread is unsafe: its state
+  lock does not protect against the unlocked close-state writes in `terminate()`. The queued handler
+  captures only the weak backend connection and locks it when executed; it never captures the wrapper
+  or a strong backend owner.
 - **The wrapper must not extend the underlying connection's lifetime past its owning io_context.** The
-  websocketpp endpoint owns each connection (with its io_context-bound asio timers) and destroys it on the
-  io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
-  surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
+  backend connection has Asio timers and pending operations bound to the endpoint's io_context. The
+  wrapper therefore holds the connection **weak** and locks per use. A retained strong owner could destroy
+  the backend after that context is gone, causing use-after-free during shutdown.
 
 `Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm and shutdown with an
 accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
-disconnect it); run it under the AddressSanitizer job to guard these lifetime rules.
+disconnect it). `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` also covers peer
+abort, repeated disconnect, exactly one notification and a wrapper retained after endpoint destruction.
+Run these tests and the unchanged `SecureChannelRunsOverWebSockets` under ThreadSanitizer and
+AddressSanitizer to check state serialization and lifetime separately.
 
 ## Ordered UDP transport
 

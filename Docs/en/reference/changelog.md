@@ -16,6 +16,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Serialize WebSocket close-state mutations with the backend I/O loop. Disconnect and wrapper destruction enqueue weak-only close work, preventing direct engine-thread `close()` from racing websocketpp termination. Native coverage exercises peer abort, repeated disconnect, once-only notification and a wrapper retained after listener destruction.
+- Restore complete AI documentation delivery after the maintained corpus outgrew its size budget. The manifest owns the budget; route documentation and repository tests no longer duplicate its current value. Document membership, deterministic UTF-8/LF output and the failure on overflow remain unchanged.
+- Remove the current target's dedicated ZIP when packaging fails, including disk exhaustion during ZIP writing or a later installer failure. Cleanup reports removal errors without masking the original packaging exception; `SingleZip`-only aggregate handling is unchanged.
+- Preserve const-qualified string-search results in the vendored LibreSSL X509 and SRTP parsers. The IP-constraint parser keeps a separate mutable cursor for its owned copy. This removes host-header compiler warnings without casts, warning suppression or crypto/API changes; native probes cover OtherName, IP/mask, SRTP, AES and TLS with assembly enabled and disabled.
+
+### Migration
+
+- Base `d74075954cbf3742f0f717ff2b23ff309aa735a4` (`2026.1.53-dev`); update `2026.1.54-dev`. Regenerate affected API models/references with `python BuildTools/docs_api.py --write`, `python BuildTools/docs_reference.py --write` and `python BuildTools/docs_public_api.py --write`, then run `python BuildTools/docs_prepare.py`, validate with `python BuildTools/docs_validate.py`, then build the site with `python BuildTools/docs_site_build.py`. Read the delivery budget from `ai_delivery.full_context.max_bytes` in `Docs/documentation-manifest.json`. `BuildTools/tests/test_docs_ai_delivery.py` retains independent overflow and byte-determinism checks; do not truncate documents or disable the size guard. Generated delivery files remain ignored build outputs and require no follow-up commit.
+- The central network compatibility marker advances from `0.0.73` to `0.0.74` for the WebSocket lifecycle fix. Regenerate metadata, rebuild matching native client/server applications, Baker and tests, and rebake scripts/resources; deploy the matching set together. Mixed old/new artifacts must be rejected by the compatibility check. Native/script APIs, configuration, saved data, resource schema and Managed ABI `9` retain their meanings; no saved-data conversion is required. The Python packaging fix takes effect on its next invocation; retry after resolving the underlying storage or installer error. Rollback restores the entire matching previous artifact set, delivery policy and failed-ZIP retention without data conversion.
+
+
+## 2026.1.53-dev - 2026-10-19
+
+### Fixed
+
 - Preserve persistent custom-entity trees during graceful server shutdown. Runtime teardown releases the singleton's and registered holders' inner references before dropping parent links and registry ownership; it does not run ordinary custom-entity deletion or change durable holder IDs.
 
 ### Documentation
