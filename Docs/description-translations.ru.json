@@ -4383,6 +4383,18 @@
           "source_sha256": "3aa417dee22750670ac416a6f47945fc2db177aee1f50d3d97e9f87af095a1fd",
           "translation": "Используйте повторяющиеся INI-подобные секции, присваивания key = value, комментарии #, продолжение обратной косой чертой и добавление key += value там, где его поддерживает парсер свойства."
         },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/description": {
+          "source_sha256": "2c7b7414dcaebab2916a4ee77f68241b6723070618811e54f7dcacd1857d613c",
+          "translation": "Mapper и MapBaker проверяют серверные и клиентские свойства и отклоняют отличающиеся константы Common/Client и Persistent-значения NoSync, включая переопределения нулём, false и пустым значением. Серверные свойства и существующие PublicSync/OwnerSync остаются допустимыми; проверки только Persistent недостаточно."
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/name": {
+          "source_sha256": "84676fb86c2285638145eff6f830aea62ccb96c787b3505549c34669574cba7f",
+          "translation": "Доставка свойств динамического предмета"
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/requirement": {
+          "source_sha256": "52d5ce3cfd76a1119a6ebb7dc5cbb600b1d42b9fc898e1483840d0c8d7db6ab5",
+          "translation": "Сохраняемые несинхронизируемые значения Common или Client динамического предмета должны совпадать с прототипом, кроме нативных свойств контекста размещения."
+        },
         "/rules/@id=map-format.rule.error-aggregation/description": {
           "source_sha256": "6764d3a0724bdfeac1eae9e41ade4f043490a52e793abb917cfdb054ea09c4e9",
           "translation": "Диагностика отдельных сущностей записывается до того, как MapLoader или MapBaker выбросит общую ошибку."
@@ -4550,6 +4562,18 @@
         "/rules/@id=map-format.rule.static-items/requirement": {
           "source_sha256": "bb6f0ded9b3e7976ae564e9542c6100e43e4acb339853267be0e3da91e9345e2",
           "translation": "Предмет Static обязан использовать владение MapHex."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/description": {
+          "source_sha256": "ffdd270ddd1eb8f0d47ec53642fadbc9e7ff807c017b4f00ec9b2d4fb8d0eb38",
+          "translation": "Динамические экземпляры сохраняют отдельную идентичность даже при SameSibling или AnyUnique у прототипа. Постоянная относительная геометрия задаётся в прототипе или наследуемом варианте."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/name": {
+          "source_sha256": "a97b89fa950db9ce96e494f51629ef4c197839ea7220d7ab28f24eb2ad21eb72",
+          "translation": "Объединение статических предметов в mesh"
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/requirement": {
+          "source_sha256": "ebda6dcbe9d676c0ef670f5de76d39039e4fe443999595db057f511ee9e2bbe7",
+          "translation": "Объединяйте экземпляры карты в MultihexMesh только тогда, когда оба предмета статические."
         },
         "/scope/excluded": {
           "source_sha256": "a9e51a633154c791421bad70658ea469fea847ea4d58b110c11e2f62e28ecf39",

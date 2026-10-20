@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "MapLoader.h"
 #include "Test_MapperHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -2218,6 +2219,138 @@ TEST_CASE("MapperConsoleCommands")
         }
 
         REQUIRE_NOTHROW(mapper->HandleMapperConsoleKeyDown(KeyCode::Return, {}));
+    }
+}
+
+TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto map = mapper->LoadMapFromText("DynamicAuthoring", "DynamicAuthoring.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 8, 8)));
+    REQUIRE(map);
+    mapper->ShowMap(map.as_ptr());
+    auto item = map->GetItems().front().as_ptr();
+    REQUIRE_FALSE(item->GetStatic());
+
+    SECTION("Constants and persistent NoSync data reject zero false and empty overrides atomically")
+    {
+        for (auto [name, value] : {pair<string_view, string_view> {"AuthoringNumber", "0"}, {"AuthoringFlag", "False"}, {"AuthoringText", ""}, {"AuthoringList", ""}, {"AuthoringPrivate", "1"}, {"DrawFlatten", "True"}, {"AuthoringClient", "0"}}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            string before = item->GetProperties()->SavePropertyToText(prop);
+            CHECK_FALSE(mapper->ApplyEntityPropertyText(item, prop, value));
+            CHECK(item->GetProperties()->SavePropertyToText(prop) == before);
+            CHECK_FALSE(mapper->IsMapDirty(map));
+        }
+    }
+
+    SECTION("Equal prototype values are accepted without a dirty change")
+    {
+        for (auto name : {"AuthoringNumber", "AuthoringClient"}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            CHECK(mapper->ApplyEntityPropertyText(item, prop, "20"));
+            CHECK_FALSE(mapper->IsMapDirty(map));
+        }
+    }
+
+    SECTION("Static placements retain client-only configuration overrides")
+    {
+        auto static_map = mapper->LoadMapFromText("StaticClient", "StaticClient.fomap", MakeMapText(MakeItemBlock(20, SCENERY_A, 12, 12, "Static = True\nAuthoringClient = 0")));
+        REQUIRE(static_map);
+        auto static_item = static_map->GetItems().front().as_ptr();
+        auto prop = static_item->GetProperties()->GetRegistrar()->FindProperty("AuthoringClient");
+        REQUIRE(prop);
+        CHECK(static_item->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK_NOTHROW(static_map->SaveToText("StaticClient"));
+    }
+
+    SECTION("Existing public owner and server channels remain authorable")
+    {
+        for (auto name : {"LightDistance", "AuthoringOwner", "AuthoringServer"}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            CHECK(mapper->ApplyEntityPropertyText(item, prop, "3"));
+            CHECK(item->GetProperties()->SavePropertyToText(prop) == "3");
+        }
+        CHECK_NOTHROW(map->SaveToText("AllowedChannels"));
+    }
+
+    SECTION("Static transition checks all overrides before committing")
+    {
+        auto static_map = mapper->LoadMapFromText("StaticAuthoring", "StaticAuthoring.fomap", MakeMapText(MakeItemBlock(20, TILE_A, 12, 12, "DrawFlatten = True")));
+        REQUIRE(static_map);
+        mapper->ShowMap(static_map.as_ptr());
+        auto static_item = static_map->GetItems().front().as_ptr();
+        CHECK_FALSE(mapper->ApplyEntityPropertyText(static_item, static_item->GetPropertyStatic(), "False"));
+        CHECK(static_item->GetStatic());
+        CHECK(static_item->GetDrawFlatten());
+        CHECK_FALSE(mapper->IsMapDirty(static_map));
+    }
+
+    SECTION("A rejected dynamic sibling leaves the primary static item unchanged")
+    {
+        string body = MakeItemBlock(20, TILE_A, 12, 12) + MakeItemBlock(21, TILE_A, 13, 12, "Static = False");
+        auto mixed_map = mapper->LoadMapFromText("MixedAuthoring", "MixedAuthoring.fomap", MakeMapText(body));
+        REQUIRE(mixed_map);
+        mapper->ShowMap(mixed_map.as_ptr());
+        auto primary = mixed_map->GetItem(ident_t {20});
+        auto sibling = mixed_map->GetItem(ident_t {21});
+        REQUIRE(primary);
+        REQUIRE(sibling);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        CHECK_FALSE(mapper->ApplyEntityPropertyText(primary, prop, "30"));
+        CHECK(primary->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK(sibling->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK_FALSE(mapper->IsMapDirty(mixed_map));
+    }
+
+    SECTION("Manual source text cannot load an undelivered override")
+    {
+        CHECK_FALSE(mapper->LoadMapFromText("InvalidDynamic", "InvalidDynamic.fomap", MakeMapText(MakeItemBlock(30, SCENERY_A, 10, 10, "AuthoringNumber = 0"))));
+    }
+
+    SECTION("Save and clone creation reject direct raw property bypasses")
+    {
+        auto prop = item->GetProperties()->GetRegistrar()->FindProperty("AuthoringList");
+        REQUIRE(prop);
+        item->GetPropertiesForEdit()->ApplyPropertyFromText(prop, "");
+        CHECK_THROWS_AS(map->SaveToText("InvalidRaw"), MapLoaderException);
+        size_t before_count = map->GetItems().size();
+        CHECK_THROWS_AS(map->AddMapperItem(item->GetProtoId(), mpos {10, 10}, item->GetProperties()), MapLoaderException);
+        CHECK(map->GetItems().size() == before_count);
+
+        auto cr = map->AddMapperCritter(mapper->Hashes.to_hashed_string(CRITTER_A), mpos {12, 12}, mdir {}, nullptr);
+        auto proto = mapper->GetProtoItem(item->GetProtoId());
+        REQUIRE(proto);
+        CHECK_THROWS_AS(cr->AddMapperInvItem(ident_t {101}, proto, CritterItemSlot::Inventory, item->GetProperties()), MapLoaderException);
+        CHECK(cr->GetInvItems().empty());
+        CHECK_THROWS_AS(item->AddMapperInnerItem(ident_t {102}, proto, any_t {}, item->GetProperties()), MapLoaderException);
+        CHECK(item->GetInnerItems().empty());
+    }
+}
+
+TEST_CASE("MapperDynamicItemsNeverCoalesceIntoMesh")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    for (auto proto : {TILE_A, TILE_U}) {
+        string body = MakeItemBlock(10, proto, 8, 8, "Static = False") + MakeItemBlock(11, proto, 9, 8, "Static = False") + MakeItemBlock(12, proto, 10, 8);
+        auto map = mapper->LoadMapFromText("DynamicMerge", "DynamicMerge.fomap", MakeMapText(body));
+        REQUIRE(map);
+        CHECK(map->GetItems().size() == 3);
+        CHECK(mapper->MergeItemsToMultihexMeshes(map.as_ptr()) == 0);
+
+        for (const auto& item : map->GetItems()) {
+            CHECK(item->GetMultihexMesh().empty());
+        }
+
+        CHECK_NOTHROW(map->SaveToText("DynamicMergeSaved"));
+        mapper->UnloadMap(map.as_ptr());
     }
 }
 

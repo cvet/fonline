@@ -23,6 +23,7 @@ def _configure(source: Path, build: Path) -> None:
 @pytest.mark.parametrize("assembly", [False, True])
 def test_libressl_archive_inputs_keep_aes_and_tls_functional(tmp_path: Path, assembly: bool) -> None:
     (tmp_path / "probe.c").write_text(
+        "#ifdef _WIN32\n#define WIN32_LEAN_AND_MEAN\n#endif\n"
         "#include <string.h>\n#include <openssl/aes.h>\n#include <openssl/ssl.h>\n"
         "#include <openssl/srtp.h>\n#include <openssl/x509v3.h>\n#include <tls.h>\n"
         "int main(void) {\n"

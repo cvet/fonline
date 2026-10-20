@@ -1,5 +1,64 @@
 # Documentation Verification Report
 
+## 2026-10-20 - Reconcile published persistence and WebSocket updates with map authoring work
+
+Update the Engine worktree from `2860bb2755621976d199883e254d66808a659ec1`
+(`2026.1.52-dev`) to published `d947827d42ab7a8a6c5f0c168cdea5680423ddf9`
+(`2026.1.54-dev`), retaining the uncommitted map-authoring work as
+`2026.1.55-dev`. Preserve the incoming network migration marker `0.0.74`, all
+published history, the existing index state and safety stashes. The embedding
+project's committed gitlink is `bcabd4d6c192400790f577b9a165c79594aa8ee7`;
+its newer working gitlink remains uncommitted.
+
+Read all nineteen changed production, native-test, BuildTools and vendored
+source paths across all three incoming commits, together with their EN/RU
+documentation owners. Reconcile persistent custom-entity shutdown ownership,
+the weak WebSocket close handler queued onto the endpoint executor, best-effort
+partial ZIP cleanup, the removed unused managed ClassExtensionAttribute, native
+property-component guidance and the LibreSSL const-correctness patches. Review
+the two new native fixtures independently; their presence is not runtime proof.
+Check the outside-range `exit_app` owner and the removed IsPackaged test
+expectation against current source. Disposition identity includes change ID and
+both contract hashes, so equal IDs with different baselines are distinct.
+
+Retain both published `.53`/`.54` changelog sections and the removed-attribute
+migration. Resolve the Russian entity-model provenance only after reviewing its
+merged body. Move the local map-authoring migration base to the new published
+tip; no new property flag or additional wire-layout change is introduced.
+The final published removal commit did not increment VERSION: the complete
+incoming history gate fails its mandatory minor-step rule. Preserve that
+upstream limitation separately from validation of the working `.55` update;
+do not rewrite published commits or describe the history gate as passing.
+
+The added LibreSSL regression initially failed on Windows because Winsock
+headers exposed the X509_NAME macro before x509v3.h. Select WIN32_LEAN_AND_MEAN
+in the standalone probe, matching native Engine convention. Preserve the
+original compiler failure and verify the actual probe with the project MSVC
+toolchain. Clang-driver Windows builds also emitted existing vendored warnings;
+no warning suppression or crypto changes are added.
+
+Regeneration and verification receipts are retained by the embedding update
+task. Runtime, sanitizer and non-Windows qualification remain separate gates;
+this reconciliation does not qualify production data or claim fresh visual
+acceptance of the preserved map screenshots.
+
+Final native/Managed application builds passed. The final native run passed
+674 cases and 732954 assertions after retaining two earlier load-sensitive
+failures. Full baking completed all 33 packs and 662 map outputs; the following
+incremental invocation changed zero files. Documentation validation covered
+412 Markdown entries; the initial 575-test run had four environment failures,
+then all 21 tests in the affected modules passed with a canonical workspace
+temporary root and Git Bash. No sanitizer or rendered-site verdict is claimed.
+
+The embedding configuration enables MongoDB and disables JSON/SQLite. The new
+shutdown regression is compiled only with FO_DATABASE_JSON; its absence from
+this binary is an unperformed backend check, never a successful test. Preserve
+the original conditional fixture unchanged. A combined Catch2 filter initially
+ran only the WebSocket case while reporting a missing shutdown name; retain
+that receipt as incomplete selection. Subsequent task runners reject missing
+test selections. The MongoDB durability path needs an isolated database and is
+not qualified by the in-memory native server fixtures.
+
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
 ## 2026-10-16 - Integrate published movement fixes and preserve atomic writes

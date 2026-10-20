@@ -5,7 +5,7 @@ locale: ru
 document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
-<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"6b621b6f54ec684b44c05fda24afbc246c8b717f261027192ad42acb9f49d44e"} -->
+<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"f88fd9a46a95ea3bdf6643fb1edde79dce880b180de66ca3c7a605322651712d"} -->
 # Интерактивное руководство по Mapper
 
 > Руководство движка по штатной интерактивной работе в Mapper. Каталоги карт,
@@ -198,6 +198,8 @@ Inspector разбирает значения через ту же систем�
 Используйте **Apply to all** только для заведомо однородного выделения.
 Одинаково отображаемое имя свойства всё равно может иметь разный смысл у
 прототипов встраивающего проекта.
+
+Для динамического предмета Inspector также блокирует сохраняемую Common-конфигурацию без синхронизации, включая неизменяемые игровые свойства без Persistent. Постоянные отличия задавайте вариантом прототипа; текстовый API отклоняет недопустимое переопределение до изменения соседних экземпляров и dirty/history. Повтор значения прототипа разрешён и не помечает карту изменённой. Загрузка, создание, копирование и сохранение проверяют то же правило; MapBaker независимо проверяет исходники. Автослияние multihex допускается только для статических предметов.
 
 ## Выделение, перемещение и буфер
 

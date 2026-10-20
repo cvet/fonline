@@ -20,7 +20,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Remove `[ClassExtension]` from external managed source, if present, and use ordinary C# extension-method syntax where instance-call syntax is needed. Rebuild affected script assemblies; the compiler rejects the removed attribute. Existing unannotated helpers, entry-point attributes, native bindings, saved data, resource formats, network compatibility and Managed ABI `9` are unchanged. No project data migration or compatibility-marker bump is required. Rollback restores the previous CoreScripts and matching script assemblies; it requires no data conversion.
 
-## Current - 2026-10-19
+## Current - 2026-10-20
+
+### Changed
+
+- Reject map-local unsynchronized Common or Client configuration overrides on dynamic items in Mapper and MapBaker, including constant project properties without `Persistent`. Check both server and client property candidates, including hidden items. Preserve server-only authoring and placement context; configure permanent geometry on prototypes. Automatic mesh coalescing applies only to static items.
+- Recache every registered client item footprint cell when `NoBlock`, `ShootThru`, or `LightThru` changes.
+- Keep the standalone LibreSSL regression probe portable on Windows by selecting lean Windows headers before the OpenSSL headers; preserve its real OtherName, IP/mask and SRTP checks.
+
+### Migration
+
+- Base `d947827d42ab7a8a6c5f0c168cdea5680423ddf9` (`2026.1.54-dev`); update `2026.1.55-dev`. Network compatibility remains `0.0.74`; no new property flags or wire layout are introduced.
+- Move differing unsynchronized Common or Client values from dynamic map placements into prototypes or inherited variants, or use an existing synchronization channel when runtime changes are required. Rebuild affected native targets and rebake resources. Explicit zero, false, and empty values count as overrides. Static placements, server-only fields, names, types, defaults and persistence flags retain their meanings. Existing saved worlds require the embedding project's normal content-update review; a map-source migration is not a database migration. Rollback restores matching baseline binaries and authored resources.
+
+## 2026.1.54-dev - 2026-10-19
 
 ### Fixed
 

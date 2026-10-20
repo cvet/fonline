@@ -285,6 +285,35 @@
   ],
   "rules": [
     {
+      "id": "map-format.rule.dynamic-property-overrides",
+      "name": "Dynamic item property delivery",
+      "requirement": "Saved unsynchronized Common or Client values on a dynamic item must equal its prototype, except the native placement-context properties.",
+      "stability": "experimental",
+      "description": "Mapper and MapBaker check both server and client properties and reject differing Common/Client constants and NoSync persistent values, including zero, false and empty overrides. Server-only and existing PublicSync/OwnerSync authoring remain valid; checking only Persistent is insufficient.",
+      "source": {
+        "path": "Source/Common/MapLoader.cpp",
+        "anchors": [
+          "CanOverrideItemProperty",
+          "ValidateItemProperties",
+          "Dynamic map item overrides an unsynchronized client-visible property"
+        ]
+      }
+    },
+    {
+      "id": "map-format.rule.static-mesh-coalescing",
+      "name": "Static mesh coalescing",
+      "requirement": "Coalesce map instances into MultihexMesh only when both items are static.",
+      "stability": "experimental",
+      "description": "Dynamic instances retain separate identity even when their prototype selects SameSibling or AnyUnique. Constant relative geometry belongs to a prototype or inherited variant.",
+      "source": {
+        "path": "Source/Tools/Mapper.cpp",
+        "anchors": [
+          "CompareMultihexItemForMerge",
+          "Multihex merging requires static items"
+        ]
+      }
+    },
+    {
       "id": "map-format.rule.config-syntax",
       "name": "Configuration syntax",
       "requirement": "Use INI-like repeated sections, key = value assignments, # comments, backslash continuation, and key += value append where the property parser supports it.",
@@ -3548,7 +3577,7 @@
     "directive_count": 5,
     "ownership_count": 4,
     "supported_ownership_count": 3,
-    "rule_count": 17,
+    "rule_count": 19,
     "property_count": 107,
     "authorable_property_count": 86,
     "excluded_property_count": 21,
@@ -3563,5 +3592,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "a1598b0419bbd00aaf23c953072439dba1c502c66e9fe426e9b2962f428bf8ae"
+  "contract_digest": "392d71251c8adee84804318c782e78dc1496f13e8a45f5645d8640e1b7d1e426"
 }

@@ -798,7 +798,17 @@ namespace MapperMergeTest
 
     inline auto MakeMapperTestResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeMetadataBlob({{"Property",
+            {
+                {"Item", "Common", "int32", "AuthoringNumber"},
+                {"Item", "Common", "bool", "AuthoringFlag"},
+                {"Item", "Common", "string", "AuthoringText"},
+                {"Item", "Common", "int32[]", "AuthoringList"},
+                {"Item", "Client", "int32", "AuthoringClient"},
+                {"Item", "Common", "int32", "AuthoringOwner", "Mutable", "OwnerSync", "Persistent"},
+                {"Item", "Server", "int32", "AuthoringServer", "Mutable", "Persistent"},
+                {"Item", "Common", "int32", "AuthoringPrivate", "Mutable", "NoSync", "Persistent"},
+            }}});
 
         auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
         compiler_source->AddFile("Metadata.fometa-mapper", metadata_blob);
@@ -814,11 +824,13 @@ namespace MapperMergeTest
         hstring tile_pic = proto_engine.Hashes.to_hashed_string(TILE_PICTURE);
 
         auto configure_tile = [tile_pic](ProtoItem& proto) {
+            proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::SameSibling);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
         };
         auto configure_unique = [tile_pic](ProtoItem& proto) {
+            proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
@@ -829,6 +841,7 @@ namespace MapperMergeTest
         auto configure_scenery = [tile_pic](ProtoItem& proto) {
             proto.SetIsScenery(true);
             proto.SetPicMap(tile_pic);
+            proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringFlag", "True"}, {"AuthoringText", "base"}, {"AuthoringList", "7 9"}, {"AuthoringClient", "20"}});
         };
         auto configure_wall = [tile_pic](ProtoItem& proto) {
             proto.SetIsWall(true);
