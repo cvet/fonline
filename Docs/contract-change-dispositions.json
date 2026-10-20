@@ -14760,6 +14760,54 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the dated next-minor entry during eventual master integration.",
       "compatibility": "Advance Source/Common/Common.h runtime gate from 0.0.73 to 0.0.74. Mixed endpoints are rejected. Wire fields and persisted properties retain their format; authority loss now retires player plans. Rollback restores matching binaries, metadata and packs together; no old-API bridge is added.",
       "owner": "Engine movement authority and native-codegen contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.6006e7affba9ca0d",
+      "baseline_contract_sha256": "51cbe8e81a5bc4d55ba92e8bbf86785e89e7b029af8b388d4170d0e05f4cf686",
+      "current_contract_sha256": "91d578fcab3f2c58527652c4a6eefd06b55dde427bf824551c5dc0ef61060ea4",
+      "classification": "breaking",
+      "rationale": "Compose two additive scripting symbols, Critter.GetBonePosWithOffset and Game.OnPlayerMovementAuthority, with every published symbol retained. The central marker advances beyond the independently published WebSocket marker 74 to 75 so endpoints cannot silently mix movement-authority semantics.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Russian mirror. Rebuild matching client/server, Mapper, viewers, Baker and tests; regenerate and rebake both metadata/script roles. Deploy and roll back the entire matching set. No saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor and date at eventual master integration.",
+      "compatibility": "Based on published 2026.1.54-dev. Network compatibility advances 0.0.74 to 0.0.75; Managed ABI 9, packet fields, stored properties and resource payload grammar are unchanged. Mixed endpoints are rejected.",
+      "owner": "Engine particle/model integration and movement-authority contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.26db7c5f6ea73e49",
+      "baseline_contract_sha256": "51cbe8e81a5bc4d55ba92e8bbf86785e89e7b029af8b388d4170d0e05f4cf686",
+      "current_contract_sha256": "91d578fcab3f2c58527652c4a6eefd06b55dde427bf824551c5dc0ef61060ea4",
+      "classification": "breaking",
+      "rationale": "Compose two additive scripting symbols, Critter.GetBonePosWithOffset and Game.OnPlayerMovementAuthority, with every published symbol retained. The central marker advances beyond the independently published WebSocket marker 74 to 75 so endpoints cannot silently mix movement-authority semantics.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Russian mirror. Rebuild matching client/server, Mapper, viewers, Baker and tests; regenerate and rebake both metadata/script roles. Deploy and roll back the entire matching set. No saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor and date at eventual master integration.",
+      "compatibility": "Based on published 2026.1.54-dev. Network compatibility advances 0.0.74 to 0.0.75; Managed ABI 9, packet fields, stored properties and resource payload grammar are unchanged. Mixed endpoints are rejected.",
+      "owner": "Engine particle/model integration and movement-authority contracts"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.f8acc7866e17acf9",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "062637a60d9fbf4c813b9fbc60ab2b33a1d0880cbedcfc9d6fca3a64a677f203",
+      "classification": "breaking",
+      "rationale": "Keep the conservative baked envelope and extend it using current CPU-renderer live bounds, including old world-space trails, scales and atlas rebases. Unchanged zero-time refresh reuses only the publication snapshot; UpdateHandle(0), lifecycle and bounds behavior remain observable. This intentionally replaces clipping behavior without changing authored data.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Russian mirror. Rebuild matching client/server, Mapper, viewers, Baker and tests; regenerate and rebake both metadata/script roles. Deploy and roll back the entire matching set. No saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor and date at eventual master integration.",
+      "compatibility": "Based on published 2026.1.54-dev. Network compatibility advances 0.0.74 to 0.0.75; Managed ABI 9, packet fields, stored properties and resource payload grammar are unchanged. Mixed endpoints are rejected.",
+      "owner": "Engine particle/model integration and movement-authority contracts"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.63f7395ae8d10474",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "062637a60d9fbf4c813b9fbc60ab2b33a1d0880cbedcfc9d6fca3a64a677f203",
+      "classification": "breaking",
+      "rationale": "Keep the conservative baked envelope and extend it using current CPU-renderer live bounds, including old world-space trails, scales and atlas rebases. Unchanged zero-time refresh reuses only the publication snapshot; UpdateHandle(0), lifecycle and bounds behavior remain observable. This intentionally replaces clipping behavior without changing authored data.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and Russian mirror. Rebuild matching client/server, Mapper, viewers, Baker and tests; regenerate and rebake both metadata/script roles. Deploy and roll back the entire matching set. No saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor and date at eventual master integration.",
+      "compatibility": "Based on published 2026.1.54-dev. Network compatibility advances 0.0.74 to 0.0.75; Managed ABI 9, packet fields, stored properties and resource payload grammar are unchanged. Mixed endpoints are rejected.",
+      "owner": "Engine particle/model integration and movement-authority contracts"
     }
   ]
 }
