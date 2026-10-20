@@ -124,8 +124,10 @@ Managed marker attributes mirror the Engine dispatch roles rather than ordinary 
 - `[PropertyGetter]` and `[PropertySetter]`;
 - `[ServerRemoteCall]`, `[ClientRemoteCall]`, and `[AdminRemoteCall]`;
 - `[ItemTrigger]`, `[ItemInit]`, `[ItemStatic]`, `[CritterInit]`, `[MapInit]`, and `[LocationInit]`;
-- `[AnimCallback]`, `[ClassExtension]`, and project-registered marker attributes;
+- `[AnimCallback]` and project-registered marker attributes;
 - `[CallableByName]` for functions intentionally exposed to named invocation.
+
+Use standard C# extension methods to expose static helpers with instance-call syntax; no engine marker is required.
 
 Generated event wrappers reject a handler without `[Event]` before creating the native subscription. Named calls are likewise deny-by-default: `Game.Invoke` and administrative dispatch accept only explicitly marked functions and the applicable allowlist.
 

@@ -12,6 +12,14 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Removed
+
+- Remove the unused `ClassExtensionAttribute` placeholder. It never bound a global function as a class method; C# uses language extension methods, and no corresponding AngelScript tag is planned.
+
+### Migration
+
+- Remove `[ClassExtension]` from external managed source, if present, and use ordinary C# extension-method syntax where instance-call syntax is needed. Rebuild affected script assemblies; the compiler rejects the removed attribute. Existing unannotated helpers, entry-point attributes, native bindings, saved data, resource formats, network compatibility and Managed ABI `9` are unchanged. No project data migration or compatibility-marker bump is required. Rollback restores the previous CoreScripts and matching script assemblies; it requires no data conversion.
+
 ## Current - 2026-10-19
 
 ### Fixed

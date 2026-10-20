@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"30764e81e6abead3476388c0f36ab290d20f10c95b592e3a3d112af8bb15f052"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"bbe5e488d2f60b2475670251ba3536edb60d23bc26ed6985b2405a2b3c8bdddd"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -125,8 +125,10 @@ Managed marker attributes соответствуют ролям Engine dispatche
 - `[PropertyGetter]` и `[PropertySetter]`;
 - `[ServerRemoteCall]`, `[ClientRemoteCall]` и `[AdminRemoteCall]`;
 - `[ItemTrigger]`, `[ItemInit]`, `[ItemStatic]`, `[CritterInit]`, `[MapInit]` и `[LocationInit]`;
-- `[AnimCallback]`, `[ClassExtension]` и зарегистрированные проектом markers;
+- `[AnimCallback]` и зарегистрированные проектом markers;
 - `[CallableByName]` для functions, намеренно доступных named invocation.
+
+Чтобы вызывать статические вспомогательные методы через экземпляр, используйте обычные extension methods языка C#; отдельный маркер движка не требуется.
 
 Generated event wrappers отвергают handler без `[Event]` до создания native subscription. Named calls также закрыты по умолчанию: `Game.Invoke` и administrative dispatch принимают только явно отмеченные functions и подходящий allowlist.
 
