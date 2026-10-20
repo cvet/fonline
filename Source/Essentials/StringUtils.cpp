@@ -1182,7 +1182,7 @@ static constexpr uint32_t UNICODE_BAD_CHAR = 0xFFFD;
 
 auto utf8::is_valid(uint32_t ucs) noexcept -> bool
 {
-    return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF;
+    return ucs != UNICODE_BAD_CHAR && ucs <= 0x10FFFF && (ucs < 0xD800 || ucs > 0xDFFF);
 }
 
 auto utf8::decode_str_nt_len(ptr<const char> str) noexcept -> size_t

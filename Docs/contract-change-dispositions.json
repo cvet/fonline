@@ -10824,6 +10824,30 @@
       "release_note": "Docs/en/reference/changelog.md and its Russian mirror: 2026.1.54-dev WebSocket close serialization and compatibility 0.0.74; the composed range also includes the published 2026.1.52-dev getter entry.",
       "compatibility": "Network compatibility advances 0.0.73 to 0.0.74 and changes the generated compatibility hash; Managed ABI 9, saved data and resource schema remain unchanged. Do not mix previous and updated native binaries, metadata, assemblies or resources.",
       "owner": "Engine networking/runtime compatibility and native-codegen inventory"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.f409a6808d38de2c",
+      "baseline_contract_sha256": "51cbe8e81a5bc4d55ba92e8bbf86785e89e7b029af8b388d4170d0e05f4cf686",
+      "current_contract_sha256": "941d7e1bc682ebd178a2d38c97d6e35caf3f258f88cf93ac03ba25104a33dff4",
+      "classification": "breaking",
+      "rationale": "Review the four opt-in server-only conditional database overloads without replacing existing symbols or changing their meanings.",
+      "migration": "Apply published migrations .50-.55 oldest first, then Docs/en/reference/changelog.md Current 2026-10-20 (2026.1.56-dev) and the Russian mirror. Rebuild native consumers/Baker, regenerate bindings and rebake every script/resource role. New DB calls are opt-in; no saved-data conversion or caller rename.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-10-20 for 2026.1.56-dev and its Russian mirror.",
+      "compatibility": "Runtime marker 0.0.74 -> 0.0.75; Managed ABI 9 and serialized schemas remain unchanged. Deploy matching binaries, metadata, assemblies and resource packs together; rollback restores a complete matching previous set. Conditional DB success means an instance-local pending mutation, not durable or cross-process CAS.",
+      "owner": "Engine persistence, filesystem and native scripting contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.26db7c5f6ea73e49",
+      "baseline_contract_sha256": "51cbe8e81a5bc4d55ba92e8bbf86785e89e7b029af8b388d4170d0e05f4cf686",
+      "current_contract_sha256": "941d7e1bc682ebd178a2d38c97d6e35caf3f258f88cf93ac03ba25104a33dff4",
+      "classification": "breaking",
+      "rationale": "Advance the central runtime compatibility marker from 0.0.74 to 0.0.75 for the new native scripting surface and filesystem contracts. Existing stored values and wire layouts retain meaning.",
+      "migration": "Apply published migrations .50-.55 oldest first, then Docs/en/reference/changelog.md Current 2026-10-20 (2026.1.56-dev) and the Russian mirror. Rebuild native consumers/Baker, regenerate bindings and rebake every script/resource role. New DB calls are opt-in; no saved-data conversion or caller rename.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-10-20 for 2026.1.56-dev and its Russian mirror.",
+      "compatibility": "Runtime marker 0.0.74 -> 0.0.75; Managed ABI 9 and serialized schemas remain unchanged. Deploy matching binaries, metadata, assemblies and resource packs together; rollback restores a complete matching previous set. Conditional DB success means an instance-local pending mutation, not durable or cross-process CAS.",
+      "owner": "Engine persistence, filesystem and native scripting contracts"
     }
   ]
 }

@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2574,
-      "inventory_sha256": "f643a1028515ba2416ed2468b8549cf8eacb33b64d10ab312e4cd25d6ee50ea0",
+      "symbol_count": 2578,
+      "inventory_sha256": "6f315b0fad91210a5948807739a75f525948d57ec4bff3459b1e86cf5d322e74",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2574,
+    "symbol_count": 2578,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 58,
       "enum-value": 773,
       "event": 122,
-      "method": 1002,
+      "method": 1006,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2573,
+      "experimental": 2577,
       "internal": 1
     },
     "explicit_contract_declaration_count": 3,
-    "explicit_contract_symbol_count": 2574,
+    "explicit_contract_symbol_count": 2578,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2573,
+      "experimental": 2577,
       "internal": 1
     },
-    "described_symbol_count": 2574,
+    "described_symbol_count": 2578,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -1132,7 +1132,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 74",
+      "signature": "Version 0 0 75",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1154,7 +1154,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "74"
+      "replacement": "75"
     },
     {
       "id": "script.entity.Critter",
@@ -77631,7 +77631,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1423
+        "line": 1529
       },
       "contract": {
         "explicit": true,
@@ -78463,6 +78463,156 @@
       "arguments": []
     },
     {
+      "id": "script.method.server.Game.DbCompareExchangeRecordString#28dbc09a155eeea9",
+      "family_id": "script.method.server.Game.DbCompareExchangeRecordString",
+      "kind": "method",
+      "name": "DbCompareExchangeRecordString",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.DbCompareExchangeRecordString(hstring collectionName, ident id, string key, string expected, string desired)",
+      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1225
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "collectionName",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "id",
+          "type": "ident",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "expected",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "desired",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Game.DbCompareExchangeRecordString#d7c0eb9e97e0795d",
+      "family_id": "script.method.server.Game.DbCompareExchangeRecordString",
+      "kind": "method",
+      "name": "DbCompareExchangeRecordString",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.DbCompareExchangeRecordString(hstring collectionName, string id, string key, string expected, string desired)",
+      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1245
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "collectionName",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "expected",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "desired",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.DbGetAllRecordIds",
       "family_id": "script.method.server.Game.DbGetAllRecordIds",
       "kind": "method",
@@ -78884,7 +79034,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1159
+        "line": 1265
       },
       "contract": {
         "explicit": true,
@@ -78945,7 +79095,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1196
+        "line": 1302
       },
       "contract": {
         "explicit": true,
@@ -79006,7 +79156,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1337
+        "line": 1443
       },
       "contract": {
         "explicit": true,
@@ -79060,7 +79210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1353
+        "line": 1459
       },
       "contract": {
         "explicit": true,
@@ -79097,6 +79247,128 @@
       ]
     },
     {
+      "id": "script.method.server.Game.DbTryInsertRecord#148cb7fe9d0c7284",
+      "family_id": "script.method.server.Game.DbTryInsertRecord",
+      "kind": "method",
+      "name": "DbTryInsertRecord",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.DbTryInsertRecord(hstring collectionName, string id, string=>string keyValues)",
+      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1192
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "collectionName",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "keyValues",
+          "type": "string=>string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Game.DbTryInsertRecord#5d786aff58d93d01",
+      "family_id": "script.method.server.Game.DbTryInsertRecord",
+      "kind": "method",
+      "name": "DbTryInsertRecord",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.DbTryInsertRecord(hstring collectionName, ident id, string=>string keyValues)",
+      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1159
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "collectionName",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "id",
+          "type": "ident",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "keyValues",
+          "type": "string=>string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.DbUpdateRecordBool#6b7737017a2e23dd",
       "family_id": "script.method.server.Game.DbUpdateRecordBool",
       "kind": "method",
@@ -79114,7 +79386,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1323
+        "line": 1429
       },
       "contract": {
         "explicit": true,
@@ -79182,7 +79454,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1330
+        "line": 1436
       },
       "contract": {
         "explicit": true,
@@ -79250,7 +79522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1309
+        "line": 1415
       },
       "contract": {
         "explicit": true,
@@ -79318,7 +79590,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1316
+        "line": 1422
       },
       "contract": {
         "explicit": true,
@@ -79386,7 +79658,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1302
+        "line": 1408
       },
       "contract": {
         "explicit": true,
@@ -79454,7 +79726,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1295
+        "line": 1401
       },
       "contract": {
         "explicit": true,
@@ -79522,7 +79794,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1281
+        "line": 1387
       },
       "contract": {
         "explicit": true,
@@ -79590,7 +79862,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1288
+        "line": 1394
       },
       "contract": {
         "explicit": true,
@@ -80179,7 +80451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1377
+        "line": 1483
       },
       "contract": {
         "explicit": true,
@@ -80226,7 +80498,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1396
+        "line": 1502
       },
       "contract": {
         "explicit": true,
@@ -80273,7 +80545,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1369
+        "line": 1475
       },
       "contract": {
         "explicit": true,
@@ -80312,7 +80584,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1730
+        "line": 1836
       },
       "contract": {
         "explicit": true,
@@ -80400,7 +80672,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1767
+        "line": 1873
       },
       "contract": {
         "explicit": true,
@@ -80969,7 +81241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1739
+        "line": 1845
       },
       "contract": {
         "explicit": true,
@@ -81008,7 +81280,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1687
+        "line": 1793
       },
       "contract": {
         "explicit": true,
@@ -81096,7 +81368,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1774
+        "line": 1880
       },
       "contract": {
         "explicit": true,
@@ -81135,7 +81407,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1782
+        "line": 1888
       },
       "contract": {
         "explicit": true,
@@ -81391,7 +81663,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1753
+        "line": 1859
       },
       "contract": {
         "explicit": true,
@@ -81786,7 +82058,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1760
+        "line": 1866
       },
       "contract": {
         "explicit": true,
@@ -82048,7 +82320,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1746
+        "line": 1852
       },
       "contract": {
         "explicit": true,
@@ -82087,7 +82359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1721
+        "line": 1827
       },
       "contract": {
         "explicit": true,
@@ -82126,7 +82398,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1450
+        "line": 1556
       },
       "contract": {
         "explicit": true,
@@ -82212,7 +82484,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1441
+        "line": 1547
       },
       "contract": {
         "explicit": true,
@@ -82259,7 +82531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1475
+        "line": 1581
       },
       "contract": {
         "explicit": true,
@@ -82306,7 +82578,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1696
+        "line": 1802
       },
       "contract": {
         "explicit": true,
@@ -82353,7 +82625,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1468
+        "line": 1574
       },
       "contract": {
         "explicit": true,
@@ -82454,7 +82726,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1705
+        "line": 1811
       },
       "contract": {
         "explicit": true,
@@ -82993,7 +83265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1415
+        "line": 1521
       },
       "contract": {
         "explicit": true,
@@ -83042,7 +83314,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1567
+        "line": 1673
       },
       "contract": {
         "explicit": true,
@@ -83092,7 +83364,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1599
+        "line": 1705
       },
       "contract": {
         "explicit": true,
@@ -83156,7 +83428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1621
+        "line": 1727
       },
       "contract": {
         "explicit": true,
@@ -83206,7 +83478,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1581
+        "line": 1687
       },
       "contract": {
         "explicit": true,
@@ -83260,7 +83532,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1671
+        "line": 1777
       },
       "contract": {
         "explicit": true,
@@ -83302,7 +83574,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1646
+        "line": 1752
       },
       "contract": {
         "explicit": true,
@@ -83351,7 +83623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1679
+        "line": 1785
       },
       "contract": {
         "explicit": true,
@@ -83390,7 +83662,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1534
+        "line": 1640
       },
       "contract": {
         "explicit": true,
@@ -83444,7 +83716,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1524
+        "line": 1630
       },
       "contract": {
         "explicit": true,
@@ -83493,7 +83765,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1550
+        "line": 1656
       },
       "contract": {
         "explicit": true,
@@ -83587,7 +83859,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1713
+        "line": 1819
       },
       "contract": {
         "explicit": true,

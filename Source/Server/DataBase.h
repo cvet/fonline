@@ -104,6 +104,8 @@ public:
     [[nodiscard]] auto Valid(hstring collection_name, const DataBaseKey& id) const -> bool;
 
     void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
+    auto TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool;
+    auto CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool;
     void Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
@@ -173,6 +175,8 @@ public:
     void InitializeOpLogs();
     void RestorePendingChanges();
     void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
+    auto TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool;
+    auto CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool;
     void Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
@@ -221,6 +225,14 @@ private:
         AnyData::Document Doc {};
     };
 
+    struct DocumentReadState
+    {
+        size_t Readers {};
+        uint64_t Generation {};
+    };
+
+    void InsertInner(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) FO_TSA_REQUIRES(_mutationLocker);
+    void UpdateInner(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value) FO_TSA_REQUIRES(_mutationLocker);
     void ScheduleCommit();
     void CommitNextChange() noexcept;
     void CommitThreadEntry() noexcept;
@@ -230,6 +242,7 @@ private:
     void StartPanic(string_view message);
 
     ptr<DataBaseSettings> _settings;
+    mutex _mutationLocker {};
     mutable mutex _stateLocker {};
     thread _commitThread {};
     std::condition_variable_any _commitThreadSignal {};
@@ -239,7 +252,7 @@ private:
     bool _snapshotInProgress FO_TSA_GUARDED_BY(_stateLocker) {};
     std::condition_variable_any _snapshotDoneSignal {};
     deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
-    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
+    mutable unordered_map<pair<hstring, DataBaseKey>, DocumentReadState> _documentReadStates FO_TSA_GUARDED_BY(_stateLocker) {};
     unordered_map<hstring, uint64_t> _committedKeyChanges FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};
     std::atomic_bool _panicStarted {};

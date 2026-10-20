@@ -19446,6 +19446,22 @@
         "/symbols/@id=script.method.server.Critter.MapTransfersLocked/description": {
           "source_sha256": "8c7648eaf382694639b9103e3eb318692ed29378841ee627dfa22fdd78b8ab68",
           "translation": "SyncScope: требует self; возвращает временный снимок счётчика вложенных блокировок переноса, не приобретая покрытие и не резервируя состояние блокировки от последующего изменения."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%23148cb7fe9d0c7284/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%23d7c0eb9e97e0795d/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%2328dbc09a155eeea9/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%235d786aff58d93d01/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
         }
       }
     }

@@ -48,6 +48,53 @@ static auto MakeTempTestDir(string_view name) -> string
 
 TEST_CASE("DiskFileSystem")
 {
+    SECTION("DurableNewWriteAndAtomicReplacementPreserveExistingTargets")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_atomic_replace");
+        string target_path = strex(temp_dir).combine_path("Юникод/slot.bin").str();
+        string staging_path = strex(temp_dir).combine_path("Юникод/slot.stage").str();
+        string missing_path = strex(temp_dir).combine_path("Юникод/missing.stage").str();
+        vector<uint8_t> old_content {'o', 'l', 'd'};
+        vector<uint8_t> new_content {'n', 'e', 'w'};
+        vector<uint8_t> rejected_content {'b', 'a', 'd'};
+
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(target_path, old_content));
+        REQUIRE(fs::write_file_durable_new(staging_path, new_content));
+        CHECK_FALSE(fs::write_file_durable_new(staging_path, rejected_content));
+        REQUIRE(fs::read_file(staging_path).has_value());
+        CHECK(*fs::read_file(staging_path) == "new");
+
+        REQUIRE(fs::replace_file(staging_path, target_path));
+        CHECK_FALSE(fs::exists(staging_path));
+        REQUIRE(fs::read_file(target_path).has_value());
+        CHECK(*fs::read_file(target_path) == "new");
+
+        CHECK_FALSE(fs::replace_file(missing_path, target_path));
+        REQUIRE(fs::read_file(target_path).has_value());
+        CHECK(*fs::read_file(target_path) == "new");
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    SECTION("DurableNewWriteSupportsEmptyBytesAndRejectsInvalidPaths")
+    {
+        string temp_dir = MakeTempTestDir("durable_new");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string path = fs::path_to_string(std::filesystem::path {fs::make_path(temp_dir)} / std::filesystem::path {fs::make_path(" leading space")});
+        vector<uint8_t> empty;
+        CHECK_FALSE(fs::write_file_durable_new("", empty));
+        CHECK_FALSE(fs::write_file_durable_new(string_view {"bad\0path", 8}, empty));
+        REQUIRE(fs::write_file_durable_new(path, empty));
+        CHECK(fs::read_file(path) == optional<string> {string {}});
+        CHECK_FALSE(fs::write_file_durable_new(temp_dir, empty));
+#if !FO_WINDOWS
+        // Keep this native name raw: path_to_string normalizes backslashes as resource separators.
+        string literal_backslash = temp_dir + "/native\\name\\";
+        REQUIRE(fs::write_file_durable_new(literal_backslash, empty));
+        CHECK(fs::exists(literal_backslash));
+#endif
+    }
+
     SECTION("ExclusiveFileLockPreservesBytesAndTransfersOwnership")
     {
 #if !FO_WEB
@@ -931,6 +978,248 @@ TEST_CASE("DiskFilePrimitives")
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }
+}
+
+static_assert(noexcept(fs::try_lock_file("")));
+static_assert(noexcept(fs::exists("")) && noexcept(fs::is_dir("")));
+static_assert(noexcept(fs::is_absolute_path("")) && noexcept(fs::is_relative_path("")) && noexcept(fs::is_contained_relative_path("")));
+static_assert(noexcept(fs::create_directories("")) && noexcept(fs::last_write_time("")));
+static_assert(noexcept(fs::file_size("")) && noexcept(fs::available_space("")));
+static_assert(noexcept(fs::hash_data(const_span<uint8_t> {})));
+static_assert(noexcept(fs::write_file("", string_view {})) && noexcept(fs::write_file("", const_span<uint8_t> {})));
+static_assert(noexcept(fs::write_file_durable_new("", const_span<uint8_t> {})));
+static_assert(noexcept(fs::remove_file("")) && noexcept(fs::remove_dir_tree("")) && noexcept(fs::touch_file("")));
+static_assert(noexcept(fs::sync_parent("")) && noexcept(fs::rename("", "")) && noexcept(fs::rename_durable("", "")) && noexcept(fs::replace_file("", "")));
+static_assert(noexcept(fs::list_dir_file_names("")));
+static_assert(std::is_nothrow_destructible_v<fs::exclusive_file_lock> && std::is_nothrow_destructible_v<fs::disk_read_file> && std::is_nothrow_destructible_v<fs::disk_write_file> && std::is_nothrow_destructible_v<fs::disk_directory_lock>);
+static_assert(std::is_nothrow_constructible_v<fs::disk_read_file, string_view> && std::is_nothrow_constructible_v<fs::disk_read_file, string_view, uint64_t, uint64_t>);
+static_assert(std::is_nothrow_constructible_v<fs::disk_write_file, string_view> && std::is_nothrow_constructible_v<fs::disk_directory_lock, string_view>);
+static_assert(!noexcept(fs::make_path("")) && !noexcept(fs::path_to_string(std::declval<const std::filesystem::path&>())));
+static_assert(!noexcept(fs::resolve_path("")) && !noexcept(fs::make_io_path("")) && !noexcept(fs::make_writable_path("", "")));
+static_assert(noexcept(fs::read_file("")) && noexcept(fs::read_file_bounded("", 0)) && noexcept(fs::compare_file_content("", const_span<uint8_t> {})));
+static_assert(noexcept(fs::hash_file("")));
+static_assert(!noexcept(fs::open_ifstream("")));
+static_assert(!noexcept(fs::iterate_dir("", false, std::declval<const fs::file_visitor&>())));
+static_assert(!noexcept(fs::stream_read_exact(std::declval<std::istream&>(), span<uint8_t> {})));
+static_assert(!noexcept(fs::stream_get_size(std::declval<std::istream&>())) && !noexcept(fs::stream_get_read_pos(std::declval<std::istream&>())));
+static_assert(!noexcept(fs::stream_set_read_pos(std::declval<std::istream&>(), 0, std::ios_base::beg)));
+
+TEST_CASE("DiskFileSystemRejectsInvalidUtf8")
+{
+    string root = MakeTempTestDir("diskfs_invalid_utf8");
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); });
+    string bad = root + "/bad-\xFF.bin";
+    string replacement = root + "/bad-\xEF\xBF\xBD.bin";
+    string source = root + "/source.bin";
+    array<uint8_t, 1> bytes {'x'};
+    for (string_view invalid : {string_view {"\xED\xA0\x80"}, string_view {"\xC0\x80"}, string_view {"\xF4\x90\x80\x80"}, string_view {"\xEF\xBF\xBD"}}) {
+        CHECK_THROWS_AS(fs::make_path(invalid), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_writable_path("", invalid), std::filesystem::filesystem_error);
+        CHECK_FALSE(fs::is_relative_path(invalid));
+    }
+
+    CHECK_FALSE(fs::write_file(replacement, "sentinel"));
+    CHECK_FALSE(fs::exists(replacement));
+    CHECK_FALSE(fs::read_file(replacement).has_value());
+    CHECK_THROWS_AS(fs::path_to_string(std::filesystem::path {u8"bad-\uFFFD.bin"}), std::filesystem::filesystem_error);
+    REQUIRE(fs::write_file(source, "source"));
+    CHECK_FALSE(fs::exists(bad));
+    CHECK_FALSE(fs::is_dir(bad));
+    CHECK_FALSE(fs::is_absolute_path(bad));
+    CHECK_FALSE(fs::is_relative_path(bad));
+    CHECK(fs::last_write_time(bad) == 0);
+    CHECK_FALSE(fs::file_size(bad).has_value());
+    CHECK_FALSE(fs::available_space(bad).has_value());
+    CHECK_FALSE(fs::create_directories(bad));
+    CHECK_FALSE(fs::write_file(bad, bytes));
+    CHECK_FALSE(fs::write_file_durable_new(bad, bytes));
+    CHECK_FALSE(fs::remove_file(bad));
+    CHECK_FALSE(fs::remove_dir_tree(bad));
+    CHECK_FALSE(fs::touch_file(bad));
+    CHECK_FALSE(fs::sync_parent(bad));
+    CHECK_FALSE(fs::rename(source, bad));
+    CHECK_FALSE(fs::rename_durable(source, bad));
+    CHECK_FALSE(fs::replace_file(source, bad));
+    CHECK_FALSE(fs::try_lock_file(bad).owns_lock());
+    CHECK_FALSE(static_cast<bool>(fs::disk_read_file {bad}));
+    CHECK_FALSE(static_cast<bool>(fs::disk_write_file {bad}));
+    CHECK_FALSE(static_cast<bool>(fs::disk_directory_lock {bad}));
+    CHECK(fs::list_dir_file_names(bad).empty());
+    CHECK_FALSE(fs::read_file(bad).has_value());
+    CHECK_FALSE(fs::open_ifstream(bad).is_open());
+    CHECK_THROWS_AS(fs::make_path(bad), std::filesystem::filesystem_error);
+    CHECK_THROWS_AS(fs::make_io_path(bad), std::filesystem::filesystem_error);
+    CHECK(fs::read_file(source) == optional<string> {"source"});
+}
+
+#if !FO_WINDOWS
+TEST_CASE("DiskFileSystemRejectsInvalidUtf8NativeBytes")
+{
+    // Built straight from native bytes: fs::make_path would refuse this fixture before path_to_string
+    // sees it, and Windows cannot construct such a native path at all
+    std::filesystem::path native_bad {std::filesystem::path::string_type {"bad-\xFF.bin"}};
+    CHECK_THROWS_AS(fs::path_to_string(native_bad), std::filesystem::filesystem_error);
+}
+#endif
+
+TEST_CASE("DiskFileSystemPathContracts")
+{
+    string root = MakeTempTestDir("diskfs_path_contracts");
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); });
+    string file = root + "/sentinel.bin";
+    string other = root + "/other.bin";
+    string bad_file = file + string(1, '\0') + "/ignored";
+    string bad_dir = root + string(1, '\0') + "/ignored";
+    array<uint8_t, 3> bytes {'o', 'l', 'd'};
+    REQUIRE(fs::write_file(file, bytes));
+
+    SECTION("QueriesAndHandlesRejectTheWholeName")
+    {
+        CHECK_FALSE(fs::exists(bad_file));
+        CHECK_FALSE(fs::is_dir(bad_dir));
+        CHECK_FALSE(fs::is_absolute_path(bad_file));
+        CHECK_FALSE(fs::is_relative_path(string_view {"relative\0suffix", 15}));
+        CHECK_FALSE(fs::is_contained_relative_path(bad_file));
+        CHECK(fs::last_write_time(bad_file) == 0);
+        CHECK_FALSE(fs::file_size(bad_file).has_value());
+        CHECK_FALSE(fs::available_space(bad_dir).has_value());
+        CHECK_FALSE(fs::hash_file(bad_file).has_value());
+        CHECK_FALSE(fs::read_file(bad_file).has_value());
+        CHECK_FALSE(fs::read_file_bounded(bad_file, 100).has_value());
+        CHECK_FALSE(fs::compare_file_content(bad_file, bytes));
+        CHECK_FALSE(fs::open_ifstream(bad_file).is_open());
+        CHECK_FALSE(static_cast<bool>(fs::open_ifstream(bad_file)));
+        CHECK_FALSE(static_cast<bool>(fs::disk_read_file {bad_file}));
+        CHECK_FALSE(static_cast<bool>(fs::disk_read_file {bad_file, 0, 3}));
+        CHECK_FALSE(static_cast<bool>(fs::disk_directory_lock {bad_dir}));
+        CHECK_FALSE(fs::try_lock_file(bad_file).owns_lock());
+        CHECK(fs::list_dir_file_names(bad_dir).empty());
+        CHECK(fs::list_dir_file_names(bad_dir, true).empty());
+    }
+
+    SECTION("PurePathConversionsRejectEmbeddedNul")
+    {
+        CHECK_THROWS_AS(fs::make_path(bad_file), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::resolve_path(bad_file), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_io_path(bad_file), std::filesystem::filesystem_error);
+        auto native = std::filesystem::path {fs::make_path(file)};
+        native += std::filesystem::path::string_type(1, std::filesystem::path::value_type {});
+        CHECK_THROWS_AS(fs::path_to_string(native), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_writable_path(bad_dir, "relative"), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_writable_path(bad_dir, file), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_writable_path(root, bad_file), std::filesystem::filesystem_error);
+        CHECK_THROWS_AS(fs::make_writable_path("", bad_file), std::filesystem::filesystem_error);
+    }
+
+    SECTION("MutatorsPreserveExistingPrefixes")
+    {
+        for (auto mode : {fs::disk_write_mode::create, fs::disk_write_mode::append, fs::disk_write_mode::create_new}) {
+            REQUIRE(fs::write_file(file, bytes));
+            {
+                fs::disk_write_file writer {bad_file, mode};
+                CHECK_FALSE(static_cast<bool>(writer));
+            }
+            CHECK(fs::compare_file_content(file, bytes));
+        }
+        CHECK_FALSE(fs::write_file(bad_file, "replacement"));
+        CHECK(fs::compare_file_content(file, bytes));
+        CHECK_FALSE(fs::write_file(bad_file, bytes));
+        CHECK(fs::compare_file_content(file, bytes));
+        auto before_touch = fs::last_write_time(file);
+        CHECK_FALSE(fs::touch_file(bad_file));
+        CHECK(fs::last_write_time(file) == before_touch);
+        CHECK_FALSE(fs::remove_file(bad_file));
+        CHECK(fs::compare_file_content(file, bytes));
+        CHECK_FALSE(fs::remove_dir_tree(bad_dir));
+        CHECK(fs::compare_file_content(file, bytes));
+    }
+
+    SECTION("InvalidNamesCannotCreateTheirPrefixesOrSyncADifferentParent")
+    {
+        string missing = root + "/missing";
+        string bad_missing = missing + string(1, '\0') + "/child";
+        CHECK_FALSE(fs::create_directories(bad_missing));
+        CHECK_FALSE(fs::exists(missing));
+        CHECK_FALSE(fs::touch_file(bad_missing));
+        CHECK_FALSE(fs::exists(missing));
+        CHECK_FALSE(fs::write_file_durable_new(bad_missing, bytes));
+        CHECK_FALSE(fs::exists(missing));
+        CHECK_FALSE(static_cast<bool>(fs::disk_write_file {bad_missing, fs::disk_write_mode::create_new}));
+        CHECK_FALSE(fs::exists(missing));
+        CHECK_FALSE(fs::sync_parent(bad_dir + "/leaf"));
+    }
+
+    SECTION("TwoPathOperationsValidateBothNamesBeforeMutation")
+    {
+        for (auto operation : {fs::rename, fs::rename_durable, fs::replace_file}) {
+            for (int32_t invalid_side = 0; invalid_side != 3; ++invalid_side) {
+                REQUIRE(fs::write_file(file, "source"));
+                REQUIRE(fs::write_file(other, "destination"));
+                string source = invalid_side != 1 ? bad_file : file;
+                string target = invalid_side != 0 ? other + string(1, '\0') + "suffix" : other;
+                CHECK_FALSE(operation(source, target));
+                CHECK(fs::read_file(file) == optional<string> {"source"});
+                CHECK(fs::read_file(other) == optional<string> {"destination"});
+            }
+        }
+    }
+
+    SECTION("DirectoryVisitorsNeverSeeAnInvalidPrefix")
+    {
+        bool visited = false;
+        CHECK_THROWS_AS(fs::iterate_dir(bad_dir, true, [&](string_view, size_t, uint64_t) { visited = true; }), std::filesystem::filesystem_error);
+        CHECK_FALSE(visited);
+        CHECK_THROWS_AS(fs::iterate_dir(root, false, [](string_view, size_t, uint64_t) { throw std::runtime_error("visitor failure"); }), std::runtime_error);
+    }
+
+    SECTION("EmptyPathConventionsRemainValid")
+    {
+        CHECK(fs::create_directories(""));
+        CHECK(fs::is_relative_path(""));
+        CHECK_FALSE(fs::is_absolute_path(""));
+        CHECK_FALSE(fs::is_contained_relative_path(""));
+        CHECK_FALSE(fs::try_lock_file("").owns_lock());
+        CHECK_FALSE(fs::write_file_durable_new("", bytes));
+        CHECK(static_cast<bool>(fs::disk_directory_lock {""}));
+    }
+
+#if !FO_WINDOWS
+    SECTION("PosixUtf8NamesAndBackslashParentsRemainValid")
+    {
+        // Raw concatenation keeps the backslash a literal directory name; the file name is valid UTF-8
+        string parent = root + "/native\\parent";
+        string path = parent + "/Юникод-\xEF\xBF\xBC.bin";
+        REQUIRE(fs::write_file_durable_new(path, bytes));
+        CHECK(fs::compare_file_content(path, bytes));
+        CHECK_FALSE(fs::exists(root + "/native"));
+        REQUIRE(fs::write_file(path, "next"));
+        CHECK(fs::read_file(path) == optional<string> {"next"});
+#if FO_LINUX || FO_MAC
+        CHECK(fs::sync_parent(path));
+#endif
+    }
+#endif
+}
+
+TEST_CASE("DiskFileSystemStreamExceptions")
+{
+    std::istringstream input {std::string {"x"}};
+    input.exceptions(std::ios::failbit | std::ios::badbit);
+    array<uint8_t, 2> bytes {};
+    CHECK_THROWS_AS(fs::stream_read_exact(input, bytes), std::ios_base::failure);
+
+    class failing_seek_buffer final : public std::streambuf
+    {
+        auto seekoff(off_type, std::ios_base::seekdir, std::ios_base::openmode) -> pos_type override { throw std::ios_base::failure("seek failure"); }
+        auto seekpos(pos_type, std::ios_base::openmode) -> pos_type override { throw std::ios_base::failure("seek failure"); }
+    } buffer;
+    std::istream seeking {&buffer};
+    seeking.exceptions(std::ios::badbit);
+    CHECK_THROWS_AS(fs::stream_get_size(seeking), std::ios_base::failure);
+    seeking.clear();
+    CHECK_THROWS_AS(fs::stream_get_read_pos(seeking), std::ios_base::failure);
+    seeking.clear();
+    CHECK_THROWS_AS(fs::stream_set_read_pos(seeking, 0, std::ios_base::beg), std::ios_base::failure);
 }
 
 TEST_CASE("ExclusiveFileLockProcessProbe", "[.process]")

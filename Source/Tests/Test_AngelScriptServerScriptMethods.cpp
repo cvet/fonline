@@ -1686,6 +1686,72 @@ namespace ScriptMethodsTest
         return 0;
     }
 
+    int TestDatabaseTryInsertRecord()
+    {
+        ident intId;
+        intId.value = 1234511;
+
+        if (!Game.DbTryInsertRecord("test_collection".hstr(), intId, {{"Name", "First"}})) return -1;
+        if (Game.DbTryInsertRecord("test_collection".hstr(), intId, {{"Name", "Second"}})) return -2;
+
+        dict<string, string> intDoc = Game.DbGetRecord("test_collection".hstr(), intId);
+        if (intDoc.get("Name") != "First") return -3;
+
+        string stringId = "try-insert-key";
+        if (!Game.DbTryInsertRecord("test_strings".hstr(), stringId, {{"Name", "First"}})) return -4;
+        if (Game.DbTryInsertRecord("test_strings".hstr(), stringId, {{"Name", "Second"}})) return -5;
+
+        dict<string, string> stringDoc = Game.DbGetRecord("test_strings".hstr(), stringId);
+        if (stringDoc.get("Name") != "First") return -6;
+
+        if (!Game.DbCompareExchangeRecordString("test_collection".hstr(), intId, "Name", "First", "Advanced")) return -7;
+        if (Game.DbCompareExchangeRecordString("test_collection".hstr(), intId, "Name", "First", "Wrong")) return -8;
+        if (!Game.DbCompareExchangeRecordString("test_strings".hstr(), stringId, "Name", "First", "Advanced")) return -9;
+        if (Game.DbCompareExchangeRecordString("test_strings".hstr(), stringId, "Name", "First", "Wrong")) return -10;
+
+        return 0;
+    }
+
+    void TestDatabaseConditionalTryInsertZeroIdThrows()
+    {
+        ident id; Game.DbTryInsertRecord("test_collection".hstr(), id, {{"Name", "A"}});
+    }
+
+    void TestDatabaseConditionalTryInsertEmptyStringIdThrows()
+    {
+        Game.DbTryInsertRecord("test_strings".hstr(), "", {{"Name", "A"}});
+    }
+
+    void TestDatabaseConditionalTryInsertEmptyValuesThrows()
+    {
+        ident id; id.value = 1234520; Game.DbTryInsertRecord("test_collection".hstr(), id, {});
+    }
+
+    void TestDatabaseConditionalTryInsertEmptyKeyThrows()
+    {
+        ident id; id.value = 1234520; Game.DbTryInsertRecord("test_collection".hstr(), id, {{"", "A"}});
+    }
+
+    void TestDatabaseConditionalCompareExchangeZeroIdThrows()
+    {
+        ident id; Game.DbCompareExchangeRecordString("test_collection".hstr(), id, "Name", "A", "B");
+    }
+
+    void TestDatabaseConditionalCompareExchangeEmptyStringIdThrows()
+    {
+        Game.DbCompareExchangeRecordString("test_strings".hstr(), "", "Name", "A", "B");
+    }
+
+    void TestDatabaseConditionalCompareExchangeEmptyKeyThrows()
+    {
+        Game.DbCompareExchangeRecordString("test_strings".hstr(), "key", "", "A", "B");
+    }
+
+    void TestDatabaseConditionalCompareExchangeInvalidValueThrows()
+    {
+        string bad = MakeInvalidUtf8String(); Game.DbCompareExchangeRecordString("test_strings".hstr(), "key", "Name", "A", bad);
+    }
+
     int TestDatabaseRecordEnumerationSetup()
     {
         ident intId;
@@ -3499,6 +3565,26 @@ TEST_CASE("ServerMiscScriptOperations")
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("DatabaseTryInsertRecord")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseTryInsertRecord"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("DatabaseConditionalArgumentGuards")
+    {
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalTryInsertZeroIdThrows", "Record id arg is zero");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalTryInsertEmptyStringIdThrows", "Record id arg is empty");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalTryInsertEmptyValuesThrows", "Record values are empty");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalTryInsertEmptyKeyThrows", "Record key is empty");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalCompareExchangeZeroIdThrows", "Record id arg is zero");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalCompareExchangeEmptyStringIdThrows", "Record id arg is empty");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalCompareExchangeEmptyKeyThrows", "Record key is empty");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseConditionalCompareExchangeInvalidValueThrows", "Record compare-exchange value has invalid encoding");
     }
 
     SECTION("DatabaseRecordEnumerationAfterCommit")

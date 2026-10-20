@@ -30,6 +30,55 @@ public static class ManagedRuntimeProbe
     }
 
     [CallableFromNative]
+    internal static int TestConditionalDatabaseRecords()
+    {
+        hstring collection = "test_collection".hstr();
+        ident id = new ident(1234511);
+        Dictionary<string, string> first = new Dictionary<string, string> { { "Name", "First" } };
+        Dictionary<string, string> second = new Dictionary<string, string> { { "Name", "Second" } };
+
+        if (!Game.DbTryInsertRecord(collection, id, first)) {
+            return -1;
+        }
+        if (Game.DbTryInsertRecord(collection, id, second)) {
+            return -2;
+        }
+        if (Game.DbGetRecord(collection, id)["Name"] != "First") {
+            return -3;
+        }
+        if (!Game.DbCompareExchangeRecordString(collection, id, "Name", "First", "Advanced")) {
+            return -4;
+        }
+        if (Game.DbCompareExchangeRecordString(collection, id, "Name", "First", "Wrong")) {
+            return -5;
+        }
+        if (Game.DbCompareExchangeRecordString(collection, id, "Missing", "", "Wrong")) {
+            return -6;
+        }
+
+        collection = "test_strings".hstr();
+        string key = "conditional-key";
+
+        if (!Game.DbTryInsertRecord(collection, key, first)) {
+            return -7;
+        }
+        if (Game.DbTryInsertRecord(collection, key, second)) {
+            return -8;
+        }
+        if (!Game.DbCompareExchangeRecordString(collection, key, "Name", "First", "Advanced")) {
+            return -9;
+        }
+        if (Game.DbCompareExchangeRecordString(collection, key, "Name", "First", "Wrong")) {
+            return -10;
+        }
+        if (Game.DbGetRecord(collection, key)["Name"] != "Advanced") {
+            return -11;
+        }
+
+        return 0;
+    }
+
+    [CallableFromNative]
     internal static int GetCritterInitCalls() => CritterInitCalls;
 
     [CallableFromNative]

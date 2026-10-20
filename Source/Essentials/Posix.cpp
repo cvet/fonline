@@ -689,12 +689,22 @@ auto posix::open_new_write_file(const string& path, bool append, bool exclusive)
 #if !FO_WEB
     if (::flock(fd, LOCK_EX | LOCK_NB) != 0) {
         ::close(fd);
+
+        if (exclusive) {
+            (void)::unlink(path.c_str());
+        }
+
         return -1;
     }
 #endif
 
     if ((!append && truncate_file_to(fd, 0) != 0) || seek_file(fd, 0, SEEK_END) < 0) {
         ::close(fd);
+
+        if (exclusive) {
+            (void)::unlink(path.c_str());
+        }
+
         return -1;
     }
 

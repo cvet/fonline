@@ -355,4 +355,81 @@ TEST_CASE("StringUtils")
 #endif
 }
 
+TEST_CASE("StringUtilsUtf8Validation")
+{
+    auto check_valid = [](string_view text) {
+        CHECK(strvex(text).is_valid_utf8());
+        CHECK(strex(string(text.data(), text.size())).is_valid_utf8());
+    };
+    auto check_invalid = [](string_view text) {
+        CHECK_FALSE(strvex(text).is_valid_utf8());
+        CHECK_FALSE(strex(string(text.data(), text.size())).is_valid_utf8());
+    };
+
+    SECTION("AcceptsScalarBoundaries")
+    {
+        check_valid("");
+        check_valid("plain ascii");
+        check_valid(string_view {"a\0b", 3}); // An embedded NUL is a valid scalar in text; path policies reject it separately
+        check_valid("\xC2\x80"); // U+0080, the first two-byte scalar
+        check_valid("\xDF\xBF"); // U+07FF, the last two-byte scalar
+        check_valid("\xE0\xA0\x80"); // U+0800, the first three-byte scalar
+        check_valid("\xED\x9F\xBF"); // U+D7FF, just below the surrogate range
+        check_valid("\xEE\x80\x80"); // U+E000, just above the surrogate range
+        check_valid("\xEF\xBF\xBC"); // U+FFFC, just below the decoder error sentinel
+        check_valid("\xEF\xBF\xBE"); // U+FFFE
+        check_valid("\xF0\x90\x80\x80"); // U+10000, the first four-byte scalar
+        check_valid("\xF4\x8F\xBF\xBF"); // U+10FFFF, the last scalar
+    }
+
+    SECTION("RejectsTheDecoderErrorSentinel")
+    {
+        CHECK_FALSE(utf8::is_valid(0xFFFD));
+        check_invalid("\xEF\xBF\xBD");
+        check_invalid("a\xEF\xBF\xBDz");
+        check_invalid("\xEF\xBF\xBD\xEF\xBF\xBD");
+    }
+
+    SECTION("ValidatesCodePoints")
+    {
+        CHECK(utf8::is_valid(0));
+        CHECK(utf8::is_valid(0xD7FF));
+        CHECK_FALSE(utf8::is_valid(0xD800));
+        CHECK_FALSE(utf8::is_valid(0xDBFF));
+        CHECK_FALSE(utf8::is_valid(0xDC00));
+        CHECK_FALSE(utf8::is_valid(0xDFFF));
+        CHECK(utf8::is_valid(0xE000));
+        CHECK(utf8::is_valid(0xFFFC));
+        CHECK(utf8::is_valid(0xFFFE));
+        CHECK(utf8::is_valid(0x1F600));
+        CHECK(utf8::is_valid(0x10FFFF));
+        CHECK_FALSE(utf8::is_valid(0x110000));
+    }
+
+    SECTION("RejectsMalformedOverlongTruncatedOutOfRangeAndSurrogateEncodings")
+    {
+        check_invalid("\x80"); // Bare continuation byte
+        check_invalid("\xBF");
+        check_invalid("\xC0\x80"); // Overlong NUL
+        check_invalid("\xC1\xBF"); // Overlong two-byte encoding
+        check_invalid("\xC2"); // Truncated sequence
+        check_invalid("\xC2"
+                      "A"); // Split literal: an ASCII byte is not a continuation
+        check_invalid("\xE0\xA0"); // Truncated three-byte sequence
+        check_invalid("\xE0\x80\x80"); // Overlong three-byte encoding
+        check_invalid("\xED\xA0\x80"); // U+D800, the first surrogate
+        check_invalid("\xED\xAF\xBF"); // U+DBFF, the last high surrogate
+        check_invalid("\xED\xB0\x80"); // U+DC00, a low surrogate
+        check_invalid("\xED\xBF\xBF"); // Also U+DFFF
+        check_invalid("\xE2\x28\xA1"); // Invalid continuation inside a three-byte sequence
+        check_invalid("\xF0\x90\x80"); // Truncated four-byte sequence
+        check_invalid("\xF0\x80\x80\x80"); // Overlong four-byte encoding
+        check_invalid("\xF0\x28\x8C\xBC");
+        check_invalid("\xF4\x90\x80\x80"); // Beyond U+10FFFF
+        check_invalid("\xF5\x80\x80\x80"); // Lead byte above the Unicode range
+        check_invalid("\xFE");
+        check_invalid("\xFF");
+    }
+}
+
 FO_END_NAMESPACE

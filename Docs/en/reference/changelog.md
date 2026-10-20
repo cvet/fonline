@@ -22,6 +22,33 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-20
 
+### Added
+
+- Add `fs::write_file_durable_new` for exclusive new-file writes with descriptor flush, reusing the native path and stream primitives. Existing names are preserved; staged atomic replacement remains the existing `fs::write_file`/`fs::replace_file` contract.
+- Add instance-local `DataBase::TryInsert` and typed `CompareExchange`, with pending-queue visibility and producer synchronization against ordinary mutations, snapshot restore and queue clear. Export `Game.DbTryInsertRecord` and `Game.DbCompareExchangeRecordString` for integer and string keys on both script backends.
+
+### Removed
+
+- Remove the unused `ClassExtensionAttribute` placeholder. It never bound a global function as a class method; C# uses language extension methods, and no corresponding AngelScript tag is planned.
+
+### Fixed
+
+- Reject embedded NUL at every filesystem path boundary and malformed UTF-8 before native conversion on every platform. Use shared UTF-8 scalar validation in a single pass with the NUL check, preserving its U+FFFD error-sentinel rejection and rejecting surrogate encodings; validate native-to-string output as well. Honor I/O conversion errors and preserve literal POSIX backslashes. Make result-based file operations consistently `noexcept`, handling exceptions locally at native conversion, owned stream construction/read and iterator operations. Convert unexpected C++ exceptions at internal STL boundaries to an operation failure. Keep path converters, standard-stream interop and caller streams/visitors potentially throwing; preserve partial directory listings and hash-to-EOF semantics.
+- Give the standalone LibreSSL archive probe lean Windows headers so WinCrypt macros cannot collide with its X509 declarations; retain its AES, TLS, X509 and SRTP assertions with assembly enabled and disabled.
+- Track generations of active database reads so a concurrent reader cannot hide a completed commit from an earlier read or let a conditional mutation accept a stale value.
+- Preserve internal spaces in JSON/SQLite storage directories by parsing the complete trimmed remainder after the provider name, including connection strings with outer whitespace.
+
+### Migration
+
+- Base `8af9a71307196a1937c79389e83036d2face5ceb` (`2026.1.55-dev`); update `2026.1.56-dev`. Existing file helpers, ordinary DB methods and valid connection strings retain their meaning. New-file creation exposes its name during writing and flushes file content only; use a private stage plus atomic replacement when readers must see complete publication. Conditional DB success queues a mutation in one owning instance; it does not establish durable commit, a cross-process transaction or native backend CAS.
+- Rebuild native consumers/Baker and rebake all script roles so generated API/metadata and assemblies agree. Callers may adopt the two new methods explicitly; no existing call must be renamed and no game feature is enabled automatically. JSON/SQLite path values need no escaping for internal spaces; literal quote stripping is not part of the connection grammar. Memory/Mongo tokens and disabled-provider diagnostics are unchanged.
+- No entity/property, JSON/CBOR/BSON/oplog, snapshot, baked-resource or wire format conversion is introduced. The manual runtime marker advances from `0.0.74` to `0.0.75`; Managed ABI `9` stays unchanged; regenerate the source-derived API/compatibility metadata and deploy matching binaries/resources. Rollback uses the matching previous build/resources without data conversion. Validate native contention/pending/restore barriers, both script bindings, local-provider reopen with spaces, and filesystem success/refusal on each claimed platform.
+- Filesystem callers must pass complete NUL-free UTF-8 paths on every platform. Non-UTF-8 POSIX file names are no longer supported by `fs`. Pure converters now reject invalid paths with `filesystem_error`; result primitives refuse them without acting on the prefix. Rebuild native consumers for the read/write/hash/comparison/listing exception specifications. Result-based operations now report standard interop errors through failure results; oversized whole-file reads are refused before buffer allocation. The Engine terminate-on-OOM policy is unchanged. Visitor and caller-stream exceptions still propagate; valid paths, empty-path conventions and file publication/durability guarantees are preserved.
+
+- Remove the unused [ClassExtension] marker from external managed source and use ordinary C# extension methods for instance-call syntax. The compiler rejects the removed attribute. Rebuild affected script assemblies with the current CoreScripts. This removal adds no data/schema/ABI change beyond the update boundaries above; rollback restores the matching previous CoreScripts and script assemblies.
+
+## 2026.1.55-dev - 2026-10-20
+
 ### Changed
 
 - Reject map-local unsynchronized Common or Client configuration overrides on dynamic items in Mapper and MapBaker, including constant project properties without `Persistent`. Check both server and client property candidates, including hidden items. Preserve server-only authoring and placement context; configure permanent geometry on prototypes. Automatic mesh coalescing applies only to static items.

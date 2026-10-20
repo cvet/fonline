@@ -54,7 +54,7 @@ namespace fs
         exclusive_file_lock(exclusive_file_lock&& other) noexcept;
         auto operator=(const exclusive_file_lock&) -> exclusive_file_lock& = delete;
         auto operator=(exclusive_file_lock&& other) noexcept -> exclusive_file_lock&;
-        ~exclusive_file_lock() noexcept;
+        ~exclusive_file_lock();
 
         [[nodiscard]] auto owns_lock() const noexcept -> bool { return _descriptor >= 0; }
 
@@ -70,7 +70,9 @@ namespace fs
         int32_t _descriptor {-1};
     };
 
-    // Filesystem helpers
+    // Filesystem helpers. Embedded NUL and malformed UTF-8 are rejected before conversion or I/O on every platform.
+    // Result-based file operations are noexcept; std interop failures use the failure result.
+    // Path converters, open_ifstream and caller-owned streams/visitors may throw.
     auto make_path(string_view path) -> std::u8string;
     auto path_to_string(const std::filesystem::path& path) -> string;
     auto resolve_path(string_view path) -> string;
@@ -85,14 +87,15 @@ namespace fs
     auto last_write_time(string_view path) noexcept -> uint64_t;
     auto file_size(string_view path) noexcept -> optional<uint64_t>;
     auto available_space(string_view path) noexcept -> optional<uint64_t>;
-    auto hash_file(string_view path) -> optional<uint64_t>;
+    auto hash_file(string_view path) noexcept -> optional<uint64_t>;
     auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
     auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
-    auto read_file(string_view path) -> optional<string>;
-    auto read_file_bounded(string_view path, size_t max_size) -> optional<string>;
-    auto compare_file_content(string_view path, const_span<uint8_t> content) -> bool;
-    auto write_file(string_view path, string_view content) -> bool;
-    auto write_file(string_view path, const_span<uint8_t> content) -> bool;
+    auto read_file(string_view path) noexcept -> optional<string>;
+    auto read_file_bounded(string_view path, size_t max_size) noexcept -> optional<string>;
+    auto compare_file_content(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    auto write_file(string_view path, string_view content) noexcept -> bool;
+    auto write_file(string_view path, const_span<uint8_t> content) noexcept -> bool;
+    auto write_file_durable_new(string_view path, const_span<uint8_t> content) noexcept -> bool;
     auto remove_file(string_view path) noexcept -> bool;
     auto remove_dir_tree(string_view dir) noexcept -> bool;
     auto touch_file(string_view path) noexcept -> bool;
