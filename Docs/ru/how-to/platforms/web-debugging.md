@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"ac9a7601e53b44458de39b4d111158f28dd601c03a1a1e6abe355c7ca38d6828"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"9132daf79b11a6563a513297e0c0de74e1126872fad9c8450b4b591343c9326b"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -79,6 +79,10 @@ bash Engine/BuildTools/prepare-workspace.sh web
 Выбранный toolchain — `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools получает `FO_EMSDK` из выбранного workspace, если этот каталог существует; для другого пересоздаваемого workspace задайте `FO_WORKSPACE`, а не направляйте `FO_EMSDK` на посторонний SDK. Windows использует Ninja Multi-Config, Linux — Unix Makefiles. Считайте SDK и каталоги build/output пересоздаваемыми, но проверяйте pin в исходниках.
 
 ## Конфигурации сборки и ограничения Web
+
+Managed-сборка также использует SDK, выбранный закреплёнными исходниками `dotnet/runtime` для браузерного glue Mono. Его LLVM может отличаться от SDK приложения. BuildTools добавляет только браузерному `functable.c` zlib-ng опцию `-O0`: оптимизация диспетчеризации в режиме PIC может породить прямой вызов с релокацией индекса глобальной переменной ([LLVM #215664](https://github.com/llvm/llvm-project/issues/215664)). Реализации сжатия сохраняют оптимизацию. Маркер браузерного runtime включает эту правку, поэтому подготовленный workspace пересобирает runtime. Ограничение удаляется после успешной проверки воспроизводящего примера закреплённым компилятором Mono; датированный контроль — `BrowserMonoZlibPicDispatch` в `ThirdParty.cmake`.
+
+`BuildTools/tests/test_runtime_browser_zlib_dispatch.py` проверяет, что правка затрагивает только браузерную диспетчеризацию и отвергает изменённые или неоднозначные якоря. При наличии CMake, Ninja и LLVM в `PATH` тест компилятора применяет правку к небольшому настоящему CMake-проекту, проверяет полученные команды диспетчеризации/сжатия, собирает объект и исследует релокации вызовов. JUnit сохраняет выбранный компилятор и команды; сам этот необязательный тест не закрепляет версию компилятора. При проверке нового pin используйте LLVM из SDK Mono и перед удалением ограничения соберите `tests/fixtures/wasm_pic_dispatch.c` с оптимизацией.
 
 Соберите браузерный клиент с полезной debug information:
 
@@ -226,6 +230,8 @@ Runtime создаёт `/PersistentData`, монтирует IDBFS, вызыва
 File logging и asynchronous file-log writing отключены на Web. Основные reusable evidence — browser console и встроенная panel штатного shell. Собирайте console entries, JavaScript errors, unhandled rejections, page crashes, network traces, server logs и точные revisions артефактов. Скопированная error panel полезна, но не заменяет предшествующую console/network timeline.
 
 ## Диагностика в браузере
+
+Если линковка `dotnet.native.js` Mono завершается в `wasm-opt` с `popping from empty stack`, сохраните промежуточный `dotnet.native.wasm` и исследуйте указанную функцию вместе с её входным объектным файлом. Инструкция `call` с `R_WASM_GLOBAL_INDEX_LEB` означает некорректный результат компиляции; замена Binaryen или подавление валидации его не исправит. Убедитесь, что правка диспетчеризации применена и `-O0` стоит последней опцией оптимизации для `functable.c`, затем пересоберите и проверьте модуль до упаковки.
 
 Используйте DevTools в таком порядке:
 

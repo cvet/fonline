@@ -78,6 +78,10 @@ On Windows, use the checked PowerShell wrapper or direct host-workspace command 
 
 The selected toolchain is `Workspace/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake`. BuildTools resolves `FO_EMSDK` from the selected workspace when that directory exists; select another disposable workspace through `FO_WORKSPACE` instead of pointing `FO_EMSDK` at an unrelated SDK. Windows uses Ninja Multi-Config; Linux uses Unix Makefiles. Keep the SDK and build/output directories disposable, but keep the pin reviewed in source.
 
+Managed builds also use the SDK selected by the pinned `dotnet/runtime` sources for Mono's browser glue. Its LLVM can differ from the application's SDK. BuildTools applies a browser-only source option `-O0` to zlib-ng's `functable.c`: optimized PIC dispatch can emit a direct call with a global-index relocation ([LLVM #215664](https://github.com/llvm/llvm-project/issues/215664)). The compression implementations keep their optimization. The browser runtime marker includes this patch, so an already prepared workspace rebuilds the runtime. Remove this temporary restriction after the pinned Mono compiler passes the dispatch reproduction; its dated gate is `BrowserMonoZlibPicDispatch` in `ThirdParty.cmake`.
+
+`BuildTools/tests/test_runtime_browser_zlib_dispatch.py` checks that the patch changes only browser dispatch and rejects changed or ambiguous anchors. With CMake, Ninja and LLVM tools on `PATH`, its compiler case applies the patch to a small real CMake project, checks the generated dispatch/compression commands, builds the object and inspects its call relocations. JUnit output records the selected compiler identity and commands; this optional tool-dependent test does not pin the compiler itself. Use the Mono SDK's LLVM when qualifying a pin change, and compile `tests/fixtures/wasm_pic_dispatch.c` with optimization before removing the restriction.
+
 ## Build configurations and Web limits
 
 Build the browser client with useful debug information:
@@ -226,6 +230,8 @@ Therefore do not promise durable saves merely because IDBFS mounted. The project
 File logging and asynchronous file-log writing are disabled on Web. The primary reusable evidence is the browser console plus the stock in-page panel. Capture console entries, JavaScript errors, unhandled rejections, page crashes, network traces, server logs, and exact artifact revisions. A copied error panel is useful but does not replace the earlier console/network timeline.
 
 ## Browser diagnostics
+
+If Mono's `dotnet.native.js` link fails in `wasm-opt` with `popping from empty stack`, preserve the intermediate `dotnet.native.wasm` and inspect the named function and its input object. A `call` carrying `R_WASM_GLOBAL_INDEX_LEB` is invalid compiler output; replacing Binaryen or suppressing validation cannot repair it. Confirm the dispatch patch is present and `-O0` is the last optimization option for `functable.c`, then rebuild and validate the generated module before packaging.
 
 Use DevTools in this order:
 

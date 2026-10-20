@@ -113,6 +113,7 @@ def test_cmake_selects_the_same_platform_cache_key(tmp_path: Path, target: str, 
     script = tmp_path / "marker.cmake"
     script.write_text(
         "macro(SetValue name)\n  set(${name} ${ARGN})\nendmacro()\n"
+        "macro(TemporaryCompat)\nendmacro()\n"
         "set(FO_MONO_RUNTIME_VERSION v10.0.11)\n"
         f"set(FO_MONO_TRIPLET {target}.x64.Release)\n"
         + "".join(f"set({flag} ON)\n" for flag in flags)
@@ -139,7 +140,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     runtime.mkdir(parents=True)
     triplet = f"{target}.x64.Release"
     if target == "browser":
-        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue"
+        previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_wasmglue_asm_id"
     elif legacy_apple_patch:
         previous_suffix = _buildtools.MONO_SUBSET_MARKER_SUFFIX + "_apple_sources"
     else:
@@ -173,6 +174,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     patch_names = (
         "patch_runtime_zlib_warning_level",
         "patch_runtime_browser_asm_compiler",
+        "patch_runtime_browser_zlib_dispatch",
         "patch_runtime_linux_signal_actions",
         "patch_runtime_apple_sources",
         "patch_runtime_ios_sources",
@@ -195,7 +197,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     assert calls == [] and archive.read_text() == "archive"
     _buildtools.setup_mono(target, "x64", "Release", env)
     assert archive.read_text() == "patched runtime"
-    expected_patch = (["patch_runtime_browser_asm_compiler"] if target == "browser" else
+    expected_patch = (["patch_runtime_browser_asm_compiler", "patch_runtime_browser_zlib_dispatch"] if target == "browser" else
                       ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics",
                        "patch_runtime_isa_is_supported_fallback"] if target == "android" else
