@@ -12,15 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-### Removed
+## Current - 2026-10-20
 
-- Remove the unused `ClassExtensionAttribute` placeholder. It never bound a global function as a class method; C# uses language extension methods, and no corresponding AngelScript tag is planned.
+### Documentation
+
+- Normalize native comments and JSON/SQLite backup-doc checks; describe path grammar and consolidate ClassExtension notes.
 
 ### Migration
 
-- Remove `[ClassExtension]` from external managed source, if present, and use ordinary C# extension-method syntax where instance-call syntax is needed. Rebuild affected script assemblies; the compiler rejects the removed attribute. Existing unannotated helpers, entry-point attributes, native bindings, saved data, resource formats, network compatibility and Managed ABI `9` are unchanged. No project data migration or compatibility-marker bump is required. Rollback restores the previous CoreScripts and matching script assemblies; it requires no data conversion.
+- Base `6c88391e77d519885d54f8894d0781a7d0a14ee6` (`2026.1.56-dev`) → `2026.1.57-dev`. Existing APIs, configuration, data/resource formats and values are unchanged; wire `0.0.75`, Managed ABI `9`. No conversion. Regenerate/validate docs, rebuild matching native metadata/applications and rebake resources. Rollback restores the matching preceding artifacts.
 
-## Current - 2026-10-20
+## 2026.1.56-dev - 2026-10-20
 
 ### Added
 
@@ -45,7 +47,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - No entity/property, JSON/CBOR/BSON/oplog, snapshot, baked-resource or wire format conversion is introduced. The manual runtime marker advances from `0.0.74` to `0.0.75`; Managed ABI `9` stays unchanged; regenerate the source-derived API/compatibility metadata and deploy matching binaries/resources. Rollback uses the matching previous build/resources without data conversion. Validate native contention/pending/restore barriers, both script bindings, local-provider reopen with spaces, and filesystem success/refusal on each claimed platform.
 - Filesystem callers must pass complete NUL-free UTF-8 paths on every platform. Non-UTF-8 POSIX file names are no longer supported by `fs`. Pure converters now reject invalid paths with `filesystem_error`; result primitives refuse them without acting on the prefix. Rebuild native consumers for the read/write/hash/comparison/listing exception specifications. Result-based operations now report standard interop errors through failure results; oversized whole-file reads are refused before buffer allocation. The Engine terminate-on-OOM policy is unchanged. Visitor and caller-stream exceptions still propagate; valid paths, empty-path conventions and file publication/durability guarantees are preserved.
 
-- Remove the unused [ClassExtension] marker from external managed source and use ordinary C# extension methods for instance-call syntax. The compiler rejects the removed attribute. Rebuild affected script assemblies with the current CoreScripts. This removal adds no data/schema/ABI change beyond the update boundaries above; rollback restores the matching previous CoreScripts and script assemblies.
+- Remove `[ClassExtension]`; use standard C# extension methods and rebuild scripts with current CoreScripts. The compiler rejects the removed attribute. Unannotated helpers, entry-point attributes, bindings, data/resource formats, wire and ABI `9` are unchanged. No conversion or extra compatibility bump. Rollback restores matching previous CoreScripts/assemblies.
 
 ## 2026.1.55-dev - 2026-10-20
 

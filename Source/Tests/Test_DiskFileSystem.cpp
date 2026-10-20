@@ -88,7 +88,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(fs::read_file(path) == optional<string> {string {}});
         CHECK_FALSE(fs::write_file_durable_new(temp_dir, empty));
 #if !FO_WINDOWS
-        // Keep this native name raw: path_to_string normalizes backslashes as resource separators.
+        // Keep this native name raw: path_to_string normalizes backslashes as resource separators
         string literal_backslash = temp_dir + "/native\\name\\";
         REQUIRE(fs::write_file_durable_new(literal_backslash, empty));
         CHECK(fs::exists(literal_backslash));

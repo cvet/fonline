@@ -900,7 +900,7 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
             CHECK(leaf_on_critter->GetProperties()->GetValueFast<int32_t>(marker_property(leaf_on_critter)) == 303);
         }
 
-        // Every pass ends through the real graceful path; the next pass reads the same files.
+        // Every pass ends through the real graceful path; the next pass reads the same files
         server->Shutdown();
     }
 }

@@ -244,7 +244,7 @@ auto fs::create_directories(string_view dir) noexcept -> bool
         return false;
     }
 
-    // The error-code overload can still allocate while walking parent paths.
+    // The error-code overload can still allocate while walking parent paths
     try {
         std::filesystem::create_directories(fs_dir, ec);
     }
@@ -564,7 +564,7 @@ auto fs::remove_dir_tree(string_view dir) noexcept -> bool
         return false;
     }
 
-    // Recursive removal owns allocating directory iterators even with an error code.
+    // Recursive removal owns allocating directory iterators even with an error code
     try {
         std::filesystem::remove_all(fs_dir, ec);
     }
@@ -1319,7 +1319,7 @@ static void fs_validate_path(string_view path)
 
 static auto fs_open_read_stream(const std::filesystem::path& path) noexcept -> optional<std::ifstream>
 {
-    // Construct in place: moving a standard file stream is not a no-throw operation.
+    // Construct in place: moving a standard file stream is not a no-throw operation
     try {
         return optional<std::ifstream> {std::in_place, path, std::ios::binary};
     }
@@ -1404,7 +1404,7 @@ static auto fs_make_native_path(string_view path, std::error_code& ec) noexcept 
     return {};
 }
 
-// Preserve native separators: a backslash is part of a POSIX filename.
+// Preserve native separators: a backslash is part of a POSIX filename
 static auto fs_native_path_to_string(const std::filesystem::path& path, std::error_code& ec) noexcept -> string
 {
     ec.clear();

@@ -70,9 +70,8 @@ namespace fs
         int32_t _descriptor {-1};
     };
 
-    // Filesystem helpers. Embedded NUL and malformed UTF-8 are rejected before conversion or I/O on every platform.
-    // Result-based file operations are noexcept; std interop failures use the failure result.
-    // Path converters, open_ifstream and caller-owned streams/visitors may throw.
+    // Paths reject embedded NUL and malformed UTF-8; noexcept result-based I/O reports standard interop failures.
+    // Path converters, open_ifstream and caller-owned streams/visitors may throw
     auto make_path(string_view path) -> std::u8string;
     auto path_to_string(const std::filesystem::path& path) -> string;
     auto resolve_path(string_view path) -> string;

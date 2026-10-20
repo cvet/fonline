@@ -16,7 +16,7 @@ def parent_path_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     source = SOURCE.read_text(encoding="utf-8")
     start = source.rindex("static auto fs_parent_path(")
     end = source.index("\n}\n", start) + len("\n}\n")
-    # Keep the canonical body; substitute only its input type to inject failures.
+    # Keep the canonical body; substitute only its input type to inject failures
     function = source[start:end].replace("const std::filesystem::path& path", "const FaultyPath& path", 1)
     (folder / "probe.cpp").write_text(
         r'''
