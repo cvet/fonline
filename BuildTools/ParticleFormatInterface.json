@@ -2514,6 +2514,35 @@
       ]
     },
     {
+      "id": "particle-format.runtime.effekseer-refresh",
+      "name": "Effekseer render refresh",
+      "stability": "experimental",
+      "requirement": "Every active render refresh retains UpdateHandle(0). Reuse an unchanged shared rendering snapshot; flush pending creation or placement changes from any handle. A deferred rebase stays pending on its own handle until SDK matrices are applied; decide whether to Flip afterwards. Root-only or empty handles after simulation or prewarm keep the next retirement check. Ordinary Update, prewarm and three retirement flushes still Flip unconditionally.",
+      "rationale": "Repeated direct-scene draws must preserve zero-time simulation and cross-handle publication without rebuilding an unchanged manager snapshot.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "RenderingSnapshotDirty",
+            "RebasePending",
+            "GetInstanceCount(_impl->Handle) <= 1",
+            "EffekseerParticleRuntimeSystem::UpdateInternal",
+            "EffekseerParticleRuntimeSystem::RefreshRenderTransform"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer unchanged repeated refresh preserves seeded draws and expiration",
+            "Effekseer transform and rebase refresh match explicit-zero control packets",
+            "Effekseer shared-manager identities track their own refresh controls",
+            "Effekseer expired prewarm retires on its first render refresh",
+            "Effekseer neighbour refresh publishes rebased kill-rule coordinates"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.runtime.world-rebase",
       "name": "Atlas-origin rebase",
       "stability": "experimental",

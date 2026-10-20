@@ -2518,6 +2518,35 @@
       ]
     },
     {
+      "id": "particle-format.runtime.effekseer-refresh",
+      "name": "Effekseer render refresh",
+      "stability": "experimental",
+      "requirement": "Every active render refresh retains UpdateHandle(0). Reuse an unchanged shared rendering snapshot; flush pending creation or placement changes from any handle. A deferred rebase stays pending on its own handle until SDK matrices are applied; decide whether to Flip afterwards. Root-only or empty handles after simulation or prewarm keep the next retirement check. Ordinary Update, prewarm and three retirement flushes still Flip unconditionally.",
+      "rationale": "Repeated direct-scene draws must preserve zero-time simulation and cross-handle publication without rebuilding an unchanged manager snapshot.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "RenderingSnapshotDirty",
+            "RebasePending",
+            "GetInstanceCount(_impl->Handle) <= 1",
+            "EffekseerParticleRuntimeSystem::UpdateInternal",
+            "EffekseerParticleRuntimeSystem::RefreshRenderTransform"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer unchanged repeated refresh preserves seeded draws and expiration",
+            "Effekseer transform and rebase refresh match explicit-zero control packets",
+            "Effekseer shared-manager identities track their own refresh controls",
+            "Effekseer expired prewarm retires on its first render refresh",
+            "Effekseer neighbour refresh publishes rebased kill-rule coordinates"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.runtime.world-rebase",
       "name": "Atlas-origin rebase",
       "stability": "experimental",
@@ -2941,22 +2970,22 @@
     }
   ],
   "summary": {
-    "entry_count": 115,
+    "entry_count": 116,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
     "xml_rule_count": 12,
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
-    "runtime_rule_count": 16,
+    "runtime_rule_count": 17,
     "integration_rule_count": 6,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 108,
+      "experimental": 109,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "049772071b408274b74e6444e93f5237eac3d9da51003ce4f754ce3b5dc36499"
+  "contract_digest": "23a1c7813234bcb10ee411480ba1fbe45b292541f679b69cae2db52231d4da1f"
 }

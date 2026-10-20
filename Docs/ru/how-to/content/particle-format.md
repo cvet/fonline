@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"db01875afad9c32186e74f9f70e0441ea52a9c1c1156a22f8381dfd9a913891a"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"ed9d71046451b430eb2413b80d924540760bca1cd80d6e12c6dd2c6bbad7bfc0"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -237,6 +237,19 @@ baked-рамку с геометрией instances Sprite/Ribbon/Ring/Track/Mode
 а компенсация корня симуляции сохраняет место рождения новых частиц у эмиттера.
 Неконечный delta либо переполнение суммы координат игнорируются до изменения
 состояния. Respawn и освобождение handle очищают прежнюю базу переноса.
+
+Каждый активный render refresh Effekseer по-прежнему выполняет `UpdateHandle(0)`.
+Общий Manager повторно использует снимок рисования, пока размещение и handle
+не менялись; создание или перемещение любого handle требует `Flip` при следующем
+refresh. Отложенный rebase остаётся ожидающим на собственном handle до применения
+его SDK-матриц; другой handle не может поглотить эту публикацию. Решение о `Flip`
+при refresh принимается после применения матриц.
+Если после симуляции или prewarm остаётся только корень либо нет instances,
+следующий `Flip` также сохраняется: он проверяет завершение эффекта перед
+освобождением снимка.
+Обычный `Update`, prewarm и три прохода освобождения всегда выполняют `Flip`.
+Смена только проекции использует текущие параметры рисования без продвижения
+времени.
 
 Одинаковый seed детерминирован только с тем же ресурсом, ревизией backend, setup
 и последовательностью обновлений. Не используйте seeded replay как межверсионное

@@ -75,6 +75,8 @@ public:
 private:
     explicit EffekseerParticleRuntimeSystem(unique_ptr<Impl>&& impl);
 
+    void UpdateInternal(float32_t delta_seconds, bool flip);
+
     unique_ptr<Impl> _impl;
 };
 

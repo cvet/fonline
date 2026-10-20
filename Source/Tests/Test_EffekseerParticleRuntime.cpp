@@ -2038,7 +2038,8 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     }
 }
 
-static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval, string_view location = "<X>0</X><Y>0</Y><Z>0</Z>") -> unique_ptr<EffekseerRuntimeTestRig>
+static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval,
+    string_view location = "<X>0</X><Y>0</Y><Z>0</Z>", int32_t binding = 1, string_view node_values = {}) -> unique_ptr<EffekseerRuntimeTestRig>
 {
     string project = strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
@@ -2047,9 +2048,9 @@ static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interva
       <MaxGeneration><Value>{}</Value></MaxGeneration>
       <Life><Max>{}</Max><Min>{}</Min></Life>
       <Generation><GenerationTime><Max>{}</Max><Min>{}</Min></GenerationTime></Generation>
-      <LocationEffectType>1</LocationEffectType>
-      <RotationEffectType>1</RotationEffectType>
-      <ScaleEffectType>1</ScaleEffectType>
+      <LocationEffectType>{}</LocationEffectType>
+      <RotationEffectType>{}</RotationEffectType>
+      <ScaleEffectType>{}</ScaleEffectType>
     </CommonValues>
     <LocationValues><Type>0</Type><Fixed><Location>{}</Location></Fixed></LocationValues>
     <RendererCommonValues><AlphaBlend>1</AlphaBlend></RendererCommonValues>
@@ -2065,7 +2066,14 @@ static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interva
   <ToolVersion>1.80.5</ToolVersion><Version>3</Version>
   <StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop>
 </EffekseerProject>
-)EFFEKSEER", count, life, life, interval, interval, location).str();
+)EFFEKSEER", count, life, life, interval, interval, binding, binding, binding, location).str();
+
+    if (!node_values.empty()) {
+        size_t drawing_position = project.find("<DrawingValues>");
+        REQUIRE(drawing_position != string::npos);
+        project.insert(drawing_position, node_values);
+    }
+
     EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/ModelTrail.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>("Particles/EffekseerTests/ModelTrail.efk", std::move(compiled.Binary));
@@ -2422,6 +2430,335 @@ TEST_CASE("Effekseer bounds queries preserve future seeded generations", "[parti
     REQUIRE(!queried_draws.empty());
 
     CheckEffekseerDrawsEqual(queried_draws, control_draws);
+}
+
+static void ApplyEffekseerRefreshOrZero(ParticleRuntimeSystem& system, const ParticleRuntimeSetup& setup, bool use_refresh)
+{
+    system.Setup(setup);
+
+    if (use_refresh) {
+        system.RefreshRenderTransform();
+    }
+    else {
+        system.Update(0.0f);
+    }
+}
+
+static auto DrawAndCompareEffekseerPair(EffekseerRuntimeTestRig& queried_rig, EffekseerRuntimeTestRig& control_rig, ParticleRuntimeSystem& queried, ParticleRuntimeSystem& control) -> vector<CapturedEffekseerDraw>
+{
+    vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(queried_rig, queried);
+    vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(control_rig, control);
+    REQUIRE(!queried_draws.empty());
+    CheckEffekseerDrawsEqual(queried_draws, control_draws);
+    return queried_draws;
+}
+
+TEST_CASE("Effekseer unchanged repeated refresh preserves seeded draws and expiration", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    queried->Setup(setup);
+    control->Setup(setup);
+    queried->Respawn(901);
+    control->Respawn(901);
+
+    for (int32_t frame = 0; frame < 8; frame++) {
+        queried->Update(1.0f / 60.0f);
+        control->Update(1.0f / 60.0f);
+
+        for (int32_t repeat = 0; repeat < 3; repeat++) {
+            ApplyEffekseerRefreshOrZero(*queried, setup, true);
+            ApplyEffekseerRefreshOrZero(*control, setup, false);
+        }
+
+        DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+    }
+
+    bool both_went_inactive = false;
+
+    for (int32_t frame = 0; frame < 30; frame++) {
+        queried->Update(1.0f / 60.0f);
+        control->Update(1.0f / 60.0f);
+        queried->RefreshRenderTransform();
+        control->Update(0.0f);
+        CHECK(queried->IsActive() == control->IsActive());
+
+        if (!queried->IsActive()) {
+            both_went_inactive = true;
+            break;
+        }
+    }
+
+    REQUIRE(both_went_inactive);
+    CHECK_FALSE(queried->IsActive());
+    CHECK_FALSE(control->IsActive());
+
+    // A clean flag retained across a new handle would skip the zero-time work these first-draw packets prove
+    queried->Respawn(902);
+    control->Respawn(902);
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+}
+
+TEST_CASE("Effekseer transform and rebase refresh match explicit-zero control packets", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0);
+    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0);
+    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    queried->Setup(setup);
+    control->Setup(setup);
+    queried->Respawn(733);
+    control->Respawn(733);
+    queried->Update(1.0f / 60.0f);
+    control->Update(1.0f / 60.0f);
+
+    setup.World = glm::translate(mat44 {1.0f}, vec3 {12.0f, -4.0f, 7.0f});
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+    setup.Scale = 1.75f;
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+    setup.PositionOffset = {0.5f, -0.25f, 0.75f};
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+    setup.ViewOffset = {-1.5f, 0.5f, 0.25f};
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+    // Projection matrix contents are not part of the captured packet; this stage only keeps the refresh path
+    // equivalent when a camera-only field changes
+    setup.Projection = glm::scale(mat44 {1.0f}, vec3 {1.5f, 0.5f, 2.0f});
+    ApplyEffekseerRefreshOrZero(*queried, setup, true);
+    ApplyEffekseerRefreshOrZero(*control, setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+    setup.ViewOffset = {};
+    setup.Projection = mat44 {1.0f};
+    vec3 rebase_total {};
+
+    for (vec3 delta : {vec3 {10.0f, 20.0f, 30.0f}, vec3 {-3.0f, 4.0f, 7.0f}, vec3 {1.0f, -2.0f, 3.0f}}) {
+        rebase_total += delta;
+        queried->RebaseWorldParticles(delta);
+        control->RebaseWorldParticles(delta);
+        setup.World = glm::translate(mat44 {1.0f}, rebase_total);
+        ApplyEffekseerRefreshOrZero(*queried, setup, true);
+        ApplyEffekseerRefreshOrZero(*control, setup, false);
+        vector<CapturedEffekseerDraw> draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+        // Bounds and captured vertices use the same view space in this stage
+        optional<ParticleBounds3D> live = queried->GetLiveBounds();
+        REQUIRE(live);
+        CheckLiveBoundsContainDraws(*live, draws);
+
+        ApplyEffekseerRefreshOrZero(*queried, setup, true);
+        ApplyEffekseerRefreshOrZero(*control, setup, false);
+        CheckEffekseerDrawsEqual(draws, DrawModelTrail(*queried_rig, *queried));
+    }
+}
+
+TEST_CASE("Effekseer shared-manager identities track their own refresh controls", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_nptr<ParticleRuntimeSystem> queried_first = queried_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> queried_second = queried_rig->CreateSystem();
+    unique_nptr<ParticleRuntimeSystem> control_first = control_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control_second = control_rig->CreateSystem();
+    ParticleRuntimeSetup first_setup = MakeEffekseerIdentitySetup();
+    first_setup.World = glm::translate(mat44 {1.0f}, vec3 {3.0f, 0.0f, -2.0f});
+    ParticleRuntimeSetup second_setup = MakeEffekseerIdentitySetup();
+    second_setup.World = glm::translate(mat44 {1.0f}, vec3 {40.0f, 5.0f, 8.0f});
+    queried_first->Setup(first_setup);
+    control_first->Setup(first_setup);
+    queried_first->Respawn(541);
+    control_first->Respawn(541);
+    queried_second->Setup(second_setup);
+    control_second->Setup(second_setup);
+    queried_second->Respawn(542);
+    control_second->Respawn(542);
+
+    for (int32_t frame = 0; frame < 8; frame++) {
+        bool first_turn = frame % 2 == 0;
+
+        if (first_turn) {
+            ApplyEffekseerRefreshOrZero(*queried_first, first_setup, true);
+            ApplyEffekseerRefreshOrZero(*control_first, first_setup, false);
+            ApplyEffekseerRefreshOrZero(*queried_second, second_setup, true);
+            ApplyEffekseerRefreshOrZero(*control_second, second_setup, false);
+        }
+        else {
+            ApplyEffekseerRefreshOrZero(*queried_second, second_setup, true);
+            ApplyEffekseerRefreshOrZero(*control_second, second_setup, false);
+            ApplyEffekseerRefreshOrZero(*queried_first, first_setup, true);
+            ApplyEffekseerRefreshOrZero(*control_first, first_setup, false);
+        }
+
+        queried_first->Update(1.0f / 60.0f);
+        control_first->Update(1.0f / 60.0f);
+        queried_second->Update(1.0f / 60.0f);
+        control_second->Update(1.0f / 60.0f);
+
+        vector<CapturedEffekseerDraw> queried_first_draws;
+        vector<CapturedEffekseerDraw> queried_second_draws;
+
+        if (first_turn) {
+            queried_first_draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_first, *control_first);
+            queried_second_draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_second, *control_second);
+        }
+        else {
+            queried_second_draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_second, *control_second);
+            queried_first_draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_first, *control_first);
+        }
+
+        // Distinct world placements keep the two identities' packets apart on the shared manager
+        REQUIRE(!queried_first_draws.front().Vertices.empty());
+        REQUIRE(!queried_second_draws.front().Vertices.empty());
+        CHECK(queried_first_draws.front().Vertices.front().PosX != queried_second_draws.front().Vertices.front().PosX);
+    }
+
+    queried_first.reset();
+    control_first.reset();
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_second, *control_second);
+
+    {
+        unique_ptr<ParticleRuntimeSystem> pending = queried_rig->CreateSystem();
+        unique_ptr<ParticleRuntimeSystem> control_pending = control_rig->CreateSystem();
+        pending->Setup(first_setup);
+        control_pending->Setup(first_setup);
+        pending->Respawn(903);
+        control_pending->Respawn(903);
+
+        // A neighbour's refresh publishes the new root and its bounds before the handle's own first update
+        queried_second->RefreshRenderTransform();
+        control_second->Update(0.0f);
+        optional<ParticleBounds3D> control_pending_bounds = control_pending->GetLiveBounds();
+        optional<ParticleBounds3D> pending_bounds = pending->GetLiveBounds();
+        REQUIRE(control_pending_bounds);
+        REQUIRE(pending_bounds);
+        CHECK(pending_bounds->PositionMin == control_pending_bounds->PositionMin);
+        CHECK(pending_bounds->PositionMax == control_pending_bounds->PositionMax);
+        CHECK(pending_bounds->BillboardRadius == control_pending_bounds->BillboardRadius);
+
+        pending->RefreshRenderTransform();
+        control_pending->Update(0.0f);
+        DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *pending, *control_pending);
+    }
+
+    bool second_expired = false;
+
+    for (int32_t frame = 0; frame < 30; frame++) {
+        queried_second->Update(1.0f / 60.0f);
+        control_second->Update(1.0f / 60.0f);
+        queried_second->RefreshRenderTransform();
+        control_second->Update(0.0f);
+        CHECK(queried_second->IsActive() == control_second->IsActive());
+
+        if (!queried_second->IsActive()) {
+            second_expired = true;
+            break;
+        }
+    }
+
+    REQUIRE(second_expired);
+    CHECK_FALSE(control_second->IsActive());
+
+    // A new owner for the first identity must produce first-draw geometry before any nonzero tick
+    unique_ptr<ParticleRuntimeSystem> respawned_first = queried_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control_respawned_first = control_rig->CreateSystem();
+    respawned_first->Setup(first_setup);
+    control_respawned_first->Setup(first_setup);
+    respawned_first->Respawn(777);
+    control_respawned_first->Respawn(777);
+    ApplyEffekseerRefreshOrZero(*respawned_first, first_setup, true);
+    ApplyEffekseerRefreshOrZero(*control_respawned_first, first_setup, false);
+    DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *respawned_first, *control_respawned_first);
+}
+
+TEST_CASE("Effekseer expired prewarm retires on its first render refresh", "[particle][effekseer-runtime][effekseer-refresh-contract]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
+    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    queried->Setup(setup);
+    control->Setup(setup);
+    queried->Respawn(904);
+    control->Respawn(904);
+    CHECK(queried->Prewarm() == control->Prewarm());
+
+    queried->RefreshRenderTransform();
+    control->Update(0.0f);
+    CHECK_FALSE(control->IsActive());
+    CHECK_FALSE(queried->IsActive());
+}
+
+TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
+{
+    for (bool transformed_rules : {false, true}) {
+        CAPTURE(transformed_rules);
+        string rules = strex(R"(<RotationValues><Type>6</Type></RotationValues>
+<KillRulesValues><Type>3</Type>
+<IsScaleAndRotationApplied>{}</IsScaleAndRotationApplied>
+<SphereRadius>1</SphereRadius><SphereIsKillInside>False</SphereIsKillInside>
+</KillRulesValues>)", transformed_rules ? "True" : "False").str();
+        unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
+        unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
+        unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
+        unique_ptr<ParticleRuntimeSystem> neighbour = queried_rig->CreateSystem();
+        unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
+        unique_ptr<ParticleRuntimeSystem> control_neighbour = control_rig->CreateSystem();
+        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+        setup.World = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, -5.0f});
+
+        array<ptr<ParticleRuntimeSystem>, 4> systems {queried, neighbour, control, control_neighbour};
+
+        for (ptr<ParticleRuntimeSystem> system : systems) {
+            system->Setup(setup);
+            system->Respawn(905);
+            system->Update(1.0f / 60.0f);
+        }
+
+        DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+
+        vec3 delta {10.0f, 0.0f, 0.0f};
+        queried->RebaseWorldParticles(delta);
+        control->RebaseWorldParticles(delta);
+        neighbour->RefreshRenderTransform();
+        control_neighbour->Update(0.0f);
+
+        setup.World = glm::translate(mat44 {1.0f}, delta) * setup.World;
+        queried->Setup(setup);
+        control->Setup(setup);
+        queried->RefreshRenderTransform();
+        control->Update(0.0f);
+
+        vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(*control_rig, *control);
+        vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(*queried_rig, *queried);
+
+        // The SDK's inverse matrix stays in compensated simulation space; translation-only rules use the rendered origin
+        if (transformed_rules) {
+            REQUIRE(!control_draws.empty());
+            CheckEffekseerDrawsEqual(queried_draws, control_draws);
+        }
+        else {
+            REQUIRE(control_draws.empty());
+            CHECK(queried_draws.empty());
+        }
+    }
 }
 
 #endif

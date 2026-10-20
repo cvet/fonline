@@ -30,6 +30,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-particle-format-runtime-effekseer-placement-72ae9ff004"></a>
 - [`entry-particle-format-runtime-effekseer-placement-72ae9ff004`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-effekseer-placement-72ae9ff004)
 
+<a id="entry-particle-format-runtime-effekseer-refresh-785092917d"></a>
+- [`entry-particle-format-runtime-effekseer-refresh-785092917d`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-effekseer-refresh-785092917d)
+
 <a id="entry-particle-format-runtime-world-rebase-803e3af39b"></a>
 - [`entry-particle-format-runtime-world-rebase-803e3af39b`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-world-rebase-803e3af39b)
 

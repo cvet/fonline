@@ -127,6 +127,8 @@ void ParticleSprite::Stop()
 
 auto ParticleSprite::Update() -> bool
 {
+    FO_TRACE_ZONE(Particles);
+
     if (!_prewarmPending) {
         _particle->Update();
     }
@@ -147,6 +149,8 @@ void ParticleSprite::DrawToAtlas()
 
 void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
+    FO_TRACE_ZONE(Particles);
+
     const RenderSettings& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
     mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);

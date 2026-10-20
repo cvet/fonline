@@ -233,6 +233,17 @@ compensating simulation root keeps future births at the current emitter.
 Non-finite deltas or overflowing accumulated coordinates are ignored before
 mutation. Respawn and handle retirement clear the old translation base.
 
+Every active Effekseer render refresh still runs `UpdateHandle(0)`. The shared
+Manager reuses its rendering snapshot while placement and handles are unchanged;
+creation or placement changes from any handle require the next refresh to `Flip`.
+Deferred rebase remains pending on its own handle until its SDK matrices are
+applied; another handle cannot consume that publication. The refresh decides
+whether to `Flip` after applying those matrices.
+Root-only or empty handles after simulation or prewarm also require that next
+`Flip`, because it checks effect completion before retiring the snapshot.
+Ordinary `Update`, prewarm and the three retirement flushes always `Flip`.
+Projection-only changes use the current draw parameters without advancing time.
+
 The same seed is deterministic only with the same resource, backend revision,
 setup, and update sequence. Do not use seeded replay as a cross-version visual
 compatibility promise.

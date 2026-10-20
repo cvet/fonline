@@ -17844,6 +17844,18 @@
           "source_sha256": "7d1584cb2a74995df9f860777f2b6284ccd686e28107b555b55616a9066b7b56",
           "translation": "World задаёт полную позу кости модели. Принимайте конечный LookDirectionAngle как неиспользуемую прежнюю подсказку без второго yaw; отклоняйте неконечную подсказку. Прежнее размещение с нулевой подсказкой не меняется."
         },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/name": {
+          "source_sha256": "c5913ff7beaf9d090bfc26917266289687b16c66d48d3ac1b6e0eaaa9532adf5",
+          "translation": "Обновление рисования Effekseer"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/rationale": {
+          "source_sha256": "77c7a799636f57d6005f704e1c721faceb309b345f91126c0875893876c96090",
+          "translation": "Повторное рисование в сцене должно сохранять симуляцию с нулевой дельтой и публикацию изменений других handle без пересоздания неизменного снимка Manager."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/requirement": {
+          "source_sha256": "7718d9ce511b0d26faead59c4ab4b75ec92341ff8e7ee7d2f68246a9372ab138",
+          "translation": "Каждый активный render refresh сохраняет UpdateHandle(0). Повторно используйте неизменный общий снимок рисования; применяйте ожидающие изменения создания или размещения любого handle. Отложенный rebase остаётся ожидающим на собственном handle до применения SDK-матриц; решение о Flip принимается после этого. Если после симуляции или prewarm остался только корень либо нет instances, сохраняйте следующую проверку завершения. Обычный Update, prewarm и три прохода освобождения по-прежнему безусловно выполняют Flip."
+        },
         "/runtime_rules/@id=particle-format.runtime.extension-routing/name": {
           "source_sha256": "97c3da94e448c91b354aa0f8b5c7ef53d2754f59960c30039c005fdbccbef9e4",
           "translation": "Маршрутизация по расширению"

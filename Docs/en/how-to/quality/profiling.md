@@ -407,6 +407,17 @@ Instrumentation must:
 Do not add a zone solely to make a report look more detailed. Each zone should
 answer a named performance question and have an owner who can interpret it.
 
+For Effekseer CPU diagnosis, `Effekseer.BeginUpdate`, `Effekseer.UpdateHandle`
+and `Effekseer.EndUpdate` split the runtime `UpdateInternal` call. They exclude
+prewarm and deferred handle retirement. A containing `RefreshRenderTransform`
+zone identifies zero-time render refreshes; the remaining calls are outside
+that path. `BeginUpdate` includes an explicit `Flip` when the shared rendering
+snapshot needs one; an unchanged refresh still executes `UpdateHandle(0)`.
+`GetLiveBounds` includes its geometry measurement pass, while
+`Draw` includes rendering callbacks. These are nested inclusive CPU times:
+do not add parent and child totals or interpret them as GPU duration. Compare
+the same fixed workload before and after adding fine-grained instrumentation.
+
 ## Common failure modes
 
 | Symptom | Check |

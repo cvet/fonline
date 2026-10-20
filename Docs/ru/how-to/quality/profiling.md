@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"48df563bb4623c9b5ac88b45d8c6bdeb169aaa6e339d259bb8e5a346f342cd16"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"47747a2bb2552ecd32dcbaa8625fb67972a16f997e970cf938a6c48df561367d"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -409,6 +409,18 @@ sprite flush). Не добавляйте зоны механически в acce
 Не добавляйте zone только ради большей детализации отчета. Каждая zone должна
 отвечать на конкретный вопрос производительности и иметь владельца, способного
 ее интерпретировать.
+
+Для диагностики CPU Effekseer зоны `Effekseer.BeginUpdate`,
+`Effekseer.UpdateHandle` и `Effekseer.EndUpdate` разделяют вызов runtime
+`UpdateInternal`. Они не охватывают prewarm и отложенное удаление handle.
+Вложенность в `RefreshRenderTransform` выделяет обновления перед рисованием
+с нулевой дельтой; остальные вызовы находятся вне этого пути. `BeginUpdate`
+включает явный `Flip`, когда он нужен общему снимку рисования; неизменный refresh
+по-прежнему выполняет `UpdateHandle(0)`. `GetLiveBounds`
+включает проход измерения геометрии, а `Draw` — callbacks рисования. Это
+вложенные inclusive времена CPU: не складывайте родителей с потомками и не
+считайте их длительностью GPU. Сравнивайте одну фиксированную нагрузку до и
+после добавления подробной инструментации.
 
 ## Частые ошибки
 

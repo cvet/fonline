@@ -425,6 +425,7 @@ struct EffekseerParticleRuntimeSystem::Impl
     float32_t BakedBillboardRadius {};
     vec3 BaseOffset {};
     bool HasBaseMatrix {};
+    bool RebasePending {};
     mutable optional<ParticleBounds3D> LiveBounds;
     mutable bool LiveBoundsValid {};
     random_generator RandomGenerator {};
@@ -3085,7 +3086,7 @@ struct EffekseerRuntimeState
         Binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
         SceneBackgroundProvider {std::move(scene_background_provider)},
         Setting {Effekseer::Setting::Create()},
-        Manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX)},
+        Manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX, false)},
         TextureLoader {Effekseer::MakeRefPtr<FOnlineEffekseerTextureLoader>(std::move(texture_loader))},
         ModelLoader {Effekseer::MakeRefPtr<FOnlineEffekseerModelLoader>(resources)},
         GpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
@@ -3121,6 +3122,8 @@ struct EffekseerRuntimeState
     ParticleSceneBackgroundProvider SceneBackgroundProvider;
     Effekseer::SettingRef Setting;
     Effekseer::ManagerRef Manager;
+    // A flip also publishes other handles created or moved since the previous snapshot
+    bool RenderingSnapshotDirty {true};
     Effekseer::TextureLoaderRef TextureLoader;
     Effekseer::ModelLoaderRef ModelLoader;
     Effekseer::RefPtr<DetectingGpuParticleFactory> GpuParticleFactory;
@@ -3139,6 +3142,11 @@ struct EffekseerRuntimeState
 
 static void ApplyEffekseerRootMatrix(ptr<EffekseerParticleRuntimeSystem::Impl> system)
 {
+    // A neighbour may have consumed the shared dirty mark before this deferred rebase was applied
+    if (system->RebasePending) {
+        system->Runtime->RenderingSnapshotDirty = true;
+    }
+
     mat44 root = system->RootMatrix;
 
     if (system->BaseOffset != vec3 {}) {
@@ -3151,6 +3159,8 @@ static void ApplyEffekseerRootMatrix(ptr<EffekseerParticleRuntimeSystem::Impl> s
         system->Runtime->Manager->SetBaseMatrix(system->Handle, ToEffekseerMatrix43(glm::translate(mat44 {1.0f}, system->BaseOffset)));
         system->HasBaseMatrix = true;
     }
+
+    system->RebasePending = false;
 }
 
 static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> system)
@@ -3161,6 +3171,7 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
     system->LiveBoundsValid = false;
     system->BaseOffset = {};
     system->HasBaseMatrix = false;
+    system->RebasePending = false;
 
     if (system->Handle < 0) {
         return;
@@ -3173,6 +3184,8 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
     // Effekseer intentionally retires draw sets through two deferred GC queues.
     // Three flips cover an active draw set as well as both queue stages
     for (size_t flush_index = 0; flush_index < 3; flush_index++) {
+        system->Runtime->Manager->Flip();
+        system->Runtime->RenderingSnapshotDirty = false;
         system->Runtime->Manager->BeginUpdate();
         system->Runtime->Manager->EndUpdate();
     }
@@ -3219,6 +3232,8 @@ auto EffekseerParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional
 
 auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
+    FO_TRACE_ZONE(Particles);
+
     if (!IsActive() || _impl->Runtime->Manager->GetInstanceCount(_impl->Handle) == 0) {
         return std::nullopt;
     }
@@ -3304,6 +3319,8 @@ void EffekseerParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
     _impl->RootMatrix = root;
     _impl->BoundsMatrix = _impl->ViewMatrix * root;
     _impl->LiveBoundsValid = false;
+    _impl->RebasePending = true;
+    _impl->Runtime->RenderingSnapshotDirty = true;
 
     // The model caller pairs its new absolute placement with a zero-time refresh before drawing
 }
@@ -3319,8 +3336,14 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     _impl->LiveBoundsValid = false;
     mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
     mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
-    _impl->RootMatrix = view_offset_matrix * setup.World * position_offset_matrix;
-    _impl->RootMatrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
+    mat44 root = view_offset_matrix * setup.World * position_offset_matrix;
+    root *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
+
+    if (_impl->RootMatrix != root) {
+        _impl->Runtime->RenderingSnapshotDirty = true;
+    }
+
+    _impl->RootMatrix = root;
 
     mat44 camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
@@ -3351,6 +3374,8 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
     float32_t remaining_frames = EFFEKSEER_PREWARM_SECONDS * EFFEKSEER_FRAMES_PER_SECOND;
 
     ApplyEffekseerRootMatrix(_impl);
+    _impl->Runtime->Manager->Flip();
+    _impl->Runtime->RenderingSnapshotDirty = false;
     _impl->Runtime->Manager->BeginUpdate();
 
     while (remaining_frames > 0.0f && _impl->Runtime->Manager->Exists(_impl->Handle)) {
@@ -3360,6 +3385,11 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
     }
 
     _impl->Runtime->Manager->EndUpdate();
+
+    // Flip also retires empty effects and roots whose children have finished
+    if (_impl->Runtime->Manager->GetInstanceCount(_impl->Handle) <= 1) {
+        _impl->Runtime->RenderingSnapshotDirty = true;
+    }
 
     if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
@@ -3385,6 +3415,7 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
+    _impl->Runtime->RenderingSnapshotDirty = true;
     int32_t resolved_seed = seed ? *seed : std::bit_cast<int32_t>(static_cast<uint32_t>(_impl->RandomGenerator.next()));
     _impl->Runtime->Manager->SetAutoDrawing(_impl->Handle, false);
     _impl->Runtime->Manager->SetRandomSeed(_impl->Handle, resolved_seed);
@@ -3392,6 +3423,11 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 }
 
 void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
+{
+    UpdateInternal(delta_seconds, true);
+}
+
+void EffekseerParticleRuntimeSystem::UpdateInternal(float32_t delta_seconds, bool flip)
 {
     FO_TRACE_ZONE(Particles);
 
@@ -3408,9 +3444,34 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
     }
 
     ApplyEffekseerRootMatrix(_impl);
-    _impl->Runtime->Manager->BeginUpdate();
-    _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
-    _impl->Runtime->Manager->EndUpdate();
+
+    {
+        FO_TRACE_ZONE_NAMED(Particles, "Effekseer.BeginUpdate");
+
+        if (flip || _impl->Runtime->RenderingSnapshotDirty) {
+            _impl->Runtime->Manager->Flip();
+            _impl->Runtime->RenderingSnapshotDirty = false;
+        }
+
+        _impl->Runtime->Manager->BeginUpdate();
+    }
+
+    {
+        FO_TRACE_ZONE_NAMED(Particles, "Effekseer.UpdateHandle");
+
+        _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
+    }
+
+    {
+        FO_TRACE_ZONE_NAMED(Particles, "Effekseer.EndUpdate");
+
+        _impl->Runtime->Manager->EndUpdate();
+    }
+
+    // Flip also retires empty effects and roots whose children have finished
+    if (_impl->Runtime->Manager->GetInstanceCount(_impl->Handle) <= 1) {
+        _impl->Runtime->RenderingSnapshotDirty = true;
+    }
 
     if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
@@ -3420,8 +3481,10 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
 
 void EffekseerParticleRuntimeSystem::RefreshRenderTransform()
 {
+    FO_TRACE_ZONE(Particles);
+
     if (IsActive()) {
-        Update(0.0f);
+        UpdateInternal(0.0f, false);
     }
 }
 
