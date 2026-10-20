@@ -123,9 +123,13 @@ namespace ImageBakerBam
 
         // Create animation
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(specific_frame == -1 ? cycle_frames : 1);
-        collection.AnimTicks = 100;
-        collection.Main.Frames.resize(collection.SequenceSize);
+        uint16_t sequence_size {};
+        uint32_t anim_ticks {};
+        bool have_dirs {};
+        sequence_size = numeric_cast<uint16_t>(specific_frame == -1 ? cycle_frames : 1);
+        anim_ticks = 100;
+
+        collection.Main.Frames.resize(sequence_size);
 
         // Palette
         ucolor palette[256] = {};
@@ -199,6 +203,25 @@ namespace ImageBakerBam
             if (specific_frame != -1) {
                 break;
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            }
+
+            (void)ImageImport::GetDurationMs(sequence);
         }
 
         return collection;

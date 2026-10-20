@@ -256,17 +256,20 @@ namespace ImageBakerArt
         int32_t frm_count_target = std::max(frm_from, frm_to) - std::min(frm_from, frm_to) + 1;
 
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(frm_count_target);
-        // Frame-indexed ART can exceed the baked 16-bit duration
-        int64_t anim_ticks = header.FrameRate > 0 ? numeric_cast<int64_t>(1000 / header.FrameRate) * frm_count_target : 0;
-        collection.AnimTicks = numeric_cast<uint16_t>(std::min(anim_ticks, numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())));
-        collection.HaveDirs = stored_rotations == art_rotations && forced_rotation < 0;
+        uint16_t sequence_size {};
+        uint32_t anim_ticks {};
+        bool have_dirs {};
+        sequence_size = numeric_cast<uint16_t>(frm_count_target);
+        // Sprite v3 preserves the complete imported duration in uint32 milliseconds
+        int64_t imported_ticks = header.FrameRate > 0 ? numeric_cast<int64_t>(std::max(1, 1000 / header.FrameRate)) * frm_count_target : 0;
+        anim_ticks = numeric_cast<uint32_t>(imported_ticks);
+        have_dirs = stored_rotations == art_rotations && forced_rotation < 0;
 
-        int32_t dir_count = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
+        int32_t dir_count = have_dirs ? GameSettings::MAP_DIR_COUNT : 1;
 
         for (int32_t dir = 0; dir < dir_count; dir++) {
             FrameSequence& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.Frames.resize(collection.SequenceSize);
+            sequence.Frames.resize(sequence_size);
 
             // ART rotations run clockwise from north; square Engine directions start north-east
             int32_t rotation = 0;
@@ -274,7 +277,7 @@ namespace ImageBakerArt
             if (forced_rotation >= 0) {
                 rotation = stored_rotations == art_rotations ? forced_rotation : 0;
             }
-            else if (collection.HaveDirs) {
+            else if (have_dirs) {
                 if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                     constexpr int32_t hex_dir_to_rotation[6] = {1, 2, 3, 5, 6, 7};
                     rotation = hex_dir_to_rotation[dir];
@@ -412,6 +415,25 @@ namespace ImageBakerArt
 
                 shot.Data = std::move(data);
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            }
+
+            (void)ImageImport::GetDurationMs(sequence);
         }
 
         return collection;

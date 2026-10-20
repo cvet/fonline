@@ -350,26 +350,31 @@ Effect Effects/Armor.fofx
 ### Textures
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
+TextureAnimation 0 Cycle.fofrm
 ```
 
-The slot must be in `[0, FO_MODEL_MAX_TEXTURES)`.
+Slots are in `[0, FO_MODEL_MAX_TEXTURES)`; Mesh selects drawable targets and paths
+resolve relative to their mesh file. Imported diffuse defaults to slot0. Unconditional
+Texture/TextureAnimation overrides replace it on selected meshes, so the source
+may be consumed. Baker validates effective defaults; runtime loads them for enabled
+meshes after overrides and attachment links.
+Texture requires a published one-direction, one-frame SpriteInfo output.
+Use FOFRM Size to bake a smaller image from a large source; only the root is shipped.
+TextureAnimation explicitly loops the single-direction image timeline, independently
+for each instance from creation. Select directions with FOFRM InputDir.
 
-For a normal texture name:
+Frames/UV/durations are cached immutably; cropped sprite meshes restore the full
+logical canvas before upload. Differently sized frames keep their complete UVs.
+Frame changes rebuild geometry UVs/batches; auxiliary atlas rectangles must match.
+Static models do not advance texture playback.
 
-- the target `Mesh` must exist and be drawable;
-- the texture path is resolved relative to the current target mesh file;
-- the texture must exist in baked resources.
-
-An imported material's diffuse texture is the default for slot `0`. All other slots start empty unless assigned.
-
-Inside an attached child, `Parent` copies the first matching parent's current texture at the same slot. `Parent_<mesh>` copies it from the named parent mesh:
-
-```text
-Texture 0 Parent_Torso
-```
-
-Do not use `Parent` on a root description. When a parent has several meshes, prefer the explicit suffix.
+In an attachment, Parent or Parent_<mesh> inherits the resource at the same slot,
+with the child's own phase. Static Texture refuses animated inheritance.
+Use an explicit mesh suffix when the parent has several meshes. Root Parent fails.
+Native AdvanceTextureTime/GetMeshTexture support deterministic driving/inspection;
+they are not script exports. LFMODINF schema4 requires matching binaries and a full
+model/image rebake (spritev3, SpriteInfo2, runtime0.0.73); LFOZZRIG is unchanged.
 
 ### Effects
 

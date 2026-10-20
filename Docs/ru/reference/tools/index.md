@@ -5,7 +5,7 @@ locale: ru
 document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"d838d0682a0b4b00bf01359a1f6731518025d1123a11c6ecf4da09c92ae8c26c"} -->
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"ee1f868745b31534d7e05195f69d432344bc018fc500a40b53768c4bf166fbd1"} -->
 # Инструменты
 
 > Документация движка. Эта страница сопоставляет переиспользуемые инструменты из `Source/Tools/` с точками входа приложений. Конкретные игровые content pipelines, project-specific command lines и release automation принадлежат документации встраивающего проекта, если они явно не отмечены как примеры.
@@ -85,7 +85,7 @@ permalink: /Docs/ru/reference/tools/
 
 Семейство baking является наиболее зрелой группой batch tools. `Source/Tools/Baker.h` и `.cpp` определяют общую инфраструктуру:
 
-- `BakingContext` несет settings, имя pack, write callback, существующие baked files и hints sync/async mode;
+- `BakingContext` в `Source/Tools/BakingContext.h/.cpp` инкапсулирует общую конфигурацию, проверку и запись выходов, владение изображениями, атрибуцию отчёта и выбор sync/async режима;
 - `BaseBaker` определяет `GetName()`, `GetOrder()` и `BakeFiles()`;
 - `BaseBaker::SetupBakers()` создает запрошенные built-in bakers и предоставляет `SetupBakersHook()` для project/external extension;
 - `MasterBaker::BakeAll()` координирует полное baking resource packs;

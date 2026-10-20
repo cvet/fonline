@@ -50,15 +50,13 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
         .ResourcePath = "Art/Test.png",
         .Info =
             {
-                .FrameCount = 2,
-                .Duration = std::chrono::milliseconds {75},
                 .Directions =
                     {
                         SpriteDirInfo {
                             .Frames =
                                 {
-                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
-                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .DurationMs = 37},
+                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .DurationMs = 38},
                                 },
                         },
                     },
@@ -462,8 +460,8 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
-        CHECK(sprite_info.FrameCount == 2);
-        CHECK(sprite_info.Duration == std::chrono::milliseconds {75});
+        CHECK(sprite_info.Directions[0].Frames.size() == 2);
+        CHECK(GetDurationMs(sprite_info.Directions[0]) == 75);
         REQUIRE(sprite_info.Directions.size() == 1);
         REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
@@ -477,7 +475,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources = MakeSpriteAnimationInfoResources();
         File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
         string invalid_info = info_file.GetStr();
-        invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
+        invalid_info = strex(invalid_info).replace(strex("InfoVersion = {}", SPRITE_INFO_VERSION).str(), strex("InfoVersion = {}", SPRITE_INFO_VERSION + 1).str()).str();
 
         auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
         source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);

@@ -1080,8 +1080,8 @@
           "translation": "Общий decoder SpriteResource проверяет версионированное обрамление до потребления pixels или mesh-данных клиентом либо tool."
         },
         "/baking_rules/@id=image-format.baking.container-header/requirement": {
-          "source_sha256": "66c6f6bcba6b3936fe160f20e2c71925d603ab22f5dcea8c5367c94e06f3a2d2",
-          "translation": "Частный baked stream начинается с magic SpriteResource 43 и version 2, затем содержит uint16 числа кадров, uint16 полных animation ticks и uint8 числа направлений, а заканчивается magic 43."
+          "source_sha256": "b8a865628910efb6cd4330aff8f04afd8cf4973e3168a15dbb5ca8826b30de6d",
+          "translation": "Ресурс спрайта v3 начинается uint8 magic43, uint8 version3 и uint8 числом направлений. Далее каждое направление записывает uint16 число кадров и uint32 общее время в миллисекундах; завершающий magic43 ограничивает точный диапазон байтов. Runtime отвергает прежние версии; пересобрать baker, клиентов и metadata вместе, полностью перезапечь изображения. MigrationRule Version повышен74→75."
         },
         "/baking_rules/@id=image-format.baking.direction-record/name": {
           "source_sha256": "aad1483fd86b8db83fa5843daef621757a1dc2eb6e050807217fb3a2bfd201a1",
@@ -1092,8 +1092,8 @@
           "translation": "Per-frame offsets сохраняют экранное размещение, когда polygon geometry независимо меняет сериализованный canvas каждого направления и кадра анимации."
         },
         "/baking_rules/@id=image-format.baking.direction-record/requirement": {
-          "source_sha256": "acafc21ef8b4ed8acc628e8d58ffac267357afecc3eff92b6e08f7f48cf0bb41",
-          "translation": "Каждое из одного или GameSettings::MAP_DIR_COUNT направлений хранит ровно общее число кадров; разрешённый logical root offset сериализуется в каждом конкретном кадре после mesh padding и crop."
+          "source_sha256": "4244416eff1fd5253cbd8b1f930d6481d39cc7cbdb9b357a4b8037f8a2d4032e",
+          "translation": "Каждое направление содержит1..65535 кадров и положительное общее uint32 время, равное сумме длительностей. Число кадров и время могут различаться по направлениям. Привязка последовательности плюс размещение кадра образуют запечённые int32 X/Y; движение остаётся независимым int16."
         },
         "/baking_rules/@id=image-format.baking.discovery/name": {
           "source_sha256": "202871628f0d150d8e6da64758ea14bbb5c0d9e1aba80097e67cf0fbf88e245a",
@@ -1104,8 +1104,8 @@
           "translation": "Incremental build проекта и перезапекание одного файла используют один baker, не считая пропущенную цель ошибкой."
         },
         "/baking_rules/@id=image-format.baking.discovery/requirement": {
-          "source_sha256": "ae16357d2e6cc370ffff16f8398529c913b290164313175e5f0d132ca6cbb083",
-          "translation": "Пустая цель сканирует каждое зарегистрированное расширение; отсутствующий, неподдерживаемый или пропущенный BakeChecker targeted path завершается без выхода."
+          "source_sha256": "a88d34d5ca16d05a32678ebf8e0b3916b18f5aeb43f853d928f50e4d09754508",
+          "translation": "Полная и целевая выпечка используют один план публикуемых корней. Поглощённые исходники, промежуточные FOFRM, отсутствующие и неподдерживаемые цели не являются самостоятельными выходами. Discovery регистрирует пути без конвертации пикселей; попадание в fingerprint-кэш также регистрирует актуальный выход."
         },
         "/baking_rules/@id=image-format.baking.error-aggregation/name": {
           "source_sha256": "83cc453961ead8bd8ccb14695757c753d0a429c97e902d7c0711154546f20d3c",
@@ -1116,8 +1116,8 @@
           "translation": "Полный scan сообщает обо всех независимо сломанных image resources за один запуск и не завершается молча."
         },
         "/baking_rules/@id=image-format.baking.error-aggregation/requirement": {
-          "source_sha256": "d810a217bb33c073b10bcb2296d8eca6a08f0ba6d888479cb35be68e4ce7a042",
-          "translation": "Каждый зарегистрированный image importer сохраняет путь источника, параметры имени, размер входа и исходное исключение в ImageBakerException, включая вложенные источники FOFRM. Выбранные файлы запекаются асинхронно; ошибки журналируются на границе обработки, а ненулевое число ошибок завершает Image baker агрегированным исключением."
+          "source_sha256": "803b6ca1826c31e99d223247d44eb1b7c771aeb4f446ee44bc736cf450ecdf8f",
+          "translation": "Проверка графа завершается до конвертации и сохраняет корень и цепочку зависимостей. Ошибка импорта содержит исходный путь, параметры имени, размер входа и исходное исключение. Ошибки выбранных асинхронных конвертаций сообщаются отдельно; любая ошибка запрещает новые snapshots зависимостей этой группы."
         },
         "/baking_rules/@id=image-format.baking.extension-case/name": {
           "source_sha256": "fd5fe2efd73716f13a492f3501a3072814605a8001d1d87355632ff37cd80908",
@@ -1140,8 +1140,8 @@
           "translation": "Record сохраняет логическое размещение и координаты освещения, устраняя прозрачные texture rows и отправляя indexed silhouettes; повторные кадры переиспользуют исходный payload."
         },
         "/baking_rules/@id=image-format.baking.frame-record/requirement": {
-          "source_sha256": "46e56825d8040d4e22f7f44fe9a7a973a59c0665999fc6f05e395fe7a3fdbe3c",
-          "translation": "Каждый кадр начинается с shared flag; concrete record хранит знаковый int16 draw offset, uint16 обрезанных размеров, знаковые int16 NextX/NextY, точные RGBA8 pixels, mesh kind, а для Mesh — vertices/indices, logical source size и origin. Shared record хранит индекс одного более раннего кадра."
+          "source_sha256": "39a9f39a1daf30db2caec1e109c92ef1aed0eb6f0e58f967473ee9b13b6fc7a2",
+          "translation": "Каждый логический слот записывает uint32 DurationMs, int32 размещение X/Y, int16 движение X/Y и uint8 shared-флаг. Shared-слот добавляет обратный uint16 индекс пикселей; конкретный — uint16 ширину/высоту, RGBA8 и mesh. Общими являются только пиксели, размеры и геометрия; размещение, движение и время принадлежат слоту."
         },
         "/baking_rules/@id=image-format.baking.output-path/name": {
           "source_sha256": "4195209bcc495e5f7502ed5536ce27127d1158c59e9230e8ede16e43558ebe3a",
@@ -1152,8 +1152,8 @@
           "translation": "Нормализация critter FRM/FRx и агрегация разделённых направлений требуют детерминированно переименованных ресурсов."
         },
         "/baking_rules/@id=image-format.baking.output-path/requirement": {
-          "source_sha256": "e4ea183d0ee0f504a2b5d039a19ca4dd2a967f3e709d0a53937cc827cf7d1c0e",
-          "translation": "Запечённый ресурс обычно сохраняет исходный путь; loader может задать NewName, который заменит путь выхода для legacy-нормализации."
+          "source_sha256": "96fa692121d6a0df0388c31a4eaaabbc761a7c1a331ec0f24d1ca22477604b05",
+          "translation": "ResolveOutput загрузчика заранее определяет фактический путь публикуемого ресурса. Непустой NewName должен совпадать с объявленным путём. RawCopy уступает совпадающий путь Image и не выпускает поглощённый исходник повторно."
         },
         "/baking_rules/@id=image-format.baking.source-options/name": {
           "source_sha256": "fea95a1458db46bace4d539a42b2da6e49d752a0632693cc672e0d6b783550f9",
@@ -1172,12 +1172,12 @@
           "translation": "Индекс SpriteInfo каждого pack"
         },
         "/baking_rules/@id=image-format.baking.sprite-info-index/rationale": {
-          "source_sha256": "b88e70a1f18eb3f5ae11459a1e219f5e538f2cb60b9c26f069815901ec4bf6d9",
-          "translation": "Общий EngineMetadata отвечает на запросы 2D-анимации server/client без декодирования RGBA payload; потеря или появление агрегированного индекса требует полной перезапечки."
+          "source_sha256": "b19578395eba89e93adb8903f618e901b99a518109d51a103d9f6707b60b6e67",
+          "translation": "Общая EngineMetadata отвечает на запросы анимации без декодирования пикселей; полная и отложенная выпечка поддерживают одинаковые метаданные корней."
         },
         "/baking_rules/@id=image-format.baking.sprite-info-index/requirement": {
-          "source_sha256": "29ada9cab6dca7847987de8e34c58114dc8c11e76a7d26eab0aa7fe675e8d5a2",
-          "translation": "Запекание изображений поддерживает SpriteInfo/<PackName>.foinfo версии 1 с duration, direction, frame bounds, offsets и metadata shared frame каждого актуального image source в resource pack."
+          "source_sha256": "d7ff99b2f921061f355b826f5205ce026232e4828a9764a4010028bdfd1b1118",
+          "translation": "SpriteInfo/<PackName>.foinfo версии2 описывает только публикуемые корни. DirectionFrameCounts и плоский FrameDurationsMs заменяют общие число кадров/время. Положительность и сумму uint32 проверяют по направлениям; shared-слоты требуют равных размеров пикселей при собственных размещении/движении/времени. Приватные snapshots успешных выходов сохраняют полные записи для восстановления full/lazy индекса без декодирования актуальных пикселей. Пак без корней публикует пустой индекс до запуска зависимых bakers; удаление последнего корня не оставляет устаревшие метаданные."
         },
         "/baking_rules/@id=image-format.baking.sprite-mesh/name": {
           "source_sha256": "8d6e2a91fb3f52bb22bab45693fe197c18157de5684a6b54f744d56083661203",
@@ -1196,21 +1196,20 @@
           "translation": "Основанный на исходниках контракт импорта изображений FOnline, композиции FOFRM, полигональных sprite meshes, baked container, client sprites, atlas, cache и валидации."
         },
         "/descriptor_fields/@id=image-format.field.count/name": {
-          "source_sha256": "868429ff9cb482a6349b41bf244d1aabad71e2075b8e238fc4f083a6b541f0d9",
-          "translation": "count / Count",
-          "preserve_source": true
+          "source_sha256": "94ab9df7dc2d91882cab0bd35c3f745babb474ff8ad99d90decf61e94db59485",
+          "translation": "Вычисляемое число ссылок"
         },
         "/descriptor_fields/@id=image-format.field.count/rationale": {
           "source_sha256": "6862d4ed5f2dcf6135621a8f9229556679cf0cef41bfdf53f11385aeec958bc2",
           "translation": "Каждый источник по ссылке сам может содержать несколько кадров."
         },
         "/descriptor_fields/@id=image-format.field.count/requirement": {
-          "source_sha256": "b7f3fd1d4e047c28ce9d7fea3224e5d74ba747fbb939b51f82d60ef8120cc3a6",
-          "translation": "Count задаёт число ссылок descriptor в каждом направлении, по умолчанию равен единице и должен быть положительным; он не обязательно совпадает с итоговым числом кадров после flattening."
+          "source_sha256": "0e07458e088e72fe85384ef9e18933aad68d2ac7cb08bcec2b4fbe4f072a2189",
+          "translation": "Count не является авторским ключом. Каждое направление вычисляет1..65535 итоговых кадров после grid, разворачивания и FrameIndices; число может различаться. Source считается одной входной ссылкой для массивов преобразований."
         },
         "/descriptor_fields/@id=image-format.field.direction-section/name": {
-          "source_sha256": "c7ee0e86bd5aa8d7dbcb7c0784e1c001506ee03a2930b9085ffb797ecdae6fe1",
-          "translation": "[dir_N] / [Dir_N]",
+          "source_sha256": "16b5e8fda8d2e78d77e1caea01b7059427a19fd32ea35f2aff06d39e120437e5",
+          "translation": "HexDir / SquareDir",
           "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.direction-section/rationale": {
@@ -1218,94 +1217,83 @@
           "translation": "SpriteSheet принимает ровно одно направление или GameSettings::MAP_DIR_COUNT направлений."
         },
         "/descriptor_fields/@id=image-format.field.direction-section/requirement": {
-          "source_sha256": "631a1de60cf6590a105786dae72104102c9fac679797ea2b992dc849ee613d8a",
-          "translation": "Descriptor либо однонаправленный, либо предоставляет каждое направление карты Engine; частичные наборы направлений и последующие разрывы отклоняются."
+          "source_sha256": "41a39aa27b4b36d1ee6b5116caed6158efb8c112696ab3a45322e9619ef12792",
+          "translation": "Безымянный корень всегда задаёт направление 0. Используйте HexDir 1..5 или SquareDir 1..7 с каноническими десятичными индексами, а не градусами. Именованный ноль и старые формы Dir отклоняются до разрешения Source. Отсутствие второй последовательности и индексной секции означает один ракурс; секция без кадров запрещена."
         },
         "/descriptor_fields/@id=image-format.field.effect/name": {
-          "source_sha256": "9f45b2bd31acaa07b7cffed5dc7d4d26380d1126dc181e95c116362c031573cd",
-          "translation": "effect / Effect",
+          "source_sha256": "2252d5cf93767a43ecc53f07c8e49d76be0126e021c0397af8d51927e9c5e2e4",
+          "translation": "Effect",
           "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.effect/rationale": {
-          "source_sha256": "725bd4c195ba5cf3f7a579a8d2fb27b3174cf6034da0763e3ad822f0626be05a",
-          "translation": "Авторы не должны считать разобранное, но неиспользуемое поле частью render-контракта."
+          "source_sha256": "e1e4546edae3dfc3cb0c8874ed952d732dd15a9b5695c3c793717a9697b10830",
+          "translation": "Распознанный ключ должен действовать либо явно отклоняться; неработающего EffectName больше нет."
         },
         "/descriptor_fields/@id=image-format.field.effect/requirement": {
-          "source_sha256": "7457330a33c1dc829a05f8d1ef5c60d038163f8a283f41d93260214b1052a8e2",
-          "translation": "Parser принимает effect/Effect в FrameCollection.EffectName для совместимости, но ImageBaker не сериализует и не применяет его, а штатный runtime никогда не выбирает effect из этого поля."
+          "source_sha256": "957ea4aaa97fa69f62277cfc4148fb01549cdbec612e4b8d4718da3c8686e513",
+          "translation": "Effect удалён и отклоняется до разрешения источников, включая пустое значение и отсутствующий эффект. Render effect выбирает потребитель GUI/map/model/script; бейкер не сериализует эффекты ресурса. Отказ отмечен FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\")."
         },
         "/descriptor_fields/@id=image-format.field.flattening/name": {
           "source_sha256": "c97a1e284c2202ec07a90500aad059ebd438b1823b6997c9ca86c9930417f80e",
           "translation": "Flattening вложенной последовательности"
         },
         "/descriptor_fields/@id=image-format.field.flattening/rationale": {
-          "source_sha256": "c1015411a271d408f52aa76095b6c7b0c9faa81ebee7885b8af185c9829273a4",
-          "translation": "Merge loop копирует только child frames Main и проверяет каждое последующее направление по collection.SequenceSize."
+          "source_sha256": "dfba3bb7aaedc6aafb88d5ec75911b24a612faca33caf2e4ea758211b06f64f8",
+          "translation": "Каждое итоговое направление владеет таблицей кадров и таймлайном; привязка дочерней последовательности исключается только при композиции Frame/Frames."
         },
         "/descriptor_fields/@id=image-format.field.flattening/requirement": {
-          "source_sha256": "fc6c816cdc2b1a7c435a13e52f97f4697ae635fafc3a25a3c98ec501d82361e9",
-          "translation": "FOFRM добавляет последовательность Main каждого дочернего ресурса; наборы направлений и sequence offsets ребёнка не компонуются, а все авторские направления родителя должны давать одинаковое итоговое число кадров после flattening."
+          "source_sha256": "ace9101baae164625b6faefbd17420b7c64bd2a63f9c5e9fd4a0c151c4d8aaba",
+          "translation": "Frame/Frames добавляют выбранную Main sequence по умолчанию либо InputDir, сохраняя покадровое размещение и движение, но отбрасывая привязку последовательности и другие направления ребёнка. Crop/grid/преобразования выполняются по ссылкам до разворачивания; FrameIndices выбирает итоговую последовательность. Source сохраняет целую коллекцию и покадровое время. Число кадров и длительность независимы по направлениям."
         },
         "/descriptor_fields/@id=image-format.field.fps/name": {
-          "source_sha256": "1c016a4141cea372b702948466f319de7941330a4cc95967964aaae4a0d7c43c",
-          "translation": "fps / Fps",
+          "source_sha256": "2df9e7d0461d2dc9b97c2fac64f6d36801a4a848fa52a659b16eb3b8ce037732",
+          "translation": "Fps",
           "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.fps/rationale": {
-          "source_sha256": "793a4b1be5f73be8aea8acb6442432524ad3fc5b00801a26b7942adda7f4fed6",
-          "translation": "Авторские count и fps определяют AnimTicks всего sheet, а runtime playback делит эту длительность на расплющенное число кадров."
+          "source_sha256": "a5a0c8fd72173b53796f95b3cbf5be3377a502bf33db16eb1320410bf4854e54",
+          "translation": "Положительные равномерные границы вычисляются после окончательного выбора кадров; runtime использует полученные покадровые длительности."
         },
         "/descriptor_fields/@id=image-format.field.fps/requirement": {
-          "source_sha256": "6719638b81a3a60caa9970e5016c83100a615f706b37dd971dca1b368013ddae",
-          "translation": "FOFRM сначала читает lowercase fps, затем legacy Fps; ноль создаёт непроигрываемый sheet, а production-значения анимации также должны сохранять положительную полную длительность кадра."
-        },
-        "/descriptor_fields/@id=image-format.field.frame-delta/name": {
-          "source_sha256": "8a0b979b05b2b8352bed575147e8ea261a1fe212b35ce38fcac47994fa7bbd38",
-          "translation": "next_x_N / next_y_N и NextX_N / NextY_N"
-        },
-        "/descriptor_fields/@id=image-format.field.frame-delta/rationale": {
-          "source_sha256": "2ebb75043266759620293b3b9557aa56c27f923aa57b716dd77b838e60d755d6",
-          "translation": "Так сохраняется смещение исходного формата и одновременно допускается авторская корректировка композиции."
-        },
-        "/descriptor_fields/@id=image-format.field.frame-delta/requirement": {
-          "source_sha256": "1b95463c2f360e84b6722383341e158f0e55ab4ed88e9e7db0b9364dd30c3049",
-          "translation": "Дельты кадров descriptor прибавляются к импортированным NextX/NextY каждого расплющенного дочернего кадра."
+          "source_sha256": "3b1e3a66594e2624e40243c48ee1d0070610e8735f079cf58c5c8b39433aae24",
+          "translation": "Корневой положительный uint32 Fps заменяет умолчания таймлайна; полное время равно floor(1000*final_count/Fps) и должно давать минимум одну миллисекунду на кадр. Frame/Frames по умолчанию использует10fps; Source сохраняет импортированный покадровый тайминг без явного переопределения. Fps ноль и конфликт с Duration/FrameDurations в секции запрещены."
         },
         "/descriptor_fields/@id=image-format.field.frame-reference/name": {
-          "source_sha256": "9a1eaa203f5bcea36b7bfcf9f14285e653b3d2a5c2596149e20c8b95d7544503",
-          "translation": "frm / Frm и frm_N / Frm_N"
+          "source_sha256": "d83b0a748576f25564e2a58e15fac0a99e897ade69383d3e9dafd36a1ef04178",
+          "translation": "Frame и Frames"
         },
         "/descriptor_fields/@id=image-format.field.frame-reference/rationale": {
           "source_sha256": "c88d8c1ebf4da08327c60f782435d4181648de799659bdc37ab0f528c1232cc0",
           "translation": "Ссылки объединяются с каталогом descriptor и затем диспетчеризируются по расширению ресурса."
         },
         "/descriptor_fields/@id=image-format.field.frame-reference/requirement": {
-          "source_sha256": "a2f9c43126f23a8524b58ace0a781f63835fbb249bd806f1056a662f1fffce42",
-          "translation": "Каждый авторский slot descriptor разрешает один относительный путь изображения; только slot ноль также принимает ненумерованный alias frm/Frm."
+          "source_sha256": "2b58cc39cb47563ec364ddb1fe629b267ca9651521cb50e594ac3a73d573950b",
+          "translation": "Используйте только Frame или Frames. Frame содержит один полный относительный путь; Frames — непустой упорядоченный массив String парсера AnyData. Пути с пробелами берите в кавычки; пишите одну ссылку на продолженную строку, сохраняйте повторы."
         },
         "/descriptor_fields/@id=image-format.field.sequence-offset/name": {
-          "source_sha256": "a3d152f353f5f28758601f1bc5cc4ec08d171473643fccd57b717b0c6cc25a43",
-          "translation": "offs_x / offs_y и OffsetX / OffsetY"
+          "source_sha256": "b1a1e8e3cf7c522ed8606c3c3c3f35d3299eca78cb664fec00d9787da111f418",
+          "translation": "Offset",
+          "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.sequence-offset/rationale": {
-          "source_sha256": "f3435b2ac8e48c320594b69b1daf2e1c9d8f695d22b1f4a6d76b1ff6cc7282e5",
-          "translation": "Parser повторно использует текущие переменные ox/oy, а не сбрасывает их для каждого направления."
+          "source_sha256": "08cd8cc8527359db17842d8ac3851f58d29b6867b5838527530c26fe51c0b467",
+          "translation": "Парсер переносит текущую пару смещений между направлениями."
         },
         "/descriptor_fields/@id=image-format.field.sequence-offset/requirement": {
-          "source_sha256": "0c2b19cd39ad723482839d6102813234886548ee8d5ee7b73423ce971353b24b",
-          "translation": "Sequence offsets являются знаковыми и могут задаваться в корне или каждом разделе направления; явно задавайте оба значения в каждом направлении, потому что пропущенные значения переносятся дальше."
+          "source_sha256": "03051d7e32fc4cf2c34801df8144ff905fe7cee67434b66b39887caa485a7415",
+          "translation": "Offset требует ровно два знаковых целых; пропущенные пары переносятся из корня или предыдущего направления. Неверные пары и значения вне диапазона запрещены."
         },
         "/descriptor_fields/@id=image-format.field.timing/name": {
           "source_sha256": "ba6de1efc9632bc433b85ac26cd934de09cc19fede49c5e2d465c4f4d0c007a2",
           "translation": "Timing всей последовательности FOFRM"
         },
         "/descriptor_fields/@id=image-format.field.timing/rationale": {
-          "source_sha256": "d04078983e298e243aba3ff21fe1d0895b917df96af8b262eeac44f6d9752bd3",
-          "translation": "Поэтому вложенные анимированные ссылки могут изменить эффективный темп кадров, если автор не учёл flattening."
+          "source_sha256": "33b8bf60c690d1304fbfe969ffd64ebc81c8405dfe24830890174d23b12df6cf",
+          "translation": "Обёртка коллекции не теряет тайминг; разворачивание анимированных ссылок сохраняет заданный стандартный темп."
         },
         "/descriptor_fields/@id=image-format.field.timing/requirement": {
-          "source_sha256": "4697084cb656acab14ac9901095a3302141573ddcab1619d304f12600217e8f0",
-          "translation": "FOFRM вычисляет длительность всей последовательности по авторскому count descriptor, а не по расплющенному числу дочерних кадров; нулевой fps даёт нулевые ticks."
+          "source_sha256": "4287cce191043015f745b04e11a42edfd90f07e151d00578a0204151e66e1dcc",
+          "translation": "Каждый логический кадр имеет положительный uint32 DurationMs; сумма последовательности также uint32. Frame/Frames по умолчанию даёт100ms на итоговый кадр; Source наследует время выбранных кадров, включая повторы/grid. Локальный FrameDurations либо Duration заменяет корневые Duration/Fps. Корневой FrameDurations относится только к направлению0. Равномерные границы floor(i*Duration/count) сохраняют сумму без нулевых кадров."
         },
         "/filename_options/@id=image-format.option.art/rationale": {
           "source_sha256": "fb6d8db8e8ebb0bf44d3d40f33c3c0fec4cd4e045a3efb4888671592619dd198",
@@ -1340,8 +1328,8 @@
           "translation": "Нумерация направлений и метаданные кадров ART требуют специального remapping перед использованием в runtime."
         },
         "/formats/@id=image-format.format.art/requirement": {
-          "source_sha256": "f9c8010aaa44337a9a23337b70d9915f58216a2303c26b239dd175f46eccb65c",
-          "translation": "ART импортирует 8-битные кадры raw или ограниченного RLE после всех таблиц по ротациям, использует присутствующие слоты палитры, выравнивает точки привязки на общем холсте, сохраняет смещения кадров и преобразует одну или восемь ротаций с отражением и привязкой по категории. Полная длительность ограничена 65535 миллисекундами; fps ноль сохраняет явный выбор кадров."
+          "source_sha256": "696f1291fc01d2b86e7039ece4d60f05941c3b77ab3d2ec6b8b7401b500a9d67",
+          "translation": "ART: заголовок132байта,8бит; флаг0x1 задаёт одну ротацию, иначе восемь. Таблицы ротаций предшествуют пикселям. Raw содержит width*height байт, RLE ограничен объявленным размером. Усечённые/неполные/переполненные потоки, отрицательные размеры и выход за baked-диапазон запрещены. Hot spots выбранных кадров выравниваются на общем прозрачном холсте направления; смещения последовательности задают hot spot, NextX/NextY сохраняют движение. Квадратные направления:1,2,3,4,5,6,7,0; hex:1,2,3,5,6,7. art/critter/,art/monster/,art/unique_npc/ отражают1–3 из7–5. Стены/порталы сдвигают привязки(-40,+20) для0,1,6,7; зеркальные крыши используют левую границу. Выбор палитры, параметры и размещение следуют контракту ART. Полная длительность uint32; нулевой clock нормализуется до10fps, положительный субмиллисекундный период до1мс."
         },
         "/formats/@id=image-format.format.bam/availability": {
           "source_sha256": "f84b155dd67a552d6ab93def8ae12da8999013a6db0a5fa32b8ed9b9e55f61b0",
@@ -1508,8 +1496,8 @@
           "translation": "Source decoders принадлежат только baker и не поставляются как runtime image parsers."
         },
         "/runtime_rules/@id=image-format.runtime.decode/requirement": {
-          "source_sha256": "a94ee6e2be681470d47e73d6e07958017967588e890894bd5af28fe4710e9230",
-          "translation": "Штатный runtime читает только запечённый контейнер через ReadSpriteResource, проверяет magic, version, числа кадров/направлений, полные frame/mesh records, footer и trailing data, затем создаёт AtlasSprite либо SpriteSheet."
+          "source_sha256": "8ae2125bb6429d3d83dce045eefa979a0c76e5aa59edb26d8aab892ed0f68f77",
+          "translation": "ReadSpriteResource отвергает неподдерживаемые версии, неверные длительности/число кадров, ошибочные обратные shared-ссылки, усечённые pixels/mesh и лишние данные. DefaultSpriteFactory создаёт atlas image для одного кадра/направления либо SpriteSheet с таймлайном каждого направления; shared-копии получают собственные размещение и движение."
         },
         "/runtime_rules/@id=image-format.runtime.factory-coverage/name": {
           "source_sha256": "596e76a184c5ddf3ba2b8e2dfb15368aec39e8dc7c7bb310ae2dfacb536c31d9",
@@ -1532,8 +1520,8 @@
           "translation": "Визуальное root-motion displacement должно оставаться отдельным от sequence placement и authoritative world movement."
         },
         "/runtime_rules/@id=image-format.runtime.frame-offset/requirement": {
-          "source_sha256": "a59a0a7ab8c2a4177ccbba06ac923a2a76223b49c6a74b8a44b501ddcb9e9156",
-          "translation": "Concrete/shared frames сохраняют NextX/NextY в _sprOffset отдельно от draw placement. ResolveCritterAnimationFrames оставляет один спрайт и offset на направление; LastFrame суммирует предыдущие дельты по обеим осям. При обоих flags выбирается FirstFrame."
+          "source_sha256": "2a4b8594874d2d3056581a425c7725ed87b59bdda75eacc62b9449d30997e047",
+          "translation": "Запечённые int32 размещение и int16 движение независимы для каждого слота, включая общие пиксели. Runtime хранит массивы движения по направлениям. Обрезка выбирает время своего кадра, слияние соединяет таймлайны каждого направления, копирование сохраняет выбранные кадры и время."
         },
         "/runtime_rules/@id=image-format.runtime.missing-cache/name": {
           "source_sha256": "8aa6f76a704bd4d34fc50dc88c278348c2d4921a1a77b8f308c2d26c864ad07e",
@@ -1556,8 +1544,8 @@
           "translation": "Animation state является клиентским presentation state, а каждое направление владеет параллельным frame sheet."
         },
         "/runtime_rules/@id=image-format.runtime.sprite-sheet/requirement": {
-          "source_sha256": "82a3a41182c027e1b8d8e1ce2e496f2e941e1cf656d38d419fe37b935c4c4876",
-          "translation": "SpriteSheet принимает одно или все направления карты, random prewarm, normalized time и loop/reverse playback; один кадр или нулевые ticks не проигрываются. Копии начинают с нулевого кадра/направления, корректного размера/привязки и сохраняют state/action tags."
+          "source_sha256": "e8c5cf8783e8be6dbe012f6d845c69e17b5b0e27b20a1eaf54241b90c1d4df61",
+          "translation": "SpriteSheet хранит длительности/накопленные границы каждого направления и выбирает кадры по нормализованному времени. SetDir сохраняет фазу при разных числе кадров/времени; направление0 — независимая последовательность. GetFramesCount/GetWholeTicks/GetSprOffset/GetFrameDurations описывают выбранное направление. MakeCopy сохраняет кадры с новым проигрыванием. Update передаёт elapsed в AdvanceTime; деления whole/count нет."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/name": {
           "source_sha256": "1fa5917048511413fe454b412e646441428b6214cd80c08859786156742979af",
@@ -1595,40 +1583,40 @@
           "translation": "Контракт создаётся для закреплённой ревизии Engine. Проекты владеют каталогами ресурсов, лицензированием источников, визуальным стилем, политикой сжатия, приоритетом resource pack, подстановками анимаций, настройкой движения и видимой приёмкой."
         },
         "/validation_rules/@id=image-format.validation.fofrm-count/name": {
-          "source_sha256": "a9e611e7cabf22b1b475350aa3abeabf024c51d3bfe51e1e4324647cc6101c10",
-          "translation": "Положительный count FOFRM"
+          "source_sha256": "18776cee9bdda853edb6b7208de857c017b164bdf68c8943e2e120d0d877438c",
+          "translation": "Непустые ссылки FOFRM"
         },
         "/validation_rules/@id=image-format.validation.fofrm-count/rationale": {
           "source_sha256": "4a48f6d200b9dc7349c2bbc23cfa8bd78e95dd95525a43967d04d7f89516ce4c",
           "translation": "До существования runtime frame table descriptor должен разрешить хотя бы одну source reference."
         },
         "/validation_rules/@id=image-format.validation.fofrm-count/requirement": {
-          "source_sha256": "8d143ac810bd24229e786abba70f933e2e9a7ae1b0adcc2bfe8d5c7a9df602f0",
-          "translation": "Отклоняйте descriptor, у которого count/Count равен нулю или отрицателен."
+          "source_sha256": "6244a7b659d9c5d7c60bd203505d54dd83e8c4db493ed4bc7bc9df0c25b31ca5",
+          "translation": "Рецепт использует один непустой корневой Source либо непустую композицию Frame/Frames. Source разрешён только в корне и исключает Frame/Frames во всех секциях. Все режимы проверяют имена, смещения и размеры до выпуска выхода."
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/name": {
-          "source_sha256": "9f738ff240be0d3176117e3416ec76fb80900cfff7b9d8c8c4b99f3b924935c4",
-          "translation": "Полные равные направления"
+          "source_sha256": "a67c5974b8a4ce750576a6fbf77530ba1ae666f974b6ca42f8c43bd7cff9d036",
+          "translation": "Полные таблицы направлений"
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/rationale": {
           "source_sha256": "992d122158c2bf374e68dae21c14f8e7d62eaab8a46557b8930a646f8a4bae20",
           "translation": "Каждый direction sheet разделяет один frame-count и timing header."
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/requirement": {
-          "source_sha256": "cb35fc2ccea7f48f10298d2ec089080bf2054977e9a0eb41d14a61ffa81eebbf",
-          "translation": "Отклоняйте частичные наборы направлений и любое последующее направление, чьё расплющенное число кадров отличается от нулевого."
+          "source_sha256": "e932b66e08386202848ba2606d706d8b72a9ddf710d14448628bbff90316d3ce",
+          "translation": "Композиция Frame/Frames требует безымянную последовательность либо полную индексную таблицу направлений активной геометрии; более поздняя секция без направления1 запрещена до разрешения. Source допускает переопределения существующих направлений без повторения ссылок. Итоговые число кадров и время могут различаться, но все таймлайны должны быть корректны."
         },
         "/validation_rules/@id=image-format.validation.fofrm-nested-shared/name": {
-          "source_sha256": "2da26c62e7f15b6568ae5463d63d7e86cd80dbdd7f77625fc7c82788ade49461",
-          "translation": "Без вложенных shared frame records"
+          "source_sha256": "91bdbae94b791ba9f1b6171dddfb0e4ac8320fd6a95db63d23e0b65f341278f3",
+          "translation": "Безопасная материализация вложенных shared-кадров"
         },
         "/validation_rules/@id=image-format.validation.fofrm-nested-shared/rationale": {
-          "source_sha256": "678eadfba120dec5c1fb65b1b7da69a0c98dc0e9416be6e5fb8fcbae66c379ba",
-          "translation": "Реализация flattening копирует concrete child pixels и не перенумеровывает child shared indices."
+          "source_sha256": "8bc9b2830039bf5f14a512717260858c89f78494800508c842de097c3c83b9c7",
+          "translation": "Общие слоты владеют размещением, движением и временем; материализация копирует конкретные пиксели без замены этих метаданных."
         },
         "/validation_rules/@id=image-format.validation.fofrm-nested-shared/requirement": {
-          "source_sha256": "d47250900b1db9e4fe89a096b4b0c3421d41115933e0b89d0e7ee7e19729e753",
-          "translation": "Отклоняйте ссылку FOFRM, чей дочерний кадр Main уже является shared record."
+          "source_sha256": "a2b02e46d553a4acd0cc25dd9114202c1be65ad9bca7cc53de245bf056aa50a1",
+          "translation": "До композиции разрешать цепочки общих пикселей, запрещая неверные индексы и циклы. Материализация копирует пиксели/размеры/флаги сохранности, оставляя собственные размещение, движение и время слота. Legacy SPR явно копирует прежние общие метаданные при построении слотов."
         },
         "/validation_rules/@id=image-format.validation.malformed-inputs/name": {
           "source_sha256": "121f04be4f28a501386062884641ef548ca758187718f4c4282a3f7fb7c28c32",
@@ -1647,12 +1635,12 @@
           "translation": "Ненулевая длительность кадра"
         },
         "/validation_rules/@id=image-format.validation.playback-timing/rationale": {
-          "source_sha256": "6d9c14f2bc460bc9b1e3d154af954dd71b6f71f31254980a716e59f1660a8c5f",
-          "translation": "SpriteSheet::Update делит прошедшее время на целые ticks_per_frame, а Play защищает только один кадр или нулевые полные ticks."
+          "source_sha256": "e8fffb66353907b1e6740082589620d98456fb03a129ad2f27a065779f499bcc",
+          "translation": "SpriteSheet изменяет нормализованную фазу по elapsed/whole duration и выбирает кадры по накопленным границам положительных длительностей."
         },
         "/validation_rules/@id=image-format.validation.playback-timing/requirement": {
-          "source_sha256": "cc1428430ffb06f7dac771bf8071f94efc1edb707730296bfbfaf5c2bbbd5a91",
-          "translation": "Для проигрываемого многокадрового sheet задавайте timing так, чтобы полные AnimTicks, делённые на расплющенное число кадров, были не меньше одной миллисекунды; нулевой fps намеренно отключает playback."
+          "source_sha256": "f40c1ad9fbd6291c3a98d5b02a09b8a9ec6a5b66eed4dec5b3adb61de698cb45",
+          "translation": "Положительное время логических кадров и проверенная сумма uint32 исключают деление на ноль коротких анимаций. Явный Duration меньше числа кадров запрещён. Нулевые часы raw legacy нормализуются до10fps, положительные периоды меньше ms — до1ms. Source сохраняет импортированный таймлайн; нормализованная фаза задаёт прямое/обратное/циклическое проигрывание и смену направления."
         },
         "/validation_rules/@id=image-format.validation.project-visible/name": {
           "source_sha256": "b1f80699946a80c523bc4860f72fea77700345747ea79d25fed48ac552f14c3a",
@@ -1687,8 +1675,8 @@
           "translation": "Повреждённые baked bytes не должны достигать выделения atlas или обновления анимации."
         },
         "/validation_rules/@id=image-format.validation.runtime-container/requirement": {
-          "source_sha256": "9b896c33c729ec11638d50de6ec3acd7714fcd4b0b76d7f036bbb3e9b281bf1c",
-          "translation": "Отклоняйте неверные header/footer magic, нулевые кадры/направления, неподдерживаемое число направлений, недопустимые shared records одного кадра и неверные shared-frame indices."
+          "source_sha256": "abb5a43079a3d69d8cbec7bc8d442bf05646a11d61ba62e1b9b639f8a7e8feed",
+          "translation": "Требуются magic/version v3, положительные число кадров/время направления, положительные длительности слотов с проверенной суммой, положительные uint16 размеры конкретных кадров, корректные обратные ссылки, границы mesh/pixels и точный footer/конец. SpriteInfo требует схему2 и согласованные размеры плоских массивов."
         },
         "/validation_rules/@id=image-format.validation.tga-subset/name": {
           "source_sha256": "5943269b6c9509089b294f7943a2ca2f28dda39ac0d9ca3e1a49dac3773d815c",
@@ -1702,25 +1690,376 @@
           "source_sha256": "9ce469e38d6205f06c9b6b23785f44c8a071925ed5c1e1db273257e79f1684c8",
           "translation": "Не используйте image ID; задавайте bottom-left orientation, TrueColor type 2 или 10 и 24 либо 32 bpp. Indexed/grayscale/другие входы отклоняются или не соответствуют реализованным допущениям orientation."
         },
-        "/descriptor_fields/@id=image-format.field.alias/name": {
-          "source_sha256": "eace8c2f1ff12e69ab728b047d9df6d6a354b9300510bbc3f3188c6d4bac4b36",
-          "translation": "Псевдоним целого источника"
-        },
-        "/descriptor_fields/@id=image-format.field.alias/rationale": {
-          "source_sha256": "60b14bec4e81268206246d549a9e561214c01e15627bce1284b10ff28aa9ef27",
-          "translation": "Обычные ссылки frm разворачивают только дочерние кадры Main и теряют смещения дочерней последовательности."
-        },
-        "/descriptor_fields/@id=image-format.field.alias/requirement": {
-          "source_sha256": "54afa80e1211cc0e01c1108c73f19fbf79b9f2beb91dea166a6e3790bcc61e8c",
-          "translation": "Непустой корневой Alias передаёт один бинарный источник с сохранением направлений, смещений последовательностей, времени и смещений кадров под путём дескриптора. Остальные ключи композиции игнорируются; Alias не может ссылаться на другой FOFRM."
-        },
         "/filename_options/@id=image-format.option.art-rotation/requirement": {
           "source_sha256": "99259fa4030e1899002d73271b33809c78c03e0e2f4f322e921559d939aff8de",
           "translation": "Загрузчик ART разбирает r= или R= с ровно одной цифрой 0..7 как ротацию по часовой стрелке от севера и создаёт одно направление. Выбор палитры предшествует r=; параметры отражения, alpha и кадров могут идти следом. Неверные значения и последующие символы вне этих параметров отклоняются при запекании. Источник с одной ротацией повторно использует свой кадр с привязкой для выбранной ротации. Без знака равенства r/R игнорируется, а следующая цифра 0..3 по-прежнему выбирает палитру."
         },
         "/filename_options/@id=image-format.option.art-rotation/rationale": {
-          "source_sha256": "03744309572efb44cdba0e8acf678918ce3fe7ff5388b45353e50513d7686039",
-          "translation": "Параметры имени источника одинаково работают через Alias и обычные ссылки frm; FOFRM и общая диспетчеризация не разбирают параметры ART и не обходят зарегистрированный загрузчик."
+          "source_sha256": "b977989ca71884887361fb3cf2dbcf81ac6ba3b5a60319420a042dbd1fd10235",
+          "translation": "Параметры имени источника одинаково работают через Source и обычные ссылки frm; FOFRM и общая диспетчеризация не разбирают параметры ART и не обходят зарегистрированный загрузчик."
+        },
+        "/validation_rules/@id=image-format.validation.fofrm-names/name": {
+          "source_sha256": "7f8a1dd358fa124a583ad8785bab6d4cebc59d0268fb7c20e8fe93be6e452f0f",
+          "translation": "Канонические имена FOFRM"
+        },
+        "/validation_rules/@id=image-format.validation.fofrm-names/requirement": {
+          "source_sha256": "1ab59586acceb62e04e71317ce15f2382c5dc5cc7168023a72abb144a161231f",
+          "translation": "До разрешения источников проверяются безымянный корень (направление 0), ненулевые HexDir/SquareDir активной геометрии, точные PascalCase-ключи и применимость полей. Source и Fps разрешены только в корне. Alias и Effect отклоняются с датированными маркерами миграции. Старые Dir-формы, именованный ноль, Count, прежние ключи кадров/дельт и неизвестные имена запрещены, без fallback."
+        },
+        "/validation_rules/@id=image-format.validation.fofrm-names/rationale": {
+          "source_sha256": "692d83065870d35528250da3ba411a6c12289797c0c0f36eb210103e8b4d9c19",
+          "translation": "Неперенесённые имена и опечатки должны останавливать запекание вместо молчаливого применения значений по умолчанию или обхода проверок через Source."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-offsets/name": {
+          "source_sha256": "032a6fccb92e52455d9a528010642ca7a622fc983f149db68d4b2e0ceb767fb8",
+          "translation": "FrameOffsets",
+          "preserve_source": true
+        },
+        "/descriptor_fields/@id=image-format.field.frame-offsets/requirement": {
+          "source_sha256": "1a9669b53bdb7589d4b507c3754bf9171de4804725395ab499656c86fe460db2",
+          "translation": "FrameOffsets задаёт локальную пару int32 X Y на исходную ссылку до разворачивания; без поля нулевые пары. Offset и покадровое размещение складываются без накопления и изменения движения. Пустые/неверные значения, число пар и выход за диапазон запрещены. Source считается одной ссылкой, включая именованные переопределения."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-offsets/rationale": {
+          "source_sha256": "815c1d5cfe187c32795ec4984edbcd09626766be55aff44cbf29ed742196e8fb",
+          "translation": "Размещение картинки задаётся отдельным авторским ключом и хранится отдельно от импортированных root-motion дельт; пропущенные пары нулевые и не переносятся между направлениями."
+        },
+        "/descriptor_fields/@id=image-format.field.size/name": {
+          "source_sha256": "1af851907331c0ed99e7c63b4e55df808bc5fc4c990a1cf80ca8c0f76daf1f3b",
+          "translation": "Size",
+          "preserve_source": true
+        },
+        "/descriptor_fields/@id=image-format.field.size/requirement": {
+          "source_sha256": "57222546360d6e916fe1b047f8cd0c7e3293926546d94a94f048b81562e2c57a",
+          "translation": "Size требует ровно два строгих целочисленных токена массива String парсера AnyData в 1..65535 и задаёт точный размер холста в пикселях для каждой ссылки. Корневое значение служит умолчанием всем направлениям; именованный Size локален и не переносится дальше. Size и FrameSizes в одном разделе запрещены."
+        },
+        "/descriptor_fields/@id=image-format.field.size/rationale": {
+          "source_sha256": "af794e9d7b4da9540d6007c935d570dcdd00b5314c4835623f766e4e62029462",
+          "translation": "Физическое изменение пикселей отделено от размещения и масштаба при отрисовке."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-sizes/name": {
+          "source_sha256": "c1871a0cebfd3fb4422049dd06eb879c693e22f6bab575a4b4a88e163a22c460",
+          "translation": "FrameSizes",
+          "preserve_source": true
+        },
+        "/descriptor_fields/@id=image-format.field.frame-sizes/requirement": {
+          "source_sha256": "51510c50e92a3f2e2d8a1d69b8bcb3f23dd7954523add7fd0ced75533d471d4b",
+          "translation": "FrameSizes задаёт локальную AnyData-пару целых W H в1..65535 на исходную ссылку до разворачивания. Размер применяется каждому дочернему кадру и заменяет корневой Size; список не наследуется. Пустые/неверные значения, число пар и отсутствие ссылок запрещены. Source считается одной ссылкой, включая именованные переопределения."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-sizes/rationale": {
+          "source_sha256": "e5e6ae912b798f7de0db36341d6d95111c3cd610701f2550872ada31b31aafe3",
+          "translation": "Число пар соответствует ссылкам, а не развёрнутым кадрам анимации."
+        },
+        "/baking_rules/@id=image-format.baking.fofrm-resampling/name": {
+          "source_sha256": "e4d06b6ffe001d36b54e5fff8bafbddd1fb0a0ebc5860418644c5ff9eee79a68",
+          "translation": "Физическое изменение размера FOFRM"
+        },
+        "/baking_rules/@id=image-format.baking.fofrm-resampling/requirement": {
+          "source_sha256": "a2cf6caf2cc0957fd005c5c41155960db154f1318c9251959b9a26bb56ba7ddd",
+          "translation": "Size/FrameSizes изменяют RGBA билинейной фильтрацией по центрам пикселей с предварительным умножением цвета на alpha, до построения mesh и загрузки в atlas. При равных размерах каждый пиксель сохраняется; пустой источник даёт прозрачный целевой холст. Offset, FrameOffsets, дочерние покадровые смещения и импортированные NextX/NextY сохраняют пиксельные единицы. Без ключей размера прежние байты, тайминг и порядок кадров сохраняются. Прозрачные пиксели после ресайза имеют нулевой RGB; при равных размерах скрытый RGB сохраняется."
+        },
+        "/baking_rules/@id=image-format.baking.fofrm-resampling/rationale": {
+          "source_sha256": "54afb38fac0f2e2e0d3c481c103ab65593a6d63811d5a14bb33767305f5d39db",
+          "translation": "RGB прозрачных пикселей не должен загрязнять видимые края; изменение размера не переписывает авторские привязки или root motion."
+        },
+        "/baking_rules/@id=image-format.baking.source-graph/name": {
+          "source_sha256": "25c973e288aa800320907115ed80ba7f3e77e0062219cac11b506d4f44fcfe55",
+          "translation": "Граф зависимостей смонтированных исходников"
+        },
+        "/baking_rules/@id=image-format.baking.source-graph/requirement": {
+          "source_sha256": "7084d9fa7fd83712593fd6c2e09bf939bfa7e5b945a53ebf1daf588212798323",
+          "translation": "Общий граф строится из явно смонтированных исходников до фильтрации выходов IncludePatterns/ExcludePatterns. Относительные Frame/Frames/Source разбираются общим native-парсером ImageRecipe; параметры имени принадлежат ребру. Логические пути разрешаются через победителей позднее смонтированных пакетов. Отсутствующие входы, циклы и глубина более 64 FOFRM-узлов запрещены. Учитываются палитры FRM и направления FRX, включая отсутствие необязательных входов."
+        },
+        "/baking_rules/@id=image-format.baking.source-graph/rationale": {
+          "source_sha256": "16a3e0d5b73cd13f391f7872df701d9c04ea942c5b0f63dc34fe91f3abebf4c9",
+          "translation": "Доступность исходника и его публикация — отдельные решения; один неизменяемый граф обслуживает полную, отложенную выпечку и discovery."
+        },
+        "/baking_rules/@id=image-format.baking.root-outputs/name": {
+          "source_sha256": "d604bb2dd36183fd582e8d4b8eaed4498213eb73b93078ec3ffdb5e9cb04e956",
+          "translation": "Публикуются только корни рецептов"
+        },
+        "/baking_rules/@id=image-format.baking.root-outputs/requirement": {
+          "source_sha256": "dcc1c5aa7970ba5d6bd2272c7b871790a0224c89deeec18abca2e4afa2d3ec8c",
+          "translation": "Изображение или промежуточный FOFRM, на который ссылается другой рецепт, остаётся доступным исходником, но не имеет самостоятельного выхода. Подавляются все overlay-кандидаты поглощённого логического пути. Удаление последней ссылки возвращает самостоятельный выпуск. Когда нужны оба варианта, прямые игровые ссылки мигрируются на отдельные корневые обёртки FOFRM."
+        },
+        "/baking_rules/@id=image-format.baking.root-outputs/rationale": {
+          "source_sha256": "a1bd256a09cf42f6106d8d5a0ea545c808bf8536216d9762b81c783495a9d061",
+          "translation": "Промежуточные ресурсы не должны увеличивать поставку или обходить объявленный рецепт изменения размера и других преобразований."
+        },
+        "/baking_rules/@id=image-format.baking.fingerprints/name": {
+          "source_sha256": "726929d3db95a320fec2746742d098cd69b7368e8d03e741be0d03cccf56e395",
+          "translation": "Транзитивные отпечатки содержимого"
+        },
+        "/baking_rules/@id=image-format.baking.fingerprints/requirement": {
+          "source_sha256": "bfe585ea7e3d771c626c5e907572a465bd9af94246b5f997e526d7f00a0ea6fe",
+          "translation": "Каждый достижимый вход хешируется BLAKE2b-512 один раз за snapshot графа. Учитываются mount, канонический путь, байты входа, дочерние отпечатки, отсутствие необязательных файлов, рецепт/options, версии сборки и baking-контракта и настройки SpriteMesh. Смена байтов определяется при прежних размере и mtime. Приватные snapshot и metadata entry публикуются только после успешной записи выхода; отсутствующие или повреждённые snapshots вызывают пересборку. Попадание в кэш исключает конвертацию пикселей и сохраняет регистрацию в expected-output manifest. Reindex/lazy также проверяют отпечатки и пакет, объявивший выход."
+        },
+        "/baking_rules/@id=image-format.baking.fingerprints/rationale": {
+          "source_sha256": "401f921bfe49c679bcaae18c5e2982fab4b428dfe21ec0347c28565182e6389a",
+          "translation": "Правка исходника не требует touch его FOFRM-дескриптора или принудительной полной выпечки."
+        },
+        "/descriptor_fields/@id=image-format.field.source/name": {
+          "source_sha256": "0a0dc51b101b7b63e23ea79eaba9009946872738b7b9eb5bf904a64f01912b82",
+          "translation": "Целая коллекция Source"
+        },
+        "/descriptor_fields/@id=image-format.field.source/requirement": {
+          "source_sha256": "005e63b02b01fa5abe1a559ff8440720f0dcf5be77ad9e7f8e5af69d78ddbd85",
+          "translation": "Корневой Source переносит целую бинарную или FOFRM-коллекцию с направлениями, смещениями последовательностей/кадров, движением и таймингом. Source и Frame/Frames взаимоисключающие. Корневые преобразования служат умолчанием существующим направлениям; именованные секции переопределяют их без повторения ссылок. Авторский Offset прибавляется к унаследованной привязке последовательности. Явный корневой Fps заменяет тайминг источника. Alias отклоняется с датированным отказом."
+        },
+        "/descriptor_fields/@id=image-format.field.source/rationale": {
+          "source_sha256": "0f2b7d5c248f609853730e39473c3b8d6dd4265c274496f6b052a1a25b4adc0c",
+          "translation": "Наследование целой коллекции и сборка выбранных Main-последовательностей имеют явные отдельные правила размещения и тайминга."
+        },
+        "/descriptor_fields/@id=image-format.field.input-dir/name": {
+          "source_sha256": "c8b7213abd877e2a662d8e5b0b7378fba8be34d1d7ed1aecfd0728b6e58ad961",
+          "translation": "Параметр InputDir"
+        },
+        "/descriptor_fields/@id=image-format.field.input-dir/requirement": {
+          "source_sha256": "ff8a67dac612675d503abd69025c67abcfea6fd74ebe61eb8c727095425bdfe6",
+          "translation": "Выбрать существующее направление до преобразования пикселей. Явный корневой InputDir в Source оставляет одну последовательность с её привязкой."
+        },
+        "/descriptor_fields/@id=image-format.field.input-dir/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-input-dirs/name": {
+          "source_sha256": "c13855f7eac286b4c8d147a5067e75de21f01ab74ecbf5571351ca2fbbad0108",
+          "translation": "Параметр FrameInputDirs"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-input-dirs/requirement": {
+          "source_sha256": "b8ea10e15cea2eb38cfda996642ab6e1d555ba377fd1e183a5934e2316b26b13",
+          "translation": "Один индекс входного направления на ссылку до разворачивания. В одной секции исключает InputDir."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-input-dirs/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-indices/name": {
+          "source_sha256": "7e67649d93f5b1b7898a4fec95d9aeabc887377b9d12d11fd9dd8ea49df64d55",
+          "translation": "Параметр FrameIndices"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-indices/requirement": {
+          "source_sha256": "4f4a9eb44fbf5406f5605f9935ac3159cb0c610e6a7108b9a4beaa8d92c52f10",
+          "translation": "Непустой AnyData-массив целых после grid и разворачивания: порядок и повторы разрешены, индексы вне диапазона запрещены. Корневой список Source действует на все направления, локальный заменяет его."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-indices/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.crop/name": {
+          "source_sha256": "98caf7c43c6f2c35cbc0376c937d27f67edad50c0d3e98dbc451c272c02ce479",
+          "translation": "Параметр Crop"
+        },
+        "/descriptor_fields/@id=image-format.field.crop/requirement": {
+          "source_sha256": "4b09bcdd141945ece94a3523326484635d1c835c089afd3fce4419e66384c860",
+          "translation": "Обрезать каждый входной кадр до grid: неотрицательное начало, положительный размер, область целиком внутри исходника."
+        },
+        "/descriptor_fields/@id=image-format.field.crop/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-crops/name": {
+          "source_sha256": "6cba3c53057fcfbef9c694833cdac3ad2b8fd71b14270d999abc14691094bb33",
+          "translation": "Параметр FrameCrops"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-crops/requirement": {
+          "source_sha256": "83793107fc51c39f9954d09585573d0eab69d2b67fc1a0ab42baf4d20ccabd30",
+          "translation": "Один прямоугольник на ссылку до разворачивания; заменяет унаследованный Crop и исключает локальный Crop."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-crops/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.grid/name": {
+          "source_sha256": "0d7d12ac624c66e687f98a68ce621c8a44531d5da1db7d0005aa215e2f1d964f",
+          "translation": "Параметр Grid"
+        },
+        "/descriptor_fields/@id=image-format.field.grid/requirement": {
+          "source_sha256": "966133472eb1044e744d75d133b5c0a1f2463317294e5d20df643b53716c5fff",
+          "translation": "Нарезать каждый обрезанный кадр слева направо, затем сверху вниз. Положительные размеры клетки должны делить изображение без остатка; молчаливое обрезание запрещено."
+        },
+        "/descriptor_fields/@id=image-format.field.grid/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.flip/name": {
+          "source_sha256": "2449d137ea15fd2b9488367b04fb8adc597d3aaa62529efbd3f5114edede629f",
+          "translation": "Параметр Flip"
+        },
+        "/descriptor_fields/@id=image-format.field.flip/requirement": {
+          "source_sha256": "7f95f8cafcd43c598df70fb2b727309e5e57dcae5e442b97de816eae392bf2d9",
+          "translation": "Отразить каждую клетку до поворота; числовые значения размещения и движения не меняются."
+        },
+        "/descriptor_fields/@id=image-format.field.flip/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-flips/name": {
+          "source_sha256": "8de2b3498bedbd70e27a78b657b6c8b740a8f9be1e3f573fa4f1d7d8149bee45",
+          "translation": "Параметр FrameFlips"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-flips/requirement": {
+          "source_sha256": "2aa01a0cf64deae3123d8a02a1b2e18856ce10ca8f15d90726bcd3236c35d3d8",
+          "translation": "Один токен отражения на исходную ссылку до grid/разворачивания; исключает локальный Flip."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-flips/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.rotate/name": {
+          "source_sha256": "c3613b1704f54c8bd38987e4e810ae6040935d048ac5bb0dd9c0bde269ecf739",
+          "translation": "Параметр Rotate"
+        },
+        "/descriptor_fields/@id=image-format.field.rotate/requirement": {
+          "source_sha256": "52d3c76ed41dfb22a97953b16e3ccc968eb71264051e4aeaf6448cd3c18acb06",
+          "translation": "Повернуть по часовой стрелке после отражения и до resize. Четверть оборота меняет оси изображения, сохраняя векторы размещения и движения."
+        },
+        "/descriptor_fields/@id=image-format.field.rotate/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-rotations/name": {
+          "source_sha256": "21577be4f6504aa595b518c13755c89c26492d28595da33a585ca70ef11f2c16",
+          "translation": "Параметр FrameRotations"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-rotations/requirement": {
+          "source_sha256": "fcef34a2bdf41d82ab08b1f82c16e08570cc710b7105048632731d2049fb9fbc",
+          "translation": "Один поворот по часовой стрелке на исходную ссылку; исключает локальный Rotate."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-rotations/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.canvas/name": {
+          "source_sha256": "3824a9f4dafe92c6f1b80b40656a59784c03a824c27d58125d7d0ace753e2df2",
+          "translation": "Параметр Canvas"
+        },
+        "/descriptor_fields/@id=image-format.field.canvas/requirement": {
+          "source_sha256": "b454fc6b73430559f01d0bb41b1876432677720bd4128c565d8525cf39cb3167",
+          "translation": "После resize поместить изображение на прозрачный холст точного размера uint16. Изображение должно помещаться целиком; пиксели удаляет Crop."
+        },
+        "/descriptor_fields/@id=image-format.field.canvas/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvases/name": {
+          "source_sha256": "9d4365bdb6af3d5d7aa7ffc21075f036f501e8f4cc9d57babe18d930641aa913",
+          "translation": "Параметр FrameCanvases"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvases/requirement": {
+          "source_sha256": "1438d95412970dcd3e4d25f56e0f044bc046cd5fb3e8a4273dee3c51a7e64ff2",
+          "translation": "Одна пара размера холста на исходную ссылку; исключает локальный Canvas."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvases/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.canvas-offset/name": {
+          "source_sha256": "458a5bcbf8551b104ac71550119141fd8934df0c4a7bb530fa9b037819231115",
+          "translation": "Параметр CanvasOffset"
+        },
+        "/descriptor_fields/@id=image-format.field.canvas-offset/requirement": {
+          "source_sha256": "9a5ad10f2edf9e883f0d7c30bec316bc7a7021a87b1e00880d258ddb9fc3d36f",
+          "translation": "Неотрицательное положение от левого верхнего угла Canvas. Требует действующий Canvas и запрещает обрезание. Не меняет Offset."
+        },
+        "/descriptor_fields/@id=image-format.field.canvas-offset/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvas-offsets/name": {
+          "source_sha256": "697a9abae4fa98c0a540f12143379d9a5b653b93cc725adb1744c3f4d525bd79",
+          "translation": "Параметр FrameCanvasOffsets"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvas-offsets/requirement": {
+          "source_sha256": "dfe453daf80834e889f64536cd9b937cccce2b36118edb1acc5bdaa3cea1aadf",
+          "translation": "Одна пара размещения на холсте на исходную ссылку; исключает локальный CanvasOffset."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-canvas-offsets/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.move/name": {
+          "source_sha256": "6ecc3df6bffdd06c58cd4f6e276929e119c8f653c53f5a6a5a5e66dfa1c3fc93",
+          "translation": "Параметр Move"
+        },
+        "/descriptor_fields/@id=image-format.field.move/requirement": {
+          "source_sha256": "c27a62010e56b40826c6a2c11838ff1c562a77f0ab7a5a6d3dc818a383e702da",
+          "translation": "Явная пара int16 заменяет NextX/NextY каждого развёрнутого кадра; отсутствие сохраняет импортированное движение. Независима от Offset/FrameOffsets и преобразований пикселей."
+        },
+        "/descriptor_fields/@id=image-format.field.move/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-moves/name": {
+          "source_sha256": "4643c671de0314b1182e70d7137c503477ca2c188cdf7bcb325d3a6b4be84ca5",
+          "translation": "Параметр FrameMoves"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-moves/requirement": {
+          "source_sha256": "de6fa2312b56ef55a000a5e97482984f984c080caf5ff8cb5455e2db58e8f449",
+          "translation": "Одна пара движения int16 на ссылку до разворачивания. Исключает локальный Move; не накапливается как размещение."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-moves/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.resample/name": {
+          "source_sha256": "3bc33c3710f2642a65fc3fe725976865812b94dec56ae34a26e6116e4bc0446d",
+          "translation": "Параметр Resample"
+        },
+        "/descriptor_fields/@id=image-format.field.resample/requirement": {
+          "source_sha256": "0ca9580ebc41e1f97b2425cb22d67dcdba9c05f42fc2b878ddbad82aad72277e",
+          "translation": "Nearest копирует исходные каналы. Bilinear использует Q16-центры пикселей. Area учитывает точное рациональное покрытие при уменьшении или равном размере; увеличение запрещено. Равный размер сохраняет байты."
+        },
+        "/descriptor_fields/@id=image-format.field.resample/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.pixel-usage/name": {
+          "source_sha256": "bade29bc08c2608e219d724bd106ef1094012501cfa1eaf70bdd47eaf83c8336",
+          "translation": "Параметр PixelUsage"
+        },
+        "/descriptor_fields/@id=image-format.field.pixel-usage/requirement": {
+          "source_sha256": "14f416db44306582519c088a29beaa3ebca3741f1d15c8d89b6446a504b75af0",
+          "translation": "Color фильтрует с premultiplied alpha. Data независимо фильтрует четыре канала. Normal фильтрует знаковые RGB-векторы, нормализует целочисленным корнем, заменяет ноль на +Z и независимо фильтрует alpha. Nearest и равный размер сохраняют байты. ColorSpace запрещён для Data/Normal. Data/Normal сохраняют все каналы до выхода: alpha mesh/crop отключены, включая владельцев общих пикселей."
+        },
+        "/descriptor_fields/@id=image-format.field.pixel-usage/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.color-space/name": {
+          "source_sha256": "815b9ba0ed6f813d08ef9080e34fbb1db1a430de63c9517db40df53568d6bab5",
+          "translation": "Параметр ColorSpace"
+        },
+        "/descriptor_fields/@id=image-format.field.color-space/requirement": {
+          "source_sha256": "62346f34cf147d7d41e150aa7dab42f69d1eb3e704efe3c5ad9b4743b39ede71",
+          "translation": "Фильтрация только Color. Linear декодирует фиксированной таблицей sRGB linear16 до интерполяции premultiplied alpha, затем выбирает ближайшую запись таблицы (равенство вверх). Encoded сохраняет прежние Q16-байты."
+        },
+        "/descriptor_fields/@id=image-format.field.color-space/rationale": {
+          "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
+          "translation": "Порядок преобразований и число исходных ссылок заданы явно."
+        },
+        "/descriptor_fields/@id=image-format.field.duration/name": {
+          "source_sha256": "4fc52a3c4c558b517c463b22d86d0e3b9cfd4255c98fe3510f9075b37ab419c9",
+          "translation": "Параметр Duration"
+        },
+        "/descriptor_fields/@id=image-format.field.duration/requirement": {
+          "source_sha256": "a1c93695256301ff4aa823ce022bb121d818c378288c57b970cdf393cf7f17ed",
+          "translation": "Положительное uint32 время всей последовательности; минимум ms на итоговый кадр. Равномерные floor-границы сохраняют сумму. Корневой Duration служит умолчанием; локальные Duration/FrameDurations заменяют его. Конфликты с Fps/FrameDurations в секции запрещены."
+        },
+        "/descriptor_fields/@id=image-format.field.duration/rationale": {
+          "source_sha256": "030ece084261da3645ce21229718179f139ee1bf8bb674dbe87804fd3d7918c2",
+          "translation": "Размер таймлайна соответствует итоговой логической последовательности."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-durations/name": {
+          "source_sha256": "2f8db01858d5be318dbf9963691ccd7849e629e1a4dc33920922056d1be401c8",
+          "translation": "Параметр FrameDurations"
+        },
+        "/descriptor_fields/@id=image-format.field.frame-durations/requirement": {
+          "source_sha256": "bb818d8de2873156ccb4a40b44206812963b877ecca9a4465a7b0096c23701f1",
+          "translation": "Положительные uint32 длительности AnyData: ровно одна на итоговый кадр после выбора; сумма uint32. Только локальный список, не по ссылкам и без наследования между направлениями. Исключает Duration/Fps в своей секции."
+        },
+        "/descriptor_fields/@id=image-format.field.frame-durations/rationale": {
+          "source_sha256": "030ece084261da3645ce21229718179f139ee1bf8bb674dbe87804fd3d7918c2",
+          "translation": "Размер таймлайна соответствует итоговой логической последовательности."
         }
       }
     },
@@ -1815,9 +2154,9 @@
           "translation": "Текстура модели"
         },
         "/assets/@id=model-format.asset.texture/requirements": {
-          "source_sha256": "66bfe8367374214ae87e07a3170ac9d5fadef28e65d615005d105711c3f497cd",
+          "source_sha256": "c718b35e69a0c0d506df200d998bde77c2e3b92f57c17174e972b86547999bd4",
           "translation": [
-            "каждая imported default diffuse texture должна существовать в baked resources",
+            "Импортированная diffuse-текстура по умолчанию должна существовать в baked resources, если для её меша нет безусловного переопределения slot0 через Texture или TextureAnimation.",
             "явный target mesh для texture должен быть drawable"
           ]
         },
@@ -1942,8 +2281,8 @@
           "translation": "Наследование parent material"
         },
         "/rules/@id=model-format.rule.parent-materials/rationale": {
-          "source_sha256": "b5c8c5191e2f740a4d44dcdefd9dacf38e4200b7a885efd6fc0f117bc820f921",
-          "translation": "Child копирует current material state родителя, не imported default; у root description нет parent context."
+          "source_sha256": "7001ce884fb20387f880d3555b85cb25850d4b67a372b236086a4e14df9a777d",
+          "translation": "Дочерняя текстура наследует неизменяемый ресурс родителя и использует свою фазу экземпляра; эффекты сохраняют наследование текущего материала. У корневого описания нет родителя."
         },
         "/rules/@id=model-format.rule.parent-materials/requirement": {
           "source_sha256": "20713077c8007f8f2213797475b0f73aac322c798da64063a880d789b70af959",
@@ -2284,12 +2623,12 @@
           "translation": "Эффекта нет. Замените на Mesh; не используйте в новом контенте."
         },
         "/tokens/@id=model-format.token.texture/description": {
-          "source_sha256": "494a2f1b67857724569a27f1dde363d4afda527023f0322c0429204cff4d37e5",
-          "translation": "Переопределяет texture slot выбранного mesh или всех. Не-Parent names относительны к current model mesh; Parent копирует active parent texture в attached-model context."
+          "source_sha256": "151d3e969c6cfb12c0e885e26123b715cfbc6e052bd11239deed0e79c27d2746",
+          "translation": "Texture требует опубликованный выход SpriteInfo с одним направлением и кадром. TextureAnimation явно включает одностороннее воспроизведение по шкале изображения. Пути относятся к целевому мешу. Parent[_mesh] наследует ресурс с отдельной фазой ребёнка; статический слот отвергает анимированное наследование."
         },
         "/tokens/@id=model-format.token.texture/runtime_effect": {
-          "source_sha256": "ca2aafa4d9cc6faa410977d816f3e451c661909f4d77958443bdd12ec285b5ea",
-          "translation": "Override участвует в mesh batching и adjustment texture-atlas coordinates."
+          "source_sha256": "bdf37e5b2cd775ff72c7c4f7bccc6cbd60e351c2a6235e3cf28d293138c9208b",
+          "translation": "Неизменяемые кадры сохраняют полный логический холст/UV и время; ModelInstance запускает свою циклическую фазу при создании. Смена кадра обновляет UV/батчи; auxiliary-rectangles должны совпадать внутри батча. Native AdvanceTextureTime/GetMeshTexture служат для детерминированного управления/инспекции, без script exports."
         },
         "/tokens/@id=model-format.token.transform-add/description": {
           "source_sha256": "e66fcf02c8d9c87dd3ab5f789e70e066904cc2234152043ae6e73174a7079b6e",
@@ -2322,6 +2661,18 @@
         "/tokens/@id=model-format.token.value/runtime_effect": {
           "source_sha256": "6f3a50d8f41b23b705aa2b3916b125b2f9630805b57079a058e9518a594a3aa6",
           "translation": "Link активен, только когда runtime layer array содержит это значение по выбранному index."
+        },
+        "/rules/@id=model-format.rule.texture-wire/name": {
+          "source_sha256": "993e001c68a37fd63cc654b5fa2b43a708c66855b0c41021d7be21c65f5efa0b",
+          "translation": "Совместимость таймлайнов текстур"
+        },
+        "/rules/@id=model-format.rule.texture-wire/requirement": {
+          "source_sha256": "0fa90318b0a30a1c6b54f5f25f318fd73a062f3325094f9468cd861f4b3a18b6",
+          "translation": "LFMODINF schema4 добавляет проверяемый uint8 флаг анимации каждой texture override. Пересобрать baker/runtime вместе и полностью запечь описания моделей, metadata и ресурсы spritev3/SpriteInfo2; runtime-совместимость0.0.75. Схемы LFMODMSH и LFOZZRIG прежние."
+        },
+        "/rules/@id=model-format.rule.texture-wire/rationale": {
+          "source_sha256": "96a8d973ecebe49c170796c345fa23bb4f038747c723c9a186967b07ab47128d",
+          "translation": "Анимация текстуры задаётся явно; статический Texture не становится анимацией молча."
         }
       }
     },

@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 class FileSystem;
 
 constexpr string_view SPRITE_INFO_DIRECTORY = "SpriteInfo";
-constexpr int32_t SPRITE_INFO_VERSION = 1;
+constexpr int32_t SPRITE_INFO_VERSION = 2;
 
 struct SpriteFrameInfo
 {
@@ -49,6 +49,7 @@ struct SpriteFrameInfo
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
+    uint32_t DurationMs {};
 };
 
 struct SpriteDirInfo
@@ -56,10 +57,10 @@ struct SpriteDirInfo
     vector<SpriteFrameInfo> Frames {};
 };
 
+[[nodiscard]] auto GetDurationMs(const SpriteDirInfo& direction) -> uint32_t;
+
 struct SpriteInfo
 {
-    uint16_t FrameCount {};
-    timespan Duration {};
     vector<SpriteDirInfo> Directions {};
 };
 

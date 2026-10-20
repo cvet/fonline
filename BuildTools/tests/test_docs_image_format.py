@@ -37,7 +37,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         self.assertEqual(len(outputs["default_runtime_extensions"]), 11)
         self.assertEqual(outputs["default_runtime_unsupported"], ["spr"])
         self.assertEqual(outputs["container_magic"], 43)
-        self.assertEqual(outputs["container_version"], 2)
+        self.assertEqual(outputs["container_version"], 3)
         self.assertNotIn("spr", outputs["default_runtime_extensions"])
 
         identities = [
@@ -50,15 +50,64 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             all(docs_image_format.ENTRY_ID_PATTERN.fullmatch(identity) for identity in identities)
         )
 
-    def test_fofrm_contract_records_flattening_timing_and_ignored_effect(self) -> None:
+    def test_fofrm_contract_records_flattening_timing_and_retired_effect(self) -> None:
         fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
 
         self.assertIn("carry forward", fields["image-format.field.sequence-offset"]["requirement"])
         self.assertIn("Main sequence", fields["image-format.field.flattening"]["requirement"])
-        self.assertIn("not from the flattened", fields["image-format.field.timing"]["requirement"])
+        self.assertIn("final", fields["image-format.field.timing"]["requirement"])
         self.assertEqual(fields["image-format.field.effect"]["stability"], "deprecated")
-        self.assertIn("does not serialize", fields["image-format.field.effect"]["requirement"])
+        self.assertIn("rejected before source resolution", fields["image-format.field.effect"]["requirement"])
         self.assertFalse(self.model["outputs"]["fofrm_effect_serialized"])
+
+    def test_frame_offsets_are_placement_with_exact_reference_cardinality(self) -> None:
+        fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
+        self.assertNotIn("image-format.field.frame-delta", fields)
+        offsets = fields["image-format.field.frame-offsets"]
+        self.assertEqual(offsets["name"], "FrameOffsets")
+        for claim in ("one signed int32 X Y pair", "before flattening", "same section",
+                      "draw placement", "without accumulation", "imported NextX/NextY",
+                      "wrong-count", "without references"):
+            self.assertIn(claim, offsets["requirement"])
+        self.assertIn("without inheritance", offsets["default"])
+        self.assertIn("preserving child frame placement", fields["image-format.field.flattening"]["requirement"])
+
+    def test_direction_zero_is_root_and_named_sections_use_geometry_indexes(self) -> None:
+        fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
+        direction = fields["image-format.field.direction-section"]
+        self.assertEqual(direction["name"], "HexDir / SquareDir")
+        for claim in ("root always supplies direction 0", "HexDir 1..5", "SquareDir 1..7",
+                      "canonical decimal indexes", "never degrees", "Named zero",
+                      "before Source", "absent second sequence"):
+            self.assertIn(claim, direction["requirement"])
+        guide = (ENGINE_ROOT / "Docs/en/how-to/content/image-format.md").read_text(encoding="utf-8")
+        self.assertIn("[HexDir 1]", guide)
+        self.assertIn("[SquareDir 1]", guide)
+        self.assertNotIn("[Dir 30]", guide)
+        self.assertNotIn("[HexDir 0]", guide)
+        fofrm = (ENGINE_ROOT / "Source/Tools/ImageBaker-Fofrm.cpp").read_text(encoding="utf-8")
+        self.assertIn('FO_GEOMETRY == 1 ? "HexDir" : "SquareDir"', fofrm)
+        self.assertIn("dir == 0", fofrm)
+        self.assertNotIn('strex("Dir {}", mdir(hdir(dir)).angle())', fofrm)
+
+    def test_fofrm_sizes_define_physical_resampling_and_local_reference_lists(self) -> None:
+        fields = {entry["id"]: entry for entry in self.model["descriptor_fields"]}
+        size = fields["image-format.field.size"]
+        sizes = fields["image-format.field.frame-sizes"]
+        for claim in ("1..65535", "exact", "root", "no carry", "FrameSizes"):
+            self.assertIn(claim, size["requirement"])
+        for claim in ("AnyData String-array", "before flattening", "every child frame",
+                      "not inherited", "inherited root Size", "unused sections"):
+            self.assertIn(claim, sizes["requirement"])
+        resampling = next(entry for entry in self.model["baking_rules"]
+                          if entry["id"] == "image-format.baking.fofrm-resampling")
+        for claim in ("pixel-center", "premultiplied-alpha", "identity", "empty source",
+                      "before meshing", "Offset", "FrameOffsets", "NextX/NextY"):
+            self.assertIn(claim, resampling["requirement"])
+        self.assertIn("Root transforms", fields["image-format.field.source"]["requirement"])
+        guide = (ENGINE_ROOT / "Docs/en/how-to/content/image-format.md").read_text(encoding="utf-8")
+        for claim in ("Size = 64 48", "FrameSizes =", "1..65535", "Alias"):
+            self.assertIn(claim, guide)
 
     def test_runtime_contract_distinguishes_bake_load_atlas_and_cache(self) -> None:
         runtime = {entry["id"]: entry for entry in self.model["runtime_rules"]}
@@ -96,7 +145,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             "## Validation workflow",
         ):
             self.assertIn(heading, guide)
-        self.assertIn("does not serialize or apply it", guide)
+        self.assertIn("Effect is refused before resolving inputs", guide)
         self.assertIn("does not register `.spr`", guide)
         self.assertIn("JPEG, BMP, GIF, DDS", guide)
         self.assertIn("SpriteMesh.Enabled", guide)
@@ -116,11 +165,10 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "outputs.accepted_extensions must be"):
                 docs_image_format.generate_image_format_model(ENGINE_ROOT, str(manifest_path))
 
-    def test_fofrm_count_anchors_reject_art_with_same_guard_message(self) -> None:
+    def test_fofrm_reference_count_anchors_reject_other_importer(self) -> None:
         manifest = json.loads(
             (ENGINE_ROOT / docs_image_format.DEFAULT_MANIFEST).read_text(encoding="utf-8")
         )
-        guard = 'FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive"'
         art_path = "Source/Tools/ImageBaker-Art.cpp"
         read_text = Path.read_text
 
@@ -135,7 +183,8 @@ class ImageFormatDocumentationTests(unittest.TestCase):
             with self.subTest(entry=entry_id):
                 changed = copy.deepcopy(manifest)
                 entry = next(entry for entry in changed[collection] if entry["id"] == entry_id)
-                source = next(source for source in entry["source"] if guard in source["anchors"])
+                source = next(source for source in entry["source"] if source["path"] == "Source/Tools/ImageRecipe.cpp")
+                guard = source["anchors"][0]
                 source["path"] = art_path
 
                 with tempfile.TemporaryDirectory() as temporary_directory:
@@ -143,7 +192,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
                     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
                     with mock.patch.object(Path, "read_text", autospec=True,
                                            side_effect=read_with_shared_art_guard), \
-                            self.assertRaisesRegex(ValueError, "anchor is missing.*fofrm.GetAsInt"):
+                            self.assertRaisesRegex(ValueError, "anchor is missing"):
                         docs_image_format.generate_image_format_model(ENGINE_ROOT, str(manifest_path))
 
     def test_generated_pages_and_checked_outputs_are_current(self) -> None:

@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"847e3046bb9bfa4e4a1c5d7eaadf26763d05db2d06dba718820b7eead95c078f"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"3a756bc7339d85f1185928f1656015e2618be7fc0d03cae7fa8510964d78c405"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -76,6 +76,10 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 - `SkipNestedSections` разбирает только anchor sections и пропускает тела вложенных sections с адресацией через `/`. Это дешевый способ перечислить заголовки в файлах с большим вложенным payload, например в map files.
 - Section считается вложенной, если ее имя содержит `/`. `ConfigFile` распознает только синтаксис: имена хранятся **дословно**, а prefix никогда не разрешается автоматически. Семантика prefix принадлежит формату-потребителю. `GetOrderedSections()` возвращает sections в порядке файла, что позволяет связать вложенную section с предшествующим anchor. Multimap по имени этого выразить не может, потому что повторяющиеся имена схлопываются. `SkipNestedSections` разбирает только невложенные sections и пропускает тела вложенных.
 - `ConfigFile` получает только содержимое: без identity файла, parse callbacks и format tokens. Для map files интерпретацией владеет `MapLoader`: `[ProtoMap]` объявляет map с именем из `$Name` или из имени файла, а вложенный prefix `$Name/<Type>` связывает содержимое с предыдущим anchor.
+
+Пробел/табуляция и конечный обратный слеш продолжают строку. Накопленное
+продолжение у EOF разбирается одинаково с завершающим переводом строки и без него.
+Пустые значения допустимы; ограничения формата проверяет потребитель.
 
 Парсер хранит собственные строки и возвращает `string_view` из разобранных sections. Потребитель не должен считать, что эти views живут дольше экземпляра `ConfigFile`.
 
@@ -156,7 +160,7 @@ local-config cache или упакованном internal config вызывае�
 
 ## Resource packs и источники данных
 
-`ResourcePackInfo` описывает входы resource pack, используемые bakers и runtimes. На стороне baking применяются `BakingContext` и `BakerDataSource` из `Source/Tools/Baker.*`; на стороне runtime применяются смонтированные абстракции `DataSource` и `FileSystem`.
+`ResourcePackInfo` описывает входы resource pack, используемые bakers и runtimes. На стороне baking применяются `BakingContext` из `Source/Tools/BakingContext.*` и `BakerDataSource` из `Source/Tools/Baker.*`; на стороне runtime применяются смонтированные абстракции `DataSource` и `FileSystem`.
 
 Входные каталоги resource pack монтируются рекурсивно. `IncludePatterns` и `ExcludePatterns` являются необязательными списками glob patterns, разделенными пробелами; они применяются к нормализованным resource-relative paths до запуска любого baker. Пустой include list принимает любой path; exclusion проверяется после inclusion и имеет приоритет. Patterns чувствительны к регистру и поддерживают:
 

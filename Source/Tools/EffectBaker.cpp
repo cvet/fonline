@@ -93,24 +93,24 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         uint64_t write_time = file.GetWriteTime();
 
         for (int32_t pass = 1; pass <= passes; pass++) {
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-dxbc", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-dxbc", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-spv", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-spv", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-spv_sdl", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-spv_sdl", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-glsl", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-dxbc", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-dxbc", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
+            (void)_context->CheckOutput(strex(path).change_file_extension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
         }
 
-        if (!_context->BakeChecker(path, write_time)) {
+        if (!_context->CheckOutput(path, write_time)) {
             return false;
         }
 
@@ -133,7 +133,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
             auto file = File(File::Load(file_header));
 
-            if (_context->BakeChecker && !check_file(file)) {
+            if (_context->HasBakeChecker() && !check_file(file)) {
                 continue;
             }
 
@@ -151,7 +151,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !check_file(file)) {
+        if (_context->HasBakeChecker() && !check_file(file)) {
             return;
         }
 
@@ -455,7 +455,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         auto source = compiler.compile();
         vector<uint8_t> dxbc = CompileHlsl(source, is_vertex ? "vs_4_0" : "ps_4_0", VKD3D_SHADER_TARGET_DXBC_TPF, fname_wo_ext);
 
-        if (_context->Settings->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
+        if (_context->GetSettings()->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
             vector<uint8_t> level9 = CompileHlsl(source, is_vertex ? "vs_2_a" : "ps_2_0", VKD3D_SHADER_TARGET_D3D_BYTECODE, fname_wo_ext);
             dxbc = AddDirect3DLevel9Code(dxbc, level9, is_vertex, fname_wo_ext);
         }

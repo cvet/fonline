@@ -130,7 +130,7 @@
       "description": "Directories and conventional extension names do not select a prototype type; the section does.",
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
-        "anchors": ["Settings->Baking.ProtoFileExtensions", "filtered_files.emplace_back"]
+        "anchors": ["GetSettings()->Baking.ProtoFileExtensions", "filtered_files.emplace_back"]
       }
     },
     {

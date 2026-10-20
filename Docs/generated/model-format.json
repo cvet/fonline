@@ -237,7 +237,7 @@
       "stability": "experimental",
       "description": "Default diffuse textures and explicit non-Parent Texture values resolve relative to the owning baked mesh file.",
       "requirements": [
-        "every imported default diffuse texture must exist in baked resources",
+        "an imported default diffuse texture must exist in baked resources unless replaced on its mesh by an unconditional slot0 Texture or TextureAnimation override",
         "an explicit texture target mesh must be drawable"
       ],
       "source": [
@@ -812,28 +812,37 @@
     {
       "id": "model-format.token.texture",
       "names": [
-        "Texture"
+        "Texture",
+        "TextureAnimation"
       ],
       "category": "material",
-      "syntax": "Texture <slot> <texture-name|Parent[_mesh]>",
+      "syntax": "Texture|TextureAnimation <slot> <texture-name|Parent[_mesh]>",
       "context": "current link and Mesh selector",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Overrides one texture slot on the selected mesh or all meshes. Non-Parent names resolve relative to the current model mesh; Parent copies the active parent texture from an attached-model context.",
-      "runtime_effect": "The override participates in mesh batching and texture-atlas coordinate adjustment.",
+      "description": "Texture requires a published SpriteInfo output with one direction and one frame. TextureAnimation explicitly enables one-direction playback by the image timeline. Paths resolve relative to the target mesh. Parent[_mesh] inherits the resource with independent child playback; a static slot refuses animated inheritance.",
+      "runtime_effect": "Immutable frames retain full logical canvas/UV and durations; each ModelInstance starts its own looping phase at creation. Frame changes regenerate atlas UVs/batches; auxiliary atlas rectangles must match within a batch. Native AdvanceTextureTime and GetMeshTexture support deterministic driving/inspection without script exports.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
-            "else if (token == \"Texture\")",
-            "Parent texture"
+            "else if (token == \"Texture\" || token == \"TextureAnimation\")",
+            "Static Texture requires exactly one frame; use TextureAnimation",
+            "Texture output has no SpriteInfo metadata"
           ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
-            "Parent texture was requested without a parent model",
-            "mesh->CurTexures[tex_num] = texture"
+            "auto ModelInstance::AdvanceTextureTime(",
+            "mesh->TextureResources[tex_num] = texture;",
+            "child->UpdateTextureAnimation(now)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ClientEngineTextureAnimationUsesInstanceTimelineAndRebatches"
           ]
         }
       ]
@@ -1214,6 +1223,7 @@
     "DisableLayer",
     "DisableMesh",
     "Texture",
+    "TextureAnimation",
     "Effect",
     "Anim",
     "AllowAnimationGeometry",
@@ -1369,7 +1379,7 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "The child copies the parent's current material state, not the imported default, and root descriptions have no parent context.",
+      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1512,6 +1522,28 @@
           ]
         }
       ]
+    },
+    {
+      "id": "model-format.rule.texture-wire",
+      "name": "Texture timeline compatibility",
+      "stability": "experimental",
+      "requirement": "LFMODINF description schema4 adds a validated uint8 animation flag to each texture override. Rebuild matching baker/runtime and force-rebake model descriptions, metadata and spritev3/SpriteInfo2 resources; runtime compatibility0.0.75. LFMODMSH and LFOZZRIG schemas are unchanged.",
+      "rationale": "Texture animation is an explicit authored contract; static Texture never silently becomes animated.",
+      "source": [
+        {
+          "path": "Source/Common/ModelAnimationData.h",
+          "anchors": [
+            "MODEL_DESCRIPTION_SCHEMA_VERSION = 4;"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "uint8_t animated = reader.read<uint8_t>();",
+            "Invalid texture animation flag"
+          ]
+        }
+      ]
     }
   ],
   "removed_legacy": [
@@ -1548,10 +1580,10 @@
   ],
   "summary": {
     "token_group_count": 32,
-    "parser_token_count": 59,
+    "parser_token_count": 60,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 15,
+    "rule_count": 16,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1568,5 +1600,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "0e4447d99d7f65eaff9fd9874d94396c5cbe4b06fa08faa44eeb0e3c466819b3"
+  "contract_digest": "32588da59909ed9f73e351a20b5870d0b872cd3c5ed5f977b4c46c2c1d8259c8"
 }

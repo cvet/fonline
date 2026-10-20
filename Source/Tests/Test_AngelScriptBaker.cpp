@@ -197,7 +197,7 @@ namespace VerifyMacro
         local_rig.AddSourceFile("Scripts/MissingMetadata.fos", "namespace BakerScriptMissingMetadata { void Touch() {} }\n");
 
         auto context = local_rig.MakeContext("ScriptsMissingMetadataAsync", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); });
-        context->ForceSyncMode = false;
+        context->SetForceSyncMode(false);
 
         AngelScriptBaker baker(std::move(context));
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), AngelScriptBakerException);

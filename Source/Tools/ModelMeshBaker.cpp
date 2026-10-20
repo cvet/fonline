@@ -155,7 +155,7 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
             if (ext != "fbx" && ext != "obj") {
                 continue;
             }
-            if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+            if (_context->HasBakeChecker() && !_context->CheckOutput(file_header.GetPath(), file_header.GetWriteTime())) {
                 continue;
             }
 
@@ -174,7 +174,7 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), file.GetWriteTime())) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(file.GetPath(), file.GetWriteTime())) {
             return;
         }
 

@@ -34,7 +34,10 @@
   },
   "outputs": {
     "source_extension": ".fo3d",
-    "mesh_extensions": [".fbx", ".obj"],
+    "mesh_extensions": [
+      ".fbx",
+      ".obj"
+    ],
     "template_prefix": "TEMPLATE_",
     "baked_description": "same resource path as the concrete .fo3d source",
     "animation_metadata": "ModelAnimationInfo.foinfo",
@@ -49,11 +52,15 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"]
+          "anchors": [
+            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+          ]
         },
         {
           "path": "BuildTools/cmake/ProjectInterface.json",
-          "anchors": ["\"name\": \"FO_MODEL_LAYERS_COUNT\""]
+          "anchors": [
+            "\"name\": \"FO_MODEL_LAYERS_COUNT\""
+          ]
         }
       ]
     },
@@ -65,11 +72,15 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"]
+          "anchors": [
+            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+          ]
         },
         {
           "path": "BuildTools/cmake/ProjectInterface.json",
-          "anchors": ["\"name\": \"FO_MODEL_MAX_TEXTURES\""]
+          "anchors": [
+            "\"name\": \"FO_MODEL_MAX_TEXTURES\""
+          ]
         }
       ]
     },
@@ -81,11 +92,15 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"]
+          "anchors": [
+            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+          ]
         },
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
-          "anchors": ["exceeds MODEL_MAX_BONES limit"]
+          "anchors": [
+            "exceeds MODEL_MAX_BONES limit"
+          ]
         }
       ]
     },
@@ -97,11 +112,15 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"]
+          "anchors": [
+            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+          ]
         },
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
-          "anchors": ["MODEL_BONES_PER_VERTEX"]
+          "anchors": [
+            "MODEL_BONES_PER_VERTEX"
+          ]
         }
       ]
     }
@@ -110,7 +129,9 @@
     {
       "id": "model-format.asset.fbx",
       "name": "FBX mesh",
-      "extensions": [".fbx"],
+      "extensions": [
+        ".fbx"
+      ],
       "stability": "experimental",
       "description": "Imports the drawable hierarchy, material texture names, and skin data for the mesh payload, while ModelSourceLoader extracts the source skeleton and animation clips that ModelInfoBaker converts into the required runtime rig.",
       "requirements": [
@@ -122,18 +143,28 @@
       "source": [
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
-          "anchors": ["ufbx_load_memory", "ConvertFbxHierarchy", "ConvertFbxMeshes"]
+          "anchors": [
+            "ufbx_load_memory",
+            "ConvertFbxHierarchy",
+            "ConvertFbxMeshes"
+          ]
         },
         {
           "path": "Source/Tools/ModelSourceLoader.cpp",
-          "anchors": ["ufbx_load_memory", "ExtractModelSourceAnimations", "ValidateModelSourceAsset"]
+          "anchors": [
+            "ufbx_load_memory",
+            "ExtractModelSourceAnimations",
+            "ValidateModelSourceAsset"
+          ]
         }
       ]
     },
     {
       "id": "model-format.asset.obj",
       "name": "OBJ mesh",
-      "extensions": [".obj"],
+      "extensions": [
+        ".obj"
+      ],
       "stability": "experimental",
       "description": "Imports a static hierarchy and drawable mesh through the same ufbx path; missing vertex attributes receive deterministic defaults.",
       "requirements": [
@@ -143,18 +174,26 @@
       "source": [
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
-          "anchors": ["ext != \"fbx\" && ext != \"obj\"", "BakeFbxFile"]
+          "anchors": [
+            "ext != \"fbx\" && ext != \"obj\"",
+            "BakeFbxFile"
+          ]
         },
         {
           "path": "Source/Tests/Test_ModelBaker.cpp",
-          "anchors": ["Bakes a minimal OBJ mesh", "Bakes position-only OBJ mesh with default vertex fields"]
+          "anchors": [
+            "Bakes a minimal OBJ mesh",
+            "Bakes position-only OBJ mesh with default vertex fields"
+          ]
         }
       ]
     },
     {
       "id": "model-format.asset.description",
       "name": "Model description",
-      "extensions": [".fo3d"],
+      "extensions": [
+        ".fo3d"
+      ],
       "stability": "experimental",
       "description": "Composes a primary baked mesh with layer-selected root modifiers, child models, particles, materials, effects, cuts, and animation mappings.",
       "requirements": [
@@ -164,35 +203,50 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["IsModelDescriptionTemplateFile", "'Model' section not found"]
+          "anchors": [
+            "IsModelDescriptionTemplateFile",
+            "'Model' section not found"
+          ]
         }
       ]
     },
     {
       "id": "model-format.asset.texture",
       "name": "Model texture",
-      "extensions": [".png", ".tga", ".dds"],
+      "extensions": [
+        ".png",
+        ".tga",
+        ".dds"
+      ],
       "stability": "experimental",
       "description": "Default diffuse textures and explicit non-Parent Texture values resolve relative to the owning baked mesh file.",
       "requirements": [
-        "every imported default diffuse texture must exist in baked resources",
+        "an imported default diffuse texture must exist in baked resources unless replaced on its mesh by an unconditional slot0 Texture or TextureAnimation override",
         "an explicit texture target mesh must be drawable"
       ],
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["ValidateModelDescriptionTexture", "ValidateModelDescriptionMeshReference"]
+          "anchors": [
+            "ValidateModelDescriptionTexture",
+            "ValidateModelDescriptionMeshReference"
+          ]
         },
         {
           "path": "Source/Client/ModelHierarchy.cpp",
-          "anchors": ["ModelHierarchy::GetTexture", "combine_path(tex_name)"]
+          "anchors": [
+            "ModelHierarchy::GetTexture",
+            "combine_path(tex_name)"
+          ]
         }
       ]
     },
     {
       "id": "model-format.asset.effect",
       "name": "Model effect",
-      "extensions": [".fofx"],
+      "extensions": [
+        ".fofx"
+      ],
       "stability": "experimental",
       "description": "An explicit non-Parent Effect value is a baked-resource path loaded for EffectUsage::Model.",
       "requirements": [
@@ -202,18 +256,27 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["ValidateModelDescriptionEffect", "ValidateModelDescriptionBakedFileExists"]
+          "anchors": [
+            "ValidateModelDescriptionEffect",
+            "ValidateModelDescriptionBakedFileExists"
+          ]
         },
         {
           "path": "Source/Client/ModelHierarchy.cpp",
-          "anchors": ["ModelHierarchy::GetEffect", "EffectUsage::Model"]
+          "anchors": [
+            "ModelHierarchy::GetEffect",
+            "EffectUsage::Model"
+          ]
         }
       ]
     },
     {
       "id": "model-format.asset.particle",
       "name": "Particle attachment",
-      "extensions": [".spk", ".efk"],
+      "extensions": [
+        ".spk",
+        ".efk"
+      ],
       "stability": "experimental",
       "description": "A layer-selected AttachParticles entry instantiates a baked SPARK or Effekseer particle resource on a model bone while that layer value remains active.",
       "requirements": [
@@ -224,11 +287,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["AttachParticles", "ValidateModelDescriptionBakedFileExists"]
+          "anchors": [
+            "AttachParticles",
+            "ValidateModelDescriptionBakedFileExists"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["Particle model link has no target bone", "CreateParticle(link.ChildName)"]
+          "anchors": [
+            "Particle model link has no target bone",
+            "CreateParticle(link.ChildName)"
+          ]
         }
       ]
     }
@@ -236,7 +305,9 @@
   "tokens": [
     {
       "id": "model-format.token.model",
-      "names": ["Model"],
+      "names": [
+        "Model"
+      ],
       "category": "structure",
       "syntax": "Model <mesh.fbx|mesh.obj>",
       "context": "description",
@@ -247,13 +318,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["if (token == \"Model\")", "description.Model ="]
+          "anchors": [
+            "if (token == \"Model\")",
+            "description.Model ="
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.include",
-      "names": ["Include"],
+      "names": [
+        "Include"
+      ],
       "category": "structure",
       "syntax": "Include <file.fo3d> [<name> <value> ...]",
       "context": "description",
@@ -264,13 +340,19 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Include\")", "has unpaired template argument", "Recursive model description include"]
+          "anchors": [
+            "else if (token == \"Include\")",
+            "has unpaired template argument",
+            "Recursive model description include"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.mesh",
-      "names": ["Mesh"],
+      "names": [
+        "Mesh"
+      ],
       "category": "selector",
       "syntax": "Mesh <draw-bone-name|All>",
       "context": "current link",
@@ -281,13 +363,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Mesh\")", "value != \"All\""]
+          "anchors": [
+            "else if (token == \"Mesh\")",
+            "value != \"All\""
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.subset",
-      "names": ["Subset"],
+      "names": [
+        "Subset"
+      ],
       "category": "selector",
       "syntax": "Subset <ignored>",
       "context": "description",
@@ -298,13 +385,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Subset\")", "Tag 'Subset' obsolete, use 'Mesh' instead"]
+          "anchors": [
+            "else if (token == \"Subset\")",
+            "Tag 'Subset' obsolete, use 'Mesh' instead"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.layer",
-      "names": ["Layer"],
+      "names": [
+        "Layer"
+      ],
       "category": "selector",
       "syntax": "Layer <index-or-enum>",
       "context": "description",
@@ -315,13 +407,19 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"Layer\" || token == \"Value\"", "ValidateModelDescriptionLayer", "state.Link = ModelDescriptionLinkPtr(state.DummyLink)"]
+          "anchors": [
+            "token == \"Layer\" || token == \"Value\"",
+            "ValidateModelDescriptionLayer",
+            "state.Link = ModelDescriptionLinkPtr(state.DummyLink)"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.value",
-      "names": ["Value"],
+      "names": [
+        "Value"
+      ],
       "category": "selector",
       "syntax": "Value <integer-or-enum>",
       "context": "selected Layer",
@@ -332,13 +430,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"Layer\" || token == \"Value\"", "state.LayerValue = parsed_value"]
+          "anchors": [
+            "token == \"Layer\" || token == \"Value\"",
+            "state.LayerValue = parsed_value"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.root",
-      "names": ["Root"],
+      "names": [
+        "Root"
+      ],
       "category": "composition",
       "syntax": "Root",
       "context": "description or selected Layer/Value",
@@ -349,13 +452,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Root\")", "Wrong zero value for layer"]
+          "anchors": [
+            "else if (token == \"Root\")",
+            "Wrong zero value for layer"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.attach",
-      "names": ["Attach"],
+      "names": [
+        "Attach"
+      ],
       "category": "composition",
       "syntax": "Attach <child.fo3d|child.fbx|child.obj>",
       "context": "selected Layer/Value",
@@ -366,17 +474,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"Attach\" || token == \"AttachParticles\"", "state.Link->ChildName"]
+          "anchors": [
+            "token == \"Attach\" || token == \"AttachParticles\"",
+            "state.Link->ChildName"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["Link to main bone", "Link all bones"]
+          "anchors": [
+            "Link to main bone",
+            "Link all bones"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.attach-particles",
-      "names": ["AttachParticles"],
+      "names": [
+        "AttachParticles"
+      ],
       "category": "composition",
       "syntax": "AttachParticles <particle.spk|particle.efk>",
       "context": "selected Layer/Value",
@@ -387,17 +503,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"Attach\" || token == \"AttachParticles\"", "state.Link->IsParticles"]
+          "anchors": [
+            "token == \"Attach\" || token == \"AttachParticles\"",
+            "state.Link->IsParticles"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["keep_alive_particles", "Particle model link has no target bone"]
+          "anchors": [
+            "keep_alive_particles",
+            "Particle model link has no target bone"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.link",
-      "names": ["Link"],
+      "names": [
+        "Link"
+      ],
       "category": "composition",
       "syntax": "Link <parent-bone>",
       "context": "current layer link",
@@ -408,13 +532,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Link\")", "state.Link->LinkBone = value"]
+          "anchors": [
+            "else if (token == \"Link\")",
+            "state.Link->LinkBone = value"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.cut",
-      "names": ["Cut"],
+      "names": [
+        "Cut"
+      ],
       "category": "geometry",
       "syntax": "Cut <volume.fbx|volume.obj> <layer-list|All> <shape-list|All> <unskin-bone-1|-> <unskin-bone-2|-> <unskin-shape|~shape|->",
       "context": "current link",
@@ -425,17 +554,35 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Cut\")", "RevertUnskinShape", "ValidateModelDescriptionCut"]
+          "anchors": [
+            "else if (token == \"Cut\")",
+            "RevertUnskinShape",
+            "ValidateModelDescriptionCut"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["CutCombinedMeshes", "CutCombinedMesh"]
+          "anchors": [
+            "CutCombinedMeshes",
+            "CutCombinedMesh"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.transform-set",
-      "names": ["RotX", "RotY", "RotZ", "MoveX", "MoveY", "MoveZ", "ScaleX", "ScaleY", "ScaleZ", "Speed"],
+      "names": [
+        "RotX",
+        "RotY",
+        "RotZ",
+        "MoveX",
+        "MoveY",
+        "MoveZ",
+        "ScaleX",
+        "ScaleY",
+        "ScaleZ",
+        "Speed"
+      ],
       "category": "transform",
       "syntax": "<token> <finite-float>",
       "context": "current link",
@@ -446,17 +593,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"RotX\" || token == \"RotY\"", "AssignMode::Set"]
+          "anchors": [
+            "token == \"RotX\" || token == \"RotY\"",
+            "AssignMode::Set"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["void ModelInstance::SetAnimData", "data.SpeedAjust != 0.0f"]
+          "anchors": [
+            "void ModelInstance::SetAnimData",
+            "data.SpeedAjust != 0.0f"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.scale-set",
-      "names": ["Scale"],
+      "names": [
+        "Scale"
+      ],
       "category": "transform",
       "syntax": "Scale <finite-float>",
       "context": "current link",
@@ -467,13 +622,27 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Scale\")", "state.Link->ScaleX = parsed_value"]
+          "anchors": [
+            "else if (token == \"Scale\")",
+            "state.Link->ScaleX = parsed_value"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.transform-add",
-      "names": ["RotX+", "RotY+", "RotZ+", "MoveX+", "MoveY+", "MoveZ+", "ScaleX+", "ScaleY+", "ScaleZ+", "Speed+"],
+      "names": [
+        "RotX+",
+        "RotY+",
+        "RotZ+",
+        "MoveX+",
+        "MoveY+",
+        "MoveZ+",
+        "ScaleX+",
+        "ScaleY+",
+        "ScaleZ+",
+        "Speed+"
+      ],
       "category": "transform",
       "syntax": "<token> <finite-float>",
       "context": "current link",
@@ -484,13 +653,19 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"RotX+\" || token == \"RotY+\"", "AssignMode::Add", "ApplyModelDescriptionAdd"]
+          "anchors": [
+            "token == \"RotX+\" || token == \"RotY+\"",
+            "AssignMode::Add",
+            "ApplyModelDescriptionAdd"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.scale-add",
-      "names": ["Scale+"],
+      "names": [
+        "Scale+"
+      ],
       "category": "transform",
       "syntax": "Scale+ <finite-float>",
       "context": "current link",
@@ -501,13 +676,27 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Scale+\")", "ApplyModelDescriptionAdd(state.Link->ScaleX"]
+          "anchors": [
+            "else if (token == \"Scale+\")",
+            "ApplyModelDescriptionAdd(state.Link->ScaleX"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.transform-multiply",
-      "names": ["RotX*", "RotY*", "RotZ*", "MoveX*", "MoveY*", "MoveZ*", "ScaleX*", "ScaleY*", "ScaleZ*", "Speed*"],
+      "names": [
+        "RotX*",
+        "RotY*",
+        "RotZ*",
+        "MoveX*",
+        "MoveY*",
+        "MoveZ*",
+        "ScaleX*",
+        "ScaleY*",
+        "ScaleZ*",
+        "Speed*"
+      ],
       "category": "transform",
       "syntax": "<token> <finite-float>",
       "context": "current link",
@@ -518,13 +707,19 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["token == \"RotX*\" || token == \"RotY*\"", "AssignMode::Mul", "ApplyModelDescriptionMul"]
+          "anchors": [
+            "token == \"RotX*\" || token == \"RotY*\"",
+            "AssignMode::Mul",
+            "ApplyModelDescriptionMul"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.scale-multiply",
-      "names": ["Scale*"],
+      "names": [
+        "Scale*"
+      ],
       "category": "transform",
       "syntax": "Scale* <finite-float>",
       "context": "current link",
@@ -535,13 +730,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Scale*\")", "ApplyModelDescriptionMul(state.Link->ScaleX"]
+          "anchors": [
+            "else if (token == \"Scale*\")",
+            "ApplyModelDescriptionMul(state.Link->ScaleX"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.disable-layer",
-      "names": ["DisableLayer"],
+      "names": [
+        "DisableLayer"
+      ],
       "category": "composition",
       "syntax": "DisableLayer <layer[-layer...]>",
       "context": "current link",
@@ -552,17 +752,24 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"DisableLayer\")", "DisabledLayer.emplace_back"]
+          "anchors": [
+            "else if (token == \"DisableLayer\")",
+            "DisabledLayer.emplace_back"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["unused_layers[j] = true"]
+          "anchors": [
+            "unused_layers[j] = true"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.disable-mesh",
-      "names": ["DisableMesh"],
+      "names": [
+        "DisableMesh"
+      ],
       "category": "composition",
       "syntax": "DisableMesh <mesh[-mesh...]|All>",
       "context": "current link",
@@ -573,38 +780,62 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"DisableMesh\")", "disabled_mesh_name != \"All\""]
+          "anchors": [
+            "else if (token == \"DisableMesh\")",
+            "disabled_mesh_name != \"All\""
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["mesh->Disabled = true"]
+          "anchors": [
+            "mesh->Disabled = true"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.texture",
-      "names": ["Texture"],
+      "names": [
+        "Texture",
+        "TextureAnimation"
+      ],
       "category": "material",
-      "syntax": "Texture <slot> <texture-name|Parent[_mesh]>",
+      "syntax": "Texture|TextureAnimation <slot> <texture-name|Parent[_mesh]>",
       "context": "current link and Mesh selector",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Overrides one texture slot on the selected mesh or all meshes. Non-Parent names resolve relative to the current model mesh; Parent copies the active parent texture from an attached-model context.",
-      "runtime_effect": "The override participates in mesh batching and texture-atlas coordinate adjustment.",
+      "description": "Texture requires a published SpriteInfo output with one direction and one frame. TextureAnimation explicitly enables one-direction playback by the image timeline. Paths resolve relative to the target mesh. Parent[_mesh] inherits the resource with independent child playback; a static slot refuses animated inheritance.",
+      "runtime_effect": "Immutable frames retain full logical canvas/UV and durations; each ModelInstance starts its own looping phase at creation. Frame changes regenerate atlas UVs/batches; auxiliary atlas rectangles must match within a batch. Native AdvanceTextureTime and GetMeshTexture support deterministic driving/inspection without script exports.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Texture\")", "Parent texture"]
+          "anchors": [
+            "else if (token == \"Texture\" || token == \"TextureAnimation\")",
+            "Static Texture requires exactly one frame; use TextureAnimation",
+            "Texture output has no SpriteInfo metadata"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["Parent texture was requested without a parent model", "mesh->CurTexures[tex_num] = texture"]
+          "anchors": [
+            "auto ModelInstance::AdvanceTextureTime(",
+            "mesh->TextureResources[tex_num] = texture;",
+            "child->UpdateTextureAnimation(now)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ClientEngineTextureAnimationUsesInstanceTimelineAndRebatches"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.effect",
-      "names": ["Effect"],
+      "names": [
+        "Effect"
+      ],
       "category": "material",
       "syntax": "Effect <effect.fofx|Parent[_mesh]>",
       "context": "current link and Mesh selector",
@@ -615,17 +846,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Effect\")", "Parent effect"]
+          "anchors": [
+            "else if (token == \"Effect\")",
+            "Parent effect"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["Parent effect was requested without a parent model", "mesh->CurEffect = effect"]
+          "anchors": [
+            "Parent effect was requested without a parent model",
+            "mesh->CurEffect = effect"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.anim",
-      "names": ["Anim"],
+      "names": [
+        "Anim"
+      ],
       "category": "animation",
       "syntax": "Anim <state> <action> <ModelFile|animation-mesh> <clip|~clip|Base>",
       "context": "description",
@@ -636,17 +875,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"Anim\")", "description.AnimationEntries.emplace_back"]
+          "anchors": [
+            "else if (token == \"Anim\")",
+            "description.AnimationEntries.emplace_back"
+          ]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["bool reversed = anim_entry.Name.starts_with('~')", "_animController->RegisterAnimation("]
+          "anchors": [
+            "bool reversed = anim_entry.Name.starts_with('~')",
+            "_animController->RegisterAnimation("
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.anim-speed",
-      "names": ["AnimSpeed"],
+      "names": [
+        "AnimSpeed"
+      ],
       "category": "animation",
       "syntax": "AnimSpeed <state> <action> <positive-float>",
       "context": "description",
@@ -657,13 +904,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"AnimSpeed\")", "must be positive"]
+          "anchors": [
+            "else if (token == \"AnimSpeed\")",
+            "must be positive"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.allow-animation-geometry",
-      "names": ["AllowAnimationGeometry"],
+      "names": [
+        "AllowAnimationGeometry"
+      ],
       "category": "animation",
       "syntax": "AllowAnimationGeometry <external-animation-file>",
       "context": "description",
@@ -674,17 +926,26 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"AllowAnimationGeometry\")", "AnimationGeometryExceptions.emplace", "External animation model contains drawable mesh nodes"]
+          "anchors": [
+            "else if (token == \"AllowAnimationGeometry\")",
+            "AnimationGeometryExceptions.emplace",
+            "External animation model contains drawable mesh nodes"
+          ]
         },
         {
           "path": "Source/Tests/Test_ModelBaker.cpp",
-          "anchors": ["Requires explicit temporary exceptions for known external animation geometry", "Rejects animation geometry exceptions after geometry removal"]
+          "anchors": [
+            "Requires explicit temporary exceptions for known external animation geometry",
+            "Rejects animation geometry exceptions after geometry removal"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.anim-layer-value",
-      "names": ["AnimLayerValue"],
+      "names": [
+        "AnimLayerValue"
+      ],
       "category": "animation",
       "syntax": "AnimLayerValue <state> <action> <layer> <value>",
       "context": "description",
@@ -695,17 +956,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"AnimLayerValue\")", "AnimLayerValues.emplace_back"]
+          "anchors": [
+            "else if (token == \"AnimLayerValue\")",
+            "AnimLayerValues.emplace_back"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["_animLayerValues.find(anim_pair)", "new_layers[layer_index] = value"]
+          "anchors": [
+            "_animLayerValues.find(anim_pair)",
+            "new_layers[layer_index] = value"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.fast-transition-bone",
-      "names": ["FastTransitionBone"],
+      "names": [
+        "FastTransitionBone"
+      ],
       "category": "animation",
       "syntax": "FastTransitionBone <bone>",
       "context": "description",
@@ -716,17 +985,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"FastTransitionBone\")", "ValidateModelDescriptionBoneReference"]
+          "anchors": [
+            "else if (token == \"FastTransitionBone\")",
+            "ValidateModelDescriptionBoneReference"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["fast_transition_bones.emplace_back", "ResetBonesTransition"]
+          "anchors": [
+            "fast_transition_bones.emplace_back",
+            "ResetBonesTransition"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.state-alias",
-      "names": ["StateAnimEqual"],
+      "names": [
+        "StateAnimEqual"
+      ],
       "category": "animation",
       "syntax": "StateAnimEqual <from-state> <to-state>",
       "context": "description",
@@ -737,13 +1014,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"StateAnimEqual\")", "StateAnimEquals.emplace_back"]
+          "anchors": [
+            "else if (token == \"StateAnimEqual\")",
+            "StateAnimEquals.emplace_back"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.action-alias",
-      "names": ["ActionAnimEqual"],
+      "names": [
+        "ActionAnimEqual"
+      ],
       "category": "animation",
       "syntax": "ActionAnimEqual <from-action> <to-action>",
       "context": "description",
@@ -754,13 +1036,18 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"ActionAnimEqual\")", "ActionAnimEquals.emplace_back"]
+          "anchors": [
+            "else if (token == \"ActionAnimEqual\")",
+            "ActionAnimEquals.emplace_back"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.disable-shadow",
-      "names": ["DisableShadow"],
+      "names": [
+        "DisableShadow"
+      ],
       "category": "rendering",
       "syntax": "DisableShadow",
       "context": "description",
@@ -771,17 +1058,24 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"DisableShadow\")", "description.ShadowDisabled = true"]
+          "anchors": [
+            "else if (token == \"DisableShadow\")",
+            "description.ShadowDisabled = true"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["_shadowDisabled || _modelInfo->_shadowDisabled"]
+          "anchors": [
+            "_shadowDisabled || _modelInfo->_shadowDisabled"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.disable-interpolation",
-      "names": ["DisableAnimationInterpolation"],
+      "names": [
+        "DisableAnimationInterpolation"
+      ],
       "category": "animation",
       "syntax": "DisableAnimationInterpolation",
       "context": "description",
@@ -792,17 +1086,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"DisableAnimationInterpolation\")", "description.DisableAnimationInterpolation = true"]
+          "anchors": [
+            "else if (token == \"DisableAnimationInterpolation\")",
+            "description.DisableAnimationInterpolation = true"
+          ]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["disable_animation_interpolation", "LoadModelAnimationRuntimeRig"]
+          "anchors": [
+            "disable_animation_interpolation",
+            "LoadModelAnimationRuntimeRig"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.disable-backward",
-      "names": ["DisableBackwardAnim"],
+      "names": [
+        "DisableBackwardAnim"
+      ],
       "category": "animation",
       "syntax": "DisableBackwardAnim",
       "context": "description",
@@ -813,17 +1115,25 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"DisableBackwardAnim\")", "description.DisableBackwardAnim = true"]
+          "anchors": [
+            "else if (token == \"DisableBackwardAnim\")",
+            "description.DisableBackwardAnim = true"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["bool forbid_back = _modelInfo->_disableBackwardAnim", "if (!_modelInfo->_rotationBone ||"]
+          "anchors": [
+            "bool forbid_back = _modelInfo->_disableBackwardAnim",
+            "if (!_modelInfo->_rotationBone ||"
+          ]
         }
       ]
     },
     {
       "id": "model-format.token.rotation-bone",
-      "names": ["RotationBone"],
+      "names": [
+        "RotationBone"
+      ],
       "category": "animation",
       "syntax": "RotationBone <bone>",
       "context": "description",
@@ -834,11 +1144,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["else if (token == \"RotationBone\")", "description.RotationBone"]
+          "anchors": [
+            "else if (token == \"RotationBone\")",
+            "description.RotationBone"
+          ]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["_rotationBone =", "Rotation bone was not found in a baked model description"]
+          "anchors": [
+            "_rotationBone =",
+            "Rotation bone was not found in a baked model description"
+          ]
         }
       ]
     }
@@ -852,7 +1168,12 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["TokenizeModelDescriptionLine", "line.find('#')", "line.find(';')", "while (istr >> token)"]
+          "anchors": [
+            "TokenizeModelDescriptionLine",
+            "line.find('#')",
+            "line.find(';')",
+            "while (istr >> token)"
+          ]
         }
       ]
     },
@@ -864,7 +1185,10 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["while (index < tokens.size())", "ParseToken(fname, line, token"]
+          "anchors": [
+            "while (index < tokens.size())",
+            "ParseToken(fname, line, token"
+          ]
         }
       ]
     },
@@ -876,7 +1200,10 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["state.Link = ModelDescriptionLinkPtr(state.DummyLink)", "state.Mesh.clear()"]
+          "anchors": [
+            "state.Link = ModelDescriptionLinkPtr(state.DummyLink)",
+            "state.Mesh.clear()"
+          ]
         }
       ]
     },
@@ -888,7 +1215,10 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["IsModelDescriptionTemplateFile", "starts_with(\"TEMPLATE_\")"]
+          "anchors": [
+            "IsModelDescriptionTemplateFile",
+            "starts_with(\"TEMPLATE_\")"
+          ]
         }
       ]
     },
@@ -900,7 +1230,10 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["ApplyModelDescriptionReplacements", "replace(strex(\"%{}%\", name), value)"]
+          "anchors": [
+            "ApplyModelDescriptionReplacements",
+            "replace(strex(\"%{}%\", name), value)"
+          ]
         }
       ]
     },
@@ -912,7 +1245,11 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["extract_dir().combine_path(value)", "extract_dir().combine_path(include_name)", "extract_dir().combine_path(file_name)"]
+          "anchors": [
+            "extract_dir().combine_path(value)",
+            "extract_dir().combine_path(include_name)",
+            "extract_dir().combine_path(file_name)"
+          ]
         }
       ]
     },
@@ -924,11 +1261,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["value = value == 0.0f ? operand : value + operand", "value = value == 0.0f ? operand : value * operand"]
+          "anchors": [
+            "value = value == 0.0f ? operand : value + operand",
+            "value = value == 0.0f ? operand : value * operand"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["if (data.ScaleX != 0.0f)", "if (data.SpeedAjust != 0.0f)"]
+          "anchors": [
+            "if (data.ScaleX != 0.0f)",
+            "if (data.SpeedAjust != 0.0f)"
+          ]
         }
       ]
     },
@@ -940,11 +1283,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["requires non-zero layer value", "Wrong zero value for layer"]
+          "anchors": [
+            "requires non-zero layer value",
+            "Wrong zero value for layer"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["if (new_layers[i] == 0)", "link.LayerValue == new_layers[i]"]
+          "anchors": [
+            "if (new_layers[i] == 0)",
+            "link.LayerValue == new_layers[i]"
+          ]
         }
       ]
     },
@@ -952,15 +1301,20 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "The child copies the parent's current material state, not the imported default, and root descriptions have no parent context.",
+      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["is used without parent model context"]
+          "anchors": [
+            "is used without parent model context"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["Parent texture was requested without a parent model", "Parent effect was requested without a parent model"]
+          "anchors": [
+            "Parent texture was requested without a parent model",
+            "Parent effect was requested without a parent model"
+          ]
         }
       ]
     },
@@ -972,11 +1326,15 @@
       "source": [
         {
           "path": "Source/Tools/ModelMeshBaker.h",
-          "anchors": ["GetOrder() const -> int32_t override { return 4; }"]
+          "anchors": [
+            "GetOrder() const -> int32_t override { return 4; }"
+          ]
         },
         {
           "path": "Source/Tools/ModelInfoBaker.h",
-          "anchors": ["GetOrder() const -> int32_t override { return 6; }"]
+          "anchors": [
+            "GetOrder() const -> int32_t override { return 6; }"
+          ]
         }
       ]
     },
@@ -988,11 +1346,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["if (!anim_pairs.emplace", "continue;"]
+          "anchors": [
+            "if (!anim_pairs.emplace",
+            "continue;"
+          ]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["if (_animIndexes.count(anim_pair) != 0)", "continue;"]
+          "anchors": [
+            "if (_animIndexes.count(anim_pair) != 0)",
+            "continue;"
+          ]
         }
       ]
     },
@@ -1004,7 +1368,11 @@
       "source": [
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["bool layers_changed", "Erase unused stuff", "GenerateCombinedMeshes()"]
+          "anchors": [
+            "bool layers_changed",
+            "Erase unused stuff",
+            "GenerateCombinedMeshes()"
+          ]
         }
       ]
     },
@@ -1016,15 +1384,27 @@
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["CalculateModelDescriptionLinkBounds", "Model description link geometry and bounds do not match", "writer.write<uint8_t>(has_geometry"]
+          "anchors": [
+            "CalculateModelDescriptionLinkBounds",
+            "Model description link geometry and bounds do not match",
+            "writer.write<uint8_t>(has_geometry"
+          ]
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["Baked model geometry link has no bounds", "link animation bounds", "Model link animation bounds name an animation"]
+          "anchors": [
+            "Baked model geometry link has no bounds",
+            "link animation bounds",
+            "Model link animation bounds name an animation"
+          ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
-          "anchors": ["CollectActiveAnimationBounds", "select_link_bounds", "Model link clip bounds are invalid"]
+          "anchors": [
+            "CollectActiveAnimationBounds",
+            "select_link_bounds",
+            "Model link clip bounds are invalid"
+          ]
         }
       ]
     },
@@ -1036,11 +1416,17 @@
       "source": [
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
-          "anchors": ["FBX mesh node is mirrored", "ufbx_matrix_determinant"]
+          "anchors": [
+            "FBX mesh node is mirrored",
+            "ufbx_matrix_determinant"
+          ]
         },
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
-          "anchors": ["ModelAttachmentMaxExtent", "ModelAttachmentMinExtent"]
+          "anchors": [
+            "ModelAttachmentMaxExtent",
+            "ModelAttachmentMinExtent"
+          ]
         }
       ]
     },
@@ -1052,7 +1438,32 @@
       "source": [
         {
           "path": "Source/Tests/Test_ModelBaker.cpp",
-          "anchors": ["TEST_CASE(\"ModelInfoBakerValidations\")", "Parses model description option tokens into saved description"]
+          "anchors": [
+            "TEST_CASE(\"ModelInfoBakerValidations\")",
+            "Parses model description option tokens into saved description"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.texture-wire",
+      "name": "Texture timeline compatibility",
+      "stability": "experimental",
+      "requirement": "LFMODINF description schema4 adds a validated uint8 animation flag to each texture override. Rebuild matching baker/runtime and force-rebake model descriptions, metadata and spritev3/SpriteInfo2 resources; runtime compatibility0.0.75. LFMODMSH and LFOZZRIG schemas are unchanged.",
+      "rationale": "Texture animation is an explicit authored contract; static Texture never silently becomes animated.",
+      "source": [
+        {
+          "path": "Source/Common/ModelAnimationData.h",
+          "anchors": [
+            "MODEL_DESCRIPTION_SCHEMA_VERSION = 4;"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "uint8_t animated = reader.read<uint8_t>();",
+            "Invalid texture animation flag"
+          ]
         }
       ]
     }

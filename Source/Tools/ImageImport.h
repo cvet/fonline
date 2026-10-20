@@ -50,9 +50,12 @@ namespace ImageImport
         uint16_t Height {};
         int16_t NextX {};
         int16_t NextY {};
+        ipos32 Offset {};
+        uint32_t DurationMs {};
         vector<uint8_t> Data {};
         bool Shared {};
         uint16_t SharedIndex {};
+        bool PreserveHiddenColor {};
     };
 
     struct FrameSequence
@@ -64,12 +67,8 @@ namespace ImageImport
 
     struct FrameCollection
     {
-        uint16_t SequenceSize {};
-        uint16_t AnimTicks {};
         FrameSequence Main {};
-        bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
-        string EffectName {};
         string NewName {};
     };
 
@@ -82,13 +81,25 @@ namespace ImageImport
     using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const Context&)>;
     using OutputResolver = copyable_function<string(string_view)>;
 
+    struct DependencyReference
+    {
+        string Path {};
+        bool Optional {};
+    };
+
+    using DependencyDiscovery = copyable_function<vector<DependencyReference>(string_view, const FileCollection&)>;
+
     struct Loader
     {
         LoadFunc Load;
         OutputResolver ResolveOutput;
+        DependencyDiscovery DiscoverDependencies {};
     };
 
     void CheckEnabled(string_view fname);
+    void SetFrameSequenceDuration(FrameSequence& sequence, uint32_t duration_ms);
+    [[nodiscard]] auto GetDirectionCount(const FrameCollection& collection) -> uint8_t;
+    [[nodiscard]] auto GetDurationMs(const FrameSequence& sequence) -> uint32_t;
 }
 
 FO_END_NAMESPACE

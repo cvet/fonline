@@ -64,9 +64,9 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->Baking.ProtoFileExtensions, ext);
+        auto it = std::ranges::find(_context->GetSettings()->Baking.ProtoFileExtensions, ext);
 
-        if (it == _context->Settings->Baking.ProtoFileExtensions.end()) {
+        if (it == _context->GetSettings()->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -78,9 +78,9 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
         return;
     }
 
-    bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time);
-    bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time);
-    bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time);
+    bool bake_server = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fopro-bin-server", max_write_time);
+    bool bake_client = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fopro-bin-client", max_write_time);
+    bool bake_mapper = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fopro-bin-mapper", max_write_time);
 
     vector<std::future<void>> file_bakings;
     std::shared_future<set<string>> server_hash_strings;
@@ -89,19 +89,19 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     // Parse the server side even when its pack is current
     if (bake_server || bake_client) {
         server_hash_strings = run_async(GetAsyncMode(), "BakeProto-Server", [&]() FO_DEFERRED -> set<string> {
-            auto engine = BakerServerEngine(*_context->BakedFiles);
+            auto engine = BakerServerEngine(*_context->GetBakedFiles());
             set<string> hash_strings;
 
             if (bake_server) {
                 engine.MapScriptTypes(&engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-                InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
+                InitAngelScriptScripting(&engine, *_context->GetSettings(), *_context->GetBakedFiles());
 #endif
 #if FO_MANAGED_SCRIPTING
-                InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
+                InitManagedScripting(&engine, _context->GetBakedFiles(), _context->GetSettings()->Baking.CacheResources, _context->GetSettings()->Baking.BakeOutput);
 #endif
                 auto data = BakeProtoFiles(&engine, &engine, filtered_files, {}, &hash_strings);
-                _context->WriteData(_context->PackName + ".fopro-bin-server", data);
+                _context->WriteData(_context->GetPackName() + ".fopro-bin-server", data);
             }
             else {
                 // The server pack is current and was validated when it was baked, only its strings are needed here
@@ -115,17 +115,17 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (bake_client) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Client", [&]() FO_DEFERRED {
             const set<string>& server_strings = server_hash_strings.get();
-            auto engine = BakerClientEngine(*_context->BakedFiles);
+            auto engine = BakerClientEngine(*_context->GetBakedFiles());
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files, server_strings, nullptr);
-            _context->WriteData(_context->PackName + ".fopro-bin-client", data);
+            _context->WriteData(_context->GetPackName() + ".fopro-bin-client", data);
         }));
     }
 
     if (bake_mapper) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Mapper", [&]() FO_DEFERRED {
-            auto engine = BakerMapperEngine(*_context->BakedFiles);
+            auto engine = BakerMapperEngine(*_context->GetBakedFiles());
             auto data = BakeProtoFiles(&engine, nullptr, filtered_files, {}, nullptr);
-            _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
+            _context->WriteData(_context->GetPackName() + ".fopro-bin-mapper", data);
         }));
     }
 
@@ -302,7 +302,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                     // A repeated ancestor contributes only where it is first reached: applying it again would
                     // undo whatever the earlier parent overrode, which the source gives no hint of
                     if (!reached_parents.insert(parent_pid).second) {
-                        if (!_context->Settings->Baking.AllowRepeatedProtoParents) {
+                        if (!_context->GetSettings()->Baking.AllowRepeatedProtoParents) {
                             throw ProtoBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
                         }
 

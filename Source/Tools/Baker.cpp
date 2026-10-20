@@ -41,6 +41,8 @@
 #include "EngineBase.h"
 #include "FileSystem.h"
 #include "ImageBaker.h"
+#include "ImageDependencyCache.h"
+#include "ImageDependencyGraph.h"
 #include "ManagedScriptBaker.h"
 #include "MapBaker.h"
 #include "MapLoader.h"
@@ -83,33 +85,13 @@ void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_
 BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
 {
     FO_VERIFY_AND_THROW(ctx, "Missing required context");
-    FO_VERIFY_AND_THROW(ctx->WriteData, "Baker context has no output writer");
-    FO_VERIFY_AND_THROW(!baker_name.empty(), "Baker name is empty");
 
-    _context = safe_alloc::make_shared<BakingContext>(*ctx);
-    _context->BakerName = baker_name;
+    _context = safe_alloc::make_shared<BakingContext>(*ctx, baker_name);
+}
 
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        string pack_name = _context->PackName;
-        string stored_baker_name = _context->BakerName;
-
-        if (ctx->BakeChecker) {
-            BakeCheckerCallback bake_checker = ctx->BakeChecker;
-            _context->BakeChecker = [report, pack_name, stored_baker_name, bake_checker](string_view path, uint64_t write_time) mutable {
-                bool scheduled = bake_checker(path, write_time);
-                report->RecordOutputCheck(pack_name, stored_baker_name, path, scheduled);
-                return scheduled;
-            };
-        }
-
-        AsyncWriteDataCallback write_data = ctx->WriteData;
-        _context->WriteData = [report, pack_name, stored_baker_name, write_data](string_view path, const_span<uint8_t> data) mutable {
-            BakingWriteResult result = write_data(path, data);
-            report->RecordOutputSubmission(pack_name, stored_baker_name, path, data.size(), result);
-            return result;
-        };
-    }
+auto BaseBaker::CheckOutput(string_view path, uint64_t write_time, optional<bool> required) const -> bool
+{
+    return _context->CheckOutput(path, write_time, required);
 }
 
 auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report, bool output_discovery, nptr<const FileSystem> pack_baked_files) -> vector<unique_ptr<BaseBaker>>
@@ -118,7 +100,7 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    auto ctx = safe_alloc::make_shared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .PackBakedFiles = pack_baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
+    auto ctx = safe_alloc::make_shared<BakingContext>(BakingContextOptions {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files, .PackBakedFiles = pack_baked_files, .Report = std::move(report), .OutputDiscovery = output_discovery});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(safe_alloc::make_unique<MetadataBaker>(ctx));
@@ -179,42 +161,27 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
 void BaseBaker::AddBakingReportCounter(string_view name, uint64_t value) const
 {
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        report->AddCounter(_context->PackName, _context->BakerName, name, value);
-    }
+    _context->AddBakingReportCounter(name, value);
 }
 
 void BaseBaker::AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count) const
 {
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        report->AddHistogramValue(_context->PackName, _context->BakerName, name, value, count);
-    }
+    _context->AddBakingReportHistogramValue(name, value, count);
 }
 
 void BaseBaker::RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportSettings& settings) const
 {
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        report->RecordSpriteMeshSettings(_context->PackName, _context->BakerName, settings);
-    }
+    _context->RecordSpriteMeshBakingSettings(settings);
 }
 
 void BaseBaker::RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const
 {
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        report->RecordSpriteMeshFrame(_context->PackName, _context->BakerName, frame);
-    }
+    _context->RecordSpriteMeshBakingFrame(frame);
 }
 
 void BaseBaker::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
 {
-    if (_context->Report) {
-        shared_ptr<BakingReport> report = _context->Report;
-        report->RecordSharedSpriteMeshFrames(_context->PackName, _context->BakerName, count);
-    }
+    _context->RecordSharedSpriteMeshBakingFrames(count);
 }
 
 MasterBaker::MasterBaker(ptr<BakingSettings> settings) noexcept :
@@ -321,6 +288,8 @@ struct MasterBaker::PackBakeContext
     FileSystem InputFiles {};
     FileSystem PackBakedFiles {};
     FileCollection FilteredFiles {};
+    FileCollection AllInputFiles {};
+    shared_ptr<const ImageDependencyGraph> ImageDependencies {};
     vector<unique_ptr<BaseBaker>> Bakers {};
     shared_ptr<BakingReport> Report {};
     uint64_t InputBytes {};
@@ -339,7 +308,52 @@ struct MasterBaker::ExpectedOutputs
 {
     unordered_set<string> ResourceNames {};
     unordered_map<string, string> Paths {};
+    unordered_set<string> SuppressedImagePaths {};
 };
+
+struct ImageBakingInputs
+{
+    string Pack;
+    ptr<const FileCollection> Sources;
+    ptr<const FileCollection> Outputs;
+    ptr<vector<unique_ptr<BaseBaker>>> Bakers;
+};
+
+static auto PrepareImageDependencies(span<ImageBakingInputs> inputs, const BakingSettings& settings) -> shared_ptr<const ImageDependencyGraph>
+{
+    ImageSourceCatalog sources;
+    vector<ImageOutputCandidate> candidates;
+    unordered_map<string, ImageImport::Loader> loaders;
+
+    for (const auto& input : inputs) {
+        sources.AddFiles(*input.Sources);
+
+        for (const auto& baker : *input.Bakers) {
+            nptr<const ImageBaker> image_baker = baker.dyn_cast<ImageBaker>();
+
+            if (!image_baker) {
+                continue;
+            }
+
+            auto outputs = image_baker->CollectOutputCandidates(input.Pack, *input.Outputs);
+            candidates.insert(candidates.end(), std::make_move_iterator(outputs.begin()), std::make_move_iterator(outputs.end()));
+
+            for (const auto& [extension, loader] : image_baker->GetLoaders()) {
+                loaders.insert_or_assign(extension, loader);
+            }
+        }
+    }
+
+    auto graph = safe_alloc::make_shared<ImageDependencyGraph>(BuildImageDependencyGraph(std::move(sources), candidates, loaders, MakeImageBakingFingerprint(settings)));
+
+    for (auto& input : inputs) {
+        for (auto& baker : *input.Bakers) {
+            baker->SetImageDependencies(graph);
+        }
+    }
+
+    return graph;
+}
 
 // Resource identity ignores the extension chain (one input can produce several differently suffixed outputs) and
 // letter case, so a name folded this way answers "is this output still wanted", never "is it spelled right"
@@ -510,6 +524,19 @@ auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSourc
         throw ResourceBakingException("Resource pack preparation failed", first_prepare_error, errors);
     }
 
+    vector<ImageBakingInputs> image_inputs;
+    image_inputs.reserve(pack_bake_contexts.size());
+
+    for (auto& context : pack_bake_contexts) {
+        image_inputs.push_back({context->PackName, &context->AllInputFiles, &context->FilteredFiles, &context->Bakers});
+    }
+
+    auto image_dependencies = PrepareImageDependencies(image_inputs, *_settings);
+
+    for (auto& context : pack_bake_contexts) {
+        context->ImageDependencies = image_dependencies;
+    }
+
     return pack_bake_contexts;
 }
 
@@ -540,6 +567,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered
     }
 
     pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
+    pack_bake_context->AllInputFiles = pack_bake_context->InputFiles.GetAllFiles();
 
     for (const FileHeader& file : pack_bake_context->FilteredFiles) {
         pack_report->RecordPackInput(res_pack.Name, file.GetPath(), file.GetSize());
@@ -727,6 +755,24 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
             expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
             expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
         }
+
+        if (bake_context->ImageDependencies) {
+            const auto& graph = *bake_context->ImageDependencies;
+
+            for (const FileHeader& source : bake_context->AllInputFiles) {
+                string path {source.GetPath()};
+
+                if (!graph.Consumed.contains(path)) {
+                    continue;
+                }
+
+                expected.SuppressedImagePaths.emplace(strex(bake_context->PackName).combine_path(path).lower().str());
+
+                if (auto resource = graph.ResourcePaths.find(path); resource != graph.ResourcePaths.end()) {
+                    expected.SuppressedImagePaths.emplace(strex(bake_context->PackName).combine_path(resource->second).lower().str());
+                }
+            }
+        }
     }
 
     return expected;
@@ -823,11 +869,15 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
         if (path.starts_with(BAKER_CACHE_DIR) && (path.size() == BAKER_CACHE_DIR.size() || path[BAKER_CACHE_DIR.size()] == '/')) {
             return;
         }
+
         if (path.find('/') == string_view::npos && strex(path).lower().str().ends_with(REPORT_FILE_SUFFIX)) {
             return;
         }
 
-        if (expected.ResourceNames.count(ExcludeAllExt(path)) == 0) {
+        string folded_path = strex(path).lower().str();
+        bool suppressed_image = expected.SuppressedImagePaths.contains(folded_path) && !expected.Paths.contains(folded_path);
+
+        if (suppressed_image || expected.ResourceNames.count(ExcludeAllExt(path)) == 0) {
             bool remove_outdated_ok = fs::remove_file(MakeOutputPath(path));
             FO_VERIFY_AND_THROW(remove_outdated_ok, "Unable to delete outdated baked resource", path);
             _report->RecordOutdatedFile(path);
@@ -865,6 +915,25 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
 {
     FO_TRACE_ZONE(Baking);
+
+    string image_cache_dir = MakeOutputPath(strex(BAKER_CACHE_DIR).combine_path("Image").str());
+
+    if (fs::is_dir(image_cache_dir)) {
+        fs::iterate_dir(image_cache_dir, true, [&](string_view path, size_t size, uint64_t write_time) {
+            ignore_unused(size, write_time);
+            constexpr string_view suffix = ".deps";
+
+            if (path.ends_with(suffix)) {
+                string output_path = strex(path.substr(0, path.size() - suffix.size())).lower().str();
+
+                if (!expected.Paths.contains(output_path)) {
+                    string cache_path = strex(image_cache_dir).combine_path(path).str();
+                    bool removed = fs::remove_file(cache_path);
+                    FO_VERIFY_AND_THROW(removed, "Unable to delete outdated image dependency snapshot", cache_path);
+                }
+            }
+        });
+    }
 
     string effekseer_cache_dir = MakeOutputPath(strex(BAKER_CACHE_DIR).combine_path("Effekseer").str());
 
@@ -929,7 +998,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             }},
     };
 
-    FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
+    FO_VERIFY_AND_THROW(_context->GetBakedFiles(), "Baker context has no baked file registry");
 
     size_t errors = 0;
 
@@ -942,7 +1011,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             if (prop->IsPlainData()) {
                 auto res_name = props.GetValue<hstring>(prop);
 
-                if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
+                if (res_name && !_context->GetBakedFiles()->IsFileExists(res_name)) {
                     logging::write("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                     errors++;
                 }
@@ -955,7 +1024,7 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
                 auto res_names = props.GetValue<vector<hstring>>(prop);
 
                 for (auto res_name : res_names) {
-                    if (res_name && !_context->BakedFiles->IsFileExists(res_name)) {
+                    if (res_name && !_context->GetBakedFiles()->IsFileExists(res_name)) {
                         logging::write("Resource {} not found for property {} in {}", res_name, prop->GetName(), context_str);
                         errors++;
                     }
@@ -1036,10 +1105,29 @@ auto BakerDataSource::Reindex() -> bool
         }
 
         res_entry.InputFiles = res_entry.InputDir.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
+        res_entry.AllInputFiles = res_entry.InputDir.GetAllFiles();
 
         for (const auto& input_file : res_entry.InputFiles) {
             string index_key = strex("{}\n{}", res_entry.Name, input_file.GetPath()).str();
             input_file_index.insert_or_assign(index_key, pair {input_file.GetSize(), input_file.GetWriteTime()});
+        }
+    }
+
+    vector<ImageBakingInputs> image_inputs;
+    image_inputs.reserve(input_resources.size());
+
+    for (auto& input : input_resources) {
+        image_inputs.push_back({input.Name, &input.AllInputFiles, &input.InputFiles, &input.Bakers});
+    }
+
+    auto image_dependencies = PrepareImageDependencies(image_inputs, *_settings);
+
+    for (auto& input : input_resources) {
+        input.ImageDependencies = image_dependencies;
+
+        for (const auto& output : GetRootOutputs(image_dependencies->Outputs, input.Name)) {
+            string key = strex("Image\n{}\n{}\n{}", input.Name, output.ResourcePath, GetOutputFingerprint(*image_dependencies, output)).str();
+            input_file_index.emplace(std::move(key), pair<size_t, uint64_t> {0, 0});
         }
     }
 
@@ -1049,17 +1137,21 @@ auto BakerDataSource::Reindex() -> bool
 
     // Evaluate output files
     unordered_map<string, uint64_t> output_files;
+    unordered_map<string, string> output_packs;
 
     unordered_map<string, uint64_t> previous_output_files;
+    unordered_map<string, string> previous_output_packs;
 
     {
         scoped_lock locker {_outputFilesLocker};
 
         previous_output_files = _outputFiles;
+        previous_output_packs = _outputPacks;
     }
 
-    auto check_file = [&](string_view path, uint64_t write_time) {
+    auto check_file = [&](string_view pack, string_view path, uint64_t write_time) {
         output_files.insert_or_assign(string(path), write_time);
+        output_packs.insert_or_assign(string {path}, string {pack});
 
         // Published live so a later baker in this same pass can resolve an earlier one's output on-demand, and
         // additively so no entry is transiently missing for a concurrent reader
@@ -1067,6 +1159,7 @@ auto BakerDataSource::Reindex() -> bool
             scoped_lock locker {_outputFilesLocker};
 
             _outputFiles.insert_or_assign(string(path), write_time);
+            _outputPacks.insert_or_assign(string {path}, string {pack});
         }
 
         return false;
@@ -1080,9 +1173,12 @@ auto BakerDataSource::Reindex() -> bool
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_pack = res_packs[i];
         const auto& res_entry = _inputResources[i];
-        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources, nullptr, true);
+
+        auto pack_checker = [&, pack = res_pack.Name](string_view path, uint64_t write_time) { return check_file(pack, path, write_time); };
+        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, pack_checker, write_file, &_outputResources, nullptr, true);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
+            bakers[j]->SetImageDependencies(image_dependencies);
             bakers[j]->BakeFiles(res_entry.InputFiles);
         }
     }
@@ -1096,7 +1192,9 @@ auto BakerDataSource::Reindex() -> bool
         scoped_lock locker {_outputFilesLocker};
 
         changed |= previous_output_files != output_files;
+        changed |= previous_output_packs != output_packs;
         _outputFiles = std::move(output_files);
+        _outputPacks = std::move(output_packs);
     }
 
     return changed;
@@ -1133,6 +1231,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     FO_TRACE_ZONE(Baking);
 
     uint64_t input_write_time = 0;
+    string output_pack;
 
     {
         scoped_lock locker {_outputFilesLocker};
@@ -1144,6 +1243,7 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
         }
 
         input_write_time = it->second;
+        output_pack = _outputPacks.at(string {path});
     }
 
     auto accept_output_path = [&](string_view output_path) -> string {
@@ -1153,13 +1253,37 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
         return string {output_path};
     };
 
+    auto image_is_current = [&](const ResourcesInputEntry& entry) -> optional<bool> {
+        if (!entry.ImageDependencies) {
+            return std::nullopt;
+        }
+
+        const auto& graph = *entry.ImageDependencies;
+        const auto& roots = GetRootOutputs(graph.Outputs, entry.Name);
+
+        if (!roots.empty() && path == strex("{}/{}.foinfo", SPRITE_INFO_DIRECTORY, entry.Name).str()) {
+            return IsImagePackInfoCurrent(*_settings, entry.Name, GetPackFingerprint(graph, entry.Name));
+        }
+
+        auto output = std::ranges::find_if(roots, [path](const ImageOutputCandidate& candidate) { return candidate.ResourcePath == path; });
+
+        return output != roots.end() ? optional<bool> {IsOutputCurrent(*_settings, *output, GetOutputFingerprint(graph, *output))} : std::nullopt;
+    };
+
     // Try find already baked
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
+
+        if (res_entry.Name != output_pack) {
+            continue;
+        }
+
         string output_path = MakeOutputPath(res_entry.Name, path);
 
         if (fs::exists(output_path)) {
-            if (input_write_time > fs::last_write_time(output_path)) {
+            bool current = image_is_current(res_entry).value_or(input_write_time <= fs::last_write_time(output_path));
+
+            if (!current) {
                 bool delete_output_file_ok = fs::remove_file(output_path);
                 FO_VERIFY_AND_THROW(delete_output_file_ok, "Unable to delete the stale baked output file", output_path);
                 break;
@@ -1172,6 +1296,11 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
     // Runtime baking
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
+
+        if (res_entry.Name != output_pack) {
+            continue;
+        }
+
         string output_path = MakeOutputPath(res_entry.Name, path);
 
         for (const auto& baker : res_entry.Bakers) {
@@ -1184,7 +1313,9 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
                 input_write_time = _outputFiles.at(string(path));
                 uint64_t output_write_time = fs::last_write_time(output_path);
-                FO_VERIFY_AND_THROW(input_write_time <= output_write_time, "Baked output file is older than the newest source input", path, output_path, input_write_time, output_write_time);
+                optional<bool> image_current = image_is_current(res_entry);
+                bool current = image_current.value_or(input_write_time <= output_write_time);
+                FO_VERIFY_AND_THROW(current, "Baked output is not current for its source inputs", path, output_path, input_write_time, output_write_time);
             }
 
             return accept_output_path(output_path);

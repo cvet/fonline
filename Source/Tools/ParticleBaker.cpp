@@ -95,11 +95,11 @@ static constexpr string_view EffekseerDependencyCacheHeader = "FONLINE_EFFEKSEER
 
 static auto GetEffekseerDependencyCachePath(const BakingContext& context, string_view output_path) -> string
 {
-    if (context.Settings->Baking.BakeOutput.empty()) {
+    if (context.GetSettings()->Baking.BakeOutput.empty()) {
         return {};
     }
 
-    return strex(context.Settings->Baking.BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer").combine_path(context.PackName).combine_path(strex("{}.deps", output_path));
+    return strex(context.GetSettings()->Baking.BakeOutput).combine_path(BAKER_CACHE_DIR).combine_path("Effekseer").combine_path(context.GetPackName()).combine_path(strex("{}.deps", output_path));
 }
 
 static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<vector<string>>
@@ -273,8 +273,8 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
         throw ParticleBakerException("Failed to refresh Effekseer dependency cache", output_path, cache_path);
     }
 
-    if (!context.Settings->Baking.BakeOutput.empty()) {
-        string baked_output_path = strex(context.Settings->Baking.BakeOutput).combine_path(context.PackName).combine_path(output_path).str();
+    if (!context.GetSettings()->Baking.BakeOutput.empty()) {
+        string baked_output_path = strex(context.GetSettings()->Baking.BakeOutput).combine_path(context.GetPackName()).combine_path(output_path).str();
 
         if (fs::exists(baked_output_path) && !fs::remove_file(baked_output_path)) {
             throw ParticleBakerException("Failed to invalidate stale Effekseer particle", output_path, baked_output_path);
@@ -350,7 +350,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
             if (ext == "spark") {
                 string output_path = strex(file_header.GetPath()).change_file_extension("spk");
 
-                if (!_context->BakeChecker || _context->BakeChecker(output_path, file_header.GetWriteTime())) {
+                if (!_context->HasBakeChecker() || _context->CheckOutput(output_path, file_header.GetWriteTime())) {
                     spark_files.emplace_back(File::Load(file_header));
                 }
 
@@ -368,7 +368,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 optional<uint64_t> dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file_header, output_path);
 
                 if (dependency_write_time) {
-                    if (!_context->BakeChecker || _context->BakeChecker(output_path, *dependency_write_time)) {
+                    if (!_context->HasBakeChecker() || _context->CheckOutput(output_path, *dependency_write_time)) {
                         effekseer_files.emplace_back(File::Load(file_header));
                     }
                 }
@@ -376,7 +376,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
                     File file = File::Load(file_header);
                     uint64_t fresh_dependency_write_time = RefreshEffekseerDependencySnapshot(*_context, file, output_path);
 
-                    if (!_context->BakeChecker || _context->BakeChecker(output_path, fresh_dependency_write_time)) {
+                    if (!_context->HasBakeChecker() || _context->CheckOutput(output_path, fresh_dependency_write_time)) {
                         effekseer_files.emplace_back(std::move(file));
                     }
                 }
@@ -396,7 +396,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 
             auto file = files.FindFileByPath(source_path);
 
-            if (file && (!_context->BakeChecker || _context->BakeChecker(target_path, file.GetWriteTime()))) {
+            if (file && (!_context->HasBakeChecker() || _context->CheckOutput(target_path, file.GetWriteTime()))) {
                 spark_files.emplace_back(std::move(file));
             }
         }
@@ -416,7 +416,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
                 optional<uint64_t> cached_dependency_write_time = TryGetCachedEffekseerDependencyWriteTime(*_context, file, output_path);
                 uint64_t dependency_write_time = cached_dependency_write_time ? *cached_dependency_write_time : RefreshEffekseerDependencySnapshot(*_context, file, output_path);
 
-                if (!_context->BakeChecker || _context->BakeChecker(output_path, dependency_write_time)) {
+                if (!_context->HasBakeChecker() || _context->CheckOutput(output_path, dependency_write_time)) {
                     effekseer_files.emplace_back(std::move(file));
                 }
             }

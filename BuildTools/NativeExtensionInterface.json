@@ -161,7 +161,7 @@
       "role": "BAKER",
       "signature": "void SetupBakersHook(const_span<string> requested, vector<unique_ptr<BaseBaker>>& bakers, shared_ptr<BakingContext> context)",
       "call_sites": ["Source/Tools/Baker.cpp"],
-      "stub_declarations": ["class BaseBaker;", "struct BakingContext;"],
+      "stub_declarations": ["class BaseBaker;", "class BakingContext;"],
       "stub_definition": "void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }",
       "default_behavior": "Register no project-owned bakers.",
       "compatibility_hashed": true,

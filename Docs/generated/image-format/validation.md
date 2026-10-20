@@ -33,6 +33,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-image-format-validation-project-visible-c586865990"></a>
 - [`entry-image-format-validation-project-visible-c586865990`](../../en/reference/image-format/validation.md#entry-image-format-validation-project-visible-c586865990)
 
+<a id="entry-image-format-validation-fofrm-names-9cb983ee8d"></a>
+- [`entry-image-format-validation-fofrm-names-9cb983ee8d`](../../en/reference/image-format/validation.md#entry-image-format-validation-fofrm-names-9cb983ee8d)
+
 ## Validation commands
 
 Continue with the [canonical reference](../../en/reference/image-format/validation.md).

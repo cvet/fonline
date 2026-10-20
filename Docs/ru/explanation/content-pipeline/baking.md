@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"02fc683607372cd5677e520c61921d8e9dc0cd9bcb0003dc18cbfa06128581cd"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"c32a58c64c660451a6b98ff97588156820c017fd721e3b1dd03973d8f00eb82c"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -200,16 +200,18 @@ AddBakingTarget(Game_PublicResources
 
 ### `BakingContext`
 
-`BakingContext` из `Baker.h` переносит общие данные одного запуска:
+Класс в `Source/Tools/BakingContext.h/.cpp` инкапсулирует состояние, заданное
+пассивным `BakingContextOptions`. Settings/files заимствуются, report и const-граф
+сохраняют общих владельцев. Для чтения служат `Get*` и `GetAsyncMode()`;
+режимы и граф задаются до запуска задач.
 
-- `Settings` — текущие `BakingSettings`;
-- `PackName` — имя обрабатываемого resource pack;
-- `BakeChecker` — callback проверки актуальности существующего результата;
-- `WriteData` — callback асинхронной записи;
-- `BakedFiles` — data source уже запечённых файлов;
-- `ForceSyncMode` — необязательное принудительное синхронное выполнение.
+`CheckOutput()` один раз вызывает checker при наличии, применяет `required`
+(включая `false`) и один раз учитывает итог в отчёте. `HasBakeChecker()` определяет
+его отсутствие. `WriteData()` возвращает результат writer и учитывает только
+успешные submissions.
 
-В проходе `MasterBaker` контекст также содержит общий collector отчёта и стабильное имя baker-а для attribution. `WriteData` возвращает `BakingWriteResult`, различающий реально изменившуюся запись и byte-identical файл, которому только обновили timestamp.
+`IsImageOutputOwned(path)` распознаёт consumed sources и image roots текущего
+pack; без графа возвращает `false`. Методы отчёта являются no-op без collector-а.
 
 Изменённые результаты записываются через `fs::write_file`: временный файл
 рядом с назначением создаётся эксклюзивно, записывается, сбрасывается и закрывается,
@@ -233,7 +235,7 @@ Windows пытается применить OS/filesystem-specific POSIX rename 
 
 Жёсткие cross-pack зависимости разведены по стадиям: `ParticleBaker` выполняется перед `ModelInfoBaker`, затем идут `ProtoBaker` и `MapBaker`. Описание модели может ссылаться на запечённую частицу, прототип — на модель, карта — на прототип. Эти проверки не должны гоняться с публикацией собственных зависимостей во время чистого или принудительного rebuild.
 
-`BaseBaker::SetupBakers()` создаёт запрошенные встроенные baker-ы и затем вызывает `SetupBakersHook()`, позволяя внешнему коду добавить проектные реализации. Каждый baker получает собственную копию общего контекста. При активном отчёте callbacks check/write оборачиваются именем baker-а, поэтому attribution остаётся верным и для его асинхронных задач. Защищённые helpers позволяют встроенным и проектным baker-ам добавлять counters и histograms; без collector-а они являются no-op.
+`BaseBaker::SetupBakers()` создаёт запрошенные встроенные baker-ы и затем вызывает `SetupBakersHook()`, позволяя внешнему коду добавить проектные реализации. Каждый бейкер получает собственную именованную копию `BakingContext`, сохраняя общих владельцев collector-а и read-only графа. Методы контекста учитывают выходы с именем этого бейкера, в том числе из асинхронных задач, без повторного оборачивания callbacks. Защищённые helpers `BaseBaker` делегируют этим методам и сохраняют интерфейс подклассов.
 
 ### `MasterBaker`
 
@@ -366,9 +368,9 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 
 ### Общие metadata анимации
 
-`AnimationInfo` объединяет `SpriteInfo` для 2D frame count/duration/directions/bounds и, при `FO_ENABLE_3D`, `ModelAnimationInfo` для model/animation AABB и typed durations. `ReadSpriteResource` заполняет sprite payload из baked header/table. Для запросов без загрузки pixels `ImageBaker` пишет компактный index версии 1 `SpriteInfo/<PackName>.foinfo` для каждого pack.
+`AnimationInfo` объединяет `SpriteInfo` для 2D frame count/duration/directions/bounds и, при `FO_ENABLE_3D`, `ModelAnimationInfo` для model/animation AABB и typed durations. `ReadSpriteResource` заполняет sprite payload из baked header/table. Для запросов без загрузки pixels `ImageBaker` пишет компактный index версии 2 `SpriteInfo/<PackName>.foinfo` для каждого pack.
 
-Index является aggregate output. Обычный scan merge-ит изменённые entries с полным предыдущим index того же pack; явный запрос index пересобирает все entries. Предыдущий pack-local output монтируется отдельно от cross-pack registry, чтобы aggregate был доступен до первого invocation. Появление или исчезновение index требует full rebuild. `ReadAnimationInfo` загружает 2D indexes во всех builds, добавляет `ModelAnimationInfo.foinfo` в 3D и объединяет их по resource name в `EngineMetadata`.
+Index объединяет опубликованные корни: у направлений отдельные counts, у кадров durations. Пак без корней публикует пустой index до запуска зависимых bakers. Удаление последнего корня не оставляет устаревшие метаданные текстур доступными до финальной очистки выходов. Успешные dependency snapshots сохраняют полные entries; full/lazy baking восстанавливает отсутствующий index без декодирования неизменённых pixels. Поглощённые входы и промежуточные FOFRM исключены. Pack-local outputs отделены от cross-pack winners. Смена sprite schema требует согласованных бинарников и полной выпечки. `ReadAnimationInfo` загружает 2D indexes во всех builds, добавляет `ModelAnimationInfo.foinfo` в 3D и объединяет их по resource name в `EngineMetadata`.
 
 `ModelInfoBaker` пишет model descriptions и companion `ModelAnimationInfo.foinfo` версии 2. Контракт включает:
 
@@ -470,7 +472,7 @@ Detailed path трассирует pixel-cell boundaries, сохраняет isl
 
 Coverage проверяется по полной unit-square area каждого visible pixel, а не несколькими samples. Constrained overdraw ограничен guard, cleanup и integer rounding; expanded/enclosing candidates оплачивают actual area через score. Failure reasons разделяют contour, offset, vertex limit, triangulation, area, coverage и tolerance. Empty mask даёт empty geometry, unsafe/unprofitable/oversized — quad. Delaunay refinement не применяется из-за отсутствия выгоды по count/area и bit-identical гарантии.
 
-Baked sprite использует engine-owned magic/version, per-frame draw offset, cropped RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `SpriteManager::LoadSpriteAsQuad`. После изменения format или `SpriteMesh.*` без нового build hash нужен `ForceBakeResources`.
+Baked spritev3 хранит count/total по направлениям, duration, int32 placement и int16 движение по логическим кадрам. Shared объединяет только pixels/geometry; concrete хранит RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `SpriteManager::LoadSpriteAsQuad`. Изменение схемы требует полного согласованного rebake.
 
 `MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides криттеров/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
 

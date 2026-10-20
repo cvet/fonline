@@ -85,6 +85,10 @@ Read this together with:
   map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
   or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
 
+Space/tab plus trailing backslash joins lines. A terminal continuation is parsed
+identically with/without a final newline. Empty values remain valid; each consumer
+enforces format constraints.
+
 The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
 
 ## Runtime settings
@@ -176,7 +180,7 @@ The ordinary command line is still applied to live settings exactly **once**, af
 
 ## Resource packs and data sources
 
-`ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
+`ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` in `Source/Tools/BakingContext.*` and `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
 
 Resource-pack input directories are mounted recursively. `IncludePatterns` and `ExcludePatterns` are optional space-separated glob lists applied to normalized resource-relative paths before any baker runs. An empty include list accepts every path; exclusion is evaluated after inclusion and wins. Patterns are case-sensitive and support:
 

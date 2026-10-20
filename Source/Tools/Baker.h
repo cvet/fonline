@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "BakingContext.h"
 #include "BakingReport.h"
 #include "DataSource.h"
 #include "EngineBase.h"
@@ -50,23 +51,7 @@ inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
 
 class Properties;
 class ScriptSystem;
-
-using BakeCheckerCallback = copyable_function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = copyable_function<BakingWriteResult(string_view, const_span<uint8_t>)>;
-
-struct BakingContext
-{
-    nptr<const BakingSettings> Settings {};
-    string PackName {};
-    BakeCheckerCallback BakeChecker {};
-    AsyncWriteDataCallback WriteData {};
-    nptr<const FileSystem> BakedFiles {};
-    nptr<const FileSystem> PackBakedFiles {};
-    optional<bool> ForceSyncMode {};
-    shared_ptr<BakingReport> Report {};
-    string BakerName {};
-    bool OutputDiscovery {};
-};
+struct ImageDependencyGraph;
 
 class BaseBaker
 {
@@ -82,12 +67,14 @@ public:
     [[nodiscard]] virtual auto GetOrder() const -> int32_t = 0;
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
+    void SetImageDependencies(shared_ptr<const ImageDependencyGraph> graph) { _context->SetImageDependencies(std::move(graph)); }
 
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return !!_context->Report; }
+    auto CheckOutput(string_view path, uint64_t write_time, optional<bool> required = {}) const -> bool;
+    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->GetAsyncMode(); }
+    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->IsBakingReportEnabled(); }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
@@ -165,6 +152,8 @@ private:
         string Name {};
         FileSystem InputDir {};
         FileCollection InputFiles {};
+        FileCollection AllInputFiles {};
+        shared_ptr<const ImageDependencyGraph> ImageDependencies {};
         vector<unique_ptr<BaseBaker>> Bakers {};
     };
 
@@ -181,6 +170,7 @@ private:
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
     unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
+    unordered_map<string, string> _outputPacks FO_TSA_GUARDED_BY(_outputFilesLocker) {};
 };
 
 class BakerServerEngine : public EngineMetadata, public ScriptSystem, public EntityManagerApi

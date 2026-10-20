@@ -29,7 +29,7 @@ The owning sources are:
 
 - `Source/Tools/ImageImport.*` for `FrameShot::NextX` / `NextY` and the shared loader context;
 - `Source/Tools/ImageBaker.*` for coordination, transformations, and baked sprite serialization; adjacent `ImageBaker-*.h/.cpp` pairs own source-format import;
-- `Source/Common/SpriteResource.*` for the shared SpriteResource v2 frame decoder and `NextOffset` transport;
+- `Source/Common/SpriteResource.*` for the shared SpriteResource v3 frame decoder and `NextOffset` transport;
 - `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset`, baked loading, shared frames, and per-direction sheets;
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
 - `Source/Common/Geometry.*` for lossless hex/offset re-splitting and passability-aware normalization;
@@ -58,7 +58,7 @@ int16_t NextX;
 int16_t NextY;
 ```
 
-Each pair is the rendered displacement contributed by one frame, in pixels. For a direction-specific animation with `N` frames:
+Each pair contributes pixel displacement in one direction's `N`-frame cycle:
 
 ```text
 delta[i] = (NextX[i], NextY[i])
@@ -66,34 +66,35 @@ accum[i] = sum(delta[0..i])
 T        = sum(delta[0..N-1])
 ```
 
-`T` is the authored displacement of one complete cycle. It may cover less or more than one hex and need not be parallel to one grid-step vector. The runtime projects movement onto `T`; it does not assume a particular hex pitch or cycle length.
+`T` is the cycle displacement. Its length and angle need not match a grid step;
+runtime projects movement onto it without assuming a hex pitch or cycle length.
 
-Format-specific image loaders derive these values from their source records. Use [FOFRM grammar](image-format.md#fofrm-grammar) for the complete descriptor contract. For root-motion authoring, the current parser accepts both lower-case and camel-case frame keys:
+Image loaders derive deltas from source records. FOFRM preserves them unless
+Move/FrameMoves explicitly replaces them: signed int16 X Y, one pair per
+source reference before flattening. Bitmap transforms never rotate/scale movement.
+Its optional FrameOffsets pairs adjust draw placement (`Offset + FrameOffsets[i]`)
+without accumulation or root motion; NextX_N/NextY_N are refused. See
+[FOFRM grammar](image-format.md#fofrm-grammar) for pair counts, section scope and nesting.
 
-```ini
-[dir_0]
-next_x_0 = 4
-next_y_0 = -2
-NextX_1 = 3
-NextY_1 = -1
-```
+ART preserves DeltaX/DeltaY as NextX/NextY, with mirrored signs. Hot spots align
+the canvas and sequence placement. Source retains both; ordinary composition
+discards child sequence placement and retains frame placement/deltas.
+See [ART](image-format.md#art).
 
-Nested FOFRM references add the referencing frame's offset to the selected nested frame. Other supported formats carry or derive offsets according to their own importer. Missing values normally become zero; inspect the format-specific `ImageBaker` loader instead of assuming that every source format exposes the same authored fields.
-
-The optional Arcanum ART importer preserves `DeltaX`/`DeltaY` as `NextX`/`NextY`,
-including the corresponding signs after mirroring. Per-frame hot spots instead
-align frames on a common canvas and determine sequence placement; they are not
-frame displacement. FOFRM `Alias` retains both kinds of offset, while ordinary
-composition copies only child frames and adds authored frame deltas. See the
-[ART import contract](image-format.md#art) for rotation and placement rules.
-
-Offsets are direction-specific. Image baking may mirror, crop, or compose frames. Client resource selection may extract the first or last frame, clone a sheet, or merge a base and extra Fallout animation. That merge path is private Engine behavior and has no focused per-axis regression in the current native suite; do not treat offset preservation across the splice as a public guarantee. Validate the selected baked sheet on both axes rather than editing the baked stream.
+Offsets vary by direction. Baking can mirror/crop/compose; clients can extract,
+clone or merge sheets. Fallout splicing subtracts the base cycle displacement
+from the extra sequence on both axes, covered by ResourceManagerMergesBothMotionAxes.
 
 ## Baked and runtime representation
 
-`ImageBaker::BakeCollection` writes each concrete post-transformation frame's `NextX` and `NextY` as signed 16-bit values in the SpriteResource v2 frame record. A deduplicated shared-frame record points to an earlier frame instead. `ReadSpriteResource` decodes the pair into `SpriteResourceFrameData::NextOffset` together with the frame's draw offset, dimensions, pixels, and optional mesh.
+`ImageBaker::BakeCollection` writes each logical frame's signed16 NextX/NextY,
+int32 placement and positive uint32 duration into SpriteResource v3. Shared slots
+reference earlier pixels/geometry, retaining their own movement, placement and time.
+`ReadSpriteResource` decodes movement into `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` creates a direction-specific `SpriteSheet` and copies each concrete frame's decoded `NextOffset` into `_sprOffset`. A shared frame copies the referenced sprite and its already-decoded offset. `SpriteSheet::GetSprOffset()` exposes a read-only span to client runtime code.
+`DefaultSpriteFactory::LoadSprite` copies every slot's NextOffset into `_sprOffset`;
+shared sprites receive their own draw offset. `SpriteSheet::GetSprOffset()` exposes
+a read-only span. Each direction owns its count and timeline.
 
 In `ResolveCritterAnimationFrames`, first-frame extraction retains its delta; last-frame extraction sums all deltas
 on both axes. Each trimmed direction has one sprite/offset, and copies preserve
@@ -217,7 +218,7 @@ This logic applies to any resolved walk/run sheet change, not only a direction c
 
 | Condition | Current result |
 |---|---|
-| Missing FOFRM frame offset | The parser uses zero for that component. |
+| Missing FOFRM FrameOffsets | Zero draw-placement adjustments; imported root-motion deltas are unchanged. |
 | Offset exceeds signed 16-bit range during baking | Numeric conversion fails instead of silently wrapping. |
 | Baked sprite has zero frames or directions | Client loading fails validation. |
 | Baked frame is a sprite reference | The referenced frame's sprite and offset are copied. |
@@ -299,6 +300,6 @@ python BuildTools/docs_ai_delivery.py --check
 python BuildTools/docs_validate.py
 ```
 
-For offset import and baked transport, run the `ImageBaker` unit-test cases in the embedding project's Engine test binary. `Test_ImageBaker.cpp` covers signed FRM offsets, FOFRM lower/camel-case keys, nested composition, mirroring, frame selection, and baked round trips. `Test_Geometry.cpp` covers successful re-splitting, blocked-target refusal, same-hex behavior, unrestricted normalization, and outside-map refusal.
+For offset import and baked transport, run the `ImageBaker` unit-test cases in the embedding project's Engine test binary. `Test_ImageBaker.cpp` covers signed FRM offsets, PascalCase FOFRM keys and sections, rejection of obsolete names, nested composition, mirroring, frame selection, and baked round trips. `Test_Geometry.cpp` covers successful re-splitting, blocked-target refusal, same-hex behavior, unrestricted normalization, and outside-map refusal.
 
 The current native suite does not expose a focused `CritterHexView` root-motion fixture. After changing `MovingContext`, `CritterHexView`, `SpriteSheet`, `ResourceManager` animation selection, or authored locomotion offsets, run the [visual acceptance matrix](#visual-acceptance-matrix) in a visible client scene. Baking proves the data path, geometry tests prove re-splitting, and the visible scene proves gait alignment.

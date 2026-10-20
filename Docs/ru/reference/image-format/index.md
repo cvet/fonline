@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"171088546fbc7d1bef3f34f10f4acda8353e606739d9d1629cadc24e713ae978"} -->
+<!-- docs-translation: {"document_id":"generated-image-format-index","locale":"ru","source_path":"Docs/en/reference/image-format/index.md","source_sha256":"a5bce789c0c093fd5e342bea2c9ab21358862ee2bd69fd9e96e8e6888aa3cd80"} -->
 
 # Сгенерированный справочник форматов изображений
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт создаётся для закреплённой ревизии Engine. Проекты владеют каталогами ресурсов, лицензированием источников, визуальным стилем, политикой сжатия, приоритетом resource pack, подстановками анимаций, настройкой движения и видимой приёмкой. |
 | Исходный manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Digest контракта | <code>dac6e4c1fc04be2dab1368947cee3efec2315b353f37d236a4d9e657153d1b62</code> |
+| Digest контракта | <code>27983399917659d246f3b01e8a36263b69c52afe0af88c9b00c5b609be457b49</code> |
 | Baker | <code>Image</code>, порядок 4 |
 | Запечённые pixels | <code>RGBA8</code> |
 | Сторона runtime | <code>client</code> |
@@ -30,11 +30,11 @@ generated: true
 | Справочник | Записей | Назначение |
 | --- | --- | --- |
 | [Форматы](formats.md) | 12 | Принимаемые исходные форматы и текущее поведение импорта. |
-| [FOFRM](fofrm.md) | 10 | Поля descriptor, aliases, направления, flattening и timing. |
+| [FOFRM](fofrm.md) | 33 | Поля descriptor, aliases, направления, flattening и timing. |
 | [Параметры](options.md) | 4 | Selectors имени файла ART, SPR и BAM. |
-| [Запекание](baking.md) | 10 | Обнаружение, имена выходов, записи контейнера и отказы. |
+| [Запекание](baking.md) | 14 | Обнаружение, имена выходов, записи контейнера и отказы. |
 | [Runtime](runtime.md) | 8 | Покрытие factory, sprite sheets, загрузка в atlas и caches. |
-| [Проверка](validation.md) | 9 | Ограничения источников и исполняемые проверки. |
+| [Проверка](validation.md) | 10 | Ограничения источников и исполняемые проверки. |
 
 ## Граница
 

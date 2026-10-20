@@ -33,7 +33,10 @@
 
 #include "ImageBaker-Fofrm.h"
 
+#include "AnyData.h"
 #include "ConfigFile.h"
+#include "ImageRecipe.h"
+#include "ImageTransforms.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -44,6 +47,272 @@ namespace ImageBakerFofrm
     using ImageImport::FrameSequence;
     using ImageImport::FrameShot;
 
+    static auto ReadOffsetValue(string_view value, string_view fname, string_view section, string_view key) -> ipos32
+    {
+        auto parts = strex(value).replace('\t', ' ').split(' ');
+        FO_VERIFY_AND_THROW(parts.size() == 2, "FOFRM offset pair requires two signed integers", fname, section, key, value);
+
+        ipos32 offset;
+        istringstream input(make_stream_string(value));
+        input >> offset.x >> offset.y;
+        bool parsed = !input.fail();
+        input >> std::ws;
+        FO_VERIFY_AND_THROW(parsed && input.eof(), "FOFRM offset pair requires two signed integers", fname, section, key, value);
+
+        return offset;
+    }
+
+    static auto ReadOffset(const ConfigFile& fofrm, string_view section, ipos32 fallback, string_view fname) -> ipos32
+    {
+        return fofrm.HasKey(section, "Offset") ? ReadOffsetValue(fofrm.GetAsStr(section, "Offset"), fname, section, "Offset") : fallback;
+    }
+
+    static auto ReadOffsetInteger(string_view value, string_view fname, string_view section) -> int32_t
+    {
+        string_view digits = value.substr(value.starts_with('+') || value.starts_with('-') ? 1 : 0);
+        bool valid = !digits.empty() && std::all_of(digits.begin(), digits.end(), [](char ch) { return ch >= '0' && ch <= '9'; });
+        FO_VERIFY_AND_THROW(valid, "FOFRM FrameOffsets requires signed integer tokens", fname, section, value);
+
+        int32_t number;
+        istringstream input(make_stream_string(value));
+        input >> number;
+        bool parsed = !input.fail();
+        FO_VERIFY_AND_THROW(parsed && input.eof(), "FOFRM FrameOffsets requires signed integer tokens", fname, section, value);
+
+        return number;
+    }
+
+    static auto ReadFrameOffsets(const ConfigFile& fofrm, string_view section, size_t frame_count, string_view fname) -> vector<ipos32>
+    {
+        vector<ipos32> offsets(frame_count);
+
+        if (!fofrm.HasKey(section, "FrameOffsets")) {
+            return offsets;
+        }
+
+        auto parsed_offsets = AnyData::ParseValue(string {fofrm.GetAsStr(section, "FrameOffsets")}, false, true, AnyData::ValueType::String);
+        const auto& values = parsed_offsets.AsArray();
+        FO_VERIFY_AND_THROW(frame_count != 0 && values.Size() == frame_count * 2, "FOFRM FrameOffsets requires one pair per Frame or Frames reference", fname, section, frame_count, values.Size());
+
+        for (size_t index = 0; index < frame_count; index++) {
+            offsets[index] = {
+                ReadOffsetInteger(values[index * 2].AsString(), fname, section),
+                ReadOffsetInteger(values[index * 2 + 1].AsString(), fname, section),
+            };
+        }
+
+        return offsets;
+    }
+
+    static auto ReadSizeInteger(string_view value, string_view fname, string_view section, string_view key) -> int32_t
+    {
+        string_view digits = value.substr(value.starts_with('+') ? 1 : 0);
+        FO_VERIFY_AND_THROW(!digits.empty(), "FOFRM size requires a positive integer token", fname, section, key, value);
+        uint32_t number = 0;
+        auto parsed = std::from_chars(digits.data(), digits.data() + digits.size(), number);
+        FO_VERIFY_AND_THROW(parsed.ec == std::errc {} && parsed.ptr == digits.data() + digits.size() && number > 0 && number <= std::numeric_limits<uint16_t>::max(), "FOFRM size requires an integer token within uint16 range", fname, section, key, value);
+
+        return numeric_cast<int32_t>(number);
+    }
+
+    static auto ReadSizeValue(string_view value, string_view fname, string_view section, string_view key) -> isize32
+    {
+        auto parsed_size = AnyData::ParseValue(string {value}, false, true, AnyData::ValueType::String);
+        const auto& values = parsed_size.AsArray();
+        FO_VERIFY_AND_THROW(values.Size() == 2, "FOFRM size requires two positive integer tokens", fname, section, key, value);
+
+        return {ReadSizeInteger(values[0].AsString(), fname, section, key), ReadSizeInteger(values[1].AsString(), fname, section, key)};
+    }
+
+    static auto ReadFrameSizes(const ConfigFile& fofrm, string_view section, size_t frame_count, optional<isize32> fallback, string_view fname) -> vector<optional<isize32>>
+    {
+        bool has_size = fofrm.HasKey(section, "Size");
+        bool has_frame_sizes = fofrm.HasKey(section, "FrameSizes");
+        FO_VERIFY_AND_THROW(!(has_size && has_frame_sizes), "FOFRM Size and FrameSizes are mutually exclusive in one section", fname, section);
+
+        if (has_size) {
+            fallback = ReadSizeValue(fofrm.GetAsStr(section, "Size"), fname, section, "Size");
+        }
+
+        vector<optional<isize32>> sizes(frame_count, fallback);
+
+        if (!has_frame_sizes) {
+            return sizes;
+        }
+
+        auto parsed_sizes = AnyData::ParseValue(string {fofrm.GetAsStr(section, "FrameSizes")}, false, true, AnyData::ValueType::String);
+        const auto& values = parsed_sizes.AsArray();
+        FO_VERIFY_AND_THROW(frame_count != 0 && values.Size() == frame_count * 2, "FOFRM FrameSizes requires one pair per Frame or Frames reference", fname, section, frame_count, values.Size());
+
+        for (size_t index = 0; index < frame_count; index++) {
+            sizes[index] = isize32 {ReadSizeInteger(values[index * 2].AsString(), fname, section, "FrameSizes"), ReadSizeInteger(values[index * 2 + 1].AsString(), fname, section, "FrameSizes")};
+        }
+
+        return sizes;
+    }
+
+    static auto MaterializeFrames(const FrameSequence& source, string_view fname) -> vector<FrameShot>
+    {
+        vector<FrameShot> frames;
+        frames.reserve(source.Frames.size());
+
+        for (size_t frame = 0; frame < source.Frames.size(); frame++) {
+            size_t concrete = frame;
+            vector<bool> visited(source.Frames.size());
+
+            while (source.Frames[concrete].Shared) {
+                FO_VERIFY_AND_THROW(!visited[concrete], "FOFRM shared frame cycle", fname, frame, concrete);
+                visited[concrete] = true;
+                concrete = source.Frames[concrete].SharedIndex;
+                FO_VERIFY_AND_THROW(concrete < source.Frames.size(), "FOFRM shared frame index is out of range", fname, frame, concrete);
+            }
+
+            auto shot = source.Frames[frame];
+            shot.Width = source.Frames[concrete].Width;
+            shot.Height = source.Frames[concrete].Height;
+            shot.Data = source.Frames[concrete].Data;
+            shot.PreserveHiddenColor = shot.PreserveHiddenColor || source.Frames[concrete].PreserveHiddenColor;
+            shot.Shared = false;
+            shot.SharedIndex = 0;
+            frames.emplace_back(std::move(shot));
+        }
+
+        return frames;
+    }
+
+    static auto ReadTimelineInteger(string_view text, string_view fname, string_view section, string_view key) -> uint32_t
+    {
+        string_view digits = text.starts_with('+') ? text.substr(1) : text;
+        uint32_t value {};
+        auto parsed = std::from_chars(digits.data(), digits.data() + digits.size(), value);
+        FO_VERIFY_AND_THROW(!digits.empty() && parsed.ec == std::errc {} && parsed.ptr == digits.data() + digits.size() && value > 0, "FOFRM timeline requires positive uint32 milliseconds or fps", fname, section, key, text);
+
+        return value;
+    }
+
+    static void ApplySequenceTimeline(FrameSequence& sequence, const ConfigFile& recipe, string_view section, string_view fname, bool source)
+    {
+        FO_VERIFY_AND_THROW(!sequence.Frames.empty() && sequence.Frames.size() <= 65535, "FOFRM timeline requires 1..65535 frames", fname, section, sequence.Frames.size());
+
+        if (recipe.HasKey(section, "FrameDurations")) {
+            auto parsed = AnyData::ParseValue(string {recipe.GetAsStr(section, "FrameDurations")}, false, true, AnyData::ValueType::String);
+            FO_VERIFY_AND_THROW(parsed.AsArray().Size() == sequence.Frames.size(), "FOFRM FrameDurations requires one duration per final frame", fname, section, parsed.AsArray().Size(), sequence.Frames.size());
+            vector<uint32_t> durations;
+            uint64_t total = 0;
+
+            for (const auto& value : parsed.AsArray()) {
+                uint32_t duration = ReadTimelineInteger(value.AsString(), fname, section, "FrameDurations");
+                total += duration;
+                durations.emplace_back(duration);
+            }
+
+            FO_VERIFY_AND_THROW(total <= std::numeric_limits<uint32_t>::max(), "FOFRM FrameDurations sum exceeds uint32 milliseconds", fname, section, total);
+
+            for (size_t index = 0; index < durations.size(); index++) {
+                sequence.Frames[index].DurationMs = durations[index];
+            }
+        }
+        else {
+            string_view owner = recipe.HasKey(section, "Duration") || recipe.HasKey(section, "Fps") ? section : string_view {};
+
+            if (recipe.HasKey(owner, "Duration")) {
+                auto parsed = AnyData::ParseValue(string {recipe.GetAsStr(owner, "Duration")}, false, true, AnyData::ValueType::String);
+                FO_VERIFY_AND_THROW(parsed.AsArray().Size() == 1, "FOFRM Duration requires one positive uint32 token", fname, owner);
+                ImageImport::SetFrameSequenceDuration(sequence, ReadTimelineInteger(parsed.AsArray()[0].AsString(), fname, owner, "Duration"));
+            }
+            else if (recipe.HasKey(owner, "Fps")) {
+                auto parsed = AnyData::ParseValue(string {recipe.GetAsStr(owner, "Fps")}, false, true, AnyData::ValueType::String);
+                FO_VERIFY_AND_THROW(parsed.AsArray().Size() == 1, "FOFRM Fps requires one positive uint32 token", fname, owner);
+                uint32_t fps = ReadTimelineInteger(parsed.AsArray()[0].AsString(), fname, owner, "Fps");
+                ImageImport::SetFrameSequenceDuration(sequence, numeric_cast<uint32_t>(sequence.Frames.size() * uint64_t {1000} / fps));
+            }
+            else if (!source) {
+                ImageImport::SetFrameSequenceDuration(sequence, numeric_cast<uint32_t>(sequence.Frames.size() * 100));
+            }
+        }
+
+        (void)ImageImport::GetDurationMs(sequence);
+    }
+
+    static auto LoadSourceCollection(const ImageRecipe& recipe, string_view fname, const ImageImport::Context& context) -> FrameCollection
+    {
+        const ConfigFile& fofrm = recipe.Values;
+
+        FrameCollection collection = context.Resolve(strex(fname).extract_dir().combine_path(recipe.Source).str());
+        collection.NewName = string {fname};
+
+        auto root_transform = ReadImageTransforms(fofrm, "", 1, fname, true)[0];
+
+        if (root_transform.InputDir) {
+            collection.Main = SelectImageSequence(collection, root_transform.InputDir, fname);
+
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        const auto original = collection;
+        string_view prefix = FO_GEOMETRY == 1 ? "HexDir" : "SquareDir";
+        int32_t directions = ImageImport::GetDirectionCount(collection);
+        ipos32 root_offset = ReadOffset(fofrm, "", {}, fname);
+        ipos32 root_frame_offset = ReadFrameOffsets(fofrm, "", 1, fname)[0];
+        optional<isize32> root_size = ReadFrameSizes(fofrm, "", 1, {}, fname)[0];
+
+        for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
+            ignore_unused(entries);
+            bool present = section.empty();
+
+            for (int32_t direction = 1; direction < directions && !present; direction++) {
+                present = section == strex("{} {}", prefix, direction).str();
+            }
+
+            FO_VERIFY_AND_THROW(present, "FOFRM Source override requires an existing direction", fname, section);
+            (void)ReadImageTransforms(fofrm, section, 1, fname, true);
+            (void)ReadFrameOffsets(fofrm, section, 1, fname);
+            (void)ReadFrameSizes(fofrm, section, 1, root_size, fname);
+        }
+
+        for (int32_t direction = 0; direction < directions; direction++) {
+            string section = direction == 0 ? string {} : strex("{} {}", prefix, direction).str();
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+            auto transform = ReadImageTransforms(fofrm, section, 1, fname, true)[0];
+            const auto& input = transform.InputDir && !root_transform.InputDir ? SelectImageSequence(original, transform.InputDir, fname) : direction == 0 ? original.Main : original.Dirs[direction - 1];
+            sequence = input;
+
+            ipos32 offset = ReadOffset(fofrm, section, root_offset, fname);
+            ipos32 frame_offset = fofrm.HasKey(section, "FrameOffsets") ? ReadFrameOffsets(fofrm, section, 1, fname)[0] : root_frame_offset;
+            optional<isize32> size = fofrm.HasKey(section, "Size") || fofrm.HasKey(section, "FrameSizes") ? ReadFrameSizes(fofrm, section, 1, root_size, fname)[0] : root_size;
+            transform.Size = size;
+
+            auto frames = MaterializeFrames(sequence, fname);
+            sequence.Frames.clear();
+
+            for (const auto& frame : frames) {
+                auto transformed = TransformImageFrame(frame, transform, fname);
+                sequence.Frames.insert(sequence.Frames.end(), std::make_move_iterator(transformed.begin()), std::make_move_iterator(transformed.end()));
+            }
+
+            sequence.Frames = SelectImageFrames(std::move(sequence.Frames), fofrm, section, fname, true);
+
+            sequence.OffsX = numeric_cast<int16_t>(numeric_cast<int64_t>(sequence.OffsX) + offset.x);
+            sequence.OffsY = numeric_cast<int16_t>(numeric_cast<int64_t>(sequence.OffsY) + offset.y);
+
+            for (FrameShot& shot : sequence.Frames) {
+                shot.Offset = {
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(shot.Offset.x) + frame_offset.x),
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(shot.Offset.y) + frame_offset.y),
+                };
+            }
+        }
+
+        for (int32_t direction = 0; direction < directions; direction++) {
+            string section = direction == 0 ? string {} : strex("{} {}", prefix, direction).str();
+            ApplySequenceTimeline(direction == 0 ? collection.Main : collection.Dirs[direction - 1], fofrm, section, fname, true);
+        }
+
+        return collection;
+    }
+
     auto Load(string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> FrameCollection
     {
         FO_TRACE_ZONE(Baking);
@@ -52,146 +321,79 @@ namespace ImageBakerFofrm
 
         FrameCollection collection;
 
-        ConfigFile fofrm(reader.GetStr());
+        auto recipe = ParseImageRecipe(fname, reader.GetStr());
+        const ConfigFile& fofrm = recipe.Values;
+        string_view direction_prefix = FO_GEOMETRY == 1 ? "HexDir" : "SquareDir";
 
-        if (string alias {fofrm.GetAsStr("", "Alias")}; !alias.empty()) {
-            FO_VERIFY_AND_THROW(strex(alias).get_file_extension() != "fofrm", "FOFRM Alias must reference an image source", fname, alias);
-
-            FrameCollection aliased = context.Resolve(strex(fname).extract_dir().combine_path(alias).str());
-            aliased.NewName = string {fname};
-            return aliased;
+        if (!recipe.Source.empty()) {
+            return LoadSourceCollection(recipe, fname, context);
         }
 
-        int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
-        frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
-        int32_t frm_count = fofrm.GetAsInt("", "count", 1);
-        frm_count = fofrm.GetAsInt("", "Count", frm_count);
-        FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
+        for (const auto& [section, entries] : fofrm.GetOrderedSections()) {
+            ignore_unused(entries);
+            size_t count = recipe.References.at(string {section}).size();
+            (void)ReadFrameOffsets(fofrm, section, count, fname);
+            (void)ReadFrameSizes(fofrm, section, count, {}, fname);
+            (void)ReadImageTransforms(fofrm, section, count, fname, false);
+        }
 
-        int32_t ox = fofrm.GetAsInt("", "offs_x", 0);
-        ox = fofrm.GetAsInt("", "OffsetX", ox);
-        int32_t oy = fofrm.GetAsInt("", "offs_y", 0);
-        oy = fofrm.GetAsInt("", "OffsetY", oy);
+        ipos32 offset = ReadOffset(fofrm, "", {}, fname);
+        optional<isize32> common_size;
 
-        collection.EffectName = fofrm.GetAsStr("", "effect");
-        collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
+        if (fofrm.HasKey("", "Size")) {
+            common_size = ReadSizeValue(fofrm.GetAsStr("", "Size"), fname, "", "Size");
+        }
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections;
-            sub_collections.reserve(10);
+            string section = dir == 0 ? string {} : strex("{} {}", direction_prefix, dir).str();
 
-            string dir_str = strex("dir_{}", dir);
-
-            if (!fofrm.HasSection(dir_str)) {
-                dir_str = strex("Dir_{}", dir);
-
-                if (!fofrm.HasSection(dir_str)) {
-                    dir_str = "";
-                }
-            }
-
-            if (dir_str.empty()) {
+            if (dir != 0 && !fofrm.HasSection(section)) {
                 if (dir == 1) {
                     break;
                 }
 
-                if (dir > 1) {
-                    throw ImageBakerException("FOFRM file invalid apps", fname);
-                }
-            }
-            else {
-                ox = fofrm.GetAsInt(dir_str, "offs_x", ox);
-                ox = fofrm.GetAsInt(dir_str, "OffsetX", ox);
-                oy = fofrm.GetAsInt(dir_str, "offs_y", oy);
-                oy = fofrm.GetAsInt(dir_str, "OffsetY", oy);
+                throw ImageBakerException("FOFRM file invalid apps", fname);
             }
 
-            string frm_dir = strex(fname).extract_dir();
+            if (dir != 0) {
+                offset = ReadOffset(fofrm, section, offset, fname);
+            }
 
-            int32_t frames = 0;
-            bool no_info = false;
-            bool load_fail = false;
+            const auto& names = recipe.References.at(section);
+            FO_VERIFY_AND_THROW(!names.empty(), "FOFRM file invalid data", fname, section);
+            auto offsets = ReadFrameOffsets(fofrm, section, names.size(), fname);
+            auto sizes = ReadFrameSizes(fofrm, section, names.size(), common_size, fname);
+            auto transforms = ReadImageTransforms(fofrm, section, names.size(), fname, false);
+            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+            sequence.OffsX = numeric_cast<int16_t>(offset.x);
+            sequence.OffsY = numeric_cast<int16_t>(offset.y);
 
-            for (int32_t frm = 0; frm < frm_count; frm++) {
-                string_view frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
-
-                if (frm_name.empty()) {
-                    frm_name = fofrm.GetAsStr(dir_str, strex("Frm_{}", frm), frm_name);
-                }
-
-                if (frm_name.empty() && frm == 0) {
-                    frm_name = fofrm.GetAsStr(dir_str, "frm");
-
-                    if (frm_name.empty()) {
-                        frm_name = fofrm.GetAsStr(dir_str, "Frm");
-                    }
-                }
-
-                if (frm_name.empty()) {
-                    no_info = true;
-                    break;
-                }
-
-                FrameCollection sub_collection;
+            for (size_t ref = 0; ref < names.size(); ref++) {
+                FrameCollection child;
 
                 try {
-                    sub_collection = context.Resolve(strex(frm_dir).combine_path(frm_name).str());
+                    child = context.Resolve(strex(fname).extract_dir().combine_path(names[ref]).str());
                 }
                 catch (const std::exception& ex) {
-                    throw ImageBakerException("FOFRM nested image loading failed", fname, frm_name, ex.what());
+                    throw ImageBakerException("FOFRM nested image loading failed", fname, names[ref], ex.what());
                 }
 
-                frames += sub_collection.SequenceSize;
+                transforms[ref].Size = sizes[ref];
+                auto frames = MaterializeFrames(SelectImageSequence(child, transforms[ref].InputDir, fname), fname);
 
-                int32_t next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
-                next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
-                int32_t next_y = fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0);
-                next_y = fofrm.GetAsInt(dir_str, strex("NextY_{}", frm), next_y);
+                for (const auto& frame : frames) {
+                    auto transformed = TransformImageFrame(frame, transforms[ref], fname);
 
-                sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
-            }
-
-            // No frames found or error
-            if (no_info || load_fail || sub_collections.empty() || (dir > 0 && frames != collection.SequenceSize)) {
-                if (no_info && dir == 1) {
-                    break;
-                }
-
-                throw ImageBakerException("FOFRM file invalid data", fname);
-            }
-
-            // Allocate animation storage
-            if (dir == 0) {
-                collection.SequenceSize = numeric_cast<uint16_t>(frames);
-                collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 * frm_count / frm_fps : 0);
-            }
-            else {
-                collection.HaveDirs = true;
-            }
-
-            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.OffsX = numeric_cast<int16_t>(ox);
-            sequence.OffsY = numeric_cast<int16_t>(oy);
-            sequence.Frames.resize(collection.SequenceSize);
-
-            // Merge many animations in one
-            int32_t frm = 0;
-
-            for (auto&& [sub_collection, next_x, next_y] : sub_collections) {
-                for (int32_t i = 0; i < sub_collection.SequenceSize; i++, frm++) {
-                    auto& shot = sequence.Frames[frm];
-
-                    if (sub_collection.Main.Frames[i].Shared) {
-                        throw ImageBakerException("FOFRM file invalid data (shared index)", fname);
+                    for (auto& shot : transformed) {
+                        shot.Offset = {numeric_cast<int32_t>(numeric_cast<int64_t>(shot.Offset.x) + offsets[ref].x), numeric_cast<int32_t>(numeric_cast<int64_t>(shot.Offset.y) + offsets[ref].y)};
+                        FO_VERIFY_AND_THROW(sequence.Frames.size() < 65535, "FOFRM exceeds the frame-count limit", fname, section);
+                        sequence.Frames.emplace_back(std::move(shot));
                     }
-
-                    shot.Width = sub_collection.Main.Frames[i].Width;
-                    shot.Height = sub_collection.Main.Frames[i].Height;
-                    shot.Data = sub_collection.Main.Frames[i].Data;
-                    shot.NextX = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextX + next_x);
-                    shot.NextY = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextY + next_y);
                 }
             }
+
+            sequence.Frames = SelectImageFrames(std::move(sequence.Frames), fofrm, section, fname, false);
+            ApplySequenceTimeline(sequence, fofrm, section, fname, false);
         }
 
         return collection;

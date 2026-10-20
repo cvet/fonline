@@ -31,6 +31,8 @@ Baking writes loose target-specific outputs. Packaging then filters each logical
 - `Source/Applications/BakerLib.cpp`
 - `Source/Tools/Baker.h`
 - `Source/Tools/Baker.cpp`
+- `Source/Tools/BakingContext.h`
+- `Source/Tools/BakingContext.cpp`
 - `Source/Tools/BakingReport.h`
 - `Source/Tools/BakingReport.cpp`
 - `Source/Tools/MetadataBaker.h`
@@ -197,19 +199,16 @@ The actual final target names that depend on these commands are project/preset-d
 
 ### `BakingContext`
 
-Defined in `Source/Tools/Baker.h`. It carries shared bake state:
+`Source/Tools/BakingContext.h/.cpp` encapsulates state initialized from passive
+`BakingContextOptions`. Settings/files stay borrowed; report and const graph stay
+shared. Use `Get*` accessors and `GetAsyncMode()`; configure modes/graph before tasks.
 
-- `Settings` — `BakingSettings` for the current bake.
-- `PackName` — current resource pack name.
-- `BakeChecker` — callback used to decide whether existing baked data is still valid.
-- `WriteData` — async output writer callback.
-- `BakedFiles` — existing baked file data source.
-- `ForceSyncMode` — optional override for synchronous execution.
+`CheckOutput()` calls the checker once if present, applies `required` (including
+`false`), then reports the result once. `HasBakeChecker()` detects absence.
+`WriteData()` returns the writer result and reports only successful submissions.
 
-For a `MasterBaker` pass, the context also carries the shared report collector
-and the stable baker name used for attribution. `WriteData` returns a
-`BakingWriteResult`, which distinguishes a content-changing write from an
-unchanged file whose timestamp was refreshed.
+`IsImageOutputOwned(path)` recognizes consumed sources and this pack's image roots;
+without a graph it returns `false`. Report methods are no-ops without a collector.
 
 Changed outputs use `fs::write_file`: an exclusively created temporary file
 beside the destination is written, flushed and closed before `fs::replace_file`
@@ -244,12 +243,11 @@ clean or forced rebuild.
 
 `BaseBaker::SetupBakers()` in `Source/Tools/Baker.cpp` creates requested bakers and then calls `SetupBakersHook()` so external/project code can extend the baker list.
 
-Each baker receives its own copy of the shared context. When a master-bake report
-is active, `BaseBaker` wraps that copy's check and write callbacks with the
-baker name. This keeps output attribution correct even when a baker performs
-work on its own asynchronous tasks. Built-in and project-provided bakers can add
-domain-specific counters and histograms through the protected report helpers;
-the helpers are no-ops when no report collector is attached.
+Each baker receives its own named copy of `BakingContext`, sharing the collector
+and read-only image graph while retaining its own baker identity. Context methods
+handle output attribution directly, including asynchronous work, without wrapping
+callbacks on each copy. The protected `BaseBaker` helpers forward to those methods
+so existing subclasses can keep using them.
 
 ### `MasterBaker`
 
@@ -509,15 +507,14 @@ and resolved per-frame bounds, plus a `ModelAnimationInfo` payload in
 `FO_ENABLE_3D` builds for model and animation AABBs and typed animation
 durations. `ReadSpriteResource` fills the sprite payload from the baked sprite
 header and frame table. For metadata queries that must not load pixel payloads,
-`ImageBaker` also writes one compact version 1
+`ImageBaker` also writes one compact version 2
 `SpriteInfo/<PackName>.foinfo` index per resource pack. The index is an
-aggregate output over every image source in that pack; normal scan baking
-merges changed entries with the existing complete index from the same pack's
-output directory, while an explicit request for the index rebuilds every
-entry. Pack-local previous outputs are mounted separately from the shared
-cross-pack baked-file registry so a pack can read its own aggregate before its
-first baker invocation. Introducing or losing the index is a full-rebake
-condition rather than a reason to decode all sprite pixels at runtime. The
+aggregate over published roots, with independent direction counts and per-frame
+durations. Packs without roots publish an empty index before dependent bakers,
+preventing stale metadata after last-root removal. Successful snapshots retain entries: full/lazy baking
+can restore a missing index without decoding unchanged pixels. Consumed inputs and
+intermediate FOFRM are absent. Pack-local outputs remain distinct from cross-pack
+resource winners. Sprite schema changes require matching binaries and a full rebake. The
 common `ReadAnimationInfo` path reads those 2D indexes in every
 build, reads `ModelAnimationInfo.foinfo` when 3D is enabled, and merges both payloads
 by resource name in `EngineMetadata`. Baker-local statistics follow the same
@@ -815,9 +812,9 @@ optional Earcut Delaunay refinement pass is deliberately not used: it changes
 neither triangle count nor covered area and does not promise bit-identical
 output across compilers.
 
-Baked sprite blobs have an explicit engine-owned magic/version and store each
-unique frame's individual draw offset before its cropped RGBA payload, followed
-by the mesh kind. `SpriteResource` owns this shared format contract, mesh data
+Baked spritev3 records store each direction's count/total and each logical frame's
+duration, int32 placement and int16 movement. Shared records reference pixels and
+geometry only; concrete records carry RGBA and mesh kind. `SpriteResource` owns this contract, mesh data
 type, and strict whole-resource decoder used by the client, particle editor,
 and project-side server image loader. Its public entry point accepts the exact
 resource byte span and creates its own reader, so decoding is independent of

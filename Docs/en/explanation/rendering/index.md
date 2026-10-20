@@ -482,6 +482,9 @@ creates another page; equal page-level scores keep the older atlas. The packed
 rectangle already includes the one-pixel texture border, so the algorithm does
 not change filtering padding, sprite pixels, or UV calculation.
 
+Mesh-texture pages start at 1024 x 2048 and grow for padded images within backend
+limits; a 1024-wide model texture needs 1026 pixels including its border.
+
 Font sheets, model material textures, particle texture maps, and Spine
 attachment textures are rectangular image consumers, not drawable polygon
 sprites. Their authored glyph or normalized UV coordinates address the complete

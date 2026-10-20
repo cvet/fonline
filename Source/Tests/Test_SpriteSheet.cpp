@@ -59,29 +59,35 @@ namespace
         data_writer writer {data};
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.write<uint16_t>(uint16_t {3});
-        writer.write<uint16_t>(uint16_t {120});
         writer.write<uint8_t>(numeric_cast<uint8_t>(GameSettings::MAP_DIR_COUNT));
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            writer.write<uint16_t>(uint16_t {3});
+            writer.write<uint32_t>(uint32_t {120});
+
             for (int32_t frame = 0; frame < 3; frame++) {
                 bool shared = shared_frame && frame == 1;
+                int32_t source = shared ? 0 : frame;
+                int16_t delta = numeric_cast<int16_t>((dir + 1) * (source + 1));
+                writer.write<uint32_t>(uint32_t {40});
+                writer.write<int32_t>(dir + source);
+                writer.write<int32_t>(-dir - source);
+                writer.write<int16_t>(delta);
+                writer.write<int16_t>(numeric_cast<int16_t>(-delta));
                 writer.write<uint8_t>(shared ? uint8_t {1} : uint8_t {0});
+
                 if (shared) {
                     writer.write<uint16_t>(uint16_t {0});
                     continue;
                 }
 
-                writer.write<int16_t>(numeric_cast<int16_t>(dir + frame));
-                writer.write<int16_t>(numeric_cast<int16_t>(-dir - frame));
                 writer.write<uint16_t>(uint16_t {5});
                 writer.write<uint16_t>(uint16_t {7});
-                int16_t delta = numeric_cast<int16_t>((dir + 1) * (frame + 1));
-                writer.write<int16_t>(delta);
-                writer.write<int16_t>(numeric_cast<int16_t>(-delta));
+
                 for (size_t pixel = 0; pixel < 35; pixel++) {
                     writer.write<ucolor>(ucolor {255, 255, 255, 255});
                 }
+
                 writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
             }
         }
@@ -106,6 +112,38 @@ namespace
         }
     };
 
+    static auto MakeTimelineTestResource(const vector<vector<uint32_t>>& timelines) -> vector<uint8_t>
+    {
+        vector<uint8_t> data;
+        data_writer writer {data};
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint8_t>(numeric_cast<uint8_t>(timelines.size()));
+
+        for (size_t dir = 0; dir < timelines.size(); dir++) {
+            uint64_t total = std::accumulate(timelines[dir].begin(), timelines[dir].end(), uint64_t {});
+            writer.write<uint16_t>(numeric_cast<uint16_t>(timelines[dir].size()));
+            writer.write<uint32_t>(numeric_cast<uint32_t>(total));
+
+            for (size_t frame = 0; frame < timelines[dir].size(); frame++) {
+                writer.write<uint32_t>(timelines[dir][frame]);
+                writer.write<int32_t>(numeric_cast<int32_t>(frame));
+                writer.write<int32_t>(numeric_cast<int32_t>(dir));
+                writer.write<int16_t>(int16_t {1});
+                writer.write<int16_t>(int16_t {-1});
+                writer.write<uint8_t>(uint8_t {0});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<ucolor>(ucolor {numeric_cast<uint8_t>(frame + 1), 0, 0, 255});
+                writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+            }
+        }
+
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+        return data;
+    }
+
     struct SpriteSheetFixture
     {
         GlobalSettings Settings {MakeSpriteSheetTestSettings()};
@@ -117,10 +155,16 @@ namespace
         SpriteManager Sprites {&Settings, Window, &Resources, &Timer, &Effects, &Hashes};
         nptr<RecordingSpriteSheetFactory> Factory {};
 
-        explicit SpriteSheetFixture(bool shared_frame = false)
+        explicit SpriteSheetFixture(bool shared_frame = false) { InitializeResources(MakeSpriteSheetTestResource(shared_frame)); }
+
+        explicit SpriteSheetFixture(const vector<vector<uint32_t>>& timelines) { InitializeResources(MakeTimelineTestResource(timelines)); }
+
+        void InitializeResources(vector<uint8_t> sheet)
         {
             auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteSheetTest");
-            source->AddFile("Sheet.fofrm", MakeSpriteSheetTestResource(shared_frame));
+            source->AddFile("Sheet.fofrm", sheet);
+            source->AddFile("art/critters/Testaa.fofrm", sheet);
+            source->AddFile("art/critters/Testab.fofrm", std::move(sheet));
             source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(5, 7));
             Resources.AddCustomSource(std::move(source));
             auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites);
@@ -133,6 +177,7 @@ namespace
     {
     public:
         uint32_t FrameFlags {};
+        bool FalloutMerge {};
 
         auto ResolveCritterAnimationFrames(hstring, CritterStateAnim, CritterActionAnim, int32_t&, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool override
         {
@@ -143,7 +188,14 @@ namespace
         }
 
         auto ResolveCritterAnimationSubstitute(hstring, CritterStateAnim, CritterActionAnim, hstring&, CritterStateAnim&, CritterActionAnim&) -> bool override { return false; }
-        auto ResolveCritterAnimationFallout(hstring, CritterStateAnim, CritterActionAnim, int32_t&, int32_t&, int32_t&, int32_t&, uint32_t&) -> bool override { return false; }
+        auto ResolveCritterAnimationFallout(hstring, CritterStateAnim, CritterActionAnim, int32_t& state, int32_t& action, int32_t& extra_state, int32_t& extra_action, uint32_t&) -> bool override
+        {
+            state = extra_state = 1;
+            action = 1;
+            extra_action = 2;
+
+            return FalloutMerge;
+        }
     };
 }
 
@@ -243,6 +295,123 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
     REQUIRE(untrimmed);
     CHECK(untrimmed->GetFramesCount() == 3);
     CHECK(untrimmed->GetSprOffset().size() == 3);
+}
+
+TEST_CASE("ResourceManagerMergesBothMotionAxes", "[sprite]")
+{
+    SpriteSheetFixture fixture;
+    SpriteSheetTestResolver resolver;
+    resolver.FalloutMerge = true;
+    ResourceManager resources {&fixture.Settings, &fixture.Resources, &fixture.Sprites, &resolver};
+    auto model = fixture.Hashes.to_hashed_string("art/critters/TestXX");
+
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        auto merged = resources.GetCritterAnimFrames(model, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), hdir(dir));
+        REQUIRE(merged);
+        CHECK(merged->GetFramesCount() == 6);
+        CHECK(merged->GetWholeTicks() == 240);
+        CHECK(merged->GetSprOffset()[3] == ipos32 {-5 * (dir + 1), 5 * (dir + 1)});
+    }
+}
+
+TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
+{
+    SECTION("PlaysUnequalFrameDurations")
+    {
+        SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        CHECK(sheet->GetWholeTicks() == 500);
+        sheet->Play({}, true, false);
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {99}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {299}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+    }
+
+    SECTION("QueriesTimelineWithoutMutatingPlayback")
+    {
+        SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        CHECK(sheet->GetFrameIndexAtPhase(0.199) == 0);
+        CHECK(sheet->GetFrameIndexAtPhase(0.2) == 1);
+        CHECK(sheet->GetFrameIndexAtPhase(0.799) == 1);
+        CHECK(sheet->GetFrameIndexAtPhase(0.8) == 2);
+        CHECK(sheet->GetFrameIndexAtPhase(1.0) == 2);
+        CHECK(sheet->GetFrameIndexAtPhase(0.2, true) == 0);
+        CHECK(sheet->GetFrameIndexAtPhase(0.8, true) == 1);
+        CHECK(sheet->GetTime() == 0.0f);
+        CHECK_THROWS(sheet->GetFrameIndexAtPhase(std::numeric_limits<float64_t>::quiet_NaN()));
+    }
+
+    SECTION("SwitchesUnequalDirectionCountsByPhase")
+    {
+        vector<vector<uint32_t>> timelines(numeric_cast<size_t>(GameSettings::MAP_DIR_COUNT), {100, 100});
+        timelines[0] = {100, 300, 100};
+        SpriteSheetFixture fixture {timelines};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        sheet->SetTime(0.9f);
+        CHECK(sheet->GetCurSpr() == sheet->GetDir(hdir {0})->GetSpr(2));
+        sheet->SetDir(hdir {1});
+        CHECK(sheet->GetTime() == 0.9f);
+        CHECK(sheet->GetFramesCount() == 2);
+        CHECK(sheet->GetWholeTicks() == 200);
+        CHECK(sheet->GetCurSpr() == sheet->GetDir(hdir {1})->GetSpr(1));
+        CHECK(sheet->GetDir(hdir {0})->GetFramesCount() == 3);
+        sheet->SetDir(hdir {0});
+        CHECK(sheet->GetFramesCount() == 3);
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        auto copy = sheet->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(copy);
+        CHECK(copy->GetTime() == 0.0f);
+        CHECK(copy->GetDir(hdir {1})->GetFramesCount() == 2);
+    }
+
+    SECTION("ReverseCompletesAtZeroAndLoopingNeverSelectsNegativeFrames")
+    {
+        SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        sheet->SetTime(1.0f);
+        sheet->Play({}, false, true);
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {400}));
+        CHECK_FALSE(sheet->IsPlaying());
+        CHECK(sheet->GetTime() == 0.0f);
+        sheet->Play({}, true, true);
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+    }
+
+    SECTION("ShortAndUint32MaximumDurationsNeverDivideByZero")
+    {
+        SpriteSheetFixture fixture {vector<vector<uint32_t>> {{1, 1, 1}}};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        sheet->Play({}, false, false);
+        CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {2}));
+        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        SpriteSheetFixture long_fixture {vector<vector<uint32_t>> {{4294967294u, 1u}}};
+        auto long_sheet = long_fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(long_sheet);
+        CHECK(long_sheet->GetWholeTicks() == 4294967295u);
+        long_sheet->Play({}, false, false);
+        CHECK(long_sheet->AdvanceTime(std::chrono::milliseconds {4294967294LL}));
+        CHECK(long_sheet->GetCurSpr() == long_sheet->GetSpr(1));
+        CHECK_FALSE(long_sheet->AdvanceTime(std::chrono::milliseconds {1}));
+    }
 }
 
 FO_END_NAMESPACE

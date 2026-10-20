@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"62249a09af953c9e67a1cbbd50c1154dcff5111d1c393eea735ead38c36f384c"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"74816fa98deea3684dbdd7159654a3f8d6b5aa0561236b29efa6166fa7eaef66"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -30,7 +30,7 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 
 - `Source/Tools/ImageImport.*` - `FrameShot::NextX` / `NextY` и общий контекст загрузчика;
 - `Source/Tools/ImageBaker.*` - координация, преобразования и сериализация запечённых спрайтов; соседние пары `ImageBaker-*.h/.cpp` владеют импортом исходных форматов;
-- `Source/Common/SpriteResource.*` - общий декодер кадров SpriteResource v2 и перенос `NextOffset`;
+- `Source/Common/SpriteResource.*` - общий декодер кадров SpriteResource v3 и перенос `NextOffset`;
 - `Source/Client/DefaultSprites.*` - `SpriteSheet::_sprOffset`, загрузка запечённых данных, общие кадры и листы по направлениям;
 - `Source/Common/Movement.*` - авторитетный прогресс времени/пути и построение целочисленного пиксельного `HexOffset`;
 - `Source/Common/Geometry.*` - re-split без потери позиции между гексом и offset с учётом проходимости;
@@ -59,7 +59,7 @@ int16_t NextX;
 int16_t NextY;
 ```
 
-Каждая пара задаёт отображаемое смещение одного кадра в пикселях. Для анимации направления из `N` кадров:
+Каждая пара добавляет пиксельное смещение в цикле из `N` кадров одного направления:
 
 ```text
 delta[i] = (NextX[i], NextY[i])
@@ -67,35 +67,36 @@ accum[i] = sum(delta[0..i])
 T        = sum(delta[0..N-1])
 ```
 
-`T` - авторское смещение полного цикла. Оно может быть меньше или больше одного гекса и не обязано быть параллельно вектору одного шага сетки. Runtime проецирует движение на `T` и не предполагает конкретный шаг гекса или длину цикла.
+`T` — смещение цикла. Длина и угол могут отличаться от шага сетки; runtime
+проецирует движение на него без предположений о шаге гекса или длине цикла.
 
-Загрузчики форматов изображений получают эти значения из своих исходных записей. Полный контракт descriptor приведён в [грамматике FOFRM](image-format.md#грамматика-fofrm). Для root-motion authoring текущий parser принимает имена ключей кадров и в lower-case, и в camel-case:
+Загрузчики получают дельты из исходных записей. FOFRM сохраняет их, если
+Move/FrameMoves явно не заменяет движение: int16 X Y, одна пара на ссылку
+до разворачивания. Пиксельные преобразования не вращают и не масштабируют движение.
+Необязательные пары FrameOffsets меняют размещение картинки (`Offset + FrameOffsets[i]`)
+без накопления и root motion; NextX_N/NextY_N запрещены. Число пар, границы раздела
+и вложенность описывает [грамматика FOFRM](image-format.md#грамматика-fofrm).
 
-```ini
-[dir_0]
-next_x_0 = 4
-next_y_0 = -2
-NextX_1 = 3
-NextY_1 = -1
-```
+ART сохраняет DeltaX/DeltaY как NextX/NextY со знаками отражения. Точки привязки
+выравнивают холст и размещение последовательности. Source сохраняет оба вида;
+обычная композиция отбрасывает размещение дочерней последовательности,
+сохраняя покадровое размещение/дельты. См. [ART](image-format.md#art).
 
-Вложенные ссылки FOFRM добавляют offset ссылающегося кадра к выбранному вложенному кадру. Другие поддерживаемые форматы переносят или вычисляют offsets по правилам своего importer. Отсутствующие значения обычно становятся нулём; проверяйте loader конкретного формата в `ImageBaker`, а не предполагайте, что каждый формат предоставляет одинаковые авторские поля.
-
-Опциональный импортер Arcanum ART сохраняет `DeltaX`/`DeltaY` как `NextX`/`NextY`,
-включая соответствующие знаки после отражения. Точки привязки кадров вместо
-этого совмещаются на общем холсте и определяют размещение последовательности;
-они не задают смещение между кадрами. FOFRM `Alias` сохраняет оба вида смещений,
-а обычная композиция копирует только дочерние кадры и добавляет авторские
-межкадровые смещения. Ротации и размещение описывает
-[контракт импорта ART](image-format.md#art).
-
-Offsets зависят от направления. Image baking может отражать, обрезать или компоновать кадры. Клиентский выбор ресурсов может извлечь первый или последний кадр, клонировать sheet либо объединить базовую и дополнительную Fallout-анимации. Этот merge path является внутренним поведением Engine и не имеет focused per-axis regression в текущем native suite; не считайте сохранение offsets на splice публичной гарантией. Проверяйте выбранный baked sheet по обеим осям и не редактируйте baked stream.
+Offsets зависят от направления. Запекание может отражать/обрезать/компоновать;
+клиент — извлекать, клонировать или объединять sheet. Fallout splice вычитает
+смещение базового цикла из дополнительной последовательности по обеим осям;
+проверка — ResourceManagerMergesBothMotionAxes.
 
 ## Запечённое и runtime-представление
 
-`ImageBaker::BakeCollection` записывает `NextX` и `NextY` каждого конкретного кадра после преобразований как знаковые 16-битные значения в запись кадра SpriteResource v2. Запись deduplicated shared frame ссылается на более ранний кадр. `ReadSpriteResource` декодирует пару в `SpriteResourceFrameData::NextOffset` вместе с draw offset, размерами, пикселями и опциональной mesh кадра.
+`ImageBaker::BakeCollection` записывает движение signed16 NextX/NextY, размещение
+int32 и положительную uint32 длительность каждого логического кадра в SpriteResource v3.
+Shared-слот ссылается на прежние пиксели/геометрию, сохраняя собственные движение,
+размещение и время. `ReadSpriteResource` декодирует движение в `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` создаёт `SpriteSheet` для направления и копирует декодированный `NextOffset` каждого конкретного кадра в `_sprOffset`. Shared frame копирует спрайт по ссылке и его уже декодированный offset. `SpriteSheet::GetSprOffset()` предоставляет клиентскому runtime read-only span.
+`DefaultSpriteFactory::LoadSprite` копирует NextOffset каждого слота в `_sprOffset`;
+shared-спрайт получает собственное размещение. `SpriteSheet::GetSprOffset()`
+возвращает read-only span. У направлений собственные числа кадров и таймлайны.
 
 В `ResolveCritterAnimationFrames` извлечение первого кадра сохраняет его delta; последнего — сумму всех deltas
 по обеим осям. Направление содержит один спрайт/offset, копирование сохраняет
@@ -220,7 +221,7 @@ new_anchor     = pos - round(old_phase * T_new)
 
 | Условие | Текущий результат |
 |---|---|
-| Отсутствует offset кадра FOFRM | Parser использует ноль для этого компонента. |
+| Отсутствует FrameOffsets FOFRM | Корректировка размещения нулевая; импортированные root-motion дельты не меняются. |
 | При запекании offset выходит за диапазон знакового 16-битного числа | Numeric conversion завершается ошибкой вместо тихого переполнения. |
 | В запечённом спрайте нет кадров или направлений | Клиентская загрузка не проходит validation. |
 | Запечённый кадр является sprite reference | Копируются спрайт и offset кадра по ссылке. |
@@ -303,6 +304,6 @@ python BuildTools/docs_ai_delivery.py --check
 python BuildTools/docs_validate.py
 ```
 
-Для импорта offsets и переноса запечённых данных запустите тесты `ImageBaker` в Engine test binary встраиваемого проекта. `Test_ImageBaker.cpp` покрывает знаковые FRM offsets, lower/camel-case keys FOFRM, вложенную композицию, mirroring, выбор кадров и baked round trips. `Test_Geometry.cpp` покрывает успешный re-split, отказ для заблокированной цели, поведение внутри текущего гекса, unrestricted normalization и отказ за пределами карты.
+Для импорта offsets и переноса запечённых данных запустите тесты `ImageBaker` в Engine test binary встраиваемого проекта. `Test_ImageBaker.cpp` покрывает знаковые FRM offsets, ключи и разделы FOFRM в PascalCase, отклонение старых имён, вложенную композицию, mirroring, выбор кадров и baked round trips. `Test_Geometry.cpp` покрывает успешный re-split, отказ для заблокированной цели, поведение внутри текущего гекса, unrestricted normalization и отказ за пределами карты.
 
 В текущем native suite нет focused fixture для root motion `CritterHexView`. После изменения `MovingContext`, `CritterHexView`, `SpriteSheet`, выбора анимации `ResourceManager` или созданных locomotion offsets выполните [матрицу визуальной приёмки](#матрица-визуальной-приёмки) в видимой клиентской сцене. Baking подтверждает data path, geometry tests - re-split, а видимая сцена - согласование походки.

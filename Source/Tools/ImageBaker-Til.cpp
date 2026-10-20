@@ -77,12 +77,35 @@ namespace ImageBakerTil
         int32_t frames_count = reader.GetLEInt32();
 
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(frames_count);
-        collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count);
-        collection.Main.Frames.resize(collection.SequenceSize);
+        uint16_t sequence_size {};
+        uint32_t anim_ticks {};
+        bool have_dirs {};
+        sequence_size = numeric_cast<uint16_t>(frames_count);
+        anim_ticks = numeric_cast<uint32_t>(1000 / 10 * frames_count);
+
+        collection.Main.Frames.resize(sequence_size);
 
         for (int32_t frm = 0; frm < frames_count; frm++) {
             collection.Main.Frames[frm] = ImageBakerZarDecoder::Decode(fname, reader, true);
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            }
+
+            (void)ImageImport::GetDurationMs(sequence);
         }
 
         return collection;

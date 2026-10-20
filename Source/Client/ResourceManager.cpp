@@ -200,13 +200,13 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                                         }
                                     }
 
+                                    uint32_t selected_duration = dir_anim->_frameDurations[first ? 0 : dir_anim->_framesCount - 1];
                                     // Change size
                                     dir_anim->_spr[0] = first ? dir_anim->GetSpr(0)->MakeCopy() : dir_anim->GetSpr(dir_anim->GetFramesCount() - 1)->MakeCopy();
                                     dir_anim->_sprOffset[0].x = first ? dir_anim->_sprOffset[0].x : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].x;
                                     dir_anim->_sprOffset[0].y = first ? dir_anim->_sprOffset[0].y : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].y;
-                                    dir_anim->_framesCount = 1;
-                                    dir_anim->_spr.resize(1);
-                                    dir_anim->_sprOffset.resize(1);
+                                    dir_anim->SetFrameTimeline({selected_duration});
+                                    dir_anim->RefreshParams();
                                 }
                             }
 
@@ -315,10 +315,21 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 return nullptr;
             }
 
-            int32_t frames_count = anim->GetFramesCount() + animex->GetFramesCount();
-            auto anim_merge_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
+            int32_t directions = std::max(anim->GetDirCount(), animex->GetDirCount());
+            vector<vector<uint32_t>> timelines;
 
-            for (int32_t d = 0; d < anim->_dirCount; d++) {
+            for (int32_t dir = 0; dir < directions; dir++) {
+                auto base = anim->GetDir(hdir(dir));
+                auto extra = animex->GetDir(hdir(dir));
+                FO_VERIFY_AND_THROW(base && extra, "Missing merged animation direction");
+                vector<uint32_t> timeline = base->_frameDurations;
+                timeline.insert(timeline.end(), extra->_frameDurations.begin(), extra->_frameDurations.end());
+                timelines.emplace_back(std::move(timeline));
+            }
+
+            auto anim_merge_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
+
+            for (int32_t d = 0; d < directions; d++) {
                 auto anim_merge = anim_merge_base->GetDir(hdir(d));
                 auto anim_ = anim->GetDir(hdir(d));
                 auto animex_ = animex->GetDir(hdir(d));
@@ -344,8 +355,11 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 }
 
                 anim_merge->_sprOffset[anim_->GetFramesCount()].x -= ox;
-                anim_merge->_sprOffset[anim_->GetFramesCount()].x -= oy;
+                anim_merge->_sprOffset[anim_->GetFramesCount()].y -= oy;
+                anim_merge->RefreshParams();
             }
+
+            anim_merge_base->RefreshParams();
 
             return anim_merge_base;
         }
@@ -353,8 +367,22 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         // Clone
         auto frame_flag = static_cast<AnimFrameFlag>(flags);
         auto first_or_last_mask = combine_enum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
-        int32_t frames_count = !is_enum_set(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
-        auto anim_clone_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
+        vector<vector<uint32_t>> timelines;
+
+        for (int32_t dir = 0; dir < anim->GetDirCount(); dir++) {
+            auto source = anim->GetDir(hdir(dir));
+            FO_VERIFY_AND_THROW(source, "Missing cloned animation direction");
+
+            if (!is_enum_set(frame_flag, first_or_last_mask)) {
+                timelines.emplace_back(source->_frameDurations);
+            }
+            else {
+                size_t selected = is_enum_set(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : source->_frameDurations.size() - 1;
+                timelines.push_back({source->_frameDurations[selected]});
+            }
+        }
+
+        auto anim_clone_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
             auto anim_clone = anim_clone_base->GetDir(hdir(d));
@@ -381,6 +409,12 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 }
             }
         }
+
+        for (int32_t dir = 0; dir < anim_clone_base->GetDirCount(); dir++) {
+            anim_clone_base->GetDir(hdir(dir))->RefreshParams();
+        }
+
+        anim_clone_base->RefreshParams();
 
         return anim_clone_base;
     }

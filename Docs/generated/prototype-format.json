@@ -167,7 +167,7 @@
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
         "anchors": [
-          "Settings->Baking.ProtoFileExtensions",
+          "GetSettings()->Baking.ProtoFileExtensions",
           "filtered_files.emplace_back"
         ]
       }
@@ -3633,5 +3633,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "74bc2b1ab3093dc6d252f634e42dd9c37992f7749701c6932f47a9350b25bec0"
+  "contract_digest": "fb49f5f02bf448c45d1c1bb9d7254042b711563916399b5c4fd2d45e4f0a43b4"
 }

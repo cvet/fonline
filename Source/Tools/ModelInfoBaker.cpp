@@ -35,12 +35,15 @@
 
 #if FO_ENABLE_3D
 
+#include "AnimationInfo.h"
 #include "Application.h"
 #include "ModelAnimationConverter.h"
 #include "ModelBoundsCalculator.h"
 #include "ModelMeshData.h"
 
 FO_BEGIN_NAMESPACE
+
+using ModelTextureInfoMap = unordered_map<string, SpriteInfo>;
 
 struct BakerModelDescriptionCut
 {
@@ -76,7 +79,7 @@ struct BakerModelDescriptionLink
     float32_t SpeedAjust {};
     vector<int32_t> DisabledLayer {};
     vector<string> DisabledMesh {};
-    vector<tuple<string, string, int32_t>> TextureInfo {};
+    vector<tuple<string, string, int32_t, bool>> TextureInfo {};
     vector<pair<string, string>> EffectInfo {};
     vector<BakerModelDescriptionCut> CutInfo {};
     optional<ModelBounds3D> Bounds {};
@@ -170,7 +173,7 @@ struct BakedModelMeshInfo
     unordered_set<string> Bones {};
     unordered_set<string> DrawBones {};
     size_t DrawBonesCount {};
-    vector<string> DiffuseTextures {};
+    vector<pair<string, string>> DiffuseTextures {};
     vector<string> SkinBoneRefs {};
     ModelSkeletonSource Skeleton {};
     optional<ModelBounds3D> StaticBounds {};
@@ -258,10 +261,10 @@ static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, const N
 static void CollectModelDescriptionLinkDependencies(const BakerModelDescriptionLink& link, unordered_set<string>& required_dependencies, unordered_set<string>& optional_dependencies);
 static void UpdateModelDescriptionDependencyWriteTime(const FileCollection& files, string_view dependency, string_view owner, bool required, uint64_t& max_write_time);
 
-static auto ValidateModelDescription(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription;
+static auto ValidateModelDescription(const ModelTextureInfoMap& texture_infos, const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription;
 static auto ValidateModelDescriptionAnimations(const FileCollection& source_files, const NameResolver& name_resolver, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakerModelDescription& description, string_view fname) -> ValidatedModelAnimations;
 static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityReport& compatibility_report, const vector<ModelAnimationSource>& animation_sources, string_view fname);
-static void ValidateModelDescriptionAttachment(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
+static void ValidateModelDescriptionAttachment(const ModelTextureInfoMap& texture_infos, const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateDirectAttachmentSize(const BakingSettings& settings, const BakedModelMeshInfo& child_info, string_view child_name, string_view fname);
 static void ValidateFo3dAggregateModelBounds(const BakingSettings& settings, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname);
 static void ValidateAggregateModelBoundsExtent(const BakingSettings& settings, const ModelBounds3D& bounds, string_view fname);
@@ -270,6 +273,7 @@ static auto GetModelBoundsMaxAbsExtent(const ModelBounds3D& bounds) -> float32_t
 static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const BakerModelDescription& description, string_view fname) -> ModelBounds3D;
 static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const BakerModelDescription& description, string_view fname) -> ModelMeshData;
 static auto ReadBakedModelDescriptionForBounds(const FileSystem& baked_files, string_view fname) -> BakerModelDescription;
+static void ValidateCachedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, string_view fname, unordered_map<string, BakedModelMeshInfo>& mesh_cache, unordered_set<string>& visited);
 static auto MakeModelDescriptionLinkTransform(const BakerModelDescriptionLink& child_default_link, const BakerModelDescriptionLink& outer_link) -> mat44;
 static void CalculateModelDescriptionLinkBounds(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, async_launch_mode async_mode, const ModelMeshData& parent_model_mesh, BakerModelDescription& description, string_view fname);
 static auto CollectModelDescriptionClips(const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> vector<ModelDescriptionClip>;
@@ -282,9 +286,10 @@ struct ModelDescriptionLinkBounds
 
 static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, ModelBoundsMeasurement measurement, const vector<ModelDescriptionClip>& clips, const unordered_map<string, vector<optional<vector<mat44>>>>& link_bone_tracks, nptr<const ModelBoundsSampler> parent_sampler, const BakerModelDescriptionLink& link, string_view fname) -> optional<ModelDescriptionLinkBounds>;
 static auto GetModelBoundsMeasurement(const BakingSettings& settings) -> ModelBoundsMeasurement;
-static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
+static void ValidateModelDescriptionLinkData(const ModelTextureInfoMap& texture_infos, const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
-static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
+static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname, bool animated = false);
+static void ValidateImportedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, const BakerModelDescriptionLink& overrides, string_view fname);
 static void ValidateModelDescriptionEffect(const FileSystem& baked_files, string_view effect_name, string_view token, string_view fname);
 static void ValidateModelDescriptionBakedFileExists(const FileSystem& baked_files, string_view path, string_view kind, string_view fname);
 static void ValidateModelDescriptionDrawBoneReference(const BakedModelMeshInfo& info, string_view bone_name, string_view token, string_view fname);
@@ -329,8 +334,8 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 {
     FO_TRACE_ZONE(Baking);
 
-    FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
-    FO_VERIFY_AND_THROW(_context->Settings, "Baker context has no baking settings");
+    FO_VERIFY_AND_THROW(_context->GetBakedFiles(), "Baker context has no baked file registry");
+    FO_VERIFY_AND_THROW(_context->GetSettings(), "Baker context has no baking settings");
     ModelSourceAssetCache model_sources {files, _modelSourceLoader};
 
     if (target_path == "ModelAnimationInfo.foinfo") {
@@ -377,13 +382,38 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    BakerClientEngine dependency_engine(*_context->BakedFiles);
+    const ModelTextureInfoMap texture_infos = [this] {
+        ModelTextureInfoMap result;
+
+        for (const auto& header : _context->GetBakedFiles()->FilterFiles("foinfo", SPRITE_INFO_DIRECTORY)) {
+            auto file = File::Load(header);
+
+            for (auto& entry : ReadSpriteInfoFile(file.GetPath(), file.GetStr())) {
+                // Match runtime metadata precedence: the first visible pack wins.
+                result.try_emplace(std::move(entry.ResourcePath), std::move(entry.Info));
+            }
+        }
+
+        return result;
+    }();
+    BakerClientEngine dependency_engine(*_context->GetBakedFiles());
     vector<File> files_to_bake;
+    unordered_map<string, BakedModelMeshInfo> texture_mesh_cache;
+    unordered_set<string> validated_texture_models;
 
     for (File& file_ : filtered_files) {
         uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, dependency_engine, file_.GetPath());
 
-        if (_context->BakeChecker && !_context->BakeChecker(file_.GetPath(), max_write_time)) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(file_.GetPath(), max_write_time)) {
+            if (_context->GetBakedFiles()->IsFileExists(file_.GetPath())) {
+                try {
+                    ValidateCachedModelTextures(texture_infos, *_context->GetBakedFiles(), file_.GetPath(), texture_mesh_cache, validated_texture_models);
+                }
+                catch (const std::exception& ex) {
+                    throw ModelInfoBakerException("Cached model texture validation failed", file_.GetPath(), ex.what());
+                }
+            }
+
             continue;
         }
 
@@ -395,13 +425,13 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (File& file_ : files_to_bake) {
         string task_name = strex("BakeModelInfo-{}", file_.GetPath()).str();
-        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, validate_aggregate_bounds, file = std::move(file_)]() FO_DEFERRED {
-            BakerClientEngine client_engine(*_context->BakedFiles);
+        file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &model_sources, &texture_infos, validate_aggregate_bounds, file = std::move(file_)]() FO_DEFERRED {
+            BakerClientEngine client_engine(*_context->GetBakedFiles());
 
-            if (_context->BakeChecker) {
+            if (_context->HasBakeChecker()) {
                 uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, client_engine, file.GetPath());
 
-                if (!_context->BakeChecker(file.GetPath(), max_write_time)) {
+                if (!_context->CheckOutput(file.GetPath(), max_write_time)) {
                     return;
                 }
             }
@@ -410,14 +440,14 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             auto [description, max_write_time] = parser.Parse(file.GetPath());
             ignore_unused(max_write_time);
 
-            ValidatedModelDescription validated = ValidateModelDescription(*_context->Settings, files, *_context->BakedFiles, client_engine, model_sources, description, file.GetPath());
+            ValidatedModelDescription validated = ValidateModelDescription(texture_infos, *_context->GetSettings(), files, *_context->GetBakedFiles(), client_engine, model_sources, description, file.GetPath());
 
-            ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*_context->BakedFiles, description, file.GetPath());
-            CalculateModelDescriptionLinkBounds(files, *_context->BakedFiles, model_sources, GetModelBoundsMeasurement(*_context->Settings), GetAsyncMode(), model_mesh, description, file.GetPath());
+            ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*_context->GetBakedFiles(), description, file.GetPath());
+            CalculateModelDescriptionLinkBounds(files, *_context->GetBakedFiles(), model_sources, GetModelBoundsMeasurement(*_context->GetSettings()), GetAsyncMode(), model_mesh, description, file.GetPath());
 
             // A targeted .fo3d bake does not run BakeModelAnimationInfo, so the lighting envelope is checked here
             if (validate_aggregate_bounds) {
-                ValidateFo3dAggregateModelBounds(*_context->Settings, *_context->BakedFiles, model_sources, description, file.GetPath());
+                ValidateFo3dAggregateModelBounds(*_context->GetSettings(), *_context->GetBakedFiles(), model_sources, description, file.GetPath());
             }
 
             vector<uint8_t> data;
@@ -765,7 +795,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             state.Link->DisabledMesh.emplace_back(disabled_mesh_name != "All" ? disabled_mesh_name : string {});
         }
     }
-    else if (token == "Texture") {
+    else if (token == "Texture" || token == "TextureAnimation") {
         string index_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
         int32_t texture_index = ParseModelDescriptionInt(index_value, *_nameResolver, token, fname, line);
         string texture_name = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -774,7 +804,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, line, MODEL_MAX_TEXTURES);
         }
 
-        state.Link->TextureInfo.emplace_back(texture_name, state.Mesh, texture_index);
+        state.Link->TextureInfo.emplace_back(texture_name, state.Mesh, texture_index, token == "TextureAnimation");
     }
     else if (token == "Effect") {
         string effect_name = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -905,7 +935,7 @@ void ModelDescriptionParser::ApplyFloatValue(BakerModelDescriptionLink& link, st
     }
 }
 
-static auto ValidateModelDescription(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription
+static auto ValidateModelDescription(const ModelTextureInfoMap& texture_infos, const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const ModelSourceAssetCache& model_sources, const BakerModelDescription& description, string_view fname) -> ValidatedModelDescription
 {
     FO_TRACE_ZONE(Baking);
 
@@ -927,14 +957,12 @@ static auto ValidateModelDescription(const BakingSettings& settings, const FileC
         ValidateModelDescriptionBoneReference(main_info, bone_name, "FastTransitionBone", fname);
     }
 
-    for (const string& diffuse_texture : main_info.DiffuseTextures) {
-        ValidateModelDescriptionTexture(baked_files, main_info, diffuse_texture, "Model", fname);
-    }
+    ValidateImportedModelTextures(texture_infos, baked_files, main_info, description.DefaultLink, fname);
 
-    ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, main_info, nullptr, description.DefaultLink, fname);
+    ValidateModelDescriptionLinkData(texture_infos, source_files, baked_files, mesh_cache, main_info, nullptr, description.DefaultLink, fname);
 
     for (const BakerModelDescriptionLink& link : description.Links) {
-        ValidateModelDescriptionAttachment(settings, source_files, baked_files, model_sources, mesh_cache, main_info, link, fname);
+        ValidateModelDescriptionAttachment(texture_infos, settings, source_files, baked_files, model_sources, mesh_cache, main_info, link, fname);
     }
 
     ValidatedModelAnimations animations = ValidateModelDescriptionAnimations(source_files, name_resolver, baked_files, model_sources, mesh_cache, description, fname);
@@ -1118,7 +1146,7 @@ static void ValidateModelDescriptionAnimationData(ModelSkeletonCompatibilityRepo
     compatibility_report.AnimationDataIssues.clear();
 }
 
-static void ValidateModelDescriptionAttachment(const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname)
+static void ValidateModelDescriptionAttachment(const ModelTextureInfoMap& texture_infos, const BakingSettings& settings, const FileCollection& source_files, const FileSystem& baked_files, const ModelSourceAssetCache& model_sources, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname)
 {
     ValidateModelDescriptionBoneReference(main_info, link.LinkBone, link.IsParticles ? "AttachParticles" : "Attach", fname);
 
@@ -1128,7 +1156,8 @@ static void ValidateModelDescriptionAttachment(const BakingSettings& settings, c
     }
 
     if (link.ChildName.empty()) {
-        ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, main_info, nullptr, link, fname);
+        ValidateModelDescriptionLinkData(texture_infos, source_files, baked_files, mesh_cache, main_info, nullptr, link, fname);
+
         return;
     }
 
@@ -1152,7 +1181,8 @@ static void ValidateModelDescriptionAttachment(const BakingSettings& settings, c
 
     ValidateDirectAttachmentSize(settings, child_info, link.ChildName, fname);
 
-    ValidateModelDescriptionLinkData(source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
+    ValidateImportedModelTextures(texture_infos, baked_files, child_info, link, fname);
+    ValidateModelDescriptionLinkData(texture_infos, source_files, baked_files, mesh_cache, child_info, &main_info, link, fname);
 }
 
 static auto GetModelBoundsMaxAbsExtent(const ModelBounds3D& bounds) -> float32_t
@@ -1293,7 +1323,9 @@ static auto ReadBakedModelDescriptionLinkForBounds(data_reader& reader) -> Baker
         string texture_name = reader.read_string();
         string mesh_name = reader.read_string();
         int32_t texture_index = reader.read<int32_t>();
-        link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index);
+        uint8_t animated = reader.read<uint8_t>();
+        FO_VERIFY_AND_THROW(animated <= 1, "Invalid texture animation flag");
+        link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index, animated != 0);
     }
 
     uint32_t effect_count = reader.read<uint32_t>();
@@ -1793,7 +1825,7 @@ static void ValidateAggregateModelBoundsExtent(const BakingSettings& settings, c
     ValidateModelWorldExtent(settings, bounds, "Model bounds reach beyond the authored world extent; export it in the same units as the other models", "Model bounds stay below the authored world extent; export it in the same units as the other models", "aggregate ModelBounds", fname);
 }
 
-static void ValidateModelDescriptionLinkData(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)
+static void ValidateModelDescriptionLinkData(const ModelTextureInfoMap& texture_infos, const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)
 {
     if (link.SpeedAjust < 0.0f) {
         throw ModelInfoBakerException("Negative Speed value for model", fname, target_info.FileName);
@@ -1805,7 +1837,7 @@ static void ValidateModelDescriptionLinkData(const FileCollection& source_files,
         }
     }
 
-    for (const auto& [texture_name, mesh_name, texture_index] : link.TextureInfo) {
+    for (const auto& [texture_name, mesh_name, texture_index, animated] : link.TextureInfo) {
         if (texture_index < 0 || texture_index >= numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
             throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, MODEL_MAX_TEXTURES);
         }
@@ -1826,7 +1858,7 @@ static void ValidateModelDescriptionLinkData(const FileCollection& source_files,
             ValidateModelDescriptionMeshReference(*parent_info, parent_mesh, "Texture", fname);
         }
         else {
-            ValidateModelDescriptionTexture(baked_files, target_info, texture_name, "Texture", fname);
+            ValidateModelDescriptionTexture(texture_infos, baked_files, target_info, texture_name, animated ? "TextureAnimation" : "Texture", fname, animated);
         }
     }
 
@@ -1893,7 +1925,7 @@ static void ValidateModelDescriptionCut(const FileCollection& source_files, cons
     ValidateModelDescriptionDrawBoneReference(cut_info, cut.UnskinShape, "Cut", fname);
 }
 
-static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname)
+static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname, bool animated)
 {
     if (texture_name.empty() || strex(texture_name).starts_with("Parent")) {
         return;
@@ -1901,7 +1933,66 @@ static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const
 
     string texture_path = strex(model_info.FileName).extract_dir().combine_path(texture_name);
     ValidateModelDescriptionBakedFileExists(baked_files, texture_path, "Texture", fname);
-    ignore_unused(token);
+    auto info = texture_infos.find(texture_path);
+    FO_VERIFY_AND_THROW(info != texture_infos.end(), "Texture output has no SpriteInfo metadata", texture_path, token, fname);
+    FO_VERIFY_AND_THROW(info->second.Directions.size() == 1, "Model texture requires exactly one direction; select InputDir in FOFRM", texture_path, token, fname);
+    FO_VERIFY_AND_THROW(animated || info->second.Directions.front().Frames.size() == 1, "Static Texture requires exactly one frame; use TextureAnimation", texture_path, token, fname);
+}
+
+static void ValidateImportedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, const BakerModelDescriptionLink& overrides, string_view fname)
+{
+    for (const auto& [texture_name, owner_name] : model_info.DiffuseTextures) {
+        bool replaced = std::ranges::any_of(overrides.TextureInfo, [&owner_name](const auto& texture) { return std::get<2>(texture) == 0 && (std::get<1>(texture).empty() || std::get<1>(texture) == owner_name); });
+
+        if (!replaced) {
+            ValidateModelDescriptionTexture(texture_infos, baked_files, model_info, texture_name, "Model", fname);
+        }
+    }
+}
+
+static void ValidateCachedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, string_view fname, unordered_map<string, BakedModelMeshInfo>& mesh_cache, unordered_set<string>& visited)
+{
+    if (!visited.emplace(fname).second) {
+        return;
+    }
+
+    auto description = ReadBakedModelDescriptionForBounds(baked_files, fname);
+    const auto& main = GetBakedModelMeshInfo(baked_files, mesh_cache, description.Model);
+
+    auto validate_link = [&](const BakerModelDescriptionLink& link) {
+        if (link.IsParticles) {
+            return;
+        }
+
+        ptr<const BakedModelMeshInfo> target {&main};
+
+        if (!link.ChildName.empty()) {
+            string mesh_path = link.ChildName;
+
+            if (strex(mesh_path).get_file_extension() == "fo3d") {
+                ValidateCachedModelTextures(texture_infos, baked_files, mesh_path, mesh_cache, visited);
+                mesh_path = ReadBakedModelDescriptionForBounds(baked_files, mesh_path).Model;
+            }
+
+            target = make_ptr(&GetBakedModelMeshInfo(baked_files, mesh_cache, mesh_path));
+
+            if (strex(link.ChildName).get_file_extension() != "fo3d") {
+                ValidateImportedModelTextures(texture_infos, baked_files, *target, link, fname);
+            }
+        }
+
+        for (const auto& [name, mesh_name, slot, animated] : link.TextureInfo) {
+            ignore_unused(mesh_name, slot);
+            ValidateModelDescriptionTexture(texture_infos, baked_files, *target, name, animated ? "TextureAnimation" : "Texture", fname, animated);
+        }
+    };
+
+    ValidateImportedModelTextures(texture_infos, baked_files, main, description.DefaultLink, fname);
+    validate_link(description.DefaultLink);
+
+    for (const auto& link : description.Links) {
+        validate_link(link);
+    }
 }
 
 static void ValidateModelDescriptionEffect(const FileSystem& baked_files, string_view effect_name, string_view token, string_view fname)
@@ -2082,7 +2173,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     // Collect all (non-template) model descriptions and the newest write time across them and their includes
     vector<File> fo3d_files;
     uint64_t max_write_time = 0;
-    BakerClientEngine client_engine(*ctx.BakedFiles);
+    BakerClientEngine client_engine(*ctx.GetBakedFiles());
 
     for (const FileHeader& file_header : files) {
         if (strex(file_header.GetPath()).get_file_extension() != "fo3d") {
@@ -2099,22 +2190,22 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     if (fo3d_files.empty()) {
         return;
     }
-    if (ctx.BakeChecker && !ctx.BakeChecker(output_path, max_write_time)) {
+    if (ctx.HasBakeChecker() && !ctx.CheckOutput(output_path, max_write_time)) {
         return;
     }
 
     // Deterministic section order
     std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
 
-    async_launch_mode async_mode = ctx.ForceSyncMode.value_or(ctx.Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred;
-    ModelBoundsMeasurement measurement = GetModelBoundsMeasurement(*ctx.Settings);
+    async_launch_mode async_mode = ctx.GetAsyncMode();
+    ModelBoundsMeasurement measurement = GetModelBoundsMeasurement(*ctx.GetSettings());
     vector<std::future<ModelAnimationInfoSection>> section_bakings;
     section_bakings.reserve(fo3d_files.size());
 
     for (const File& file : fo3d_files) {
         string task_name = strex("BakeModelAnimationInfo-{}", file.GetPath());
         section_bakings.emplace_back(run_async(async_mode, task_name, [&ctx, &files, &model_sources, measurement, async_mode, &file]() FO_DEFERRED {
-            BakerClientEngine section_engine(*ctx.BakedFiles);
+            BakerClientEngine section_engine(*ctx.GetBakedFiles());
             return BakeModelAnimationInfoSection(ctx, files, section_engine, model_sources, measurement, async_mode, file);
         }));
     }
@@ -2163,22 +2254,19 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     auto data = vector<uint8_t>(config_text.begin(), config_text.end());
     ctx.WriteData(output_path, data);
 
-    if (ctx.Report) {
-        shared_ptr<BakingReport> report = ctx.Report;
-        report->AddCounter(ctx.PackName, ctx.BakerName, "modelSections", stats.ModelSections);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "modelBounds", stats.ModelBounds);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "animationEntries", stats.AnimationEntries);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "animationBounds", stats.AnimationBounds);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCalculations", stats.BoundsCalculations);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCacheHits", stats.BoundsCacheHits);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsIdle", stats.ViewBoundsIdle);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsFallback", stats.ViewBoundsFallback);
+    ctx.AddBakingReportCounter("modelSections", stats.ModelSections);
+    ctx.AddBakingReportCounter("modelBounds", stats.ModelBounds);
+    ctx.AddBakingReportCounter("animationEntries", stats.AnimationEntries);
+    ctx.AddBakingReportCounter("animationBounds", stats.AnimationBounds);
+    ctx.AddBakingReportCounter("boundsCalculations", stats.BoundsCalculations);
+    ctx.AddBakingReportCounter("boundsCacheHits", stats.BoundsCacheHits);
+    ctx.AddBakingReportCounter("viewBoundsIdle", stats.ViewBoundsIdle);
+    ctx.AddBakingReportCounter("viewBoundsFallback", stats.ViewBoundsFallback);
 
-        constexpr array<string_view, 6> extent_buckets {"<1", "1-2", "2-3", "3-5", "5-10", "10+"};
+    constexpr array<string_view, 6> extent_buckets {"<1", "1-2", "2-3", "3-5", "5-10", "10+"};
 
-        for (size_t i = 0; i < extent_buckets.size(); i++) {
-            report->AddHistogramValue(ctx.PackName, ctx.BakerName, "animationBoundsMaxExtent", extent_buckets[i], stats.AnimationBoundsMaxExtent[i]);
-        }
+    for (size_t i = 0; i < extent_buckets.size(); i++) {
+        ctx.AddBakingReportHistogramValue("animationBoundsMaxExtent", extent_buckets[i], stats.AnimationBoundsMaxExtent[i]);
     }
 }
 
@@ -2207,7 +2295,7 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
     string bounds_max_y;
     string bounds_max_z;
 
-    ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*ctx.BakedFiles, description, file.GetPath());
+    ModelMeshData model_mesh = ReadBakedModelMeshForBounds(*ctx.GetBakedFiles(), description, file.GetPath());
     DescriptionBoundsSampler sampler {model_mesh, description, measurement};
     optional<ModelBounds3D> model_bounds;
     optional<ModelBounds3D> view_bounds;
@@ -2315,7 +2403,7 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
         throw ModelInfoBakerException("Model view bounds were not selected", file.GetPath());
     }
 
-    ValidateAggregateModelBoundsExtent(*ctx.Settings, *model_bounds, file.GetPath());
+    ValidateAggregateModelBoundsExtent(*ctx.GetSettings(), *model_bounds, file.GetPath());
 
     stats.ModelSections++;
     stats.ModelBounds++;
@@ -2528,7 +2616,7 @@ static void CollectBakedModelMeshInfo(const ModelMeshBoneData& bone, BakedModelM
         }
 
         if (!bone.AttachedMesh->DiffuseTexture.empty()) {
-            info.DiffuseTextures.emplace_back(bone.AttachedMesh->DiffuseTexture);
+            info.DiffuseTextures.emplace_back(bone.AttachedMesh->DiffuseTexture, bone.Name);
         }
 
         for (const string& skin_bone : bone.AttachedMesh->SkinBoneNames) {
@@ -2612,16 +2700,21 @@ void BakerModelDescriptionLink::Save(data_writer& writer) const
     writer.write_sized_object_vector(DisabledLayer);
     writer.write_string_vector(DisabledMesh);
     writer.write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
-    for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
+
+    for (const auto& [texture_name, mesh_name, texture_index, animated] : TextureInfo) {
         writer.write_string(texture_name);
         writer.write_string(mesh_name);
         writer.write<int32_t>(texture_index);
+        writer.write<uint8_t>(animated ? uint8_t {1} : uint8_t {0});
     }
+
     writer.write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
+
     for (const auto& [effect_name, mesh_name] : EffectInfo) {
         writer.write_string(effect_name);
         writer.write_string(mesh_name);
     }
+
     writer.write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
     for (const BakerModelDescriptionCut& cut : CutInfo) {
         cut.Save(writer);

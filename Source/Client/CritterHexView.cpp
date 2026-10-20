@@ -598,9 +598,9 @@ void CritterHexView::Process()
             frm_index = EvaluateMovementFrameIndex(cur_anim.Frames);
         }
         else {
-            int32_t anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32_t>() * 100 / cur_anim.FramesDuration.to_ms<int32_t>();
-            int32_t frm_proc = _curAnim.has_value() ? std::min(anim_proc, 100) : anim_proc % 100;
-            frm_index = lerp(0, cur_anim.Frames->GetFramesCount() - 1, numeric_cast<float32_t>(frm_proc) / 100.0f);
+            float64_t phase = std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<float64_t>()) / cur_anim.FramesDuration.to_ms<float64_t>();
+            phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
+            frm_index = cur_anim.Frames->GetFrameIndexAtPhase(phase);
         }
 
         if (root_motion_drive) {

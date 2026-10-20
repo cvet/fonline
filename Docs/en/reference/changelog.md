@@ -12,7 +12,75 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-19
+## Current - 2026-10-20
+
+### Changed
+
+- FOFRM: PascalCase Frame/Frames/Offset/FrameOffsets, indexed HexDir/SquareDir
+  (root 0), physical Size/FrameSizes. Old names fail before source resolution.
+- ConfigFile terminal continuation has EOF/final-newline parity; empty values
+  remain consumer-validated.
+- Image baking publishes FOFRM roots and suppresses their transitive inputs across
+  filtered packs and overlays. Content fingerprints update dependent outputs and
+  SpriteInfo for same-stat input edits in full and on-demand baking.
+
+### Migration
+
+- Source now inherits complete binary/FOFRM collections, directions, placement,
+  motion and timing; root transforms default all directions. Frame/Frames defaults
+  to 10 fps from final frames. Use InputDir/FrameInputDirs, Crop/FrameCrops, Grid,
+  FrameIndices, Flip/FrameFlips, Rotate/FrameRotations, Size/FrameSizes,
+  Canvas/FrameCanvases and CanvasOffset/FrameCanvasOffsets for composition.
+  Per-reference lists precede grid/flattening; FrameIndices follows flattening.
+  Move/FrameMoves explicitly replaces int16 root motion; bitmap transforms keep
+  literal placement/motion. Resample, PixelUsage and ColorSpace select filtering.
+  Existing Color/Encoded/Bilinear bytes stay unchanged. Area cannot upscale;
+  Data/Normal cannot declare ColorSpace. Alias and Effect are refused with dated
+  markers through 2026-12-31; Fps in a named direction fails instead of being ignored.
+
+- `bcabd4d6c192400790f577b9a165c79594aa8ee7` (`2026.1.54-dev`) → `2026.1.55-dev`.
+  Rename `fps` → `Fps`; replace Alias with Source and remove Effect. Replace `offs_x/offs_y` or
+  `OffsetX/OffsetY` with `Offset = X Y`, retaining carry. Replace
+  `frm/Frm/frm_N/Frm_N` with exclusive, nonempty Frame/Frames; remove Count,
+  keep active references/repeats/order. Frame is one full path; quote spaces in Frames.
+- Author order: source/frames, selection/crop/grid, geometry/filter, placement/motion, timing.
+  Use `Key = Value`, one-space continuations, last without slash; runtime accepts other spacing/order.
+- Move direction 0 into root, merging fields/resolving conflicts. Use active-geometry
+  `[HexDir 1]`..`[HexDir 5]` or `[SquareDir 1]`..`[SquareDir 7]`.
+  Map old degree order hex 30/90/150/210/270/330 or square
+  45/90/135/180/225/270/315/0 to 0..N-1. Named zero/old Dir fail before source resolution;
+  no fallback. Legacy refusals: `FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31")`.
+- Replace authored NextX_N/NextY_N with FrameOffsets: local signed-int32 X Y
+  pairs, one per active reference before flattening/continued line. Missing pairs
+  are zero; empty/invalid/out-of-range/wrong-count/reference-free lists fail.
+  Placement adds Offset and child frame offsets without accumulation or imported
+  delta changes; child sequence placement drops, Offset carries, int32 placement overflow fails.
+- Size/FrameSizes sets W H in 1..65535; see [FOFRM](../how-to/content/image-format.md#fofrm-grammar)
+  for defaults and validation.
+- Duration/FrameDurations define positive millisecond timelines, with local timing
+  overriding root defaults. Directions may have different counts and durations;
+  direction switches preserve phase. Fps0 is refused; raw legacy zero clocks
+  normalize to10fps, sub-ms positive periods to1ms. Data/Normal bypass alpha crop.
+- Replace direct game/model/UI/script references to consumed images or intermediate
+  FOFRM with separate root wrappers. Mount inputs explicitly; filters select outputs
+  without hiding dependencies. Loaders with NewName declare matching ResolveOutput.
+  Missing/cyclic input chains and more than 64 FOFRM nodes fail before conversion.
+  Rebuild the baker and rebake: `.baker-cache/Image/` snapshots are private and
+  replace timestamp-only image decisions; they are never shipped. Removing a last
+  reference restores standalone publication and updates SpriteInfo automatically.
+- Migrate sources/tools/tests; rebuild roles/metadata, rebake. Check native/client,
+  EN/RU, contracts/docs/site/AI and compat dates; validation covers Windows only.
+- Sprite v3 and SpriteInfo2 require a full image rebake; runtime compatibility
+  advances0.0.74→0.0.75. Shared pixels retain independent logical timing/offsets/motion.
+  Saves/IDs/DB/network schemas and Managed ABI9 are unchanged.
+  Deploy/rollback matching binaries/packs/sources and regenerate metadata.
+- LFMODINF schema4 requires a full model rebake. Texture is one-frame/one-direction;
+  TextureAnimation explicitly loops a single-direction timeline per instance.
+  Mesh atlases grow for padded textures within backend limits. See
+  [model textures](../how-to/content/model-format.md#textures) for caching, UVs and inheritance.
+  LFMODMSH/LFOZZRIG are unchanged. Non-cached directory queries retain mount-relative paths.
+
+## 2026.1.54-dev - 2026-10-19
 
 ### Fixed
 

@@ -52,6 +52,9 @@ namespace ImageBakerSpr
         ignore_unused(context);
 
         FrameCollection collection;
+        uint16_t sequence_size {};
+        uint32_t anim_ticks {};
+        bool have_dirs {};
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             reader.SetCurPos(0);
@@ -330,16 +333,20 @@ namespace ImageBakerSpr
             }
 
             if (dir == 0) {
-                collection.SequenceSize = numeric_cast<uint16_t>(anim_frames.size());
-                collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size());
+                sequence_size = numeric_cast<uint16_t>(anim_frames.size());
+                anim_ticks = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size());
             }
 
             if (dir == 1) {
-                collection.HaveDirs = true;
+                have_dirs = true;
             }
 
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.Frames.resize(collection.SequenceSize);
+            sequence.Frames.resize(anim_frames.size());
+
+            for (auto& frame : sequence.Frames) {
+                frame.DurationMs = 100;
+            }
 
             for (size_t anim_frame = 0; anim_frame < anim_frames.size(); anim_frame++) {
                 auto& shot = sequence.Frames[anim_frame];
@@ -350,6 +357,8 @@ namespace ImageBakerSpr
 
                 for (size_t i = 0, j = anim_frame; i < j; i++) {
                     if (anim_frames[i] == frm) {
+                        shot = sequence.Frames[i];
+                        shot.Data.clear();
                         shot.Shared = true;
                         shot.SharedIndex = numeric_cast<uint16_t>(i);
                         founded = true;
@@ -501,6 +510,25 @@ namespace ImageBakerSpr
             if (dir_cnt == 1) {
                 break;
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            }
+
+            (void)ImageImport::GetDurationMs(sequence);
         }
 
         return collection;

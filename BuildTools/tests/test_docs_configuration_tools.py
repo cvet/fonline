@@ -134,6 +134,15 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         self.assertIn("`SaveMapperScreenshot()`", english)
         self.assertIn("`SaveMapperScreenshot()`", russian)
 
+    def test_config_continuation_documents_final_newline_parity(self) -> None:
+        english = self._text(CONFIG_EN)
+        for claim in ("terminal continuation", "final newline", "Empty values", "consumer"):
+            self.assertIn(claim, english)
+        self.assertIn(
+            'SECTION("PreservesTerminalContinuationWithOrWithoutFinalNewline")',
+            self._text("Source/Tests/Test_ConfigFile.cpp"),
+        )
+
     def test_legacy_pointers_preserve_heading_routes(self) -> None:
         for canonical_path, legacy_path in (
             (CONFIG_EN, CONFIG_LEGACY),

@@ -785,6 +785,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalProject",
             root / "Examples" / "MinimalProject",
+            ignore=shutil.ignore_patterns("Build", "Engine", "Workspace"),
         )
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalMultiplayer",
@@ -1360,9 +1361,13 @@ class DocumentationValidatorTests(unittest.TestCase):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(
-                source_path.read_text(encoding="utf-8"), encoding="utf-8"
-            )
+            # This fixture copies only part of the native API corpus. Keep the
+            # format anchors, but omit the full Engine inventory declaration.
+            source_text = "\n".join(
+                line for line in source_path.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("///@ ApiContract scope:native-codegen ")
+            ) + "\n"
+            target_path.write_text(source_text, encoding="utf-8")
         image_format_model_path = root / docs_image_format.DEFAULT_MODEL
         image_format_model_path.write_text(
             docs_image_format.render_image_format_model(root),

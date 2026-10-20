@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"4f641ce96a62129711252ea81c5ab67ac0c9e64369be938fdac55e95ff13d975"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -295,18 +295,34 @@ Effect Effects/Armor.fofx
 ### Текстуры
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
+TextureAnimation 0 Cycle.fofrm
 ```
 
-Slot должен лежать в `[0, FO_MODEL_MAX_TEXTURES)`. Для обычного имени выбранный `Mesh` должен существовать и быть drawable, path разрешается относительно target mesh, а ресурс должен быть запечён. Imported diffuse texture является default для slot `0`; остальные slots изначально пусты.
+Slots лежат в `[0, FO_MODEL_MAX_TEXTURES)`, Mesh выбирает drawable-цели, пути
+относятся к файлу меша. Imported diffuse — статическое умолчание slot0. Безусловный Texture или
+TextureAnimation для slot0 заменяет это умолчание у выбранного меша. Заменённый
+исходник не требует самостоятельной публикации. Baker проверяет действующее
+умолчание; runtime загружает импортированные текстуры при генерации включённых
+мешей после применения переопределений и attachment links.
+Texture требует опубликованный выход SpriteInfo с одним направлением и кадром.
+FOFRM Size позволяет запечь уменьшенный вариант большого источника, поставляя
+только корень. TextureAnimation явно и циклически проигрывает одностороннюю
+шкалу изображения: у каждого экземпляра своя фаза с момента создания.
+Направление выбирается через FOFRM InputDir.
 
-В attached child `Parent` копирует первую совпавшую текущую texture родителя в том же slot, а `Parent_<mesh>` — texture конкретного parent mesh:
+Frames/UV/durations кешируются неизменяемыми; sprite mesh crop восстанавливает
+полный логический холст до загрузки. Кадры разного размера сохраняют полные UV.
+Смена кадра обновляет UV геометрии/батчи; auxiliary atlas rectangles должны совпадать.
+Статические модели не обновляют texture playback.
 
-```text
-Texture 0 Parent_Torso
-```
-
-Не используйте `Parent` в root description; при нескольких parent meshes задавайте suffix явно.
+В attachment Parent либо Parent_<mesh> наследует ресурс того же slot со своей
+фазой ребёнка. Статический Texture отвергает анимированное наследование.
+При нескольких мешах родителя задавайте suffix; в корне Parent запрещён.
+Native AdvanceTextureTime/GetMeshTexture обеспечивают детерминированное
+управление/инспекцию и не являются script exports. LFMODINF schema4 требует
+согласованных бинарников и полной выпечки моделей/изображений (spritev3,
+SpriteInfo2, runtime0.0.73); LFOZZRIG прежний.
 
 ### Эффекты
 

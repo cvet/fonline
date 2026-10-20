@@ -119,6 +119,9 @@ public:
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
+    [[nodiscard]] auto GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr<const MeshTexture>;
+    [[nodiscard]] auto GetCombinedMeshGenerationRevision() const noexcept -> uint64_t { return _combinedMeshGenerationRevision; }
+    auto AdvanceTextureTime(timespan elapsed) -> bool;
 
     void SetupFrame(isize32 draw_size, ipos32 frame_pivot);
     void PrepareFrameLayout();
@@ -195,7 +198,8 @@ private:
     auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
     void GenerateCombinedMeshes();
     void InvalidateCombinedMeshes() noexcept;
-    void FillCombinedMeshes(ptr<const ModelInstance> cur);
+    void FillCombinedMeshes(ptr<ModelInstance> cur);
+    void ResolveDefaultTexture(ptr<MeshInstance> mesh, size_t slot);
     void CombineMesh(ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
@@ -213,6 +217,8 @@ private:
     void RefreshMoveAnimation();
     void RefreshFrameLayout();
     void RefreshConfigurationLayout();
+    auto RefreshTextureFrames() -> bool;
+    auto UpdateTextureAnimation(nanotime now) -> bool;
 
     ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
@@ -244,6 +250,9 @@ private:
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
+    nanotime _lastTextureTick {};
+    float64_t _textureElapsedMs {};
+    bool _hasAnimatedTextures {};
     bool _resetDrawTimeOnNextAnimationAdvance {};
     mat44 _matRot {};
     mat44 _matScale {1.0f};

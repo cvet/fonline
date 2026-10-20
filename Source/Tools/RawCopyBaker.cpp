@@ -54,13 +54,17 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            string ext = strex(file_header.GetPath()).get_file_extension();
-            auto it = std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext);
-
-            if (it == _context->Settings->Baking.RawCopyFileExtensions.end()) {
+            if (_context->IsImageOutputOwned(file_header.GetPath())) {
                 continue;
             }
-            if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+
+            string ext = strex(file_header.GetPath()).get_file_extension();
+            auto it = std::ranges::find(_context->GetSettings()->Baking.RawCopyFileExtensions, ext);
+
+            if (it == _context->GetSettings()->Baking.RawCopyFileExtensions.end()) {
+                continue;
+            }
+            if (_context->HasBakeChecker() && !_context->CheckOutput(file_header.GetPath(), file_header.GetWriteTime())) {
                 continue;
             }
 
@@ -68,10 +72,14 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
         }
     }
     else {
-        string ext = strex(target_path).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext);
+        if (_context->IsImageOutputOwned(target_path)) {
+            return;
+        }
 
-        if (it == _context->Settings->Baking.RawCopyFileExtensions.end()) {
+        string ext = strex(target_path).get_file_extension();
+        auto it = std::ranges::find(_context->GetSettings()->Baking.RawCopyFileExtensions, ext);
+
+        if (it == _context->GetSettings()->Baking.RawCopyFileExtensions.end()) {
             return;
         }
 
@@ -80,7 +88,7 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), file.GetWriteTime())) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(file.GetPath(), file.GetWriteTime())) {
             return;
         }
 

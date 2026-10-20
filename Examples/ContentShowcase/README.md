@@ -9,6 +9,10 @@ document_id: content-showcase-readme
 A standalone, presentation-focused FOnline project that demonstrates the
 content pipeline without depending on Last Frontier, TLA, or another game.
 
+The captures below are historical snapshots at the recorded Engine/source
+revisions. They predate FrameOffsets draw placement; recapture is required to
+validate the current descriptor. Their pixels and provenance remain unchanged.
+
 ![Direct3D 11 capture of the FOnline content gallery](captures/windows-direct3d11.png)
 
 ![OpenGL capture of the FOnline content gallery on Linux CI](captures/linux-opengl.png)
@@ -18,7 +22,7 @@ content pipeline without depending on Last Frontier, TLA, or another game.
 The checked project covers:
 
 - generated TGA source images and a six-frame FOFRM animation;
-- authored `NextX`/`NextY` root-motion metadata;
+- six section-local FrameOffsets draw-placement pairs, without root motion;
 - a static light source and a custom additive `.fofx` effect;
 - a bounded SPARK particle system and short WAV effect;
 - a source `.fomap` with explicit placement identifiers;
@@ -180,8 +184,8 @@ local outputs from becoming accidental source.
 3. Test each boundary separately. Source checks prove bytes and references;
    baking proves converters; content tests prove prototypes and map structure;
    headless smoke proves loading and lifecycle; visible captures prove pixels.
-4. Preserve authoring metadata. FOFRM frame timing and every `NextX`/`NextY`
-   value are checked instead of treating the descriptor as an opaque file.
+4. Preserve authoring metadata. FOFRM timing and all six FrameOffsets placement
+   pairs are checked instead of treating the descriptor as an opaque file.
 5. Keep backend claims evidence-based. Direct3D 11 and WebGL 2 have separate
    checked captures; neither implies OpenGL visual acceptance.
 
@@ -211,7 +215,7 @@ is intentional.
   mixed correctly on a real device.
 - The sample demonstrates 2D content; a 3D model was intentionally omitted to
   keep source and rights review compact.
-- FOFRM root-motion metadata affects presentation frames here and does not move
-  an authoritative game entity.
+- FOFRM FrameOffsets adds to Offset for each reference without accumulation;
+  imported NextX/NextY root-motion deltas remain separate and unchanged.
 - Public repository visibility, immutable tags, hosted Web output, and
   Linux OpenGL release evidence remain owner-gated publication work.
