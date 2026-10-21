@@ -50,7 +50,6 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
         }
 
         string_view index = key.substr(prefix.size());
-
         return !index.empty() && std::all_of(index.begin(), index.end(), [](char ch) { return ch >= '0' && ch <= '9'; });
     };
 

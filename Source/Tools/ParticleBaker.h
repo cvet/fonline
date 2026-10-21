@@ -63,9 +63,8 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
 
-    [[nodiscard]] auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string> override;
-
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
+    auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string> override;
 
 private:
 #if FO_SPARK_PARTICLES

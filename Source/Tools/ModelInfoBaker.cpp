@@ -1258,7 +1258,6 @@ static void ValidateModelDescriptionAttachment(const ModelTextureInfoMap& textur
 
     if (link.ChildName.empty()) {
         ValidateModelDescriptionLinkData(texture_infos, source_files, baked_files, mesh_cache, main_info, nullptr, link, fname);
-
         return;
     }
 

@@ -69,16 +69,16 @@ public:
     [[nodiscard]] virtual auto GetOrder() const -> int32_t = 0;
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
-    [[nodiscard]] virtual auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string>;
+    virtual auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string>;
     void SetImageDependencies(shared_ptr<const ImageDependencyGraph> graph) { _context->SetImageDependencies(std::move(graph)); }
 
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr, shared_ptr<ResourceUsage> usage = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
     auto CheckOutput(string_view path, uint64_t write_time, optional<bool> required = {}) const -> bool;
-    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->GetAsyncMode(); }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->IsBakingReportEnabled(); }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
+    auto GetAsyncMode() const -> async_launch_mode { return _context->GetAsyncMode(); }
+    auto IsBakingReportEnabled() const noexcept -> bool { return _context->IsBakingReportEnabled(); }
+    auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
     void AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count = 1) const;

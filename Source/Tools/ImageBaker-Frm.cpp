@@ -691,14 +691,17 @@ static_assert(sizeof(FoPalette) == 1024);
     auto DiscoverFrXDependencies(string_view fname, const FileCollection& files) -> vector<ImageImport::DependencyReference>
     {
         auto dependencies = DiscoverDependencies(fname, files);
+
         for (int32_t direction = 1; direction < 6; direction++) {
             string path = strex("{}{}", fname.substr(0, fname.size() - 1), direction).str();
             dependencies.push_back({path, direction == 1});
             bool exists = std::ranges::any_of(files, [&path](const FileHeader& file) { return file.GetPath() == path; });
+
             if (direction == 1 && !exists) {
                 break;
             }
         }
+
         return dependencies;
     }
 

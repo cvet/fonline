@@ -96,8 +96,8 @@ namespace ImageImport
 
     void CheckEnabled(string_view fname);
     void SetFrameSequenceDuration(FrameSequence& sequence, uint32_t duration_ms);
-    [[nodiscard]] auto GetDirectionCount(const FrameCollection& collection) -> uint8_t;
-    [[nodiscard]] auto GetDurationMs(const FrameSequence& sequence) -> uint32_t;
+    auto GetDirectionCount(const FrameCollection& collection) -> uint8_t;
+    auto GetDurationMs(const FrameSequence& sequence) -> uint32_t;
 }
 
 FO_END_NAMESPACE

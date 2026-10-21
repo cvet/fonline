@@ -238,6 +238,7 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
     set<string> selected;
     map<string, set<string>> reasons;
     deque<string> pending;
+
     auto select = [&](const string& key, string_view reason) {
         reasons[key].emplace(reason);
 

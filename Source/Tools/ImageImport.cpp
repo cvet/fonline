@@ -54,7 +54,6 @@ auto ImageImport::GetDirectionCount(const FrameCollection& collection) -> uint8_
     }
 
     FO_VERIFY_AND_THROW(count == 1 || count == GameSettings::MAP_DIR_COUNT, "Image collection direction count is unsupported", count);
-
     return count;
 }
 
@@ -70,7 +69,6 @@ auto ImageImport::GetDurationMs(const FrameSequence& sequence) -> uint32_t
     }
 
     FO_VERIFY_AND_THROW(duration <= std::numeric_limits<uint32_t>::max(), "Image sequence duration exceeds uint32 milliseconds", duration);
-
     return numeric_cast<uint32_t>(duration);
 }
 

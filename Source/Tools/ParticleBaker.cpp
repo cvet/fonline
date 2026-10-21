@@ -407,6 +407,7 @@ auto ParticleBaker::CollectResourceDependencies(const FileCollection& files, str
         }
     }
 #endif
+
     ignore_unused(files, extension);
     return result;
 }
