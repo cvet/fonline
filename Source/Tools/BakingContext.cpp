@@ -32,6 +32,7 @@
 //
 
 #include "BakingContext.h"
+#include "DataSource.h"
 #include "ImageDependencyGraph.h"
 #include "Settings.h"
 
@@ -47,11 +48,12 @@ BakingContext::BakingContext(BakingContextOptions options) :
     _forceSyncMode {options.ForceSyncMode},
     _report {std::move(options.Report)},
     _outputDiscovery {options.OutputDiscovery},
-    _imageDependencies {std::move(options.ImageDependencies)}
+    _imageDependencies {std::move(options.ImageDependencies)},
+    _usage {std::move(options.Usage)}
 {
 }
 
-BakingContext::BakingContext(const BakingContext& context, string_view baker_name) :
+BakingContext::BakingContext(const BakingContext& context, string_view baker_name, BakingOutputKind output_kind) :
     _settings {context._settings},
     _packName {context._packName},
     _bakeChecker {context._bakeChecker},
@@ -62,7 +64,9 @@ BakingContext::BakingContext(const BakingContext& context, string_view baker_nam
     _report {context._report},
     _bakerName {baker_name},
     _outputDiscovery {context._outputDiscovery},
-    _imageDependencies {context._imageDependencies}
+    _imageDependencies {context._imageDependencies},
+    _usage {context._usage},
+    _outputKind {context._packName == EMBEDDED_PACK_NAME ? BakingOutputKind::Required : output_kind}
 {
     FO_VERIFY_AND_THROW(_writeData, "Baker context has no output writer");
     FO_VERIFY_AND_THROW(!_bakerName.empty(), "Baker name is empty");
@@ -135,6 +139,11 @@ auto BakingContext::IsImageOutputOwned(string_view path) const -> bool
 
 auto BakingContext::CheckOutput(string_view path, uint64_t write_time, optional<bool> required) const -> bool
 {
+    if (_usage) {
+        shared_ptr<ResourceUsage> usage = _usage;
+        usage->RegisterOutput(_packName, path, _bakerName, _outputKind);
+    }
+
     bool scheduled = !_bakeChecker || _bakeChecker(path, write_time);
 
     if (required.has_value()) {
@@ -152,6 +161,11 @@ auto BakingContext::CheckOutput(string_view path, uint64_t write_time, optional<
 auto BakingContext::WriteData(string_view path, const_span<uint8_t> data) const -> BakingWriteResult
 {
     BakingWriteResult result = _writeData(path, data);
+
+    if (_usage) {
+        shared_ptr<ResourceUsage> usage = _usage;
+        usage->RegisterOutput(_packName, path, _bakerName, _outputKind);
+    }
 
     if (_report) {
         shared_ptr<BakingReport> report = _report;
@@ -198,6 +212,14 @@ void BakingContext::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
     if (_report) {
         shared_ptr<BakingReport> report = _report;
         report->RecordSharedSpriteMeshFrames(_packName, _bakerName, count);
+    }
+}
+
+void BakingContext::KeepOutput(string_view path) const
+{
+    if (_usage) {
+        shared_ptr<ResourceUsage> usage = _usage;
+        usage->RegisterOutput(_packName, path, _bakerName, BakingOutputKind::Required);
     }
 }
 

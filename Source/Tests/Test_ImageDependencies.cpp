@@ -39,7 +39,18 @@
 #include "SpriteResource.h"
 #include "Test_BakerHelpers.h"
 
+FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
+
 FO_BEGIN_NAMESPACE
+
+static auto ReadImageExportManifest(string_view output_dir) -> nlohmann::json
+{
+    auto bytes = fs::read_file(strex(output_dir).combine_path("Resources.usage.json"));
+    REQUIRE(bytes.has_value());
+    return nlohmann::json::parse(*bytes);
+}
 
 TEST_CASE("ImageDependencies")
 {
@@ -94,7 +105,8 @@ TEST_CASE("ImageDependencyPipeline")
     REQUIRE(initial.BakeAll());
     string root_output = strex(output_dir).combine_path("Art/Source.fofrm").str();
     REQUIRE(fs::exists(root_output));
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
+    CHECK(fs::exists(strex(output_dir).combine_path("Art/Source.tga")) == output_filter.empty());
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Art") == nlohmann::json::array({"SpriteInfo/Art.foinfo"}));
 
     REQUIRE(fs::write_file(strex(output_dir).combine_path("Art/Source.tga"), string_view {"previous standalone output"}));
     auto original_time = std::filesystem::last_write_time(fs::make_path(source_path));
@@ -105,7 +117,8 @@ TEST_CASE("ImageDependencyPipeline")
 
     MasterBaker changed {&settings};
     REQUIRE(changed.BakeAll());
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
+    CHECK(fs::exists(strex(output_dir).combine_path("Art/Source.tga")) == output_filter.empty());
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Art") == nlohmann::json::array({"SpriteInfo/Art.foinfo"}));
 
     auto baked = fs::read_file(root_output);
     REQUIRE(baked.has_value());
@@ -175,8 +188,10 @@ Bakers = Image
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Lower/Source.tga")));
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Upper/Source.tga")));
+    CHECK(fs::exists(strex(output_dir).combine_path("Lower/Source.tga")));
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Lower") == nlohmann::json::array({"SpriteInfo/Lower.foinfo"}));
+    CHECK(fs::exists(strex(output_dir).combine_path("Upper/Source.tga")));
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Upper") == nlohmann::json::array({"SpriteInfo/Upper.foinfo"}));
     auto baked = fs::read_file(strex(output_dir).combine_path("Recipes/Root.fofrm"));
     REQUIRE(baked.has_value());
     auto resource = ReadSpriteResource(make_const_span(*baked));
@@ -338,8 +353,10 @@ TEST_CASE("ImageDependencyLazyMatchesFull")
     File info_file = resources.ReadFile("SpriteInfo/Art.foinfo");
     REQUIRE(info_file);
     auto info = ReadSpriteInfoFile("SpriteInfo/Art.foinfo", info_file.GetStr());
-    REQUIRE(info.size() == 1);
-    CHECK(info[0].Info.Directions[0].Frames[0].Size == isize32 {2, 1});
+    REQUIRE(info.size() == 2);
+    auto root = std::ranges::find(info, string {"Root.fofrm"}, &SpriteInfoFileEntry::ResourcePath);
+    REQUIRE(root != info.end());
+    CHECK(root->Info.Directions[0].Frames[0].Size == isize32 {2, 1});
     CHECK(fs::last_write_time(root_output) == root_write_time);
     BakerTests::OverrideSetting(settings.Baking.ForceBaking, true);
     MasterBaker forced {&settings};
@@ -369,16 +386,16 @@ TEST_CASE("ImageDependenciesExposeTextureMetadataBeforeModelBaking")
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
     CHECK(fs::exists(strex(output_dir).combine_path("Art/Model.fo3d")));
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
+    CHECK(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
 }
 
-TEST_CASE("ImageDependenciesInvalidateModelsWhenTheLastImageRootIsConsumed")
+TEST_CASE("ImageDependenciesPreserveIndependentModelTexturesWhenSourceIsConsumed")
 {
     string temp_dir = fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_image_last_root_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
     auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
     string output_dir = strex(temp_dir).combine_path("output").str();
     vector<uint8_t> pixels {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8, 0, 0, 255, 255};
-    REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Empty.cs"), string_view {"// Metadata fixture\n"}));
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Empty.cs"), string_view {"///@ FixedType Common ResourceSet\n///@ Property ResourceSet Common hstring[] Files Resource\n"}));
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("art/Source.tga"), pixels));
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("recipes/Other.tga"), pixels));
     string recipe = strex(temp_dir).combine_path("recipes/Root.fofrm").str();
@@ -386,21 +403,80 @@ TEST_CASE("ImageDependenciesInvalidateModelsWhenTheLastImageRootIsConsumed")
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("models/Body.obj"), string_view {"o Body\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"}));
     string model = strex(temp_dir).combine_path("models/Model.fo3d").str();
     REQUIRE(fs::write_file(model, string_view {"Model Body.obj\nTexture 0 Source.tga\n"}));
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("protos/Roots.fopro"), string_view {"[ResourceSet]\n$Name = ModelRoot\nFiles = Model.fo3d\n"}));
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n", output_dir).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker initial {&settings};
     REQUIRE(initial.BakeAll());
     REQUIRE(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
     REQUIRE(fs::write_file(recipe, string_view {"Frame = Source.tga\n"}));
     MasterBaker changed {&settings};
-    CHECK_FALSE(changed.BakeAll());
+    REQUIRE(changed.BakeAll());
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Art") == nlohmann::json::array({"Source.tga", "SpriteInfo/Art.foinfo"}));
     REQUIRE(fs::write_file(model, string_view {"Model Body.obj\nTexture 0 Root.fofrm\n"}));
     MasterBaker repaired {&settings};
     REQUIRE(repaired.BakeAll());
-    CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
+    CHECK(fs::exists(strex(output_dir).combine_path("Art/Source.tga")));
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Art") == nlohmann::json::array({"SpriteInfo/Art.foinfo"}));
+    CHECK(ReadImageExportManifest(output_dir).at("Packs").at("Recipes") == nlohmann::json::array({"Root.fofrm", "SpriteInfo/Recipes.foinfo"}));
     CHECK(fs::exists(strex(output_dir).combine_path("Models/Model.fo3d")));
+}
+#endif
+
+#if FO_ENABLE_3D
+TEST_CASE("ResourceUsagePreservesPhysicalModelProviders")
+{
+    string temp_dir = fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_resource_providers_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string root {"Model.fo3d"};
+    string descriptor {"Model.fo3d"};
+    string common_pack;
+
+    SECTION("DifferentDescriptionsAtTheSamePath")
+    {
+    }
+
+    SECTION("RelativeOverridesResolveEveryChildProvider")
+    {
+        root = "Parent.fo3d";
+        descriptor = "Child.fo3d";
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("common/Parent.fo3d"), "Model Body.obj\nLayer 1 Value 1 Attach Child.fo3d Texture 0 Tint.tga\n"));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("common/Body.obj"), "o Body\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"));
+        common_pack = "\n[ResourcePack]\nName = CommonModels\nInputDirs = common client server\nBakers = Image ModelMesh ModelInfo\n";
+    }
+
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Types.cs"), "///@ FixedType Common ResourceSet\n///@ Property ResourceSet Common hstring[] Files Resource\n"));
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("protos/Roots.fopro"), strex("[ResourceSet]\n$Name = Models\nFiles = {}\n", root).str()));
+    vector<uint8_t> pixels {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8, 0, 0, 255, 255};
+
+    for (const auto& [directory, prefix] : {pair<string_view, string_view> {"client", "Low"}, {"server", "High"}}) {
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path(directory).combine_path(descriptor), strex("Model {}/Body.obj\nTexture 0 Color.tga\n", prefix).str()));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path(directory).combine_path(prefix).combine_path("Body.obj"), "o Body\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path(directory).combine_path(prefix).combine_path("Color.tga"), pixels));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path(directory).combine_path(prefix).combine_path("Tint.tga"), pixels));
+    }
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, common_pack).str()};
+    settings.ApplyConfigFile(config, temp_dir);
+    MasterBaker baker {&settings};
+    REQUIRE(baker.BakeAll());
+    auto manifest = ReadImageExportManifest(output_dir);
+    auto contains = [&](string_view pack, string_view path) { return std::ranges::any_of(manifest.at("Packs").at(std::string {pack}), [path](const auto& entry) { return entry == std::string {path}; }); };
+
+    for (const auto& [pack, prefix] : {pair<string_view, string_view> {"ClientArt", "Low"}, {"ServerArt", "High"}}) {
+        CHECK(contains(pack, descriptor));
+        CHECK(contains(pack, strex("{}/Body.obj", prefix)));
+        CHECK(contains(pack, strex("{}/Color.tga", prefix)));
+
+        if (!common_pack.empty()) {
+            CHECK(contains(pack, strex("{}/Tint.tga", prefix)));
+        }
+    }
 }
 #endif
 

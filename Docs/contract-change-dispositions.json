@@ -11148,6 +11148,42 @@
       "release_note": "Docs/en/reference/changelog.md Current and Docs/ru/reference/changelog.md Current, 2026.1.55-dev.",
       "compatibility": "Sprite v3, SpriteInfo2 and LFMODINF schema4 replace prior baked data; runtime compatibility 0.0.74 -> 0.0.75 requires matching binaries, sources, metadata and full-rebaked packs for deployment and rollback. Shared pixels retain independent logical timing/offsets/motion. Explicit timelines require positive milliseconds; raw zero clocks normalize to 10fps. Saves/IDs/DB/network schemas, Managed ABI9, LFMODMSH and LFOZZRIG are unchanged. Private image fingerprint snapshots are never shipped.",
       "owner": "engine-image-format (explicit owner request)"
+    },
+    {
+      "domain": "package",
+      "change_id": "package-change.model-scope.d4f9913a79aaf6a6",
+      "baseline_contract_sha256": "a5fef577da9235890756b321f60850ec3e3515868b7fc2e3c50543bc90d3d3d5",
+      "current_contract_sha256": "02cac215e2a0b41e1cee743fe16173ae1836013d48a69c368224250f4d714fbc",
+      "classification": "breaking",
+      "rationale": "Export only the complete runtime dependency closure of typed Resource references and explicit ResourceSet declarations while retaining full local baking.",
+      "migration": "Run the updated baker successfully before packaging. Resources.usage.json and both bake markers are mandatory; see Docs/en/explanation/content-pipeline/baking.md#resource-usage-manifest and Docs/en/how-to/release/packaging.md.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased",
+      "compatibility": "The package helper rejects missing, stale or malformed usage manifests. Rebuild baker and rebake before using this packager; packaged resource archive and runtime formats are unchanged.",
+      "owner": "Engine baking and packaging"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.ceafacc43613990a",
+      "baseline_contract_sha256": "1bc82c7e1608e871ed871b66dd517d3640dfbfc4e328c42d9f0356a63b0603ce",
+      "current_contract_sha256": "45c0883b032756573ad4ed43ebfe4a65c701a431813501a9c4d46de35865cbb0",
+      "classification": "breaking",
+      "rationale": "Keep standalone image candidates in the full local cache even when consumed by FOFRM so an independent Resource or model texture reference can select them. Runtime export is decided by Resources.usage.json.",
+      "migration": "Rebake with the updated MasterBaker, then package through its usage manifest. See Docs/en/how-to/content/image-format.md and Docs/en/explanation/content-pipeline/baking.md.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased",
+      "compatibility": "Local full-cache output inventory grows; composed FOFRM pixels and runtime resource paths retain their meaning. No image binary format change or legacy parsing branch is introduced.",
+      "owner": "Engine image baking and package selection"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.8f2d17792ea5f741",
+      "baseline_contract_sha256": "1bc82c7e1608e871ed871b66dd517d3640dfbfc4e328c42d9f0356a63b0603ce",
+      "current_contract_sha256": "45c0883b032756573ad4ed43ebfe4a65c701a431813501a9c4d46de35865cbb0",
+      "classification": "breaking",
+      "rationale": "Keep standalone image candidates in the full local cache even when consumed by FOFRM so an independent Resource or model texture reference can select them. Runtime export is decided by Resources.usage.json.",
+      "migration": "Rebake with the updated MasterBaker, then package through its usage manifest. See Docs/en/how-to/content/image-format.md and Docs/en/explanation/content-pipeline/baking.md.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased",
+      "compatibility": "Local full-cache output inventory grows; composed FOFRM pixels and runtime resource paths retain their meaning. No image binary format change or legacy parsing branch is introduced.",
+      "owner": "Engine image baking and package selection"
     }
   ]
 }

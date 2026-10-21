@@ -34,6 +34,7 @@
 #include "ParticleBaker.h"
 #include "EffekseerCompiler.h"
 #include "EffekseerExtension.h"
+#include "ImageDependencyGraph.h"
 #include "SparkExtension.h"
 
 #if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
@@ -315,7 +316,7 @@ static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t>
 #endif
 
 ParticleBaker::ParticleBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 #if FO_SPARK_PARTICLES
     ,
     _sparkContext {safe_alloc::make_unique<SPK::SPKContext>()}
@@ -328,6 +329,86 @@ ParticleBaker::ParticleBaker(shared_ptr<BakingContext> ctx) :
 
 ParticleBaker::~ParticleBaker()
 {
+}
+
+#if FO_EFFEKSEER_PARTICLES
+static auto ToEffekseerUtf8(const char16_t* value) -> string;
+#endif
+
+auto ParticleBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    vector<string> result;
+    string extension = strex(path).get_file_extension();
+
+#if FO_SPARK_PARTICLES
+    if (extension == "spk") {
+        File source = files.FindFileByPath(strex(path).change_file_extension("spark"));
+        FO_VERIFY_AND_THROW(source, "SPARK dependency source is missing", path);
+        const_span<uint8_t> data = source.GetDataSpan();
+        auto system = _sparkContext->getIOManager().loadFromBuffer("xml", make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<uint32_t>(data.size()));
+        FO_VERIFY_AND_THROW(system, "SPARK dependency source is invalid", path);
+
+        for (size_t i = 0; i < system->getNbGroups(); i++) {
+            const auto& renderer = system->getGroup(i)->getRenderer();
+
+            if (!renderer || !SPK::FO::IsSparkQuadRenderer(*renderer)) {
+                continue;
+            }
+
+            SPK::FO::SparkQuadRendererData values = SPK::FO::GetSparkQuadRendererData(*renderer);
+
+            if (!values.TextureName.empty()) {
+                result.emplace_back(ImageReferencePath(path, values.TextureName));
+            }
+
+            if (!values.EffectName.empty()) {
+                result.emplace_back(values.EffectName);
+            }
+        }
+    }
+#endif
+#if FO_EFFEKSEER_PARTICLES
+    if (extension == "efk") {
+        auto resources = _context->GetPackBakedFiles() ? _context->GetPackBakedFiles() : _context->GetBakedFiles();
+        FO_VERIFY_AND_THROW(resources, "Effekseer dependency collection has no baked resources", path);
+        File file = resources->ReadFile(path);
+        FO_VERIFY_AND_THROW(file, "Effekseer dependency output is missing", path);
+        const_span<uint8_t> data = file.GetDataSpan();
+        Effekseer::SettingRef setting = Effekseer::Setting::Create();
+        Effekseer::EffectRef effect = Effekseer::Effect::Create(setting, data.data(), numeric_cast<int32_t>(data.size()), 1.0f, u"");
+        FO_VERIFY_AND_THROW(effect, "Effekseer dependency output is invalid", path);
+        auto add_path = [&](string reference) {
+            if (!reference.empty()) {
+                result.emplace_back(ImageReferencePath(path, reference));
+            }
+        };
+
+        for (int32_t i = 0; i < effect->GetColorImageCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetColorImagePath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetNormalImageCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetNormalImagePath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetDistortionImageCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetDistortionImagePath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetModelCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetModelPath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetMaterialCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetMaterialPath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetCurveCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetCurvePath(i)));
+        }
+        for (int32_t i = 0; i < effect->GetWaveCount(); i++) {
+            add_path(ToEffekseerUtf8(effect->GetWavePath(i)));
+        }
+    }
+#endif
+    ignore_unused(files, extension);
+    return result;
 }
 
 void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_path) const

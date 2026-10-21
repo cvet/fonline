@@ -61,6 +61,7 @@ public:
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 6; }
 
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
+    auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string> override;
 
 private:
     ModelSourceAssetCache::LoadCallback _modelSourceLoader {};

@@ -12,6 +12,14 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Baking now publishes `Resources.usage.json` after collecting typed Resource roots,
+  required outputs and runtime dependencies. Packaging requires this selection and
+  rejects missing or mismatched manifests; unused art stays in the local cache.
+- Migration: rebuild the baker and bake before packaging. Mark resource-valued
+  properties `Resource`; declare script/GUI/config and opaque-format paths in ordinary
+  FixedType resource arrays. Constructors are not a resource-registration mechanism.
+
+
 ## Current - 2026-10-20
 
 ### Changed

@@ -35,6 +35,7 @@
 #include "Client.h"
 #include "LineTracer.h"
 #include "MapLoader.h"
+#include "ResourceDefaults.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -3046,7 +3047,7 @@ void MapView::DrawViewAreaMask(const irect32& draw_area)
         interior[i * 2 + 1].EggData = fpos32(world_center);
     }
 
-    auto effect = _engine->EffectMngr.LoadEffect(EffectUsage::Primitive, "Effects/Primitive_ViewAreaFog.fofx");
+    auto effect = _engine->EffectMngr.LoadEffect(EffectUsage::Primitive, EffectDefaults::ViewAreaFog);
     FO_VERIFY_AND_THROW(effect, "Bounded view fog effect is null");
     _engine->SprMngr.DrawPoints(interior, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleStrip, &draw_area, effect);

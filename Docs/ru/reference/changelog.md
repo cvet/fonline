@@ -7,10 +7,18 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"71a63a99c978e86b3f422147e5560274ce3ed882bfa39828831d8896aa939083"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d35951d18d07f3b47f63897baf8ee425faf317a151f3c97e84edbe5dfa41490f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Bake публикует `Resources.usage.json` по типизированным Resource-ссылкам,
+  обязательным выходам и runtime-зависимостям. Упаковщик требует этот отбор и отвергает
+  отсутствующий или несогласованный манифест; лишние assets остаются в локальном кеше.
+- Миграция: пересоберите baker и выполните bake перед упаковкой. Помечайте ресурсные
+  поля флагом `Resource`; прямые пути скриптов, GUI, настроек и непрозрачных форматов
+  перечисляйте в обычных FixedType-массивах ресурсов. Конструкторы не регистрируют ресурсы.
+
 
 ## Current - 2026-10-20
 

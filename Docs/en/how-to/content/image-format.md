@@ -52,19 +52,18 @@ container; its extension selects dispatch, not payload format.
 
 ### Dependencies, publication and incremental baking
 
-FOFRM inputs remain available to the resolver even when `IncludePatterns` or
-`ExcludePatterns` excludes their standalone output. A referenced image or
-intermediate FOFRM is a source, and only graph roots are published. Suppression
-applies across packs and to shadowed overlay candidates. Removing the last
-reference restores normal standalone publication. Later mounted pack winners
-resolve logical source paths; no source is searched outside the mounted catalog.
+FOFRM inputs remain readable by the resolver even when pack patterns exclude
+standalone outputs. Logical source paths resolve through the mounted catalog and
+overlay winners. The root-only graph plan suppresses consumed candidates; full
+Master baking and on-demand lookup also retain standalone candidates for an
+independent game resource or model texture reference. Local cache availability
+and package export are separate decisions.
 
-Use separate root wrappers when both an original-size image and a transformed
-variant are needed. Game properties, scripts, GUI and model references must name
-the appropriate root. An old direct reference does not exempt an input from
-suppression. `RawCopy` cannot republish consumed inputs or compete with an
-identical Image output. A loader that changes `NewName` must declare the same
-resource path through `ResolveOutput` before conversion.
+`Resources.usage.json` selects the shipped outputs. A flattened FOFRM has no
+runtime dependency on its input PNG or intermediate FOFRM, so those copies are
+excluded unless independently referenced. Separate root wrappers remain useful
+for distinct transformations. `RawCopy` yields to image ownership. A loader that
+changes `NewName` must declare that same resource path through `ResolveOutput`.
 
 The graph uses the native `ImageRecipe` parser for quoted `Frames` and records
 FRM palettes/FRX auxiliary directions, including absent optional files. Missing
@@ -361,8 +360,8 @@ or restart after adding a previously failed resource.
 
 ## Diagnostics
 
-Check the published resource path and pack first; consumed inputs are intentionally
-absent. Resolve FOFRM paths relative to their descriptor and strip `$` options for
+Check the published resource path, pack and usage manifest first. A local
+consumed input is exported only when independently referenced. Resolve FOFRM paths relative to their descriptor and strip `$` options for
 physical lookup. See [validation rules](../../reference/image-format/validation.md)
 for grammar, dependency, direction, pixel and timeline refusals.
 

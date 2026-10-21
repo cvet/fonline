@@ -36,6 +36,7 @@
 #include "Client.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
+#include "ResourceDefaults.h"
 #include "ResourceIndex.h"
 #include "ResourcePack.h"
 #include "UpdateDescriptor.h"
@@ -127,7 +128,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr.EndScene();
 
     // Load font
-    _fontMngr.BindFoFont(FontType::Default, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
+    _fontMngr.BindFoFont(FontType::Default, FontDefaults::Updater, AtlasType::IfaceSprites, false, true);
 
     // Network handlers
     _conn.SetConnectHandler([this](ClientConnection::ConnectResult result) FO_DEFERRED { Net_OnConnect(result); });

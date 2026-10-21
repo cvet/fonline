@@ -1344,7 +1344,7 @@
       "id": "image-format.baking.discovery",
       "name": "Scan and targeted modes",
       "stability": "experimental",
-      "requirement": "Full scans and targeted requests use the same published-root plan. Consumed sources, intermediate FOFRM files, missing and unsupported targets are not standalone outputs. Output discovery registers paths without pixel conversion; fingerprint cache hits still register current outputs.",
+      "requirement": "Full scans and targeted requests share the image dependency catalog. Master and on-demand baking retain standalone candidates in the full local cache, including consumed inputs; package export is selected separately by Resources.usage.json. Output discovery and fingerprint cache hits still register actual output names.",
       "rationale": "Incremental project builds and one-file rebakes share one baker without treating a skipped target as failure.",
       "source": [
         {
@@ -1616,7 +1616,7 @@
       "id": "image-format.baking.root-outputs",
       "name": "Only recipe roots are published",
       "stability": "experimental",
-      "requirement": "Any image or intermediate FOFRM referenced by another recipe remains readable as a source but has no standalone output. Suppress all overlay candidates for a consumed logical path. Removing its last reference restores normal standalone publication. Migrate direct game references to separate root FOFRM wrappers when both variants are required.",
+      "requirement": "FOFRM inputs remain readable for composition. The dependency graph suppresses consumed standalone candidates in its root-only plan; the complete local cache also exposes them for independent Resource references and model textures. Flattened outputs have no runtime export edge to their inputs: unreferenced copies are excluded from Resources.usage.json.",
       "rationale": "Intermediate assets must not increase shipped size or bypass a declared resize/transformation recipe.",
       "source": [
         {

@@ -31,6 +31,7 @@
     "settings": "Source/Common/Settings.inc",
     "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
     "updater": "Source/Client/Updater.cpp",
+    "resource_defaults": "Source/Common/ResourceDefaults.h",
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
@@ -380,7 +381,7 @@
       "stability": "experimental",
       "requirement": "Keep Fonts/Default.fofnt available for the built-in updater path unless the host replaces that resource contract deliberately.",
       "rationale": "Updater binds the Default slot from that exact path with skip-if-loaded behavior.",
-      "source": [{"path": "Source/Client/Updater.cpp", "anchors": ["Fonts/Default.fofnt", "AtlasType::IfaceSprites", "true"]}]
+      "source": [{"path": "Source/Client/Updater.cpp", "anchors": ["FontDefaults::Updater", "AtlasType::IfaceSprites", "true"]}, {"path": "Source/Common/ResourceDefaults.h", "anchors": ["Fonts/Default.fofnt"]}]
     }
   ],
   "layout_rules": [

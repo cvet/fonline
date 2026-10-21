@@ -32,7 +32,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f</code> |
+| Contract digest | <code>eddfe1395ddf308c3626f977b13e24189189dfc3fcc88ea58665ce2676561d54</code> |
 
 ## Coverage
 
@@ -50,10 +50,11 @@ Included:
 - DefinePackage declaration clauses and the per-binary POSTFIX modifier
 - package.py targets, platforms, architecture keys, pack tokens, and payload effects
 - implemented, placeholder, and unsupported package boundaries
+- Resources.usage.json prerequisite and selection before target-specific resource packaging
 
 Excluded from this slice:
 
 - embedding-project package matrices and release policy
 - project configuration key schema and secret provisioning
-- resource-pack content selection and deployment topology
+- game-specific resource root declarations and deployment topology
 - installer signing credentials and external tool operation

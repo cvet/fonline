@@ -68,7 +68,7 @@ static auto DecodeWavSample(const_span<uint8_t> bytes, const WavFormat& format) 
 static void AppendOggPage(vector<uint8_t>& output, const ogg_page& page);
 
 AudioBaker::AudioBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 {
     AddLoader(std::bind(&AudioBaker::LoadWav, this, std::placeholders::_1, std::placeholders::_2), {"wav"});
 #if FO_AUDIO_ACM

@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "BakingReport.h"
+#include "ResourceUsage.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -60,6 +61,7 @@ struct BakingContextOptions
     shared_ptr<BakingReport> Report {};
     bool OutputDiscovery {};
     shared_ptr<const ImageDependencyGraph> ImageDependencies {};
+    shared_ptr<ResourceUsage> Usage {};
 };
 
 class BakingContext final
@@ -69,7 +71,7 @@ public:
 
     // Per-baker identity copy: shares the borrowed settings/files and the shared
     // report/graph owners with the source context, but carries its own baker name
-    BakingContext(const BakingContext& context, string_view baker_name);
+    BakingContext(const BakingContext& context, string_view baker_name, BakingOutputKind output_kind = BakingOutputKind::Required);
     BakingContext(const BakingContext&) = delete;
     BakingContext(BakingContext&&) noexcept = delete;
     auto operator=(const BakingContext&) = delete;
@@ -98,6 +100,8 @@ public:
     void RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const;
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
+    void KeepOutput(string_view path) const;
+
     void SetForceSyncMode(optional<bool> force_sync_mode);
     void SetOutputDiscovery(bool output_discovery);
     void SetImageDependencies(shared_ptr<const ImageDependencyGraph> graph);
@@ -114,6 +118,8 @@ private:
     string _bakerName {};
     bool _outputDiscovery {};
     shared_ptr<const ImageDependencyGraph> _imageDependencies {};
+    shared_ptr<ResourceUsage> _usage {};
+    BakingOutputKind _outputKind {};
 };
 
 FO_END_NAMESPACE

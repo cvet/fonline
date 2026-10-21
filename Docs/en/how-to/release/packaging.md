@@ -12,6 +12,25 @@ This guide turns an embedding project's compiled FOnline applications and baked 
 
 Use the generated [package interface](../../reference/packages/index.md) for the exact current grammar, target/platform compatibility, pack tokens, payloads, and command-line arguments. Use the [Support Matrix](../../reference/platforms/support-matrix.md) before calling any resulting artifact supported.
 
+## Resource selection
+
+`package.py` requires a valid `Resources.usage.json` from the successful full
+bake. It validates version 1, exact build/configuration hashes against the success
+markers, canonical case-sensitive paths, duplicate keys/entries and the existence
+of every listed file. Missing or invalid selection fails packaging; there is no
+implicit full-content fallback. The exact allowlist is intersected with existing
+target suffix restrictions at the shared collection hook, including Client,
+server-served client resources and Embedded. Platform-specific managed runtime
+replacement remains mandatory after resource collection. A pack with no selected
+art files is a valid empty `.fores` archive.
+
+Use the full loose bake tree for development and Mapper workflows. Resource-free
+tool payloads retain their existing `NoRes` behavior; this manifest does not add a
+new full-content package mode. Embedding projects must declare direct and computed
+runtime paths through Resource properties or ordinary forced-inclusion tables.
+The [baking guide](../../explanation/content-pipeline/baking.md#resource-usage-manifest)
+owns roots, runtime closure, output ownership and manifest publication.
+
 ## Package decision
 
 For each declared application variant, build the exact target, run

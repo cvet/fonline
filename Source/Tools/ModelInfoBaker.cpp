@@ -300,7 +300,7 @@ static void ValidateModelDescriptionEnumValue(const NameResolver& name_resolver,
 static void ValidateModelDescriptionLayer(int32_t layer, string_view token, string_view fname, size_t line);
 
 static auto GetBakedModelMeshInfo(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& cache, string_view path) -> const BakedModelMeshInfo&;
-static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view path) -> BakedModelMeshInfo;
+static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view path, bool calculate_bounds = true) -> BakedModelMeshInfo;
 static void ValidateBakedModelMeshFreshness(const FileCollection& source_files, const BakedModelMeshInfo& info, string_view owner);
 static auto GetModelSourceAsset(const ModelSourceAssetCache& model_sources, string_view path, string_view owner) -> shared_ptr<const ModelSourceAsset>;
 static auto ModelSourceAssetHasAnimation(const ModelSourceAsset& asset, string_view anim_name) -> bool;
@@ -321,13 +321,114 @@ static void ApplyModelDescriptionAdd(float32_t& value, float32_t operand);
 static void ApplyModelDescriptionMul(float32_t& value, float32_t operand);
 
 ModelInfoBaker::ModelInfoBaker(shared_ptr<BakingContext> ctx, ModelSourceAssetCache::LoadCallback model_source_loader) :
-    BaseBaker(std::move(ctx), NAME),
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource),
     _modelSourceLoader {std::move(model_source_loader)}
 {
 }
 
 ModelInfoBaker::~ModelInfoBaker()
 {
+}
+
+auto ModelInfoBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(files);
+    vector<string> result;
+
+    if (strex(path).get_file_extension() != "fo3d") {
+        return result;
+    }
+
+    auto resources = _context->GetBakedFiles();
+    auto output_files = _context->GetPackBakedFiles() ? _context->GetPackBakedFiles() : resources;
+    FO_VERIFY_AND_THROW(resources && output_files, "Model dependency collection has no baked resources", path);
+    BakerModelDescription description = ReadBakedModelDescriptionForBounds(*output_files, path);
+    auto resolve = [&](string_view name) -> vector<ptr<const FileSystem>> { return providers ? providers(name) : vector<ptr<const FileSystem>> {make_ptr(&*resources)}; };
+    unordered_map<string, vector<BakedModelMeshInfo>> meshes;
+    auto get_meshes = [&](string_view name) -> const vector<BakedModelMeshInfo>& {
+        auto [found, inserted] = meshes.try_emplace(string {name});
+
+        if (inserted) {
+            for (auto provider : resolve(name)) {
+                found->second.emplace_back(ReadBakedModelMeshInfo(*provider, name, false));
+            }
+
+            FO_VERIFY_AND_THROW(!found->second.empty(), "Model mesh dependency has no current baked provider", path, name);
+        }
+
+        return found->second;
+    };
+
+    result.emplace_back(description.Model);
+
+    auto collect_link = [&](const BakerModelDescriptionLink& link) {
+        if (!link.ChildName.empty()) {
+            result.emplace_back(link.ChildName);
+        }
+
+        if (link.IsParticles) {
+            return;
+        }
+
+        set<string> mesh_paths;
+        bool child_description = !link.ChildName.empty() && strex(link.ChildName).get_file_extension() == "fo3d";
+
+        if (child_description) {
+            for (auto provider : resolve(link.ChildName)) {
+                mesh_paths.emplace(ReadBakedModelDescriptionForBounds(*provider, link.ChildName).Model);
+            }
+
+            FO_VERIFY_AND_THROW(!mesh_paths.empty(), "Child model dependency has no current baked provider", path, link.ChildName);
+        }
+        else {
+            mesh_paths.emplace(link.ChildName.empty() ? description.Model : link.ChildName);
+        }
+
+        for (const string& mesh_path : mesh_paths) {
+            for (const BakedModelMeshInfo& mesh : get_meshes(mesh_path)) {
+                auto add_texture = [&](string_view texture) {
+                    if (!texture.empty() && !texture.starts_with("Parent")) {
+                        result.emplace_back(strex(mesh.FileName).extract_dir().combine_path(texture));
+                    }
+                };
+
+                if (!child_description) {
+                    for (const auto& [texture, owner] : mesh.DiffuseTextures) {
+                        bool replaced = std::ranges::any_of(link.TextureInfo, [&owner](const auto& value) { return std::get<2>(value) == 0 && (std::get<1>(value).empty() || std::get<1>(value) == owner); });
+
+                        if (!replaced) {
+                            add_texture(texture);
+                        }
+                    }
+                }
+
+                for (const auto& [texture, owner, slot, animated] : link.TextureInfo) {
+                    ignore_unused(owner, slot, animated);
+                    add_texture(texture);
+                }
+            }
+        }
+
+        for (const auto& [effect, owner] : link.EffectInfo) {
+            ignore_unused(owner);
+
+            if (!effect.empty() && !effect.starts_with("Parent")) {
+                result.emplace_back(effect);
+            }
+        }
+
+        for (const BakerModelDescriptionCut& cut : link.CutInfo) {
+            result.emplace_back(cut.FileName);
+        }
+    };
+
+    collect_link(description.DefaultLink);
+
+    for (const BakerModelDescriptionLink& link : description.Links) {
+        collect_link(link);
+    }
+
+    return result;
 }
 
 void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_path) const
@@ -1353,6 +1454,16 @@ static auto ReadBakedModelDescriptionLinkForBounds(data_reader& reader) -> Baker
             .Min = reader.read<vec3>(),
             .Max = reader.read<vec3>(),
         };
+
+        uint32_t animation_bounds_count = reader.read<uint32_t>();
+        reader.verify_payload_count(animation_bounds_count, sizeof(int32_t) * 2 + sizeof(vec3) * 2);
+
+        for (uint32_t i = 0; i < animation_bounds_count; i++) {
+            int32_t state_anim = reader.read<int32_t>();
+            int32_t action_anim = reader.read<int32_t>();
+            ModelBounds3D bounds {.Min = reader.read<vec3>(), .Max = reader.read<vec3>()};
+            link.AnimationBounds.emplace_back(state_anim, action_anim, bounds);
+        }
     }
 
     return link;
@@ -2069,7 +2180,7 @@ static auto GetBakedModelMeshInfo(const FileSystem& baked_files, unordered_map<s
     return it->second;
 }
 
-static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view path) -> BakedModelMeshInfo
+static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view path, bool calculate_bounds) -> BakedModelMeshInfo
 {
     FO_TRACE_ZONE(Baking);
 
@@ -2093,7 +2204,10 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
         ModelMeshData mesh_data = ReadModelMeshData(reader, path);
         FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", path);
         CollectBakedModelMeshInfo(*mesh_data.RootBone, info, {});
-        info.StaticBounds = ModelBoundsSampler {mesh_data, {}, ModelBoundsMeasurement::PerVertex}.CalculateStaticBounds();
+
+        if (calculate_bounds) {
+            info.StaticBounds = ModelBoundsSampler {mesh_data, {}, ModelBoundsMeasurement::PerVertex}.CalculateStaticBounds();
+        }
     }
     catch (const std::exception& ex) {
         throw ModelInfoBakerException("Invalid baked model mesh", path, ex.what());
@@ -2190,6 +2304,9 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     if (fo3d_files.empty()) {
         return;
     }
+
+    ctx.KeepOutput(output_path);
+
     if (ctx.HasBakeChecker() && !ctx.CheckOutput(output_path, max_write_time)) {
         return;
     }

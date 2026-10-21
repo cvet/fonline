@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import struct
 import sys
 from types import SimpleNamespace
@@ -102,6 +103,14 @@ def add_managed_runtime_pack(
         (target_dir / 'FOnline.ManagedHost.dll').write_bytes(host_assembly())
     (baked_runtime / 'runtime.manifest').write_bytes(b'baker manifest')
     (baked_runtime / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').write_bytes(baked_corelib)
+    baking_dir = scripts_dir.parent
+    (baking_dir / 'Resources.build-hash').write_text('build', encoding='utf-8')
+    (baking_dir / 'Resources.baking-config-hash').write_text('fixture-config', encoding='utf-8')
+    (baking_dir / 'Resources.usage.json').write_text(json.dumps({
+        'Version': 1, 'BuildHash': 'build', 'BakingConfigHash': 'fixture-config',
+        'Packs': {'Scripts': sorted(path.relative_to(scripts_dir).as_posix()
+                                    for path in scripts_dir.rglob('*') if path.is_file())},
+    }), encoding='utf-8')
     packager.get_target_resource_packs = lambda requested_target: ['Scripts'] if requested_target == target else []
     return scripts_dir
 

@@ -35,6 +35,7 @@
     "settings": "Source/Common/Settings.inc",
     "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
     "updater": "Source/Client/Updater.cpp",
+    "resource_defaults": "Source/Common/ResourceDefaults.h",
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
@@ -771,9 +772,15 @@
         {
           "path": "Source/Client/Updater.cpp",
           "anchors": [
-            "Fonts/Default.fofnt",
+            "FontDefaults::Updater",
             "AtlasType::IfaceSprites",
             "true"
+          ]
+        },
+        {
+          "path": "Source/Common/ResourceDefaults.h",
+          "anchors": [
+            "Fonts/Default.fofnt"
           ]
         }
       ]
@@ -1250,5 +1257,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "692f92b10e1d76357c3dc9372a342693e754ac83b3cea32f302f88b40ba3d0dc"
+  "contract_digest": "bd9c37b4d3bf63b61cae7fd8068c071d2a0460a792715fb1f95229b326805480"
 }

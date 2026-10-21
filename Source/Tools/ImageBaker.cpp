@@ -70,7 +70,7 @@ struct SpriteInfoBakingStats
 };
 
 ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 {
     AddLoader(ImageBakerFofrm::Load, {"fofrm"});
 #if FO_IMAGE_FRM
@@ -235,6 +235,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     string pack_fingerprint = GetPackFingerprint(*graph, _context->GetPackName());
 
     if (bake_sprite_info) {
+        _context->KeepOutput(sprite_info_path);
         optional<bool> required;
 
         if (_context->IsOutputDiscovery()) {

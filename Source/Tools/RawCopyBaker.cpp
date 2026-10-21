@@ -33,16 +33,90 @@
 
 #include "RawCopyBaker.h"
 #include "Application.h"
+#include "ImageDependencyGraph.h"
 
 FO_BEGIN_NAMESPACE
 
 RawCopyBaker::RawCopyBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 {
 }
 
 RawCopyBaker::~RawCopyBaker()
 {
+}
+
+auto RawCopyBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    ignore_unused(files);
+    string extension = strex(path).get_file_extension();
+    vector<string> result;
+
+    if (extension != "fofnt" && extension != "fnt") {
+        return result;
+    }
+
+    auto resources = _context->GetPackBakedFiles() ? _context->GetPackBakedFiles() : _context->GetBakedFiles();
+    FO_VERIFY_AND_THROW(resources, "Font dependency collection has no baked resources", path);
+    File file = resources->ReadFile(path);
+    FO_VERIFY_AND_THROW(file, "Font dependency descriptor is missing", path);
+
+    if (extension == "fofnt") {
+        istringstream input {make_stream_string(file.GetStr())};
+        string line;
+
+        while (getline(input, line)) {
+            istringstream record {make_stream_string(line)};
+            string key;
+            string image;
+            record >> key;
+
+            if (key != "Image") {
+                continue;
+            }
+
+            record >> image;
+            FO_VERIFY_AND_THROW(!image.empty(), "Font Image dependency is empty", path);
+
+            if (image.ends_with('*')) {
+                image.pop_back();
+            }
+
+            result.emplace_back(ImageReferencePath(path, image));
+            break;
+        }
+    }
+    else {
+        data_reader reader {file.GetDataSpan()};
+        const_span<uint8_t> signature = reader.read_bytes(4);
+        FO_VERIFY_AND_THROW(signature[0] == 'B' && signature[1] == 'M' && signature[2] == 'F' && signature[3] == 3, "Invalid BMFont dependency descriptor", path);
+
+        while (reader.get_unread_size() != 0) {
+            uint8_t block = reader.read<uint8_t>();
+            uint32_t size = reader.read<uint32_t>();
+            const_span<uint8_t> payload = reader.read_bytes(size);
+
+            if (block != 3) {
+                continue;
+            }
+
+            size_t start = 0;
+
+            while (start < payload.size()) {
+                auto end = std::find(payload.begin() + numeric_cast<ptrdiff_t>(start), payload.end(), uint8_t {});
+                FO_VERIFY_AND_THROW(end != payload.end(), "BMFont page name is unterminated", path);
+                size_t length = numeric_cast<size_t>(end - payload.begin()) - start;
+                FO_VERIFY_AND_THROW(length != 0, "BMFont page name is empty", path);
+                string image {make_ptr(&payload[start]).reinterpret_as<const char>().get(), length};
+                result.emplace_back(ImageReferencePath(path, image));
+                start += length + 1;
+            }
+        }
+    }
+
+    FO_VERIFY_AND_THROW(!result.empty(), "Font has no image dependencies", path);
+    return result;
 }
 
 void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_path) const

@@ -30,6 +30,7 @@ import buildtools
 import foconfig
 import managed_runtime_payload
 import resource_pack_hash
+import resource_usage
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -929,6 +930,8 @@ class Packager:
 	resource_archive_paths: dict[str, str] = field(init=False, default_factory=dict)
 	resource_pack_hash_library: str | None = field(init=False, default=None)
 	resource_pack_hasher: resource_pack_hash.ResourcePackHasher | None = field(init=False, default=None)
+	resource_usage_cache_key: tuple | None = field(init=False, default=None)
+	resource_usage_allowlists: dict[str, frozenset[str]] | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -1440,12 +1443,26 @@ class Packager:
 			return False
 		return True
 
+	def get_resource_usage_allowlists(self) -> dict[str, frozenset[str]]:
+		assert self.baking_path, 'Baking path is not initialized'
+		cache_key = resource_usage.usage_cache_key(self.baking_path, self.args.buildhash)
+		cached = getattr(self, 'resource_usage_allowlists', None)
+
+		if cached is not None and getattr(self, 'resource_usage_cache_key', None) == cache_key:
+			return cached
+
+		allowlists = resource_usage.load_usage_allowlists(self.baking_path, self.args.buildhash)
+		self.resource_usage_cache_key = cache_key
+		self.resource_usage_allowlists = allowlists
+		return allowlists
+
 	def collect_resource_files(self, pack_name: str, target: str) -> list[str]:
 		assert self.baking_path, 'Baking path is not initialized'
-		pattern = os.path.join(self.baking_path, pack_name, '**')
-		files = sorted(file_path for file_path in glob.glob(pattern, recursive=True) if self.filter_resource_file(target, file_path))
-		assert files, 'No files in pack ' + pack_name
-		return files
+		used_paths = self.get_resource_usage_allowlists().get(pack_name)
+		assert used_paths is not None, 'Resource pack is not listed in the resource usage manifest: ' + pack_name
+		pack_root = os.path.join(self.baking_path, pack_name)
+		files = [os.path.join(pack_root, *relative_path.split('/')) for relative_path in sorted(used_paths)]
+		return [file_path for file_path in files if self.filter_resource_file(target, file_path)]
 
 	def make_embedded_data_for_target(self, target: str) -> bytes:
 		assert self.baking_path, 'Baking path is not initialized'

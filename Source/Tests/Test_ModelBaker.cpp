@@ -1400,6 +1400,26 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
 
+    SECTION("CollectsDependenciesAfterAnimatedAttachmentBounds")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nLayer 1 Value 2 Attach Equipment.fo3d Link Hand MoveX 3\nLayer 2 Value 3 Attach Equipment.fo3d Link Hand MoveX 4\n", 7);
+        rig.AddSourceFile("Critters/Equipment.fo3d", "Model Equipment.fbx\nMoveX 2\n", 6);
+        AddTestModelSource(rig, MakeTestModelSourceWithChild("Critters/Body.fbx", "Body", "Hand", 3.0f, {"Idle"}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModelWithChildBone("Body", "Hand"));
+        AddTestModel(rig, "Critters/Equipment.fbx", "Body", true, {}, {}, {"Body"});
+
+        ModelInfoBaker baker {rig.MakeContext("Art"), LoadTestModelSourceFixture};
+        baker.BakeFiles(rig.GetAllSourceFiles(), {});
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            rig.AddBakedFile(path, bytes);
+        }
+
+        CHECK(baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
+    }
+
     SECTION("BakesSelectableModelLinkBoundsIntoDescription")
     {
         TestRig rig;
