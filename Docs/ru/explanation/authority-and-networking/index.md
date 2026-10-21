@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"569e96048a420e0b788a66f30ba9eddc1e5820b5e0d8b747a6526c50eefb6930"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"994a1b7780bd163853603865d91967b357aceb2a3d3d9b79a5c7cd422f3b4808"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -294,11 +294,11 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 
 Socket-соединения сервера Asio и WebSockets выполняют io-loop в выделенном потоке, а worker pool движка вызывает `Dispatch()`/`Disconnect()` соединения из других потоков. Lifetime обёртки должен соблюдать следующие правила:
 
-- **Callback io-thread не должен разыменовывать обёртку после того, как движок её отпустил.** Asio обеспечивает это захватом `shared_from_this()` каждым async read/write handler. WebSockets подключает постоянные websocketpp handler после конструктора через `Start()`, поскольку `weak_from_this()` неприменим в конструкторе, а каждый handler блокирует `weak_from_this()` до обращения к обёртке. Захват сырого `this` создаёт use-after-free.
-- **Межпоточное завершение должно использовать thread-safe путь транспорта.** Для WebSockets это `connection->close()`, ставящий работу в io service, а не доступный только io-thread `connection->terminate()`.
-- **Обёртка не должна продлевать lifetime нижележащего соединения за lifetime владеющего io_context.** Websocketpp endpoint владеет соединением и его привязанными к io_context Asio-таймерами и уничтожает его в io-thread. Поэтому обёртка хранит слабую ссылку и блокирует её на каждый вызов. Сильная ссылка позволила бы выжившей обёртке уничтожить соединение уже после io_context, создавая use-after-free при остановке.
+- **Callback io-thread не должен разыменовывать обёртку после того, как движок её отпустил.** Asio обеспечивает это захватом `shared_from_this()` каждым async read/write handler. WebSockets подключает постоянные websocketpp handler после конструктора через `Start()`, поскольку `weak_from_this()` неприменим в конструкторе, а каждый handler блокирует `weak_from_this()` до обращения к обёртке. Незащищённый захват сырого `this` допускает use-after-free.
+- **Состояние закрытия транспорта меняется в его I/O-потоке.** В обоих путях — отключении и уничтожении обёртки — WebSockets ставит `connection->close()` в очередь через `asio::post(connection->get_raw_socket().get_executor(), ...)`. Сейчас backend имеет один выделенный I/O-поток, поэтому close не выполняется одновременно с обработчиками чтения и завершения. Прямой `close()` из потока движка небезопасен: его state-lock не защищает от записи в то же состояние внутри `terminate()` без этого lock. Задача захватывает только слабую ссылку на backend-соединение и блокирует её при выполнении, не удерживая обёртку или сильную ссылку на backend.
+- **Обёртка не должна продлевать lifetime нижележащего соединения за lifetime владеющего io_context.** Asio-таймеры и незавершённые операции backend-соединения привязаны к io_context endpoint. Поэтому обёртка хранит слабую ссылку и блокирует её на каждый вызов. Сохранённая сильная ссылка позволила бы уничтожить backend уже после этого context, создавая use-after-free при остановке.
 
-`Test_NetworkServer.cpp` проверяет каждый транспорт end-to-end: interthread, повторный accept Asio и остановку с принятым TCP-соединением, а также настоящий websocketpp-клиент, отправляющий frame и полагающийся на остановку сервера для отключения. Запускайте тест под AddressSanitizer, чтобы защищать эти lifetime-правила.
+`Test_NetworkServer.cpp` проверяет каждый транспорт end-to-end: interthread, повторный accept Asio и остановку с принятым TCP-соединением, а также настоящий websocketpp-клиент, отправляющий frame и полагающийся на остановку сервера для отключения. `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` дополнительно проверяет обрыв peer, повторный disconnect, однократное уведомление и обёртку, пережившую уничтожение endpoint. Запускайте эти тесты и неизменённый `SecureChannelRunsOverWebSockets` под ThreadSanitizer и AddressSanitizer, отдельно проверяя сериализацию состояния и lifetime.
 
 ## Упорядоченный UDP-транспорт
 

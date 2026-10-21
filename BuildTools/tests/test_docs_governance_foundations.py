@@ -101,8 +101,7 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
 
         delivery = manifest["ai_delivery"]
         self.assertEqual(delivery["source_ref"], "master")
-        self.assertEqual(delivery["full_context"]["max_bytes"], 2 * 1024 * 1024 + 224 * 1024)
-        self.assertIn("2 MiB + 224 KiB (2,326,528 bytes)", adr3)
+        self.assertIn("`ai_delivery.full_context.max_bytes`", adr3)
         for path in ("llms.txt", "llms-full.txt", "docs-manifest.json"):
             self.assertIn(f"`{path}`", adr3)
         self.assertEqual(

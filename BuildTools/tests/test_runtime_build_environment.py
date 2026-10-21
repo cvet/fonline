@@ -170,8 +170,23 @@ def test_runtime_host_cmake_does_not_inherit_the_target_sdk(tmp_path, monkeypatc
     script.write_text(f"#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(probe))}\n", encoding="utf-8")
     script.chmod(0o755)
     monkeypatch.setenv("PATH", str(discovery) + os.pathsep + os.environ["PATH"])
-    monkeypatch.setenv("SDKROOT", str(device_sdk))
     monkeypatch.setenv("DEVELOPER_DIR", str(developer))
+
+    # CMake 4 leaves the host sysroot empty; compare with real clean-host initialization
+    host_environment = dict(os.environ)
+    host_environment.pop("SDKROOT", None)
+    baseline = subprocess.run(
+        [cmake, "-G", "Unix Makefiles", "-S", str(runtime), "-B", str(runtime / "host-baseline"),
+         "-DCMAKE_SYSTEM_NAME=Darwin", f"-DCMAKE_OSX_ARCHITECTURES={architecture}",
+         "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"],
+        env=host_environment, capture_output=True, text=True,
+    )
+    assert baseline.returncode == 0, baseline.stdout + baseline.stderr
+    assert "CMake Warning" not in baseline.stdout + baseline.stderr
+    expected_host_sdk = (runtime / "host-baseline/selected-sdk.txt").read_text().strip()
+    assert expected_host_sdk != str(device_sdk)
+
+    monkeypatch.setenv("SDKROOT", str(device_sdk))
 
     negative = subprocess.run([str(script)], cwd=runtime, capture_output=True, text=True)
     assert negative.returncode == 0, negative.stdout + negative.stderr
@@ -184,7 +199,7 @@ def test_runtime_host_cmake_does_not_inherit_the_target_sdk(tmp_path, monkeypatc
     runtime_arch = "x64" if architecture == "x86_64" else architecture
     buildtools.run_runtime_build(["-os", target_os, "-arch", runtime_arch, "-c", "Release"], runtime, target_os=target_os)
 
-    assert (runtime / "host/selected-sdk.txt").read_text().strip() == str(host_sdk)
+    assert (runtime / "host/selected-sdk.txt").read_text().strip() == expected_host_sdk
     assert (runtime / "target/selected-sdk.txt").read_text().strip() == str(device_sdk)
     assert (runtime / "host/developer-dir.txt").read_text().strip() == str(developer)
     assert (runtime / "host/platform.txt").read_text().strip() == f"{architecture};12.0"

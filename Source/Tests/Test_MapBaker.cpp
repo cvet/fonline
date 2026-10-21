@@ -647,4 +647,51 @@ TEST_CASE("MapBaker")
     }
 }
 
+TEST_CASE("MapBakerDynamicItemOverridesRequireClientDelivery")
+{
+    using namespace BakerTests;
+
+    string_view override_text = GENERATE("AuthoringNumber = 0", "DrawFlatten = True", "MultihexLines = 5 1", "AuthoringClient = 0", "AuthoringClient = 0\nHidden = True");
+
+    TestRig rig;
+    ConfigureMapSourceExtensions(rig);
+    AddMapBakerMetadataAndProto(rig, "DynamicValidation");
+    auto metadata = MakeMetadataBlob({{"Property", {{"Item", "Common", "int32", "AuthoringNumber"}, {"Item", "Client", "int32", "AuthoringClient"}}}});
+    rig.AddBakedFile("Metadata.fometa-server", metadata);
+    rig.AddBakedFile("Metadata.fometa-client", metadata);
+
+    BakerServerEngine server {rig.BakedFiles};
+    BakerClientEngine client {rig.BakedFiles};
+    vector<pair<string, function<void(ProtoItem&)>>> protos;
+    protos.emplace_back("ValidationItem", [](ProtoItem& proto) { proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringClient", "20"}}); });
+    rig.AddBakedFile("Items.fopro-bin-server", MakeMultiProtoResourceBlob<ProtoItem>(server, server.Hashes.to_hashed_string("Item"), protos));
+    rig.AddBakedFile("Items.fopro-bin-client", MakeMultiProtoResourceBlob<ProtoItem>(client, client.Hashes.to_hashed_string("Item"), protos));
+
+    SECTION("Dynamic authoring rejects the differing constant before either output is written")
+    {
+        rig.AddSourceFile("DynamicValidation.fomap", strex("[ProtoMap]\n$Name = DynamicValidation\n[$Name/Item]\n$Id = 1\n$Proto = ValidationItem\nHex = 8 8\n{}\n", override_text).str());
+        MapBaker baker {rig.MakeContext("Maps")};
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), MapBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("The same override is valid for a static placement")
+    {
+        rig.AddSourceFile("DynamicValidation.fomap", strex("[ProtoMap]\n$Name = DynamicValidation\n[$Name/Item]\n$Id = 1\n$Proto = ValidationItem\nHex = 8 8\nStatic = True\n{}\n", override_text).str());
+        MapBaker baker {rig.MakeContext("Maps")};
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(rig.Outputs.contains("DynamicValidation.fomap-bin-server"));
+        CHECK(rig.Outputs.contains("DynamicValidation.fomap-bin-client"));
+    }
+
+    SECTION("A redundant client-only prototype value is accepted")
+    {
+        rig.AddSourceFile("DynamicValidation.fomap", "[ProtoMap]\n$Name = DynamicValidation\n[$Name/Item]\n$Id = 1\n$Proto = ValidationItem\nHex = 8 8\nAuthoringClient = 20\n");
+        MapBaker baker {rig.MakeContext("Maps")};
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(rig.Outputs.contains("DynamicValidation.fomap-bin-server"));
+        CHECK(rig.Outputs.contains("DynamicValidation.fomap-bin-client"));
+    }
+}
+
 FO_END_NAMESPACE

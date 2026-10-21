@@ -12,7 +12,107 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-18
+## Current - 2026-10-21
+
+### Added
+
+- Expose local `Map.BlockHex(hex, full)` and `Map.UnblockHex(hex)` to client and mapper scripts. Manual blocking survives field recaching, affects pathfinding and optional shooting, and preserves other obstacles when cleared. Occupancy tracking and route replanning remain script-owned; no network replication is added.
+
+### Fixed
+
+- Recompute FRM sprite offsets from the selected frame and direction, keep corpses on the final death frame, preserve sub-millisecond item movement, and apply the Fallout animation Y correction to the Y offset.
+
+### Migration
+
+- Base `aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a` (`2026.1.57-dev`); update `2026.1.58-dev`. Existing calls, saved data, item ownership and animation identifiers retain their meaning; no project source or saved-data conversion is required. Rebuild native consumers and rebake scripts/resources together to regenerate both scripting backends' bindings before using the new client/mapper map methods. Deploy matching generated bindings, binaries and resources: export additions change generated compatibility hashes, while network migration version `0.0.75`, Managed ABI `9` and resource schemas remain unchanged. Rollback restores matching baseline artifacts without data conversion and restores the animation defects.
+- Validate `ClientManualHexBlockingSurvivesRecacheAndControlsPathFinding` for recaching, path availability, shooting mode changes, repeated clearing and invalid coordinates. Check FRM direction changes, final corpse frames and moving items in an embedding project's visible client. This entry does not claim runtime qualification.
+
+
+- Increase the full-context documentation budget by 8 KiB to 2,367,488 bytes after measuring 2,361,577 bytes with these additions. Complete guides and migration history are retained; overflow remains an error.
+
+## 2026.1.57-dev - 2026-10-20
+
+### Documentation
+
+- Normalize native comments and JSON/SQLite backup-doc checks; describe path grammar and consolidate ClassExtension notes.
+
+### Migration
+
+- Base `6c88391e77d519885d54f8894d0781a7d0a14ee6` (`2026.1.56-dev`) → `2026.1.57-dev`. Existing APIs, configuration, data/resource formats and values are unchanged; wire `0.0.75`, Managed ABI `9`. No conversion. Regenerate/validate docs, rebuild matching native metadata/applications and rebake resources. Rollback restores the matching preceding artifacts.
+
+## 2026.1.56-dev - 2026-10-20
+
+### Added
+
+- Add `fs::write_file_durable_new` for exclusive new-file writes with descriptor flush, reusing the native path and stream primitives. Existing names are preserved; staged atomic replacement remains the existing `fs::write_file`/`fs::replace_file` contract.
+- Add instance-local `DataBase::TryInsert` and typed `CompareExchange`, with pending-queue visibility and producer synchronization against ordinary mutations, snapshot restore and queue clear. Export `Game.DbTryInsertRecord` and `Game.DbCompareExchangeRecordString` for integer and string keys on both script backends.
+
+### Removed
+
+- Remove the unused `ClassExtensionAttribute` placeholder. It never bound a global function as a class method; C# uses language extension methods, and no corresponding AngelScript tag is planned.
+
+### Fixed
+
+- Reject embedded NUL at every filesystem path boundary and malformed UTF-8 before native conversion on every platform. Use shared UTF-8 scalar validation in a single pass with the NUL check, preserving its U+FFFD error-sentinel rejection and rejecting surrogate encodings; validate native-to-string output as well. Honor I/O conversion errors and preserve literal POSIX backslashes. Make result-based file operations consistently `noexcept`, handling exceptions locally at native conversion, owned stream construction/read and iterator operations. Convert unexpected C++ exceptions at internal STL boundaries to an operation failure. Keep path converters, standard-stream interop and caller streams/visitors potentially throwing; preserve partial directory listings and hash-to-EOF semantics.
+- Give the standalone LibreSSL archive probe lean Windows headers so WinCrypt macros cannot collide with its X509 declarations; retain its AES, TLS, X509 and SRTP assertions with assembly enabled and disabled.
+- Track generations of active database reads so a concurrent reader cannot hide a completed commit from an earlier read or let a conditional mutation accept a stale value.
+- Preserve internal spaces in JSON/SQLite storage directories by parsing the complete trimmed remainder after the provider name, including connection strings with outer whitespace.
+
+### Migration
+
+- Base `8af9a71307196a1937c79389e83036d2face5ceb` (`2026.1.55-dev`); update `2026.1.56-dev`. Existing file helpers, ordinary DB methods and valid connection strings retain their meaning. New-file creation exposes its name during writing and flushes file content only; use a private stage plus atomic replacement when readers must see complete publication. Conditional DB success queues a mutation in one owning instance; it does not establish durable commit, a cross-process transaction or native backend CAS.
+- Rebuild native consumers/Baker and rebake all script roles so generated API/metadata and assemblies agree. Callers may adopt the two new methods explicitly; no existing call must be renamed and no game feature is enabled automatically. JSON/SQLite path values need no escaping for internal spaces; literal quote stripping is not part of the connection grammar. Memory/Mongo tokens and disabled-provider diagnostics are unchanged.
+- No entity/property, JSON/CBOR/BSON/oplog, snapshot, baked-resource or wire format conversion is introduced. The manual runtime marker advances from `0.0.74` to `0.0.75`; Managed ABI `9` stays unchanged; regenerate the source-derived API/compatibility metadata and deploy matching binaries/resources. Rollback uses the matching previous build/resources without data conversion. Validate native contention/pending/restore barriers, both script bindings, local-provider reopen with spaces, and filesystem success/refusal on each claimed platform.
+- Filesystem callers must pass complete NUL-free UTF-8 paths on every platform. Non-UTF-8 POSIX file names are no longer supported by `fs`. Pure converters now reject invalid paths with `filesystem_error`; result primitives refuse them without acting on the prefix. Rebuild native consumers for the read/write/hash/comparison/listing exception specifications. Result-based operations now report standard interop errors through failure results; oversized whole-file reads are refused before buffer allocation. The Engine terminate-on-OOM policy is unchanged. Visitor and caller-stream exceptions still propagate; valid paths, empty-path conventions and file publication/durability guarantees are preserved.
+
+- Remove `[ClassExtension]`; use standard C# extension methods and rebuild scripts with current CoreScripts. The compiler rejects the removed attribute. Unannotated helpers, entry-point attributes, bindings, data/resource formats, wire and ABI `9` are unchanged. No conversion or extra compatibility bump. Rollback restores matching previous CoreScripts/assemblies.
+
+## 2026.1.55-dev - 2026-10-20
+
+### Changed
+
+- Reject map-local unsynchronized Common or Client configuration overrides on dynamic items in Mapper and MapBaker, including constant project properties without `Persistent`. Check both server and client property candidates, including hidden items. Preserve server-only authoring and placement context; configure permanent geometry on prototypes. Automatic mesh coalescing applies only to static items.
+- Recache every registered client item footprint cell when `NoBlock`, `ShootThru`, or `LightThru` changes.
+- Keep the standalone LibreSSL regression probe portable on Windows by selecting lean Windows headers before the OpenSSL headers; preserve its real OtherName, IP/mask and SRTP checks.
+
+### Migration
+
+- Base `d947827d42ab7a8a6c5f0c168cdea5680423ddf9` (`2026.1.54-dev`); update `2026.1.55-dev`. Network compatibility remains `0.0.74`; no new property flags or wire layout are introduced.
+- Move differing unsynchronized Common or Client values from dynamic map placements into prototypes or inherited variants, or use an existing synchronization channel when runtime changes are required. Rebuild affected native targets and rebake resources. Explicit zero, false, and empty values count as overrides. Static placements, server-only fields, names, types, defaults and persistence flags retain their meanings. Existing saved worlds require the embedding project's normal content-update review; a map-source migration is not a database migration. Rollback restores matching baseline binaries and authored resources.
+
+## 2026.1.54-dev - 2026-10-19
+
+### Fixed
+
+- Serialize WebSocket close-state mutations with the backend I/O loop. Disconnect and wrapper destruction enqueue weak-only close work, preventing direct engine-thread `close()` from racing websocketpp termination. Native coverage exercises peer abort, repeated disconnect, once-only notification and a wrapper retained after listener destruction.
+- Restore complete AI documentation delivery after the maintained corpus outgrew its size budget. The manifest owns the budget; route documentation and repository tests no longer duplicate its current value. Document membership, deterministic UTF-8/LF output and the failure on overflow remain unchanged.
+- Remove the current target's dedicated ZIP when packaging fails, including disk exhaustion during ZIP writing or a later installer failure. Cleanup reports removal errors without masking the original packaging exception; `SingleZip`-only aggregate handling is unchanged.
+- Preserve const-qualified string-search results in the vendored LibreSSL X509 and SRTP parsers. The IP-constraint parser keeps a separate mutable cursor for its owned copy. This removes host-header compiler warnings without casts, warning suppression or crypto/API changes; native probes cover OtherName, IP/mask, SRTP, AES and TLS with assembly enabled and disabled.
+
+### Migration
+
+- Base `d74075954cbf3742f0f717ff2b23ff309aa735a4` (`2026.1.53-dev`); update `2026.1.54-dev`. Regenerate affected API models/references with `python BuildTools/docs_api.py --write`, `python BuildTools/docs_reference.py --write` and `python BuildTools/docs_public_api.py --write`, then run `python BuildTools/docs_prepare.py`, validate with `python BuildTools/docs_validate.py`, then build the site with `python BuildTools/docs_site_build.py`. Read the delivery budget from `ai_delivery.full_context.max_bytes` in `Docs/documentation-manifest.json`. `BuildTools/tests/test_docs_ai_delivery.py` retains independent overflow and byte-determinism checks; do not truncate documents or disable the size guard. Generated delivery files remain ignored build outputs and require no follow-up commit.
+- The central network compatibility marker advances from `0.0.73` to `0.0.74` for the WebSocket lifecycle fix. Regenerate metadata, rebuild matching native client/server applications, Baker and tests, and rebake scripts/resources; deploy the matching set together. Mixed old/new artifacts must be rejected by the compatibility check. Native/script APIs, configuration, saved data, resource schema and Managed ABI `9` retain their meanings; no saved-data conversion is required. The Python packaging fix takes effect on its next invocation; retry after resolving the underlying storage or installer error. Rollback restores the entire matching previous artifact set, delivery policy and failed-ZIP retention without data conversion.
+
+
+## 2026.1.53-dev - 2026-10-19
+
+### Fixed
+
+- Preserve persistent custom-entity trees during graceful server shutdown. Runtime teardown releases the singleton's and registered holders' inner references before dropping parent links and registry ownership; it does not run ordinary custom-entity deletion or change durable holder IDs.
+
+### Documentation
+
+- Clarify native property components for Critter, Location and other entity owners: bool markers, qualified fields, inherited disabling, managed Has accessors and persisted-name migrations.
+
+### Migration
+
+- Baseline `2860bb2755621976d199883e254d66808a659ec1` (`2026.1.52-dev`) to this `2026.1.53-dev` working change. The affected path is `ServerEngine::Shutdown` → `EntityManager::DestroyAllEntities`, shared by scripting backends and database providers. Ordinary gameplay `DestroyCustomEntity` still deletes the explicitly destroyed entity and its children.
+- No callable, setting, property, identifier, storage format, network compatibility marker (`0.0.73`) or Managed ABI (`9`) changes; no project source or data conversion is required. Existing persistent holder IDs and child documents must survive stopping the process. Reconfigure and rebuild affected native server/test roles, regenerate metadata and rebake the matching resource set after the version/revision change.
+- Previously deleted documents cannot be reconstructed from surviving secondary indexes. Restore a verified backup through the owning project's recovery procedure when affected data has already been lost; do not erase indexes to hide missing entities. Rollback uses matching binaries/resources and a verified backup; the preceding build retains the destructive shutdown defect.
+- Acceptance owner: `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` in `Source/Tests/Test_ServerEngine.cpp`. It must preserve exact IDs, holder shape and marker values through two graceful restarts using real JSON storage, including a custom child of a persistent NPC. Embedding projects must also verify their used backend and account-entry path on an isolated database.
+
+## 2026.1.52-dev - 2026-10-18
 
 ### Added
 

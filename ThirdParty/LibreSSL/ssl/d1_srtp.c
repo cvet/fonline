@@ -190,7 +190,7 @@ ssl_ctx_make_profiles(const char *profiles_string,
     STACK_OF(SRTP_PROTECTION_PROFILE) **out)
 {
 	STACK_OF(SRTP_PROTECTION_PROFILE) *profiles;
-	char *col;
+	const char *col; /* (FOnline Patch) Profile delimiters refer to const input. */
 	const char *ptr = profiles_string;
 	const SRTP_PROTECTION_PROFILE *p;
 

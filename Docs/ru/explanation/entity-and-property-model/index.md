@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"238fbd00254ee9a8e9e37c0f7af3e7166d7eaacf39fd3a273c73b125a7250b90"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"c95401077f30fb38547d9e6282ba9e6a0541a28b406657bee34a0f1887e81776"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -125,6 +125,8 @@ NaN и infinity являются ошибкой, а не значениями д
 Хранилище raw-данных свойств имеет естественное выравнивание: storage blob и буферы `PropertyRawData` начинаются с максимального выравнивания, регистрация layout структуры проверяет выравнивание смещений полей, а overlay/POD offsets следуют выравниванию данных каждого свойства. Поэтому readers свойств используют обычные типизированные загрузки без обходов unaligned access и runtime-проверок выравнивания; нарушение контракта обнаруживают sanitizer-сборки. Равенство raw payload проверяется побайтно (`MemCompare`): общая длина payload не повышает требования к его выравниванию.
 
 Повторная запись того же значения скриптом ничего не делает. `Properties::SetValue` выполняет validation/clamping, сравнивает сохранённые bytes и при равенстве возвращается до setters, post-setters, persistence и client sync. Оба scripting backend и `SetAsInt`/`SetAsAny` идут этим путём; повторное присваивание не может вызвать callback или resend. `SetValueFromData` безусловно применяет полученное по сети значение. У virtual property нет сохранённого значения для сравнения. Native typed writes для string/`any_t` и vectors также не сравнивают равенство; raw payload сравнивается побайтно, а native floating-point typed write использует `is_float_equal`.
+
+Компоненты группируют поля с точкой в существующем владельце, включая Critter и Location. См. [компоненты свойств](../../how-to/content/prototype-format.md#компоненты-свойств): маркеры, Managed-проверка наличия, наследование и миграция сохраняемых имён.
 
 ## Runtime свойств
 
@@ -275,3 +277,7 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 Перенос значений использует `MigrationRule Property <Owner> Transform <Property> <Function>` для существующего Persistent-свойства. `PropertiesSerializer::MigrateDocument` подготавливает отделённые значения с неизменным исходным контекстом документа БД до загрузки свойств сущности; изменённые поля ставятся в очередь БД после завершения всех функций. Переименование имени использует `Property <Owner> Rename <Old> <New>` с существующим назначением. При наличии обоих ключей выигрывает текущее имя. См. [контракт Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
 AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
+У динамических предметов карты нельзя переопределять сохраняемую конфигурацию Common или Client без существующего канала синхронизации. Проверка авторинга сравнивает эффективные значения с прототипом, включая ноль, false, пустые значения и неизменяемые игровые свойства без `Persistent`. См. [переопределения карты](../../how-to/content/map-format.md#переопределения-свойств). Раскладка свойств и версия сетевой совместимости не меняются.
+
+Изменение `NoBlock`, `ShootThru` и `LightThru` предмета пересчитывает весь зарегистрированный клиентский контур, включая нерисуемые mesh-клетки и развёрнутые прототипные линии.

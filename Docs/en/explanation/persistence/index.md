@@ -20,6 +20,10 @@ The engine owns the reusable database abstraction, backend implementations, and 
 
 Do not put live credentials, production connection strings, or host-specific recovery steps in this engine document.
 
+## Graceful shutdown and entity ownership
+
+Persistent entity-holder properties describe durable ownership. `ServerEngine::Shutdown` must leave those IDs and custom-entity documents intact. `EntityManager::DestroyAllEntities` clears runtime inner references while the registry still retains every entity, then drops parent links and registry ownership. This is distinct from ordinary `DestroyCustomEntity`, which updates holder IDs and deletes documents. The distinction applies to Game-owned trees and custom children of standard holders alike. `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` exercises the boundary through two real file-backed restarts; a live-world read before shutdown is not durability evidence.
+
 ## Public database facade
 
 `Source/Server/DataBase.h` defines the public facade `DataBase`. It wraps a `DataBaseImpl` backend and exposes collection/document operations:
@@ -27,16 +31,26 @@ Do not put live credentials, production connection strings, or host-specific rec
 - state/metrics: `InValidState()`, `GetDbRequestsPerMinute()`;
 - enumeration: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
 - reads: `Get()`, `GetMany()`, `Valid()`;
-- writes: `Insert()`, `Update()`, `Delete()`;
+- writes: `Insert()`, `TryInsert()`, `Update()`, `CompareExchange()`, `Delete()`;
 - commit control: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - backend snapshot: `CreateSnapshot()` and `RestoreSnapshot(bytes)`;
 - debug UI: `DrawGui()`.
 
-`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
+`ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback. JSON and `DbSQLite` use the trimmed entire remainder after the provider name as their storage directory, so `JSON C:/Game Data/world` and `DbSQLite C:/Game Data/world` preserve internal spaces. Do not put literal quote characters around that remainder. Empty directories fail; Memory and Mongo retain their token grammar.
 
 `GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. A commit stops being overlaid when its backend write completes and it leaves the pending queue. If that occurs after a read fetched the old record but before it checked the queue, the affected record is fetched again; unaffected records are not. `Get()` itself uses the same path for one id.
 
+Active readers share a record generation, with each backend request capturing its own expected generation. Commit advances it under the same lock that removes the pending operation. Another reader cannot replace an invalidated read's evidence of that commit. The tracking entry is removed only when its last reader leaves, so completed historical records do not accumulate. `DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker` pins the two-reader/commit ordering as well as CAS refusal of the old value.
+
 `GetAllIds(collection)` and its typed `GetAllIntIds()` / `GetAllStringIds()` variants enumerate backend keys with pending inserts and deletes overlaid in queue order, matching what `Get()` can read. A pending delete removes a listed key; a pending insert adds it. If an insert or delete for that collection commits while backend keys are being listed, the listing is retried. Updates do not change the key set. `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` and `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` cover the overlay and concurrent commit.
+
+## Conditional mutations
+
+`TryInsert(collection, id, document)` returns `false` when the logical record already exists. `CompareExchange(collection, id, key, expected, desired)` changes an existing field only when its typed value equals `expected`; a missing record, missing field or mismatch returns `false` without queuing a write. Both include pending inserts, updates and deletes in the condition. Invalid collection/key types, empty insert documents and non-finite desired values still throw.
+
+One producer mutex per `DataBaseImpl` holds the condition check and enqueue together and serializes them with ordinary inserts/updates/deletes, `RestoreSnapshot()` and `ClearChanges()`. The commit thread takes only its existing queue/backend locks. A `true` result means an operation entered the logical queue, not that it was durably committed: `StartCommitChanges()` enables processing and `WaitCommitChanges()` retains its existing failure/recovery limits. This is neither a cross-instance/cross-process transaction nor a backend-native Mongo/SQLite compare-and-swap. Consumers must keep a single owning instance for records needing this guarantee.
+
+Server scripts expose `Game.DbTryInsertRecord(collection, id, keyValues)` and `Game.DbCompareExchangeRecordString(collection, id, key, expected, desired)` for both integer and string ids. These string-field methods validate collection/id, nonempty insert values/key and UTF-8 before delegating to the shared database path. They require no live entity cover. Existing `DbInsertRecord` duplicate-error behavior is unchanged.
 
 ## Collections and keys
 

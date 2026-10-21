@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"8979d29c3424c28b0aac3a589e02987baaf46f1687af2c28b67b152d9c7b8e7b"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"5e9d397d33b2182ee574cccb7da47507485dd0c299a29a9660a35c38b378f55a"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -134,6 +134,42 @@ Baker объединяет:
 parent path и отклоняют self-cycle, цикл из двух узлов и более длинные циклы при
 любом значении repeated-parent setting. Project-side structural validation
 сохраняет более быстрый feedback, но authoritative rejection выполняет baking.
+
+## Компоненты свойств
+
+Компонент свойств объединяет поля одной роли в существующем владельце. Он не ограничен
+Item: Critter, Location и другие зарегистрированные типы используют тот же механизм
+PropertyRegistrar для каждого типа. Компонент не создаёт сущность, держатель, отдельную
+идентичность или разреженное хранилище; владение полями и срок жизни не меняются.
+
+Объявите неквалифицированный скалярный bool-маркер с Component, например
+`///@ Property Critter Common bool Bulletin Component`, затем поля с точкой, например
+`///@ Property Critter Server hstring Bulletin.Region`. Одноимённый компонент Location
+принадлежит другому реестру. Mutable, Persistent, сторона и синхронизация задаются
+каждому свойству отдельно; Component их не добавляет. Для авторской роли предпочтителен
+неизменяемый маркер. Независимому значению достаточно обычного свойства; компонент
+подходит необязательной роли с общим допуском и связанными настройками или состоянием.
+
+В прототипе задайте `Bulletin = True` и `Bulletin.Region = North`. Одни поля с точкой
+маркер не включают. Маркер и поля подчиняются обычному наследованию: дочерний прототип
+может отключить роль через `Bulletin = False`, сохранив унаследованные поля. Проверяющие
+инструменты и потребители проверяют bool-маркер, а не наличие непустого поля. Обязательность
+роли у конкретной локации определяет проект, а не ограничение Engine.
+
+Managed-генератор создаёт `entity.HasBulletin` и `entity.Bulletin.Region`, в том числе
+у ProtoCritter и ProtoLocation. Доступ к Bulletin при ложном HasBulletin бросает
+InvalidOperationException. Обёртка компонента ссылается на ту же native entity.
+Полное имя в метаданных, тексте и хранилище — `Bulletin.Region`; элемент enum свойства —
+`CritterProperty.Bulletin_Region`. Поэтому перенос сохраняемого BulletinRegion внутрь
+компонента требует явного Property Rename в Bulletin.Region и проверки старого сохранения.
+В документе БД актуальное имя имеет приоритет над историческим. Сервер и клиенты должны
+получать согласованные метаданные одной запеканки.
+
+Владельцы реализации: PropertyRegistrar::RegisterProperty в Source/Common/Properties.cpp,
+регистрация enum свойств в Source/Common/MetadataRegistration.cpp,
+AppendComponentAccessors/AppendComponentClasses в Source/Tools/ManagedScriptBaker.cpp
+и разрешение сохраняемых имён в Source/Common/PropertiesSerializer.cpp. Для использования
+компонентов в объявлениях проекта новая поддержка Engine не требуется.
 
 ## Применимость свойств
 

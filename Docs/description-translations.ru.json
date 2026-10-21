@@ -4383,6 +4383,18 @@
           "source_sha256": "3aa417dee22750670ac416a6f47945fc2db177aee1f50d3d97e9f87af095a1fd",
           "translation": "Используйте повторяющиеся INI-подобные секции, присваивания key = value, комментарии #, продолжение обратной косой чертой и добавление key += value там, где его поддерживает парсер свойства."
         },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/description": {
+          "source_sha256": "2c7b7414dcaebab2916a4ee77f68241b6723070618811e54f7dcacd1857d613c",
+          "translation": "Mapper и MapBaker проверяют серверные и клиентские свойства и отклоняют отличающиеся константы Common/Client и Persistent-значения NoSync, включая переопределения нулём, false и пустым значением. Серверные свойства и существующие PublicSync/OwnerSync остаются допустимыми; проверки только Persistent недостаточно."
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/name": {
+          "source_sha256": "84676fb86c2285638145eff6f830aea62ccb96c787b3505549c34669574cba7f",
+          "translation": "Доставка свойств динамического предмета"
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/requirement": {
+          "source_sha256": "52d5ce3cfd76a1119a6ebb7dc5cbb600b1d42b9fc898e1483840d0c8d7db6ab5",
+          "translation": "Сохраняемые несинхронизируемые значения Common или Client динамического предмета должны совпадать с прототипом, кроме нативных свойств контекста размещения."
+        },
         "/rules/@id=map-format.rule.error-aggregation/description": {
           "source_sha256": "6764d3a0724bdfeac1eae9e41ade4f043490a52e793abb917cfdb054ea09c4e9",
           "translation": "Диагностика отдельных сущностей записывается до того, как MapLoader или MapBaker выбросит общую ошибку."
@@ -4550,6 +4562,18 @@
         "/rules/@id=map-format.rule.static-items/requirement": {
           "source_sha256": "bb6f0ded9b3e7976ae564e9542c6100e43e4acb339853267be0e3da91e9345e2",
           "translation": "Предмет Static обязан использовать владение MapHex."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/description": {
+          "source_sha256": "ffdd270ddd1eb8f0d47ec53642fadbc9e7ff807c017b4f00ec9b2d4fb8d0eb38",
+          "translation": "Динамические экземпляры сохраняют отдельную идентичность даже при SameSibling или AnyUnique у прототипа. Постоянная относительная геометрия задаётся в прототипе или наследуемом варианте."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/name": {
+          "source_sha256": "a97b89fa950db9ce96e494f51629ef4c197839ea7220d7ab28f24eb2ad21eb72",
+          "translation": "Объединение статических предметов в mesh"
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/requirement": {
+          "source_sha256": "ebda6dcbe9d676c0ef670f5de76d39039e4fe443999595db057f511ee9e2bbe7",
+          "translation": "Объединяйте экземпляры карты в MultihexMesh только тогда, когда оба предмета статические."
         },
         "/scope/excluded": {
           "source_sha256": "a9e51a633154c791421bad70658ea469fea847ea4d58b110c11e2f62e28ecf39",
@@ -19422,6 +19446,30 @@
         "/symbols/@id=script.method.server.Critter.MapTransfersLocked/description": {
           "source_sha256": "8c7648eaf382694639b9103e3eb318692ed29378841ee627dfa22fdd78b8ab68",
           "translation": "SyncScope: требует self; возвращает временный снимок счётчика вложенных блокировок переноса, не приобретая покрытие и не резервируя состояние блокировки от последующего изменения."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%23148cb7fe9d0c7284/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%23d7c0eb9e97e0795d/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%2328dbc09a155eeea9/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%235d786aff58d93d01/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.client.Map.BlockHex/description": {
+          "source_sha256": "bbeffa3dee5ff911b0fe84d264c18770e5f21c4db0c54f5d037abc81e41efabf",
+          "translation": "Локально блокирует движение и при необходимости стрельбу; не передаёт состояние по сети и не перезапускает активное движение"
+        },
+        "/symbols/@id=script.method.client.Map.UnblockHex/description": {
+          "source_sha256": "8d297d4097333afdc9182c3462723745ec84bf06c89a4e9d98ba845e5cca4546",
+          "translation": "Снимает локальную ручную блокировку, сохраняя препятствия предметов и карты"
         }
       }
     }

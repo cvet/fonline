@@ -346,7 +346,7 @@ Entity destruction and runtime shutdown are related but distinct:
 
 - `Entity::MarkAsDestroyed()` clears entity callbacks and time-event records.
 - Server entity managers cancel dispatcher jobs before final destruction.
-- Client and server shutdown clear global events/time events and destroy owned entities in an ordered runtime sequence.
+- Client and server shutdown clear global events/time events and release owned runtime entities in order. Server teardown preserves persistent custom-entity documents and holder ID properties; explicit gameplay destruction remains a separate deleting operation.
 - `AngelScriptBackend` destroys its context manager, then calls `asIScriptEngine::ShutDownAndRelease()` while modules, types, behaviours, and backend links are still available. The patched AngelScript shutdown calls module exits, releases globals, runs full garbage-collection passes until the live set is empty or stable, discards modules, repeats collection, and reports unreclaimable survivors before the backend links are reset.
 - `ManagedScriptBackend` stops accepting work, drains and rejects pending scheduler entries in owner order, releases managed handles and its backend load scope, and leaves process-wide Mono shutdown to `ManagedRuntime`. Backend-scoped assemblies are isolated by `ManagedLoadContextHost`; do not use process-global static state as a substitute for an engine-instance owner.
 

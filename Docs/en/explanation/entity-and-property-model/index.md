@@ -126,6 +126,8 @@ Property raw data storage is naturally aligned: the storage blob and `PropertyRa
 
 An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
 
+Components group qualified properties on the same owner, including Critter and Location. See [property components](../../how-to/content/prototype-format.md#property-components) for marker semantics, managed presence checks, inheritance and stored-name migrations.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:
@@ -275,3 +277,7 @@ Relevant tests include:
 Value migrations use `MigrationRule Property <Owner> Transform <Property> <Function>` on an existing Persistent property. `PropertiesSerializer::MigrateDocument` stages detached values against the unchanged original database document before entity property loading; successful changed fields enter the database queue after all callbacks finish. Stored-name rules now use `Property <Owner> Rename <Old> <New>` with an existing destination. The canonical key wins when both names exist. See the [Managed C# document migration contract](../../how-to/scripting/managed-csharp.md#document-property-migrations). Use `///@ MigrationRule Property Critter Remove MyPropOld` without a replacement to retire a deleted property. Metadata finalization and baking reject a property still declared under that name on the same owner, including RefType fields. Document and property-text loading skip its old value; historical top-level database keys may remain. Keep the rule as a permanent name tombstone. Property and Proto share the action grammar: Rename/Transform have five parts and Remove has four; an extra Remove argument is rejected.
 
 AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../../how-to/scripting/style-and-refactoring.md#document-migrations).
+
+Dynamic map authoring must not override stored Common or Client configuration that has no existing synchronization channel. The map authoring validator compares effective values with the prototype, including zero/false/empty values and constant project properties without `Persistent`. See [map property overrides](../../how-to/content/map-format.md#property-overrides). Runtime property layout and the compatibility version are unchanged.
+
+Item `NoBlock`, `ShootThru`, and `LightThru` updates recache the complete registered client footprint, including nondrawn mesh cells and expanded prototype lines.

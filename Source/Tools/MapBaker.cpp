@@ -228,6 +228,13 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             [&](ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv) {
                 auto props = proto->GetProperties()->Copy();
                 props.ApplyFromText(*kv);
+                MapLoader::ValidateItemProperties(props, *proto->GetProperties(), proto->GetName(), id);
+
+                auto client_proto = client_engine.GetProtoItem(proto->GetProtoId());
+                FO_VERIFY_AND_THROW(client_proto, "Missing required client prototype");
+                auto client_props = client_proto->GetProperties()->Copy();
+                client_props.ApplyFromText(*kv);
+                MapLoader::ValidateItemProperties(client_props, *client_proto->GetProperties(), client_proto->GetName(), id);
 
                 errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
@@ -244,12 +251,6 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 bool is_hidden = item_props.GetHidden();
 
                 if (is_static) {
-                    auto client_proto = client_engine.GetProtoItem(proto->GetProtoId());
-                    FO_VERIFY_AND_THROW(client_proto, "Missing required client prototype");
-
-                    auto client_props = client_proto->GetProperties()->Copy();
-                    client_props.ApplyFromText(*kv);
-
                     // For hidden items keep only string hashes for client
                     client_props.StoreAllData(props_data, client_str_hashes);
 

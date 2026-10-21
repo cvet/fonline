@@ -747,7 +747,8 @@ LCRYPTO_ALIAS(v2i_GENERAL_NAME_ex);
 static int
 do_othername(GENERAL_NAME *gen, const char *value, X509V3_CTX *ctx)
 {
-	char *objtmp = NULL, *p;
+	char *objtmp = NULL;
+	const char *p; /* (FOnline Patch) Preserve const on the input search result. */
 	int objlen;
 
 	if (!(p = strchr(value, ';')))

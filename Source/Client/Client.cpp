@@ -2685,6 +2685,12 @@ void ClientEngine::OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop)
         if (rebuild_cache) {
             auto map = item->GetMap();
             map->RecacheHexFlags(item->GetHex());
+
+            if (auto entries = item->GetMultihexEntries()) {
+                for (auto hex : *entries) {
+                    map->RecacheHexFlags(hex);
+                }
+            }
         }
     }
 }

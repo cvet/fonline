@@ -720,6 +720,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-applyscreenscroll-9c784d1df5"></a>
 - [`symbol-script-method-client-map-applyscreenscroll-9c784d1df5`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-applyscreenscroll-9c784d1df5)
 
+<a id="symbol-script-method-client-map-blockhex-4390cf0769"></a>
+- [`symbol-script-method-client-map-blockhex-4390cf0769`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-blockhex-4390cf0769)
+
 <a id="symbol-script-method-client-map-changezoom-17db72d105"></a>
 - [`symbol-script-method-client-map-changezoom-17db72d105`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-changezoom-17db72d105)
 
@@ -908,6 +911,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-setvisiblelayers-876540cf37"></a>
 - [`symbol-script-method-client-map-setvisiblelayers-876540cf37`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setvisiblelayers-876540cf37)
+
+<a id="symbol-script-method-client-map-unblockhex-5574f205a2"></a>
+- [`symbol-script-method-client-map-unblockhex-5574f205a2`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-unblockhex-5574f205a2)
 
 <a id="group-method-common-game-ab04446c71"></a>
 - [`group-method-common-game-ab04446c71`](../../en/reference/script-api/methods.md#group-method-common-game-ab04446c71)
@@ -2448,6 +2454,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-createnotloggedinplayer-97201edbe3"></a>
 - [`symbol-script-method-server-game-createnotloggedinplayer-97201edbe3`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createnotloggedinplayer-97201edbe3)
 
+<a id="symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf"></a>
+- [`symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf)
+
+<a id="symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95"></a>
+- [`symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95)
+
 <a id="symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19"></a>
 - [`symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19)
 
@@ -2483,6 +2495,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373"></a>
 - [`symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373)
+
+<a id="symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2"></a>
+- [`symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2)
+
+<a id="symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0"></a>
+- [`symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0)
 
 <a id="symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989"></a>
 - [`symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989)

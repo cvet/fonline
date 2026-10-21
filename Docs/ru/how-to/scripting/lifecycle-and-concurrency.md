@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"bfa5d83284c841c1ddafbf7f046d0d920ab878f2018e965fba341fe0c392cfc5"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"bc7917da34eec287bfd8815759c81b6335525ff7ac97795492d6f9c7b7c82b39"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -348,7 +348,7 @@ Managed C# входит в те же независимые от backend кон�
 
 - `Entity::MarkAsDestroyed()` очищает callbacks сущности и записи time event.
 - Server entity managers отменяют dispatcher jobs до окончательного уничтожения.
-- Client и server shutdown очищают global events/time events и уничтожают owned entities в упорядоченной последовательности runtime.
+- Client и server shutdown очищают global events/time events и по порядку освобождают owned runtime entities. Server teardown сохраняет постоянные документы custom entities и свойства ID держателей; явное игровое уничтожение остаётся отдельной удаляющей операцией.
 - `AngelScriptBackend` уничтожает context manager, затем вызывает `asIScriptEngine::ShutDownAndRelease()`, пока modules, types, behaviours и backend links ещё доступны. Исправленный shutdown AngelScript вызывает exits модулей, освобождает globals, выполняет полные проходы garbage collection до опустошения или стабилизации live set, удаляет modules, повторяет collection и сообщает о неосвобождаемых survivors до сброса backend links.
 - `ManagedScriptBackend` прекращает приём работы, в порядке владельца опустошает или отклоняет ожидающие scheduler entries, освобождает managed handles и свой backend load scope, оставляя shutdown общего Mono runtime владельцу `ManagedRuntime`. Backend assemblies изолированы `ManagedLoadContextHost`; не используйте process-global static state вместо владельца экземпляра движка.
 

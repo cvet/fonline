@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a33807ab80cb58e45ffd6ac64ba4abcbda9de507395ccff5a818c6f0ed867ba8"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"bbe5e488d2f60b2475670251ba3536edb60d23bc26ed6985b2405a2b3c8bdddd"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -100,6 +100,8 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 
 `ManagedScript.PatchPointWeaver` запускает Engine Mono.Cecil tool на промежуточных server/client assemblies после компиляции, до копирования/упаковки. Исходники и inputs weaver вызывают перекомпиляцию и повторную обработку; уже обработанные assemblies пропускаются. Инструмент не поставляется как script dependency.
 
+Компоненты свойств создают Has и доступ к полям для сущностей и их прототипов; см. [авторинг и миграцию компонентов](../content/prototype-format.md#компоненты-свойств). Механизм не ограничен предметами.
+
 ## Форма авторского кода
 
 Используйте пространство имён проекта и импортируйте `FOnline` для сгенерированных типов. CoreScripts используют file-scoped `namespace FOnline;`; игровые domain types принадлежат другому пространству.
@@ -123,8 +125,10 @@ Managed marker attributes соответствуют ролям Engine dispatche
 - `[PropertyGetter]` и `[PropertySetter]`;
 - `[ServerRemoteCall]`, `[ClientRemoteCall]` и `[AdminRemoteCall]`;
 - `[ItemTrigger]`, `[ItemInit]`, `[ItemStatic]`, `[CritterInit]`, `[MapInit]` и `[LocationInit]`;
-- `[AnimCallback]`, `[ClassExtension]` и зарегистрированные проектом markers;
+- `[AnimCallback]` и зарегистрированные проектом markers;
 - `[CallableByName]` для functions, намеренно доступных named invocation.
+
+Чтобы вызывать статические вспомогательные методы через экземпляр, используйте обычные extension methods языка C#; отдельный маркер движка не требуется.
 
 Generated event wrappers отвергают handler без `[Event]` до создания native subscription. Named calls также закрыты по умолчанию: `Game.Invoke` и administrative dispatch принимают только явно отмеченные functions и подходящий allowlist.
 
@@ -231,7 +235,8 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
 очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
 Пересоберите согласованные нативные компоненты и перевыпеките все managed-роли с ABI identity `9`;
-совместимость runtime — `0.0.73`.
+совместимость runtime определяется центральным маркером `MigrationRule Version` в
+[`Common.h`](../../../../Source/Common/Common.h).
 
 `hstring` — восьмибайтовый blittable указатель на native intern entry. Frames/value types копируют его без изменений; property/RPC storage преобразует его в 64-bit hash и обратно. Interning и поиск текста используют точные Engine metadata entry assembly, без process-wide hash table. Static fields инициализируются отдельно в каждом load context.
 

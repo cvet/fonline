@@ -278,6 +278,7 @@ void MapView::LoadFromFile(string_view map_name, string_view file_name, const st
 
             auto props = proto->GetProperties()->Copy();
             props.ApplyFromText(*kv);
+            MapLoader::ValidateItemProperties(props, *proto->GetProperties(), proto->GetName(), id);
 
             auto props_ptr = make_nptr(&props);
             auto item = safe_alloc::make_refcounted<ItemHexView>(this, id, proto, props_ptr);
@@ -804,6 +805,10 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
+    if (props) {
+        MapLoader::ValidateItemProperties(*props, *proto->GetProperties(), proto->GetName(), id);
+    }
+
     auto item = safe_alloc::make_refcounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
@@ -825,6 +830,8 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     item->SetIsTile(true);
     item->SetIsRoofTile(is_roof);
     item->SetTileLayer(layer);
+
+    MapLoader::ValidateItemProperties(*item->GetProperties(), *proto->GetProperties(), proto->GetName(), item->GetId());
 
     return AddItemInternal(item);
 }
@@ -2153,14 +2160,26 @@ void MapView::RecacheHexFlags(mpos hex)
     RecacheHexFlags(field);
 }
 
+void MapView::SetHexManualBlock(mpos hex, bool enable, bool full)
+{
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map cannot change manual blocking outside map bounds", GetId(), hex, _mapSize);
+
+    auto field = _hexField->GetCellForWriting(hex);
+
+    field->ManualBlock = enable;
+    field->ManualBlockFull = full;
+
+    RecacheHexFlags(field);
+}
+
 void MapView::RecacheHexFlags(ptr<Field> field)
 {
     field->HasWall = false;
     field->HasTransparentWall = false;
     field->HasScenery = false;
-    field->MoveBlocked = field->ScrollBlock;
-    field->MovableWithGag = !field->ScrollBlock;
-    field->ShootBlocked = false;
+    field->MoveBlocked = field->ScrollBlock || field->ManualBlock;
+    field->MovableWithGag = !field->ScrollBlock && !field->ManualBlock;
+    field->ShootBlocked = field->ManualBlock && field->ManualBlockFull;
     field->LightBlocked = false;
     field->Corner = CornerType::NorthSouth;
     field->GroundTile.reset();
@@ -4231,6 +4250,7 @@ auto MapView::SaveToText(string_view save_name) const -> string
     };
 
     auto fill_item = [&fill_item_section](ptr<const ItemView> item) {
+        MapLoader::ValidateItemProperties(*item->GetProperties(), *item->GetProto()->GetProperties(), item->GetProto()->GetName(), item->GetId());
         auto kv = item->GetProperties()->SaveToText(item->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();

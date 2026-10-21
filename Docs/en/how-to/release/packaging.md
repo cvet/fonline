@@ -131,6 +131,12 @@ Run the stages explicitly and stop on the first failure:
 6. Invoke `MakePackage-<package-id>` only after its binary and baking inputs exist.
 7. Preserve the complete package log and fail on assertions, warnings treated as errors, signing failures, missing symbols, missing configs, or missing resource packs.
 
+After a caught packaging exception, the packager removes the staged target directory and its dedicated
+`Zip` output, including an incomplete ZIP or a ZIP completed before a later installer failure. ZIP removal
+is best effort: a filesystem error is reported while the original packaging exception is preserved.
+`SingleZip`-only rows do not clean their shared aggregate. Check a failed candidate's complete outputs
+before publication; storage capacity and retry decisions remain the embedding project's responsibility.
+
 The project chooses concrete target names. A typical multi-config sequence is:
 
 ```bash

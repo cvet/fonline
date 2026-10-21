@@ -34,6 +34,7 @@
 #include "CritterView.h"
 #include "Client.h"
 #include "ItemView.h"
+#include "MapLoader.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -102,6 +103,8 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
+
+    MapLoader::ValidateItemProperties(*item->GetProperties(), *proto->GetProperties(), proto->GetName(), id);
 
     return AddRawInvItem(item);
 }

@@ -40,6 +40,7 @@
 #include "ModelInfoBaker.h"
 #include "ModelMeshData.h"
 #include "ModelSprites.h"
+#include "NetBuffer.h"
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
 #include "TextureAtlas.h"
@@ -475,6 +476,42 @@ TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
     }
 }
 
+TEST_CASE("ClientManualHexBlockingSurvivesRecacheAndControlsPathFinding")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("ManualBlockMap"), client->GetPropertyRegistrar("Map"));
+    proto->SetSize(msize {32, 32});
+    proto->SetWorkHex(mpos {16, 16});
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    mpos target {17, 16};
+    REQUIRE(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map->SetHexManualBlock(target, true, false);
+    map->RecacheHexFlags(target);
+    CHECK(map->GetField(target).MoveBlocked);
+    CHECK_FALSE(map->GetField(target).ShootBlocked);
+    CHECK_FALSE(map->GetField(target).MovableWithGag);
+    CHECK_FALSE(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map->SetHexManualBlock(target, true, true);
+    map->RecacheHexFlags(target);
+    CHECK(map->GetField(target).ShootBlocked);
+    map->SetHexManualBlock(target, true, false);
+    CHECK(map->GetField(target).MoveBlocked);
+    CHECK_FALSE(map->GetField(target).ShootBlocked);
+
+    map->SetHexManualBlock(target, false, false);
+    map->SetHexManualBlock(target, false, false);
+    CHECK_FALSE(map->GetField(target).MoveBlocked);
+    CHECK_FALSE(map->GetField(target).ShootBlocked);
+    CHECK(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    CHECK_THROWS_AS(map->SetHexManualBlock(mpos {32, 32}, true, false), VerificationException);
+    CHECK_FALSE(map->GetField(target).MoveBlocked);
+}
+
 TEST_CASE("ClientLargeMapFieldsStayWithinMemoryBudget")
 {
     auto settings = MakeClientLifetimeSettings();
@@ -739,6 +776,142 @@ TEST_CASE("ClientCritterFinalizationDropsAttachmentIds", "[client][entity][attac
     master.reset();
     CHECK(native_reports.load(std::memory_order_relaxed) == 0);
     peer->DestroySelf();
+}
+
+TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
+{
+    BakerTests::TestRig rig;
+    vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
+    rig.AddBakedFile("Metadata.fometa-server", metadata);
+    rig.AddBakedFile("Metadata.fometa-client", metadata);
+
+    BakerServerEngine server_engine {rig.BakedFiles};
+    BakerClientEngine client_engine {rig.BakedFiles};
+
+    auto server_registrar = server_engine.GetPropertyRegistrar(server_engine.Hashes.to_hashed_string("Item"));
+    REQUIRE(static_cast<bool>(server_registrar));
+    ProtoItem server_proto {server_engine.Hashes.to_hashed_string("FootprintLifetimeItem"), server_registrar};
+    server_proto.SetPicMap(server_engine.Hashes.to_hashed_string("LifetimeSprite.png"));
+    server_proto.SetShootThru(true);
+    server_proto.SetLightThru(true);
+    server_proto.SetMultihexLines(vector<uint8_t> {5, 1});
+    server_proto.SetDrawMultihexLines(false);
+
+    // Instances inherit the prototype contour, so no local unsynced geometry overrides are authored
+    Properties server_item(server_registrar, server_proto.GetProperties());
+    Properties server_control(server_registrar, server_proto.GetProperties());
+
+    auto send_snapshot = [](const Properties& source) {
+        auto stored_data = source.StoreData(false);
+
+        NetOutBuffer out {8};
+        out.WritePropsData(*stored_data.Data, *stored_data.Sizes);
+
+        NetInBuffer in {8};
+        in.AddData(out.GetData());
+
+        vector<vector<uint8_t>> chunks;
+        in.ReadPropsData(chunks);
+        return chunks;
+    };
+
+    auto footprint_chunks = send_snapshot(server_item);
+    auto control_chunks = send_snapshot(server_control);
+
+    vector<pair<string, function<void(ProtoItem&)>>> client_protos;
+    client_protos.emplace_back(string {"FootprintLifetimeItem"}, [&client_engine](ProtoItem& proto) {
+        proto.SetPicMap(client_engine.Hashes.to_hashed_string("LifetimeSprite.png"));
+        proto.SetShootThru(true);
+        proto.SetLightThru(true);
+        proto.SetMultihexLines(vector<uint8_t> {5, 1});
+        proto.SetDrawMultihexLines(false);
+    });
+    auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(client_engine, client_engine.Hashes.to_hashed_string("Item"), client_protos);
+    vector<pair<string, vector<uint8_t>>> extra_resources;
+    extra_resources.emplace_back("FootprintItems.fopro-bin-client", std::move(proto_blob));
+
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings, std::move(extra_resources));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    ProtoMap map_proto {client->Hashes.to_hashed_string("FootprintLifetimeMap"), client->GetPropertyRegistrar("Map")};
+    map_proto.SetSize(msize {32, 32});
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, make_ptr(&map_proto), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    });
+
+    auto item_a = map->AddReceivedItem(ident_t {5001}, client->Hashes.to_hashed_string("FootprintLifetimeItem"), mpos {16, 16}, footprint_chunks, false);
+    auto item_b = map->AddReceivedItem(ident_t {5002}, client->Hashes.to_hashed_string("FootprintLifetimeItem"), mpos {24, 24}, control_chunks, false);
+
+    // Direction 5 traces one NorthWest step from each anchor: A {(16,16),(16,15)}, B {(24,24),(24,23)}
+    array<mpos, 2> footprint_a {mpos {16, 16}, mpos {16, 15}};
+    array<mpos, 2> footprint_b {mpos {24, 24}, mpos {24, 23}};
+    vector<uint8_t> expected_lines {5, 1};
+
+    CHECK(item_a->GetMultihexLines() == expected_lines);
+    CHECK(item_b->GetMultihexLines() == expected_lines);
+    CHECK(item_a->GetMultihexMesh().empty());
+    CHECK(item_b->GetMultihexMesh().empty());
+
+    // Closed: every contour cell blocks movement while shoot and light pass through the transparent item
+    for (auto hex : footprint_a) {
+        CHECK(map->GetField(hex).MoveBlocked);
+        CHECK_FALSE(map->GetField(hex).ShootBlocked);
+        CHECK_FALSE(map->GetField(hex).LightBlocked);
+    }
+
+    for (auto hex : footprint_b) {
+        CHECK(map->GetField(hex).MoveBlocked);
+        CHECK_FALSE(map->GetField(hex).ShootBlocked);
+        CHECK_FALSE(map->GetField(hex).LightBlocked);
+    }
+
+    CHECK_FALSE(map->GetField(mpos {16, 17}).MoveBlocked);
+    CHECK_FALSE(map->GetField(mpos {24, 25}).MoveBlocked);
+
+    const auto& extra_entries_a = map->GetField(mpos {16, 15}).MultihexItems;
+    REQUIRE(extra_entries_a.size() == 1);
+    CHECK(extra_entries_a.front().first == item_a);
+    CHECK_FALSE(extra_entries_a.front().second);
+
+    const auto& extra_entries_b = map->GetField(mpos {24, 23}).MultihexItems;
+    REQUIRE(extra_entries_b.size() == 1);
+    CHECK(extra_entries_b.front().first == item_b);
+    CHECK_FALSE(extra_entries_b.front().second);
+
+    // Opening runs the real NoBlock post-setter, which must refresh the whole contour and not just the anchor
+    item_a->SetNoBlock(true);
+
+    for (auto hex : footprint_a) {
+        CHECK_FALSE(map->GetField(hex).MoveBlocked);
+        CHECK_FALSE(map->GetField(hex).ShootBlocked);
+        CHECK_FALSE(map->GetField(hex).LightBlocked);
+    }
+
+    for (auto hex : footprint_b) {
+        CHECK(map->GetField(hex).MoveBlocked);
+    }
+
+    // Closing restores both A cells while the independent B control stays blocked
+    item_a->SetNoBlock(false);
+
+    for (auto hex : footprint_a) {
+        CHECK(map->GetField(hex).MoveBlocked);
+        CHECK_FALSE(map->GetField(hex).ShootBlocked);
+        CHECK_FALSE(map->GetField(hex).LightBlocked);
+    }
+
+    for (auto hex : footprint_b) {
+        CHECK(map->GetField(hex).MoveBlocked);
+    }
+
+    map->DestroySelf();
+    CHECK(map->IsDestroyed());
+    CHECK_FALSE(client->GetEntity(map->GetId()));
 }
 
 FO_END_NAMESPACE

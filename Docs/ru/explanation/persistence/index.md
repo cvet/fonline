@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"95c457e880e66821f0320e745e824cea8806e4aa777150bf38a5f730fd51400b"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"76a2f6b5f819a67ab3cdd4c73a8d761f31a9288c9326af591854136700c0826f"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -20,6 +20,10 @@ permalink: /Docs/ru/explanation/persistence/
 
 Не помещайте в этот документ действующие учётные данные, производственные строки подключения или зависящие от хоста шаги восстановления.
 
+## Штатная остановка и владение сущностями
+
+Постоянные свойства держателей описывают сохраняемое владение. `ServerEngine::Shutdown` обязан сохранять эти ID и документы custom entities. `EntityManager::DestroyAllEntities` очищает внутренние ссылки runtime, пока реестр удерживает все сущности, затем сбрасывает родителей и владение реестра. Обычный `DestroyCustomEntity` отдельно изменяет ID держателей и удаляет документы. Различие относится и к деревьям под Game, и к custom children стандартных держателей. `ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts` проверяет границу через две реальные перезагрузки файлового хранилища; чтение живого мира до остановки не доказывает долговечность.
+
 ## Открытый фасад базы данных
 
 `Source/Server/DataBase.h` определяет открытый фасад `DataBase`. Он оборачивает backend `DataBaseImpl` и предоставляет операции коллекций и документов:
@@ -27,16 +31,26 @@ permalink: /Docs/ru/explanation/persistence/
 - состояние и метрики: `InValidState()`, `GetDbRequestsPerMinute()`;
 - перечисление: `GetAllIds()`, `GetAllIntIds()`, `GetAllStringIds()`;
 - чтение: `Get()`, `GetMany()`, `Valid()`;
-- запись: `Insert()`, `Update()`, `Delete()`;
+- запись: `Insert()`, `TryInsert()`, `Update()`, `CompareExchange()`, `Delete()`;
 - управление commit: `StartCommitChanges()`, `WaitCommitChanges()`, `ClearChanges()`;
 - снимок backend: `CreateSnapshot()` и `RestoreSnapshot(bytes)`;
 - отладочный интерфейс: `DrawGui()`.
 
-`ConnectToDataBase()` создаёт фасад из настроек, данных подключения, схем коллекций и panic callback.
+`ConnectToDataBase()` создаёт фасад из настроек, данных подключения, схем коллекций и panic callback. JSON и `DbSQLite` используют весь остаток строки после имени провайдера, убирая внешние пробелы, как каталог хранилища: `JSON C:/Game Data/world` и `DbSQLite C:/Game Data/world` сохраняют внутренние пробелы. Не добавляйте к этому остатку буквальные кавычки. Пустой каталог отклоняется; Memory и Mongo сохраняют грамматику токенов.
 
 `GetMany(collection, ids)` читает несколько записей одной коллекции одним backend-вызовом `GetRecords()` и возвращает документы в порядке запрошенных ids: отсутствующей записи соответствует пустой документ, повторному id — тот же результат. Каждый документ следует контракту `Get()` с наложенными pending commit operations; отдельно перечитывается только запись, commit которой завершился во время batch read. Наложение прекращается после записи в backend и удаления операции из очереди. Если это произошло после чтения старого значения из backend, но до проверки очереди, соответствующая запись читается повторно; остальные не затрагиваются. Сам `Get()` использует тот же путь для одного id.
 
+Активные читатели разделяют поколение записи, а каждый backend-запрос запоминает собственное ожидаемое поколение. Commit увеличивает его под той же блокировкой, что удаляет pending operation. Другой читатель не может подменить свидетельство commit, сделавшего прежнее чтение устаревшим. Учёт удаляется только при уходе последнего читателя, поэтому исторические завершённые записи не накапливаются. `DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker` закрепляет порядок двух читателей и commit, а также отказ CAS со старым значением.
+
 `GetAllIds(collection)` и типизированные варианты `GetAllIntIds()` / `GetAllStringIds()` перечисляют ключи backend с наложенными в порядке очереди ожидающими insert и delete, в согласии с тем, что может прочитать `Get()`. Ожидающий delete убирает ключ из списка, ожидающий insert добавляет. Если insert или delete этой коллекции завершается во время перечисления ключей backend, перечисление повторяется. Update не меняет набор ключей. Тесты `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` и `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` проверяют наложение и параллельный commit.
+
+## Условные изменения
+
+`TryInsert(collection, id, document)` возвращает `false`, если логическая запись уже существует. `CompareExchange(collection, id, key, expected, desired)` меняет существующее поле только при совпадении его типизированного значения с `expected`; отсутствие записи, поля или несовпадение возвращают `false` без постановки записи в очередь. Обе операции учитывают pending insert, update и delete при проверке условия. Неверная коллекция/тип ключа, пустой добавляемый документ и не конечное desired-значение по-прежнему вызывают исключение.
+
+Один producer mutex на `DataBaseImpl` объединяет проверку условия с постановкой операции в очередь и сериализует их с обычными insert/update/delete, `RestoreSnapshot()` и `ClearChanges()`. Commit thread использует только существующие блокировки очереди/backend. Результат `true` означает попадание в логическую очередь, а не завершённый durable commit: `StartCommitChanges()` включает обработку, а `WaitCommitChanges()` сохраняет существующие ограничения при отказах и восстановлении. Это не транзакция между экземплярами/процессами и не backend-native compare-and-swap Mongo/SQLite. Для записей с такой гарантией потребитель должен сохранять один владеющий экземпляр.
+
+Серверные скрипты получают `Game.DbTryInsertRecord(collection, id, keyValues)` и `Game.DbCompareExchangeRecordString(collection, id, key, expected, desired)` для целочисленных и строковых ids. Эти методы строковых полей проверяют коллекцию/id, непустые добавляемые значения/ключ и UTF-8 до вызова общего слоя БД. Live entity cover не требуется. Поведение `DbInsertRecord` с исключением при дубликате не меняется.
 
 ## Коллекции и ключи
 

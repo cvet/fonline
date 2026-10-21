@@ -75,8 +75,17 @@ set_property(TARGET file_io_dynamic PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedD
 
 
 ENGINE_SOURCE = Path(__file__).resolve().parents[1] / "Source/Essentials/DiskFileSystem.cpp"
+UTF8_SOURCE = ENGINE_SOURCE.with_name("StringUtils.cpp")
+UTF8_VALIDATION_SIGNATURE = "auto strvex::is_valid_utf8() const"
+UTF8_SIGNATURES = (
+    "auto utf8::is_valid(uint32_t ucs)",
+    "auto utf8::decode(ptr<const char> str, size_t& length)",
+)
 ENGINE_SIGNATURES = (
+    "static auto fs_path_error(string_view path)",
+    "static void fs_validate_path(string_view path)",
     "auto fs::make_path(string_view path)",
+    "static auto fs_make_native_path(string_view path, std::error_code& ec)",
     "static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended)",
     "auto fs::create_directories(string_view dir)",
     "auto fs::open_ifstream(string_view path, std::ios::openmode mode)",
@@ -85,6 +94,7 @@ ENGINE_SIGNATURES = (
     "auto fs::remove_dir_tree(string_view dir)",
 )
 ENGINE_HARNESS = r"""
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -96,9 +106,29 @@ ENGINE_HARNESS = r"""
 #define FO_TRACE_ZONE(category) ((void)0)
 #define ignore_unused(...) ((void)(__VA_ARGS__))
 using string_view = std::string_view;
+// This standalone harness supplies only the borrow operations used by the canonical UTF-8 decoder.
+// Checked engine pointer construction and allocation remain linked native-test responsibilities.
+template<typename T>
+class ptr {
+public:
+    explicit ptr(T* value) noexcept : value_(value) {}
+    T& operator[](size_t offset) const noexcept { return value_[offset]; }
+    template<typename U> auto reinterpret_as() const noexcept -> ptr<U> { return ptr<U>{reinterpret_cast<U*>(value_)}; }
+private:
+    T* value_;
+};
+template<typename T> auto make_ptr(T* value) noexcept -> ptr<T> { return ptr<T>{value}; }
+// Only the view storage/constructor is supplied here; validation uses the exact canonical method below.
+class strvex {
+public:
+    explicit strvex(string_view value) noexcept : _sv(value) {}
+    auto is_valid_utf8() const noexcept -> bool;
+private:
+    string_view _sv;
+};
 """
 ENGINE_MAIN = r"""
-static std::string utf8(const std::filesystem::path& path)
+static std::string probe_utf8(const std::filesystem::path& path)
 {
     const auto value = path.u8string();
     return {value.begin(), value.end()};
@@ -108,7 +138,7 @@ static bool WriteProbeFixture(string_view path, string_view content)
     std::error_code ec;
     const auto native_path = fs_make_io_path(path, ec);
     if (ec) return false;
-    if (native_path.has_parent_path() && !fs::create_directories(utf8(native_path.parent_path()))) return false;
+    if (native_path.has_parent_path() && !fs::create_directories(probe_utf8(native_path.parent_path()))) return false;
     std::ofstream file{native_path, std::ios::binary | std::ios::trunc};
     if (!file) return false;
     file.write(content.data(), static_cast<std::streamsize>(content.size()));
@@ -118,12 +148,12 @@ static bool WriteProbeFixture(string_view path, string_view content)
 int wmain(int argc, wchar_t** argv)
 {
     if (argc != 3 && argc != 4) return 2;
-    const std::string input = utf8(std::filesystem::path{argv[2]});
+    const std::string input = probe_utf8(std::filesystem::path{argv[2]});
     std::error_code ec;
     const auto resolved = fs_make_io_path(input, ec);
     if (std::wstring_view{argv[1]} == L"remove_tree") {
         if (argc != 4 || ec) return 6;
-        const std::string child = utf8(std::filesystem::path{argv[3]});
+        const std::string child = probe_utf8(std::filesystem::path{argv[3]});
         const bool created_before = WriteProbeFixture(child, "descendant");
         if (!created_before) return 7;
         const auto removed_before = std::filesystem::remove_all(resolved, ec);
@@ -149,7 +179,7 @@ int wmain(int argc, wchar_t** argv)
         return created_after && removed_after && root_gone && child_gone ? 0 : 8;
     }
     if (std::wstring_view{argv[1]} == L"directory_names") {
-        const std::string literal = utf8(fs_make_io_path(input, ec, true)) + ". ";
+        const std::string literal = probe_utf8(fs_make_io_path(input, ec, true)) + ". ";
         const bool written = !ec && WriteProbeFixture(input + "\\child.bin", "ordinary") && WriteProbeFixture(literal + "\\child.bin", "literal");
         const bool ordinary_removed = fs::remove_dir_tree(input + ". ");
         const bool ordinary_gone = !std::filesystem::exists(resolved, ec) && !ec;
@@ -165,7 +195,7 @@ int wmain(int argc, wchar_t** argv)
         return passed ? 0 : 9;
     }
     if (std::wstring_view{argv[1]} == L"names") {
-        const std::string literal = utf8(resolved) + ". ";
+        const std::string literal = probe_utf8(resolved) + ". ";
         const bool written = WriteProbeFixture(input, "ordinary") && WriteProbeFixture(literal, "literal");
         const auto read = [](const std::string& name) {
             auto stream = fs::open_ifstream(name, std::ios::binary);
@@ -180,7 +210,7 @@ int wmain(int argc, wchar_t** argv)
         if (ec) return 3;
         const auto output = std::wstring_view{argv[1]} == L"resolve_recursive" ? fs_make_io_path(input, ec, true) : resolved;
         if (ec) return 3;
-        std::cout << utf8(output);
+        std::cout << probe_utf8(output);
         return 0;
     }
     const bool written = WriteProbeFixture(input, "FOnline native long-path probe\n");
@@ -227,14 +257,30 @@ def engine_probe_source() -> tuple[str, dict[str, object]]:
         if signature.startswith("auto fs::")
     ]
     namespace = "namespace fs {\n" + "\n".join(public_declarations) + "\n}\n"
-    native = ENGINE_HARNESS + namespace + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
+    utf8_source = UTF8_SOURCE.read_text(encoding="utf-8")
+    utf8_functions = []
+    for signature in UTF8_SIGNATURES:
+        start = utf8_source.rindex(signature)
+        end = utf8_source.index("\n}\n", start) + len("\n}\n")
+        utf8_functions.append(utf8_source[start:end])
+    start = utf8_source.rindex(UTF8_VALIDATION_SIGNATURE)
+    end = utf8_source.index("\n}\n", start) + len("\n}\n")
+    utf8_validation = utf8_source[start:end]
+    bad_character = next(line for line in utf8_source.splitlines() if line.startswith("static constexpr uint32_t UNICODE_BAD_CHAR ="))
+    utf8_declarations = "namespace utf8 {\n" + "\n".join(function.split("\n", 1)[0].replace("utf8::", "", 1) + ";" for function in utf8_functions) + "\n}\n"
+    native = ENGINE_HARNESS + utf8_declarations + bad_character + "\n" + "\n".join(utf8_functions) + utf8_validation + namespace + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
     return native, {
         "source_file": "Source/Essentials/DiskFileSystem.cpp",
         "source_sha256": hashlib.sha256(ENGINE_SOURCE.read_bytes()).hexdigest(),
+        "utf8_source_file": "Source/Essentials/StringUtils.cpp",
+        "utf8_source_sha256": hashlib.sha256(UTF8_SOURCE.read_bytes()).hexdigest(),
+        "extracted_utf8_functions": {signature: hashlib.sha256(function.encode()).hexdigest() for signature, function in zip(UTF8_SIGNATURES, utf8_functions)},
+        "extracted_string_functions": {UTF8_VALIDATION_SIGNATURE: hashlib.sha256(utf8_validation.encode()).hexdigest()},
+        "unicode_bad_character_sha256": hashlib.sha256(bad_character.encode()).hexdigest(),
         "extracted_functions": {signature: hashlib.sha256(function.encode()).hexdigest() for signature, function in zip(ENGINE_SIGNATURES, functions)},
         "extracted_declaration_sha256": hashlib.sha256(declaration.encode()).hexdigest(),
-        "harness_aliases": {"string_view": "std::string_view", "FO_WINDOWS": "1", "stack_trace_macros": "no-op", "ignore_unused": "void expression (marks the argument used)"},
-        "proof_scope": "Exact path conversion and create/open/rename/remove function bodies, including recursive removal and its canonical helper declaration. Fixture writes use a standard stream through the canonical path adapter; they do not copy or emulate the production atomic write helper. STL directory enumeration uses that conversion; the negative control uses remove_all with the ordinary two-argument conversion. Full engine linkage, atomic whole-file writes, allocator and visitor dispatch remain native unit-test responsibilities.",
+        "harness_aliases": {"string_view": "std::string_view", "ptr": "standalone non-owning borrow shim for UTF-8 decode; engine checked-pointer behavior is not exercised", "strvex": "minimal string_view holder; canonical is_valid_utf8 method body is extracted", "FO_WINDOWS": "1", "stack_trace_macros": "no-op", "ignore_unused": "void expression (marks the argument used)"},
+        "proof_scope": "Exact path validation/conversion and create/open/rename/remove function bodies, including their canonical private adapters, UTF-8 decoder and shared strvex validator bodies. The decoder uses a non-owning harness pointer shim; checked engine pointers are outside this standalone proof. Fixture writes use a standard stream through the canonical path adapter; they do not copy or emulate the production atomic write helper. STL directory enumeration uses that conversion; the negative control uses remove_all with the ordinary two-argument conversion. Full engine linkage, atomic whole-file writes, allocator and visitor dispatch remain native unit-test responsibilities.",
         "native_source_sha256": hashlib.sha256(native.encode()).hexdigest(),
     }
 

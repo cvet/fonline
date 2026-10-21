@@ -84,9 +84,10 @@ private:
 
     void DispatchImpl() override;
     void DisconnectImpl() override;
+    void EnqueueClose();
 
-    // Weak because the endpoint owns the connection and destroys it on the io thread: a strong ref here could
-    // outlive the io_context and destroy it afterwards
+    // Weak because backend timers belong to the endpoint io_context; a wrapper retained past the endpoint must
+    // not keep the backend connection alive
     connection_weak_ptr _connection {};
 };
 
@@ -224,13 +225,7 @@ template<bool Secured>
 NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets()
 {
     try {
-        // close() posts to the io service and is the only thread-safe teardown: terminate() is io-thread-only
-        // and would race the run loop from here
-        if (auto connection = _connection.lock()) {
-            std::error_code close_error;
-            connection->close(websocketpp::close::status::going_away, "", close_error);
-            ignore_unused(close_error);
-        }
+        EnqueueClose();
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -301,13 +296,27 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
-    // Runs on the engine thread, so teardown goes through the thread-safe close() rather than the io-thread-only
-    // terminate(), which would race the run loop
-    if (auto connection = _connection.lock()) {
-        std::error_code close_error;
-        connection->close(websocketpp::close::status::going_away, "", close_error);
-        ignore_unused(close_error);
+    EnqueueClose();
+}
+
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::EnqueueClose()
+{
+    auto connection = _connection.lock();
+
+    if (!connection) {
+        return;
     }
+
+    // terminate() writes the connection close state without the lock close() takes, so the close is queued onto the
+    // single io thread that runs terminate(); the closure takes the weak connection only, never this or a strong ref
+    asio::post(connection->get_raw_socket().get_executor(), [weak_connection = _connection] {
+        if (auto live_connection = weak_connection.lock()) {
+            std::error_code close_error;
+            live_connection->close(websocketpp::close::status::going_away, "", close_error);
+            ignore_unused(close_error);
+        }
+    });
 }
 
 template<bool Secured>

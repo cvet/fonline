@@ -99,6 +99,8 @@ produce NaN or infinity; validate finiteness at the relevant invariant boundary.
 
 `ManagedScript.PatchPointWeaver` runs the Engine Mono.Cecil tool on intermediate server/client assemblies after compilation and before copy/packaging. Weaver sources and inputs trigger recompilation and reweaving; already woven assemblies are skipped. The tool is not shipped as a script dependency.
 
+Property components also generate Has/qualified-field accessors for entities and their prototypes; see the [component authoring and migration contract](../content/prototype-format.md#property-components). They are not restricted to items.
+
 ## Authoring shape
 
 Use the project namespace and import `FOnline` for generated types. CoreScripts use file-scoped `namespace FOnline;`; game domain types belong outside it.
@@ -122,8 +124,10 @@ Managed marker attributes mirror the Engine dispatch roles rather than ordinary 
 - `[PropertyGetter]` and `[PropertySetter]`;
 - `[ServerRemoteCall]`, `[ClientRemoteCall]`, and `[AdminRemoteCall]`;
 - `[ItemTrigger]`, `[ItemInit]`, `[ItemStatic]`, `[CritterInit]`, `[MapInit]`, and `[LocationInit]`;
-- `[AnimCallback]`, `[ClassExtension]`, and project-registered marker attributes;
+- `[AnimCallback]` and project-registered marker attributes;
 - `[CallableByName]` for functions intentionally exposed to named invocation.
+
+Use standard C# extension methods to expose static helpers with instance-call syntax; no engine marker is required.
 
 Generated event wrappers reject a handler without `[Event]` before creating the native subscription. Named calls are likewise deny-by-default: `Game.Invoke` and administrative dispatch accept only explicitly marked functions and the applicable allowlist.
 
@@ -228,7 +232,8 @@ last rendered use, call `StopDraw()`, then `Dispose()`. A `using` scope must cov
 The entry-assembly registry retains ownership records rather than wrappers. Shutdown closes it and
 cleans queued and live leases before final entity collection/unbind; late finalizers do nothing.
 Rebuild matching native components and rebake every managed role with ABI generator identity `9`;
-runtime compatibility is `0.0.73`.
+runtime compatibility follows the central `MigrationRule Version` marker in
+[`Common.h`](../../../../Source/Common/Common.h).
 
 `hstring` is an eight-byte blittable native intern-entry pointer. Frames/value types copy it unchanged; property/RPC storage converts it to/from 64-bit hashes. Interning and text lookup use the entry assembly’s exact Engine metadata, never a process-wide hash table. Static fields initialize per load context.
 
