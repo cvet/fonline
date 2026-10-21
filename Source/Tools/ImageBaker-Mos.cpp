@@ -158,8 +158,7 @@ namespace ImageBakerMos
         anim_ticks = 100;
 
         collection.Main.Frames.resize(sequence_size);
-        collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
-        collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
+        collection.Main.Frames[0].Size = {width, height};
         collection.Main.Frames[0].Data = std::move(data);
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms

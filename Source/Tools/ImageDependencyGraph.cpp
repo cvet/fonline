@@ -59,7 +59,7 @@ static void AppendFingerprintPart(string& target, string_view value)
 
 auto MakeImageBakingFingerprint(const BakingSettings& settings) -> string
 {
-    string options = strex("ImageContractV7|{}|{}|{}|{}|{}|{}|{}|{}", FO_BUILD_HASH, FO_BAKING_CONFIG_HASH, SPRITE_RESOURCE_VERSION, SPRITE_INFO_VERSION, settings.SpriteMesh.Enabled, settings.SpriteMesh.AlphaThreshold, settings.SpriteMesh.MaxTriangles, settings.SpriteMesh.AreaSavingsWeight).str();
+    string options = strex("ImageContractV8|{}|{}|{}|{}|{}|{}|{}|{}", FO_BUILD_HASH, FO_BAKING_CONFIG_HASH, SPRITE_RESOURCE_VERSION, SPRITE_INFO_VERSION, settings.SpriteMesh.Enabled, settings.SpriteMesh.AlphaThreshold, settings.SpriteMesh.MaxTriangles, settings.SpriteMesh.AreaSavingsWeight).str();
 
     return HashImageBytes(make_const_span(options));
 }

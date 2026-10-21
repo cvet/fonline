@@ -500,10 +500,11 @@ namespace ImageBakerSpr
                     }
                 }
 
-                shot.Width = numeric_cast<uint16_t>(whole_width);
-                shot.Height = numeric_cast<uint16_t>(whole_height);
-                shot.NextX = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_width / 2);
-                shot.NextY = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_height);
+                shot.Size = {whole_width, whole_height};
+                shot.Offset = {
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0]) - center_x + center_x_ex + whole_width / 2),
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1]) - center_y + center_y_ex + whole_height),
+                };
                 shot.Data = std::move(whole_data);
             }
 

@@ -27,7 +27,7 @@ loading, atlases and caches. `.fo3d` animation/durations belong to
 
 The owning sources are:
 
-- `Source/Tools/ImageImport.*` for `FrameShot::NextX` / `NextY` and the shared loader context;
+- `Source/Tools/ImageImport.*` for `FrameShot::Motion` and the shared loader context;
 - `Source/Tools/ImageBaker.*` for coordination, transformations, and baked sprite serialization; adjacent `ImageBaker-*.h/.cpp` pairs own source-format import;
 - `Source/Common/SpriteResource.*` for the shared SpriteResource v3 frame decoder and `NextOffset` transport;
 - `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset`, baked loading, shared frames, and per-direction sheets;
@@ -45,7 +45,7 @@ A moving 2D critter involves three related values:
 
 1. **Logical movement**: `MovingContext` owns path progress, current hex, direction, completion, and movement speed.
 2. **Sub-hex interpolation**: `MovingContext::BuildProgress` converts the smooth segment position to integer pixel `HexOffset` values. `CritterHexView::ProcessMoving` applies the logical hex and offset.
-3. **Authored sprite displacement**: each animation frame carries an integer `(NextX, NextY)` delta. `CritterHexView` chooses a frame and computes `_offsAnim` so the rendered sprite follows the authored walk cycle while logical movement remains authoritative.
+3. **Authored sprite displacement**: each animation frame carries an integer `(Motion.x, Motion.y)` delta. `CritterHexView` chooses a frame and computes `_offsAnim` so the rendered sprite follows the authored walk cycle while logical movement remains authoritative.
 
 Sprite root motion is presentation data. It does not move the entity, choose a path, change movement speed, authorize a hex transition, or replicate movement over the network.
 
@@ -54,14 +54,16 @@ Sprite root motion is presentation data. It does not move the entity, choose a p
 `ImageImport::FrameShot` stores:
 
 ```cpp
-int16_t NextX;
-int16_t NextY;
+isize32 Size;
+ipos32 Motion;
+ipos32 Offset;
 ```
 
-Each pair contributes pixel displacement in one direction's `N`-frame cycle:
+`Size` is the bitmap size, `Offset` is independent draw placement, and
+`Motion` is a per-frame animation delta in pixels, accumulated during playback. Each pair contributes pixel displacement in one direction's `N`-frame cycle:
 
 ```text
-delta[i] = (NextX[i], NextY[i])
+delta[i] = Motion[i]
 accum[i] = sum(delta[0..i])
 T        = sum(delta[0..N-1])
 ```
@@ -69,14 +71,16 @@ T        = sum(delta[0..N-1])
 `T` is the cycle displacement. Its length and angle need not match a grid step;
 runtime projects movement onto it without assuming a hex pitch or cycle length.
 
-Image loaders derive deltas from source records. FOFRM preserves them unless
-Move/FrameMoves explicitly replaces them: signed int16 X Y, one pair per
+FRM/FRx frame pairs and ART DeltaX/DeltaY supply motion. BAM centers and SPR
+bounding-box/center calculations supply `Offset`, with zero imported motion.
+PNG, TGA, MOS, RIX, ZAR and TIL do not import movement. FOFRM preserves them unless
+Motion/FrameMotions explicitly replaces them: signed int16 X Y, one pair per
 source reference before flattening. Bitmap transforms never rotate/scale movement.
 Its optional FrameOffsets pairs adjust draw placement (`Offset + FrameOffsets[i]`)
 without accumulation or root motion; NextX_N/NextY_N are refused. See
 [FOFRM grammar](image-format.md#fofrm-grammar) for pair counts, section scope and nesting.
 
-ART preserves DeltaX/DeltaY as NextX/NextY, with mirrored signs. Hot spots align
+ART preserves DeltaX/DeltaY as Motion, with mirrored signs. Hot spots align
 the canvas and sequence placement. Source retains both; ordinary composition
 discards child sequence placement and retains frame placement/deltas.
 See [ART](image-format.md#art).
@@ -87,7 +91,7 @@ from the extra sequence on both axes, covered by ResourceManagerMergesBothMotion
 
 ## Baked and runtime representation
 
-`ImageBaker::BakeCollection` writes each logical frame's signed16 NextX/NextY,
+`ImageBaker::BakeCollection` writes each logical frame's checked signed16 Motion components,
 int32 placement and positive uint32 duration into SpriteResource v3. Shared slots
 reference earlier pixels/geometry, retaining their own movement, placement and time.
 `ReadSpriteResource` decodes movement into `SpriteResourceFrameData::NextOffset`.
@@ -219,7 +223,7 @@ This logic applies to any resolved walk/run sheet change, not only a direction c
 | Condition | Current result |
 |---|---|
 | Missing FOFRM FrameOffsets | Zero draw-placement adjustments; imported root-motion deltas are unchanged. |
-| Offset exceeds signed 16-bit range during baking | Numeric conversion fails instead of silently wrapping. |
+| Motion exceeds signed 16-bit range during serialization | Numeric conversion fails instead of silently wrapping. |
 | Baked sprite has zero frames or directions | Client loading fails validation. |
 | Baked frame is a sprite reference | The referenced frame's sprite and offset are copied. |
 | Walk/run cycle total `T` is zero | Frame `0` is selected and movement root-motion offset remains zero. |
@@ -245,7 +249,7 @@ Automated baker and geometry tests establish data and normalization behavior. Th
 
 ## Authoring practices
 
-1. `NextX`/`NextY` are per-frame pixel deltas, not absolute coordinates.
+1. `Motion` are per-frame pixel deltas, not absolute coordinates.
 2. Inspect every direction; keep cycle vectors directionally consistent for turns.
 3. Keep `T` nonzero for locomotion sheets that spatially drive gait.
 4. Match deltas to poses; a large single-frame correction jumps even with a correct total.
@@ -259,7 +263,7 @@ Automated baker and geometry tests establish data and normalization behavior. Th
 The pinned Last Frontier snapshot routes 2D work through `Docs/ContentWorkflow.md`
 and Engine reconciliation through `Docs/DocumentationMaintenance.md`. Its mainly
 `.fo3d` pipeline skips `*_RM` translation in `Docs/CharacterGenerator.md` because
-Engine owns world movement; this does not prove 2D `NextX`/`NextY` values.
+Engine owns world movement; this does not prove 2D `Motion` values.
 
 Audited LF/TLA trees contain no current authored `.fofrm` or legacy FRM-family sprite assets
 with a verified nonzero production cycle. TLA `Docs/Animation.md` explains projection historically;
@@ -279,7 +283,7 @@ The embedding project owns sprite assets, FOFRM composition, animation substitut
 
 Re-audit this page and its focused tests when a change touches any of these surfaces:
 
-- `FrameShot::NextX` / `NextY`, SpriteResource versioning, `NextOffset`, shared-frame behavior, or `SpriteSheet::_sprOffset`;
+- `FrameShot::Motion`, SpriteResource versioning, `NextOffset`, shared-frame behavior, or `SpriteSheet::_sprOffset`;
 - FOFRM/legacy image import, mirroring, cropping, frame extraction, animation merge, cloning, or substitution;
 - `MovingContext::BuildProgress`, hex/offset interpolation, prediction reconciliation, or `GeometryHelper::NormalizeHexOffset`;
 - `CritterHexView` movement lifecycle, walk/run activation, anchor transfer, frame selection, `_offsAnim`, map passability, or light-offset bounding;

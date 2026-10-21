@@ -66,7 +66,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         offsets = fields["image-format.field.frame-offsets"]
         self.assertEqual(offsets["name"], "FrameOffsets")
         for claim in ("one signed int32 X Y pair", "before flattening", "same section",
-                      "draw placement", "without accumulation", "imported NextX/NextY",
+                      "draw placement", "without accumulation", "imported Motion",
                       "wrong-count", "without references"):
             self.assertIn(claim, offsets["requirement"])
         self.assertIn("without inheritance", offsets["default"])
@@ -102,7 +102,7 @@ class ImageFormatDocumentationTests(unittest.TestCase):
         resampling = next(entry for entry in self.model["baking_rules"]
                           if entry["id"] == "image-format.baking.fofrm-resampling")
         for claim in ("pixel-center", "premultiplied-alpha", "identity", "empty source",
-                      "before meshing", "Offset", "FrameOffsets", "NextX/NextY"):
+                      "before meshing", "Offset", "FrameOffsets", "Motion"):
             self.assertIn(claim, resampling["requirement"])
         self.assertIn("Root transforms", fields["image-format.field.source"]["requirement"])
         guide = (ENGINE_ROOT / "Docs/en/how-to/content/image-format.md").read_text(encoding="utf-8")

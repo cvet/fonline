@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"985940cbf2b3690a9a61174304b44f36e40d65c8f29d4d50a151c2cda6c5dbb5"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"a048a2cb832d3a16d6f06fc22938befcb2125f81e679c8cb484a6c6dfcd7cede"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -524,7 +524,7 @@ Model pipeline разделён на извлечение source, compatibility 
 - [Model Animation](../../how-to/content/model-animation.md) — tuples, `AnimSpeed`, aliases, durations и runtime lookup;
 - [Text and Localization](../../how-to/content/text-and-localization.md) и [text reference](../../reference/text-format/index.md) — `.fotxt`, normalization и `$Text`;
 - [Image and Sprite Formats](../../how-to/content/image-format.md) и [image reference](../../reference/image-format/index.md) — import, FOFRM, baked sprites, atlases и caches;
-- [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `NextX`/`NextY` и movement phase;
+- [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `Motion` и movement phase;
 - [Particle Format](../../how-to/content/particle-format.md) и [particle reference](../../reference/particle-format/index.md) — SPARK/Effekseer;
 - [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — descriptors и layout;
 - [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — audio baking и video raw-copy/runtime decoding;

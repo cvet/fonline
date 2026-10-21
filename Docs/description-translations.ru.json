@@ -1140,8 +1140,8 @@
           "translation": "Record сохраняет логическое размещение и координаты освещения, устраняя прозрачные texture rows и отправляя indexed silhouettes; повторные кадры переиспользуют исходный payload."
         },
         "/baking_rules/@id=image-format.baking.frame-record/requirement": {
-          "source_sha256": "39a9f39a1daf30db2caec1e109c92ef1aed0eb6f0e58f967473ee9b13b6fc7a2",
-          "translation": "Каждый логический слот записывает uint32 DurationMs, int32 размещение X/Y, int16 движение X/Y и uint8 shared-флаг. Shared-слот добавляет обратный uint16 индекс пикселей; конкретный — uint16 ширину/высоту, RGBA8 и mesh. Общими являются только пиксели, размеры и геометрия; размещение, движение и время принадлежат слоту."
+          "source_sha256": "c9c18064c347a7715838b1e10edf7a4fbf2b6f48c61b6f7ba41c09bf4768a40a",
+          "translation": "Каждый логический слот записывает uint32 DurationMs, int32 размещение X/Y, int16 движение X/Y и uint8 shared-флаг. Shared-слот добавляет обратный uint16 индекс пикселей; конкретный — uint16 ширину/высоту, RGBA8 и mesh. Общими являются только пиксели, размеры и геометрия; размещение, движение и время принадлежат слоту. Native FrameShot использует агрегаты Size, Motion и Offset с компонентами signed32; Size проверяется на неотрицательность и сужается до uint16, Motion — до int16 при сериализации, без переполнения."
         },
         "/baking_rules/@id=image-format.baking.output-path/name": {
           "source_sha256": "4195209bcc495e5f7502ed5536ce27127d1158c59e9230e8ede16e43558ebe3a",
@@ -1328,8 +1328,8 @@
           "translation": "Нумерация направлений и метаданные кадров ART требуют специального remapping перед использованием в runtime."
         },
         "/formats/@id=image-format.format.art/requirement": {
-          "source_sha256": "696f1291fc01d2b86e7039ece4d60f05941c3b77ab3d2ec6b8b7401b500a9d67",
-          "translation": "ART: заголовок132байта,8бит; флаг0x1 задаёт одну ротацию, иначе восемь. Таблицы ротаций предшествуют пикселям. Raw содержит width*height байт, RLE ограничен объявленным размером. Усечённые/неполные/переполненные потоки, отрицательные размеры и выход за baked-диапазон запрещены. Hot spots выбранных кадров выравниваются на общем прозрачном холсте направления; смещения последовательности задают hot spot, NextX/NextY сохраняют движение. Квадратные направления:1,2,3,4,5,6,7,0; hex:1,2,3,5,6,7. art/critter/,art/monster/,art/unique_npc/ отражают1–3 из7–5. Стены/порталы сдвигают привязки(-40,+20) для0,1,6,7; зеркальные крыши используют левую границу. Выбор палитры, параметры и размещение следуют контракту ART. Полная длительность uint32; нулевой clock нормализуется до10fps, положительный субмиллисекундный период до1мс."
+          "source_sha256": "db5181909b0a8bf6769cb35c7fa6e087798a3ec6ac0e9566dab2e1adb603d0ae",
+          "translation": "ART: заголовок132байта,8бит; флаг0x1 задаёт одну ротацию, иначе восемь. Таблицы ротаций предшествуют пикселям. Raw содержит width*height байт, RLE ограничен объявленным размером. Усечённые/неполные/переполненные потоки, отрицательные размеры и выход за baked-диапазон запрещены. Hot spots выбранных кадров выравниваются на общем прозрачном холсте направления; смещения последовательности задают hot spot, Motion сохраняют движение. Квадратные направления:1,2,3,4,5,6,7,0; hex:1,2,3,5,6,7. art/critter/,art/monster/,art/unique_npc/ отражают1–3 из7–5. Стены/порталы сдвигают привязки(-40,+20) для0,1,6,7; зеркальные крыши используют левую границу. Выбор палитры, параметры и размещение следуют контракту ART. Полная длительность uint32; нулевой clock нормализуется до10fps, положительный субмиллисекундный период до1мс. DeltaX/DeltaY сохраняют signed32 при импорте; до int16 сужается только сериализуемый Motion, поэтому Motion/FrameMotions FOFRM могут заменить широкие импортированные дельты."
         },
         "/formats/@id=image-format.format.bam/availability": {
           "source_sha256": "f84b155dd67a552d6ab93def8ae12da8999013a6db0a5fa32b8ed9b9e55f61b0",
@@ -1340,8 +1340,8 @@
           "translation": "Выбор cycle/frame и palette transparency являются частью legacy-формата, а не generic sprite behavior."
         },
         "/formats/@id=image-format.format.bam/requirement": {
-          "source_sha256": "dc9eb3bb0a43c815565e441b06e0e606b3ef5c0cf01ca69b537d21a5aea75257",
-          "translation": "BAM импортирует один выбранный cycle или frame, поддерживает packed BAMC и RLE, выводит deltas кадров и считает синий 255 палитры прозрачным."
+          "source_sha256": "75d411bbdc3a186ae9110956300a4ed326b476a424e82c554c07d45fb992e480",
+          "translation": "BAM импортирует выбранный цикл или кадр, поддерживает BAMC и RLE. Знаковые центры int16 задают независимый Offset кадра; Motion нулевой. Палитра с синим каналом 255 прозрачна."
         },
         "/formats/@id=image-format.format.fofrm/availability": {
           "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
@@ -1424,8 +1424,8 @@
           "translation": "Прямо запечённый .spr output нельзя загрузить стандартным client; wrapper .fofrm даёт output зарегистрированное расширение, не меняя импортированные пиксели."
         },
         "/formats/@id=image-format.format.spr/requirement": {
-          "source_sha256": "b1a568186d9265b2f061ad824501e0a0a85f346052c90e07b92f8e3db71e623a",
-          "translation": "SPR импортирует именованные последовательности, слоёные parts, remap направлений, color offsets, sharing повторных кадров и фиксированные 10 fps, но штатная DefaultSpriteFactory не регистрирует расширение .spr."
+          "source_sha256": "b4e61f4666764113dbe82ef4de095bdfd58b3662ccca102831bdb9fc1b69e2d4",
+          "translation": "SPR импортирует именованные последовательности, слоёные parts, remap направлений, color offsets, sharing повторных кадров и фиксированные 10 fps, но штатная DefaultSpriteFactory не регистрирует расширение .spr. Координаты из BBox/центра задают независимый Offset кадра, включая повторные/shared-слоты; импортированный Motion нулевой."
         },
         "/formats/@id=image-format.format.tga/availability": {
           "source_sha256": "d0508162f95ee5b1cb981d6b8cbe030b9c8268a213e40d503757ae7ab7f46815",
@@ -1552,12 +1552,12 @@
           "translation": "Поведение одного кадра"
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/rationale": {
-          "source_sha256": "e39eb055d092e58bddc604d674efd263dd0510b47b6f2748ea61d04af5ec85c2",
-          "translation": "NextX/NextY имеют значение только когда consumer sheet выбирает и интерпретирует animation frames."
+          "source_sha256": "e8f62e3abb8a7fd59030ea5afd96b0a02dbead4582570cf44acdab36d12d12f2",
+          "translation": "Дельты движения используются только потребителем, который выбирает и интерпретирует кадры последовательности."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/requirement": {
-          "source_sha256": "406c756aad885102edef34953032d951ad98e0cd1d1a0ed3985429e906a3101e",
-          "translation": "Ресурс с одним кадром и направлением становится AtlasSprite и применяет разрешённый draw offset concrete frame; сериализованные NextX/NextY остаются metadata, потому что поверхности frame displacement SpriteSheet нет."
+          "source_sha256": "01e5fdb524651a8cf8d15fb2c31532be37fa155640a305e6105e1984eb7a871f",
+          "translation": "Ресурс с одним кадром и направлением становится AtlasSprite и применяет разрешённый draw offset concrete frame; сериализованные Motion остаются metadata, потому что поверхности frame displacement SpriteSheet нет."
         },
         "/scope/excluded": {
           "source_sha256": "e2b603e2ad3654c86fd0f99eb002eb5aaca74e18190d943b8220ec4d5eb58803",
@@ -1716,7 +1716,7 @@
           "preserve_source": true
         },
         "/descriptor_fields/@id=image-format.field.frame-offsets/requirement": {
-          "source_sha256": "1a9669b53bdb7589d4b507c3754bf9171de4804725395ab499656c86fe460db2",
+          "source_sha256": "7cfbda1fc3514799d20ecbbb59f3c840af7c99371cb6dea22217d4396fe32312",
           "translation": "FrameOffsets задаёт локальную пару int32 X Y на исходную ссылку до разворачивания; без поля нулевые пары. Offset и покадровое размещение складываются без накопления и изменения движения. Пустые/неверные значения, число пар и выход за диапазон запрещены. Source считается одной ссылкой, включая именованные переопределения."
         },
         "/descriptor_fields/@id=image-format.field.frame-offsets/rationale": {
@@ -1754,8 +1754,8 @@
           "translation": "Физическое изменение размера FOFRM"
         },
         "/baking_rules/@id=image-format.baking.fofrm-resampling/requirement": {
-          "source_sha256": "a2cf6caf2cc0957fd005c5c41155960db154f1318c9251959b9a26bb56ba7ddd",
-          "translation": "Size/FrameSizes изменяют RGBA билинейной фильтрацией по центрам пикселей с предварительным умножением цвета на alpha, до построения mesh и загрузки в atlas. При равных размерах каждый пиксель сохраняется; пустой источник даёт прозрачный целевой холст. Offset, FrameOffsets, дочерние покадровые смещения и импортированные NextX/NextY сохраняют пиксельные единицы. Без ключей размера прежние байты, тайминг и порядок кадров сохраняются. Прозрачные пиксели после ресайза имеют нулевой RGB; при равных размерах скрытый RGB сохраняется."
+          "source_sha256": "86af7e6ad4fde358f85804d65ddbadcce9ca9864b5d772b98705de10c4321293",
+          "translation": "Size/FrameSizes изменяют RGBA билинейной фильтрацией по центрам пикселей с предварительным умножением цвета на alpha, до построения mesh и загрузки в atlas. При равных размерах каждый пиксель сохраняется; пустой источник даёт прозрачный целевой холст. Offset, FrameOffsets, дочерние покадровые смещения и импортированные Motion сохраняют пиксельные единицы. Без ключей размера прежние байты, тайминг и порядок кадров сохраняются. Прозрачные пиксели после ресайза имеют нулевой RGB; при равных размерах скрытый RGB сохраняется."
         },
         "/baking_rules/@id=image-format.baking.fofrm-resampling/rationale": {
           "source_sha256": "54afb38fac0f2e2e0d3c481c103ab65593a6d63811d5a14bb33767305f5d39db",
@@ -1978,24 +1978,24 @@
           "translation": "Порядок преобразований и число исходных ссылок заданы явно."
         },
         "/descriptor_fields/@id=image-format.field.move/name": {
-          "source_sha256": "6ecc3df6bffdd06c58cd4f6e276929e119c8f653c53f5a6a5a5e66dfa1c3fc93",
-          "translation": "Параметр Move"
+          "source_sha256": "8ca344247c18317ebe13c11e1943cc39d955ce937100f53a8129768c9334819d",
+          "translation": "Параметр Motion"
         },
         "/descriptor_fields/@id=image-format.field.move/requirement": {
-          "source_sha256": "c27a62010e56b40826c6a2c11838ff1c562a77f0ab7a5a6d3dc818a383e702da",
-          "translation": "Явная пара int16 заменяет NextX/NextY каждого развёрнутого кадра; отсутствие сохраняет импортированное движение. Независима от Offset/FrameOffsets и преобразований пикселей."
+          "source_sha256": "ed7cf16eba9d9b599041d7c812c1d62179127bb4ae3d5a3a2d95740a23489c3b",
+          "translation": "Явная пара int16 заменяет Motion каждого развёрнутого кадра; отсутствие сохраняет импортированное движение. Независима от Offset/FrameOffsets и преобразований пикселей. Старые ключи Move/FrameMoves отклоняются до разрешения Source с временным маркером FofrmLegacyMotionKeys."
         },
         "/descriptor_fields/@id=image-format.field.move/rationale": {
           "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",
           "translation": "Порядок преобразований и число исходных ссылок заданы явно."
         },
         "/descriptor_fields/@id=image-format.field.frame-moves/name": {
-          "source_sha256": "4643c671de0314b1182e70d7137c503477ca2c188cdf7bcb325d3a6b4be84ca5",
-          "translation": "Параметр FrameMoves"
+          "source_sha256": "3ed2e02c98bfa479e7c44757a1946b3a2e3c97ebae71455fe2172c3e436c6918",
+          "translation": "Параметр FrameMotions"
         },
         "/descriptor_fields/@id=image-format.field.frame-moves/requirement": {
-          "source_sha256": "de6fa2312b56ef55a000a5e97482984f984c080caf5ff8cb5455e2db58e8f449",
-          "translation": "Одна пара движения int16 на ссылку до разворачивания. Исключает локальный Move; не накапливается как размещение."
+          "source_sha256": "b7c673a52b39bcd5bc05765728fca80d9bd0babd7e8d676f5bd1fe4f3109e302",
+          "translation": "Одна пара движения int16 на ссылку до разворачивания. Исключает локальный Motion; не накапливается как размещение."
         },
         "/descriptor_fields/@id=image-format.field.frame-moves/rationale": {
           "source_sha256": "5ee546f7d5e29baf1a1f36b8ace3c0e5ab6ced8572a3ad81c60ee59fd0f049fa",

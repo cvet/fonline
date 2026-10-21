@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"f3c98c0084363333814679870420cb7aa7b423474dbcac9241e5c5d881651315"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"2c1fc1faad4792b3e1389e04f9a1af45ba86e9aea4e7fab2615e057317b78a57"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -233,7 +233,7 @@ Particle resources идут через отдельный backend-neutral factor
 
 ## Root motion 2D-sprite
 
-Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `NextX` / `NextY` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `Motion` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: представление карты и локальное пространственное состояние
 

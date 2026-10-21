@@ -196,7 +196,7 @@
       "extension": "art",
       "availability": "baker and default runtime; importer requires FO_IMAGE_ART=ON",
       "stability": "experimental",
-      "requirement": "ART uses a 132-byte header with bit depth 8. Flag 0x1 stores one rotation, otherwise eight. All rotation-major tables precede pixel streams; raw frames contain width*height bytes and RLE is bounded by declared frame size. Reject truncated/underfilled/overflowing streams, negative dimensions and baked range overflow. Align selected frame hot spots on one transparent canvas per direction; sequence offsets locate the hot spot and NextX/NextY retain movement. Square directions map rotations 1,2,3,4,5,6,7,0; hex maps 1,2,3,5,6,7. art/critter/, art/monster/ and art/unique_npc/ mirror rotations 1–3 from 7–5. Walls/portals shift anchors (-40,+20) for 0,1,6,7; horizontal roof mirrors use the left edge. Present palette fallback, options and category-specific placement follow the imported ART contract. Whole duration fits uint32 milliseconds; zero clock normalizes to 10 fps and positive sub-ms periods to 1 ms.",
+      "requirement": "ART uses a 132-byte header with bit depth 8. Flag 0x1 stores one rotation, otherwise eight. All rotation-major tables precede pixel streams; raw frames contain width*height bytes and RLE is bounded by declared frame size. Reject truncated/underfilled/overflowing streams, negative dimensions and baked range overflow. Align selected frame hot spots on one transparent canvas per direction; sequence offsets locate the hot spot and Motion retain movement. Square directions map rotations 1,2,3,4,5,6,7,0; hex maps 1,2,3,5,6,7. art/critter/, art/monster/ and art/unique_npc/ mirror rotations 1–3 from 7–5. Walls/portals shift anchors (-40,+20) for 0,1,6,7; horizontal roof mirrors use the left edge. Present palette fallback, options and category-specific placement follow the imported ART contract. Whole duration fits uint32 milliseconds; zero clock normalizes to 10 fps and positive sub-ms periods to 1 ms. DeltaX/DeltaY remain signed32 during import; only serialized Motion narrows to int16, so FOFRM Motion/FrameMotions can replace wide imported deltas.",
       "rationale": "ART direction numbering and frame metadata require format-specific remapping before runtime use.",
       "source": [
         {
@@ -223,7 +223,7 @@
       "extension": "spr",
       "availability": "baker only by default; wrap through FOFRM for the stock runtime; importer requires FO_IMAGE_SPR=ON",
       "stability": "experimental",
-      "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension.",
+      "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension. BBox/center-derived coordinates are independent frame Offset, including repeated/shared slots; imported Motion is zero.",
       "rationale": "Directly baked .spr output cannot be loaded by the default client; a .fofrm wrapper gives the output a registered extension without changing imported pixels.",
       "source": [
         {
@@ -334,7 +334,7 @@
       "extension": "bam",
       "availability": "baker and default runtime; importer requires FO_IMAGE_BAM=ON",
       "stability": "experimental",
-      "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, derives frame deltas, and treats palette blue 255 as transparent.",
+      "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, reads signed16 centers into independent frame Offset with zero Motion, and treats palette blue 255 as transparent.",
       "rationale": "Cycle/frame lookup and palette transparency are part of the legacy format rather than generic sprite behavior.",
       "source": [
         {
@@ -549,7 +549,7 @@
       "syntax": "FrameOffsets = X Y \\ continued pairs; one pair per Frame/Frames reference",
       "default": "zero pairs when omitted; section-local without inheritance",
       "stability": "experimental",
-      "requirement": "Optional FrameOffsets requires exactly one signed int32 X Y pair per Frame/Frames reference before flattening, in the same section. AnyData String-array tokens are parsed as strict integer pairs. Each pair adds draw placement to every flattened child frame, plus Offset and child frame placement, without accumulation or changes to imported NextX/NextY root-motion deltas. Present empty, malformed, out-of-range or wrong-count lists and lists without references fail. Source uses one reference, including named overrides.",
+      "requirement": "Optional FrameOffsets requires exactly one signed int32 X Y pair per Frame/Frames reference before flattening, in the same section. AnyData String-array tokens are parsed as strict integer pairs. Each pair adds draw placement to every flattened child frame, plus Offset and child frame placement, without accumulation or changes to imported Motion root-motion deltas. Present empty, malformed, out-of-range or wrong-count lists and lists without references fail. Source uses one reference, including named overrides.",
       "rationale": "Draw placement has a distinct authored key and storage from imported root-motion deltas; omitted pairs are zero and do not carry between directions.",
       "source": [
         {
@@ -1087,8 +1087,8 @@
     },
     {
       "id": "image-format.field.move",
-      "name": "Move",
-      "syntax": "Move = X Y",
+      "name": "Motion",
+      "syntax": "Motion = X Y",
       "default": "preserve imported motion",
       "stability": "experimental",
       "source": [
@@ -1098,7 +1098,7 @@
             "auto ReadImageTransforms(",
             "auto TransformImageFrame(",
             "auto SelectImageFrames(",
-            "\"Move\""
+            "\"Motion\""
           ]
         },
         {
@@ -1106,15 +1106,21 @@
           "anchors": [
             "TEST_CASE(\"FofrmMovement\")"
           ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "FO_TEMPORARY_COMPAT(FofrmLegacyMotionKeys, \"2026-12-31\");"
+          ]
         }
       ],
-      "requirement": "Explicit signed int16 pair replaces NextX/NextY on every expanded frame; absence preserves imported motion. Independent of Offset/FrameOffsets and bitmap transforms.",
+      "requirement": "Explicit signed int16 pair replaces Motion on every expanded frame; absence preserves imported motion. Independent of Offset/FrameOffsets and bitmap transforms. Legacy Move/FrameMoves keys are refused before Source resolution with FofrmLegacyMotionKeys temporary compatibility marker.",
       "rationale": "Transform order and source-reference cardinality are explicit."
     },
     {
       "id": "image-format.field.frame-moves",
-      "name": "FrameMoves",
-      "syntax": "FrameMoves = X Y ...",
+      "name": "FrameMotions",
+      "syntax": "FrameMotions = X Y ...",
       "default": "absent",
       "stability": "experimental",
       "source": [
@@ -1124,7 +1130,7 @@
             "auto ReadImageTransforms(",
             "auto TransformImageFrame(",
             "auto SelectImageFrames(",
-            "\"FrameMoves\""
+            "\"FrameMotions\""
           ]
         },
         {
@@ -1134,7 +1140,7 @@
           ]
         }
       ],
-      "requirement": "One signed int16 motion pair per reference, before flattening. Mutually exclusive with local Move; never accumulated as placement.",
+      "requirement": "One signed int16 motion pair per reference, before flattening. Mutually exclusive with local Motion; never accumulated as placement.",
       "rationale": "Transform order and source-reference cardinality are explicit."
     },
     {
@@ -1467,14 +1473,14 @@
       "id": "image-format.baking.frame-record",
       "name": "Concrete and shared frame records",
       "stability": "internal",
-      "requirement": "Each logical slot writes uint32 DurationMs, int32 placement X/Y, int16 motion X/Y and uint8 shared flag. Shared slots add a backward uint16 pixel-reference index; concrete slots add uint16 width/height, RGBA8 and mesh data. Sharing inherits pixels, dimensions and geometry only; placement, movement and duration remain slot-owned.",
+      "requirement": "Each logical slot writes uint32 DurationMs, int32 placement X/Y, int16 motion X/Y and uint8 shared flag. Shared slots add a backward uint16 pixel-reference index; concrete slots add uint16 width/height, RGBA8 and mesh data. Sharing inherits pixels, dimensions and geometry only; placement, movement and duration remain slot-owned. Native FrameShot uses signed32 Size, Motion and Offset aggregates; Size is checked nonnegative and narrowed to uint16, Motion to int16 at serialization, without wrapping.",
       "rationale": "The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "writer.write<uint32_t>(shot.DurationMs);",
-            "writer.write<int16_t>(shot.NextX);",
+            "writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));",
             "frame_info.SharedFrameIndex = shot.SharedIndex;"
           ]
         },
@@ -1483,6 +1489,14 @@
           "anchors": [
             "frame.DurationMs = reader.GetLEUInt32();",
             "frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageImport.h",
+          "anchors": [
+            "isize32 Size {};",
+            "ipos32 Motion {};",
+            "ipos32 Offset {};"
           ]
         }
       ]
@@ -1569,20 +1583,19 @@
       "id": "image-format.baking.fofrm-resampling",
       "name": "FOFRM physical resampling",
       "stability": "experimental",
-      "requirement": "Size/FrameSizes resample RGBA by pixel-center bilinear filtering in premultiplied-alpha space before meshing and atlas upload. The identity path preserves every pixel; an empty source yields a transparent target. Offset, FrameOffsets, child frame offsets and imported NextX/NextY keep their pixel units. Missing size keys preserve existing bytes, timing and frame order. Transparent resampled pixels have zero RGB; identity keeps hidden RGB.",
+      "requirement": "Size/FrameSizes resample RGBA by pixel-center bilinear filtering in premultiplied-alpha space before meshing and atlas upload. The identity path preserves every pixel; an empty source yields a transparent target. Offset, FrameOffsets, child frame offsets and imported Motion keep their pixel units. Missing size keys preserve existing bytes, timing and frame order. Transparent resampled pixels have zero RGB; identity keeps hidden RGB.",
       "rationale": "Transparent RGB must not bleed into visible edges; resizing does not rewrite authored anchors or root motion.",
       "source": [
         {
           "path": "Source/Tools/ImageTransforms.cpp",
           "anchors": [
             "static auto ResizeEncodedColorFrame(",
-            "source.Width == size.width && source.Height == size.height",
-            "source.Width == 0 || source.Height == 0",
+            "source.Size == size",
+            "source.Size.width == 0 || source.Size.height == 0",
             "constexpr int64_t pixel_unit = 65536;",
             "uint64_t alpha_weight = weights[sample] * source.Data[positions[sample] + 3];",
             "if (alpha != 0)",
-            ".NextX = source.NextX,",
-            ".NextY = source.NextY,",
+            ".Motion = source.Motion,",
             ".Offset = source.Offset,"
           ]
         },
@@ -1690,8 +1703,8 @@
       "id": "image-format.runtime.static-frame",
       "name": "Single-frame behavior",
       "stability": "experimental",
-      "requirement": "A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized NextX/NextY remains metadata because there is no SpriteSheet frame-displacement surface.",
-      "rationale": "NextX/NextY matter only when a sheet consumer selects and interprets animation frames.",
+      "requirement": "A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized Motion remains metadata because there is no SpriteSheet frame-displacement surface.",
+      "rationale": "Motion matters only when a sheet consumer selects and interprets animation frames.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
@@ -2059,5 +2072,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "00760ba5f70d3454c6d4814170ee6ac3da8b6fddf8a9dda644a6e08cc0fd1a88"
+  "contract_digest": "7c5eaf34e26404a660914b7b4993ee265cdae4340f651ce50465ec25c690c647"
 }

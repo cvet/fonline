@@ -150,8 +150,8 @@ namespace ImageBakerBam
             reader.SetCurPos(frames_offset + frame_index * 12);
             int32_t width = reader.GetLEUInt16();
             int32_t height = reader.GetLEUInt16();
-            int32_t ox = reader.GetLEUInt16();
-            int32_t oy = reader.GetLEUInt16();
+            int32_t ox = reader.GetLEInt16();
+            int32_t oy = reader.GetLEInt16();
             uint32_t data_offset = reader.GetLEUInt32();
             bool rle = (data_offset & 0x80000000) == 0;
             data_offset &= 0x7FFFFFFF;
@@ -194,10 +194,8 @@ namespace ImageBakerBam
 
             // Set in animation sequence
             auto& shot = collection.Main.Frames[specific_frame != -1 ? 0 : i];
-            shot.Width = numeric_cast<uint16_t>(width);
-            shot.Height = numeric_cast<uint16_t>(height);
-            shot.NextX = numeric_cast<int16_t>(-ox + width / 2);
-            shot.NextY = numeric_cast<int16_t>(-oy + height);
+            shot.Size = {width, height};
+            shot.Offset = {-ox + width / 2, -oy + height};
             shot.Data = std::move(data);
 
             if (specific_frame != -1) {

@@ -197,11 +197,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 reader.SetCurPos(offset);
                 uint16_t w = reader.GetBEUInt16();
                 uint16_t h = reader.GetBEUInt16();
-                shot.Width = w;
-                shot.Height = h;
+                shot.Size = {w, h};
                 reader.GoForward(4); // Frame size
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.Motion = {reader.GetBEInt16(), reader.GetBEInt16()};
 
                 // Allocate data
                 shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
@@ -497,14 +495,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 reader.SetCurPos(offset);
                 uint16_t w = reader.GetBEUInt16();
                 uint16_t h = reader.GetBEUInt16();
-
-                shot.Width = w;
-                shot.Height = h;
-
+                shot.Size = {w, h};
                 reader.GoForward(4); // Frame size
-
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.Motion = {reader.GetBEInt16(), reader.GetBEInt16()};
 
                 // Allocate data
                 shot.Data.resize(numeric_cast<size_t>(w) * h * 4);

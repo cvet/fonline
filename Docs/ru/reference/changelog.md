@@ -7,10 +7,13 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d35951d18d07f3b47f63897baf8ee425faf317a151f3c97e84edbe5dfa41490f"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"6f3c71dfd07d8023416b309f431d988082f753c41e30e034dd01a4c6f0a936f0"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Кадр импорта использует `isize32 Size` и `ipos32 Motion`; привязка остаётся в `Offset`. Знаковые центры BAM и BBox/центр SPR задают привязку, включая shared-кадры. FRM/ART сохраняют движение анимации.
+- Миграция: в native-загрузчиках заменить Width/Height и NextX/NextY на Size/Motion, в FOFRM — Move/FrameMoves на Motion/FrameMotions. Старые ключи отклоняются до разрешения зависимостей. Пересобрать baker и перезапечь затронутые корни BAM/SPR. Layout SpriteResource v3 не меняется; сужения размера/движения проверяются.
 
 - Bake публикует `Resources.usage.json` по типизированным Resource-ссылкам,
   обязательным выходам и runtime-зависимостям. Упаковщик требует этот отбор и отвергает

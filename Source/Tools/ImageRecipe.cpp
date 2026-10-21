@@ -94,7 +94,12 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
                 throw ImageBakerException("Legacy FOFRM key; migrate to Frame, Frames, Offset and FrameOffsets", fname, section, key);
             }
 
-            if (key != "Duration" && key != "FrameDurations" && key != "Resample" && key != "PixelUsage" && key != "ColorSpace" && key != "Flip" && key != "FrameFlips" && key != "Rotate" && key != "FrameRotations" && key != "Canvas" && key != "FrameCanvases" && key != "CanvasOffset" && key != "FrameCanvasOffsets" && key != "Move" && key != "FrameMoves" && key != "InputDir" && key != "FrameInputDirs" && key != "FrameIndices" && key != "Crop" && key != "FrameCrops" && key != "Grid" && key != "Source" && key != "Fps" && key != "Offset" && key != "FrameOffsets" && key != "Size" && key != "FrameSizes" && key != "Frame" && key != "Frames") {
+            if (key == "Move" || key == "FrameMoves") {
+                FO_TEMPORARY_COMPAT(FofrmLegacyMotionKeys, "2026-12-31");
+                throw ImageBakerException("FOFRM Move/FrameMoves were replaced by Motion/FrameMotions", fname, section, key);
+            }
+
+            if (key != "Duration" && key != "FrameDurations" && key != "Resample" && key != "PixelUsage" && key != "ColorSpace" && key != "Flip" && key != "FrameFlips" && key != "Rotate" && key != "FrameRotations" && key != "Canvas" && key != "FrameCanvases" && key != "CanvasOffset" && key != "FrameCanvasOffsets" && key != "Motion" && key != "FrameMotions" && key != "InputDir" && key != "FrameInputDirs" && key != "FrameIndices" && key != "Crop" && key != "FrameCrops" && key != "Grid" && key != "Source" && key != "Fps" && key != "Offset" && key != "FrameOffsets" && key != "Size" && key != "FrameSizes" && key != "Frame" && key != "Frames") {
                 throw ImageBakerException("FOFRM key requires a supported PascalCase name", fname, section, key);
             }
         }
@@ -137,7 +142,6 @@ auto ParseImageRecipe(string_view fname, string_view text) -> ImageRecipe
         }
 
         FO_VERIFY_AND_THROW(!(has_frame || has_frames) || !references.empty(), "FOFRM Frame or Frames must be nonempty", fname, section);
-
         recipe.References.insert_or_assign(string {section}, std::move(references));
     }
 

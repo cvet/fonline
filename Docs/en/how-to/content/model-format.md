@@ -505,7 +505,7 @@ Use [Model Animation](model-animation.md) for:
 
 `AllowAnimationGeometry` is a narrow migration aid, not a normal asset policy. It names one exact external file selected by `Anim`, resolves from the final concrete `.fo3d`, and is consumed only by baker validation. It is not serialized. Duplicate paths, duplicate resolved targets, non-selected files, and exceptions left behind after geometry removal are hard errors. Repair the source into a geometry-free animation export while preserving required helper/bone hierarchy, then remove the exception in the same asset migration.
 
-3D skeletal animation is separate from the 2D `NextX` / `NextY` contract in [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation is separate from the 2D `Motion` contract in [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime loading and caching
 

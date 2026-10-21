@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-animation","locale":"ru","source_path":"Docs/en/reference/model-format/animation.md","source_sha256":"30660479504552b03bf7cafd742bce42f0e1d892cdc6063b2942ffeba70be450"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-animation","locale":"ru","source_path":"Docs/en/reference/model-format/animation.md","source_sha256":"59c48328d7dfb3f9afe748e2002174f6ee448cd5f1d4043a4f3e538ea49bcb2e"} -->
 
 # Директивы анимации моделей
 
@@ -30,4 +30,4 @@ generated: true
 
 ## Отделение от 2D root motion
 
-Эти directives управляют 3D skeletal clips и model composition. Offsets `NextX` / `NextY` и выбор кадров по направлению движения принадлежат [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Эти directives управляют 3D skeletal clips и model composition. Offsets `Motion` и выбор кадров по направлению движения принадлежат [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).

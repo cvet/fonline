@@ -375,10 +375,8 @@ namespace ImageBakerArt
                 const vector<uint8_t>& indices = frame_indices[frame.Index];
 
                 FrameShot& shot = sequence.Frames[frm_write];
-                shot.Width = numeric_cast<uint16_t>(canvas_w);
-                shot.Height = numeric_cast<uint16_t>(canvas_h);
-                shot.NextX = numeric_cast<int16_t>(frame.DeltaX);
-                shot.NextY = numeric_cast<int16_t>(frame.DeltaY);
+                shot.Size = {numeric_cast<int32_t>(canvas_w), numeric_cast<int32_t>(canvas_h)};
+                shot.Motion = {numeric_cast<int32_t>(frame.DeltaX), numeric_cast<int32_t>(frame.DeltaY)};
 
                 vector<uint8_t> data(numeric_cast<size_t>(numeric_cast<uint64_t>(canvas_w) * canvas_h * 4));
                 span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});

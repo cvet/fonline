@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"e7f170fbee13ab6fbe6f6b4cf793b06f58bff870667576df2b225bee0d9f2e86"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"9a5874ed5a015acf419cb3cff05b52a74d2b708c735c6c316b84f0952f398a25"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -334,7 +334,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Module init, callbacks, `Yield`, scheduling/synchronization или teardown | Обновить [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md) и narrow tests. |
 | Порядок `.fos`, side macros, ownership/style, formatter, mutable globals, attributed calls, generated script или refactoring | Обновить [Стиль AngelScript и рефакторинг](../../how-to/scripting/style-and-refactoring.md) и английский оригинал, запустить focused test и владеющий formatter, выполнить compile без warnings и behavior test; project style остаётся внешним. |
 | Model animation tokens/durations/aliases/metadata/methods | Обновить [Model Animation](../../how-to/content/model-animation.md), focused tests, API/reference при необходимости и bake проекта. |
-| `NextX`/`NextY`, baked offsets или movement render phase | Обновить [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), tests, bake и visible movement validation. |
+| `Motion`, baked offsets или movement render phase | Обновить [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), tests, bake и visible movement validation. |
 | Build, package, platform, runtime, persistence, networking или pointer/nullability behavior | Обновить owning source-grounded page и narrow behavior/test path из неё. |
 
 После каждого триггера генерируемой поверхности выполняйте `docs_contract_diff.py` против сохранённых старых models или выбранной Git base. Нулевой native API delta не закрывает изменения CMake, CLI, package, helper CLI, native extension и форматных/runtime contracts.

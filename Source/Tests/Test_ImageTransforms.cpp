@@ -46,11 +46,9 @@ static auto TransformFixture() -> ImageImport::FrameCollection
         auto& sequence = dir == 0 ? result.Main : result.Dirs[dir - 1];
         sequence.OffsX = 10;
         auto& shot = sequence.Frames.emplace_back();
-        shot.Width = 3;
-        shot.Height = 2;
+        shot.Size = {3, 2};
+        shot.Motion = {6, -7};
         shot.Offset = {4, 5};
-        shot.NextX = 6;
-        shot.NextY = -7;
         shot.DurationMs = 100;
 
         for (uint8_t pixel = 1; pixel <= 6; pixel++) {
@@ -87,11 +85,10 @@ TEST_CASE("FofrmSelection")
     {
         auto collection = LoadTransformRecipe("Frame = test.toy\nCrop = 1 0 2 2\n");
         const auto& shot = collection.Main.Frames[0];
-        CHECK(shot.Width == 2);
-        CHECK(shot.Height == 2);
+        CHECK(shot.Size == isize32 {2, 2});
         CHECK(shot.Data == vector<uint8_t> {2, 0, 0, 255, 3, 0, 0, 255, 5, 0, 0, 255, 6, 0, 0, 255});
         CHECK(shot.Offset == ipos32 {4, 5});
-        CHECK(shot.NextX == 6);
+        CHECK(shot.Motion.x == 6);
     }
 
     SECTION("SlicesGridRowMajorAndSelectsReordersAndRepeatsFrames")
@@ -150,8 +147,7 @@ TEST_CASE("FofrmGeometry")
             }
 
             CHECK(shot.Offset == ipos32 {4, 5});
-            CHECK(shot.NextX == 6);
-            CHECK(shot.NextY == -7);
+            CHECK(shot.Motion == ipos32 {6, -7});
         }
     }
 
@@ -159,27 +155,24 @@ TEST_CASE("FofrmGeometry")
     {
         auto result = LoadTransformRecipe("Frame = test.toy\nSize = 2 3\nCanvas = 4 5\nCanvasOffset = 1 1\nOffset = 10 20\nFrameOffsets = 1 -1\n");
         const auto& shot = result.Main.Frames[0];
-        CHECK(shot.Width == 4);
-        CHECK(shot.Height == 5);
+        CHECK(shot.Size == isize32 {4, 5});
         CHECK(shot.Data[3] == 0);
-        CHECK(shot.Data[(1 * shot.Width + 1) * 4 + 3] == 255);
-        CHECK(shot.Data[(3 * shot.Width + 2) * 4 + 3] == 255);
+        CHECK(shot.Data[(1 * shot.Size.width + 1) * 4 + 3] == 255);
+        CHECK(shot.Data[(3 * shot.Size.width + 2) * 4 + 3] == 255);
         CHECK(shot.Offset == ipos32 {5, 4});
         CHECK(result.Main.OffsX == 10);
         CHECK(result.Main.OffsY == 20);
-        CHECK(shot.NextX == 6);
-        CHECK(shot.NextY == -7);
+        CHECK(shot.Motion == ipos32 {6, -7});
     }
 
     SECTION("PerReferenceTransformsRunAfterGrid")
     {
         auto result = LoadTransformRecipe("Frames = A.toy B.toy\nCrop = 0 0 2 2\nGrid = 2 1\nFrameRotations = 90 270\nFrameCanvases = 2 2 3 3\nFrameCanvasOffsets = 0 0 1 1\n");
         REQUIRE(result.Main.Frames.size() == 4);
-        CHECK(result.Main.Frames[0].Width == 2);
-        CHECK(result.Main.Frames[0].Height == 2);
+        CHECK(result.Main.Frames[0].Size == isize32 {2, 2});
         CHECK(result.Main.Frames[0].Data[0] == 1);
         CHECK(result.Main.Frames[0].Data[2 * 4] == 2);
-        CHECK(result.Main.Frames[2].Width == 3);
+        CHECK(result.Main.Frames[2].Size == isize32 {3, 3});
         CHECK(result.Main.Frames[2].Data[(1 * 3 + 1) * 4] == 2);
     }
 
@@ -194,36 +187,70 @@ TEST_CASE("FofrmGeometry")
 
 TEST_CASE("FofrmMovement")
 {
+    SECTION("RejectsPreviousMotionKeyNames")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyMotionKeys, "2026-12-31");
+
+        for (string_view operation : {"Move = 1 2", "FrameMoves = 1 2"}) {
+            INFO(operation);
+            CHECK_THROWS_WITH(LoadTransformRecipe(strex("Source = A.toy\n{}\n", operation).str()), Catch::Matchers::ContainsSubstring("Motion"));
+        }
+    }
+
     SECTION("AuthorsPngRootMotionSeparatelyFromPlacement")
     {
-        auto result = LoadTransformRecipe("Frames = A.toy B.toy\nFrameMoves = 1 2 -3 -4\nFrameOffsets = 7 8 9 10\n");
+        auto result = LoadTransformRecipe("Frames = A.toy B.toy\nFrameMotions = 1 2 -3 -4\nFrameOffsets = 7 8 9 10\n");
         REQUIRE(result.Main.Frames.size() == 2);
-        CHECK(result.Main.Frames[0].NextX == 1);
-        CHECK(result.Main.Frames[0].NextY == 2);
-        CHECK(result.Main.Frames[1].NextX == -3);
-        CHECK(result.Main.Frames[1].NextY == -4);
+        CHECK(result.Main.Frames[0].Motion == ipos32 {1, 2});
+        CHECK(result.Main.Frames[1].Motion == ipos32 {-3, -4});
         CHECK(result.Main.Frames[0].Offset == ipos32 {11, 13});
         CHECK(result.Main.Frames[1].Offset == ipos32 {13, 15});
     }
 
-    SECTION("ExplicitMoveReplacesEveryExpandedFrameButUnsetPreservesImportedMotion")
+    SECTION("ExplicitMotionReplacesEveryExpandedFrameButUnsetPreservesImportedMotion")
     {
-        auto result = LoadTransformRecipe("Source = A.toy\nGrid = 1 1\nMove = 0 0\n");
+        auto result = LoadTransformRecipe("Source = A.toy\nGrid = 1 1\nMotion = 0 0\n");
         REQUIRE(result.Main.Frames.size() == 6);
 
         for (const auto& shot : result.Main.Frames) {
-            CHECK(shot.NextX == 0);
-            CHECK(shot.NextY == 0);
+            CHECK(shot.Motion == ipos32 {});
         }
 
         result = LoadTransformRecipe("Frame = A.toy\nGrid = 1 1\n");
-        CHECK(result.Main.Frames[3].NextX == 6);
-        CHECK(result.Main.Frames[3].NextY == -7);
+        CHECK(result.Main.Frames[3].Motion == ipos32 {6, -7});
     }
 
-    SECTION("RejectsMoveCountAndInt16Overflow")
+    SECTION("PreservesWideImportedMotionThroughBitmapTransforms")
     {
-        for (string_view operation : {"Move = 32768 0", "Move = -32769 0", "FrameMoves = 1 2 3 4", "Move = 1 2\nFrameMoves = 3 4", "Move = 1"}) {
+        auto source = TransformFixture();
+
+        for (auto& direction : source.Dirs) {
+            direction.Frames.clear();
+        }
+
+        source.Main.Frames[0].Motion = {40000, -40000};
+        for (string_view operation : {"Flip = X", "Rotate = 90", "Size = 2 3", "Canvas = 5 4", "Crop = 1 0 2 2", "Grid = 1 1"}) {
+            INFO(operation);
+            auto result = LoadTransformRecipe(strex("Frame = A.toy\n{}\n", operation).str(), source);
+
+            for (const auto& frame : result.Main.Frames) {
+                CHECK(frame.Motion == ipos32 {40000, -40000});
+            }
+        }
+    }
+
+    SECTION("RejectsNegativeSourceDimensionsBeforeCanvas")
+    {
+        auto source = TransformFixture();
+        source.Main.Frames[0].Size = {0, -1};
+        source.Main.Frames[0].Data.clear();
+
+        CHECK_THROWS(LoadTransformRecipe("Frame = A.toy\nCanvas = 4 4\n", source));
+    }
+
+    SECTION("RejectsMotionCountAndInt16Overflow")
+    {
+        for (string_view operation : {"Motion = 32768 0", "Motion = -32769 0", "FrameMotions = 1 2 3 4", "Motion = 1 2\nFrameMotions = 3 4", "Motion = 1"}) {
             INFO(operation);
             CHECK_THROWS(LoadTransformRecipe(strex("Frame = A.toy\n{}\n", operation).str()));
         }
@@ -239,8 +266,7 @@ TEST_CASE("FofrmResampling")
     }
 
     auto& shot = source.Main.Frames[0];
-    shot.Width = 3;
-    shot.Height = 1;
+    shot.Size = {3, 1};
     shot.Data = {0, 0, 0, 255, 120, 120, 120, 255, 240, 240, 240, 255};
 
     SECTION("PreservesNearestPaletteValues")
@@ -258,7 +284,7 @@ TEST_CASE("FofrmResampling")
 
     SECTION("FiltersLinearColorWithPremultipliedAlpha")
     {
-        shot.Width = 2;
+        shot.Size = {2, 1};
         shot.Data = {0, 0, 0, 255, 255, 255, 255, 255};
         auto result = LoadTransformRecipe("Frame = A.toy\nSize = 1 1\nColorSpace = Linear\n", source);
         CHECK(result.Main.Frames[0].Data == vector<uint8_t> {188, 188, 188, 255});
@@ -269,7 +295,7 @@ TEST_CASE("FofrmResampling")
 
     SECTION("KeepsDataChannelsIndependent")
     {
-        shot.Width = 2;
+        shot.Size = {2, 1};
         shot.Data = {255, 0, 0, 0, 0, 0, 255, 255};
         auto result = LoadTransformRecipe("Frame = A.toy\nSize = 1 1\nPixelUsage = Data\n", source);
         CHECK(result.Main.Frames[0].Data == vector<uint8_t> {128, 0, 128, 128});
@@ -278,7 +304,7 @@ TEST_CASE("FofrmResampling")
 
     SECTION("RenormalizesNormalVectors")
     {
-        shot.Width = 2;
+        shot.Size = {2, 1};
         shot.Data = {255, 128, 128, 0, 128, 255, 128, 255};
         auto result = LoadTransformRecipe("Frame = A.toy\nSize = 1 1\nPixelUsage = Normal\n", source);
         CHECK(result.Main.Frames[0].Data == vector<uint8_t> {218, 218, 128, 128});
@@ -349,12 +375,11 @@ TEST_CASE("FofrmTimelines")
             direction.Frames.clear();
         }
 
-        source.Main.Frames.emplace_back(ImageImport::FrameShot {.NextX = 1, .NextY = 2, .Offset = {10, 20}, .DurationMs = 300, .Shared = true, .SharedIndex = 0});
+        source.Main.Frames.emplace_back(ImageImport::FrameShot {.Motion = {1, 2}, .Offset = {10, 20}, .DurationMs = 300, .Shared = true, .SharedIndex = 0});
         auto result = LoadTransformRecipe("Source = A.toy\n", source);
         REQUIRE(result.Main.Frames.size() == 2);
         CHECK(result.Main.Frames[1].Offset == ipos32 {10, 20});
-        CHECK(result.Main.Frames[1].NextX == 1);
-        CHECK(result.Main.Frames[1].NextY == 2);
+        CHECK(result.Main.Frames[1].Motion == ipos32 {1, 2});
         CHECK(ImageImport::GetDurationMs(result.Main) == 400);
     }
 

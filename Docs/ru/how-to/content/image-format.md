@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"5664f61cc27553519fec26d9e512897dfdfe962a285b20fccb4b0667ed54a25b"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"439a5b7a454f0119bdab743b5ec18390a46206cae969ab349d9b697a71a860cc"} -->
 
 # Форматы изображений и спрайтов
 
@@ -152,7 +152,7 @@ FrameOffsets = \
 
 FrameOffsets: массив String парсера AnyData, строгие целые, одна пара на
 продолженную строку. Все кадры ссылки получают `Offset + FrameOffsets[i]` плюс
-дочернее покадровое размещение без накопления. Импортированные NextX/NextY прежние
+дочернее покадровое размещение без накопления. Импортированные Motion прежние
 ([root motion](sprite-root-motion.md)); NextX_N/NextY_N запрещены до Source.
 
 ### Физический размер кадров
@@ -176,7 +176,7 @@ Source считается одной ссылкой и применяет умо
 | Отражение, затем поворот | Flip / FrameFlips: None, X, Y, XY. Rotate / FrameRotations: 0, 90, 180, 270 по часовой стрелке. |
 | Resize, затем холст | Size / FrameSizes; Canvas / FrameCanvases: W H. CanvasOffset / FrameCanvasOffsets: неотрицательные X Y от левого верхнего угла, по умолчанию 0 0; обрезание запрещено. |
 | Разворачивание, затем выбор | FrameIndices: непустые индексы AnyData; порядок и повторы разрешены, выход за границы запрещён. Source задаёт умолчание всем ракурсам. |
-| Движение | Move / FrameMoves: пара int16 X Y заменяет импортированное движение; отсутствие сохраняет его. |
+| Движение | Motion / FrameMotions: пара int16 X Y заменяет импортированное движение; отсутствие сохраняет его. |
 | Фильтрация | Resample: Nearest, Bilinear (по умолчанию), Area (уменьшение/равный размер). PixelUsage: Color (по умолчанию), Data, Normal. ColorSpace: Encoded (по умолчанию), Linear; только для Color. |
 
 Каждый Frame-массив содержит одну запись на исходную ссылку, до grid/разворачивания.
@@ -305,7 +305,7 @@ geometry, footer и trailing data. Затем factory проверяет инв�
 
 Ресурс с одним кадром и одним направлением становится `AtlasSprite`. Его
 запечённый draw offset задаёт размещение спрайта;
-сериализованные `NextX`/`NextY` читаются, но игнорируются. Многокадровый или
+сериализованные `Motion` читаются, но игнорируются. Многокадровый или
 направленный ресурс становится `SpriteSheet`. Каждое направление владеет
 параллельным sheet, а каждый concrete/shared кадр сохраняет отдельное смещение в
 `_sprOffset`.
@@ -371,7 +371,7 @@ sprite manager или перезапустите клиент перед про�
 2. Одна анимация на дескриптор; вложенность усложняет flattening и тайминг.
 3. Порядок: Frame/Frames, Size/FrameSizes, Offset, FrameOffsets, метаданные; продолжения начинайте
    с одного пробела. Runtime допускает другой порядок/отступы.
-4. FrameOffsets меняет размещение; импортированные NextX/NextY задают root motion
+4. FrameOffsets меняет размещение; импортированные Motion задают root motion
    представления. Проверяйте визуально оба; движение/коллизии они не задают.
 5. Оборачивайте SPR, если нет проектной factory; изучите generated options и native fixtures
    перед изменением селекторов.
@@ -461,3 +461,13 @@ clickability или воспринимаемое скольжение ног.
 PNG/TGA/FOFRM обязательны. Другие importers требуют отдельных `FO_IMAGE_*` [опций](../build/project-configuration.md#optional-native-components). Известный выключенный вход, включая nested FOFRM, сообщает путь и опцию. Соседние `ImageBaker-*.h/.cpp` закрывают палитры/helpers вместе; `ImageBaker-ZarDecoder` разделяют ZAR/TIL при включении любого из них.
 
 Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` и `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. `context.Files` предоставляет соседние assets, `context.Resolve(path)` — nesting, третий аргумент `AddLoader` — выходное имя. Scheduling, meshes и serialization остаются у координатора. Stock client читает baked containers без source-декодеров; runtime extensions/container version сохраняются.
+
+Кадр native-импорта содержит `isize32 Size`, независимую привязку `ipos32 Offset`
+и покадровую дельту движения анимации `ipos32 Motion`, накапливаемую при проигрывании. Дельты FRM/FRx и DeltaX/DeltaY
+ART заполняют Motion. Знаковые центры BAM и расчёт BBox/центра SPR заполняют Offset,
+включая повторные/shared-кадры; движения из этих координат не выводятся.
+Преобразования изображения сохраняют привязку и движение в заданных пикселях.
+SpriteResource v3 сохраняет размеры uint16 и движение int16; baker проверяет
+диапазоны перед записью. Пользовательские native-загрузчики должны заменить
+прежние скалярные поля. FOFRM использует Motion/FrameMotions; Move/FrameMoves
+отклоняются до разрешения Source.

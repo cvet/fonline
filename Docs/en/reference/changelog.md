@@ -12,6 +12,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Image import frames now use `isize32 Size` and `ipos32 Motion`; draw placement remains `Offset`. BAM signed centers and SPR bbox/center anchors are placement, including shared frames. FRM/ART retain animation motion.
+- Migration: native loaders replace Width/Height and NextX/NextY with Size/Motion. Rename FOFRM Move/FrameMoves to Motion/FrameMotions; old keys fail before dependency resolution. Rebuild the baker and rebake affected BAM/SPR roots. SpriteResource v3 layout is unchanged; dimension/motion narrowing remains checked.
+
 - Baking now publishes `Resources.usage.json` after collecting typed Resource roots,
   required outputs and runtime dependencies. Packaging requires this selection and
   rejects missing or mismatched manifests; unused art stays in the local cache.

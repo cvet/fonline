@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"74816fa98deea3684dbdd7159654a3f8d6b5aa0561236b29efa6166fa7eaef66"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"b32bfdd4e7b8d6d70a306edbcf08985ca802353b783f201891558251509f4df7"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -28,7 +28,7 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 
 Контрактом владеют следующие исходники:
 
-- `Source/Tools/ImageImport.*` - `FrameShot::NextX` / `NextY` и общий контекст загрузчика;
+- `Source/Tools/ImageImport.*` - `FrameShot::Motion` и общий контекст загрузчика;
 - `Source/Tools/ImageBaker.*` - координация, преобразования и сериализация запечённых спрайтов; соседние пары `ImageBaker-*.h/.cpp` владеют импортом исходных форматов;
 - `Source/Common/SpriteResource.*` - общий декодер кадров SpriteResource v3 и перенос `NextOffset`;
 - `Source/Client/DefaultSprites.*` - `SpriteSheet::_sprOffset`, загрузка запечённых данных, общие кадры и листы по направлениям;
@@ -46,7 +46,7 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 
 1. **Логическое движение**: `MovingContext` владеет прогрессом пути, текущим гексом, направлением, завершением и скоростью движения.
 2. **Интерполяция внутри гекса**: `MovingContext::BuildProgress` преобразует плавную позицию сегмента в целочисленные пиксельные значения `HexOffset`. `CritterHexView::ProcessMoving` применяет логический гекс и offset.
-3. **Авторское смещение спрайта**: каждый кадр анимации содержит целочисленную delta `(NextX, NextY)`. `CritterHexView` выбирает кадр и вычисляет `_offsAnim`, чтобы отображаемый спрайт следовал созданному циклу ходьбы, пока логическое движение остаётся авторитетным.
+3. **Авторское смещение спрайта**: каждый кадр анимации содержит целочисленную delta `(Motion.x, Motion.y)`. `CritterHexView` выбирает кадр и вычисляет `_offsAnim`, чтобы отображаемый спрайт следовал созданному циклу ходьбы, пока логическое движение остаётся авторитетным.
 
 Sprite root motion является данными представления. Оно не перемещает сущность, не выбирает путь, не меняет скорость, не разрешает переход между гексами и не реплицирует движение по сети.
 
@@ -55,14 +55,16 @@ Sprite root motion является данными представления. �
 `ImageImport::FrameShot` хранит:
 
 ```cpp
-int16_t NextX;
-int16_t NextY;
+isize32 Size;
+ipos32 Motion;
+ipos32 Offset;
 ```
 
-Каждая пара добавляет пиксельное смещение в цикле из `N` кадров одного направления:
+`Size` задаёт размер изображения, `Offset` — независимую привязку при отрисовке,
+`Motion` — пиксельная дельта кадра, накапливаемая при проигрывании. Каждая пара добавляет пиксельное смещение в цикле из `N` кадров одного направления:
 
 ```text
-delta[i] = (NextX[i], NextY[i])
+delta[i] = Motion[i]
 accum[i] = sum(delta[0..i])
 T        = sum(delta[0..N-1])
 ```
@@ -70,14 +72,16 @@ T        = sum(delta[0..N-1])
 `T` — смещение цикла. Длина и угол могут отличаться от шага сетки; runtime
 проецирует движение на него без предположений о шаге гекса или длине цикла.
 
-Загрузчики получают дельты из исходных записей. FOFRM сохраняет их, если
-Move/FrameMoves явно не заменяет движение: int16 X Y, одна пара на ссылку
+Пары кадров FRM/FRx и DeltaX/DeltaY ART задают движение. Центры BAM и расчёт
+BBox/центра SPR задают `Offset`, без импортированного движения. PNG, TGA, MOS,
+RIX, ZAR и TIL движения не импортируют. FOFRM сохраняет дельты, если
+Motion/FrameMotions явно не заменяет движение: int16 X Y, одна пара на ссылку
 до разворачивания. Пиксельные преобразования не вращают и не масштабируют движение.
 Необязательные пары FrameOffsets меняют размещение картинки (`Offset + FrameOffsets[i]`)
 без накопления и root motion; NextX_N/NextY_N запрещены. Число пар, границы раздела
 и вложенность описывает [грамматика FOFRM](image-format.md#грамматика-fofrm).
 
-ART сохраняет DeltaX/DeltaY как NextX/NextY со знаками отражения. Точки привязки
+ART сохраняет DeltaX/DeltaY как Motion со знаками отражения. Точки привязки
 выравнивают холст и размещение последовательности. Source сохраняет оба вида;
 обычная композиция отбрасывает размещение дочерней последовательности,
 сохраняя покадровое размещение/дельты. См. [ART](image-format.md#art).
@@ -89,7 +93,7 @@ Offsets зависят от направления. Запекание може�
 
 ## Запечённое и runtime-представление
 
-`ImageBaker::BakeCollection` записывает движение signed16 NextX/NextY, размещение
+`ImageBaker::BakeCollection` записывает проверенные компоненты Motion как signed16, размещение
 int32 и положительную uint32 длительность каждого логического кадра в SpriteResource v3.
 Shared-слот ссылается на прежние пиксели/геометрию, сохраняя собственные движение,
 размещение и время. `ReadSpriteResource` декодирует движение в `SpriteResourceFrameData::NextOffset`.
@@ -200,7 +204,7 @@ offs_anim    = (cycle_start - pos) + accum[i]
 авторский offset. Смена кадра продвигает визуал на следующую delta, пока
 логическое движение продолжается.
 
-Это выравнивание, а не locomotion, управляемая анимацией. Изменение `NextX` / `NextY` меняет визуальный шаг и выбор фазы, но не заставляет server-side entity двигаться дальше или быстрее.
+Это выравнивание, а не locomotion, управляемая анимацией. Изменение `Motion` меняет визуальный шаг и выбор фазы, но не заставляет server-side entity двигаться дальше или быстрее.
 
 ## Смена направления и sheet
 
@@ -222,7 +226,7 @@ new_anchor     = pos - round(old_phase * T_new)
 | Условие | Текущий результат |
 |---|---|
 | Отсутствует FrameOffsets FOFRM | Корректировка размещения нулевая; импортированные root-motion дельты не меняются. |
-| При запекании offset выходит за диапазон знакового 16-битного числа | Numeric conversion завершается ошибкой вместо тихого переполнения. |
+| При сериализации Motion выходит за диапазон знакового 16-битного числа | Numeric conversion завершается ошибкой вместо тихого переполнения. |
 | В запечённом спрайте нет кадров или направлений | Клиентская загрузка не проходит validation. |
 | Запечённый кадр является sprite reference | Копируются спрайт и offset кадра по ссылке. |
 | Сумма цикла walk/run `T` равна нулю | Выбирается кадр `0`, root-motion offset движения остаётся нулевым. |
@@ -248,7 +252,7 @@ new_anchor     = pos - round(old_phase * T_new)
 
 ## Практики создания контента
 
-1. `NextX`/`NextY` — покадровые дельты в пикселях, а не абсолютные координаты.
+1. `Motion` — покадровые дельты в пикселях, а не абсолютные координаты.
 2. Проверяйте каждое направление и согласованность cycle vectors при поворотах.
 3. Сохраняйте `T` ненулевым для locomotion sheets, пространственно управляющих походкой.
 4. Согласуйте deltas с poses: большая коррекция одного кадра скачет даже при правильной сумме.
@@ -262,7 +266,7 @@ new_anchor     = pos - round(old_phase * T_new)
 Закреплённый Last Frontier направляет 2D-работу через `Docs/ContentWorkflow.md`,
 согласование Engine — через `Docs/DocumentationMaintenance.md`. В основном
 `.fo3d` pipeline пропускает translation `*_RM` в `Docs/CharacterGenerator.md`:
-Engine владеет мировым движением. Это не подтверждает значения 2D `NextX`/`NextY`.
+Engine владеет мировым движением. Это не подтверждает значения 2D `Motion`.
 
 Проверенные LF/TLA trees не содержат авторского FOFRM/FRM production cycle с
 подтверждённым ненулевым displacement. TLA `Docs/Animation.md` исторически
@@ -283,7 +287,7 @@ Engine владеет импортом исходных форматов, пер
 
 Повторно проверяйте эту страницу и focused tests, когда изменение затрагивает любую из следующих поверхностей:
 
-- `FrameShot::NextX` / `NextY`, версию SpriteResource, `NextOffset`, shared-frame behavior или `SpriteSheet::_sprOffset`;
+- `FrameShot::Motion`, версию SpriteResource, `NextOffset`, shared-frame behavior или `SpriteSheet::_sprOffset`;
 - импорт FOFRM/legacy images, mirroring, cropping, frame extraction, animation merge, cloning или substitution;
 - `MovingContext::BuildProgress`, интерполяцию гекс/offset, prediction reconciliation или `GeometryHelper::NormalizeHexOffset`;
 - lifecycle движения `CritterHexView`, активацию walk/run, передачу anchor, выбор кадра, `_offsAnim`, проходимость карты или ограничение light offset;

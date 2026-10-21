@@ -119,7 +119,7 @@ auto ReadImageTransforms(const ConfigFile& recipe, string_view section, size_t r
     auto rotations = read("Rotate", "FrameRotations", 1);
     auto canvases = read("Canvas", "FrameCanvases", 2);
     auto canvas_offsets = read("CanvasOffset", "FrameCanvasOffsets", 2);
-    auto moves = read("Move", "FrameMoves", 2);
+    auto motions = read("Motion", "FrameMotions", 2);
 
     auto read_enum = [&](string_view key, const vector<string>& choices, int32_t fallback) -> int32_t {
         string_view owner = recipe.HasKey(section, key) ? section : string_view {};
@@ -170,10 +170,10 @@ auto ReadImageTransforms(const ConfigFile& recipe, string_view section, size_t r
             FO_VERIFY_AND_THROW(result[index].CanvasOffset.x >= 0 && result[index].CanvasOffset.y >= 0, "FOFRM CanvasOffset must be nonnegative", fname, section);
         }
 
-        if (moves) {
-            ipos32 move {(*moves)[index * 2], (*moves)[index * 2 + 1]};
-            FO_VERIFY_AND_THROW(move.x >= -32768 && move.x <= 32767 && move.y >= -32768 && move.y <= 32767, "FOFRM Move requires int16 components", fname, section);
-            result[index].Move = move;
+        if (motions) {
+            ipos32 motion {(*motions)[index * 2], (*motions)[index * 2 + 1]};
+            FO_VERIFY_AND_THROW(motion.x >= -32768 && motion.x <= 32767 && motion.y >= -32768 && motion.y <= 32767, "FOFRM Motion requires int16 components", fname, section);
+            result[index].Motion = motion;
         }
 
         if (directions) {
@@ -209,17 +209,16 @@ auto SelectImageSequence(const ImageImport::FrameCollection& source, optional<in
 
 static auto CropImageFrame(const ImageImport::FrameShot& source, array<int32_t, 4> crop, string_view fname) -> ImageImport::FrameShot
 {
-    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Width) * source.Height * 4, "FOFRM source RGBA payload does not match dimensions", fname);
-    FO_VERIFY_AND_THROW(crop[0] >= 0 && crop[1] >= 0 && crop[2] > 0 && crop[3] > 0 && numeric_cast<int64_t>(crop[0]) + crop[2] <= source.Width && numeric_cast<int64_t>(crop[1]) + crop[3] <= source.Height, "FOFRM Crop lies outside its input frame", fname);
+    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Size.width) * source.Size.height * 4, "FOFRM source RGBA payload does not match dimensions", fname);
+    FO_VERIFY_AND_THROW(crop[0] >= 0 && crop[1] >= 0 && crop[2] > 0 && crop[3] > 0 && numeric_cast<int64_t>(crop[0]) + crop[2] <= source.Size.width && numeric_cast<int64_t>(crop[1]) + crop[3] <= source.Size.height, "FOFRM Crop lies outside its input frame", fname);
 
     auto result = source;
-    result.Width = numeric_cast<uint16_t>(crop[2]);
-    result.Height = numeric_cast<uint16_t>(crop[3]);
-    result.Data.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+    result.Size = {crop[2], crop[3]};
+    result.Data.resize(numeric_cast<size_t>(result.Size.width) * result.Size.height * 4);
 
-    for (size_t y = 0; y < result.Height; y++) {
-        size_t start = ((y + crop[1]) * source.Width + crop[0]) * 4;
-        std::copy_n(source.Data.begin() + start, numeric_cast<size_t>(result.Width) * 4, result.Data.begin() + y * result.Width * 4);
+    for (int32_t y = 0; y < result.Size.height; y++) {
+        size_t start = (numeric_cast<size_t>(y + crop[1]) * source.Size.width + crop[0]) * 4;
+        std::copy_n(source.Data.begin() + start, numeric_cast<size_t>(result.Size.width) * 4, result.Data.begin() + numeric_cast<size_t>(y) * result.Size.width * 4);
     }
 
     return result;
@@ -227,17 +226,15 @@ static auto CropImageFrame(const ImageImport::FrameShot& source, array<int32_t, 
 
 static auto ResizeEncodedColorFrame(const ImageImport::FrameShot& source, isize32 size, string_view fname) -> ImageImport::FrameShot
 {
-    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Width) * source.Height * 4, "FOFRM resize source RGBA payload does not match dimensions", fname, source.Width, source.Height, source.Data.size());
+    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Size.width) * source.Size.height * 4, "FOFRM resize source RGBA payload does not match dimensions", fname, source.Size, source.Data.size());
 
-    if (source.Width == size.width && source.Height == size.height) {
+    if (source.Size == size) {
         return source;
     }
 
     ImageImport::FrameShot resized {
-        .Width = numeric_cast<uint16_t>(size.width),
-        .Height = numeric_cast<uint16_t>(size.height),
-        .NextX = source.NextX,
-        .NextY = source.NextY,
+        .Size = size,
+        .Motion = source.Motion,
         .Offset = source.Offset,
         .DurationMs = source.DurationMs,
         .PreserveHiddenColor = source.PreserveHiddenColor,
@@ -245,7 +242,7 @@ static auto ResizeEncodedColorFrame(const ImageImport::FrameShot& source, isize3
 
     resized.Data.resize(numeric_cast<size_t>(size.width) * size.height * 4);
 
-    if (source.Width == 0 || source.Height == 0) {
+    if (source.Size.width == 0 || source.Size.height == 0) {
         return resized;
     }
 
@@ -254,21 +251,21 @@ static auto ResizeEncodedColorFrame(const ImageImport::FrameShot& source, isize3
     constexpr uint64_t weight_unit = uint64_t {1} << 32;
 
     for (int32_t y = 0; y < size.height; y++) {
-        int64_t source_y = std::clamp((2 * numeric_cast<int64_t>(y) + 1) * source.Height * pixel_unit / (2 * size.height) - pixel_unit / 2, int64_t {0}, (numeric_cast<int64_t>(source.Height) - 1) * pixel_unit);
+        int64_t source_y = std::clamp((2 * numeric_cast<int64_t>(y) + 1) * source.Size.height * pixel_unit / (2 * size.height) - pixel_unit / 2, int64_t {0}, (numeric_cast<int64_t>(source.Size.height) - 1) * pixel_unit);
         int32_t y0 = numeric_cast<int32_t>(source_y / pixel_unit);
-        int32_t y1 = std::min(y0 + 1, numeric_cast<int32_t>(source.Height) - 1);
+        int32_t y1 = std::min(y0 + 1, source.Size.height - 1);
         uint64_t fy = numeric_cast<uint64_t>(source_y % pixel_unit);
 
         for (int32_t x = 0; x < size.width; x++) {
-            int64_t source_x = std::clamp((2 * numeric_cast<int64_t>(x) + 1) * source.Width * pixel_unit / (2 * size.width) - pixel_unit / 2, int64_t {0}, (numeric_cast<int64_t>(source.Width) - 1) * pixel_unit);
+            int64_t source_x = std::clamp((2 * numeric_cast<int64_t>(x) + 1) * source.Size.width * pixel_unit / (2 * size.width) - pixel_unit / 2, int64_t {0}, (numeric_cast<int64_t>(source.Size.width) - 1) * pixel_unit);
             int32_t x0 = numeric_cast<int32_t>(source_x / pixel_unit);
-            int32_t x1 = std::min(x0 + 1, numeric_cast<int32_t>(source.Width) - 1);
+            int32_t x1 = std::min(x0 + 1, source.Size.width - 1);
             uint64_t fx = numeric_cast<uint64_t>(source_x % pixel_unit);
             array<size_t, 4> positions {
-                (numeric_cast<size_t>(y0) * source.Width + x0) * 4,
-                (numeric_cast<size_t>(y0) * source.Width + x1) * 4,
-                (numeric_cast<size_t>(y1) * source.Width + x0) * 4,
-                (numeric_cast<size_t>(y1) * source.Width + x1) * 4,
+                (numeric_cast<size_t>(y0) * source.Size.width + x0) * 4,
+                (numeric_cast<size_t>(y0) * source.Size.width + x1) * 4,
+                (numeric_cast<size_t>(y1) * source.Size.width + x0) * 4,
+                (numeric_cast<size_t>(y1) * source.Size.width + x1) * 4,
             };
 
             array<uint64_t, 4> weights {
@@ -606,26 +603,27 @@ static auto EncodeLinear16(uint64_t value) -> uint8_t
 
 static auto ResizeImageFrame(const ImageImport::FrameShot& source, isize32 size, const ImageTransform& transform, string_view fname) -> ImageImport::FrameShot
 {
+    FO_VERIFY_AND_THROW(source.Size.width >= 0 && source.Size.height >= 0, "FOFRM resize source requires nonnegative dimensions", fname, source.Size);
+
     if (transform.Resample == ImageResample::Area) {
-        FO_VERIFY_AND_THROW(size.width <= source.Width && size.height <= source.Height, "FOFRM Area resampling supports downsampling or identity only", fname);
+        FO_VERIFY_AND_THROW(size.width <= source.Size.width && size.height <= source.Size.height, "FOFRM Area resampling supports downsampling or identity only", fname);
     }
 
     if (transform.Resample == ImageResample::Bilinear && transform.PixelUsage == ImagePixelUsage::Color && transform.ColorSpace == ImageColorSpace::Encoded) {
         return ResizeEncodedColorFrame(source, size, fname);
     }
 
-    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Width) * source.Height * 4, "FOFRM resize source RGBA payload does not match dimensions", fname);
+    FO_VERIFY_AND_THROW(source.Data.size() == numeric_cast<size_t>(source.Size.width) * source.Size.height * 4, "FOFRM resize source RGBA payload does not match dimensions", fname, source.Size, source.Data.size());
 
-    if (source.Width == size.width && source.Height == size.height) {
+    if (source.Size == size) {
         return source;
     }
 
     auto result = source;
-    result.Width = numeric_cast<uint16_t>(size.width);
-    result.Height = numeric_cast<uint16_t>(size.height);
-    result.Data.assign(numeric_cast<size_t>(result.Width) * result.Height * 4, 0);
+    result.Size = size;
+    result.Data.assign(numeric_cast<size_t>(result.Size.width) * result.Size.height * 4, 0);
 
-    if (source.Width == 0 || source.Height == 0) {
+    if (source.Size.width == 0 || source.Size.height == 0) {
         return result;
     }
 
@@ -640,12 +638,12 @@ static auto ResizeImageFrame(const ImageImport::FrameShot& source, isize32 size,
 
     for (int32_t y = 0; y < size.height; y++) {
         for (int32_t x = 0; x < size.width; x++) {
-            size_t destination = (numeric_cast<size_t>(y) * result.Width + x) * 4;
+            size_t destination = (numeric_cast<size_t>(y) * result.Size.width + x) * 4;
 
             if (transform.Resample == ImageResample::Nearest) {
-                int32_t sx = numeric_cast<int32_t>((2 * numeric_cast<int64_t>(x) + 1) * source.Width / (2 * size.width));
-                int32_t sy = numeric_cast<int32_t>((2 * numeric_cast<int64_t>(y) + 1) * source.Height / (2 * size.height));
-                size_t position = (numeric_cast<size_t>(sy) * source.Width + sx) * 4;
+                int32_t sx = numeric_cast<int32_t>((2 * numeric_cast<int64_t>(x) + 1) * source.Size.width / (2 * size.width));
+                int32_t sy = numeric_cast<int32_t>((2 * numeric_cast<int64_t>(y) + 1) * source.Size.height / (2 * size.height));
+                size_t position = (numeric_cast<size_t>(sy) * source.Size.width + sx) * 4;
                 std::copy_n(source.Data.begin() + position, 4, result.Data.begin() + destination);
                 continue;
             }
@@ -655,7 +653,7 @@ static auto ResizeImageFrame(const ImageImport::FrameShot& source, isize32 size,
             uint64_t total = 0;
 
             auto sample = [&](int32_t sx, int32_t sy, uint64_t weight) {
-                size_t position = (numeric_cast<size_t>(sy) * source.Width + sx) * 4;
+                size_t position = (numeric_cast<size_t>(sy) * source.Size.width + sx) * 4;
                 uint64_t alpha = source.Data[position + 3];
                 total += weight;
                 sums[3] += weight * alpha;
@@ -676,18 +674,18 @@ static auto ResizeImageFrame(const ImageImport::FrameShot& source, isize32 size,
             };
 
             if (transform.Resample == ImageResample::Bilinear) {
-                auto ax = axis(x, source.Width, size.width);
-                auto ay = axis(y, source.Height, size.height);
+                auto ax = axis(x, source.Size.width, size.width);
+                auto ay = axis(y, source.Size.height, size.height);
                 sample(ax[0], ay[0], numeric_cast<uint64_t>(unit - ax[2]) * (unit - ay[2]));
                 sample(ax[1], ay[0], numeric_cast<uint64_t>(ax[2]) * (unit - ay[2]));
                 sample(ax[0], ay[1], numeric_cast<uint64_t>(unit - ax[2]) * ay[2]);
                 sample(ax[1], ay[1], numeric_cast<uint64_t>(ax[2]) * ay[2]);
             }
             else {
-                int64_t left = numeric_cast<int64_t>(x) * source.Width;
-                int64_t right = numeric_cast<int64_t>(x + 1) * source.Width;
-                int64_t top = numeric_cast<int64_t>(y) * source.Height;
-                int64_t bottom = numeric_cast<int64_t>(y + 1) * source.Height;
+                int64_t left = numeric_cast<int64_t>(x) * source.Size.width;
+                int64_t right = numeric_cast<int64_t>(x + 1) * source.Size.width;
+                int64_t top = numeric_cast<int64_t>(y) * source.Size.height;
+                int64_t bottom = numeric_cast<int64_t>(y + 1) * source.Size.height;
 
                 for (int32_t sy = numeric_cast<int32_t>(top / size.height); sy < (bottom + size.height - 1) / size.height; sy++) {
                     int64_t wy = std::min(numeric_cast<int64_t>(sy + 1) * size.height, bottom) - std::max(numeric_cast<int64_t>(sy) * size.height, top);
@@ -738,22 +736,21 @@ static auto ResizeImageFrame(const ImageImport::FrameShot& source, isize32 size,
 static auto TransformImagePixels(ImageImport::FrameShot frame, const ImageTransform& transform, string_view fname) -> ImageImport::FrameShot
 {
     frame.PreserveHiddenColor = frame.PreserveHiddenColor || transform.PixelUsage != ImagePixelUsage::Color;
-    FO_VERIFY_AND_THROW(frame.Data.size() == numeric_cast<size_t>(frame.Width) * frame.Height * 4, "FOFRM source RGBA payload does not match dimensions", fname);
+    FO_VERIFY_AND_THROW(frame.Data.size() == numeric_cast<size_t>(frame.Size.width) * frame.Size.height * 4, "FOFRM source RGBA payload does not match dimensions", fname);
 
     if (transform.Flip != 0 || transform.Rotate != 0) {
         auto result = frame;
         bool swap_axes = transform.Rotate == 90 || transform.Rotate == 270;
-        result.Width = swap_axes ? frame.Height : frame.Width;
-        result.Height = swap_axes ? frame.Width : frame.Height;
+        result.Size = swap_axes ? isize32 {frame.Size.height, frame.Size.width} : frame.Size;
 
-        for (int32_t y = 0; y < frame.Height; y++) {
-            for (int32_t x = 0; x < frame.Width; x++) {
-                int32_t fx = (transform.Flip & 1) != 0 ? frame.Width - 1 - x : x;
-                int32_t fy = (transform.Flip & 2) != 0 ? frame.Height - 1 - y : y;
-                int32_t dx = transform.Rotate == 90 ? frame.Height - 1 - fy : transform.Rotate == 180 ? frame.Width - 1 - fx : transform.Rotate == 270 ? fy : fx;
-                int32_t dy = transform.Rotate == 90 ? fx : transform.Rotate == 180 ? frame.Height - 1 - fy : transform.Rotate == 270 ? frame.Width - 1 - fx : fy;
-                size_t src = (numeric_cast<size_t>(y) * frame.Width + x) * 4;
-                size_t dst = (numeric_cast<size_t>(dy) * result.Width + dx) * 4;
+        for (int32_t y = 0; y < frame.Size.height; y++) {
+            for (int32_t x = 0; x < frame.Size.width; x++) {
+                int32_t fx = (transform.Flip & 1) != 0 ? frame.Size.width - 1 - x : x;
+                int32_t fy = (transform.Flip & 2) != 0 ? frame.Size.height - 1 - y : y;
+                int32_t dx = transform.Rotate == 90 ? frame.Size.height - 1 - fy : transform.Rotate == 180 ? frame.Size.width - 1 - fx : transform.Rotate == 270 ? fy : fx;
+                int32_t dy = transform.Rotate == 90 ? fx : transform.Rotate == 180 ? frame.Size.height - 1 - fy : transform.Rotate == 270 ? frame.Size.width - 1 - fx : fy;
+                size_t src = (numeric_cast<size_t>(y) * frame.Size.width + x) * 4;
+                size_t dst = (numeric_cast<size_t>(dy) * result.Size.width + dx) * 4;
                 std::copy_n(frame.Data.begin() + src, 4, result.Data.begin() + dst);
             }
         }
@@ -768,23 +765,21 @@ static auto TransformImagePixels(ImageImport::FrameShot frame, const ImageTransf
     if (transform.Canvas) {
         isize32 canvas = *transform.Canvas;
         ipos32 offset = transform.CanvasOffset;
-        FO_VERIFY_AND_THROW(offset.x >= 0 && offset.y >= 0 && numeric_cast<int64_t>(offset.x) + frame.Width <= canvas.width && numeric_cast<int64_t>(offset.y) + frame.Height <= canvas.height, "FOFRM Canvas would clip its image", fname);
+        FO_VERIFY_AND_THROW(offset.x >= 0 && offset.y >= 0 && numeric_cast<int64_t>(offset.x) + frame.Size.width <= canvas.width && numeric_cast<int64_t>(offset.y) + frame.Size.height <= canvas.height, "FOFRM Canvas would clip its image", fname);
         auto result = frame;
-        result.Width = numeric_cast<uint16_t>(canvas.width);
-        result.Height = numeric_cast<uint16_t>(canvas.height);
-        result.Data.assign(numeric_cast<size_t>(result.Width) * result.Height * 4, 0);
+        result.Size = canvas;
+        result.Data.assign(numeric_cast<size_t>(result.Size.width) * result.Size.height * 4, 0);
 
-        for (size_t y = 0; y < frame.Height; y++) {
-            size_t destination = ((y + offset.y) * result.Width + offset.x) * 4;
-            std::copy_n(frame.Data.begin() + y * frame.Width * 4, numeric_cast<size_t>(frame.Width) * 4, result.Data.begin() + destination);
+        for (int32_t y = 0; y < frame.Size.height; y++) {
+            size_t destination = (numeric_cast<size_t>(y + offset.y) * result.Size.width + offset.x) * 4;
+            std::copy_n(frame.Data.begin() + numeric_cast<size_t>(y) * frame.Size.width * 4, numeric_cast<size_t>(frame.Size.width) * 4, result.Data.begin() + destination);
         }
 
         frame = std::move(result);
     }
 
-    if (transform.Move) {
-        frame.NextX = numeric_cast<int16_t>(transform.Move->x);
-        frame.NextY = numeric_cast<int16_t>(transform.Move->y);
+    if (transform.Motion) {
+        frame.Motion = *transform.Motion;
     }
 
     return frame;
@@ -792,6 +787,8 @@ static auto TransformImagePixels(ImageImport::FrameShot frame, const ImageTransf
 
 auto TransformImageFrame(const ImageImport::FrameShot& source, const ImageTransform& transform, string_view fname) -> vector<ImageImport::FrameShot>
 {
+    FO_VERIFY_AND_THROW(source.Size.width >= 0 && source.Size.height >= 0, "FOFRM source requires nonnegative dimensions", fname, source.Size);
+
     auto frame = transform.Crop ? CropImageFrame(source, *transform.Crop, fname) : source;
 
     if (!transform.Grid) {
@@ -799,11 +796,11 @@ auto TransformImageFrame(const ImageImport::FrameShot& source, const ImageTransf
     }
 
     isize32 grid = *transform.Grid;
-    FO_VERIFY_AND_THROW(frame.Width > 0 && frame.Height > 0 && frame.Width % grid.width == 0 && frame.Height % grid.height == 0, "FOFRM Grid must divide its input frame exactly", fname, frame.Width, frame.Height, grid);
+    FO_VERIFY_AND_THROW(frame.Size.width > 0 && frame.Size.height > 0 && frame.Size.width % grid.width == 0 && frame.Size.height % grid.height == 0, "FOFRM Grid must divide its input frame exactly", fname, frame.Size, grid);
     vector<ImageImport::FrameShot> frames;
 
-    for (int32_t y = 0; y < frame.Height; y += grid.height) {
-        for (int32_t x = 0; x < frame.Width; x += grid.width) {
+    for (int32_t y = 0; y < frame.Size.height; y += grid.height) {
+        for (int32_t x = 0; x < frame.Size.width; x += grid.width) {
             FO_VERIFY_AND_THROW(frames.size() < 65535, "FOFRM Grid exceeds the frame-count limit", fname);
             frames.emplace_back(TransformImagePixels(CropImageFrame(frame, {x, y, grid.width, grid.height}, fname), transform, fname));
         }

@@ -924,7 +924,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
             collection.Main.OffsX = numeric_cast<int16_t>(offset.x);
             collection.Main.OffsY = numeric_cast<int16_t>(offset.y);
             collection.Main.Frames.resize(1);
-            collection.Main.Frames[0] = ImageImport::FrameShot {.Width = width, .Height = height, .Data = rgba};
+            collection.Main.Frames[0] = ImageImport::FrameShot {.Size = {width, height}, .Data = rgba};
 
             if (!have_dirs) {
                 for (auto& direction : collection.Dirs) {
@@ -1124,7 +1124,7 @@ TEST_CASE("ImageBaker")
                 bool have_dirs {};
                 sequence_size = 1;
                 duration_ms = 123;
-                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}});
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Size = {1, 1}, .Data = {1, 2, 3, 255}});
 
                 if (!have_dirs) {
                     for (auto& direction : collection.Dirs) {
@@ -1942,7 +1942,7 @@ TEST_CASE("ImageBaker")
                 sequence_size = 2;
                 duration_ms = 100;
                 collection.Main.Frames = {
-                    ImageImport::FrameShot {.Width = 5, .Height = 5, .Data = rgba},
+                    ImageImport::FrameShot {.Size = {5, 5}, .Data = rgba},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
 
@@ -2024,7 +2024,7 @@ TEST_CASE("ImageBaker")
                 bool have_dirs {};
                 sequence_size = 1;
                 duration_ms = 100;
-                collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {255, 255, 255, 255}}};
+                collection.Main.Frames = {ImageImport::FrameShot {.Size = {1, 1}, .Data = {255, 255, 255, 255}}};
 
                 if (!have_dirs) {
                     for (auto& direction : collection.Dirs) {
@@ -2061,6 +2061,51 @@ TEST_CASE("ImageBaker")
 
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-settings.mask"), ImageBakerException);
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("RejectsCustomLoaderFrameSizeAndMotionOutsideSerializedRanges")
+    {
+        auto bake_invalid = [](const ImageImport::FrameShot& invalid, bool shared_motion) {
+            TestRig rig;
+            rig.AddSourceFile("gfx/invalid-range.toy", "payload");
+
+            ImageBaker baker {rig.MakeContext()};
+            baker.AddLoader(
+                [invalid, shared_motion](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
+                    ignore_unused(fname, opt, reader, files);
+
+                    ImageImport::FrameCollection collection;
+
+                    if (shared_motion) {
+                        collection.Main.Frames = {
+                            ImageImport::FrameShot {.Size = {1, 1}, .Data = {255, 255, 255, 255}},
+                            ImageImport::FrameShot {.Motion = invalid.Motion, .Shared = true, .SharedIndex = 0},
+                        };
+                    }
+                    else {
+                        collection.Main.Frames = {invalid};
+                    }
+
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(collection.Main, 100);
+
+                    return collection;
+                },
+                {"toy"});
+
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-range.toy"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        };
+
+        bake_invalid(ImageImport::FrameShot {.Size = {-1, 1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, -1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {65536, 1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, 1}, .Motion = {32768, 0}, .Data = {255, 255, 255, 255}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, 1}, .Motion = {0, -32769}, .Data = {255, 255, 255, 255}}, false);
+        bake_invalid(ImageImport::FrameShot {.Motion = {32768, 0}}, true);
     }
 
     SECTION("BakesRawTgaTarget")
@@ -2427,8 +2472,9 @@ TEST_CASE("ImageBaker")
 
         CHECK(bam_frame.Width == 4);
         CHECK(bam_frame.Height == 1);
-        CHECK(bam_frame.NextX == 1);
-        CHECK(bam_frame.NextY == -1);
+        CHECK(bam_frame.Offset == ipos32 {1, -1});
+        CHECK(bam_frame.NextX == 0);
+        CHECK(bam_frame.NextY == 0);
         CHECK(bam_frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0, 0, 0, 0, 6, 5, 4, 0xFF, 6, 5, 4, 0xFF});
 #endif
 
@@ -2486,8 +2532,9 @@ TEST_CASE("ImageBaker")
         REQUIRE(selected.Frames.size() == 1);
         CHECK(selected.Frames[0].Width == 2);
         CHECK(selected.Frames[0].Height == 1);
-        CHECK(selected.Frames[0].NextX == -1);
-        CHECK(selected.Frames[0].NextY == -2);
+        CHECK(selected.Frames[0].Offset == ipos32 {-1, -2});
+        CHECK(selected.Frames[0].NextX == 0);
+        CHECK(selected.Frames[0].NextY == 0);
         CHECK(selected.Frames[0].Data == vector<uint8_t> {0x06, 0x05, 0x04, 0xFF, 0x33, 0x22, 0x11, 0xFF});
 
         TestRig clamped_frame;
@@ -2505,8 +2552,9 @@ TEST_CASE("ImageBaker")
         REQUIRE(clamped.Frames.size() == 1);
         CHECK(clamped.Frames[0].Width == 1);
         CHECK(clamped.Frames[0].Height == 1);
+        CHECK(clamped.Frames[0].Offset == ipos32 {0, 1});
         CHECK(clamped.Frames[0].NextX == 0);
-        CHECK(clamped.Frames[0].NextY == 1);
+        CHECK(clamped.Frames[0].NextY == 0);
         CHECK(clamped.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF});
     }
 #endif
@@ -2574,8 +2622,9 @@ TEST_CASE("ImageBaker")
         REQUIRE(sequence.Frames.size() == 1);
         CHECK(sequence.Frames[0].Width == 3);
         CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {1, 1});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextY == 0);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
     }
 #endif
@@ -2598,8 +2647,9 @@ TEST_CASE("ImageBaker")
         REQUIRE(sequence.Frames.size() == 1);
         CHECK(sequence.Frames[0].Width == 3);
         CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {1, 1});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextY == 0);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
     }
 #endif
@@ -2623,18 +2673,19 @@ TEST_CASE("ImageBaker")
             REQUIRE(sequence.Frames.size() == 2);
             CHECK(sequence.AnimTicks == 200);
             const auto& frame = sequence.Frames[0];
-            CHECK(frame.Offset == ipos32 {});
             CHECK(frame.Height == 1);
 
             if (frame.Width == 3) {
-                CHECK(frame.NextX == 1);
-                CHECK(frame.NextY == 1);
+                CHECK(frame.Offset == ipos32 {1, 1});
+                CHECK(frame.NextX == 0);
+                CHECK(frame.NextY == 0);
                 CHECK(frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
             }
             else {
                 CHECK(frame.Width == 1);
+                CHECK(frame.Offset == ipos32 {0, 1});
                 CHECK(frame.NextX == 0);
-                CHECK(frame.NextY == 1);
+                CHECK(frame.NextY == 0);
                 CHECK(frame.Data == vector<uint8_t> {0, 0, 0, 0});
             }
 
@@ -3145,8 +3196,7 @@ Frame = dir1.tga
 
                     for (uint16_t i = 0; i < sequence_size; i++) {
                         collection.Main.Frames[i] = ImageImport::FrameShot {
-                            .Width = 1,
-                            .Height = 1,
+                            .Size = {1, 1},
                             .Data = {numeric_cast<uint8_t>(10 + i), 20, 30, 255},
                         };
                     }
@@ -3251,7 +3301,7 @@ Frame = one.toy
                 collection.Main.OffsX = 1;
                 collection.Main.OffsY = 2;
                 collection.Main.Frames = {
-                    ImageImport::FrameShot {.Width = 1, .Height = 1, .NextX = 3, .NextY = 4, .Data = {10, 20, 30, 40}},
+                    ImageImport::FrameShot {.Size = {1, 1}, .Motion = {3, 4}, .Data = {10, 20, 30, 40}},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
 
@@ -3260,7 +3310,7 @@ Frame = one.toy
                     sequence.OffsX = numeric_cast<int16_t>(10 + dir);
                     sequence.OffsY = numeric_cast<int16_t>(20 + dir);
                     sequence.Frames = {
-                        ImageImport::FrameShot {.Width = 1, .Height = 1, .NextX = numeric_cast<int16_t>(30 + dir), .NextY = numeric_cast<int16_t>(40 + dir), .Data = {numeric_cast<uint8_t>(dir), 1, 2, 3}},
+                        ImageImport::FrameShot {.Size = {1, 1}, .Motion = {30 + dir, 40 + dir}, .Data = {numeric_cast<uint8_t>(dir), 1, 2, 3}},
                         ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                     };
                 }
@@ -3672,7 +3722,7 @@ TEST_CASE("FofrmResizing")
                 uint32_t duration_ms {100};
                 bool have_dirs {};
                 sequence_size = 1;
-                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.NextX = 7, .NextY = -9, .Offset = {3, -4}});
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Motion = {7, -9}, .Offset = {3, -4}});
 
                 if (!have_dirs) {
                     for (auto& direction : collection.Dirs) {
@@ -3877,7 +3927,7 @@ TEST_CASE("FofrmSourceCollection")
                 sequence.OffsX = numeric_cast<int16_t>(10 + direction);
                 sequence.OffsY = numeric_cast<int16_t>(20 + direction);
                 sequence.Frames = {
-                    ImageImport::FrameShot {.Width = 1, .Height = 1, .NextX = 1, .NextY = -1, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
+                    ImageImport::FrameShot {.Size = {1, 1}, .Motion = {1, -1}, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
             }
@@ -3948,8 +3998,8 @@ TEST_CASE("FofrmFlattenedDefaultTimingUsesFinalFrames")
             collection.Main.OffsX = 100;
             collection.Main.OffsY = 200;
             collection.Main.Frames = {
-                ImageImport::FrameShot {.Width = 1, .Height = 1, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
-                ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {70, 80, 90, 255}},
+                ImageImport::FrameShot {.Size = {1, 1}, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
+                ImageImport::FrameShot {.Size = {1, 1}, .Data = {70, 80, 90, 255}},
             };
 
             if (!have_dirs) {
@@ -4020,6 +4070,105 @@ TEST_CASE("FrmPaletteTimelineIsLocalToItsDirection")
 }
 #endif
 
+TEST_CASE("ImageFramePlacementDoesNotAccumulateMotion")
+{
+    using namespace BakerTests;
+
+#if FO_IMAGE_ART
+    SECTION("ArtRetainsInt32MotionUntilAnExplicitFofrmOverride")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "wide.art", MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = 40000, .DeltaY = -40000, .Indices = {1}}}));
+        rig.AddSourceFile("root.fofrm", "Source = wide.art\nMotion = 1 -2\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource = ReadSpriteResource(rig.Outputs.at("root.fofrm"));
+        CHECK(resource.Directions[0].Frames[0].NextOffset == ipos32 {1, -2});
+    }
+#endif
+
+#if FO_IMAGE_BAM
+    SECTION("BamCentersAreIndependentFramePlacement")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "cycle.bam", MakeMultiFrameBam());
+        rig.AddSourceFile("root.fofrm", "Frame = cycle.bam\nOffset = 10 20\nFrameOffsets = 1 2\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource = ReadSpriteResource(rig.Outputs.at("root.fofrm"));
+        const auto& frames = resource.Directions[0].Frames;
+        REQUIRE(frames.size() == 2);
+        CHECK(frames[0].Offset == ipos32 {11, 23});
+        CHECK(frames[1].Offset == ipos32 {10, 20});
+        CHECK(frames[0].NextOffset == ipos32 {});
+        CHECK(frames[1].NextOffset == ipos32 {});
+    }
+
+    SECTION("BamCentersAreSigned")
+    {
+        TestRig rig;
+        auto data = MakeSimpleBam();
+        data[28] = 0xFE;
+        data[29] = 0xFF;
+        data[30] = 0xFD;
+        data[31] = 0xFF;
+        AddSourceBinaryFile(rig, "negative.bam", data);
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "negative.bam");
+
+        auto resource = ReadSpriteResource(rig.Outputs.at("negative.bam"));
+        const auto& frame = resource.Directions[0].Frames[0];
+        CHECK(frame.Offset == ipos32 {4, 4});
+        CHECK(frame.NextOffset == ipos32 {});
+    }
+#endif
+
+#if FO_IMAGE_SPR
+    SECTION("RepeatedSprFramesKeepPlacementWithoutMovement")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "actor.spr", MakeSprWithSequenceFrames({0, 0}));
+        rig.AddSourceFile("root.fofrm", "Source = actor.spr\nOffset = 10 20\nFrameOffsets = 2 3\nMotion = -4 5\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource = ReadSpriteResource(rig.Outputs.at("root.fofrm"));
+        const auto& frames = resource.Directions[0].Frames;
+        REQUIRE(frames.size() == 2);
+
+        for (const auto& frame : frames) {
+            CHECK(frame.Offset == ipos32 {13, 24});
+            CHECK(frame.NextOffset == ipos32 {-4, 5});
+        }
+    }
+
+    SECTION("SprSharedSlotsDoNotAcquireMotionFromTheirAnchor")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "actor.spr", MakeSprWithSequenceFrames({0, 0}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "actor.spr");
+
+        auto resource = ReadSpriteResource(rig.Outputs.at("actor.spr"));
+        const auto& frames = resource.Directions[0].Frames;
+        REQUIRE(frames.size() == 2);
+        CHECK(frames[1].SharedFrameIndex == optional<uint16_t> {0});
+
+        for (const auto& frame : frames) {
+            CHECK(frame.Offset == ipos32 {1, 1});
+            CHECK(frame.NextOffset == ipos32 {});
+        }
+    }
+#endif
+}
+
 TEST_CASE("FofrmDataSurvivesMeshOptimization")
 {
     string usage = GENERATE(string {"Data"}, string {"Normal"});
@@ -4032,8 +4181,7 @@ TEST_CASE("FofrmDataSurvivesMeshOptimization")
         [](string_view, string_view, FileReader, const ImageImport::Context&) {
             ImageImport::FrameCollection collection;
             auto& frame = collection.Main.Frames.emplace_back();
-            frame.Width = 64;
-            frame.Height = 64;
+            frame.Size = {64, 64};
             frame.DurationMs = 100;
 
             for (int32_t y = 0; y < 64; y++) {

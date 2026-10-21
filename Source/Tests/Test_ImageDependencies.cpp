@@ -241,7 +241,7 @@ TEST_CASE("ImageDependencySnapshots")
             bool have_dirs {};
             sequence_size = 1;
             duration_ms = 100;
-            collection.Main.Frames.push_back(ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {reader.GetUInt8(), 0, 0, 255}});
+            collection.Main.Frames.push_back(ImageImport::FrameShot {.Size = {1, 1}, .Data = {reader.GetUInt8(), 0, 0, 255}});
 
             if (!have_dirs) {
                 for (auto& direction : collection.Dirs) {

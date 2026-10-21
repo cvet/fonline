@@ -145,7 +145,7 @@ FrameOffsets = \
 
 FrameOffsets: AnyData String-array, strict integers, one pair per continued line.
 All child frames get `Offset + FrameOffsets[i]` plus child frame placement, without
-accumulation. Imported NextX/NextY is unchanged ([root motion](sprite-root-motion.md));
+accumulation. Imported Motion is unchanged ([root motion](sprite-root-motion.md));
 NextX_N/NextY_N fails before Source.
 
 ### Physical frame size
@@ -169,7 +169,7 @@ as one reference and applies defaults to every retained direction.
 | Reflect then rotate | Flip / FrameFlips: None, X, Y, XY. Rotate / FrameRotations: 0, 90, 180, 270 clockwise. |
 | Resize then canvas | Size / FrameSizes; Canvas / FrameCanvases: W H. CanvasOffset / FrameCanvasOffsets: nonnegative X Y from top-left, default 0 0; clipping fails. |
 | Flatten then select | FrameIndices: nonempty AnyData indices; order/repeats allowed, out-of-range fails. Source defaults every direction. |
-| Movement | Move / FrameMoves: signed int16 X Y replaces imported motion; absence preserves it. |
+| Movement | Motion / FrameMotions: signed int16 X Y replaces imported motion; absence preserves it. |
 | Filtering | Resample: Nearest, Bilinear (default), Area (down/identity only). PixelUsage: Color (default), Data, Normal. ColorSpace: Encoded (default), Linear; Color only. |
 
 Every Frame-array has one entry per original reference, before grid/flattening.
@@ -292,7 +292,7 @@ The default factory passes all bytes to `ReadSpriteResource` to validate magic,
 version, records, mesh geometry, footer and trailing data, then checks one/full directions.
 
 A single frame/direction becomes `AtlasSprite`: placement uses the baked draw offset;
-`NextX`/`NextY` is read but ignored. Otherwise `SpriteSheet` stores parallel
+`Motion` is read but ignored. Otherwise `SpriteSheet` stores parallel
 direction sheets and concrete/shared frame displacement in `_sprOffset`.
 
 `SpriteSheet` supports direction selection, randomized `Prewarm`, normalized time,
@@ -347,7 +347,7 @@ or restart after adding a previously failed resource.
 2. Keep one animation per descriptor; nesting obscures flattening/timing.
 3. Order Frame/Frames, Size/FrameSizes, Offset, FrameOffsets, metadata; indent continuations one
    space. Runtime order/whitespace is free.
-4. FrameOffsets adjusts draw placement; imported NextX/NextY drives presentation
+4. FrameOffsets adjusts draw placement; imported Motion drives presentation
    root motion. Inspect both visually; neither drives movement/collision.
 5. Wrap SPR unless a project factory handles it; check generated options and
    native fixtures before editing selectors.
@@ -427,3 +427,12 @@ For image changes:
 PNG/TGA/FOFRM are mandatory. Other importers require individual `FO_IMAGE_*` [options](../build/project-configuration.md#optional-native-components). Known disabled inputs, including nested FOFRM references, report their path and required option. Adjacent `ImageBaker-*.h/.cpp` files guard palettes/helpers together; `ImageBaker-ZarDecoder` is shared by ZAR/TIL when either is enabled.
 
 Native callbacks use `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` and `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. Use `context.Files` for sibling assets, `context.Resolve(path)` for nesting, and the third `AddLoader` argument for output-name mapping. Scheduling, meshes and serialization stay in the coordinator. Stock clients still read baked containers without source decoders; runtime extensions/container version are unchanged.
+
+Native frame data uses `isize32 Size`, `ipos32 Offset` for independent draw placement,
+and `ipos32 Motion` for per-frame animation deltas accumulated during playback. FRM/FRx frame deltas and
+ART DeltaX/DeltaY populate Motion. BAM signed centers and SPR bbox/center placement
+populate Offset, including repeated/shared frames; they do not imply movement.
+Bitmap transforms preserve placement and motion in their original pixel units.
+SpriteResource v3 retains uint16 dimensions and int16 motion; the baker checks
+these ranges before writing. Custom native loaders must migrate the old scalar
+fields. FOFRM uses Motion/FrameMotions; Move/FrameMoves fail before resolving Source.

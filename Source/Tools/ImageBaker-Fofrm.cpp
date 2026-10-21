@@ -168,8 +168,7 @@ namespace ImageBakerFofrm
             }
 
             auto shot = source.Frames[frame];
-            shot.Width = source.Frames[concrete].Width;
-            shot.Height = source.Frames[concrete].Height;
+            shot.Size = source.Frames[concrete].Size;
             shot.Data = source.Frames[concrete].Data;
             shot.PreserveHiddenColor = shot.PreserveHiddenColor || source.Frames[concrete].PreserveHiddenColor;
             shot.Shared = false;

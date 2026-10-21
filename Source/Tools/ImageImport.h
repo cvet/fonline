@@ -46,11 +46,9 @@ namespace ImageImport
 
     struct FrameShot
     {
-        uint16_t Width {};
-        uint16_t Height {};
-        int16_t NextX {};
-        int16_t NextY {};
+        isize32 Size {};
         ipos32 Offset {};
+        ipos32 Motion {};
         uint32_t DurationMs {};
         vector<uint8_t> Data {};
         bool Shared {};

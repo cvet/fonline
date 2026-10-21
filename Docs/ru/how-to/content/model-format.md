@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"4f641ce96a62129711252ea81c5ab67ac0c9e64369be938fdac55e95ff13d975"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"95dda144f19cc3b20905d4f8fd63281fbf5b048c8f0afafb75a2fd7d9794b7f0"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -422,7 +422,7 @@ DisableBackwardAnim
 
 `AllowAnimationGeometry` — узкий migration aid. Он называет один точный внешний файл из `Anim`, разрешается от конечного `.fo3d`, используется только baker validation и не сериализуется. Duplicate paths/targets, невыбранные файлы и оставшиеся после удаления geometry исключения являются ошибками. Исправьте export, сохранив необходимую helper/bone hierarchy, и удалите исключение в той же миграции.
 
-3D skeletal animation отделена от 2D-контракта `NextX` / `NextY` в [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation отделена от 2D-контракта `Motion` в [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime-загрузка и кеширование
 

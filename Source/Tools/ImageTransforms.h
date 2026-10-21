@@ -69,7 +69,7 @@ struct ImageTransform
     optional<isize32> Size {};
     optional<isize32> Canvas {};
     ipos32 CanvasOffset {};
-    optional<ipos32> Move {};
+    optional<ipos32> Motion {};
     ImageResample Resample {ImageResample::Bilinear};
     ImagePixelUsage PixelUsage {ImagePixelUsage::Color};
     ImageColorSpace ColorSpace {ImageColorSpace::Encoded};
