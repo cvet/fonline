@@ -3722,7 +3722,7 @@ TEST_CASE("FofrmResizing")
                 uint32_t duration_ms {100};
                 bool have_dirs {};
                 sequence_size = 1;
-                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Motion = {7, -9}, .Offset = {3, -4}});
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Offset = {3, -4}, .Motion = {7, -9}});
 
                 if (!have_dirs) {
                     for (auto& direction : collection.Dirs) {
@@ -3927,7 +3927,7 @@ TEST_CASE("FofrmSourceCollection")
                 sequence.OffsX = numeric_cast<int16_t>(10 + direction);
                 sequence.OffsY = numeric_cast<int16_t>(20 + direction);
                 sequence.Frames = {
-                    ImageImport::FrameShot {.Size = {1, 1}, .Motion = {1, -1}, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
+                    ImageImport::FrameShot {.Size = {1, 1}, .Offset = {3, 4}, .Motion = {1, -1}, .Data = {40, 50, 60, 255}},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
             }

@@ -234,8 +234,8 @@ static auto ResizeEncodedColorFrame(const ImageImport::FrameShot& source, isize3
 
     ImageImport::FrameShot resized {
         .Size = size,
-        .Motion = source.Motion,
         .Offset = source.Offset,
+        .Motion = source.Motion,
         .DurationMs = source.DurationMs,
         .PreserveHiddenColor = source.PreserveHiddenColor,
     };

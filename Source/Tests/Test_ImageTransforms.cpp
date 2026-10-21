@@ -375,7 +375,8 @@ TEST_CASE("FofrmTimelines")
             direction.Frames.clear();
         }
 
-        source.Main.Frames.emplace_back(ImageImport::FrameShot {.Motion = {1, 2}, .Offset = {10, 20}, .DurationMs = 300, .Shared = true, .SharedIndex = 0});
+        source.Main.Frames.emplace_back(ImageImport::FrameShot {.Offset = {10, 20}, .Motion = {1, 2}, .DurationMs = 300, .Shared = true, .SharedIndex = 0});
+
         auto result = LoadTransformRecipe("Source = A.toy\n", source);
         REQUIRE(result.Main.Frames.size() == 2);
         CHECK(result.Main.Frames[1].Offset == ipos32 {10, 20});

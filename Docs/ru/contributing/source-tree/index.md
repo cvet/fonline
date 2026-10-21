@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"49a8653055a51a5d40b29594769050eba87426b1296ed00a03f121ead56c4e22"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"f5e81e66769afea4b68a0b487fd25919c6ac0070704d79f6805af1d65563747f"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -34,6 +34,23 @@ codegen принадлежит `BuildTools/cmake/stages/Codegen.cmake` и
 Mapper. Для этой границы используйте [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md);
 при изменении поведения bake меняйте владельца самого native tool.
 
+<a id="native-module-layout"></a>
+
+## Оформление нативных модулей
+
+Каждый самостоятельный нативный модуль создаётся парой соседних файлов
+`Name.h` + `Name.cpp`. Оба файла регистрируются в соответствующем списке
+исходников в [`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake).
+Файл `.cpp` остаётся опорной единицей трансляции модуля, даже если пока лишь
+подключает собственный заголовок, содержащий только данные или константы
+`constexpr`. Пример такого модуля — `ResourceDefaults.h` + `ResourceDefaults.cpp`:
+наличие одних констант не освобождает самостоятельную подсистему от требования пары.
+
+Без `.cpp` допускаются вспомогательные шаблонные заголовки, утилиты вычислений
+времени компиляции и агрегирующие заголовки, не образующие самостоятельного модуля.
+Для опциональных модулей оба файла регистрируются безусловно, а числовые проверки
+флагов возможностей размещаются внутри них.
+
 ## `Source/Applications/`
 
 Содержит точки входа приложений и библиотек. Примеры включают client, варианты server, Mapper, editor, baker, AngelScript compiler, Managed script baker и обёртки testing app. Wiring build targets находится в `BuildTools/cmake/stages/Applications.cmake`.
@@ -55,7 +72,7 @@ Mapper. Для этой границы используйте [BuildTools pipeli
 - Карты и движение: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Сетевые примитивы: `NetBuffer.*`, `NetworkUdp.*` и общий для сервера/клиента разбор списка файлов updater в `UpdateDescriptor.*`.
 - Конфигурация и данные: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
-- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
+- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `ResourceDefaults.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 Если изменение переиспользуемо и общее для client и server, оно, вероятно, начинается здесь.

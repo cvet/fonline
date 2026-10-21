@@ -33,6 +33,20 @@ repair belong to `BuildTools/cmake/stages/Codegen.cmake` and
 runtime. Follow the [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md)
 for that boundary; change the native tool owner when its baked behavior changes.
 
+## Native module layout
+
+Create every standalone native module as an adjacent `Name.h` + `Name.cpp` pair
+and register both files in the owning source list in
+[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake).
+Keep the `.cpp` as the module anchor even when it only includes its own header
+because all current declarations are passive data or `constexpr` constants.
+`ResourceDefaults.h` + `ResourceDefaults.cpp` is such a module; constants alone
+do not make an independent subsystem exempt from the pair requirement.
+
+Header-only exceptions are supporting template/compile-time utility headers and
+umbrella headers that do not define an independent module. For optional modules,
+register both files unconditionally and put numeric feature guards inside them.
+
 ## `Source/Applications/`
 
 Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, Managed script baker, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.
@@ -54,7 +68,7 @@ Shared runtime code used by client/server/tools/scripts. Key areas include:
 - Maps and movement: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Networking primitives: `NetBuffer.*`, `NetworkUdp.*`, and the shared updater file-list parser `UpdateDescriptor.*`.
 - Config/data access: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
-- Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
+- Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `ResourceDefaults.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 If a change is reusable and shared by both client and server, it likely starts here.
