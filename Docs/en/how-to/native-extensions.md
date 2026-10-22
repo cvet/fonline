@@ -158,6 +158,8 @@ Project remote calls remain project-authored script metadata and use the baked c
 
 ## Engine hooks
 
+Native entity-event subscriptions are a separate extension surface from the closed `///@ EngineHook` entry-point catalog. In particular, server extensions may subscribe to `ServerEngine::OnPlayerPreLogin` and `OnPlayerPreProcess` without a generated hook declaration. These native-only events add no script event or codegen fallback; their ordering, refusal and lifecycle contract is owned by [Server runtime](../explanation/runtime/server.md#native-admission-hooks).
+
 Hooks are optional named C++ entry points. Declare a hook with `///@ EngineHook` and the exact signature from the generated [hook reference](../reference/native-extension/hooks.md), in a file registered under its owning role. Codegen sees the declaration and omits that hook's fallback from `GenericCode-Common.gen.cpp`.
 
 If a project does not declare a hook, codegen emits its documented fallback. Most hook presence participates in generated compatibility state; `ApplicationShutdownHook` is the current exception. Hook names are closed: an unknown name is a codegen error.

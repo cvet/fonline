@@ -123,6 +123,8 @@ When changing startup or shutdown behavior, keep script events, manager lifetime
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns the client-side transport state. It hides whether the current connection is interthread, TCP sockets, or UDP-capable sockets.
 
+`ClientNetwork.RequireInterthreadTransport = True` requires an in-process listener on `Network.ServerPort`. A missing listener fails `Connect()` immediately with `ConnectResult::Failed`, without attempting TCP, UDP or WebSocket; an available listener takes precedence even when `ClientNetwork.UseUdp` is true. The default is false and preserves normal transport selection and fallback. This client-side opt-in is intended for embedded clients; server-side admission and authentication remain independent.
+
 Important responsibilities:
 
 - `Connect()` selects the connection mode from `ClientNetworkSettings` and creates a `NetworkClientConnection`;

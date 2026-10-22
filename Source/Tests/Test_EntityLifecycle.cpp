@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "PropertiesSerializer.h"
 #include "Test_EntityLifecycleHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -41,6 +42,7 @@ using namespace EntityLifecycleTests;
 
 // Same declaration shape as the other script exports driven directly from native tests
 bool Server_Critter_MapTransfersLocked(ptr<Critter> self);
+map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id);
 
 TEST_CASE("EntityManagerCppApi")
 {
@@ -1223,4 +1225,579 @@ TEST_CASE("PlayerRegistrationNativeApi")
     }
 }
 
+TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]")
+{
+    int32_t route = GENERATE(0, 1, 2, 3);
+    int32_t refusal = GENERATE(0, 1, 2, 3, 4);
+    CAPTURE(route, refusal);
+
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    });
+
+    refcount_nptr<Player> existing;
+    ident_t existing_id {999999};
+    nptr<ServerConnection> existing_connection;
+
+    if (route == 2) {
+        existing = CreateLoggedPlayer(server, "ExistingSession").hold_ref();
+        existing_id = existing->GetId();
+        existing_connection = existing->GetConnection();
+    }
+
+    auto candidate = CreatePreparedNotLoggedInPlayer(server, "RejectedSession").hold_ref();
+    auto connection = candidate->GetConnection();
+
+    if (route == 1) {
+        auto stored = PropertiesSerializer::SaveToDocument(candidate->GetProperties(), nullptr, server->Hashes, *server);
+        server->DbStorage.Insert(server->Hashes.to_hashed_string("Players"), existing_id, stored);
+    }
+
+    auto before_ids = server->DbStorage.GetAllIntIds(server->Hashes.to_hashed_string("Players"));
+    size_t before_count = server->EntityMngr.GetPlayersCount();
+    size_t gate_calls = 0;
+    size_t login_calls = 0;
+
+    Entity::EventCallbackData gate;
+    gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.Callback = [&](FuncCallData&) {
+        gate_calls++;
+        CHECK(candidate->GetId() == ident_t {});
+        CHECK_FALSE(candidate->GetLoggedIn());
+
+        if (refusal == 1) {
+            connection->GracefulDisconnect();
+        }
+        else if (refusal == 2) {
+            connection->HardDisconnect(DisconnectReason::ScriptRequest);
+        }
+        else if (refusal == 3) {
+            connection->HardDisconnect(DisconnectReason::ScriptRequest);
+            candidate->MarkAsDestroyed();
+        }
+        else if (refusal == 4) {
+            candidate->MarkAsDestroying();
+        }
+
+        return refusal == 0 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
+    };
+    server->OnPlayerPreLogin.Subscribe(std::move(gate));
+
+    Entity::EventCallbackData logged_in;
+    logged_in.SubscriptionPtr = reinterpret_cast<uintptr_t>(&login_calls);
+    logged_in.Callback = [&](FuncCallData&) {
+        login_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnPlayerLogin.Subscribe(std::move(logged_in));
+    auto unsubscribe = scope_exit([&]() noexcept {
+        server->OnPlayerPreLogin.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls));
+        server->OnPlayerLogin.Unsubscribe(reinterpret_cast<uintptr_t>(&login_calls));
+    });
+
+    auto login = [&]() {
+        if (route == 0) {
+            return server->LoginPlayerToNewRecord(candidate);
+        }
+        if (route == 3) {
+            return server->LoginPlayerToTempSession(candidate);
+        }
+
+        return server->LoginPlayerToExistentRecord(candidate, existing_id);
+    };
+
+    auto has_connection_count = [&](size_t count) { return server->GetHealthInfo().find(strex("Connections: {}\n", count).str()) != string::npos; };
+
+    if (refusal >= 3 && route == 0) {
+        // Observe the occupied slot before destruction, so a stale initial zero cannot satisfy cleanup.
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count + 1); }, std::chrono::milliseconds {3000}));
+        server->RequireCurrentSyncContext()->SyncEntity(candidate);
+    }
+
+    CHECK_THROWS_AS(login(), BaseEngineException);
+    CHECK(gate_calls == 1);
+    CHECK(login_calls == 0);
+    CHECK(candidate->GetId() == ident_t {});
+    CHECK(server->EntityMngr.GetPlayersCount() == before_count);
+    CHECK(server->DbStorage.GetAllIntIds(server->Hashes.to_hashed_string("Players")) == before_ids);
+
+    if (refusal >= 3 && route == 0) {
+        CHECK(WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count); }, std::chrono::milliseconds {3000}));
+    }
+
+    if (existing) {
+        CHECK(server->EntityMngr.GetPlayer(existing_id) == existing);
+        CHECK(existing->GetConnection() == existing_connection);
+        CHECK_FALSE(existing_connection->IsHardDisconnected());
+        CHECK_FALSE(existing_connection->IsGracefulDisconnected());
+    }
+}
+
+TEST_CASE("PlayerPreLoginAllowsReconnectWithoutDuplicatingTheCritter", "[player][admission]")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto original = CreateLoggedPlayer(server, "ReconnectSession").hold_ref();
+    auto cr = server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), true);
+    server->SwitchPlayerCritter(original, cr);
+    auto incoming = CreatePreparedNotLoggedInPlayer(server, "ReconnectSession").hold_ref();
+    auto incoming_connection = incoming->GetConnection();
+    size_t gate_calls = 0;
+    Entity::EventCallbackData gate;
+    gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.Callback = [&](FuncCallData&) {
+        gate_calls++;
+        CHECK(original->GetControlledCritter() == cr);
+        CHECK_FALSE(incoming->GetLoggedIn());
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnPlayerPreLogin.Subscribe(std::move(gate));
+    auto unsubscribe = scope_exit([&]() noexcept { server->OnPlayerPreLogin.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls)); });
+
+    auto reconnected = server->LoginPlayerToExistentRecord(incoming, original->GetId());
+    CHECK(gate_calls == 1);
+    CHECK(reconnected == original);
+    CHECK(reconnected->GetConnection() == incoming_connection);
+    CHECK(reconnected->GetControlledCritter() == cr);
+    CHECK(server->EntityMngr.GetPlayersCount() == 1);
+    CHECK(server->EntityMngr.GetCrittersCount() == 1);
+    CHECK(server->EntityMngr.GetCritter(cr->GetId()) == cr);
+    CHECK(incoming->IsDestroyed());
+}
+
+TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][admission]")
+{
+    int32_t refusal = GENERATE(0, 1, 2, 3);
+    CAPTURE(refusal);
+
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    });
+
+    auto transport = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+    auto player = CreateLoggedPlayer(server, transport, "QueuedInput").hold_ref();
+    auto connection = player->GetConnection();
+    size_t gate_calls = 0;
+    size_t refused_unread = 0;
+    Entity::EventCallbackData gate;
+    gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.Callback = [&](FuncCallData&) {
+        gate_calls++;
+
+        if (gate_calls != 2) {
+            return Entity::EventResult::ContinueChain;
+        }
+
+        refused_unread = connection->ReadBuf()->GetBufferedUnreadSize();
+
+        if (refusal == 1) {
+            connection->GracefulDisconnect();
+        }
+        else if (refusal == 2) {
+            connection->HardDisconnect(DisconnectReason::ScriptRequest);
+        }
+        else if (refusal == 3) {
+            connection->HardDisconnect(DisconnectReason::ScriptRequest);
+            player->MarkAsDestroyed();
+            server->EntityMngr.UnregisterPlayer(player);
+        }
+
+        return refusal == 0 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
+    };
+    server->OnPlayerPreProcess.Subscribe(std::move(gate));
+    auto unsubscribe = scope_exit([&]() noexcept { server->OnPlayerPreProcess.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls)); });
+
+    server->Unlock();
+    locked = false;
+    coarse_sleep(std::chrono::milliseconds {25});
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+    server->RequireCurrentSyncContext()->SyncEntity(player);
+    CHECK(gate_calls == 0);
+
+    NetOutBuffer messages {256};
+
+    for (int32_t i = 0; i < 3; i++) {
+        messages.StartMsg(NetMessage::Ping);
+        messages.Write<bool>(true);
+        messages.Write<int64_t>(0);
+        messages.EndMsg();
+    }
+
+    size_t one_message_size = messages.GetData().size() / 3;
+    transport->Receive(messages.GetData());
+    REQUIRE(WaitForUnlockedServerCondition(server, locked, [&]() { return gate_calls >= 2; }));
+    CHECK(gate_calls == 2);
+
+    if (!player->IsDestroyed()) {
+        server->RequireCurrentSyncContext()->SyncEntity(player);
+    }
+
+    CHECK(refused_unread == one_message_size * 2);
+}
+
+TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
+{
+    int32_t scenario = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+    bool for_player = GENERATE(false, true);
+    CAPTURE(scenario, for_player);
+
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto hash = [&](string_view value) { return server->Hashes.to_hashed_string(value); };
+    auto stored_map_id = [&](ident_t critter_id) {
+        auto record = Server_Game_DbGetRecord(server, hash("Critters"), critter_id);
+        auto map_id_field = record.find("MapId");
+        return map_id_field != record.end() ? map_id_field->second : string {};
+    };
+
+    auto loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(map);
+    auto cr = server->CreateCritter(hash("TestCritter"), for_player);
+    cr->SetLookDistance(10);
+    auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(hash("TestItem"), nullptr), true);
+    ident_t cr_id = cr->GetId();
+    ident_t item_id = item->GetId();
+    ident_t map_id = map->GetId();
+    mpos saved_hex {20, 20};
+    mdir saved_dir {hdir::East};
+    server->MapMngr.TransferToMap(cr, map, saved_hex, saved_dir, std::nullopt);
+    server->EntityMngr.MakePersistent(loc, true, true);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+    CHECK(stored_map_id(cr_id) == strex("{}", map_id).str());
+    server->UnloadCritter(cr);
+    server->DbStorage.WaitCommitChanges();
+    REQUIRE_FALSE(server->EntityMngr.GetCritter(cr_id));
+    CHECK(stored_map_id(cr_id) == strex("{}", map_id).str());
+
+    if (scenario == 1) {
+        auto other_loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+        map = other_loc->GetMapByIndex(0);
+        REQUIRE(map);
+    }
+    else if (scenario == 2) {
+        auto props = server->GetProtoCritter(hash("TestCritter"))->GetProperties()->Copy();
+        CritterProperties(props).SetHex(mpos {200, 200});
+        auto doc = PropertiesSerializer::SaveToDocument(&props, nullptr, server->Hashes, *server);
+        server->DbStorage.Update(hash("Critters"), cr_id, "Hex", doc["Hex"]);
+    }
+
+    refcount_nptr<Critter> observer;
+    refcount_nptr<Map> destination;
+
+    if (scenario >= 9) {
+        auto other_loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+        destination = other_loc->GetMapByIndex(0).try_hold_ref();
+        REQUIRE(destination);
+    }
+
+    if (scenario == 0 || scenario == 8) {
+        observer = server->CreateCritter(hash("TestCritter"), false).hold_ref();
+        server->MapMngr.TransferToMap(observer, map, mpos {21, 20}, mdir {}, std::nullopt);
+    }
+
+    vector<string> order;
+    refcount_nptr<Critter> visibility_owner;
+    Entity::EventCallbackData preload;
+    preload.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    preload.Callback = [&](FuncCallData&) {
+        order.emplace_back("pre");
+        auto restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+        CHECK(restored->GetControlledByPlayer() == for_player);
+        CHECK(restored->GetMapId() == ident_t {});
+        CHECK(restored->GetInvItems().size() == 1);
+
+        if (scenario == 4) {
+            if (for_player) {
+                restored->UnmarkIsForPlayer();
+            }
+
+            server->CrMngr.DestroyCritter(restored);
+        }
+
+        return scenario == 3 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
+    };
+    server->OnCritterPreLoad.Subscribe(std::move(preload));
+
+    Entity::EventCallbackData entered;
+    entered.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    entered.Callback = [&](FuncCallData&) {
+        auto restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+
+        if (restored->GetMapId() != map_id) {
+            return Entity::EventResult::ContinueChain;
+        }
+
+        order.emplace_back("in");
+        CHECK(restored->GetMapId() == map_id);
+        CHECK(map->GetCritter(cr_id) == restored);
+        CHECK(restored->IsExplicitlyPersistent());
+        CHECK_FALSE(restored->IsInitCalled());
+
+        if (scenario == 7) {
+            if (for_player) {
+                restored->UnmarkIsForPlayer();
+            }
+
+            server->CrMngr.DestroyCritter(restored);
+        }
+        else if (scenario == 9) {
+            server->MapMngr.TransferToMap(restored, destination, mpos {30, 30}, mdir {}, std::nullopt);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnMapCritterIn.Subscribe(std::move(entered));
+
+    Entity::EventCallbackData init;
+    init.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    init.Callback = [&](FuncCallData&) {
+        order.emplace_back("init");
+        auto restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+        nptr<Map> expected_map = map;
+
+        if (scenario == 9) {
+            expected_map = destination;
+        }
+
+        CHECK(restored->GetMapId() == expected_map->GetId());
+        CHECK(expected_map->GetCritter(cr_id) == restored);
+
+        if (observer) {
+            CHECK(restored->GetLookDistance() == 10);
+            visibility_owner = restored;
+            Entity::EventCallbackData appeared;
+            appeared.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+            appeared.Callback = [&](FuncCallData&) {
+                order.emplace_back("visible");
+                CHECK(visibility_owner->IsInitCalled());
+
+                if (scenario == 8) {
+                    if (for_player) {
+                        visibility_owner->UnmarkIsForPlayer();
+                    }
+
+                    server->CrMngr.DestroyCritter(visibility_owner);
+                }
+
+                return Entity::EventResult::ContinueChain;
+            };
+            restored->OnCritterAppeared.Subscribe(std::move(appeared));
+        }
+
+        if (scenario == 5) {
+            if (for_player) {
+                restored->UnmarkIsForPlayer();
+            }
+
+            server->CrMngr.DestroyCritter(restored);
+        }
+        else if (scenario == 10) {
+            server->MapMngr.TransferToMap(restored, destination, mpos {30, 30}, mdir {}, std::nullopt);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnCritterInit.Subscribe(std::move(init));
+
+    Entity::EventCallbackData load;
+    load.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    load.Callback = [&](FuncCallData&) {
+        order.emplace_back("load");
+        auto restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+        nptr<Map> expected_map = map;
+
+        if (scenario == 9 || scenario == 10) {
+            expected_map = destination;
+        }
+
+        CHECK(restored->GetMapId() == expected_map->GetId());
+        CHECK(expected_map->GetCritter(cr_id) == restored);
+
+        if (scenario == 6) {
+            if (for_player) {
+                restored->UnmarkIsForPlayer();
+            }
+
+            server->CrMngr.DestroyCritter(restored);
+        }
+        else if (scenario == 11) {
+            server->MapMngr.TransferToMap(restored, destination, mpos {30, 30}, mdir {}, std::nullopt);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnCritterLoad.Subscribe(std::move(load));
+    auto unsubscribe = scope_exit([&]() noexcept {
+        if (visibility_owner && !visibility_owner->IsDestroyed()) {
+            visibility_owner->OnCritterAppeared.Unsubscribe(reinterpret_cast<uintptr_t>(&order));
+        }
+
+        server->OnMapCritterIn.Unsubscribe(reinterpret_cast<uintptr_t>(&order));
+        server->OnCritterPreLoad.Unsubscribe(reinterpret_cast<uintptr_t>(&order));
+        server->OnCritterInit.Unsubscribe(reinterpret_cast<uintptr_t>(&order));
+        server->OnCritterLoad.Unsubscribe(reinterpret_cast<uintptr_t>(&order));
+    });
+
+    if (scenario == 0) {
+        auto restored = server->LoadCritter(cr_id, for_player, map);
+        CHECK(restored->GetId() == cr_id);
+        CHECK(restored->GetMapId() == map_id);
+        CHECK(restored->GetHex() == saved_hex);
+        CHECK(restored->GetDir() == saved_dir);
+        CHECK(restored->GetControlledByPlayer() == for_player);
+        CHECK_FALSE(restored->GetRawGlobalMapGroup());
+        CHECK(restored->GetInvItems().size() == 1);
+        CHECK(server->EntityMngr.GetItem(item_id));
+
+        // Map::AddCritter buckets by the controlled flag observed at add time
+        span<ptr<Critter>> player_critters = map->GetPlayerCritters();
+        span<ptr<Critter>> npc_critters = map->GetNonPlayerCritters();
+        CHECK((std::ranges::find(player_critters, restored) != player_critters.end()) == for_player);
+        CHECK((std::ranges::find(npc_critters, restored) != npc_critters.end()) == !for_player);
+
+        // MapManager::AddCritterToMap persists the id only for non-player critters and keeps it unique
+        CHECK(std::ranges::count(map->GetCritterIds(), cr_id) == (for_player ? 0 : 1));
+
+        CHECK_THROWS_AS(server->LoadCritter(cr_id, for_player, map), GenericException);
+        CHECK(map->GetCritters().size() == 2);
+    }
+    else if (scenario >= 9) {
+        CHECK_THROWS_WITH(server->LoadCritter(cr_id, for_player, map), Catch::Matchers::ContainsSubstring("Critter load event moved the restored critter"));
+        auto restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+        CHECK(restored->GetMapId() == destination->GetId());
+        CHECK(restored->GetHex() == mpos {30, 30});
+        CHECK(destination->GetCritter(cr_id) == restored);
+        CHECK_FALSE(map->GetCritter(cr_id));
+        CHECK(restored->GetInvItems().size() == 1);
+        CHECK(server->EntityMngr.GetItem(item_id));
+        CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK(stored_map_id(cr_id) == strex("{}", destination->GetId()).str());
+    }
+    else {
+        CHECK_THROWS_AS(server->LoadCritter(cr_id, for_player, map), GenericException);
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
+        CHECK_FALSE(map->GetCritter(cr_id));
+
+        if (scenario <= 3) {
+            CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+            CHECK(server->DbStorage.Valid(hash("Items"), item_id));
+            CHECK(stored_map_id(cr_id) == strex("{}", map_id).str());
+        }
+        else {
+            CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        }
+    }
+
+    vector<vector<string>> expected_orders {
+        {"pre", "in", "init", "visible", "load"},
+        {"pre"},
+        {"pre"},
+        {"pre"},
+        {"pre"},
+        {"pre", "in", "init"},
+        {"pre", "in", "init", "load"},
+        {"pre", "in"},
+        {"pre", "in", "init", "visible"},
+        {"pre", "in", "init", "load"},
+        {"pre", "in", "init", "load"},
+        {"pre", "in", "init", "load"},
+    };
+    CHECK(order == expected_orders[scenario]);
+}
+
+TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][persistence]")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto hash = [&](string_view value) { return server->Hashes.to_hashed_string(value); };
+
+    auto loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(map);
+    auto cr = server->CreateCritter(hash("TestCritter"), false);
+    cr->SetLookDistance(10);
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->EntityMngr.MakePersistent(loc, true, true);
+    server->EntityMngr.MakePersistent(cr, true, true);
+    auto first_item = server->ItemMngr.CreateItemOnHex(map, mpos {21, 20}, hash("TestItem"), nullptr);
+    auto second_item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 20}, hash("TestItem"), nullptr);
+    REQUIRE(map->GetItems().size() == 2);
+    REQUIRE(cr->CanSeeItemOnMap(first_item));
+    REQUIRE(cr->CanSeeItemOnMap(second_item));
+    ident_t cr_id = cr->GetId();
+    server->UnloadCritter(cr);
+
+    size_t visible_items = 0;
+    refcount_nptr<Critter> restored;
+    Entity::EventCallbackData init;
+    init.SubscriptionPtr = reinterpret_cast<uintptr_t>(&visible_items);
+    init.Callback = [&](FuncCallData&) {
+        restored = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(restored);
+        Entity::EventCallbackData appeared;
+        appeared.SubscriptionPtr = reinterpret_cast<uintptr_t>(&visible_items);
+        appeared.Callback = [&](FuncCallData&) {
+            visible_items++;
+            server->CrMngr.DestroyCritter(restored);
+            return Entity::EventResult::ContinueChain;
+        };
+        restored->OnItemOnMapAppeared.Subscribe(std::move(appeared));
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnCritterInit.Subscribe(std::move(init));
+    auto unsubscribe = scope_exit([&]() noexcept {
+        server->OnCritterInit.Unsubscribe(reinterpret_cast<uintptr_t>(&visible_items));
+
+        if (restored && !restored->IsDestroyed()) {
+            restored->OnItemOnMapAppeared.Unsubscribe(reinterpret_cast<uintptr_t>(&visible_items));
+        }
+    });
+
+    CHECK_THROWS_WITH(server->LoadCritter(cr_id, false, map), Catch::Matchers::ContainsSubstring("Critter destroyed during loading"));
+    CHECK(visible_items == 1);
+    REQUIRE(restored);
+    CHECK(restored->IsDestroyed());
+    CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+    CHECK(map->GetItems().size() == 2);
+}
+
 FO_END_NAMESPACE
+

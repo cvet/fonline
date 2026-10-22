@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"420e4c54f240e0921ac463b80fdf1723d22586642b0f081550191c328fa541f9"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"e483d1bb3eddabbd35760558d2d2e8b740aedffc1d2b356d31e8a74eaa6ad1ba"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -122,6 +122,8 @@ permalink: /Docs/ru/explanation/runtime/client.html
 ## Подключение к серверу и отправка сообщений
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) владеет состоянием клиентского transport и скрывает, используется ли interthread, TCP sockets или UDP-capable sockets.
+
+`ClientNetwork.RequireInterthreadTransport = True` требует внутрипроцессный listener на `Network.ServerPort`. Без него `Connect()` немедленно завершается с `ConnectResult::Failed`, не пытаясь подключиться через TCP, UDP или WebSocket; доступный listener имеет приоритет и при `ClientNetwork.UseUdp = True`. Значение по умолчанию false сохраняет обычный выбор транспорта и fallback. Это клиентская opt-in настройка для embedded-клиентов; серверные допуск и аутентификация остаются независимыми.
 
 Основные обязанности:
 

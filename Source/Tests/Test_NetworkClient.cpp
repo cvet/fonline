@@ -214,6 +214,143 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
     CHECK(conn->ReceiveData().empty());
 }
 
+TEST_CASE("ClientConnectionRequiredInterthreadNeverFallsBackToSockets")
+{
+    // Sockets start up front so a wrong branch reaches a live socket attempt; a socket creation
+    // failure would otherwise fake the expected immediate Failed callback and hide the missing check
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeClientNetworkSettings();
+    uint16_t port = TestClientPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, true);
+    REQUIRE_FALSE(HasInterthreadListener(port));
+
+    SECTION("TcpPreference")
+    {
+        BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, false);
+    }
+
+    SECTION("UdpPreference")
+    {
+        BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
+    }
+
+    size_t connect_call_count = 0;
+    optional<ClientConnection::ConnectResult> connect_result;
+    ClientConnection client {&settings};
+
+    client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
+        connect_call_count++;
+        connect_result = result;
+    });
+
+    client.Connect();
+
+    CHECK(connect_call_count == 1);
+    CHECK(connect_result == ClientConnection::ConnectResult::Failed);
+    CHECK_FALSE(client.IsConnecting());
+    CHECK_FALSE(client.IsConnected());
+
+    CHECK_NOTHROW(client.Process());
+    client.Disconnect();
+    CHECK(connect_call_count == 1);
+}
+
+TEST_CASE("ClientConnectionRequiredInterthreadUsesAvailableListener")
+{
+    auto settings = MakeClientNetworkSettings();
+    uint16_t port = TestClientPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, true);
+    BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
+
+    size_t accept_count = 0;
+
+    REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback) -> InterthreadDataCallback {
+        accept_count++;
+
+        return [](const_span<uint8_t>) { };
+    }));
+
+    {
+        auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
+
+        size_t connect_call_count = 0;
+        optional<ClientConnection::ConnectResult> connect_result;
+        ClientConnection client {&settings};
+
+        client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
+            connect_call_count++;
+            connect_result = result;
+        });
+
+        client.Connect();
+
+        CHECK(accept_count == 1);
+        CHECK(client.IsConnecting());
+        CHECK_FALSE(client.IsConnected());
+        CHECK(connect_call_count == 0);
+
+        client.Disconnect();
+        CHECK(connect_call_count == 1);
+        CHECK(connect_result == ClientConnection::ConnectResult::Failed);
+        CHECK_FALSE(client.IsConnecting());
+        CHECK_FALSE(client.IsConnected());
+        CHECK(accept_count == 1);
+    }
+
+    CHECK_FALSE(HasInterthreadListener(port));
+}
+
+TEST_CASE("ClientConnectionInterthreadNotRequiredKeepsSocketAttempt")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeClientNetworkSettings();
+    uint16_t port = TestClientPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(settings.ClientNetwork.ProxyType, 0);
+    REQUIRE_FALSE(HasInterthreadListener(port));
+
+    SECTION("DefaultSetting")
+    {
+        CHECK_FALSE(settings.ClientNetwork.RequireInterthreadTransport);
+    }
+
+    SECTION("ExplicitFalse")
+    {
+        BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, false);
+    }
+
+    SECTION("ExplicitFalseUdpPreference")
+    {
+        BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, false);
+        BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
+    }
+
+    size_t connect_call_count = 0;
+    optional<ClientConnection::ConnectResult> connect_result;
+    ClientConnection client {&settings};
+
+    client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
+        connect_call_count++;
+        connect_result = result;
+    });
+
+    client.Connect();
+
+    // Only the immediate state counts: the OS outcome of the attempt arrives only once it is pumped
+    CHECK(connect_call_count == 0);
+    CHECK_FALSE(connect_result.has_value());
+    CHECK(client.IsConnecting());
+    CHECK_FALSE(client.IsConnected());
+
+    client.Disconnect();
+    CHECK(connect_call_count == 1);
+}
+
 TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 {
     auto settings = MakeClientNetworkSettings();
@@ -513,3 +650,4 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 }
 
 FO_END_NAMESPACE
+

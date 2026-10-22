@@ -1534,7 +1534,16 @@ void MapManager::ProcessVisibleItems(ptr<Critter> cr)
     FO_VERIFY_AND_THROW(map, "Missing map instance");
     ValidateEntityAccess(map);
 
+    auto cr_holder = cr.hold_ref();
+    ignore_unused(cr_holder);
+
     for (ptr<Item> item : copy_hold_ref(map->GetItems())) {
+        if (cr->IsDestroying() || cr->IsDestroyed() || map->IsDestroying() || map->IsDestroyed()) {
+            return;
+        }
+        if (cr->GetMapId() != map->GetId()) {
+            return;
+        }
         if (item->IsDestroyed()) {
             continue;
         }
