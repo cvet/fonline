@@ -11400,6 +11400,18 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror.",
       "compatibility": "SpriteResource v3 bytes, uint16 dimensions, int16 motion and runtime script/network APIs are unchanged. Signed32 native frame metadata narrows with validation. BAM/SPR placement is corrected; no legacy key aliases or old-container bridge are added.",
       "owner": "image-format"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.9fa7a9e23bf8bbfa",
+      "baseline_contract_sha256": "799a4328c5934c74c1424eee92cd36209a7ad2079921fb1e4c993cb7b542c214",
+      "current_contract_sha256": "4bef7bc201e0895ba9a6ba3d6cf200ac542ad61b67cac7f686bc9e9cf660b6aa",
+      "classification": "breaking",
+      "rationale": "Use full native sprite method names. Only C++ spellings change; frame playback, direction selection and serialized data retain their meaning.",
+      "migration": "Update native SpriteSheet callers to GetCurrentSprite, GetSprite, GetDirection, GetDirectionCount, GetStateAnimation, GetActionAnimation, GetSpriteOffset and RefreshParameters. Rename Sprite::SetDir and its overrides/callers to SetDirection; retain GetCurrentDirection. Rebuild native consumers. See Docs/en/reference/changelog.md#unreleased and Docs/en/how-to/content/image-format.md#runtime-loading-atlas-and-caches.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror",
+      "compatibility": "Rebuild the Engine and native sprite consumers together. SpriteResource v3 layout, network/save formats and direction/phase semantics are unchanged; no stored-data conversion is required.",
+      "owner": "Client sprite runtime"
     }
   ]
 }

@@ -887,7 +887,7 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
     auto source_spr = spr;
 
     if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
-        source_spr = sheet->GetCurSpr();
+        source_spr = sheet->GetCurrentSprite();
     }
 
     auto atlas_spr = source_spr.dyn_cast<const AtlasSprite>();
@@ -1407,7 +1407,7 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
     auto source_spr = spr;
 
     if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
-        source_spr = sheet->GetCurSpr();
+        source_spr = sheet->GetCurrentSprite();
     }
 
     auto atlas_spr = source_spr.dyn_cast<const AtlasSprite>();

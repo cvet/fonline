@@ -537,7 +537,7 @@ void CritterHexView::Process()
     {
         auto& cur_anim = _curAnim.has_value() ? _curAnim.value() : _idle2dAnim;
 
-        auto action = cur_anim.Frames->GetActionAnim();
+        auto action = cur_anim.Frames->GetActionAnimation();
         bool root_motion_drive = !_curAnim.has_value() && IsMoving() && (action == CritterActionAnim::Walk || action == CritterActionAnim::Run);
 
         if (root_motion_drive && cur_anim.Frames != _walkAnchorAnim) {
@@ -549,8 +549,8 @@ void CritterHexView::Process()
                 ipos32 sum {};
 
                 for (int32_t i = 0; i < sheet->GetFramesCount(); i++) {
-                    sum.x += sheet->GetSprOffset()[i].x;
-                    sum.y += sheet->GetSprOffset()[i].y;
+                    sum.x += sheet->GetSpriteOffset()[i].x;
+                    sum.y += sheet->GetSpriteOffset()[i].y;
                 }
 
                 return sum;
@@ -776,17 +776,17 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
 {
     int32_t cur_index = frm_index % anim->GetFramesCount();
 
-    _spr = anim->GetSpr(cur_index);
+    _spr = anim->GetSprite(cur_index);
 
     _offsAnim = {};
 
-    auto action = anim->GetActionAnim();
+    auto action = anim->GetActionAnimation();
 
     if (action == CritterActionAnim::Walk || action == CritterActionAnim::Run) {
         if (IsMoving()) {
             // Root motion holds still within a frame and jumps at each transition, so _offsAnim cancels the
             // engine's linear hex_offset and leaves the sprite position constant per frame
-            const_span<ipos32> spr_offset = anim->GetSprOffset();
+            const_span<ipos32> spr_offset = anim->GetSpriteOffset();
             int32_t frames_count = anim->GetFramesCount();
 
             ipos32 total {};
@@ -831,8 +831,8 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
     }
     else {
         for (int32_t i = 0; i < cur_index + 1; i++) {
-            _offsAnim.x += anim->GetSprOffset()[i].x;
-            _offsAnim.y += anim->GetSprOffset()[i].y;
+            _offsAnim.x += anim->GetSpriteOffset()[i].x;
+            _offsAnim.y += anim->GetSpriteOffset()[i].y;
         }
     }
 
@@ -866,7 +866,7 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
     int32_t frames_count = anim->GetFramesCount();
     FO_VERIFY_AND_THROW(frames_count > 0, "Movement animation has no frames", frames_count);
 
-    const_span<ipos32> spr_offset = anim->GetSprOffset();
+    const_span<ipos32> spr_offset = anim->GetSpriteOffset();
 
     ipos32 total {};
 

@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"439a5b7a454f0119bdab743b5ec18390a46206cae969ab349d9b697a71a860cc"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"6666bef339300a91e403e20cf6451bbb90798413a7b9f4987c3079595b6d49c9"} -->
 
 # Форматы изображений и спрайтов
 
@@ -296,6 +296,11 @@ Framing, concrete/shared RGBA records, offsets, движение и mesh опи�
 этого потока. После изменения layout пересоберите согласованные binaries и packs.
 
 ## Runtime-загрузка, atlas и caches
+
+`SpriteSheet` предоставляет `GetCurrentSprite`, `GetSprite`, `GetDirection`,
+`GetDirectionCount`, `GetStateAnimation`, `GetActionAnimation` и
+`GetSpriteOffset`. Смена направления использует виртуальный интерфейс
+`Sprite::SetDirection`, также реализованный спрайтами моделей и частиц.
 
 `SpriteManager` приводит расширение пути к нижнему регистру и выбирает
 зарегистрированную `SpriteFactory`. Стандартная factory передаёт полный диапазон

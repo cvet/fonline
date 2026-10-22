@@ -287,6 +287,11 @@ or producing this stream. Rebuild matching binaries and packs after a layout cha
 
 ## Runtime loading, atlas, and caches
 
+`SpriteSheet` exposes `GetCurrentSprite`, `GetSprite`, `GetDirection`,
+`GetDirectionCount`, `GetStateAnimation`, `GetActionAnimation` and
+`GetSpriteOffset`. Direction changes use the virtual `Sprite::SetDirection`
+interface, also implemented by model and particle sprites.
+
 `SpriteManager` selects a registered `SpriteFactory` by lowercased extension.
 The default factory passes all bytes to `ReadSpriteResource` to validate magic,
 version, records, mesh geometry, footer and trailing data, then checks one/full directions.

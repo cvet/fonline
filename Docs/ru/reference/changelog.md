@@ -7,10 +7,19 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"6f3c71dfd07d8023416b309f431d988082f753c41e30e034dd01a4c6f0a936f0"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"a063c468a67a19db9d7aa52345a110ce3fbd9b7df7929fa3f79ed50a95c52c37"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Методы спрайтов используют полные имена: `GetCurSpr` → `GetCurrentSprite`,
+  `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
+  `GetDirectionCount`, `GetStateAnim`/`GetActionAnim` →
+  `GetStateAnimation`/`GetActionAnimation`, `GetSprOffset` → `GetSpriteOffset`,
+  `RefreshParams` → `RefreshParameters`. `Sprite::SetDir` и все его
+  реализации стали `SetDirection`; полное имя `GetCurrentDirection` сохраняется.
+- Миграция: обновить вызовы спрайтов в native-коде и пересобрать. API
+  направлений сущностей и ModelInstance, проигрывание и формат ресурсов сохраняются.
 
 - Кадр импорта использует `isize32 Size` и `ipos32 Motion`; привязка остаётся в `Offset`. Знаковые центры BAM и BBox/центр SPR задают привязку, включая shared-кадры. FRM/ART сохраняют движение анимации.
 - Миграция: в native-загрузчиках заменить Width/Height и NextX/NextY на Size/Motion, в FOFRM — Move/FrameMoves на Motion/FrameMotions. Старые ключи отклоняются до разрешения зависимостей. Пересобрать baker и перезапечь затронутые корни BAM/SPR. Layout SpriteResource v3 не меняется; сужения размера/движения проверяются.

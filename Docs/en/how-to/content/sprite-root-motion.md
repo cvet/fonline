@@ -97,7 +97,7 @@ reference earlier pixels/geometry, retaining their own movement, placement and t
 `ReadSpriteResource` decodes movement into `SpriteResourceFrameData::NextOffset`.
 
 `DefaultSpriteFactory::LoadSprite` copies every slot's NextOffset into `_sprOffset`;
-shared sprites receive their own draw offset. `SpriteSheet::GetSprOffset()` exposes
+shared sprites receive their own draw offset. `SpriteSheet::GetSpriteOffset()` exposes
 a read-only span. Each direction owns its count and timeline.
 
 In `ResolveCritterAnimationFrames`, first-frame extraction retains its delta; last-frame extraction sums all deltas

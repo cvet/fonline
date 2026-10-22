@@ -212,12 +212,12 @@ TEST_CASE("SpriteManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
     CHECK(second->GetSize() == isize32 {5, 7});
 
     first->SetTime(1.0f);
-    first->SetDir(hdir {1});
+    first->SetDirection(hdir {1});
     first->Play({}, true, true);
     CHECK(first->IsPlaying());
     CHECK_FALSE(second->IsPlaying());
     CHECK(second->GetTime() == 0.0f);
-    CHECK(second->GetCurSpr() == second->GetSpr(0));
+    CHECK(second->GetCurrentSprite() == second->GetSprite(0));
 
     auto third = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
     REQUIRE(third);
@@ -231,7 +231,7 @@ TEST_CASE("SpriteManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
 
     auto other_atlas = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>();
     REQUIRE(other_atlas);
-    CHECK(other_atlas->GetSpr(0)->GetBatchTexture() != first->GetSpr(0)->GetBatchTexture());
+    CHECK(other_atlas->GetSprite(0)->GetBatchTexture() != first->GetSprite(0)->GetBatchTexture());
     // AtlasSprite retains its shared pixel/geometry owner; sheet playback and frame tables are independent
     auto quad = fixture.Sprites.LoadSprite("Quad.png", AtlasType::MapSprites);
     REQUIRE(quad);
@@ -259,18 +259,18 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
         REQUIRE(trimmed);
         CHECK(trimmed->GetFramesCount() == 1);
         // Stop before copying a malformed legacy sheet: the old implementation could write past its buffer
-        REQUIRE(trimmed->GetSprOffset().size() == 1);
+        REQUIRE(trimmed->GetSpriteOffset().size() == 1);
         int32_t displacement = (dir + 1) * (first_frame ? 1 : shared_frame ? 5 : 6);
-        CHECK(trimmed->GetSprOffset()[0] == ipos32 {displacement, -displacement});
-        CHECK(trimmed->GetSpr(0)->GetOffset() == ipos32 {dir + selected_frame, -dir - selected_frame});
+        CHECK(trimmed->GetSpriteOffset()[0] == ipos32 {displacement, -displacement});
+        CHECK(trimmed->GetSprite(0)->GetOffset() == ipos32 {dir + selected_frame, -dir - selected_frame});
         auto copy = trimmed->MakeCopy().dyn_cast<SpriteSheet>();
         REQUIRE(copy);
         CHECK(copy->GetFramesCount() == 1);
-        CHECK(copy->GetSprOffset().size() == 1);
-        CHECK(copy->GetStateAnim() == state);
-        CHECK(copy->GetActionAnim() == action);
+        CHECK(copy->GetSpriteOffset().size() == 1);
+        CHECK(copy->GetStateAnimation() == state);
+        CHECK(copy->GetActionAnimation() == action);
         CHECK(copy->GetSize() == isize32 {5, 7});
-        CHECK(copy->GetOffset() == trimmed->GetSpr(0)->GetOffset());
+        CHECK(copy->GetOffset() == trimmed->GetSprite(0)->GetOffset());
         copy->PlayDefault();
         CHECK_FALSE(copy->IsPlaying());
     }
@@ -278,14 +278,14 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
     auto full = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
     REQUIRE(full);
     CHECK(full->GetFramesCount() == 3);
-    CHECK(full->GetDirCount() == GameSettings::MAP_DIR_COUNT);
+    CHECK(full->GetDirectionCount() == GameSettings::MAP_DIR_COUNT);
     for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-        auto direction = full->GetDir(hdir {numeric_cast<int8_t>(dir)});
+        auto direction = full->GetDirection(hdir {numeric_cast<int8_t>(dir)});
         REQUIRE(direction);
         CHECK(direction->GetFramesCount() == 3);
-        CHECK(direction->GetSprOffset().size() == 3);
-        CHECK(direction->GetSprOffset()[2] == ipos32 {(dir + 1) * 3, -(dir + 1) * 3});
-        CHECK(direction->GetSpr(0)->GetOffset() == ipos32 {dir, -dir});
+        CHECK(direction->GetSpriteOffset().size() == 3);
+        CHECK(direction->GetSpriteOffset()[2] == ipos32 {(dir + 1) * 3, -(dir + 1) * 3});
+        CHECK(direction->GetSprite(0)->GetOffset() == ipos32 {dir, -dir});
     }
 
     // Clearing the critter cache and resolving without flags must still see the original full sheet
@@ -294,7 +294,7 @@ TEST_CASE("ResourceManagerTrimsOnlyItsOwnSpriteSheet", "[sprite]")
     auto untrimmed = resources.GetCritterAnimFrames(model, state, action, hdir {0});
     REQUIRE(untrimmed);
     CHECK(untrimmed->GetFramesCount() == 3);
-    CHECK(untrimmed->GetSprOffset().size() == 3);
+    CHECK(untrimmed->GetSpriteOffset().size() == 3);
 }
 
 TEST_CASE("ResourceManagerMergesBothMotionAxes", "[sprite]")
@@ -310,7 +310,7 @@ TEST_CASE("ResourceManagerMergesBothMotionAxes", "[sprite]")
         REQUIRE(merged);
         CHECK(merged->GetFramesCount() == 6);
         CHECK(merged->GetWholeTicks() == 240);
-        CHECK(merged->GetSprOffset()[3] == ipos32 {-5 * (dir + 1), 5 * (dir + 1)});
+        CHECK(merged->GetSpriteOffset()[3] == ipos32 {-5 * (dir + 1), 5 * (dir + 1)});
     }
 }
 
@@ -323,17 +323,17 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         REQUIRE(sheet);
         CHECK(sheet->GetWholeTicks() == 500);
         sheet->Play({}, true, false);
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {99}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {299}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(0));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
     }
 
     SECTION("QueriesTimelineWithoutMutatingPlayback")
@@ -360,20 +360,20 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
         REQUIRE(sheet);
         sheet->SetTime(0.9f);
-        CHECK(sheet->GetCurSpr() == sheet->GetDir(hdir {0})->GetSpr(2));
-        sheet->SetDir(hdir {1});
+        CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {0})->GetSprite(2));
+        sheet->SetDirection(hdir {1});
         CHECK(sheet->GetTime() == 0.9f);
         CHECK(sheet->GetFramesCount() == 2);
         CHECK(sheet->GetWholeTicks() == 200);
-        CHECK(sheet->GetCurSpr() == sheet->GetDir(hdir {1})->GetSpr(1));
-        CHECK(sheet->GetDir(hdir {0})->GetFramesCount() == 3);
-        sheet->SetDir(hdir {0});
+        CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {1})->GetSprite(1));
+        CHECK(sheet->GetDirection(hdir {0})->GetFramesCount() == 3);
+        sheet->SetDirection(hdir {0});
         CHECK(sheet->GetFramesCount() == 3);
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
         auto copy = sheet->MakeCopy().dyn_cast<SpriteSheet>();
         REQUIRE(copy);
         CHECK(copy->GetTime() == 0.0f);
-        CHECK(copy->GetDir(hdir {1})->GetFramesCount() == 2);
+        CHECK(copy->GetDirection(hdir {1})->GetFramesCount() == 2);
     }
 
     SECTION("ReverseCompletesAtZeroAndLoopingNeverSelectsNegativeFrames")
@@ -384,13 +384,13 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         sheet->SetTime(1.0f);
         sheet->Play({}, false, true);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
         CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {400}));
         CHECK_FALSE(sheet->IsPlaying());
         CHECK(sheet->GetTime() == 0.0f);
         sheet->Play({}, true, true);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {100}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
     }
 
     SECTION("ShortAndUint32MaximumDurationsNeverDivideByZero")
@@ -400,16 +400,16 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         REQUIRE(sheet);
         sheet->Play({}, false, false);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(1));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
         CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {2}));
-        CHECK(sheet->GetCurSpr() == sheet->GetSpr(2));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
         SpriteSheetFixture long_fixture {vector<vector<uint32_t>> {{4294967294u, 1u}}};
         auto long_sheet = long_fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
         REQUIRE(long_sheet);
         CHECK(long_sheet->GetWholeTicks() == 4294967295u);
         long_sheet->Play({}, false, false);
         CHECK(long_sheet->AdvanceTime(std::chrono::milliseconds {4294967294LL}));
-        CHECK(long_sheet->GetCurSpr() == long_sheet->GetSpr(1));
+        CHECK(long_sheet->GetCurrentSprite() == long_sheet->GetSprite(1));
         CHECK_FALSE(long_sheet->AdvanceTime(std::chrono::milliseconds {1}));
     }
 }

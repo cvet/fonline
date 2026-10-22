@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"b32bfdd4e7b8d6d70a306edbcf08985ca802353b783f201891558251509f4df7"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"24a773cc16c88905bb2403e3bed32d82a6cd17592a1331729197e74dbe72b569"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -99,7 +99,7 @@ Shared-слот ссылается на прежние пиксели/геоме
 размещение и время. `ReadSpriteResource` декодирует движение в `SpriteResourceFrameData::NextOffset`.
 
 `DefaultSpriteFactory::LoadSprite` копирует NextOffset каждого слота в `_sprOffset`;
-shared-спрайт получает собственное размещение. `SpriteSheet::GetSprOffset()`
+shared-спрайт получает собственное размещение. `SpriteSheet::GetSpriteOffset()`
 возвращает read-only span. У направлений собственные числа кадров и таймлайны.
 
 В `ResolveCritterAnimationFrames` извлечение первого кадра сохраняет его delta; последнего — сумму всех deltas

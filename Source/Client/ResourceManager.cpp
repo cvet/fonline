@@ -142,7 +142,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         auto anim = it->second.as_nptr();
 
         if (anim) {
-            auto dir_anim = anim->GetDir(dir);
+            auto dir_anim = anim->GetDirection(dir);
 
             if (dir_anim) {
                 return dir_anim;
@@ -184,7 +184,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                         auto frame_flag = static_cast<AnimFrameFlag>(flags);
 
                         for (int32_t d = 0; anim && d < anim->_dirCount; d++) {
-                            auto dir_anim = anim->GetDir(hdir(d));
+                            auto dir_anim = anim->GetDirection(hdir(d));
                             FO_VERIFY_AND_THROW(dir_anim, "Missing animation direction");
 
                             // Process flags
@@ -202,11 +202,11 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                                     uint32_t selected_duration = dir_anim->_frameDurations[first ? 0 : dir_anim->_framesCount - 1];
                                     // Change size
-                                    dir_anim->_spr[0] = first ? dir_anim->GetSpr(0)->MakeCopy() : dir_anim->GetSpr(dir_anim->GetFramesCount() - 1)->MakeCopy();
+                                    dir_anim->_spr[0] = first ? dir_anim->GetSprite(0)->MakeCopy() : dir_anim->GetSprite(dir_anim->GetFramesCount() - 1)->MakeCopy();
                                     dir_anim->_sprOffset[0].x = first ? dir_anim->_sprOffset[0].x : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].x;
                                     dir_anim->_sprOffset[0].y = first ? dir_anim->_sprOffset[0].y : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].y;
                                     dir_anim->SetFrameTimeline({selected_duration});
-                                    dir_anim->RefreshParams();
+                                    dir_anim->RefreshParameters();
                                 }
                             }
 
@@ -215,11 +215,11 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                             if (ox != 0 || oy != 0) {
                                 for (int32_t i = 0; i < dir_anim->GetFramesCount(); i++) {
-                                    auto spr = dir_anim->GetSpr(i);
+                                    auto spr = dir_anim->GetSprite(i);
                                     bool fixed = false;
 
                                     for (int32_t j = 0; j < i; j++) {
-                                        if (dir_anim->GetSpr(j) == spr) {
+                                        if (dir_anim->GetSprite(j) == spr) {
                                             fixed = true;
                                             break;
                                         }
@@ -264,7 +264,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     // Store resulted animation indices
     if (anim) {
         for (int32_t d = 0; d < anim->_dirCount; d++) {
-            auto dir_anim = anim->GetDir(hdir(d));
+            auto dir_anim = anim->GetDirection(hdir(d));
             FO_VERIFY_AND_THROW(dir_anim, "Missing animation direction");
             dir_anim->_stateAnim = state_anim;
             dir_anim->_actionAnim = action_anim;
@@ -276,7 +276,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     _critterFrames.emplace(id, std::move(anim));
 
     if (anim_loaded) {
-        auto dir_anim = anim_loaded->GetDir(dir);
+        auto dir_anim = anim_loaded->GetDirection(dir);
 
         if (dir_anim) {
             return dir_anim;
@@ -315,12 +315,12 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
                 return nullptr;
             }
 
-            int32_t directions = std::max(anim->GetDirCount(), animex->GetDirCount());
+            int32_t directions = std::max(anim->GetDirectionCount(), animex->GetDirectionCount());
             vector<vector<uint32_t>> timelines;
 
             for (int32_t dir = 0; dir < directions; dir++) {
-                auto base = anim->GetDir(hdir(dir));
-                auto extra = animex->GetDir(hdir(dir));
+                auto base = anim->GetDirection(hdir(dir));
+                auto extra = animex->GetDirection(hdir(dir));
                 FO_VERIFY_AND_THROW(base && extra, "Missing merged animation direction");
                 vector<uint32_t> timeline = base->_frameDurations;
                 timeline.insert(timeline.end(), extra->_frameDurations.begin(), extra->_frameDurations.end());
@@ -330,19 +330,19 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             auto anim_merge_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
 
             for (int32_t d = 0; d < directions; d++) {
-                auto anim_merge = anim_merge_base->GetDir(hdir(d));
-                auto anim_ = anim->GetDir(hdir(d));
-                auto animex_ = animex->GetDir(hdir(d));
+                auto anim_merge = anim_merge_base->GetDirection(hdir(d));
+                auto anim_ = anim->GetDirection(hdir(d));
+                auto animex_ = animex->GetDirection(hdir(d));
                 FO_VERIFY_AND_THROW(anim_merge, "Missing merged animation direction");
                 FO_VERIFY_AND_THROW(anim_, "Missing base animation direction");
                 FO_VERIFY_AND_THROW(animex_, "Missing extra animation direction");
 
                 for (int32_t i = 0; i < anim_->GetFramesCount(); i++) {
-                    anim_merge->_spr[i] = anim_->GetSpr(i)->MakeCopy();
+                    anim_merge->_spr[i] = anim_->GetSprite(i)->MakeCopy();
                     anim_merge->_sprOffset[i] = anim_->_sprOffset[i];
                 }
                 for (int32_t i = 0; i < animex_->GetFramesCount(); i++) {
-                    anim_merge->_spr[i + anim_->GetFramesCount()] = animex_->GetSpr(i)->MakeCopy();
+                    anim_merge->_spr[i + anim_->GetFramesCount()] = animex_->GetSprite(i)->MakeCopy();
                     anim_merge->_sprOffset[i + anim_->GetFramesCount()] = animex_->_sprOffset[i];
                 }
 
@@ -356,10 +356,10 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
                 anim_merge->_sprOffset[anim_->GetFramesCount()].x -= ox;
                 anim_merge->_sprOffset[anim_->GetFramesCount()].y -= oy;
-                anim_merge->RefreshParams();
+                anim_merge->RefreshParameters();
             }
 
-            anim_merge_base->RefreshParams();
+            anim_merge_base->RefreshParameters();
 
             return anim_merge_base;
         }
@@ -369,8 +369,8 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         auto first_or_last_mask = combine_enum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
         vector<vector<uint32_t>> timelines;
 
-        for (int32_t dir = 0; dir < anim->GetDirCount(); dir++) {
-            auto source = anim->GetDir(hdir(dir));
+        for (int32_t dir = 0; dir < anim->GetDirectionCount(); dir++) {
+            auto source = anim->GetDirection(hdir(dir));
             FO_VERIFY_AND_THROW(source, "Missing cloned animation direction");
 
             if (!is_enum_set(frame_flag, first_or_last_mask)) {
@@ -385,19 +385,19 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         auto anim_clone_base = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
-            auto anim_clone = anim_clone_base->GetDir(hdir(d));
-            auto anim_ = anim->GetDir(hdir(d));
+            auto anim_clone = anim_clone_base->GetDirection(hdir(d));
+            auto anim_ = anim->GetDirection(hdir(d));
             FO_VERIFY_AND_THROW(anim_clone, "Missing cloned animation direction");
             FO_VERIFY_AND_THROW(anim_, "Missing base animation direction");
 
             if (!is_enum_set(frame_flag, first_or_last_mask)) {
                 for (int32_t i = 0; i < anim_->GetFramesCount(); i++) {
-                    anim_clone->_spr[i] = anim_->GetSpr(i)->MakeCopy();
+                    anim_clone->_spr[i] = anim_->GetSprite(i)->MakeCopy();
                     anim_clone->_sprOffset[i] = anim_->_sprOffset[i];
                 }
             }
             else {
-                anim_clone->_spr[0] = anim_->GetSpr(is_enum_set(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : anim_->GetFramesCount() - 1)->MakeCopy();
+                anim_clone->_spr[0] = anim_->GetSprite(is_enum_set(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : anim_->GetFramesCount() - 1)->MakeCopy();
                 anim_clone->_sprOffset[0] = anim_->_sprOffset[is_enum_set(frame_flag, AnimFrameFlag::FirstFrame) ? 0 : anim_->GetFramesCount() - 1];
 
                 // Append offsets
@@ -410,11 +410,11 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             }
         }
 
-        for (int32_t dir = 0; dir < anim_clone_base->GetDirCount(); dir++) {
-            anim_clone_base->GetDir(hdir(dir))->RefreshParams();
+        for (int32_t dir = 0; dir < anim_clone_base->GetDirectionCount(); dir++) {
+            anim_clone_base->GetDirection(hdir(dir))->RefreshParameters();
         }
 
-        anim_clone_base->RefreshParams();
+        anim_clone_base->RefreshParameters();
 
         return anim_clone_base;
     }
@@ -429,14 +429,14 @@ void ResourceManager::FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const
     }
 
     for (int32_t d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto frames = frames_base->GetDir(hdir(d));
-        auto stay_frm = stay_frm_base->GetDir(hdir(d));
+        auto frames = frames_base->GetDirection(hdir(d));
+        auto stay_frm = stay_frm_base->GetDirection(hdir(d));
         FO_VERIFY_AND_THROW(frames, "Missing frames animation direction");
         FO_VERIFY_AND_THROW(stay_frm, "Missing stay frame animation direction");
-        auto stay_spr = stay_frm->GetSpr(0);
+        auto stay_spr = stay_frm->GetSprite(0);
 
         for (int32_t i = 0; i < frames->GetFramesCount(); i++) {
-            auto spr = frames->GetSpr(i);
+            auto spr = frames->GetSprite(i);
             spr->SetOffset(spr->GetOffset() + stay_spr->GetOffset());
         }
     }
@@ -449,8 +449,8 @@ void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<c
     }
 
     for (int32_t d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto frames = frames_base->GetDir(hdir(d));
-        auto stay_frm = stay_frm_base->GetDir(hdir(d));
+        auto frames = frames_base->GetDirection(hdir(d));
+        auto stay_frm = stay_frm_base->GetDirection(hdir(d));
         FO_VERIFY_AND_THROW(frames, "Missing frames animation direction");
         FO_VERIFY_AND_THROW(stay_frm, "Missing stay frame animation direction");
         ipos32 next_offset;
@@ -460,7 +460,7 @@ void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<c
         }
 
         for (int32_t i = 0; i < frames->GetFramesCount(); i++) {
-            auto spr = frames->GetSpr(i);
+            auto spr = frames->GetSprite(i);
             spr->SetOffset(spr->GetOffset() + next_offset);
         }
     }

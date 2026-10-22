@@ -191,7 +191,7 @@ void ModelSprite::Prewarm()
     _model->RequestRedraw();
 }
 
-void ModelSprite::SetDir(mdir dir)
+void ModelSprite::SetDirection(mdir dir)
 {
     _model->SetLookDir(dir);
     _model->SetMoveDir(dir, true);

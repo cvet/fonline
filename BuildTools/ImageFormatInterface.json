@@ -1718,14 +1718,14 @@
       "id": "image-format.runtime.sprite-sheet",
       "name": "Direction and playback state",
       "stability": "experimental",
-      "requirement": "SpriteSheet stores per-direction durations/cumulative ends and selects frames by normalized time. SetDir preserves phase across unequal counts/durations; direction0 is an independent sequence. GetFramesCount/GetWholeTicks/GetSprOffset/GetFrameDurations describe the selected direction. MakeCopy preserves frame tables and creates fresh playback. Update delegates elapsed time to AdvanceTime; no whole/count division occurs.",
+      "requirement": "SpriteSheet stores per-direction durations/cumulative ends and selects frames by normalized time. SetDirection preserves phase across unequal counts/durations; direction0 is an independent sequence. GetFramesCount/GetWholeTicks/GetSpriteOffset/GetFrameDurations describe the selected direction. MakeCopy preserves frame tables and creates fresh playback. Update delegates elapsed time to AdvanceTime; no whole/count division occurs.",
       "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
             "void SpriteSheet::SetFrameTimeline(",
-            "void SpriteSheet::SetDir(",
+            "void SpriteSheet::SetDirection(",
             "auto SpriteSheet::AdvanceTime(",
             "auto SpriteSheet::MakeCopy("
           ]

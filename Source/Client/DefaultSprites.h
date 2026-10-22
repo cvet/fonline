@@ -95,37 +95,37 @@ public:
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
-    [[nodiscard]] auto GetCurSpr() const -> ptr<const Sprite>;
-    [[nodiscard]] auto GetCurSpr() -> ptr<Sprite>;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) const -> ptr<const Sprite>;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) -> ptr<Sprite>;
-    [[nodiscard]] auto GetDir(mdir dir) const -> nptr<const SpriteSheet>;
-    [[nodiscard]] auto GetDir(mdir dir) -> nptr<SpriteSheet>;
+    [[nodiscard]] auto GetCurrentSprite() const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetCurrentSprite() -> ptr<Sprite>;
+    [[nodiscard]] auto GetSprite(int32_t num_frm) const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetSprite(int32_t num_frm) -> ptr<Sprite>;
+    [[nodiscard]] auto GetDirection(mdir dir) const -> nptr<const SpriteSheet>;
+    [[nodiscard]] auto GetDirection(mdir dir) -> nptr<SpriteSheet>;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32_t override;
     [[nodiscard]] auto GetWholeTicks() const noexcept -> uint32_t { return GetCurrentDirection()->_wholeTicks; }
     [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return GetCurrentDirection()->_framesCount; }
-    [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _stateAnim; }
-    [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
-    [[nodiscard]] auto GetDirCount() const noexcept -> int32_t { return _dirCount; }
-    [[nodiscard]] auto GetSprOffset() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprOffset; }
+    [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
+    [[nodiscard]] auto GetActionAnimation() const noexcept -> CritterActionAnim { return _actionAnim; }
+    [[nodiscard]] auto GetDirectionCount() const noexcept -> int32_t { return _dirCount; }
+    [[nodiscard]] auto GetSpriteOffset() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprOffset; }
     [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<uint32_t> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
-    void SetDir(mdir dir) override;
+    void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto AdvanceTime(timespan elapsed) -> bool;
     auto Update() -> bool override;
 
 private:
-    void RefreshParams();
+    void RefreshParameters();
     void SetFrameTimeline(vector<uint32_t> durations);
-    [[nodiscard]] auto GetCurrentDirection() const noexcept -> ptr<const SpriteSheet>;
-    [[nodiscard]] auto GetCurrentDirection() noexcept -> ptr<SpriteSheet>;
+    auto GetCurrentDirection() const noexcept -> ptr<const SpriteSheet>;
+    auto GetCurrentDirection() noexcept -> ptr<SpriteSheet>;
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};

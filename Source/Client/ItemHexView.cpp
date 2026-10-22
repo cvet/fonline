@@ -202,7 +202,7 @@ void ItemHexView::SetAnimDir(mdir dir)
     _animDir = dir;
 
     if (_anim) {
-        _anim->SetDir(_animDir);
+        _anim->SetDirection(_animDir);
     }
 }
 
@@ -228,7 +228,7 @@ void ItemHexView::RefreshAnim()
         }
         else {
             _anim->SetTime(_animTime);
-            _anim->SetDir(_animDir);
+            _anim->SetDirection(_animDir);
 
             if (!_animStopped && _animLooped) {
                 _anim->Play(_animName, _animLooped, _animReversed);

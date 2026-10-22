@@ -450,10 +450,10 @@ void AnimationViewer::ApplyDir()
     }
 
     auto dir = mdir(iround<int32_t>(_dirAngle));
-    _previewSprite->SetDir(dir);
+    _previewSprite->SetDirection(dir);
 
 #if FO_ENABLE_3D
-    // Sprite::SetDir starts a smooth turn that converges only while frames advance, but a review window
+    // Sprite::SetDirection starts a smooth turn that converges only while frames advance, but a review window
     // wants the pose at once, so the directions are snapped and a redraw forced
     if (auto model_spr = _previewSprite.dyn_cast<ModelSprite>()) {
         auto model = model_spr->GetModel();

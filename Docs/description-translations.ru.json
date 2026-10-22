@@ -1544,8 +1544,8 @@
           "translation": "Animation state является клиентским presentation state, а каждое направление владеет параллельным frame sheet."
         },
         "/runtime_rules/@id=image-format.runtime.sprite-sheet/requirement": {
-          "source_sha256": "e8c5cf8783e8be6dbe012f6d845c69e17b5b0e27b20a1eaf54241b90c1d4df61",
-          "translation": "SpriteSheet хранит длительности/накопленные границы каждого направления и выбирает кадры по нормализованному времени. SetDir сохраняет фазу при разных числе кадров/времени; направление0 — независимая последовательность. GetFramesCount/GetWholeTicks/GetSprOffset/GetFrameDurations описывают выбранное направление. MakeCopy сохраняет кадры с новым проигрыванием. Update передаёт elapsed в AdvanceTime; деления whole/count нет."
+          "source_sha256": "58169ff13514baf1988c7ebec405e53dea29c7a55bd3c72e24d712138f89e9e5",
+          "translation": "SpriteSheet хранит длительности/накопленные границы каждого направления и выбирает кадры по нормализованному времени. SetDirection сохраняет фазу при разных числе кадров/времени; направление0 — независимая последовательность. GetFramesCount/GetWholeTicks/GetSpriteOffset/GetFrameDurations описывают выбранное направление. MakeCopy сохраняет кадры с новым проигрыванием. Update передаёт elapsed в AdvanceTime; деления whole/count нет."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/name": {
           "source_sha256": "1fa5917048511413fe454b412e646441428b6214cd80c08859786156742979af",

@@ -104,7 +104,7 @@ public:
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
-    virtual void SetDir(mdir dir) { ignore_unused(dir); }
+    virtual void SetDirection(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
