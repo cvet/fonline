@@ -19,6 +19,7 @@ SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
 SetOption(FO_APP_ICON "Engine/Resources/Radiation.ico")
 
 SetOption(FO_UNIT_TESTS ON)
+SetOption(FO_BUILD_BAKER ON)
 SetOptionValues(
     FO_DATA_SOURCE_DAT ON
     FO_DATA_SOURCE_ZIP ON

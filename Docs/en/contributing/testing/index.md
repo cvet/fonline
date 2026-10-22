@@ -52,6 +52,39 @@ extraction, directional/shared offsets and copying trimmed sheets.
 
 `Test_ManagedScriptRuntime.cpp` compiles the engine-owned `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` with the real `ManagedScriptBaker` and .NET SDK, then loads its server/client/mapper assemblies. It checks module initialization, critter events, native-to-managed calls, array arguments/results, dictionaries, UTF-8 and by-reference strings, hashes, nullable entity handles, exception reporting and isolation of two simultaneously live servers. It requires the SDK for `ManagedScript.TargetFramework` and the configured managed runtime payload; dry-run markers are not runtime evidence. This is focused bridge coverage, not exhaustive parity with every AngelScript export scenario.
 
+## Native module and resource pipeline checks
+
+The `engine-update` CI job runs the resource-usage, serial/parallel archive,
+resource-pack format, `IsPackaged`, native-module layout and CMake wiring Python
+regressions. The formatting job also runs
+`python3 BuildTools/check_native_modules.py`; its reviewed exceptions and scope
+are documented in [Native module layout](../source-tree/index.md#native-module-layout).
+
+`RunResourceUsageIntegrationTests` runs the real native Baker through
+`BuildTools/tests/check_resource_usage_pipeline.py`. It is a dependency of
+`RunUnitTests` when `FO_UNIT_TESTS` is enabled, the Baker target exists and the
+configuration is native. The standard validation project enables
+`FO_BUILD_BAKER` explicitly; a CMake regression checks that option by executing
+the actual profile with stage side effects disabled. CMake fixture projects also
+build `RunUnitTests` and verify that the pipeline command runs first.
+
+The pipeline fixture bakes real metadata, prototypes, FOFRM and a font page,
+checks the exact manifest selection, and writes an archive through the normal
+packager. Another Baker process mounts that archive through the native
+`DataSource` and copies each entry back for byte comparison. An incremental bake
+removes a `ResourceSet.Files` inclusion and changes image content while preserving
+its timestamp. The same Packager instance must reload the manifest and update
+the archive. Negative controls include packaging every baked file and dropping
+the font page. Unused outputs remain in the full bake. Temporary files belong to
+the isolated fixture and are removed on exit; a failed Baker's output is included
+in the failure diagnostic.
+
+The direct runner needs Python's standard library and an existing Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
+
 ## Running tests
 
 The `engine-update` CI job also runs

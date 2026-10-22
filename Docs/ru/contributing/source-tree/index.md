@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"f5e81e66769afea4b68a0b487fd25919c6ac0070704d79f6805af1d65563747f"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"1a22d99b160231d14ddf73563bedc4ea5d2caf2410f29ee72181f878c39b5d24"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -40,7 +40,8 @@ Mapper. Для этой границы используйте [BuildTools pipeli
 
 Каждый самостоятельный нативный модуль создаётся парой соседних файлов
 `Name.h` + `Name.cpp`. Оба файла регистрируются в соответствующем списке
-исходников в [`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake).
+исходников в [`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake)
+или [`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake).
 Файл `.cpp` остаётся опорной единицей трансляции модуля, даже если пока лишь
 подключает собственный заголовок, содержащий только данные или константы
 `constexpr`. Пример такого модуля — `ResourceDefaults.h` + `ResourceDefaults.cpp`:
@@ -50,6 +51,20 @@ Mapper. Для этой границы используйте [BuildTools pipeli
 времени компиляции и агрегирующие заголовки, не образующие самостоятельного модуля.
 Для опциональных модулей оба файла регистрируются безусловно, а числовые проверки
 флагов возможностей размещаются внутри них.
+
+После добавления или переноса нативных модулей запускайте из корня движка
+`python3 BuildTools/check_native_modules.py`. Проверка учитывает регистр имён,
+наличие пары и регистрацию в двух списках исходников, включая алиас каталога
+AngelScript. Комментарии и диагностические строки не регистрируют исходники.
+Эффективную конфигурацию CMake проверяют сборки соответствующих платформ.
+
+Рассмотренные исключения задаются точным путём и непустой причиной в
+[`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
+в разделах `HeaderOnly` и `ImplementationOnly` (версия схемы `Version = 1`).
+Устаревшие записи, шаблоны путей, повторные JSON-ключи и исключения для полных пар
+считаются ошибками. Файлы `Source/Tests/Test_*.cpp` являются единицами трансляции
+тестов. Новым самостоятельным модулям требуется пара, даже если в их имени есть
+`Helpers` или `App`.
 
 ## `Source/Applications/`
 

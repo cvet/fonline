@@ -35,7 +35,7 @@ jobs:
     - name: Install codegen regression dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pytest
+        sudo apt-get install -y python3-pytest cmake ninja-build
     - name: Check generated configuration and default arguments
       run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
     - name: Check managed runtime preparation and recovery
@@ -45,6 +45,15 @@ jobs:
         BuildTools/tests/test_managed_runtime_workspace_cache.py
         BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py
         BuildTools/tests/test_managed_runtime_byproducts.py
+    - name: Check resource pipeline and native module regressions
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_package_resource_usage.py
+        BuildTools/tests/test_package_parallel_resources.py
+        BuildTools/tests/test_package_resource_pack.py
+        BuildTools/tests/test_is_packaged_usage.py
+        BuildTools/tests/test_native_modules.py
+        BuildTools/tests/test_resource_usage_pipeline_wiring.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:
@@ -82,6 +91,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: python3 BuildTools/check_native_modules.py
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   temporary-compat:

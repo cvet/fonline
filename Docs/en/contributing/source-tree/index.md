@@ -36,8 +36,9 @@ for that boundary; change the native tool owner when its baked behavior changes.
 ## Native module layout
 
 Create every standalone native module as an adjacent `Name.h` + `Name.cpp` pair
-and register both files in the owning source list in
-[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake).
+and register both files in the owning source lists in
+[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake) or
+[`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake).
 Keep the `.cpp` as the module anchor even when it only includes its own header
 because all current declarations are passive data or `constexpr` constants.
 `ResourceDefaults.h` + `ResourceDefaults.cpp` is such a module; constants alone
@@ -46,6 +47,19 @@ do not make an independent subsystem exempt from the pair requirement.
 Header-only exceptions are supporting template/compile-time utility headers and
 umbrella headers that do not define an independent module. For optional modules,
 register both files unconditionally and put numeric feature guards inside them.
+
+Run `python3 BuildTools/check_native_modules.py` from the engine root after adding
+or moving native modules. It checks case-sensitive pairs and registrations in
+the two source-inventory owners, including the AngelScript directory alias;
+comments and diagnostic strings do not register source files. Platform builds
+validate the effective CMake configuration.
+
+Reviewed unpaired files are recorded by exact path and a nonempty reason in
+[`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
+under `HeaderOnly` or `ImplementationOnly` (schema `Version = 1`). Stale entries,
+wildcards, duplicate JSON keys and exceptions for complete pairs fail the check.
+`Source/Tests/Test_*.cpp` files are test translation units. New standalone modules
+require a pair even when their names contain `Helpers` or `App`.
 
 ## `Source/Applications/`
 
