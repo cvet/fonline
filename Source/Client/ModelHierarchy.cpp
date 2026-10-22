@@ -125,63 +125,19 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
     return nullptr;
 }
 
-auto ModelHierarchy::GetTexture(string_view tex_name, bool animated) -> ptr<const MeshTexture>
+auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<const MeshTexture>
 {
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
     auto name = _modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name);
 
     for (const auto& texture : _textures) {
-        if (texture->Name == name && texture->Animated == animated) {
+        if (texture->Name == name) {
             return texture;
         }
     }
 
     string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
-
-    if (animated) {
-        FO_VERIFY_AND_THROW(_modelMngr->_textureAnimationLoader, "Model host does not provide a texture animation loader", tex_path);
-
-        auto frames = _modelMngr->_textureAnimationLoader(tex_path);
-        FO_VERIFY_AND_THROW(!frames.empty() && frames.size() <= 65535, "Texture animation requires 1..65535 frames", tex_path);
-
-        auto [first_texture, first_rect, first_duration] = frames.front();
-        ignore_unused(first_duration);
-        FO_VERIFY_AND_THROW(first_texture, "Texture animation contains a missing texture", tex_path);
-
-        auto resource = safe_alloc::make_unique<MeshTexture>(name, first_texture.as_ptr(), first_rect);
-        resource->Animated = true;
-        uint64_t total = 0;
-
-        for (auto [texture, rect, duration] : frames) {
-            FO_VERIFY_AND_THROW(texture && duration > 0, "Texture animation has invalid frame data", tex_path);
-            total += duration;
-            FO_VERIFY_AND_THROW(total <= std::numeric_limits<uint32_t>::max(), "Texture animation duration exceeds uint32 milliseconds", tex_path);
-
-            nptr<const MeshTexture> shared;
-
-            for (const auto& prior : resource->Frames) {
-                if (prior->MainTex == texture && prior->AtlasOffsetData == rect) {
-                    shared = prior;
-                    break;
-                }
-            }
-
-            if (!shared) {
-                auto frame = safe_alloc::make_unique<MeshTexture>(hstring {}, texture.as_ptr(), rect);
-                shared = frame.as_nptr();
-                _textures.emplace_back(std::move(frame));
-            }
-
-            resource->Frames.emplace_back(shared);
-            resource->FrameEnds.emplace_back(numeric_cast<uint32_t>(total));
-        }
-
-        auto result = resource.as_ptr();
-        _textures.emplace_back(std::move(resource));
-
-        return result;
-    }
 
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);

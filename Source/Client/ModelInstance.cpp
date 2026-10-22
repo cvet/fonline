@@ -51,19 +51,6 @@ static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 
-static auto SelectModelTextureFrame(ptr<const MeshTexture> resource, float64_t elapsed_ms) -> ptr<const MeshTexture>
-{
-    if (resource->Frames.empty()) {
-        return resource;
-    }
-
-    float64_t position = std::fmod(elapsed_ms, resource->FrameEnds.back());
-    auto found = std::upper_bound(resource->FrameEnds.begin(), resource->FrameEnds.end(), position);
-    size_t index = numeric_cast<size_t>(std::distance(resource->FrameEnds.begin(), found));
-
-    return resource->Frames.at(index).as_ptr();
-}
-
 ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info) :
     _modelMngr {model_mngr},
     _modelInfo {info}
@@ -87,7 +74,6 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
 
     _forceDraw = true;
     _lastDrawTime = GetTime();
-    _lastTextureTick = _lastDrawTime;
     SetupFrame({4, 4}, {2, 2});
     _frameLayoutDirty = true;
 }
@@ -198,13 +184,13 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 mesh->LastTexures[i] = mesh->CurTexures[i];
-                mesh->TextureResources[i] = mesh->CurTexures[i] = mesh->DefaultTexures[i];
+                mesh->CurTexures[i] = mesh->DefaultTexures[i];
             }
         }
     }
 
     if (!data.TextureInfo.empty()) {
-        for (auto&& [tex_name, mesh_name, tex_num, animated] : data.TextureInfo) {
+        for (auto&& [tex_name, mesh_name, tex_num] : data.TextureInfo) {
             nptr<const MeshTexture> texture = nullptr;
             FO_VERIFY_AND_THROW(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", tex_num);
 
@@ -226,7 +212,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
                     if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
                         _parent->ResolveDefaultTexture(mesh, numeric_cast<size_t>(tex_num));
-                        texture = mesh->TextureResources[tex_num];
+                        texture = mesh->CurTexures[tex_num];
                         break;
                     }
                 }
@@ -234,11 +220,10 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                 FO_VERIFY_AND_THROW(texture, "Parent texture was not found", tex_name);
             }
             else {
-                texture = _modelInfo->_hierarchy->GetTexture(tex_name, animated);
+                texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
 
             FO_VERIFY_AND_THROW(texture, "Texture was not loaded", tex_name);
-            FO_VERIFY_AND_THROW(animated || texture->Frames.size() <= 1, "Static Texture cannot inherit an animated resource", tex_name);
 
             // Assign it
             size_t assigned_meshes = 0;
@@ -247,21 +232,12 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                 auto mesh = _allMeshes[mesh_index].as_ptr();
 
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
-                    mesh->TextureResources[tex_num] = texture;
-                    mesh->CurTexures[tex_num] = SelectModelTextureFrame(texture.as_ptr(), _textureElapsedMs);
+                    mesh->CurTexures[tex_num] = texture;
                     assigned_meshes++;
                 }
             }
 
             FO_VERIFY_AND_THROW(assigned_meshes != 0, "Texture target mesh was not found", tex_name, mesh_name);
-        }
-    }
-
-    _hasAnimatedTextures = std::ranges::any_of(_allMeshes, [](const auto& mesh) { return std::ranges::any_of(mesh->TextureResources, [](const auto& resource) { return resource && resource->Frames.size() > 1; }); }) || std::ranges::any_of(_children, [](const auto& child) { return child->_hasAnimatedTextures; });
-
-    if (_hasAnimatedTextures) {
-        for (auto parent = _parent; parent; parent = parent->_parent) {
-            parent->_hasAnimatedTextures = true;
         }
     }
 
@@ -1736,7 +1712,7 @@ void ModelInstance::InvalidateCombinedMeshes() noexcept
 
 void ModelInstance::ResolveDefaultTexture(ptr<MeshInstance> mesh, size_t slot)
 {
-    if (slot != 0 || mesh->TextureResources[0] || mesh->Mesh->DiffuseTexture.empty()) {
+    if (slot != 0 || mesh->CurTexures[0] || mesh->Mesh->DiffuseTexture.empty()) {
         return;
     }
 
@@ -1744,7 +1720,7 @@ void ModelInstance::ResolveDefaultTexture(ptr<MeshInstance> mesh, size_t slot)
         mesh->DefaultTexures[0] = _modelInfo->_hierarchy->GetTexture(mesh->Mesh->DiffuseTexture);
     }
 
-    mesh->TextureResources[0] = mesh->CurTexures[0] = mesh->DefaultTexures[0];
+    mesh->CurTexures[0] = mesh->DefaultTexures[0];
 }
 
 void ModelInstance::FillCombinedMeshes(ptr<ModelInstance> cur)
@@ -2508,64 +2484,6 @@ auto ModelInstance::GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr
     return _allMeshes.at(mesh_index)->CurTexures[slot];
 }
 
-auto ModelInstance::RefreshTextureFrames() -> bool
-{
-    bool changed = false;
-
-    for (auto& mesh : _allMeshes) {
-        for (size_t slot = 0; slot < MODEL_MAX_TEXTURES; slot++) {
-            auto resource = mesh->TextureResources[slot];
-
-            if (resource && resource->Frames.size() > 1) {
-                auto frame = SelectModelTextureFrame(resource.as_ptr(), _textureElapsedMs);
-                changed |= mesh->CurTexures[slot] != frame;
-                mesh->CurTexures[slot] = frame;
-            }
-        }
-    }
-
-    return changed;
-}
-
-auto ModelInstance::AdvanceTextureTime(timespan elapsed) -> bool
-{
-    FO_VERIFY_AND_THROW(elapsed >= timespan {}, "Model texture elapsed time must be nonnegative");
-    _textureElapsedMs += elapsed.to_ms<float64_t>();
-    _lastTextureTick = GetTime();
-    bool changed = RefreshTextureFrames();
-
-    if (changed) {
-        ptr<ModelInstance> root {this};
-
-        while (root->_parent) {
-            root = root->_parent.as_ptr();
-        }
-
-        root->GenerateCombinedMeshes();
-        root->RequestRedraw();
-    }
-
-    return changed;
-}
-
-auto ModelInstance::UpdateTextureAnimation(nanotime now) -> bool
-{
-    if (!_hasAnimatedTextures) {
-        return false;
-    }
-
-    auto elapsed = now - _lastTextureTick;
-    _lastTextureTick = now;
-    _textureElapsedMs += std::max(0.0, elapsed.to_ms<float64_t>());
-    bool changed = RefreshTextureFrames();
-
-    for (auto& child : _children) {
-        changed |= child->UpdateTextureAnimation(now);
-    }
-
-    return changed;
-}
-
 void ModelInstance::Pose(float32_t scale, bool advance_animation)
 {
     _spriteBoundsPoseReady = false;
@@ -2588,10 +2506,6 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     }
 
     _forceDraw = false;
-
-    if (advance_animation && _hasAnimatedTextures && UpdateTextureAnimation(GetTime())) {
-        GenerateCombinedMeshes();
-    }
 
     // Move animation
     ProcessAnimation(dt, _framePivot, scale);

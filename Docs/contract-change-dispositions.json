@@ -11412,6 +11412,54 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror",
       "compatibility": "Rebuild the Engine and native sprite consumers together. SpriteResource v3 layout, network/save formats and direction/phase semantics are unchanged; no stored-data conversion is required.",
       "owner": "Client sprite runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.1609d7b24ba86736",
+      "baseline_contract_sha256": "7c0420221b1aa7fb9bce9e7e72d56260aefe38bb68d68692ecf09955c9b8d94b",
+      "current_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "classification": "breaking",
+      "rationale": "Advance the endpoint compatibility gate from 0.0.75 to 0.0.76 alongside the incompatible LFMODINF schema change.",
+      "migration": "Rebuild matching baker and runtime binaries, then force-rebake model descriptions and metadata. Any external TextureAnimation source must be replaced with Texture and an explicitly authored one-frame resource; playback is not emulated.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/model-format.md#textures.",
+      "compatibility": "LFMODINF schema 5 and runtime compatibility 0.0.76 reject older descriptions/endpoints. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas remain unchanged.",
+      "owner": "Engine model content and runtime"
+    },
+    {
+      "domain": "model-format",
+      "change_id": "model-format-change.modified.9d12fd969fffabc9",
+      "baseline_contract_sha256": "89408cf6d939f4ada68e3f8c467af13a3ec344dc3f938ed41de63ee090657065",
+      "current_contract_sha256": "c3f15d78862eeb6b15b33a7ee240ad51e78df4b6a0e2887a7be62da2d301256b",
+      "classification": "breaking",
+      "rationale": "Remove the unused animated override option while retaining static overrides of consumed imported diffuse sources.",
+      "migration": "Rebuild matching baker and runtime binaries, then force-rebake model descriptions and metadata. Any external TextureAnimation source must be replaced with Texture and an explicitly authored one-frame resource; playback is not emulated.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/model-format.md#textures.",
+      "compatibility": "LFMODINF schema 5 and runtime compatibility 0.0.76 reject older descriptions/endpoints. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas remain unchanged.",
+      "owner": "Engine model content and runtime"
+    },
+    {
+      "domain": "model-format",
+      "change_id": "model-format-change.modified.dd25ba4555a0b49a",
+      "baseline_contract_sha256": "89408cf6d939f4ada68e3f8c467af13a3ec344dc3f938ed41de63ee090657065",
+      "current_contract_sha256": "c3f15d78862eeb6b15b33a7ee240ad51e78df4b6a0e2887a7be62da2d301256b",
+      "classification": "breaking",
+      "rationale": "LFMODINF schema 5 removes the animation flag from each texture override. All writers, readers and bounds readers now use name, mesh and slot only.",
+      "migration": "Rebuild matching baker and runtime binaries, then force-rebake model descriptions and metadata. Any external TextureAnimation source must be replaced with Texture and an explicitly authored one-frame resource; playback is not emulated.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/model-format.md#textures.",
+      "compatibility": "LFMODINF schema 5 and runtime compatibility 0.0.76 reject older descriptions/endpoints. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas remain unchanged.",
+      "owner": "Engine model content and runtime"
+    },
+    {
+      "domain": "model-format",
+      "change_id": "model-format-change.modified.3d46a439c5770947",
+      "baseline_contract_sha256": "89408cf6d939f4ada68e3f8c467af13a3ec344dc3f938ed41de63ee090657065",
+      "current_contract_sha256": "c3f15d78862eeb6b15b33a7ee240ad51e78df4b6a0e2887a7be62da2d301256b",
+      "classification": "breaking",
+      "rationale": "Remove TextureAnimation, per-instance texture clocks, frame caches and playback APIs. Texture and Parent inheritance retain static full-canvas images and FOFRM resizing.",
+      "migration": "Rebuild matching baker and runtime binaries, then force-rebake model descriptions and metadata. Any external TextureAnimation source must be replaced with Texture and an explicitly authored one-frame resource; playback is not emulated.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/model-format.md#textures.",
+      "compatibility": "LFMODINF schema 5 and runtime compatibility 0.0.76 reject older descriptions/endpoints. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas remain unchanged.",
+      "owner": "Engine model content and runtime"
     }
   ]
 }

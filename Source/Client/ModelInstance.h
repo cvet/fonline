@@ -120,8 +120,6 @@ public:
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
     [[nodiscard]] auto GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr<const MeshTexture>;
-    [[nodiscard]] auto GetCombinedMeshGenerationRevision() const noexcept -> uint64_t { return _combinedMeshGenerationRevision; }
-    auto AdvanceTextureTime(timespan elapsed) -> bool;
 
     void SetupFrame(isize32 draw_size, ipos32 frame_pivot);
     void PrepareFrameLayout();
@@ -217,8 +215,6 @@ private:
     void RefreshMoveAnimation();
     void RefreshFrameLayout();
     void RefreshConfigurationLayout();
-    auto RefreshTextureFrames() -> bool;
-    auto UpdateTextureAnimation(nanotime now) -> bool;
 
     ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
@@ -250,9 +246,6 @@ private:
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
-    nanotime _lastTextureTick {};
-    float64_t _textureElapsedMs {};
-    bool _hasAnimatedTextures {};
     bool _resetDrawTimeOnNextAnimationAdvance {};
     mat44 _matRot {};
     mat44 _matScale {1.0f};

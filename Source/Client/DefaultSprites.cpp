@@ -774,31 +774,6 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
     return FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
 }
 
-auto DefaultSpriteFactory::LoadSpriteFramesAsQuads(hstring path, AtlasType atlas_type) -> vector<pair<shared_ptr<AtlasSprite>, uint32_t>>
-{
-    auto file = _sprMngr->GetResources()->ReadFile(path);
-    FO_VERIFY_AND_THROW(file, "Animated image resource was not found", path);
-    auto resource = ReadSpriteResource(file.GetDataSpan());
-    FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Texture animation requires exactly one direction", path);
-    vector<pair<shared_ptr<AtlasSprite>, uint32_t>> frames;
-
-    for (auto& frame : resource.Directions.front().Frames) {
-        shared_ptr<AtlasSprite> sprite;
-
-        if (frame.SharedFrameIndex) {
-            sprite = frames.at(*frame.SharedFrameIndex).first;
-        }
-        else {
-            auto image = ExtractSpriteResourceFrameImage(std::move(frame));
-            sprite = FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
-        }
-
-        frames.emplace_back(std::move(sprite), frame.DurationMs);
-    }
-
-    return frames;
-}
-
 auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
 {
     FO_TRACE_ZONE(Render);

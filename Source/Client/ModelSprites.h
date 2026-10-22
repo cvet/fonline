@@ -150,7 +150,6 @@ public:
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
-    auto LoadTextureAnimation(hstring path) -> vector<tuple<nptr<RenderTexture>, frect32, uint32_t>>;
     auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
     void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
@@ -160,7 +159,6 @@ private:
     ptr<EffectManager> _effectMngr;
     unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
-    unordered_map<hstring, vector<pair<shared_ptr<AtlasSprite>, uint32_t>>> _loadedMeshTextureAnimations {};
     vector<ptr<RenderTarget>> _rtIntermediate {};
 };
 

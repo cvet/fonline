@@ -502,7 +502,6 @@ static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
         (void)reader.read<int32_t>();
-        (void)reader.read<uint8_t>();
     }
 
     link.EffectInfoCount = reader.read<uint32_t>();
@@ -1607,12 +1606,11 @@ TEST_CASE("ModelInfoBakerValidations")
 
     SECTION("UnconditionalTextureOverridesConsumedImportedDiffuse")
     {
-        bool animated = GENERATE(false, true);
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/Test.fo3d", strex("Model Body.fbx\n{} 0 Body.fofrm\n", animated ? "TextureAnimation" : "Texture").str(), 1);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Body", true, {}, "Body.tga");
-        AddTestBakedImage(rig, "Critters/Body.fofrm", animated ? MakeMultiFrameBakedSprite(2, 1, 1, 200) : MakeMinimalBakedSprite());
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMinimalBakedSprite());
         CHECK_NOTHROW(BakeModelInfoFiles(rig));
     }
 
@@ -1646,14 +1644,15 @@ TEST_CASE("ModelInfoBakerValidations")
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
 
-    SECTION("AcceptsExplicitTextureAnimation")
+    SECTION("RejectsTextureAnimationDirective")
     {
+        uint16_t frame_count = GENERATE(uint16_t {1}, uint16_t {2});
         TestRig rig;
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTextureAnimation 0 Body.fofrm\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Body", true);
-        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(2, 1, 1, 200));
-        CHECK_NOTHROW(BakeModelInfoFiles(rig));
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(frame_count, 1, 1, 200));
+        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Unknown token in file") && Catch::Matchers::ContainsSubstring("TextureAnimation"));
     }
 
     SECTION("UsesTheWinningTextureMetadataAcrossPackOverlays")

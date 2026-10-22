@@ -81,7 +81,7 @@ struct ModelAnimationData
     float32_t SpeedAjust {};
     vector<int32_t> DisabledLayer {};
     vector<hstring> DisabledMesh {};
-    vector<tuple<string, hstring, int32_t, bool>> TextureInfo {}; // Name, mesh, slot, animated
+    vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, slot
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
     optional<ModelBounds3D> Bounds {};

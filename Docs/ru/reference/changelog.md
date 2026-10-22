@@ -7,10 +7,15 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"a063c468a67a19db9d7aa52345a110ce3fbd9b7df7929fa3f79ed50a95c52c37"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"474cca1ff863dda8256e1f09c3fda2186a1813750e7b11cba95a02dabdf7aceb"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Удалены `TextureAnimation` и native API проигрывания текстур. Сохраняются `Texture`,
+  `Parent`, FOFRM `Size` и UV полного холста; многокадровые текстуры отвергаются.
+  Пересоберите бинарники и принудительно перепеките описания моделей и метаданные
+  для LFMODINF schema 5/runtime 0.0.76. Остальные схемы моделей и изображений прежние.
 
 - Методы спрайтов используют полные имена: `GetCurSpr` → `GetCurrentSprite`,
   `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →

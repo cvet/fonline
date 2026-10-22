@@ -79,7 +79,7 @@ struct BakerModelDescriptionLink
     float32_t SpeedAjust {};
     vector<int32_t> DisabledLayer {};
     vector<string> DisabledMesh {};
-    vector<tuple<string, string, int32_t, bool>> TextureInfo {};
+    vector<tuple<string, string, int32_t>> TextureInfo {};
     vector<pair<string, string>> EffectInfo {};
     vector<BakerModelDescriptionCut> CutInfo {};
     optional<ModelBounds3D> Bounds {};
@@ -288,7 +288,7 @@ static auto CalculateModelDescriptionLinkBoundsEntry(const FileCollection& sourc
 static auto GetModelBoundsMeasurement(const BakingSettings& settings) -> ModelBoundsMeasurement;
 static void ValidateModelDescriptionLinkData(const ModelTextureInfoMap& texture_infos, const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
-static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname, bool animated = false);
+static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
 static void ValidateImportedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, const BakerModelDescriptionLink& overrides, string_view fname);
 static void ValidateModelDescriptionEffect(const FileSystem& baked_files, string_view effect_name, string_view token, string_view fname);
 static void ValidateModelDescriptionBakedFileExists(const FileSystem& baked_files, string_view path, string_view kind, string_view fname);
@@ -402,8 +402,8 @@ auto ModelInfoBaker::CollectResourceDependencies(const FileCollection& files, st
                     }
                 }
 
-                for (const auto& [texture, owner, slot, animated] : link.TextureInfo) {
-                    ignore_unused(owner, slot, animated);
+                for (const auto& [texture, owner, slot] : link.TextureInfo) {
+                    ignore_unused(owner, slot);
                     add_texture(texture);
                 }
             }
@@ -896,7 +896,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             state.Link->DisabledMesh.emplace_back(disabled_mesh_name != "All" ? disabled_mesh_name : string {});
         }
     }
-    else if (token == "Texture" || token == "TextureAnimation") {
+    else if (token == "Texture") {
         string index_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
         int32_t texture_index = ParseModelDescriptionInt(index_value, *_nameResolver, token, fname, line);
         string texture_name = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -905,7 +905,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, line, MODEL_MAX_TEXTURES);
         }
 
-        state.Link->TextureInfo.emplace_back(texture_name, state.Mesh, texture_index, token == "TextureAnimation");
+        state.Link->TextureInfo.emplace_back(texture_name, state.Mesh, texture_index);
     }
     else if (token == "Effect") {
         string effect_name = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -1423,9 +1423,7 @@ static auto ReadBakedModelDescriptionLinkForBounds(data_reader& reader) -> Baker
         string texture_name = reader.read_string();
         string mesh_name = reader.read_string();
         int32_t texture_index = reader.read<int32_t>();
-        uint8_t animated = reader.read<uint8_t>();
-        FO_VERIFY_AND_THROW(animated <= 1, "Invalid texture animation flag");
-        link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index, animated != 0);
+        link.TextureInfo.emplace_back(std::move(texture_name), std::move(mesh_name), texture_index);
     }
 
     uint32_t effect_count = reader.read<uint32_t>();
@@ -1947,7 +1945,7 @@ static void ValidateModelDescriptionLinkData(const ModelTextureInfoMap& texture_
         }
     }
 
-    for (const auto& [texture_name, mesh_name, texture_index, animated] : link.TextureInfo) {
+    for (const auto& [texture_name, mesh_name, texture_index] : link.TextureInfo) {
         if (texture_index < 0 || texture_index >= numeric_cast<int32_t>(MODEL_MAX_TEXTURES)) {
             throw ModelInfoBakerException("Texture index is out of range", texture_index, fname, MODEL_MAX_TEXTURES);
         }
@@ -1968,7 +1966,7 @@ static void ValidateModelDescriptionLinkData(const ModelTextureInfoMap& texture_
             ValidateModelDescriptionMeshReference(*parent_info, parent_mesh, "Texture", fname);
         }
         else {
-            ValidateModelDescriptionTexture(texture_infos, baked_files, target_info, texture_name, animated ? "TextureAnimation" : "Texture", fname, animated);
+            ValidateModelDescriptionTexture(texture_infos, baked_files, target_info, texture_name, "Texture", fname);
         }
     }
 
@@ -2035,7 +2033,7 @@ static void ValidateModelDescriptionCut(const FileCollection& source_files, cons
     ValidateModelDescriptionDrawBoneReference(cut_info, cut.UnskinShape, "Cut", fname);
 }
 
-static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname, bool animated)
+static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname)
 {
     if (texture_name.empty() || strex(texture_name).starts_with("Parent")) {
         return;
@@ -2046,7 +2044,7 @@ static void ValidateModelDescriptionTexture(const ModelTextureInfoMap& texture_i
     auto info = texture_infos.find(texture_path);
     FO_VERIFY_AND_THROW(info != texture_infos.end(), "Texture output has no SpriteInfo metadata", texture_path, token, fname);
     FO_VERIFY_AND_THROW(info->second.Directions.size() == 1, "Model texture requires exactly one direction; select InputDir in FOFRM", texture_path, token, fname);
-    FO_VERIFY_AND_THROW(animated || info->second.Directions.front().Frames.size() == 1, "Static Texture requires exactly one frame; use TextureAnimation", texture_path, token, fname);
+    FO_VERIFY_AND_THROW(info->second.Directions.front().Frames.size() == 1, "Model texture requires exactly one frame", texture_path, token, fname);
 }
 
 static void ValidateImportedModelTextures(const ModelTextureInfoMap& texture_infos, const FileSystem& baked_files, const BakedModelMeshInfo& model_info, const BakerModelDescriptionLink& overrides, string_view fname)
@@ -2091,9 +2089,9 @@ static void ValidateCachedModelTextures(const ModelTextureInfoMap& texture_infos
             }
         }
 
-        for (const auto& [name, mesh_name, slot, animated] : link.TextureInfo) {
+        for (const auto& [name, mesh_name, slot] : link.TextureInfo) {
             ignore_unused(mesh_name, slot);
-            ValidateModelDescriptionTexture(texture_infos, baked_files, *target, name, animated ? "TextureAnimation" : "Texture", fname, animated);
+            ValidateModelDescriptionTexture(texture_infos, baked_files, *target, name, "Texture", fname);
         }
     };
 
@@ -2817,11 +2815,10 @@ void BakerModelDescriptionLink::Save(data_writer& writer) const
     writer.write_string_vector(DisabledMesh);
     writer.write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
 
-    for (const auto& [texture_name, mesh_name, texture_index, animated] : TextureInfo) {
+    for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
         writer.write_string(texture_name);
         writer.write_string(mesh_name);
         writer.write<int32_t>(texture_index);
-        writer.write<uint8_t>(animated ? uint8_t {1} : uint8_t {0});
     }
 
     writer.write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));

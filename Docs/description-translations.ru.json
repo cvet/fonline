@@ -2154,10 +2154,10 @@
           "translation": "Текстура модели"
         },
         "/assets/@id=model-format.asset.texture/requirements": {
-          "source_sha256": "c718b35e69a0c0d506df200d998bde77c2e3b92f57c17174e972b86547999bd4",
+          "source_sha256": "6cdd26b5c2427e8dcb22fc706adcc5778e196d8ae941f57db15ba1a061c0cac3",
           "translation": [
-            "Импортированная diffuse-текстура по умолчанию должна существовать в baked resources, если для её меша нет безусловного переопределения slot0 через Texture или TextureAnimation.",
-            "явный target mesh для texture должен быть drawable"
+            "Импортированная diffuse-текстура по умолчанию должна присутствовать в запечённых ресурсах, если на её меше нет безусловного переопределения slot0 через Texture.",
+            "Явно выбранный для текстуры меш должен быть отрисовываемым."
           ]
         },
         "/compile_limits/@id=model-format.limit.bones-per-vertex/description": {
@@ -2623,12 +2623,12 @@
           "translation": "Эффекта нет. Замените на Mesh; не используйте в новом контенте."
         },
         "/tokens/@id=model-format.token.texture/description": {
-          "source_sha256": "151d3e969c6cfb12c0e885e26123b715cfbc6e052bd11239deed0e79c27d2746",
-          "translation": "Texture требует опубликованный выход SpriteInfo с одним направлением и кадром. TextureAnimation явно включает одностороннее воспроизведение по шкале изображения. Пути относятся к целевому мешу. Parent[_mesh] наследует ресурс с отдельной фазой ребёнка; статический слот отвергает анимированное наследование."
+          "source_sha256": "3785afd6ae636f330a8cda8ec58607e66a0e1531f9dc8700534881ab2464dd7b",
+          "translation": "Texture требует опубликованный выход SpriteInfo с одним направлением и одним кадром. Пути разрешаются относительно целевого меша. Parent[_mesh] наследует текущую статическую текстуру того же слота."
         },
         "/tokens/@id=model-format.token.texture/runtime_effect": {
-          "source_sha256": "bdf37e5b2cd775ff72c7c4f7bccc6cbd60e351c2a6235e3cf28d293138c9208b",
-          "translation": "Неизменяемые кадры сохраняют полный логический холст/UV и время; ModelInstance запускает свою циклическую фазу при создании. Смена кадра обновляет UV/батчи; auxiliary-rectangles должны совпадать внутри батча. Native AdvanceTextureTime/GetMeshTexture служат для детерминированного управления/инспекции, без script exports."
+          "source_sha256": "605fff011972d963e079de174a0ffe8ab48065ee7f237b8107f15121041ad2aa",
+          "translation": "Статические текстуры сохраняют полный логический холст и UV; обрезанные sprite mesh восстанавливают холст перед загрузкой. FOFRM Size позволяет уменьшить запекаемую текстуру. Native GetMeshTexture доступен для инспекции, без script exports; шкалы анимации текстур нет."
         },
         "/tokens/@id=model-format.token.transform-add/description": {
           "source_sha256": "e66fcf02c8d9c87dd3ab5f789e70e066904cc2234152043ae6e73174a7079b6e",
@@ -2663,16 +2663,16 @@
           "translation": "Link активен, только когда runtime layer array содержит это значение по выбранному index."
         },
         "/rules/@id=model-format.rule.texture-wire/name": {
-          "source_sha256": "993e001c68a37fd63cc654b5fa2b43a708c66855b0c41021d7be21c65f5efa0b",
-          "translation": "Совместимость таймлайнов текстур"
+          "source_sha256": "16402277d573f6fa705151b8b549d3b4674f63d304751a5dc89c56b315ad5d7d",
+          "translation": "Совместимость статических текстур"
         },
         "/rules/@id=model-format.rule.texture-wire/requirement": {
-          "source_sha256": "0fa90318b0a30a1c6b54f5f25f318fd73a062f3325094f9468cd861f4b3a18b6",
-          "translation": "LFMODINF schema4 добавляет проверяемый uint8 флаг анимации каждой texture override. Пересобрать baker/runtime вместе и полностью запечь описания моделей, metadata и ресурсы spritev3/SpriteInfo2; runtime-совместимость0.0.75. Схемы LFMODMSH и LFOZZRIG прежние."
+          "source_sha256": "ed0e44c52fe5573f08b30a95281a21d2a96026877e531ba18dbc8c70e2b88d9b",
+          "translation": "LFMODINF schema 5 хранит имя текстуры, меш и слот без флага анимации. Соберите согласованные baker/runtime и принудительно перепеките описания моделей и метаданные; runtime compatibility 0.0.76. Прежние схемы описания отвергаются. Схемы LFMODMSH, LFOZZRIG, sprite v3 и SpriteInfo 2 не меняются."
         },
         "/rules/@id=model-format.rule.texture-wire/rationale": {
-          "source_sha256": "96a8d973ecebe49c170796c345fa23bb4f038747c723c9a186967b07ab47128d",
-          "translation": "Анимация текстуры задаётся явно; статический Texture не становится анимацией молча."
+          "source_sha256": "282873e4ef1e1c27b53172c90177971b14deb0869560eca5ea1ccfd7ca582474",
+          "translation": "Текстуры моделей статические; многокадровые изображения и директива TextureAnimation отвергаются вместо неявного выбора первого кадра."
         }
       }
     },

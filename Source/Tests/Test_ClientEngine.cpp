@@ -202,113 +202,35 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 }
 
 #if (FO_ENABLE_3D)
-class RecordingModelTextureEffect final : public RenderEffect
+TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")
 {
-public:
-    RecordingModelTextureEffect() :
-        RenderEffect(EffectUsage::Model, "Effects/TextureRecording.fofx", [](string_view name) -> string { return name.ends_with("-info") ? "[EffectInfo]\nModelTexBuf = 0\n" : "[Effect]\nPasses = 1\n"; })
-    {
-    }
-
-    void DrawBuffer(ptr<RenderDrawBuffer>, size_t, optional<size_t>, nptr<const RenderTexture>) override { DrawCount++; }
-    size_t DrawCount {};
-};
-
-TEST_CASE("ClientEngineTextureAnimationUsesInstanceTimelineAndRebatches")
-{
-    size_t slot = GENERATE(size_t {0}, std::min(size_t {1}, MODEL_MAX_TEXTURES - 1), MODEL_MAX_TEXTURES - 1);
-    constexpr string_view model_path = "Models/TextureTimeline.fo3d";
-    constexpr string_view mesh_path = "Models/TextureTimeline.fbx";
-    vector<uint8_t> texture;
-    data_writer writer {texture};
-    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.write<uint8_t>(uint8_t {1});
-    writer.write<uint16_t>(uint16_t {3});
-    writer.write<uint32_t>(uint32_t {500});
-
-    for (int32_t frame = 0; frame < 3; frame++) {
-        writer.write<uint32_t>(frame == 1 ? uint32_t {300} : uint32_t {100});
-        writer.write<int32_t>(int32_t {0});
-        writer.write<int32_t>(int32_t {0});
-        writer.write<int16_t>(int16_t {0});
-        writer.write<int16_t>(int16_t {0});
-        writer.write<uint8_t>(frame == 2 ? uint8_t {1} : uint8_t {0});
-
-        if (frame == 2) {
-            writer.write<uint16_t>(uint16_t {0});
-            continue;
-        }
-
-        uint16_t width = frame == 0 ? 1022 : 3;
-        uint16_t height = frame == 0 ? 2046 : 2;
-        writer.write<uint16_t>(width);
-        writer.write<uint16_t>(height);
-
-        for (size_t pixel = 0; pixel < numeric_cast<size_t>(width) * height; pixel++) {
-            writer.write<ucolor>(ucolor {numeric_cast<uint8_t>(frame + 1), 20, 30, 255});
-        }
-
-        writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
-    }
-
-    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    vector<pair<string, vector<uint8_t>>> resources {{"Models/Cycle.fofrm", texture}};
+    constexpr string_view model_path = "Models/MultiFrameTexture.fo3d";
+    constexpr string_view mesh_path = "Models/MultiFrameTexture.fbx";
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Cycle.fofrm", BakerTests::MakeMinimalBakedSprite()}};
     auto mesh = MakeRuntimeModelTriangleMesh();
-    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, strex("TextureAnimation {} Cycle.fofrm\n", slot), {}, nullptr, false, resources);
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Cycle.fofrm\n", {}, nullptr, false, resources);
+
+    // The baker saw a one-frame resource, so the description is valid; only the mounted bytes become multi-frame
+    resources.front().second = BakerTests::MakeMultiFrameBakedSprite(2, 1, 1, 200);
     resources.emplace_back(string {mesh_path}, std::move(mesh));
     resources.emplace_back(string {model_path}, std::move(description));
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto effect = safe_alloc::make_unique<RecordingModelTextureEffect>();
-    auto previous_effect = client->EffectMngr.Effects.SkinnedModel;
-    client->EffectMngr.Effects.SkinnedModel = effect.as_nptr();
-    auto restore_effect = scope_exit([&client, previous_effect]() noexcept { client->EffectMngr.Effects.SkinnedModel = previous_effect; });
     auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
-    auto first = factory->GetModelMngr()->CreateModel(model_path);
-    REQUIRE(first);
-    first->StartMeshGeneration();
-    auto initial = first->GetMeshTexture(0, slot);
-    REQUIRE(initial);
-    auto generation = first->GetCombinedMeshGenerationRevision();
-    CHECK_FALSE(first->AdvanceTextureTime(std::chrono::milliseconds {99}));
-    CHECK(first->GetMeshTexture(0, slot) == initial);
-    CHECK(first->AdvanceTextureTime(std::chrono::milliseconds {1}));
-    auto next = first->GetMeshTexture(0, slot);
-    REQUIRE(next);
-    CHECK(next->MainTex != initial->MainTex);
-    CHECK(next->AtlasOffsetData.width == Catch::Approx(3.0f / 1024));
-    CHECK(first->GetCombinedMeshGenerationRevision() > generation);
-    first->DrawInScene(mat44 {1.0f}, 1.0f);
-    REQUIRE(effect->DrawCount > 0);
-    REQUIRE(effect->ModelTexBuf);
-    CHECK(effect->ModelTex[slot] == next->MainTex);
-    CHECK(effect->ModelTexBuf->TexAtlasOffset[slot * 4] == next->AtlasOffsetData.x);
-    CHECK(effect->ModelTexBuf->TexAtlasOffset[slot * 4 + 2] == next->AtlasOffsetData.width);
-    CHECK(effect->ModelTexBuf->TexSize[slot * 4] == next->MainTex->SizeData[0]);
-    auto second = factory->GetModelMngr()->CreateModel(model_path);
-    REQUIRE(second);
-    CHECK(second->GetMeshTexture(0, slot) == initial);
-    CHECK(first->AdvanceTextureTime(std::chrono::milliseconds {300}));
-    CHECK(first->GetMeshTexture(0, slot) == initial);
-    CHECK_FALSE(second->AdvanceTextureTime(std::chrono::milliseconds {99}));
-    CHECK(second->GetMeshTexture(0, slot) == initial);
-    CHECK(second->AdvanceTextureTime(std::chrono::milliseconds {1}));
-    CHECK(second->GetMeshTexture(0, slot) == next);
+    REQUIRE_THROWS_WITH(factory->GetModelMngr()->CreateModel(model_path), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one frame"));
 }
 
 TEST_CASE("ClientEngineOverridesConsumedImportedDiffuse")
 {
 #if FO_ENABLE_3D
-    bool animated = GENERATE(false, true);
     constexpr string_view model_path = "Models/EffectiveTexture.fo3d";
     constexpr string_view mesh_path = "Models/EffectiveTexture.fbx";
     auto mesh = MakeRuntimeModelTriangleMesh({}, "Consumed.png");
-    vector<pair<string, vector<uint8_t>>> resources {{"Models/Effective.fofrm", animated ? BakerTests::MakeMultiFrameBakedSprite(2, 1, 1, 200) : BakerTests::MakeMinimalBakedSprite()}};
-    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, strex("{} 0 Effective.fofrm\n", animated ? "TextureAnimation" : "Texture"), {}, nullptr, false, resources);
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Effective.fofrm", BakerTests::MakeMinimalBakedSprite()}};
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Effective.fofrm\n", {}, nullptr, false, resources);
     resources.emplace_back(string {mesh_path}, std::move(mesh));
     resources.emplace_back(string {model_path}, std::move(description));
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
@@ -328,12 +250,11 @@ TEST_CASE("ClientEngineOverridesConsumedImportedDiffuse")
 TEST_CASE("ClientEngineLoadsLargeFofrmModelTextures")
 {
 #if FO_ENABLE_3D
-    bool animated = GENERATE(false, true);
     constexpr string_view model_path = "Models/LargeTexture.fo3d";
     constexpr string_view mesh_path = "Models/LargeTexture.fbx";
     auto mesh = MakeRuntimeModelTriangleMesh();
-    vector<pair<string, vector<uint8_t>>> resources {{"Models/Large.fofrm", animated ? BakerTests::MakeMultiFrameBakedSprite(2, 1024, 1024, 200) : BakerTests::MakeMinimalBakedSprite(1024, 1024)}};
-    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, strex("{} 0 Large.fofrm\n", animated ? "TextureAnimation" : "Texture"), {}, nullptr, false, resources);
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Large.fofrm", BakerTests::MakeMinimalBakedSprite(1024, 1024)}};
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Large.fofrm\n", {}, nullptr, false, resources);
     resources.emplace_back(string {mesh_path}, std::move(mesh));
     resources.emplace_back(string {model_path}, std::move(description));
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
@@ -349,11 +270,6 @@ TEST_CASE("ClientEngineLoadsLargeFofrmModelTextures")
     REQUIRE(texture);
     CHECK(texture->MainTex->Size.width >= 1026);
     CHECK(texture->MainTex->Size.height >= 1026);
-
-    if (animated) {
-        CHECK(model->AdvanceTextureTime(std::chrono::milliseconds {100}));
-        REQUIRE(model->GetMeshTexture(0, 0));
-    }
 #endif
 }
 
@@ -412,7 +328,7 @@ f 1 2 3
 #if (FO_ENABLE_3D)
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
-    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 4);
+    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 5);
 
     vector<pair<string, vector<uint8_t>>> malformed_resources;
 
@@ -501,10 +417,12 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }));
 
     {
+        FO_TEMPORARY_COMPAT(test_model_description_schema4, "2026-12-31");
+
         vector<uint8_t> data;
         data_writer writer {data};
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(uint16_t {4});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
         malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
     }

@@ -380,8 +380,7 @@ ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSe
         [spr_mngr]() mutable FO_DEFERRED {
             nptr<const RenderTexture> texture = spr_mngr->AcquireSceneBackground();
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
-        },
-        [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTextureAnimation(engine_metadata->Hashes.to_hashed_string(path)); })}
+        })}
 {
 }
 
@@ -493,26 +492,6 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
     }
     else if (auto& atlas_spr = it->second) {
         result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
-    }
-
-    return result;
-}
-
-auto ModelSpriteFactory::LoadTextureAnimation(hstring path) -> vector<tuple<nptr<RenderTexture>, frect32, uint32_t>>
-{
-    auto found = _loadedMeshTextureAnimations.find(path);
-
-    if (found == _loadedMeshTextureAnimations.end()) {
-        auto factory = _sprMngr->GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
-        FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
-        auto frames = factory->LoadSpriteFramesAsQuads(path, AtlasType::MeshTextures);
-        found = _loadedMeshTextureAnimations.emplace(path, std::move(frames)).first;
-    }
-
-    vector<tuple<nptr<RenderTexture>, frect32, uint32_t>> result;
-
-    for (auto& [frame, duration] : found->second) {
-        result.emplace_back(frame->GetAtlas()->GetTexture(), frame->GetAtlasRect(), duration);
     }
 
     return result;

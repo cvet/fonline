@@ -562,7 +562,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(data_reader& reader, string
     }
 
     uint32_t texture_count = reader.read<uint32_t>();
-    VerifyModelBakedCountFitsData(reader, texture_count, 2 * BAKED_STRING_MIN_SIZE + sizeof(int32_t) + sizeof(uint8_t), "texture overrides", context);
+    VerifyModelBakedCountFitsData(reader, texture_count, 2 * BAKED_STRING_MIN_SIZE + sizeof(int32_t), "texture overrides", context);
     link.Data.TextureInfo.reserve(texture_count);
 
     for (uint32_t i = 0; i < texture_count; i++) {
@@ -570,9 +570,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(data_reader& reader, string
         string mesh_name = reader.read_string();
         int32_t texture_index = reader.read<int32_t>();
         FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
-        uint8_t animated = reader.read<uint8_t>();
-        FO_VERIFY_AND_THROW(animated <= 1, "Invalid texture animation flag", context);
-        link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index, animated != 0);
+        link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
     }
 
     uint32_t effect_count = reader.read<uint32_t>();

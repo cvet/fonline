@@ -12,6 +12,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
+  FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
+  Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF
+  schema 5/runtime 0.0.76. Other model and image schemas are unchanged.
+
 - Native sprite methods use full names: `GetCurSpr` → `GetCurrentSprite`,
   `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
   `GetDirectionCount`, `GetStateAnim`/`GetActionAnim` →

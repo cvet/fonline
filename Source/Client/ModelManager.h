@@ -62,10 +62,9 @@ class ModelManager final
 
 public:
     using TextureLoader = copyable_function<pair<nptr<RenderTexture>, frect32>(string_view)>;
-    using TextureAnimationLoader = copyable_function<vector<tuple<nptr<RenderTexture>, frect32, uint32_t>>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider = {}, TextureAnimationLoader texture_animation_loader = {});
+    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider = {});
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -90,7 +89,6 @@ private:
     ptr<GameTimer> _gameTime;
     ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
-    TextureAnimationLoader _textureAnimationLoader;
     ParticleSceneBackgroundProvider _sceneBackgroundProvider;
     bool _directSceneDraw {};
     ParticleManager _particleMngr;

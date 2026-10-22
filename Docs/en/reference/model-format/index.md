@@ -20,14 +20,14 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets. |
 | Source manifest | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Contract digest | <code>32588da59909ed9f73e351a20b5870d0b872cd3c5ed5f977b4c46c2c1d8259c8</code> |
+| Contract digest | <code>4a031b18d9309997a1dec556156199b297f2a793c537c1e558f977fa448446ed</code> |
 | Source extension | <code>.fo3d</code> |
 | Mesh inputs | <code>.fbx</code>, <code>.obj</code> |
 | Runtime side | <code>client</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Tokens](tokens.md) | 32 groups / 60 spellings | Every accepted current parser token. |
+| [Tokens](tokens.md) | 32 groups / 59 spellings | Every accepted current parser token. |
 | [Assets](assets.md) | 6 | Mesh, description, texture, effect, and particle inputs. |
 | [Validation](validation.md) | 16 | Authoring, baking, runtime, and legacy rules. |
 

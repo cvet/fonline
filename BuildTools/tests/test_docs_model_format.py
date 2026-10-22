@@ -30,7 +30,7 @@ class ModelFormatDocumentationTests(unittest.TestCase):
         self.assertEqual(self.model, second)
         self.assertEqual(self.model["schema_version"], docs_model_format.SCHEMA_VERSION)
         self.assertEqual(self.model["summary"]["token_group_count"], 32)
-        self.assertEqual(self.model["summary"]["parser_token_count"], 60)
+        self.assertEqual(self.model["summary"]["parser_token_count"], 59)
         self.assertEqual(
             set(self.model["parser_tokens"]),
             {

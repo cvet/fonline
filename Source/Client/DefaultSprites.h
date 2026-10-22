@@ -161,7 +161,6 @@ public:
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
-    auto LoadSpriteFramesAsQuads(hstring path, AtlasType atlas_type) -> vector<pair<shared_ptr<AtlasSprite>, uint32_t>>;
 
 private:
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
