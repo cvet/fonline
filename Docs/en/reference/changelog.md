@@ -173,6 +173,8 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 - Add `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` and the passive `TextLayoutResult` value with `Width`, `Height` and `Lines`. Existing text measurement/drawing remains available; prepared bounds must be used with the same text, font, format and color inputs. Warm layouts do not create jobs.
 - Add bounded static-map resource preparation on the same pool. `ResourceManager` owns acquisition, factories, caches, generation/epoch cancellation, the optional decoder and shutdown drain. Workers decode owning passive buffers; the owner replays sprite/atlas publication and failures in the original order. Exact custom-factory dispatch and independent sheet playback remain intact.
 
+- Fix HEX/SQUARE row fixtures and six-to-eight Fallout direction expectations in native image tests. Runtime and formats are unchanged; no migration.
+
 ### Migration
 
 - Baseline: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); next version: `2026.1.62-dev`. The integration preserves both published histories. Apply any skipped master migration records below in order, especially the project-owned animation/resource split in version 58 and admission/restore changes in version 60.

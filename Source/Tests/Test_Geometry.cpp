@@ -678,8 +678,7 @@ TEST_CASE("GetHexScreenRow")
 
     SECTION("EqualRowMeansEqualGroundDepth")
     {
-        // Hexes related by +2X/-1Y (square geometry: +1X/-1Y) share the screen row, so their ground view depth is equal — this is
-        // the equivalence class the standing-sprite painter order has to keep together
+        // Painter order must keep hexes on one projected row at the same ground depth
         mpos base {113, 108};
         mpos shifted = GameSettings::HEXAGONAL_GEOMETRY ? mpos {115, 107} : mpos {114, 107};
 
@@ -784,3 +783,4 @@ TEST_CASE("NormalizeHexOffset")
 }
 
 FO_END_NAMESPACE
+

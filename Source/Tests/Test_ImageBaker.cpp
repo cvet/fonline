@@ -236,6 +236,24 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
+// Legacy FRM/FRX files carry six physical direction slots in either geometry
+[[maybe_unused]] constexpr int32_t FALLOUT_DIR_COUNT = 6;
+
+// Literal output-to-Fallout direction oracle; independent of the production dir_frm arithmetic
+[[maybe_unused]] [[nodiscard]] static auto FalloutSourceDir(int32_t map_dir) -> int32_t
+{
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        constexpr int32_t source_dirs[FALLOUT_DIR_COUNT] = {0, 1, 2, 3, 4, 5};
+
+        return source_dirs[map_dir];
+    }
+    else {
+        constexpr int32_t source_dirs[8] = {0, 1, 2, 2, 3, 4, 5, 5};
+
+        return source_dirs[map_dir];
+    }
+}
+
 [[maybe_unused]] [[nodiscard]] static auto MakeFrmPalette() -> vector<uint8_t>
 {
     vector<uint8_t> palette(256 * 3);
@@ -2257,7 +2275,7 @@ TEST_CASE("ImageBaker")
     {
         TestRig rig;
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir = 0; dir < FALLOUT_DIR_COUNT; dir++) {
             AddSourceBinaryFile(rig, strex("art/critters/RAT.fr{}", dir),
                 MakeFrxDir(5, numeric_cast<uint8_t>(dir),
                     {
@@ -2284,16 +2302,18 @@ TEST_CASE("ImageBaker")
         REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            int32_t source_dir = FalloutSourceDir(dir);
+
             auto sequence = ReadDirectionSequence(resource, numeric_cast<size_t>(dir));
             REQUIRE(sequence.Frames.size() == 1);
             CHECK(sequence.AnimTicks == 200);
             const auto& frame = sequence.Frames[0];
-            CHECK(frame.Offset == ipos32 {10 + dir, -20 - dir});
+            CHECK(frame.Offset == ipos32 {10 + source_dir, -20 - source_dir});
             CHECK(frame.Width == 1);
             CHECK(frame.Height == 1);
-            CHECK(frame.NextX == dir + 1);
-            CHECK(frame.NextY == -dir - 1);
-            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            CHECK(frame.NextX == source_dir + 1);
+            CHECK(frame.NextY == -source_dir - 1);
+            uint8_t color_base = numeric_cast<uint8_t>(source_dir * 3 + 1);
             CHECK(frame.Data == vector<uint8_t> {numeric_cast<uint8_t>(color_base * 4), numeric_cast<uint8_t>((color_base + 1) * 4), numeric_cast<uint8_t>((color_base + 2) * 4), 255});
         }
     }
@@ -2313,7 +2333,7 @@ TEST_CASE("ImageBaker")
         };
 
         TestRig dirs;
-        AddSourceBinaryFile(dirs, "gfx/directional.frm", MakeFrmWithDirTable(5, frames, GameSettings::MAP_DIR_COUNT));
+        AddSourceBinaryFile(dirs, "gfx/directional.frm", MakeFrmWithDirTable(5, frames, FALLOUT_DIR_COUNT));
 
         ImageBaker dirs_baker {dirs.MakeContext()};
         dirs_baker.BakeFiles(dirs.GetAllSourceFiles(), "gfx/directional.frm");
@@ -2324,11 +2344,13 @@ TEST_CASE("ImageBaker")
         REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            int32_t source_dir = FalloutSourceDir(dir);
+
             auto sequence = ReadDirectionSequence(resource, numeric_cast<size_t>(dir));
             REQUIRE(sequence.Frames.size() == 1);
             CHECK(sequence.AnimTicks == 200);
             const auto& frame = sequence.Frames[0];
-            CHECK(frame.Offset == (dir == 0 ? ipos32 {1, -1} : ipos32 {10 + dir, -10 - dir}));
+            CHECK(frame.Offset == (source_dir == 0 ? ipos32 {1, -1} : ipos32 {10 + source_dir, -10 - source_dir}));
             CHECK(frame.Width == 1);
             CHECK(frame.Height == 1);
             CHECK(frame.NextX == 2);
