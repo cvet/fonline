@@ -610,6 +610,35 @@ static void CheckModelParticleDraws(const vector<ParticleCpuTests::CapturedDraw>
 }
 #endif
 
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
+static void AdvanceBoundedParticleFrame(GameTimer& timer)
+{
+    timer.FrameAdvance(true);
+}
+
+TEST_CASE("Particle fixture frame time is bounded after a wall-clock gap", "[particle][particle-cpu-frame-clock]")
+{
+    auto settings = ClientEngineTests::MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 16);
+    GameTimer timer {&settings};
+    nanotime previous_frame_time = timer.GetFrameTime();
+    nanotime wall_start = nanotime::now();
+
+    coarse_sleep(std::chrono::milliseconds {25});
+    nanotime wall_end = nanotime::now();
+    CHECK(wall_end - wall_start >= std::chrono::milliseconds {20});
+
+    AdvanceBoundedParticleFrame(timer);
+    timespan frame_delta = timer.GetFrameDeltaTime();
+    CHECK(timer.GetFrameTime() > previous_frame_time);
+
+    // The cap preserves the raw sub-millisecond remainder, so the exact bucket is [16, 17) ms
+    CHECK(frame_delta >= std::chrono::milliseconds {16});
+    CHECK(frame_delta < std::chrono::milliseconds {17});
+    CHECK(frame_delta.to_ms<int64_t>() == 16);
+}
+#endif
+
 #if FO_ENABLE_3D && (FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES)
 TEST_CASE("Model particles preserve geometry across direct and worker owners", "[particle][particle-cpu-model]")
 {
@@ -626,6 +655,7 @@ TEST_CASE("Model particles preserve geometry across direct and worker owners", "
         BakerTests::OverrideSetting(settings.Client.Multithreading, true);
         BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, 2);
         BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, 0);
+        BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 16);
         auto resources = ParticleCpuTests::MakeResources(extension);
 #if FO_EFFEKSEER_PARTICLES
         if (extension == "efk") {
@@ -687,7 +717,7 @@ TEST_CASE("Model particles preserve geometry across direct and worker owners", "
         // The SPARK fixture uses fixed life, point burst, fixed tank and zero force, so constructor fraction is irrelevant
         for (size_t frame = 0; frame < 8; frame++) {
             CAPTURE(frame);
-            client->GameTime.FrameAdvance(false);
+            AdvanceBoundedParticleFrame(client->GameTime);
             vector<ParticleCpuTests::CapturedDraw> reference;
             vector<ModelAttachPoint> reference_points;
 
@@ -1298,6 +1328,7 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
 {
     auto settings = ClientEngineTests::MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.Animation3dFPS, 1000);
+    BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 16);
     GameTimer timer {&settings};
     WorkScheduler zero {"ParticleDynamicsZero", 0};
     WorkScheduler parallel {"ParticleDynamics", 2};
@@ -1354,7 +1385,7 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
             CAPTURE(frame);
 
             if (frame % 3 != 2) {
-                timer.FrameAdvance(false);
+                AdvanceBoundedParticleFrame(timer);
             }
 
             float32_t before = particles[0][0]->GetParticle()->GetElapsedTime();
@@ -1449,6 +1480,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
     constexpr size_t barrier = 4;
     auto settings = ClientEngineTests::MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.Animation3dFPS, 0);
+    BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 16);
     GameTimer timer(&settings);
     WorkScheduler zero("ParticleOrderZero", 0);
     WorkScheduler parallel("ParticleOrderParallel", 2);
@@ -1567,7 +1599,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
     uint64_t worker_calls = 0;
 
     for (size_t frame = 0; frame < 8; frame++) {
-        timer.FrameAdvance(false);
+        AdvanceBoundedParticleFrame(timer);
         vector<vector<ParticleCpuTests::CapturedDraw>> reference;
 
         for (size_t mode = 0; mode < rigs.size(); mode++) {
