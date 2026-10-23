@@ -221,9 +221,24 @@ Do not queue managed thread-pool work in the browser. This Mono runtime routes i
 
 ### Persistent data
 
-The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays normal startup until initial browser-to-virtual-filesystem hydration completes. The callback currently marks readiness even when `err` is non-null. The audited generic path does not prove automatic write-back after every later modification.
+Every Web application links `BuildTools/web/persistent-data.js` through
+`SetupApplicationTarget`. Before `main`, its browser `preRun` hook mounts
+`/PersistentData` with IDBFS and `autoPersist: true`. A run dependency blocks
+startup until `FS.syncfs(true)` finishes, so local settings are present before
+`LoadAppSettings` reads them. The hook preserves shell callbacks and supplies
+`--Common.UserWritablePath /PersistentData` only when no writable-root argument
+was supplied. The working directory stays `/`; packaged resources keep their
+existing paths. Explicit roots outside the mount require project-owned storage.
+Node-based wasm tests retain their existing filesystem and arguments.
 
-Therefore do not promise durable saves merely because IDBFS mounted. The project must define what data belongs there, when writes are flushed, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped.
+The later `WebRelated::InitializePersistentData` call recognizes the initialized
+mount instead of mounting twice. Its fallback remains for nonstandard integrations.
+Modified files schedule asynchronous write-back at close; node creation and
+directory changes also use Emscripten's IDBFS queue. Changes queued during an active
+synchronization schedule another pass. The initial hydration callback retains the existing continue-on-error
+policy, now with a diagnostic in the linked bootstrap.
+
+Automatic write-back is not a synchronous durability acknowledgement. Closing the page before the queued operation completes can still lose the latest changes. The project must define what data belongs there, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped. See the [Emscripten IDBFS contract](https://emscripten.org/docs/api_reference/Filesystem-API.html#idbfs).
 
 ### Logs and fatal errors
 

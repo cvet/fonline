@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"9132daf79b11a6563a513297e0c0de74e1126872fad9c8450b4b591343c9326b"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"4b086b7d9b26b5b8809af6a8f5b6a24c81f57d3e5fb0f27e9e508a5dbcaa969f"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -221,9 +221,25 @@ summary; native-thread case отсутствует в single-threaded browser.
 
 ### Persistent data
 
-Runtime создаёт `/PersistentData`, монтирует IDBFS, вызывает `FS.syncfs(true)` и задерживает обычный startup до завершения начальной загрузки из браузера в virtual filesystem. Сейчас callback отмечает готовность даже при ненулевом `err`. Проверенный generic path не доказывает автоматическую обратную синхронизацию после каждого последующего изменения.
+Каждое Web-приложение включает `BuildTools/web/persistent-data.js` через
+`SetupApplicationTarget`. Его браузерный hook `preRun` до `main` монтирует
+`/PersistentData` как IDBFS с `autoPersist: true`. Run dependency блокирует startup
+до завершения `FS.syncfs(true)`, поэтому локальные настройки доступны до чтения
+в `LoadAppSettings`. Hook сохраняет callbacks оболочки и добавляет
+`--Common.UserWritablePath /PersistentData`, только если аргумент writable root
+не задан. Working directory остаётся `/`, пути ресурсов пакета сохраняются.
+Для явных roots вне mount требуется хранилище проекта. Node-based wasm tests
+сохраняют прежние filesystem и arguments.
 
-Поэтому не обещайте durable saves только на основании mount IDBFS. Проект должен определить, какие данные там находятся, когда выполняется flush записей, поведение quota/eviction, private/incognito mode, schema/version migration, recovery после corruption, удаление пользовательских данных и multi-tab conflict policy. Проверяйте cold reload и browser restart на точном production origin; storage привязан к origin.
+Поздний вызов `WebRelated::InitializePersistentData` распознаёт готовый mount
+и не монтирует его повторно. Fallback сохраняется для нестандартных интеграций.
+Изменённые файлы назначают асинхронную обратную синхронизацию при закрытии;
+создание узлов и изменения каталогов также используют очередь IDBFS Emscripten.
+Изменения, поставленные в очередь во время активной синхронизации, назначают
+ещё один проход. Callback начальной загрузки сохраняет
+прежнюю политику продолжения при ошибке, теперь с диагностикой в linked bootstrap.
+
+Автоматическая обратная синхронизация не является синхронным подтверждением надёжной записи. Закрытие страницы до завершения поставленной в очередь операции всё ещё может потерять последние изменения. Проект должен определить, какие данные там находятся, поведение quota/eviction, private/incognito mode, schema/version migration, recovery после corruption, удаление пользовательских данных и multi-tab conflict policy. Проверяйте cold reload и browser restart на точном production origin; storage привязан к origin. См. [контракт IDBFS Emscripten](https://emscripten.org/docs/api_reference/Filesystem-API.html#idbfs).
 
 ### Логи и fatal errors
 

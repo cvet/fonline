@@ -158,6 +158,10 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `platform::get_user_data_base()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
 
+Linked Web browser bootstrap задаёт CLI root `/PersistentData` по умолчанию
+и загружает IDBFS до `main`; явные roots имеют приоритет. См.
+[Web persistence](../../how-to/platforms/web-debugging.md#persistent-data).
+
 Любое непустое `Common.UserWritablePath` в основном config, sub-config,
 local-config cache или упакованном internal config вызывает `SettingsException`
 с сообщением `Writable root is resolved before settings`, в том числе при baking.

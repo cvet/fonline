@@ -632,6 +632,12 @@ macro(SetupApplicationTarget target)
 	AppendList(FO_APPLICATIONS_GROUP "${target}")
 	SetTargetProperty(${target} FOLDER "Applications")
 
+	if(FO_WEB)
+		set(_fo_persistent_data_js "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/web/persistent-data.js")
+		TargetLinkOptions(${target} PRIVATE "--pre-js=${_fo_persistent_data_js}")
+		set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${_fo_persistent_data_js}")
+	endif()
+
 	if(APP_TARGET_DEPENDS)
 		AddDependencies(${target} ${APP_TARGET_DEPENDS})
 	endif()
