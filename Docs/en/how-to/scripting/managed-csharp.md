@@ -153,6 +153,9 @@ Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pump
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
+`ScriptTask.Delay(timespan)` retains nanoseconds; `Delay(int)` adapts milliseconds.
+Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
+
 `ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel`, and manually dispatched ThreadPool work deliberately bypass the Engine synchronization context. They may perform isolated computation, but they must not call Engine APIs. The entry assembly's backend binding can still identify an Engine from such a thread, so this misuse is not guaranteed to fail at every native call; only synchronization-sensitive routes such as server entity access reliably reject it. Embedding projects should ban these escape APIs statically and return to the captured Engine context before touching Engine state.
 
 ## Server entity synchronization

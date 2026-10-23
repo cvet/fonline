@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"c6230fbb7a36eaa61f4a63c897ae0470bce7c9107841ec6cefd466039e3c889f"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"a9a690564dcc1792caa2f7732aabbab9ee0bfcb0d6342dcfe8ef48dfbc883674"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -371,6 +371,9 @@ standard stream копируется через `make_stream_string`,
 `DataSerialization.*` содержит binary read/write helpers, используемые сетью, persistence, ресурсами и тестами. `DataReader::Read<T>()` и `DataWriter::Write<T>()` копируют standard-layout values через byte copies, поэтому serialized streams не зависят от выравнивания buffer. Zero-copy overload `ReadPtr<T>(size)` предназначен только для raw byte/string views (`uint8_t`, `char` или `void`); типизированные значения, которым нужно alignment, должны использовать `Read<T>()` или `ReadPtr(destination, size)`.
 
 `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` предоставляют небольшие переиспользуемые значения, которые вышележащие слои считают примитивами. `iround` отвергает non-finite и выходящие за диапазон int64 floating-point values до округления, чтобы ни одно значение с неопределённым для `std::llround` поведением не достигло функции. `HashStorage::SetResolveHashFailureHandler` позволяет вышележащему слою наблюдать неудачное разрешение hash как в throwing, так и во flagged no-throw lookup path, не обучая Essentials конкретной recovery policy.
+
+`timespan::to_ms/to_sec` сохраняют дробь для floating T; целые усекают к нулю.
+Для отношений — `div<T>`. Числовым единицам файлов/конфигов/сети нужны явные адаптеры.
 
 ### Файловая система, сжатие, сокеты и рабочие потоки
 

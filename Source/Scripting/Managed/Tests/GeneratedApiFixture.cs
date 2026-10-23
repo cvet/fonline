@@ -47,6 +47,14 @@ public class Critter
 public static partial class Game
 {
     public static void Log(string text) => Native.Log(text);
+    internal static timespan LastTimerDuration;
+    internal static System.Action? LastTimerCallback;
+
+    public static void StartTimeEvent(timespan duration, System.Action callback)
+    {
+        LastTimerDuration = duration;
+        LastTimerCallback = callback;
+    }
 }
 
 public enum CritterProperty
