@@ -10,6 +10,10 @@ The canonical reference moved to locale-specific paths.
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).
 
+## Resource loading failures
+
+Failed archive and cached-directory reads propagate source-specific errors; an absent optional resource remains a separate outcome. Continue with the [canonical failure contract](en/reference/settings/configuration-and-data-sources.md#resource-loading-failures).
+
 ## Source paths inspected
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md).

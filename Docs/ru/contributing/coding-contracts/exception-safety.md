@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"839ccd6fecbd5c86e8dee61751eb7c39df133316da617e97f08752f7bd57251e"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"482494301c5ea30f63b6b65e0812b22768a8e8c6ec2e2ca57426d08e2ae60872"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -237,6 +237,8 @@ catch (...) {
    inventory, inner items/entities, visibility и maps живут до деструктора.
 3. Методы destroy/transfer cascade должны принимать `IsDestroying`, потому
    что transfer является частью уничтожения.
+   Отсоединение рассылает состояние только живых концов;
+   `SendAndBroadcast_Attachments` сохраняет `LOCKED, NOT_DESTROYED, NOT_DESTROYING`.
 4. Post-event re-validation, которая сначала делает
    `if (IsDestroyed()) return`, принимает только `LOCKED`; ранний выход и есть
    контракт для retained, но уже уничтоженного объекта.
@@ -347,10 +349,13 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 7. Тесты
 
-Контракты закреплены `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
-`Source/Tests/Test_AngelScriptServerMapOperations.cpp`. При изменении lifecycle или
-инвариантов запускайте сгенерированную цель unit-тестов проекта-встраивателя и
-расширяйте эти suites, не ослабляя assertions.
+Независимые от backend инварианты lifecycle и retained owners закреплены
+`Source/Tests/Test_EntityLifecycle.cpp`, `Source/Tests/Test_ServerEntityLifetime.cpp` и
+`Source/Tests/Test_ServerMapOperations.cpp`. События init/finish, реестры и матрицу
+уничтожения/перемещения critter при входе/выходе/init карты для AngelScript
+проверяют отдельно `Source/Tests/Test_AngelScriptEntityLifecycle.cpp` и
+`Source/Tests/Test_AngelScriptServerMapOperations.cpp`. Расширяйте соответствующие suites
+и запускайте native unit-цель проекта-встраивателя; assertions остаются строгими.
 
 ## 8. Классификация безопасности исключений по функциям (уровни ES)
 

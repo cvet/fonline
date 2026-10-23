@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"555c884574366437d5fe8eb51e72f60bff853eb9a7dd0e5adc54096350615bcd"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"3b33f701ea289ffd373075c28d0dfd2fd95f63b970c17c6a118f45098bf7aa84"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -349,6 +349,8 @@ buffers до передачи shader files конкретному backend.
 `ModelSprite::IsHitTest` читает готовую CPU `vector<bool>` альфа-маску и запрашивает обновление, если проверяемая точка находится внутри границ спрайта; он не запускает и не забирает GPU readback. Обновления спрайта подготавливают первую маску без запроса выбора. Последующие копии требуют и устаревшего изображения (`DrawToAtlas`), и запроса обновления; они запускаются не чаще раза в 100 мс для каждого спрайта. Поэтому проверки при наведении обновляют анимированный силуэт без копирования каждый кадр; одна анимация не запрашивает копии непрерывно. Render update каждый кадр опрашивает единственный незавершённый readback независимо от интервала, сохраняя последнюю готовую маску до получения новых пикселей. **До готовности первой маски hit testing возвращает false.** Силуэт может отставать от rendered pose на интервал обновления плюс задержку readback без гарантированного срока завершения. Встраивающая игра также должна ограничить срок кэша сущности под курсором, чтобы неподвижный указатель увидел новую маску. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит маску из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
 
 `ModelSpriteHitMask` владеет незавершённым запросом, потребностью и сроком обновления и готовой альфа-маской. Если запрос или получение пикселей бросает исключение, он освобождает запрос, помечает маску устаревшей, восстанавливает потребность обновления и передаёт ошибку вызывающему коду; последующие render updates повторяют чтение с учётом интервала копирования. Перерисовка и запрос обновления во время незавершённого чтения сохраняются после его завершения. `ModelSpriteHitMaskRetriesFailedReadback` проверяет первую маску и обновление уже готовой; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` закрепляет порядок перерисовок. `ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels` с детерминированным временем проверяет границу 99/100 мс, немедленный опрос готовности и отсутствие повторных копий без запроса. `ModelSpritePreparesItsHitMaskDuringRenderUpdate` проверяет начальную подготовку и выбор без чтения GPU с Null renderer; отрисованный backend отдельно проверяется первыми кликами с предварительным наведением и без него.
+
+Тесты readback и маски модели не зависят от scripting backend. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` в `Source/Tests/Test_ClientEngine.cpp` требует `FO_ENABLE_3D`, а не `FO_ANGELSCRIPT_SCRIPTING`; отдельные клиентские тесты AngelScript находятся в `Source/Tests/Test_AngelScriptClientEngine.cpp`. Выбор scripting backend не должен убирать проверку нативного рендеринга.
 
 ### Геометрия atlas спрайтов и моделей
 

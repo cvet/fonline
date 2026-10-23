@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"f98b7c292ab25521f611431cb2399028df3f993f35ef80c9501242a23c52f43f"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0fae49eb15a310cd3d0e11a36c127bc10b59d6f811c3466c6c020b44aa1dbe04"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -225,7 +225,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 | Исходники проекта | проектные модули `.fos` | проектные модули `.cs` |
 | Результат компиляции | запечённый bytecode AngelScript | target assemblies и generated `.gen.cs`, `.gen.csproj`, `.gen.sln` |
 | Инициализация | `[[ModuleInit]] void` | static `void` или `Task` с `[ModuleInit]` |
-| Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `Game.YieldAsync` в synchronization context backend |
+| Приостановка | транзитивный `[[Async]]` и `Game.Yield` | `Task`, `await` и `ScriptTask.Delay` в synchronization context backend |
 | Доказательство синхронизации | runtime cover operations и validation атрибутов AngelScript | `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, `CoverReach`, runtime checks и Roslyn-диагностики `FOSYNC` |
 | Владение runtime | движок AngelScript, модули, contexts и GC | один Mono runtime процесса плюс load contexts backend, scheduler queues, handles и managed GC roots |
 | Native interop | зарегистрированные AngelScript calls и contexts VM | единый generated indexed ABI для scalar/value hot paths и boxed fallback для complex values |

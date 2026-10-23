@@ -58,4 +58,3 @@ def section_matches(root: Path, pointer: str, value: dict[str, object]) -> bool:
         return read_section(root, pointer) == value
     except (OSError, ValueError):
         return False
-

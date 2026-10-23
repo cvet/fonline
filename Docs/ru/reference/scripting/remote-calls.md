@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 ---
 
 # Удалённые вызовы
-<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab"} -->
+<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"b7fa1d193fcbe3d86f603ea13899fb2489a10272b689d4781b65306f681874fa"} -->
 > Документация движка. Эта страница определяет переиспользуемый контракт удалённых вызовов FOnline. Каждый подключающий проект владеет конкретными вызовами, правилами авторизации, сгенерированным каталогом вызовов и политикой совместимости.
 
 ## Назначение
@@ -168,7 +168,7 @@ public static class AccountUi
     public static async Task RequestRename(Player player, string name)
     {
         // Authorize, validate, and reacquire cover after every await.
-        await Game.YieldAsync(1);
+        await ScriptTask.Delay(1);
     }
 
     [ClientRemoteCall]

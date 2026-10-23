@@ -29,11 +29,10 @@ in versioned docs; sanitize evidence.
 
 ## History, compatibility and documentation
 
-- **Rebase unpublished commits, preserve published history.** Fetch `origin/master`
-  before an authorized update, then rebase only unpublished local work. A branch's
-  upstream or earlier pushes do not make its newer commits published. Merge only
-  diverged published histories. No reset/amend/rebase of pushed commits, force-push
-  or remote branch deletion. Before an authorized push, verify
+- **Preserve the whole history of a branch with a remote tip.** Fetch `origin/master`
+  before an authorized update, then integrate incoming changes with an ordinary
+  merge. Never rebase, reset or amend that branch, including its unpublished
+  commits. No force-push or remote branch deletion. Before an authorized push, verify
   `git merge-base --is-ancestor <destination-remote-tip> HEAD`.
 - Revision updates follow [reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation):
   old/new SHAs, complete incoming range, owners/models and validation before dropping
@@ -197,6 +196,11 @@ Use [generated-content ordering](Docs/en/how-to/build/generated-content.md).
 Generated site/AI-delivery indexes and reports are ignored outputs, not authored
 instructions or files to stage. Never hand-edit generated public contract models,
 reference pages or delivery output in place of their owner/generator.
+
+Focused tool and script routes: [AngelScript style](Docs/en/how-to/scripting/style-and-refactoring.md),
+[Mapper interactive manual](Docs/en/how-to/tools/mapper-interactive.md),
+[Mapper automation](Docs/en/how-to/tools/mapper.md), and
+[animation and particle viewers](Docs/en/how-to/tools/animation-particle-viewers.md).
 
 Track owned processes and output directories. Do not overlap writers/consumers of
 one bake; wait for other tasks rather than killing by image name or deleting lock

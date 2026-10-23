@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"76a2f6b5f819a67ab3cdd4c73a8d761f31a9288c9326af591854136700c0826f"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"f190a5f3cc459fd08e1eb75f06a77659957fd85b2973bbda2ce9702f626674c2"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -178,7 +178,7 @@ Backend без байтового представления бросает `Dat
 
 JSON-файлы содержат обычные UTF-8 objects, BLOB записи SQLite — CBOR objects. Сохраняются знаковый Int64 (пределы и числа выше 2^53), конечный Float64, Bool, String, Array, Dict, включая NUL строк/ключей. Null/binary, unsigned overflow, другой корень, испорченный/усечённый вход и байты после CBOR отвергаются. Пределы: 64 МиБ на запись, 64 уровня вложенности. SAX проверяет типы/глубину/объявленные размеры до выделения DOM; валидация предшествует записи.
 
-Используйте пустые JSON/SQLite: для старых EJSON/BSON нет reader/converter. Сохраните старые binaries/storage для отката. Семантика Mongo BSON/Memory и SQLite tables/keys/WAL/snapshots сохраняется; снимкам нужны текущие согласованные metadata/binaries. [Компоненты](../../how-to/build/project-configuration.md#optional-native-components) задают выбор провайдера, [backup/recovery](../../how-to/release/backup-and-recovery.md) — согласованные комплекты. Guarded `Test_DataBase.cpp` проверяет codecs, reopen/update/delete и recovery.
+Используйте новые пустые JSON/SQLite. Для старых Extended JSON/BSON BLOB нет reader, преобразования и fallback; для отката храните старые binaries/storage вместе. Mongo BSON и Memory сохраняются. SQLite сохраняет таблицы/ключи, WAL, snapshot/restore; Engine snapshots требуют текущих согласованных metadata/binaries. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) описывает defaults, роли/зависимости, ошибки выключенных провайдеров; [backup/recovery](../../how-to/release/backup-and-recovery.md) — согласованные комплекты/изолированный restore. Fixtures `Test_DataBase.cpp` под guards проверяют типы, integer/NUL/depth/corruption, reopen/update/delete, snapshots и recovery/oplog.
 
 ## Связь с состоянием сущности
 
