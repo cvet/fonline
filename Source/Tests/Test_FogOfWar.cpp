@@ -70,9 +70,19 @@ TEST_CASE("FogOfWar")
         auto input = MakeInput({10, 10}, nanotime {});
         fog.Prepare(input);
 
+#if FO_GEOMETRY == 1
+        // Hex radius 1: 7 edge vertices interleaved with 3 centers
         CHECK(fog.GetPoints().size() == 10);
-        // Geometry is the honest hexagon (the oval is shaped in the flush shader, not here)
-        CHECK(fog.GetPoints().front().PointPos.x == 21);
+        // First edge is NorthEast 9:10; offset (16,-12) plus the fixture half-cell center (5,4)
+        CHECK(fog.GetPoints().front().PointPos == ipos32 {21, -8});
+#else
+        // Square radius 1: 9 edge vertices interleaved with 4 centers
+        CHECK(fog.GetPoints().size() == 13);
+        // First edge is North 9:9; offset (0,-16) plus the fixture half-cell center (5,4)
+        CHECK(fog.GetPoints().front().PointPos == ipos32 {5, -12});
+#endif
+
+        // The oval is shaped in the flush shader, not here; the edge itself stays fully transparent
         CHECK(fog.GetPoints().front().PointColor.comp.a == 0);
     }
 
@@ -88,7 +98,12 @@ TEST_CASE("FogOfWar")
         input.CenterColor = ucolor {0, 0, 0, 255};
         fog.Prepare(input);
 
+#if FO_GEOMETRY == 1
         CHECK(fog.GetPoints().size() == 10);
+#else
+        CHECK(fog.GetPoints().size() == 13);
+#endif
+
         CHECK(fog.GetPoints().front().PointColor.comp.a == 255);
     }
 
@@ -103,7 +118,12 @@ TEST_CASE("FogOfWar")
         input.OverlayColor = ucolor {96, 224, 96, 255};
         fog.Prepare(input);
 
+#if FO_GEOMETRY == 1
         CHECK(fog.GetPoints().size() == 10);
+#else
+        CHECK(fog.GetPoints().size() == 13);
+#endif
+
         // Shared radial falloff: an edge one hex out (max_overlay_dist = min(1, 3) + 1 = 2, unblocked
         // result = 1) tints to overlay * (2 - 1) * 255 / 2 / 255 = overlay * 127 / 255
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 47);
@@ -128,7 +148,12 @@ TEST_CASE("FogOfWar")
         input.OverlayColor = ucolor {255, 96, 176, 255};
         fog.Prepare(input);
 
+#if FO_GEOMETRY == 1
         CHECK(fog.GetPoints().size() == 10);
+#else
+        CHECK(fog.GetPoints().size() == 13);
+#endif
+
         // Edge one hex out tints to overlay * 127 / 255 along the shared falloff (see above)
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 127);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.g) == 47);
@@ -158,24 +183,23 @@ TEST_CASE("FogOfWar")
 
         auto input = MakeInput({10, 10}, nanotime {});
         fog.Prepare(input);
-        int32_t initial_x = fog.GetPoints().front().PointPos.x;
+        ipos32 initial_pos = fog.GetPoints().front().PointPos;
 
         fog.RequestRebuild();
         input = MakeInput({20, 10}, nanotime {timespan {std::chrono::milliseconds {0}}}, 200);
         fog.Prepare(input);
 
-        CHECK(fog.GetPoints().front().PointPos.x == initial_x);
+        CHECK(fog.GetPoints().front().PointPos == initial_pos);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {100}}};
         fog.Prepare(input);
-        int32_t mid_x = fog.GetPoints().front().PointPos.x;
 
-        CHECK(mid_x == initial_x);
+        CHECK(fog.GetPoints().front().PointPos == initial_pos);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
         fog.Prepare(input);
 
-        CHECK(fog.GetPoints().front().PointPos.x == initial_x);
+        CHECK(fog.GetPoints().front().PointPos == initial_pos);
     }
 
     SECTION("Collapses to origin when disabled")
@@ -188,9 +212,11 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        int32_t edge_x = fog.GetPoints().front().PointPos.x;
-        int32_t center_x = fog.GetPoints()[2].PointPos.x;
-        CHECK(edge_x != center_x);
+
+        ipos32 edge_pos = fog.GetPoints().front().PointPos;
+        ipos32 center_pos = fog.GetPoints()[2].PointPos;
+
+        CHECK(edge_pos != center_pos);
 
         input.Enabled = false;
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
@@ -200,8 +226,12 @@ TEST_CASE("FogOfWar")
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {300}}};
         fog.Prepare(input);
         CHECK(!fog.GetPoints().empty());
-        int32_t mid_x = fog.GetPoints().front().PointPos.x;
-        CHECK(mid_x != edge_x);
+
+        // Halfway through the transition, the full point must differ from both endpoints
+        ipos32 mid_pos = fog.GetPoints().front().PointPos;
+
+        CHECK(mid_pos != edge_pos);
+        CHECK(mid_pos != center_pos);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {400}}};
         fog.Prepare(input);
@@ -216,7 +246,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
         fog.Prepare(input);
-        int32_t final_edge_x = fog.GetPoints().front().PointPos.x;
+        ipos32 final_edge_pos = fog.GetPoints().front().PointPos;
 
         input.Enabled = false;
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
@@ -229,12 +259,15 @@ TEST_CASE("FogOfWar")
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {400}}};
         fog.Prepare(input);
         CHECK(!fog.GetPoints().empty());
-        int32_t center_x = fog.GetPoints()[2].PointPos.x;
-        CHECK(fog.GetPoints().front().PointPos.x == center_x);
+
+        // Growing fan starts collapsed at the center before it recovers the edge
+        ipos32 center_pos = fog.GetPoints()[2].PointPos;
+
+        CHECK(fog.GetPoints().front().PointPos == center_pos);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {600}}};
         fog.Prepare(input);
-        CHECK(fog.GetPoints().front().PointPos.x == final_edge_x);
+        CHECK(fog.GetPoints().front().PointPos == final_edge_pos);
     }
 
     SECTION("Interpolates center point attributes during transition")
@@ -270,12 +303,15 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        int32_t center_x = fog.GetPoints()[2].PointPos.x;
-        CHECK(fog.GetPoints().front().PointPos.x == center_x);
+
+        // First appearance starts exactly at the center
+        ipos32 center_pos = fog.GetPoints()[2].PointPos;
+
+        CHECK(fog.GetPoints().front().PointPos == center_pos);
 
         input.FrameTime = nanotime {timespan {std::chrono::milliseconds {200}}};
         fog.Prepare(input);
-        CHECK(fog.GetPoints().front().PointPos.x != center_x);
+        CHECK(fog.GetPoints().front().PointPos != center_pos);
     }
 
     SECTION("Blocked shoot edge points use base draw offset")
