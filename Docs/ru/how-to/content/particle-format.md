@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"a1db59f5844aea5b2e9c0771143ebe2a7a90839c6d4de075002413e543d2b2dd"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"381e7f23c5e3c23b97558a5763aedbe8424443a77c2a41167dc9f787cf0b5a36"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -254,6 +254,16 @@ refresh. Отложенный rebase остаётся ожидающим на с
 Одинаковый seed детерминирован только с тем же ресурсом, ревизией backend, setup
 и последовательностью обновлений. Не используйте seeded replay как межверсионное
 обещание визуальной совместимости.
+
+Авторские SRT transforms могут схлопывать отдельные оси масштаба до нуля.
+Локальный патч `Mat43f` Effekseer дополняет их базис вращения без деления на ноль:
+сохранившиеся оси удерживают направление с учётом знака, одна отсутствующая ось
+получается векторным произведением, а единственная сохранившаяся дополняется
+детерминированными перпендикулярными осями. Полностью нулевой базис даёт identity.
+Утраченная ориентация не определена однозначно; дополнение каноническое.
+Для несхлопнувшегося базиса сохранён upstream-путь разложения. Это предотвращает
+невалидные наследуемые Track transforms при анимации нулевого масштаба.
+Non-finite callback geometry по-прежнему отклоняется runtime-проверкой.
 
 Самостоятельные спрайты частиц Effekseer используют direct-scene rendering.
 Спрайты SPARK могут использовать атласный или direct-scene route. Частицы на

@@ -48,6 +48,10 @@
 #include "Test_ParticleFixtures.h"
 #include "VisualParticles.h"
 
+#if FO_EFFEKSEER_PARTICLES
+#include "Effekseer/SIMD/Mat43f.h"
+#endif
+
 FO_BEGIN_NAMESPACE
 
 #if FO_EFFEKSEER_PARTICLES
@@ -2758,6 +2762,293 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
             REQUIRE(control_draws.empty());
             CHECK(queried_draws.empty());
         }
+    }
+}
+
+TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical frames", "[particle][effekseer-runtime][effekseer-singular-transform]")
+{
+    const array<vec3, 8> scales {
+        vec3 {0.0f, 2.0f, 3.0f}, vec3 {1.0f, 0.0f, 3.0f},
+        vec3 {1.0f, 2.0f, 0.0f}, vec3 {0.0f, 0.0f, 3.0f},
+        vec3 {0.0f, 2.0f, 0.0f}, vec3 {1.0f, 0.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 0.0f}, vec3 {1.0f, 2.0f, 3.0f},
+    };
+    const array<float32_t, 12> identity {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+    };
+
+    const auto check_identity = [&](const Effekseer::SIMD::Mat43f& rotation) {
+        const array<float32_t, 12> values {
+            rotation.X.GetX(), rotation.X.GetY(), rotation.X.GetZ(), rotation.X.GetW(),
+            rotation.Y.GetX(), rotation.Y.GetY(), rotation.Y.GetZ(), rotation.Y.GetW(),
+            rotation.Z.GetX(), rotation.Z.GetY(), rotation.Z.GetZ(), rotation.Z.GetW(),
+        };
+
+        for (size_t index = 0; index < values.size(); index++) {
+            CHECK(std::isfinite(values[index]));
+            CHECK(values[index] == Catch::Approx(identity[index]).margin(StripWidthTolerance));
+        }
+    };
+
+    for (const vec3& scale : scales) {
+        CAPTURE(scale.x, scale.y, scale.z);
+
+        const Effekseer::SIMD::Mat43f matrix {
+            scale.x, 0.0f, 0.0f,
+            0.0f, scale.y, 0.0f,
+            0.0f, 0.0f, scale.z,
+            3.0f, 4.0f, 5.0f,
+        };
+        Effekseer::SIMD::Vec3f extracted_scale;
+        Effekseer::SIMD::Mat43f rotation;
+        Effekseer::SIMD::Vec3f translation;
+        matrix.GetSRT(extracted_scale, rotation, translation);
+
+        CHECK(extracted_scale.GetX() == Catch::Approx(scale.x).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetY() == Catch::Approx(scale.y).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetZ() == Catch::Approx(scale.z).margin(StripWidthTolerance));
+        CHECK(translation.GetX() == Catch::Approx(3.0f));
+        CHECK(translation.GetY() == Catch::Approx(4.0f));
+        CHECK(translation.GetZ() == Catch::Approx(5.0f));
+
+        check_identity(rotation);
+        check_identity(matrix.GetRotation());
+    }
+}
+
+TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes", "[particle][effekseer-runtime][effekseer-singular-transform]")
+{
+    const array<vec3, 12> scales {
+        vec3 {0.0f, 2.0f, 3.0f}, vec3 {1.0f, 0.0f, 3.0f},
+        vec3 {1.0f, 2.0f, 0.0f}, vec3 {0.0f, 0.0f, 3.0f},
+        vec3 {0.0f, 2.0f, 0.0f}, vec3 {1.0f, 0.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 0.0f}, vec3 {1.0f, 2.0f, 3.0f},
+        vec3 {-1.0f, 2.0f, 3.0f}, vec3 {1.0f, -2.0f, 3.0f},
+        vec3 {0.0f, -2.0f, 3.0f}, vec3 {-1.0f, 0.0f, 0.0f},
+    };
+
+    for (const vec3& scale : scales) {
+        CAPTURE(scale.x, scale.y, scale.z);
+
+        const Effekseer::SIMD::Mat43f matrix {
+            0.0f, scale.x, 0.0f,
+            -scale.y, 0.0f, 0.0f,
+            0.0f, 0.0f, scale.z,
+            3.0f, 4.0f, 5.0f,
+        };
+        Effekseer::SIMD::Vec3f extracted_scale;
+        Effekseer::SIMD::Mat43f rotation;
+        Effekseer::SIMD::Vec3f translation;
+        matrix.GetSRT(extracted_scale, rotation, translation);
+
+        CHECK(extracted_scale.GetX() == Catch::Approx(std::abs(scale.x)).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetY() == Catch::Approx(std::abs(scale.y)).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetZ() == Catch::Approx(std::abs(scale.z)).margin(StripWidthTolerance));
+
+        const auto check_rotation = [](const Effekseer::SIMD::Mat43f& value) {
+            const array<vec3, 3> axes {
+                vec3 {value.X.GetX(), value.Y.GetX(), value.Z.GetX()},
+                vec3 {value.X.GetY(), value.Y.GetY(), value.Z.GetY()},
+                vec3 {value.X.GetZ(), value.Y.GetZ(), value.Z.GetZ()},
+            };
+
+            for (const vec3& axis : axes) {
+                CHECK(std::isfinite(axis.x));
+                CHECK(std::isfinite(axis.y));
+                CHECK(std::isfinite(axis.z));
+                CHECK(glm::dot(axis, axis) == Catch::Approx(1.0f).margin(StripWidthTolerance));
+            }
+
+            CHECK(glm::dot(axes[0], axes[1]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+            CHECK(glm::dot(axes[0], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+            CHECK(glm::dot(axes[1], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        };
+
+        check_rotation(rotation);
+        check_rotation(matrix.GetRotation());
+
+        const Effekseer::SIMD::Mat43f reconstructed = Effekseer::SIMD::Mat43f::SRT(extracted_scale, rotation, translation);
+        CHECK(reconstructed.X.GetX() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetY() == Catch::Approx(-scale.y).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetZ() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetX() == Catch::Approx(scale.x).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetY() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetZ() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetX() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetY() == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetZ() == Catch::Approx(scale.z).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetW() == Catch::Approx(3.0f));
+        CHECK(reconstructed.Y.GetW() == Catch::Approx(4.0f));
+        CHECK(reconstructed.Z.GetW() == Catch::Approx(5.0f));
+    }
+}
+
+TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basis", "[particle][effekseer-runtime][effekseer-singular-transform]")
+{
+    // Independent orthonormal, right-handed basis: each row has unit length, the rows are pairwise perpendicular,
+    // and cross(a, b) == c. Every coordinate is nonzero, unlike the identity and axis-aligned fixtures above
+    const array<vec3, 3> authored_basis {
+        vec3 {1.0f / 3.0f, 2.0f / 3.0f, 2.0f / 3.0f},
+        vec3 {2.0f / 3.0f, 1.0f / 3.0f, -2.0f / 3.0f},
+        vec3 {-2.0f / 3.0f, 2.0f / 3.0f, -1.0f / 3.0f},
+    };
+
+    // The constructor takes each authored row as one argument triplet, so these are exactly the scaled source rows
+    const auto make_matrix = [](const vec3& scale) {
+        return Effekseer::SIMD::Mat43f {
+            scale.x * (1.0f / 3.0f), scale.x * (2.0f / 3.0f), scale.x * (2.0f / 3.0f),
+            scale.y * (2.0f / 3.0f), scale.y * (1.0f / 3.0f), scale.y * (-2.0f / 3.0f),
+            scale.z * (-2.0f / 3.0f), scale.z * (2.0f / 3.0f), scale.z * (-1.0f / 3.0f),
+            3.0f, 4.0f, 5.0f,
+        };
+    };
+
+    const auto get_basis_rows = [](const Effekseer::SIMD::Mat43f& rotation) {
+        return array<vec3, 3> {
+            vec3 {rotation.X.GetX(), rotation.Y.GetX(), rotation.Z.GetX()},
+            vec3 {rotation.X.GetY(), rotation.Y.GetY(), rotation.Z.GetY()},
+            vec3 {rotation.X.GetZ(), rotation.Y.GetZ(), rotation.Z.GetZ()},
+        };
+    };
+
+    const auto check_frame = [](const array<vec3, 3>& axes, bool require_right_handed) {
+        for (const vec3& axis : axes) {
+            CHECK(std::isfinite(axis.x));
+            CHECK(std::isfinite(axis.y));
+            CHECK(std::isfinite(axis.z));
+            CHECK(glm::dot(axis, axis) == Catch::Approx(1.0f).margin(StripWidthTolerance));
+        }
+
+        CHECK(glm::dot(axes[0], axes[1]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(glm::dot(axes[0], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+        CHECK(glm::dot(axes[1], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
+
+        // A singular input leaves missing axes underdetermined, so only their completion order is pinned
+        if (require_right_handed) {
+            CHECK(glm::dot(glm::cross(axes[0], axes[1]), axes[2]) == Catch::Approx(1.0f).margin(StripWidthTolerance));
+        }
+    };
+
+    struct ScaleCase final
+    {
+        vec3 Scale {};
+        bool Singular {};
+    };
+
+    // All seven singular zero/nonzero patterns, then fully nonzero positive and reflected controls. Negative
+    // survivors cover every single-survivor axis and both positive and negative two-survivor scales
+    const array<ScaleCase, 10> cases {
+        ScaleCase {vec3 {0.0f, 0.0f, 0.0f}, true},
+        ScaleCase {vec3 {0.0f, 0.0f, -3.0f}, true},
+        ScaleCase {vec3 {0.0f, 2.0f, 0.0f}, true},
+        ScaleCase {vec3 {-1.0f, 0.0f, 0.0f}, true},
+        ScaleCase {vec3 {0.0f, -2.0f, 3.0f}, true},
+        ScaleCase {vec3 {-1.0f, 0.0f, 3.0f}, true},
+        ScaleCase {vec3 {1.0f, 2.0f, 0.0f}, true},
+        ScaleCase {vec3 {1.0f, 2.0f, 3.0f}, false},
+        ScaleCase {vec3 {-1.0f, 2.0f, 3.0f}, false},
+        ScaleCase {vec3 {1.0f, -2.0f, -3.0f}, false},
+    };
+
+    for (const ScaleCase& scale_case : cases) {
+        const vec3& scale = scale_case.Scale;
+        CAPTURE(scale.x, scale.y, scale.z);
+        CAPTURE(scale_case.Singular);
+
+        const Effekseer::SIMD::Mat43f matrix = make_matrix(scale);
+        Effekseer::SIMD::Vec3f extracted_scale;
+        Effekseer::SIMD::Mat43f decomposed_rotation;
+        Effekseer::SIMD::Vec3f extracted_translation;
+        matrix.GetSRT(extracted_scale, decomposed_rotation, extracted_translation);
+
+        const Effekseer::SIMD::Mat43f direct_rotation = matrix.GetRotation();
+        const array<vec3, 3> decomposed_axes = get_basis_rows(decomposed_rotation);
+        const array<vec3, 3> direct_axes = get_basis_rows(direct_rotation);
+
+        CHECK(extracted_scale.GetX() == Catch::Approx(std::abs(scale.x)).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetY() == Catch::Approx(std::abs(scale.y)).margin(StripWidthTolerance));
+        CHECK(extracted_scale.GetZ() == Catch::Approx(std::abs(scale.z)).margin(StripWidthTolerance));
+
+        check_frame(decomposed_axes, scale_case.Singular);
+        check_frame(direct_axes, scale_case.Singular);
+
+        const array<float32_t, 3> scale_components {scale.x, scale.y, scale.z};
+
+        for (size_t axis_index = 0; axis_index < scale_components.size(); axis_index++) {
+            if (scale_components[axis_index] == 0.0f) {
+                continue;
+            }
+
+            const float32_t expected_sign = scale_components[axis_index] < 0.0f ? -1.0f : 1.0f;
+            const vec3 expected_axis = authored_basis[axis_index] * expected_sign;
+            const vec3& decomposed_axis = decomposed_axes[axis_index];
+            const vec3& direct_axis = direct_axes[axis_index];
+
+            CHECK(decomposed_axis.x == Catch::Approx(expected_axis.x).margin(StripWidthTolerance));
+            CHECK(decomposed_axis.y == Catch::Approx(expected_axis.y).margin(StripWidthTolerance));
+            CHECK(decomposed_axis.z == Catch::Approx(expected_axis.z).margin(StripWidthTolerance));
+            CHECK(direct_axis.x == Catch::Approx(expected_axis.x).margin(StripWidthTolerance));
+            CHECK(direct_axis.y == Catch::Approx(expected_axis.y).margin(StripWidthTolerance));
+            CHECK(direct_axis.z == Catch::Approx(expected_axis.z).margin(StripWidthTolerance));
+        }
+
+        const Effekseer::SIMD::Mat43f reconstructed = Effekseer::SIMD::Mat43f::SRT(extracted_scale, decomposed_rotation, extracted_translation);
+
+        // Every field of the source matrix is pinned literally, including the rows whose scale collapsed to zero
+        CHECK(reconstructed.X.GetX() == Catch::Approx(scale.x * (1.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetY() == Catch::Approx(scale.y * (2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetZ() == Catch::Approx(scale.z * (-2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetX() == Catch::Approx(scale.x * (2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetY() == Catch::Approx(scale.y * (1.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetZ() == Catch::Approx(scale.z * (2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetX() == Catch::Approx(scale.x * (2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetY() == Catch::Approx(scale.y * (-2.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetZ() == Catch::Approx(scale.z * (-1.0f / 3.0f)).margin(StripWidthTolerance));
+        CHECK(reconstructed.X.GetW() == Catch::Approx(3.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Y.GetW() == Catch::Approx(4.0f).margin(StripWidthTolerance));
+        CHECK(reconstructed.Z.GetW() == Catch::Approx(5.0f).margin(StripWidthTolerance));
+    }
+}
+
+TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis components", "[particle][effekseer-runtime][effekseer-singular-transform]")
+{
+    const array<float32_t, 2> invalid_components {
+        std::numeric_limits<float32_t>::quiet_NaN(),
+        std::numeric_limits<float32_t>::infinity(),
+    };
+
+    for (float32_t invalid_component : invalid_components) {
+        CAPTURE(invalid_component);
+
+        // X is collapsed while Y survives with a nonfinite component. A repair that substitutes a finite
+        // canonical identity for any singular matrix would erase the invalid input instead of propagating it
+        const Effekseer::SIMD::Mat43f matrix {
+            0.0f, 0.0f, 0.0f,
+            invalid_component, 1.0f / 3.0f, -2.0f / 3.0f,
+            -2.0f / 3.0f, 2.0f / 3.0f, -1.0f / 3.0f,
+            3.0f, 4.0f, 5.0f,
+        };
+
+        Effekseer::SIMD::Vec3f extracted_scale;
+        Effekseer::SIMD::Mat43f decomposed_rotation;
+        Effekseer::SIMD::Vec3f extracted_translation;
+        matrix.GetSRT(extracted_scale, decomposed_rotation, extracted_translation);
+
+        const Effekseer::SIMD::Mat43f direct_rotation = matrix.GetRotation();
+
+        const auto has_nonfinite_component = [](const Effekseer::SIMD::Mat43f& rotation) {
+            return !std::isfinite(rotation.X.GetX()) || !std::isfinite(rotation.X.GetY()) ||
+                !std::isfinite(rotation.X.GetZ()) || !std::isfinite(rotation.Y.GetX()) ||
+                !std::isfinite(rotation.Y.GetY()) || !std::isfinite(rotation.Y.GetZ()) ||
+                !std::isfinite(rotation.Z.GetX()) || !std::isfinite(rotation.Z.GetY()) ||
+                !std::isfinite(rotation.Z.GetZ());
+        };
+
+        // Only at least one nonfinite basis component is required; the routines need not fill every lane with NaN
+        CHECK(has_nonfinite_component(decomposed_rotation));
+        CHECK(has_nonfinite_component(direct_rotation));
     }
 }
 

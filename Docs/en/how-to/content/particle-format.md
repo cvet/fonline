@@ -248,6 +248,15 @@ The same seed is deterministic only with the same resource, backend revision,
 setup, and update sequence. Do not use seeded replay as a cross-version visual
 compatibility promise.
 
+Authored SRT transforms may collapse individual scale axes to zero. Effekseer's
+local `Mat43f` patch completes their rotation basis without dividing by zero:
+surviving axes retain their signed direction, one missing axis uses their cross
+product, and a lone survivor receives deterministic perpendicular axes. An
+all-zero basis uses identity. The erased orientation is underdetermined; the
+completion is canonical. Noncollapsed decomposition retains the upstream path.
+This prevents invalid inherited Track transforms during zero-scale animation.
+Non-finite callback geometry still fails runtime validation.
+
 Standalone Effekseer particle sprites use direct-scene rendering. SPARK sprites
 may use either atlas or direct-scene rendering. Model-bone particles follow the
 model atlas/direct-scene route, including GUI atlas previews. Both routes still depend on the embedding project's

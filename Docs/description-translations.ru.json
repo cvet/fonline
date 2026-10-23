@@ -18333,6 +18333,18 @@
         "/xml_rules/@id=particle-format.xml.values/requirement": {
           "source_sha256": "3257fb35e67b21d662740999b8fa795d0dbaaa223df89d748920cada167b8d60",
           "translation": "Скалярное или массивное значение можно записать в XML-атрибуте value элемента attrib или как текст элемента; при наличии обоих приоритет имеет value."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/name": {
+          "source_sha256": "a6d3feda818ddd87f458dd141d911bef01259617f24417f925814742fa6260ac",
+          "translation": "Базис вращения Effekseer при нулевом масштабе"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/requirement": {
+          "source_sha256": "2a2d2b34f630763eb057d8f9ae32c9115c3097ac870ad9ee0a87c3bb36cb5fb6",
+          "translation": "Дополняйте схлопнувшиеся оси вращения SRT без деления на ноль. Сохраняйте направления ненулевых осей с учётом знака; используйте векторные произведения для отсутствующих осей, детерминированный перпендикулярный базис при одной сохранившейся оси и identity для полностью нулевого базиса. Разложение несхлопнувшегося базиса и отклонение non-finite callback data остаются прежними."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/rationale": {
+          "source_sha256": "f03650581f123c5dec77ab33aeb982d3f15545dd927daae0122c6a9517d69061",
+          "translation": "Анимация нулевого масштаба не должна создавать NaN в наследуемых Track transforms; утраченная ориентация не определена однозначно."
         }
       }
     },

@@ -45,7 +45,8 @@
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
-    "Source/Tests/Test_EffekseerParticleRuntime.cpp"
+    "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+    "ThirdParty/Effekseer/Dev/Cpp/Effekseer/Effekseer/SIMD/Mat43f.cpp"
   ],
   "outputs": {
     "authored_extensions": [
@@ -2517,6 +2518,38 @@
       ]
     },
     {
+      "id": "particle-format.runtime.effekseer-singular-srt",
+      "name": "Effekseer zero-scale rotation basis",
+      "stability": "experimental",
+      "requirement": "Complete collapsed SRT rotation axes without division by zero. Preserve signed surviving directions; use cross products for missing axes, a deterministic perpendicular frame for one survivor, and identity for an all-zero basis. Keep noncollapsed decomposition and non-finite callback rejection unchanged.",
+      "rationale": "Zero-scale animation must not introduce NaN into inherited Track transforms; erased orientation is underdetermined.",
+      "source": [
+        {
+          "path": "ThirdParty/Effekseer/Dev/Cpp/Effekseer/Effekseer/SIMD/Mat43f.cpp",
+          "anchors": [
+            "RecoverCollapsedRotation",
+            "Mat43f::GetRotation",
+            "Mat43f::GetSRT"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "track callback emitted non-finite geometry data"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer decomposes collapsed diagonal scales into finite canonical frames",
+            "Effekseer singular SRT decomposition preserves surviving rotated axes",
+            "Effekseer singular SRT decomposition preserves an independent 3D basis",
+            "Effekseer singular SRT decomposition retains invalid surviving basis components"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.runtime.effekseer-refresh",
       "name": "Effekseer render refresh",
       "stability": "experimental",
@@ -2794,19 +2827,30 @@
       "source": [
         {
           "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-          "anchors": ["Client_Critter_GetBoneMapAnchor", "RequireHexCritter"]
+          "anchors": [
+            "Client_Critter_GetBoneMapAnchor",
+            "RequireHexCritter"
+          ]
         },
         {
           "path": "Source/Client/MapSprite.h",
-          "anchors": ["float32_t DepthOffset {};"]
+          "anchors": [
+            "float32_t DepthOffset {};"
+          ]
         },
         {
           "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-          "anchors": ["Map sprite depth offset must be finite", "mspr->SetDepthOffset(mapSpr->DepthOffset)"]
+          "anchors": [
+            "Map sprite depth offset must be finite",
+            "mspr->SetDepthOffset(mapSpr->DepthOffset)"
+          ]
         },
         {
           "path": "Source/Client/MapSprite.cpp",
-          "anchors": ["GetMapRootProjection", "projection.z += _depthOffset"]
+          "anchors": [
+            "GetMapRootProjection",
+            "projection.z += _depthOffset"
+          ]
         }
       ]
     },
