@@ -217,7 +217,7 @@ string to run the reusable transport checks once scripts start. Qualification
 requires every `INTEROP-TRANSPORT` check and the closing summary to report zero
 failures; the native-thread case is omitted in the single-threaded browser.
 
-Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. Managed backend shutdown therefore performs one inline collection pass, `GC.WaitForPendingFinalizers()` returns immediately, remaining wrappers are diagnostic rather than a gate, and finalizers run later as main-thread jobs. Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
+Do not queue managed thread-pool work in the browser. This Mono runtime routes it through `mono_main_thread_schedule_background_job`, but the embedding has no `ThreadPool.BackgroundJobHandler`; the first `Task.Run`, `Task.Factory`, `Parallel`, or direct ThreadPool dispatch aborts the module. The runtime also has no finalizer thread. `GC.WaitForPendingFinalizers()` returns immediately; native backend shutdown explicitly drains Mono main-thread jobs between managed collection calls before unbinding the backend or releasing the Engine. It rechecks the count after each drain, with at most eight passes, and diagnoses remaining wrappers. See [shutdown ordering](../scripting/managed-csharp.md). Project analyzers must keep thread-pool escape APIs out of Web-capable scripts.
 
 ### Persistent data
 

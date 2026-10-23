@@ -108,6 +108,9 @@ extern "C" void mono_wasm_install_interp_to_native_callback(void* (*cb)(char*));
 extern "C" void mono_marshal_ilgen_init();
 extern "C" void mono_method_builder_ilgen_init();
 extern "C" void mono_sgen_mono_ilgen_init();
+
+// The single-threaded browser queues finalizers here instead of waking a finalizer thread
+extern "C" void mono_background_exec();
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -1198,8 +1201,7 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         return;
     }
 
-    // GC.WaitForPendingFinalizers in managed code is the supported finalizer wait; mono_domain_finalize belongs to domain unloading and
-    // timed out, then crashed, on a root-domain shutdown. Passes repeat because a finalized wrapper can drop the last reference to another
+    // A finalized wrapper can drop the last reference to another. Domain unloading is not a root-domain finalizer wait
     constexpr int32_t PASS_LIMIT = 8;
 
     safe_call([this] {
@@ -1209,7 +1211,23 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         int32_t outstanding = -1;
 
         // A timed-out or failed collection must still leave a wrapper report for diagnosis
-        safe_call([&] { outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT); });
+        safe_call([&] {
+#if FO_WEB
+            for (int32_t pass = 0; pass < PASS_LIMIT; pass++) {
+                (void)InvokeEntityWrapperTrackerCollect(this, collect_method, 1);
+
+                // Run outside managed collection, while finalizers can still return references through the bound backend
+                mono_background_exec();
+                outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, 0);
+
+                if (outstanding == 0) {
+                    break;
+                }
+            }
+#else
+            outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT);
+#endif
+        });
 
         timespan collect_duration = collect_time.get_duration();
         MonoMethod* dump_method = FindCoreScriptMethod(this, "EntityWrapperTracker", "DumpOutstandingWrappers", 0);
@@ -1221,14 +1239,9 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
             logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
         }
 
-#if FO_WEB
-        // Browser finalizers run as main-thread jobs after the shutdown returns, so the count is not final here
-        ignore_unused(outstanding);
-#else
         // Not a gate: what a wrapper still holds does not stop the rest of the shutdown, but it is a native entity
         // reference nobody gave back, and the report is the only place it is visible
         FO_VERIFY_AND_CONTINUE(outstanding <= 0, "Managed entity wrappers outlived the script backend", outstanding, report);
-#endif
     });
 }
 
