@@ -173,7 +173,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 - Add `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` and the passive `TextLayoutResult` value with `Width`, `Height` and `Lines`. Existing text measurement/drawing remains available; prepared bounds must be used with the same text, font, format and color inputs. Warm layouts do not create jobs.
 - Add bounded static-map resource preparation on the same pool. `ResourceManager` owns acquisition, factories, caches, generation/epoch cancellation, the optional decoder and shutdown drain. Workers decode owning passive buffers; the owner replays sprite/atlas publication and failures in the original order. Exact custom-factory dispatch and independent sheet playback remain intact.
 
-- Fix HEX/SQUARE row fixtures and six-to-eight Fallout direction expectations in native image tests. Runtime and formats are unchanged; no migration.
+- Fix HEX/SQUARE native fixtures, six-to-eight Fallout directions and Clang 24 RTTI warnings. Runtime and formats are unchanged; no migration.
 
 ### Migration
 

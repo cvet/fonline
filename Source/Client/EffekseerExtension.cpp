@@ -2914,7 +2914,8 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
 
 static auto IsEffekseerCpuNodeSafe(ptr<Effekseer::EffectNode> node) -> bool
 {
-    const auto& type = typeid(*node);
+    const auto& runtime_node = *node;
+    const auto& type = typeid(runtime_node);
 
     if (type != typeid(Effekseer::EffectNodeRoot) && type != typeid(Effekseer::EffectNodeImplemented) &&
         type != typeid(Effekseer::EffectNodeSprite) && type != typeid(Effekseer::EffectNodeRing) &&
@@ -2922,7 +2923,7 @@ static auto IsEffekseerCpuNodeSafe(ptr<Effekseer::EffectNode> node) -> bool
         return false;
     }
 
-    const auto& implementation = static_cast<const Effekseer::EffectNodeImplemented&>(*node);
+    const auto& implementation = static_cast<const Effekseer::EffectNodeImplemented&>(runtime_node);
 
     if (implementation.Sound.SoundType == Effekseer::ParameterSoundType_Use || implementation.GpuParticlesResource || implementation.Collisions.IsSceneCollisionWithExternal) {
         return false;
@@ -2943,11 +2944,13 @@ static auto IsEffekseerCpuNodeSafe(ptr<Effekseer::EffectNode> node) -> bool
 
 auto EffekseerParticleRuntimeSystem::IsCpuEffectSafe(ptr<Effekseer::Effect> effect) -> bool
 {
-    if (typeid(*effect) != typeid(Effekseer::EffectImplemented)) {
+    const auto& runtime_effect = *effect;
+
+    if (typeid(runtime_effect) != typeid(Effekseer::EffectImplemented)) {
         return false;
     }
 
-    const auto& implementation = static_cast<const Effekseer::EffectImplemented&>(*effect);
+    const auto& implementation = static_cast<const Effekseer::EffectImplemented&>(runtime_effect);
 
     for (const auto& equation : implementation.GetDynamicEquation()) {
         if (equation.GetRunningPhase() == Effekseer::InternalScript::RunningPhaseType::Local) {
@@ -2958,7 +2961,13 @@ auto EffekseerParticleRuntimeSystem::IsCpuEffectSafe(ptr<Effekseer::Effect> effe
     for (int32_t index = 0; index < effect->GetModelCount(); index++) {
         auto model = effect->GetModel(index);
 
-        if (!model || typeid(*model.Get()) != typeid(Effekseer::Model)) {
+        if (!model) {
+            return false;
+        }
+
+        const auto& runtime_model = *model.Get();
+
+        if (typeid(runtime_model) != typeid(Effekseer::Model)) {
             return false;
         }
     }

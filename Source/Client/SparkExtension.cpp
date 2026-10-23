@@ -197,20 +197,24 @@ static auto IsSparkCpuGraphSafe(const SPK::Ref<SPK::SPKObject>& object, const SP
     if (!object->hasContext() || &object->getContext() != &context) {
         return false;
     }
+    const auto& runtime_object = *object;
+
     if (!HasExactSparkType<SPK::System, SPK::Group, SPK::FloatDefaultInitializer, SPK::ColorDefaultInitializer,
             SPK::FloatRandomInitializer, SPK::ColorRandomInitializer, SPK::FloatSimpleInterpolator, SPK::ColorSimpleInterpolator,
             SPK::FloatRandomInterpolator, SPK::ColorRandomInterpolator, SPK::FloatGraphInterpolator, SPK::ColorGraphInterpolator,
             SPK::Point, SPK::Sphere, SPK::Plane, SPK::Ring, SPK::Box, SPK::StaticEmitter, SPK::RandomEmitter, SPK::StraightEmitter,
             SPK::SphericEmitter, SPK::NormalEmitter, SPK::Gravity, SPK::Friction, SPK::Obstacle, SPK::LinearForce, SPK::Vortex,
-            SPK::Rotator, SPK::FO::SparkQuadRenderer>(*object)) {
+            SPK::Rotator, SPK::FO::SparkQuadRenderer>(runtime_object)) {
         return false;
     }
 
-    if (typeid(*object) == typeid(SPK::Group)) {
+    if (typeid(runtime_object) == typeid(SPK::Group)) {
         auto group = SPK::staticCast<SPK::Group>(object);
 
         for (size_t index = 0; index < group->getNbModifiers(); index++) {
-            if (typeid(*group->getModifier(index)) == typeid(SPK::Rotator) &&
+            const auto& modifier = *group->getModifier(index);
+
+            if (typeid(modifier) == typeid(SPK::Rotator) &&
                 (!group->getParamInterpolator(SPK::PARAM_ANGLE) || !group->getParamInterpolator(SPK::PARAM_ROTATION_SPEED) ||
                     (group->isInitialized() && (!group->isEnabled(SPK::PARAM_ANGLE) || !group->isEnabled(SPK::PARAM_ROTATION_SPEED))))) {
                 return false;

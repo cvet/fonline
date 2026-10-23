@@ -166,7 +166,13 @@ auto ResourceManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type,
     else {
         auto factory = _spriteFactoryMap.find(strex(path).get_file_extension());
 
-        if (factory == _spriteFactoryMap.end() || typeid(*factory->second) != typeid(DefaultSpriteFactory)) {
+        if (factory == _spriteFactoryMap.end()) {
+            return false;
+        }
+
+        const auto& sprite_factory = *factory->second;
+
+        if (typeid(sprite_factory) != typeid(DefaultSpriteFactory)) {
             return false;
         }
     }

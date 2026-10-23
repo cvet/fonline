@@ -1682,7 +1682,7 @@
           "path": "Source/Client/ResourceManager.cpp",
           "anchors": [
             "PrefetchSpriteResource",
-            "_spriteFactoryMap.find(ext)",
+            "typeid(sprite_factory) != typeid(DefaultSpriteFactory)",
             "ShutdownResourcePreparation"
           ]
         }
