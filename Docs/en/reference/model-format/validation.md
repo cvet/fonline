@@ -41,7 +41,7 @@ generated: true
 | <code>RenderFrame</code> | <code>none</code> | Current model descriptions do not generate 2D render frames. |
 | <code>RenderFrames</code> | <code>none</code> | Current model descriptions do not generate 2D render-frame sequences. |
 | <code>DrawSize</code> | <code>automatic model-sprite layout from baked animation bounds</code> | ModelInfo baking records aggregate and per-animation bounds; the client derives the offscreen frame for the active composition and pose. |
-| <code>ViewSize</code> | <code>automatic view/name layout from baked idle-priority bounds</code> | The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle. |
+| <code>ViewSize</code> | <code>automatic view/name layout from baked project-selected preview bounds</code> | The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle. |
 
 The accepted compatibility spelling `Subset` is listed separately in [Tokens](tokens.md) as deprecated because it consumes an argument but does not select a mesh.
 

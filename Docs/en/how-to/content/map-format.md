@@ -109,6 +109,10 @@ The generated [property catalog](../../reference/map-format/properties.md) is au
 
 Unknown, virtual, temporary, malformed, or invalid-for-the-current-side properties fail during property loading or validation. Side-specific properties can be skipped from the opposite output. Resource-valued properties are validated by `MapBaker`, so a syntactically valid map can still fail because an image, model, script, sound, or prototype dependency is absent.
 
+For a dynamic map-authored item, a saved `Common` or `Client` value that is outside `PublicSync` or `OwnerSync` must equal its prototype value. This includes read-only project properties without `Persistent`: text serialization excludes temporary properties, rather than requiring persistence. Put permanent configuration and relative `MultihexLines` in a prototype or an inherited variant; keep drawable copies as separate dynamic items. No new replication mode is needed.
+
+The only unsynchronized core exceptions are placement context: `Static`, `Ownership`, `MapId`, `Hex`, `CritterId`, `CritterSlot`, `ContainerId`, and `ContainerStack`. These are supplied by entity placement and message context. Server-only authoring remains valid. A redundant value equal to the prototype is accepted; a differing zero, false, or empty value is still an override. Mapper validates loading, creation, text edits, and serialization; MapBaker independently checks both server and client property candidates, including hidden dynamic items, and rejects invalid source before publishing either map output. Changing `Static` to false checks the complete resulting property set.
+
 ## Item Ownership
 
 `Ownership` determines where an authored item is materialized:

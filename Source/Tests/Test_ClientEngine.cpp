@@ -1,4 +1,4 @@
-//      __________        ___               ______            _
+﻿//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -218,7 +218,7 @@ TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     REQUIRE_THROWS_WITH(factory->GetModelMngr()->CreateModel(model_path), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one frame"));
 }
@@ -237,7 +237,7 @@ TEST_CASE("ClientEngineOverridesConsumedImportedDiffuse")
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model = factory->GetModelMngr()->CreateModel(model_path);
     REQUIRE(model);
@@ -261,7 +261,7 @@ TEST_CASE("ClientEngineLoadsLargeFofrmModelTextures")
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model = factory->GetModelMngr()->CreateModel(model_path);
     REQUIRE(model);
@@ -285,7 +285,7 @@ TEST_CASE("ClientEngineRetriesMissingImportedDiffuse")
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model = factory->GetModelMngr()->CreateModel(model_path);
     REQUIRE(model);
@@ -319,7 +319,7 @@ f 1 2 3
     auto client = MakeClientEngine(settings, std::move(resources));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     CHECK_NOTHROW(factory->GetModelMngr()->PreloadModel(model_path));
 }
@@ -507,7 +507,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(malformed_resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model_mngr = factory->GetModelMngr();
 
@@ -529,7 +529,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     auto client = MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model_mngr = factory->GetModelMngr();
 
@@ -634,7 +634,7 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
 
     auto model_mngr = factory->GetModelMngr();
@@ -685,7 +685,7 @@ TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
     REQUIRE(static_cast<bool>(model));
@@ -738,7 +738,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
 
     auto model_mngr = factory->GetModelMngr();
@@ -753,7 +753,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetInformation());
         ignore_unused(model->GetStateAnim());
         ignore_unused(model->GetActionAnim());
-        ignore_unused(model->GetMovingAnim());
+        ignore_unused(model->GetMovingContext());
         ignore_unused(model->GetDrawSize());
         ignore_unused(model->GetLightingSize());
         ignore_unused(model->GetSpriteBounds());
@@ -809,7 +809,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetBoneSpritePos(root_bone));
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
-        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) { }));
+        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&) { }));
     }
 
     SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
@@ -873,7 +873,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
         // Switching between the authored animations is what runs the cross-fade and the per-animation
         // speed and layer-value overrides, none of which a single-animation model can reach
-        for (CritterActionAnim authored : {CritterActionAnim::Idle, CritterActionAnim::Walk, CritterActionAnim::Run, CritterActionAnim::TurnRight, CritterActionAnim::Walk, CritterActionAnim::Idle}) {
+        for (CritterActionAnim authored : {static_cast<CritterActionAnim>(1), static_cast<CritterActionAnim>(3), static_cast<CritterActionAnim>(5), static_cast<CritterActionAnim>(17), static_cast<CritterActionAnim>(3), static_cast<CritterActionAnim>(1)}) {
             CHECK(model->HasAnimation(state_anim, authored));
             REQUIRE_NOTHROW(ignore_unused(model->PlayAnim(state_anim, authored, layers.data(), 0.0f, ModelAnimFlags::None)));
 
@@ -963,7 +963,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         io.IniFilename = nullptr;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-        AnimationViewer viewer {client.as_ptr(), &client->SprMngr, &client->ResMngr, &client->GameTime};
+        AnimationViewer viewer {client.as_ptr(), &client->SprMngr, &client->ResMngr, &client->CritterFrames, &client->GameTime};
         viewer.SetVisible(true);
         viewer.SetFillViewport(true);
 
@@ -981,9 +981,9 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("TheSpriteFactoryWrapsTheModelAsASprite")
     {
-        // Going through the sprite manager takes the model down the model-sprite path instead of the raw
+        // Going through the resource manager takes the model down the model-sprite path instead of the raw
         // instance one: atlas placement, per-frame update and the sprite-side draw
-        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+        shared_ptr<Sprite> sprite = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
         REQUIRE(static_cast<bool>(sprite));
 
         CHECK(sprite->GetSize().width > 0);
@@ -1020,7 +1020,7 @@ TEST_CASE("ModelSpritePreparesItsHitMaskDuringRenderUpdate")
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+    shared_ptr<Sprite> sprite = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
     auto model_spr = sprite.dyn_cast<ModelSprite>();
     REQUIRE(static_cast<bool>(model_spr));
     REQUIRE(model_spr->Update());
@@ -1060,7 +1060,7 @@ TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+    shared_ptr<Sprite> sprite = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
     auto model_spr = sprite.dyn_cast<ModelSprite>();
     REQUIRE(static_cast<bool>(model_spr));
 
@@ -1166,59 +1166,6 @@ TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
     CHECK(callback_count == 2);
 }
 
-TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
-{
-    // The legacy path only runs under art/critters/ and builds sprite names by index letter, then casts the result
-    // to a SpriteSheet — hence the multi-frame fixtures
-    constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
-    constexpr string_view MODEL_STEM = "art/critters/ut";
-
-    vector<pair<string, vector<uint8_t>>> anim_resources;
-
-    for (int32_t state_anim = 0; state_anim < 14; state_anim++) {
-        for (int32_t action_anim = 0; action_anim < 14; action_anim++) {
-            string spr_name = strex("{}{}{}.fofrm", MODEL_STEM, FRM_IND[numeric_cast<size_t>(state_anim)], FRM_IND[numeric_cast<size_t>(action_anim)]).str();
-            anim_resources.emplace_back(std::move(spr_name), BakerTests::MakeMultiFrameBakedSprite(3));
-        }
-    }
-
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(anim_resources)));
-
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-
-    hstring model_name = client->Hashes.to_hashed_string(MODEL_NAME);
-
-    SECTION("AnimationPairsResolveThroughTheLegacyLoader")
-    {
-        int32_t resolved = 0;
-
-        for (int32_t state_anim = 1; state_anim < 14; state_anim++) {
-            for (int32_t action_anim = 1; action_anim < 14; action_anim++) {
-                if (client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim), mdir {0})) {
-                    resolved++;
-                }
-            }
-        }
-
-        CHECK(resolved > 0);
-    }
-
-    SECTION("RepeatedLookupsComeFromTheCache")
-    {
-        nptr<const SpriteSheet> first = client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0});
-        nptr<const SpriteSheet> second = client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0});
-        CHECK(first == second);
-    }
-
-    SECTION("AModelWithNoSpritesAnswersEmpty")
-    {
-        hstring missing = client->Hashes.to_hashed_string("art/critters/nosuchxx.frm");
-        CHECK_FALSE(static_cast<bool>(client->ResMngr.GetCritterAnimFrames(missing, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0})));
-    }
-}
-
 TEST_CASE("FontManagerMeasuresAndSplitsText")
 {
     auto settings = MakeClientTestSettings();
@@ -1295,7 +1242,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto sheet = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites);
+    auto sheet = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites);
     REQUIRE(sheet);
     CHECK(sheet->GetSize() == isize32 {2, 2});
 
@@ -1715,8 +1662,8 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     truncated_payload.resize(mesh_indices_offset);
     source->AddFile("TruncatedPayload.png", std::move(truncated_payload));
 
-    client->SprMngr.GetResources()->AddCustomSource(std::move(source));
-    DefaultSpriteFactory factory {&client->SprMngr};
+    client->ResMngr.GetResources()->AddCustomSource(std::move(source));
+    DefaultSpriteFactory factory {&client->SprMngr, &client->ResMngr};
     auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.to_hashed_string(path), AtlasType::MapSprites); };
 
     auto valid_sprite = load("ValidMesh.png");
@@ -1742,7 +1689,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(cropped_draw_buf->Vertices[2].PosX == Catch::Approx(1.0f));
     CHECK(cropped_draw_buf->Vertices[2].PosY == Catch::Approx(2.0f));
 
-    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites);
+    auto restored_image = client->ResMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites);
     REQUIRE(restored_image);
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
     CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
@@ -1792,7 +1739,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     RecordingQuadEffect effect;
 
-    auto sprite = client->SprMngr.LoadSprite("PatternMesh.png", AtlasType::IfaceSprites);
+    auto sprite = client->ResMngr.LoadSprite("PatternMesh.png", AtlasType::IfaceSprites);
     REQUIRE(sprite);
     auto atlas_sprite = sprite.dyn_cast<AtlasSprite>();
     REQUIRE(atlas_sprite);
@@ -1918,4 +1865,593 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
     CHECK_NOTHROW(client->SprMngr.Flush());
 }
 
+TEST_CASE("ClientEngineAnimationResolverReportsCleanupExceptions")
+{
+    class ThrowingStopSprite final : public Sprite
+    {
+    public:
+        ThrowingStopSprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> copy) :
+            Sprite(spr_mngr, copy->GetSize(), copy->GetOffset()),
+            Copy {std::move(copy)}
+        {
+        }
+
+        auto MakeCopy() const -> shared_ptr<Sprite> override
+        {
+            if (ThrowOnCopy) {
+                throw InvalidCallException("Animation copy failed");
+            }
+
+            return Copy->MakeCopy();
+        }
+
+        auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return Copy->FillData(dbuf, pos, colors); }
+
+        void Stop() override
+        {
+            StopCalls++;
+
+            if (ThrowOnStop) {
+                throw InvalidCallException("Animation stop failed");
+            }
+        }
+
+        shared_ptr<Sprite> Copy;
+        bool ThrowOnCopy {};
+        bool ThrowOnStop {true};
+        int32_t StopCalls {};
+    };
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{"Sequence.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto source = safe_alloc::make_shared<ThrowingStopSprite>(&client->SprMngr, client->ResMngr.LoadSprite("Sequence.fofrm", AtlasType::MapSprites));
+    uint32_t spr_id = client->AnimAdd(source);
+    bool resolved = true;
+    Entity::EventCallbackData callback;
+    callback.Callback = [&spr_id, &resolved](FuncCallData& call) {
+        *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
+        return resolved ? Entity::EventResult::ContinueChain : Entity::EventResult::StopChain;
+    };
+    callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&spr_id);
+    client->OnCritterAnimationSprite.Subscribe(std::move(callback));
+    auto unsubscribe = scope_exit([&client, &spr_id]() noexcept { client->OnCritterAnimationSprite.Unsubscribe(reinterpret_cast<uintptr_t>(&spr_id)); });
+    auto resolve = [&] { return client->ResolveCritterAnimationSprite(client->Hashes.to_hashed_string("ThrowingStop"), CritterStateAnim {}, CritterActionAnim {}); };
+
+    SECTION("SuccessfulResolution")
+    {
+        auto sprite = resolve();
+        REQUIRE(sprite);
+        CHECK(sprite->GetFramesCount() == 3);
+    }
+
+    SECTION("CopyFailurePreservesTheOriginalException")
+    {
+        source->ThrowOnCopy = true;
+        CHECK_THROWS_MATCHES(resolve(), InvalidCallException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Animation copy failed")));
+    }
+
+    SECTION("StoppedEventStillCleansUp")
+    {
+        resolved = false;
+        CHECK_FALSE(resolve());
+    }
+
+    SECTION("DirectFreeReleasesTheHandleWhenStopThrows")
+    {
+        CHECK_THROWS_MATCHES(client->AnimFree(spr_id), InvalidCallException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Animation stop failed")));
+    }
+
+    CHECK(source->StopCalls == 1);
+    CHECK_FALSE(client->AnimGetSpr(spr_id));
+
+    source->ThrowOnStop = false;
+    client->AnimFree(spr_id);
+    CHECK_FALSE(client->AnimGetSpr(spr_id));
+}
+
+TEST_CASE("ClientEngineSpriteCleanupReleasesUnusedFrames")
+{
+    class SpriteCleanupClient final : public ClientEngine
+    {
+    public:
+        using ClientEngine::CleanupSpriteCache;
+        using ClientEngine::ClientEngine;
+    };
+
+    auto settings = MakeClientTestSettings();
+    auto client = safe_alloc::make_refcounted<SpriteCleanupClient>(&settings,
+        MakeClientTestResources({
+            {"Released.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)},
+            {"Active.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)},
+        }),
+        &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    uint32_t released_id = client->AnimLoad(client->Hashes.to_hashed_string("Released.fofrm"), AtlasType::MapSprites);
+    auto released = client->AnimGetSpr(released_id).dyn_cast<SpriteSheet>();
+    REQUIRE(released);
+    auto frame_owner = released->GetSprite(0)->weak_from_this();
+    client->AnimFree(released_id);
+    CHECK(frame_owner.lock());
+
+    uint32_t active_id = client->AnimLoad(client->Hashes.to_hashed_string("Active.fofrm"), AtlasType::MapSprites);
+    client->CleanupSpriteCache();
+    CHECK_FALSE(frame_owner.lock());
+    REQUIRE(client->AnimGetSpr(active_id));
+    CHECK(client->AnimGetSpr(active_id)->GetSize() == isize32 {2, 2});
+    client->AnimFree(active_id);
+}
+
+TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
+{
+    class ObservedCopySprite final : public Sprite
+    {
+    public:
+        ObservedCopySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> source, ptr<shared_ptr<Sprite>> observed_copy) :
+            Sprite(spr_mngr, source->GetSize(), source->GetOffset()),
+            _source {std::move(source)},
+            _observedCopy {observed_copy}
+        {
+        }
+
+        auto MakeCopy() const -> shared_ptr<Sprite> override
+        {
+            auto copy = _source->MakeCopy();
+            *_observedCopy = copy;
+            return copy;
+        }
+
+        auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return _source->FillData(dbuf, pos, colors); }
+
+    private:
+        shared_ptr<Sprite> _source;
+
+        // Const copies still publish their result to the test observer slot
+        mutable ptr<shared_ptr<Sprite>> _observedCopy;
+    };
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings,
+        MakeClientTestResources({
+            {"Inner.fofrm", BakerTests::MakeMultiFrameBakedSprite(2, 2, 2, 120)},
+            {"Outer.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 180)},
+        }));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    bool nested_missing = false;
+
+    SECTION("AnAlreadyCachedSheetWins")
+    {
+    }
+
+    SECTION("AnAlreadyCachedMissingResultWins")
+    {
+        nested_missing = true;
+    }
+
+    hstring model_name = client->Hashes.to_hashed_string("ReentrantResolution");
+    CritterStateAnim state_anim = static_cast<CritterStateAnim>(401);
+    CritterActionAnim action_anim = static_cast<CritterActionAnim>(509);
+    auto inner_source = client->ResMngr.LoadSprite("Inner.fofrm", AtlasType::MapSprites);
+    REQUIRE(inner_source);
+    shared_ptr<Sprite> observed_outer_copy;
+    auto outer_source = safe_alloc::make_shared<ObservedCopySprite>(&client->SprMngr, client->ResMngr.LoadSprite("Outer.fofrm", AtlasType::MapSprites), make_ptr(&observed_outer_copy));
+    nptr<const SpriteSheet> nested;
+    bool resolving = false;
+    client->OnCritterAnimationSprite.UnsubscribeAll();
+    Entity::EventCallbackData callback;
+    callback.Callback = [&](FuncCallData& call) {
+        if (resolving) {
+            *cast_from_void<uint32_t*>(call.ArgsData[3]) = nested_missing ? 0 : client->AnimAdd(inner_source);
+        }
+        else {
+            resolving = true;
+            nested = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
+            resolving = false;
+            *cast_from_void<uint32_t*>(call.ArgsData[3]) = client->AnimAdd(outer_source);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    client->OnCritterAnimationSprite.Subscribe(std::move(callback));
+    auto unsubscribe = scope_exit([&client]() noexcept { client->OnCritterAnimationSprite.UnsubscribeAll(); });
+    auto result = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
+
+    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory.
+    REQUIRE(observed_outer_copy);
+    CHECK(result == nested);
+    CHECK(client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0}) == nested);
+
+    if (nested_missing) {
+        CHECK_FALSE(result);
+    }
+    else {
+        REQUIRE(result);
+        CHECK(result->GetFramesCount() == 2);
+    }
+}
+
+#if FO_ENABLE_3D
+
+TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
+{
+    constexpr string_view mesh_path = "Models/RuntimeInstance.fbx";
+    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
+    vector<uint8_t> mesh = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> animation_info;
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string(mesh_path), mesh);
+    resources.emplace_back(string(model_path), MakeRuntimeModelDescription(model_path, mesh_path, mesh, "RotationBone Limb\nAnim 401 509 ModelFile Base\n", {}, nullptr, true, {}, 2.0f, &animation_info));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    auto proto_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolicyMapMetadata");
+    proto_source->AddFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+    FileSystem proto_resources;
+    proto_resources.AddCustomSource(std::move(proto_source));
+    BakerClientEngine proto_engine {proto_resources};
+    vector<pair<string, function<void(ProtoMap&)>>> maps;
+    maps.emplace_back("PolicyMap", [](ProtoMap& proto) { proto.SetSize(msize {20, 20}); });
+    resources.emplace_back("PolicyMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.LegBones, vector<string> {"Limb"});
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(model_path);
+    REQUIRE(model);
+    model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+    auto state = static_cast<CritterStateAnim>(401);
+    auto action = static_cast<CritterActionAnim>(509);
+    REQUIRE(model->HasAnimation(state, action));
+    hstring root = client->Hashes.to_hashed_string("Limb");
+    auto pose = [&] {
+        coarse_sleep(std::chrono::milliseconds {5});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+    };
+
+    SECTION("SamePairCanChangeItsFrozenTime")
+    {
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        pose();
+        auto initial = model->GetBonePos(root);
+        REQUIRE(initial);
+        (void)model->PlayAnim(state, action, nullptr, 0.5f, ModelAnimFlags::Freeze);
+        pose();
+        auto middle = model->GetBonePos(root);
+        REQUIRE(middle);
+        CHECK(*initial != *middle);
+        pose();
+        CHECK(model->GetBonePos(root) == middle);
+        CHECK(model->GetStateAnim() == state);
+        CHECK(model->GetActionAnim() == action);
+    }
+
+    SECTION("FrozenMovementEndpointDoesNotWrap")
+    {
+        float32_t time = 0.999f;
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = time;
+        });
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        pose();
+        auto first = model->GetBonePos(root);
+        REQUIRE(first);
+        model->SetMovementState(true, true, 137);
+        pose();
+        auto near_end = model->GetBonePos(root);
+        REQUIRE(near_end);
+        CHECK(*near_end != *first);
+        time = 1.0f;
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == near_end);
+        model->SetMoveDir(mdir {180}, false);
+        pose();
+        auto turned_end = model->GetBonePos(root);
+        time = 0.999f;
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == turned_end);
+    }
+
+    SECTION("FrozenTurnCanBeReselected")
+    {
+        float32_t time = 0.0f;
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = time;
+        });
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        pose();
+        model->SetLookDir(mdir {120});
+        nanotime turn_deadline = client->GameTime.GetFrameTime() + std::chrono::seconds {3};
+
+        // Bone positions include world facing; settle the turn before comparing frozen animation samples.
+        while (!is_float_equal(model->GetMoveDirAngle(), 60.0f) && client->GameTime.GetFrameTime() < turn_deadline) {
+            pose();
+        }
+
+        REQUIRE(is_float_equal(model->GetMoveDirAngle(), 60.0f));
+        pose();
+        float32_t turn_angle = model->GetMoveDirAngle();
+        auto first = model->GetBonePos(root);
+        REQUIRE(first);
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        time = 0.5f;
+        model->SetMovementState(true, false, 0);
+        pose();
+        auto middle = model->GetBonePos(root);
+        REQUIRE(middle);
+        CHECK(middle != first);
+        pose();
+        CHECK(model->GetMoveDirAngle() == turn_angle);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetBonePos(root) == middle);
+    }
+
+    SECTION("SelectionSpeedMultipliesInstanceSpeedAndPreservesPhase")
+    {
+        auto reference = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(reference);
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        (void)reference->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth);
+        model->SetSpeed(2.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth, 0.5f);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        coarse_sleep(std::chrono::milliseconds {60});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        CHECK(model->GetBonePos(root) == reference->GetBonePos(root));
+        auto previous = model->GetBonePos(root);
+        REQUIRE(previous);
+        (void)model->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth, 0.25f);
+        model->PoseSpriteFrame(true);
+        auto current = model->GetBonePos(root);
+        REQUIRE(current);
+        CHECK(current == previous);
+    }
+
+    SECTION("TurnLifetimeUsesRemainingClipTimeAndCurrentSpeed")
+    {
+        float32_t start_time = 0.8f;
+        float32_t speed = 1.0f;
+        float32_t updated_speed = 1.0f;
+        bool expect_still_turning = false;
+        SECTION("NormalizedStartUsesRemainingDuration")
+        {
+        }
+        SECTION("FasterSelectionReschedulesCompletion")
+        {
+            start_time = 0.2f;
+            updated_speed = 4.0f;
+        }
+        SECTION("SlowerSelectionReschedulesCompletion")
+        {
+            start_time = 0.5f;
+            speed = 2.0f;
+            updated_speed = 0.5f;
+            expect_still_turning = true;
+        }
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            normalized_time = start_time;
+            playback_speed = speed;
+        });
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock = scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        });
+
+        model->PoseSpriteFrame(true);
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        nanotime selected_at = client->GameTime.GetFrameTime();
+        pose();
+        INFO("Initial pose elapsed: " << (client->GameTime.GetFrameTime() - selected_at).milliseconds());
+        INFO("Selected clip duration: " << model->GetAnimDuration(state, action).milliseconds());
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        model->PoseSpriteFrame(false);
+        auto before_speed_change = model->GetBonePos(root);
+        speed = updated_speed;
+        model->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(false);
+        CHECK(model->GetBonePos(root) == before_speed_change);
+        client->GameTime.Resume();
+
+        nanotime retimed_at = client->GameTime.GetFrameTime();
+        coarse_sleep(std::chrono::milliseconds {650});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        INFO("Time since retiming: " << (client->GameTime.GetFrameTime() - retimed_at).milliseconds());
+        INFO("Clip duration: " << model->GetAnimDuration(state, action).milliseconds());
+        CHECK(model->GetMovingContext() == (expect_still_turning ? CritterAnimationContext::TurnRight : CritterAnimationContext::Default));
+
+        if (expect_still_turning) {
+            coarse_sleep(std::chrono::milliseconds {650});
+            client->GameTime.FrameAdvance(false);
+            model->PoseSpriteFrame(true);
+            CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        }
+    }
+
+    SECTION("FrozenBodyOwnsTheSkeletonWhileMoving")
+    {
+        (void)model->PlayAnim(state, action, nullptr, 0.5f, ModelAnimFlags::Freeze);
+        pose();
+        auto frozen = model->GetBonePos(root);
+        REQUIRE(frozen);
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = 0.0f;
+        });
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == frozen);
+    }
+
+    SECTION("MovingSelectionCanFreezeWithoutBeingReplacedByDefaultContext")
+    {
+        int32_t observed_speed = 0;
+        Entity::EventCallbackData selection;
+        selection.Callback = [&](FuncCallData& call) {
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Moving) {
+                observed_speed = *cast_from_void<int32_t*>(call.ArgsData[5]);
+                *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+                *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 0.5f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+        map->EnableMapperMode();
+        auto critter = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr);
+        critter->SetScaleFactor(2000);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+        auto actor_model = critter->GetModel();
+        REQUIRE(actor_model);
+        CHECK(actor_model->GetStateAnim() == state);
+        CHECK(actor_model->GetActionAnim() == action);
+        CHECK(observed_speed == 69);
+    }
+
+    SECTION("FrozenDefaultSelectionDisablesLocomotionDuringAdvancingAction")
+    {
+        Entity::EventCallbackData selection;
+        selection.Callback = [&](FuncCallData& call) {
+            *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+            *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) != CritterAnimationContext::Action) {
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 1.0f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+
+        auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+
+        map->EnableMapperMode();
+
+        auto critter = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr);
+        auto actor_model = critter->GetModel();
+        REQUIRE(actor_model);
+
+        critter->AppendAnim(state, action);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+
+        CHECK(actor_model->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(critter->IsAnimPlaying());
+        CHECK(actor_model->GetActionAnim() == action);
+    }
+
+    SECTION("QueuedFrozenActionOwnsMovingCritterLegs")
+    {
+        int32_t action_speed = -1;
+        Entity::EventCallbackData selection;
+        selection.Callback = [&](FuncCallData& call) {
+            *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+            *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Action) {
+                action_speed = *cast_from_void<int32_t*>(call.ArgsData[5]);
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 0.5f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+        map->EnableMapperMode();
+        auto critter = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr);
+        auto actor_model = critter->GetModel();
+        REQUIRE(actor_model);
+        critter->AppendAnim(state, action);
+        CHECK(action_speed == 0);
+        actor_model->PoseSpriteFrame(true);
+        auto frozen = actor_model->GetBonePos(root);
+        REQUIRE(frozen);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        actor_model->PoseSpriteFrame(true);
+        CHECK(actor_model->GetBonePos(root) == frozen);
+        CHECK(critter->IsAnimPlaying());
+        critter->StopAnim();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        actor_model->PoseSpriteFrame(true);
+        CHECK_FALSE(critter->IsAnimPlaying());
+        CHECK(actor_model->GetBonePos(root) != frozen);
+        critter->SetScaleFactor(2000);
+        critter->AppendAnim(state, action);
+        CHECK(action_speed == 69);
+    }
+
+    SECTION("LocomotionCallbackReceivesDirectionAndSpeed")
+    {
+        vector<CritterAnimationContext> contexts;
+        int32_t effective_speed = 0;
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t moving_speed, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t&, float32_t& speed) {
+            contexts.emplace_back(context);
+            effective_speed = moving_speed;
+            selected_state = state;
+            selected_action = action;
+            speed = 0.73f;
+        });
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, true, 137);
+        CHECK(effective_speed == 137);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Moving);
+        model->SetMoveDir(mdir {180}, true);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::MovingBack);
+        model->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        CHECK(std::ranges::find(contexts, CritterAnimationContext::TurnRight) != contexts.end());
+        model->SetMoveDir(mdir {120}, false);
+        model->SetLookDir(mdir {0});
+        CHECK(std::ranges::find(contexts, CritterAnimationContext::TurnLeft) != contexts.end());
+        coarse_sleep(std::chrono::milliseconds {1500});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::PlayOnce);
+        pose();
+        CHECK(model->GetActionAnim() == action);
+    }
+}
+
+#endif
+
 FO_END_NAMESPACE
+

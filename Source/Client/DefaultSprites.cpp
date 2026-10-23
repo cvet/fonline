@@ -37,6 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr isize32 DUMMY_SPRITE_SIZE {1, 1};
+static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
+
 static auto ResolveAtlasSpriteLogicalSize(isize32 frame_size, const optional<SpriteMeshData>& mesh_data) -> isize32
 {
     return mesh_data && !mesh_data->Indices.empty() ? mesh_data->SourceSize : frame_size;
@@ -96,10 +99,6 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     if (_atlasAllocation) {
         _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
     }
-}
-
-AtlasSprite::~AtlasSprite()
-{
 }
 
 auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
@@ -401,7 +400,7 @@ static auto MakeUniformSpriteTimelines(int32_t frames, timespan duration, int32_
     constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     FO_VERIFY_AND_THROW(frames > 0 && frames <= 65535, "Sprite sheet requires 1..65535 frames", frames);
-    FO_VERIFY_AND_THROW(duration.nanoseconds() >= frames && duration <= max_duration, "Sprite sheet duration must provide at least one nanosecond per frame and fit uint32 milliseconds", frames, duration);
+    FO_VERIFY_AND_THROW((duration == timespan::zero || duration.nanoseconds() >= frames) && duration <= max_duration, "Sprite sheet duration must be zero or provide at least one nanosecond per frame and fit uint32 milliseconds", frames, duration);
     FO_VERIFY_AND_THROW(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", dirs);
 
     vector<timespan> timeline(numeric_cast<size_t>(frames));
@@ -448,9 +447,10 @@ void SpriteSheet::SetFrameTimeline(vector<timespan> durations)
     constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
     vector<timespan> ends;
     timespan total {};
+    bool untimed = std::ranges::all_of(durations, [](timespan duration) { return duration == timespan::zero; });
 
     for (timespan duration : durations) {
-        FO_VERIFY_AND_THROW(duration > timespan::zero, "Sprite frame duration must be positive");
+        FO_VERIFY_AND_THROW(untimed || duration > timespan::zero, "Sprite timeline must be entirely untimed or contain only positive frame durations");
         FO_VERIFY_AND_THROW(duration <= max_duration - total, "Sprite duration exceeds uint32 milliseconds", total, duration);
 
         total += duration;
@@ -463,6 +463,7 @@ void SpriteSheet::SetFrameTimeline(vector<timespan> durations)
     _duration = total;
     _spr.resize(numeric_cast<size_t>(_framesCount));
     _sprOffset.resize(numeric_cast<size_t>(_framesCount));
+    _sprMotion.resize(numeric_cast<size_t>(_framesCount));
 
     _phase = 0;
     _curIndex = 0;
@@ -501,6 +502,7 @@ auto SpriteSheet::GetCurrentSprite() -> ptr<Sprite>
 auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     vector<vector<timespan>> timelines;
+    timelines.reserve(numeric_cast<size_t>(_dirCount));
 
     for (int32_t dir = 0; dir < _dirCount; dir++) {
         timelines.emplace_back(GetDirection(hdir(dir))->_frameDurations);
@@ -515,6 +517,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
         for (int32_t frame = 0; frame < source->_framesCount; frame++) {
             target->_spr[frame] = source->_spr[frame]->MakeCopy();
             target->_sprOffset[frame] = source->_sprOffset[frame];
+            target->_sprMotion[frame] = source->_sprMotion[frame];
         }
 
         target->_stateAnim = source->_stateAnim;
@@ -534,12 +537,31 @@ auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     return GetCurrentSprite()->FillData(dbuf, pos, colors);
 }
 
+void SpriteSheet::SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion)
+{
+    FO_VERIFY_AND_THROW(index >= 0 && index < _framesCount, "Sprite frame index is out of range", index, _framesCount);
+    FO_VERIFY_AND_THROW(sprite, "Sprite frame is null");
+
+    _spr[index] = std::move(sprite);
+    _sprOffset[index] = offset;
+    _sprMotion[index] = motion;
+
+    if (index == _curIndex) {
+        RefreshParameters();
+    }
+}
+
 void SpriteSheet::Prewarm()
 {
     auto direction = GetCurrentDirection();
     int32_t frame = _sprMngr->Random(0, direction->_framesCount - 1);
     timespan start = frame == 0 ? timespan::zero : direction->_frameEnds[frame - 1];
-    _phase = start.div<float64_t>(direction->_duration);
+    if (direction->_duration > timespan::zero) {
+        _phase = start.div<float64_t>(direction->_duration);
+    }
+    else {
+        _phase = direction->_framesCount > 1 ? numeric_cast<float64_t>(frame) / (direction->_framesCount - 1) : 0.0;
+    }
     RefreshParameters();
 }
 
@@ -573,7 +595,8 @@ void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
     bool animated = false;
 
     for (int32_t dir = 0; dir < _dirCount; dir++) {
-        animated = animated || GetDirection(hdir(dir))->_framesCount > 1;
+        auto direction = GetDirection(hdir(dir));
+        animated = animated || (direction->_framesCount > 1 && direction->_duration > timespan::zero);
     }
 
     if (!animated) {
@@ -611,7 +634,13 @@ auto SpriteSheet::AdvanceTime(timespan elapsed_time) -> bool
     }
 
     _startTick = _sprMngr->GetTimer().GetFrameTime();
-    float64_t next = _phase + (_reversed ? -1.0 : 1.0) * elapsed_time.div<float64_t>(GetDuration());
+    timespan duration = GetDuration();
+
+    if (duration == timespan::zero) {
+        return true;
+    }
+
+    float64_t next = _phase + (_reversed ? -1.0 : 1.0) * elapsed_time.div<float64_t>(duration);
 
     if (_looped) {
         _phase = std::fmod(next, 1.0);
@@ -635,10 +664,10 @@ auto SpriteSheet::AdvanceTime(timespan elapsed_time) -> bool
 
 void SpriteSheet::RefreshParameters()
 {
+    auto direction = GetCurrentDirection();
     _curIndex = GetFrameIndexAtPhase(_phase, _playing && _reversed);
-    auto current = GetCurrentSprite();
-    _size = current->GetSize();
-    _offset = current->GetOffset();
+    _size = direction->_spr[_curIndex]->GetSize();
+    _offset = direction->_sprOffset[_curIndex];
 }
 
 auto SpriteSheet::GetFrameIndexAtPhase(float64_t phase, bool reversed) const -> int32_t
@@ -646,6 +675,10 @@ auto SpriteSheet::GetFrameIndexAtPhase(float64_t phase, bool reversed) const -> 
     FO_VERIFY_AND_THROW(std::isfinite(phase) && phase >= 0 && phase <= 1, "Sprite phase must be finite and within 0..1", phase);
 
     auto direction = GetCurrentDirection();
+    if (direction->_duration == timespan::zero) {
+        return iround<int32_t>(phase * (direction->_framesCount - 1));
+    }
+
     float64_t position = phase * numeric_cast<float64_t>(direction->_duration.nanoseconds());
     auto frame_before_position = [](timespan end, float64_t value) { return numeric_cast<float64_t>(end.nanoseconds()) < value; };
     auto position_before_frame = [](float64_t value, timespan end) { return value < numeric_cast<float64_t>(end.nanoseconds()); };
@@ -672,6 +705,15 @@ auto SpriteSheet::GetSprite(int32_t num_frm) -> ptr<Sprite>
     return direction->_spr[num_frm % direction->_framesCount];
 }
 
+auto SpriteSheet::GetSpriteOffset(int32_t num_frm) const -> ipos32
+{
+    FO_VERIFY_AND_THROW(num_frm >= 0, "Sprite frame index must be nonnegative", num_frm);
+
+    auto direction = GetCurrentDirection();
+
+    return direction->_sprOffset[num_frm % direction->_framesCount];
+}
+
 auto SpriteSheet::GetDirection(mdir dir) const -> nptr<const SpriteSheet>
 {
     return _dirCount == 1 ? nptr<const SpriteSheet> {this} : nptr<const SpriteSheet> {_dirs[dir.hex().value()]};
@@ -682,8 +724,9 @@ auto SpriteSheet::GetDirection(mdir dir) -> nptr<SpriteSheet>
     return _dirCount == 1 ? nptr<SpriteSheet> {this} : nptr<SpriteSheet> {_dirs[dir.hex().value()]};
 }
 
-DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) :
-    _sprMngr {spr_mngr}
+DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr) :
+    _sprMngr {spr_mngr},
+    _resMngr {res_mngr}
 {
     _borderBuf.resize(AppRender::MAX_ATLAS_SIZE);
 }
@@ -692,7 +735,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     FO_TRACE_ZONE(Render);
 
-    auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _resMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -731,21 +774,19 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                 SpriteResourceFrameData& frame = direction.Frames[j];
 
                 if (!frame.SharedFrameIndex.has_value()) {
-                    dir_anim->_sprOffset[j] = frame.NextOffset;
                     auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
-
-                    if (j == 0) {
-                        dir_anim->_size = spr->GetSize();
-                        dir_anim->_offset = spr->GetOffset();
-                    }
-
-                    dir_anim->_spr[j] = std::move(spr);
+                    ipos32 offset = spr->GetOffset();
+                    dir_anim->SetFrame(numeric_cast<int32_t>(j), std::move(spr), offset, frame.NextOffset);
                 }
                 else {
                     uint16_t index = *frame.SharedFrameIndex;
-                    dir_anim->_spr[j] = dir_anim->GetSprite(index)->MakeCopy();
-                    dir_anim->_spr[j]->SetOffset(frame.Offset);
-                    dir_anim->_sprOffset[j] = frame.NextOffset;
+                    ipos32 reference_offset = dir_anim->GetSpriteOffset(index);
+                    ipos32 offset {
+                        numeric_cast<int32_t>(numeric_cast<int64_t>(reference_offset.x) + frame.Offset.x - direction.Frames[index].Offset.x),
+                        numeric_cast<int32_t>(numeric_cast<int64_t>(reference_offset.y) + frame.Offset.y - direction.Frames[index].Offset.y),
+                    };
+
+                    dir_anim->SetFrame(numeric_cast<int32_t>(j), dir_anim->GetSprite(index)->MakeCopy(), offset, frame.NextOffset);
                 }
             }
 
@@ -769,7 +810,7 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 {
     FO_TRACE_ZONE(Render);
 
-    auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _resMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -784,6 +825,30 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 
     SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
     return FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
+}
+
+auto DefaultSpriteFactory::CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    auto [atlas, atlas_allocation, pos] = spr_mngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
+    auto tex = atlas->GetTexture();
+    const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
+
+    tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y + 1}, {1, 1}, dummy_color);
+
+    const ucolor vertical_border[3] = {DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR};
+    tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
+    tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
+
+    frect32 atlas_rect;
+    atlas_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    atlas_rect.width = 1.0f / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.height = 1.0f / numeric_cast<float32_t>(atlas->GetSize().height);
+
+    vector<bool> hit_test_data(1, spr_mngr->CheckHitTest(numeric_cast<int32_t>(DUMMY_SPRITE_COLOR.comp.a)));
+    return safe_alloc::make_shared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data));
 }
 
 auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
@@ -849,3 +914,4 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 }
 
 FO_END_NAMESPACE
+

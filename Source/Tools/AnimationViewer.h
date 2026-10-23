@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "CritterFramesCache.h"
 #include "EngineBase.h"
 #include "ResourceManager.h"
 #include "SettingsStorage.h"
@@ -53,7 +54,7 @@ class AnimationViewer final
 {
 public:
     AnimationViewer() = delete;
-    AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<GameTimer> game_time);
+    AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<CritterFramesCache> critter_frames, ptr<GameTimer> game_time);
     AnimationViewer(const AnimationViewer&) = delete;
     AnimationViewer(AnimationViewer&&) noexcept = delete;
     auto operator=(const AnimationViewer&) = delete;
@@ -110,6 +111,7 @@ private:
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
     ptr<ResourceManager> _resMngr;
+    ptr<CritterFramesCache> _critterFrames;
     ptr<GameTimer> _gameTime;
     SettingsStorage _settings {"AnimationViewer"};
     string _pendingImguiLayout {};
@@ -153,3 +155,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

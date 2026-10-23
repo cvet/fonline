@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"a048a2cb832d3a16d6f06fc22938befcb2125f81e679c8cb484a6c6dfcd7cede"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"984f63616f0ab1c0edd8480585a80ac37731aeaf1ab72b7e72674bac933fb2e3"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -445,7 +445,7 @@ Index объединяет опубликованные корни: у напр�
 `ModelInfoBaker` пишет model descriptions и companion `ModelAnimationInfo.foinfo` версии 2. Контракт включает:
 
 - aggregate `ModelBoundsMin*`/`ModelBoundsMax*` по всем animation envelopes либо static geometry при отсутствии mappings;
-- deterministic `ViewBoundsMin*`/`ViewBoundsMax*`: сначала `Unarmed + Idle`, затем любой Idle, первая валидная animation или static fallback;
+- deterministic `ViewBoundsMin*`/`ViewBoundsMax*`: сначала пара `Animation.PreviewStateAnim` / `Animation.PreviewActionAnim`, затем первая валидная animation или static fallback;
 - `BoundsStateAnimations`/`BoundsActionAnimations` и parallel min/max arrays для отдельных animation AABB.
 
 Bounds строятся по каждому animation key, midpoint между соседними keys и сетке
@@ -542,7 +542,7 @@ Detailed path трассирует pixel-cell boundaries, сохраняет isl
 
 Coverage проверяется по полной unit-square area каждого visible pixel, а не несколькими samples. Constrained overdraw ограничен guard, cleanup и integer rounding; expanded/enclosing candidates оплачивают actual area через score. Failure reasons разделяют contour, offset, vertex limit, triangulation, area, coverage и tolerance. Empty mask даёт empty geometry, unsafe/unprofitable/oversized — quad. Delaunay refinement не применяется из-за отсутствия выгоды по count/area и bit-identical гарантии.
 
-Baked spritev3 хранит count/total по направлениям, duration, int32 placement и int16 движение по логическим кадрам. Shared объединяет только pixels/geometry; concrete хранит RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `SpriteManager::LoadSpriteAsQuad`. Изменение схемы требует полного согласованного rebake.
+Baked spritev3 хранит count/total по направлениям, duration, int32 placement и int16 движение по логическим кадрам. Shared объединяет только pixels/geometry; concrete хранит RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `ResourceManager::LoadSpriteAsQuad`. Изменение схемы требует полного согласованного rebake.
 
 `MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides криттеров/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
 

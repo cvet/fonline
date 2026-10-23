@@ -122,8 +122,8 @@ Bakers = Image Effect RawCopy
 
 [ResourcePack]
 Name = DocumentationParticles
-InputDirs = Particles Engine/Resources
-IncludePatterns = Documentation.spark Radiation.png
+InputDirs = Particles Engine/Resources/Core
+IncludePatterns = Documentation.spark ItemStub.png
 Bakers = Particle Image
 
 [ResourcePack]

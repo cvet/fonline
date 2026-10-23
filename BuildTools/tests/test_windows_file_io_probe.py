@@ -49,7 +49,20 @@ def test_fixture_rejects_overlong_root() -> None:
 def test_engine_probe_compiles_exact_canonical_function_bodies() -> None:
     native, manifest = PROBE.engine_probe_source()
     canonical = PROBE.ENGINE_SOURCE.read_text(encoding="utf-8")
-    assert len(manifest["extracted_functions"]) == 7
+    assert len(manifest["extracted_functions"]) == len(PROBE.ENGINE_SIGNATURES)
+    for dependency in ("static auto fs_path_error(", "static void fs_validate_path(", "static auto fs_make_native_path("):
+        assert any(signature.startswith(dependency) for signature in manifest["extracted_functions"])
+    utf8_source = PROBE.UTF8_SOURCE.read_text(encoding="utf-8")
+    for signature in PROBE.UTF8_SIGNATURES:
+        start = utf8_source.rindex(signature)
+        end = utf8_source.index("\n}\n", start) + len("\n}\n")
+        assert utf8_source[start:end] in native
+    assert len(manifest["extracted_utf8_functions"]) == 2
+    validation_signature = "auto strvex::is_valid_utf8() const"
+    start = utf8_source.rindex(validation_signature)
+    end = utf8_source.index("\n}\n", start) + len("\n}\n")
+    assert utf8_source[start:end] in native
+    assert validation_signature in manifest["extracted_string_functions"]
     for signature in PROBE.ENGINE_SIGNATURES:
         start = canonical.rindex(signature)
         end = canonical.index("\n}\n", start) + len("\n}\n")

@@ -40,6 +40,46 @@ FO_BEGIN_NAMESPACE
 static constexpr string_view MAP_ANCHOR_SECTION = "ProtoMap";
 static constexpr string_view CONTEXT_PREFIX = "$Name";
 
+auto MapLoader::CanOverrideItemProperty(bool is_static, ptr<const Property> prop) -> bool
+{
+    if (is_static || prop->IsServerOnly() || prop->IsSynced() || prop->IsTemporary()) {
+        return true;
+    }
+    if (!prop->IsCoreProperty()) {
+        return false;
+    }
+
+    // Placement context supplies these values outside the synchronized property payload
+    const array<uint16_t, 8> placement_property_indices {ItemProperties::Static_RegIndex, ItemProperties::Ownership_RegIndex, ItemProperties::MapId_RegIndex, ItemProperties::Hex_RegIndex, ItemProperties::CritterId_RegIndex, ItemProperties::CritterSlot_RegIndex, ItemProperties::ContainerId_RegIndex, ItemProperties::ContainerStack_RegIndex};
+    return std::ranges::find(placement_property_indices, prop->GetRegIndex()) != placement_property_indices.end();
+}
+
+void MapLoader::ValidateItemProperties(const Properties& props, const Properties& proto_props, string_view proto_name, ident_t id)
+{
+    auto registrar = props.GetRegistrar();
+    FO_VERIFY_AND_THROW(registrar == proto_props.GetRegistrar(), "Map item and prototype registrars differ", proto_name, id);
+    const ItemProperties item_props {const_cast<Properties&>(props)};
+
+    if (item_props.GetStatic()) {
+        return;
+    }
+
+    for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
+        auto prop = registrar->GetPropertyByIndexUnsafe(i);
+
+        if (prop->IsDisabled() || prop->IsVirtual() || CanOverrideItemProperty(false, prop)) {
+            continue;
+        }
+
+        auto value = props.GetRawData(prop);
+        auto base_value = proto_props.GetRawData(prop);
+
+        if (!std::ranges::equal(value, base_value)) {
+            throw MapLoaderException("Dynamic map item overrides an unsynchronized client-visible property; move the value to its prototype or use synchronization", proto_name, id, prop->GetName());
+        }
+    }
+}
+
 void MapLoader::Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, hash_resolver& hashes, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
     FO_TRACE_ZONE(Map);

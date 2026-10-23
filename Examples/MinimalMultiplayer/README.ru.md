@@ -3,7 +3,7 @@ permalink: /Examples/MinimalMultiplayer/README.ru.html
 locale: ru
 document_id: minimal-multiplayer-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d"} -->
+<!-- docs-translation: {"document_id":"minimal-multiplayer-readme","locale":"ru","source_path":"Examples/MinimalMultiplayer/README.md","source_sha256":"a13814ed602a242fac98988d75e3ac97855c927b46b72a16e0a4c453806ea64f"} -->
 # Минимальный многопользовательский проект FOnline
 
 Отдельный первый игровой проект после
@@ -134,7 +134,7 @@ Set-Location Build\windows
 
 В репозитории нет принадлежащего проекту каталога игровых изображений или
 звука. Встроенные шрифты и fallback-спрайты движка сохраняют игровой маршрут
-работоспособным. Единственная текстура частицы `Radiation.png` скопирована из
+работоспособным. Единственная текстура частицы `ItemStub.png` скопирована из
 ресурсов движка под лицензией MIT и зафиксирована вместе с исходной ревизией,
 путём, лицензией и SHA-256 в `assets/provenance.json`.
 

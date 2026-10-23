@@ -435,9 +435,12 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
     }
 }
 
-auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool
+auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags, float32_t playback_speed) -> bool
 {
     FO_TRACE_ZONE(Model);
+
+    FO_VERIFY_AND_THROW(std::isfinite(ntime) && ntime >= 0.0f && ntime <= 1.0f, "Invalid normalized model animation time", ntime);
+    FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid model playback speed", playback_speed);
 
     auto prev_state_anim = _curStateAnim;
     auto prev_action_anim = _curActionAnim;
@@ -489,9 +492,25 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     // Try skip redundant calls
     bool may_skip_redundant = !is_enum_set(flags, ModelAnimFlags::Init) && !is_enum_set(flags, ModelAnimFlags::PlayOnce);
 
-    if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layers_changed) {
+    if (may_skip_redundant && prev_state_anim == _curStateAnim && prev_action_anim == _curActionAnim && !layers_changed && flags == _playbackFlags && is_float_equal(ntime, _normalizedTime)) {
+        if (!is_float_equal(playback_speed, _playbackSpeed)) {
+            _playbackSpeed = playback_speed;
+            _speedAdjustCur = speed * playback_speed;
+            _forceDraw = true;
+
+            for (auto& child : _children) {
+                (void)child->PlayAnim(state_anim, action_anim, layers, ntime, flags, playback_speed);
+            }
+        }
+
         return false;
     }
+
+    _playbackFlags = flags;
+    _normalizedTime = ntime;
+    _playbackSpeed = playback_speed;
+
+    speed *= playback_speed;
 
     memory::copy(_curLayers, new_layers, sizeof(_curLayers));
 
@@ -695,6 +714,12 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     if (_bodyAnimController && anim_index >= 0) {
         _playOnceAnimPlaying = is_enum_set(flags, ModelAnimFlags::PlayOnce);
     }
+    else if (_bodyAnimController) {
+        _bodyAnimController->ResetEvents();
+        _bodyAnimController->SetTrackEnable(0, false);
+        _bodyAnimController->SetTrackEnable(1, false);
+        _playOnceAnimPlaying = false;
+    }
 
     RefreshMoveAnimation();
 
@@ -711,7 +736,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
         timespan smooth_time = no_smooth ? timespan::zero : _modelMngr->_moveTransitionTime;
-        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::milliseconds {1}}, timespan::zero));
+        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::nanoseconds {1}}, timespan::zero));
         timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan::zero : _animDuration - anim_start_time;
 
         // Disable current track
@@ -750,7 +775,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     // Set animation for children
     for (size_t i = 0; i != _children.size(); ++i) {
-        if (_children[i]->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
+        if (_children[i]->PlayAnim(state_anim, action_anim, layers, ntime, flags, playback_speed)) {
             mesh_changed = true;
         }
     }
@@ -769,31 +794,26 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     return mesh_changed;
 }
 
-void ModelInstance::SetMovementState(bool staying_pose, bool moving, int32_t moving_speed)
+void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t moving_speed)
 {
-    _isStayingPose = staying_pose;
-    _isMoving = staying_pose && moving;
+    FO_VERIFY_AND_THROW(moving_speed >= 0, "Invalid movement speed", moving_speed);
 
-    if (_isMoving) {
-        if (moving_speed < _modelMngr->_settings->Render.RunAnimStartSpeed) {
-            _isRunning = false;
-            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->Render.WalkAnimBaseSpeed);
-        }
-        else {
-            _isRunning = true;
-            _movingSpeedFactor = numeric_cast<float32_t>(moving_speed) / numeric_cast<float32_t>(_modelMngr->_settings->Render.RunAnimBaseSpeed);
-        }
-    }
+    _movementEnabled = movement_enabled;
+    _isMoving = movement_enabled && moving;
 
-    if (!_isStayingPose) {
-        if (_curMovingAnimIndex != -1) {
+    _movingSpeed = moving_speed;
+
+    if (!_movementEnabled) {
+        if (_moveAnimController && (_curMovingAnimIndex != -1 || _moveAnimController->GetTrackEnable(0) || _moveAnimController->GetTrackEnable(1))) {
             _moveAnimController->ResetEvents();
-            _moveAnimController->SetTrackEnable(_curMoveTrack, false);
-            _curMovingAnim = CritterActionAnim::None;
+            _moveAnimController->SetTrackEnable(0, false);
+            _moveAnimController->SetTrackEnable(1, false);
             _curMovingAnimIndex = -1;
+            _forceDraw = true;
         }
 
         _turnAnimPlaying = false;
+        _movingContext = CritterAnimationContext::Default;
     }
 
     RefreshMoveAnimation();
@@ -806,40 +826,30 @@ void ModelInstance::RefreshMoveAnimation()
     if (!_moveAnimController) {
         return;
     }
-    if (!_isStayingPose) {
+
+    if (!_movementEnabled) {
         return;
     }
 
-    // A one-shot body animation owns the whole skeleton while the critter stands still, so the movement-layer leg
-    // override is released until it ends, or full-body clips play only above the waist
-    if (!_isMoving && _playOnceAnimPlaying) {
-        if (_curMovingAnimIndex != -1) {
-            _moveAnimController->ResetEvents();
-            _moveAnimController->SetTrackEnable(_curMoveTrack, false);
-            _curMovingAnim = CritterActionAnim::None;
-            _curMovingAnimIndex = -1;
-        }
-
+    // Frozen body poses own the whole skeleton. A standing one-shot also releases the movement layer until it ends.
+    if (is_enum_set(_playbackFlags, ModelAnimFlags::Freeze) || (!_isMoving && _playOnceAnimPlaying)) {
+        _moveAnimController->ResetEvents();
+        _moveAnimController->SetTrackEnable(0, false);
+        _moveAnimController->SetTrackEnable(1, false);
+        _curMovingAnimIndex = -1;
         _turnAnimPlaying = false;
+        _movingContext = CritterAnimationContext::Default;
+
         return;
     }
 
     auto state_anim = CritterStateAnim::None;
-    auto action_anim = CritterActionAnim::Idle;
+    auto action_anim = CritterActionAnim::None;
+    auto context = CritterAnimationContext::Default;
 
     if (_isMoving) {
-        float32_t angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
-        bool forbid_back = _modelInfo->_disableBackwardAnim;
-
-        if (forbid_back || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
-            _isMovingBack = false;
-            action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
-        }
-        else {
-            _isMovingBack = true;
-            action_anim = _isRunning ? CritterActionAnim::RunBack : CritterActionAnim::WalkBack;
-        }
-
+        context = GetMovingContext();
+        _isMovingBack = context == CritterAnimationContext::MovingBack;
         _turnAnimPlaying = false;
     }
     else {
@@ -855,45 +865,71 @@ void ModelInstance::RefreshMoveAnimation()
         if (std::abs(angle_diff) > _modelMngr->_settings->Render.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
-            if (_turnAnimPlaying) {
-                return;
-            }
-
-            action_anim = angle_diff < 0.0f ? CritterActionAnim::TurnRight : CritterActionAnim::TurnLeft;
+            context = angle_diff < 0.0f ? CritterAnimationContext::TurnRight : CritterAnimationContext::TurnLeft;
             _turnAnimPlaying = true;
         }
         else if (_turnAnimPlaying) {
-            return;
+            context = _movingContext;
         }
     }
 
+    auto flags = CritterAnimationFlags::None;
+    float32_t normalized_time = 0.0f;
+    float32_t playback_speed = 1.0f;
+
     if (_animInitCallback) {
-        _animInitCallback(state_anim, action_anim);
+        _animInitCallback(context, _movingSpeed, state_anim, action_anim, flags, normalized_time, playback_speed);
     }
 
-    _curMovingAnim = action_anim;
+    FO_VERIFY_AND_THROW(std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Invalid normalized movement animation time", normalized_time);
+    FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid movement playback speed", playback_speed);
+
+    bool context_changed = _movingContext != context;
+    _movingContext = context;
 
     float32_t speed = 1.0f;
     int32_t anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
 
-    if (_isMoving) {
-        speed *= _movingSpeedFactor;
+    speed *= playback_speed;
+
+    bool frozen = is_enum_set(flags, CritterAnimationFlags::Freeze);
+
+    if (frozen) {
+        speed = 0.0f;
     }
 
-    if (anim_index == _curMovingAnimIndex) {
-        if (_isMoving && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+    if (!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)) {
+        if (anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+            // Retiming must not seek, and pending speed/completion events must not restore the previous selection.
+            _moveAnimController->ResetEvents();
+
+            constexpr timespan transition_time {std::chrono::milliseconds {1}};
+            int32_t previous_track = _curMoveTrack == 0 ? 1 : 0;
+
+            _moveAnimController->AddEventEnable(previous_track, false, transition_time);
+            _moveAnimController->AddEventSpeed(previous_track, 0.0f, {}, transition_time);
+            _moveAnimController->AddEventWeight(previous_track, 0.0f, {}, transition_time);
+            _moveAnimController->AddEventWeight(_curMoveTrack, 1.0f, {}, transition_time);
             _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
+
+            if (_turnAnimPlaying && !frozen) {
+                timespan remaining = std::max(_moveAnimController->GetAnimDuration(anim_index) - _moveAnimController->GetTrackPosition(_curMoveTrack), timespan::zero);
+                _moveAnimController->AddEventEnable(_curMoveTrack, false, ScaleModelAnimationTime(remaining, 1.0 / speed));
+            }
+
             _forceDraw = true;
         }
 
         return;
     }
 
+    _movementFlags = flags;
+    _movementNormalizedTime = normalized_time;
     _curMovingAnimIndex = anim_index;
     _frameLayoutDirty = true;
     _forceDraw = true;
 
-    constexpr timespan smooth_time {std::chrono::milliseconds {1}};
+    timespan smooth_time = frozen ? timespan::zero : timespan {std::chrono::milliseconds {1}};
 
     if (anim_index != -1) {
         int32_t new_track = _curMoveTrack == 0 ? 1 : 0;
@@ -906,14 +942,17 @@ void ModelInstance::RefreshMoveAnimation()
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
-        _moveAnimController->SetTrackPosition(new_track, {});
+
+        timespan duration = _moveAnimController->GetAnimDuration(anim_index);
+        timespan start_time = std::min(ScaleModelAnimationTime(duration, normalized_time), std::max(duration - timespan {std::chrono::nanoseconds {1}}, timespan::zero));
+
+        _moveAnimController->SetTrackPosition(new_track, start_time);
 
         _moveAnimController->AddEventSpeed(new_track, speed, {}, smooth_time);
         _moveAnimController->AddEventWeight(new_track, 1.0f, {}, smooth_time);
 
-        if (_turnAnimPlaying) {
-            timespan anim_duration = _moveAnimController->GetAnimDuration(anim_index);
-            _moveAnimController->AddEventEnable(new_track, false, ScaleModelAnimationTime(anim_duration, 1.0 / speed));
+        if (_turnAnimPlaying && !frozen) {
+            _moveAnimController->AddEventEnable(new_track, false, ScaleModelAnimationTime(duration - start_time, 1.0 / speed));
         }
 
         _curMoveTrack = new_track;
@@ -927,7 +966,7 @@ void ModelInstance::RefreshMoveAnimation()
     }
 }
 
-void ModelInstance::SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init)
+void ModelInstance::SetAnimInitCallback(function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> anim_init)
 {
     _animInitCallback = std::move(anim_init);
 }
@@ -966,14 +1005,20 @@ auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterAction
     return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr) != -1;
 }
 
-auto ModelInstance::GetMovingAnim() const noexcept -> CritterActionAnim
+auto ModelInstance::GetMovingContext() const noexcept -> CritterAnimationContext
 {
-    if (_curMovingAnimIndex != -1) {
-        return _curMovingAnim;
+    if (!_moveAnimController) {
+        return _isMoving ? CritterAnimationContext::Moving : CritterAnimationContext::Default;
     }
-    else {
-        return _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
+
+    if (_isMoving) {
+        float32_t angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        bool forward = _modelInfo->_disableBackwardAnim || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f);
+
+        return forward ? CritterAnimationContext::Moving : CritterAnimationContext::MovingBack;
     }
+
+    return _movingContext;
 }
 
 auto ModelInstance::IsAnimationPlaying() const -> bool
@@ -1433,7 +1478,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
         input.ClipIndex = state.ClipIndex;
         input.Enabled = active && state.Enabled;
         input.Reversed = state.Reversed;
-        input.Position = state.Position.to_sec<float32_t>();
+        input.Position = state.Position.to_sec<float64_t>();
         input.Weight = state.Weight;
     }
 }
@@ -2833,3 +2878,4 @@ auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ip
 FO_END_NAMESPACE
 
 #endif
+

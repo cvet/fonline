@@ -179,11 +179,6 @@ public sealed class LocationInitAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.All)]
-public sealed class ClassExtensionAttribute : Attribute
-{
-}
-
-[AttributeUsage(AttributeTargets.All)]
 public sealed class AnimCallbackAttribute : Attribute
 {
 }

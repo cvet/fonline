@@ -796,9 +796,19 @@ namespace MapperMergeTest
 
 #endif
 
-    inline auto MakeMapperTestResources() -> FileSystem
+    inline auto MakeMapperTestResources(string_view critter_model = {}) -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob = BakerTests::MakeMetadataBlob({{"Property",
+            {
+                {"Item", "Common", "int32", "AuthoringNumber"},
+                {"Item", "Common", "bool", "AuthoringFlag"},
+                {"Item", "Common", "string", "AuthoringText"},
+                {"Item", "Common", "int32[]", "AuthoringList"},
+                {"Item", "Client", "int32", "AuthoringClient"},
+                {"Item", "Common", "int32", "AuthoringOwner", "Mutable", "OwnerSync", "Persistent"},
+                {"Item", "Server", "int32", "AuthoringServer", "Mutable", "Persistent"},
+                {"Item", "Common", "int32", "AuthoringPrivate", "Mutable", "NoSync", "Persistent"},
+            }}});
 
         auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
         compiler_source->AddFile("Metadata.fometa-mapper", metadata_blob);
@@ -814,11 +824,13 @@ namespace MapperMergeTest
         hstring tile_pic = proto_engine.Hashes.to_hashed_string(TILE_PICTURE);
 
         auto configure_tile = [tile_pic](ProtoItem& proto) {
+            proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::SameSibling);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
         };
         auto configure_unique = [tile_pic](ProtoItem& proto) {
+            proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
@@ -829,6 +841,7 @@ namespace MapperMergeTest
         auto configure_scenery = [tile_pic](ProtoItem& proto) {
             proto.SetIsScenery(true);
             proto.SetPicMap(tile_pic);
+            proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringFlag", "True"}, {"AuthoringText", "base"}, {"AuthoringList", "7 9"}, {"AuthoringClient", "20"}});
         };
         auto configure_wall = [tile_pic](ProtoItem& proto) {
             proto.SetIsWall(true);
@@ -847,7 +860,7 @@ namespace MapperMergeTest
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
         hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
-        critter_protos.emplace_back(string(CRITTER_A), [](ProtoCritter&) { });
+        critter_protos.emplace_back(string(CRITTER_A), [&](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string(critter_model)); });
         auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -862,7 +875,14 @@ namespace MapperMergeTest
         runtime_source->AddFile("MapperMergeTest.fos-bin-mapper", script_blob);
 #endif
 
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
+            runtime_source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
+            runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
+        }
+
         runtime_source->AddFile(TILE_PICTURE, BakerTests::MakeMinimalBakedSprite(32, 16));
+        runtime_source->AddFile("CurDefault.png", BakerTests::MakeMinimalBakedSprite());
+        runtime_source->AddFile("CurHand.png", BakerTests::MakeMinimalBakedSprite());
 
         for (string_view font_name : {"OldDefault", "Numbers", "BigNumbers", "SandNumbers", "Special", "Default", "Thin", "Fat", "Big"}) {
             AddMinimalFont(*runtime_source, font_name);
@@ -957,3 +977,4 @@ namespace MapperMergeTest
 }
 
 FO_END_NAMESPACE
+

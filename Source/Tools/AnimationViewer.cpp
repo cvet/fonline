@@ -106,10 +106,11 @@ static auto InputBufferView(const array<char, Size>& buffer) -> string_view
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
-AnimationViewer::AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<GameTimer> game_time) :
+AnimationViewer::AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<CritterFramesCache> critter_frames, ptr<GameTimer> game_time) :
     _engine {engine},
     _sprMngr {spr_mngr},
     _resMngr {res_mngr},
+    _critterFrames {critter_frames},
     _gameTime {game_time}
 {
     LoadSettings();
@@ -429,7 +430,7 @@ void AnimationViewer::SelectCritter(hstring proto_id)
         return;
     }
 
-    _previewSprite = _sprMngr->LoadSprite(model_name, AtlasType::MapSprites, true);
+    _previewSprite = _resMngr->LoadSprite(model_name, AtlasType::MapSprites, true);
 
     if (!_previewSprite) {
         _selectionError = "Model resource could not be loaded";
@@ -544,7 +545,7 @@ void AnimationViewer::CollectAnimations()
             auto state_value = static_cast<CritterStateAnim>(state_anim);
             auto action_value = static_cast<CritterActionAnim>(action_anim);
 
-            if (_resMngr->GetCritterAnimFrames(_selectedProtoId ? _engine->GetProtoCritter(_selectedProtoId)->GetModelName() : hstring(), state_value, action_value, mdir(iround<int32_t>(_dirAngle)))) {
+            if (_critterFrames->GetCritterAnimFrames(_selectedProtoId ? _engine->GetProtoCritter(_selectedProtoId)->GetModelName() : hstring(), state_value, action_value, mdir(iround<int32_t>(_dirAngle)))) {
                 _animations.emplace_back(AnimationEntry {.StateAnim = state_value, .ActionAnim = action_value, .Label = MakeAnimationLabel(state_value, action_value)});
             }
         }
@@ -579,7 +580,7 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
     ignore_unused(looped, instant);
 #endif
 
-    auto frames = _resMngr->GetCritterAnimFrames(_engine->Hashes.to_hashed_string(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
+    auto frames = _critterFrames->GetCritterAnimFrames(_engine->Hashes.to_hashed_string(_selectedModelName), entry.StateAnim, entry.ActionAnim, mdir(iround<int32_t>(_dirAngle)));
 
     if (frames) {
         _previewSprite = frames->MakeCopy();
@@ -595,8 +596,8 @@ void AnimationViewer::PlayIdle(bool instant)
         return;
     }
 
-    // Idle is the resting state a reviewer expects to see between clips
-    auto idle_entry = AnimationEntry {.StateAnim = CritterStateAnim::Unarmed, .ActionAnim = CritterActionAnim::Idle, .Label = {}};
+    // The project chooses the resting preview pair shown between clips
+    auto idle_entry = AnimationEntry {.StateAnim = _engine->Settings->Animation.PreviewStateAnim, .ActionAnim = _engine->Settings->Animation.PreviewActionAnim, .Label = {}};
     PlayAnimation(idle_entry, true, instant);
 }
 
@@ -606,7 +607,7 @@ void AnimationViewer::PrewarmModel()
         return;
     }
 
-    // Settle the idle and warm the particle systems, so the first shown frame is the real idle pose
+    // Settle the preview and warm the particle systems, so the first shown frame is the configured pose
     // with its effects already emitting
     PlayIdle(true);
     _previewSprite->Prewarm();
@@ -1036,3 +1037,4 @@ auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterAct
 }
 
 FO_END_NAMESPACE
+

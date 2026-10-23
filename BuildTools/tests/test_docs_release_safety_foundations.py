@@ -41,12 +41,16 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         guide = self._read(BACKUP_GUIDE)
 
         for connection in (
-            'options.front() == "JSON" && options.size() == 2',
-            'options.front() == "DbSQLite" && options.size() == 2',
+            'options.front() == "JSON" && !storage_dir.empty()',
+            'options.front() == "DbSQLite" && !storage_dir.empty()',
             'options.front() == "Mongo" && options.size() == 3',
             'options.front() == "Memory" && options.size() == 1',
         ):
             self.assertIn(connection, database)
+        self.assertIn('connection_info = strvex(connection_info).trim();', database)
+        self.assertIn('string_view storage_dir = strvex(connection_info.substr(options.front().size())).trim();', database)
+        for provider in ("DataBaseJson", "DataBaseSQLite"):
+            self.assertIn(f'{provider}::Create(db_settings, storage_dir, std::move(panic_callback))', database)
         self.assertIn('Execute("PRAGMA journal_mode = WAL"', sqlite)
         self.assertIn('Execute("PRAGMA synchronous = NORMAL"', sqlite)
 

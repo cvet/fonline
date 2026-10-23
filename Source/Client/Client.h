@@ -39,6 +39,7 @@
 #include "AudioManager.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
+#include "CritterFramesCache.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
@@ -101,11 +102,6 @@ public:
     ~ClientEngine() override;
 
     [[nodiscard]] auto GetEngine() -> ptr<ClientEngine> { return this; }
-
-    [[nodiscard]] auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool override;
-
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
     [[nodiscard]] auto GetConnection() noexcept -> ptr<ClientConnection> { return &_conn; }
@@ -122,6 +118,9 @@ public:
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
 
+    auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> override;
+    auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
+
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
 
@@ -135,6 +134,7 @@ public:
     auto GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
+    auto AnimAdd(shared_ptr<Sprite> sprite) -> uint32_t;
     void AnimFree(uint32_t anim_id);
     auto AnimGetSpr(uint32_t anim_id) -> nptr<Sprite>;
 
@@ -321,21 +321,18 @@ public:
     // Runs before the client applies a critter action; `localCall` distinguishes local initiation from server delivery
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, ptr<CritterView> /*cr*/, CritterAction /*action*/, int32_t /*actionData*/, nptr<AbstractItem> /*contextItem*/);
-    // Runs before critter animation lookup; handlers may replace `stateAnim` and `actionAnim`
+    // Selects project animation identifiers and playback for a context and effective movement speed; normalizedTime is in [0,1], speed must be finite and positive
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAnimationInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, CritterAnimationContext /*context*/, int32_t /*movingSpeed*/, CritterAnimationFlags& /*flags*/, float32_t& /*normalizedTime*/, float32_t& /*speed*/);
     // Runs after animation selection and before playback; `refreshAnim` distinguishes view refresh from a queued action
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, ptr<CritterView> /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, bool /*refreshAnim*/);
-    // Resolves a 2D animation frame tuple; handlers may replace `pass`, `flags`, offsets, and `animName`, while `StopChain` reports resolution failure
+    // Resolves a project-owned 2D animation; a nonzero sprId transfers a loaded sprite handle to the engine, while StopChain reports failure
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFrames, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32_t& /*pass*/, uint32_t& /*flags*/, int32_t& /*ox*/, int32_t& /*oy*/, string& /*animName*/);
+    FO_ENTITY_EVENT(OnCritterAnimationSprite, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, uint32_t& /*sprId*/);
     // Resolves an animation substitution; handlers may replace the model and animation pair, while `StopChain` reports resolution failure
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*baseModelName*/, CritterStateAnim /*baseStateAnim*/, CritterActionAnim /*baseActionAnim*/, hstring& /*modelName*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/);
-    // Resolves legacy Fallout animation numbers and flags; handlers may replace all output values, while `StopChain` reports resolution failure
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationFallout, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32_t& /*fStateAnim*/, int32_t& /*fActionAnim*/, int32_t& /*fStateAnimEx*/, int32_t& /*fActionAnimEx*/, uint32_t& /*flags*/);
     // Runs after the application reports a screen-size change
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenSizeChanged);
@@ -345,8 +342,9 @@ public:
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
-    FontManager FontMngr;
     ResourceManager ResMngr;
+    CritterFramesCache CritterFrames;
+    FontManager FontMngr;
     AudioManager AudioMngr;
     CacheStorage Cache;
 
@@ -373,6 +371,7 @@ protected:
     struct IfaceAnim
     {
         hstring Name {};
+        AtlasType Atlas {};
         shared_ptr<Sprite> Anim {};
     };
 
@@ -473,6 +472,7 @@ protected:
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterDrawFlatten(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> prop);
@@ -520,7 +520,7 @@ protected:
 
     uint32_t _ifaceAnimCounter {};
     unordered_map<uint32_t, unique_ptr<IfaceAnim>> _ifaceAnimations {};
-    unordered_multimap<hstring, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
+    unordered_multimap<pair<hstring, AtlasType>, unique_ptr<IfaceAnim>> _ifaceAnimationsCache {};
 
     vector<PrimitivePoint> _lmapPrepPix {};
     irect32 _lmapWMap {};
@@ -549,3 +549,4 @@ protected:
 };
 
 FO_END_NAMESPACE
+

@@ -836,6 +836,14 @@ End
         vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
+        string effects_dir = strex(bake_dir).combine_path("Embedded/Effects").str();
+        REQUIRE(fs::create_directories(effects_dir));
+
+        for (string_view name : {"ImGui_Default", "2D_Default", "Flush_RenderTarget"}) {
+            REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx", name).str()).str(), "[Effect]\nPasses = 1\n"));
+            REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx-1-info", name).str()).str(), "[EffectInfo]\n"));
+        }
+
         return bake_dir;
     }
 
@@ -1111,6 +1119,11 @@ End
         runtime_source->AddFile("ClientServerIntegration.fos-bin-client", script_blob);
 #endif
 
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
+            runtime_source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
+            runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
+        }
+
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
@@ -1318,3 +1331,4 @@ End
 }
 
 FO_END_NAMESPACE
+

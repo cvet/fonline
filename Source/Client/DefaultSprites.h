@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Rendering.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 #include "SpriteResource.h"
 
@@ -55,7 +56,6 @@ public:
     AtlasSprite(AtlasSprite&& other) noexcept;
     auto operator=(const AtlasSprite&) = delete;
     auto operator=(AtlasSprite&&) noexcept -> AtlasSprite& = delete;
-    ~AtlasSprite() override;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetAtlas() const -> nptr<const TextureAtlas> { return _atlas; }
@@ -81,6 +81,7 @@ class SpriteSheet final : public Sprite
 {
     friend class DefaultSpriteFactory;
     friend class ResourceManager;
+    friend class CritterFramesCache;
 
 public:
     explicit SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs);
@@ -108,11 +109,13 @@ public:
     [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
     [[nodiscard]] auto GetActionAnimation() const noexcept -> CritterActionAnim { return _actionAnim; }
     [[nodiscard]] auto GetDirectionCount() const noexcept -> int32_t { return _dirCount; }
-    [[nodiscard]] auto GetSpriteOffset() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprOffset; }
+    [[nodiscard]] auto GetSpriteOffset(int32_t num_frm) const -> ipos32;
+    [[nodiscard]] auto GetSpriteMotion() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprMotion; }
     [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
     void SetDirection(mdir dir) override;
@@ -129,6 +132,7 @@ private:
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};
+    vector<ipos32> _sprMotion {};
     int32_t _framesCount {};
     timespan _duration {};
     vector<timespan> _frameDurations {};
@@ -150,7 +154,7 @@ private:
 class DefaultSpriteFactory : public SpriteFactory
 {
 public:
-    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr);
+    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr);
     DefaultSpriteFactory(const DefaultSpriteFactory&) = delete;
     DefaultSpriteFactory(DefaultSpriteFactory&&) noexcept = default;
     auto operator=(const DefaultSpriteFactory&) = delete;
@@ -161,12 +165,15 @@ public:
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    static auto CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
 private:
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     vector<ucolor> _borderBuf {};
 };
 
 FO_END_NAMESPACE
+

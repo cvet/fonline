@@ -49,7 +49,7 @@ Use this page when changing `Docs/Site/_config.yml`, the documentation rendering
 - `Docs/Site/Layouts/default.html`
 - `Docs/Site/Assets/css/docs.css`
 - `Docs/Site/Assets/js/docs.js`
-- `Docs/Site/Assets/images/fonline-mark.png`
+- `Docs/Site/Assets/images/fonline-mark.svg`
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`

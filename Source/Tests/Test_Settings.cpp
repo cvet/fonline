@@ -61,6 +61,17 @@ TEST_CASE("SettingPathParsing")
 
 TEST_CASE("Settings")
 {
+    SECTION("ProjectDayCurvesAreNotEngineSettings")
+    {
+        GlobalSettings settings {false};
+
+        for (const string name : {"View.GlobalDayColorTime", "View.GlobalDayColor"}) {
+            CAPTURE(name);
+            CHECK_NOTHROW(settings.SetRuntimeSetting(name, "project-owned"));
+            CHECK(settings.GetCustomSetting(name) == "project-owned");
+        }
+    }
+
     SECTION("GetResourcePacksThrowsWhenNothingApplied")
     {
         GlobalSettings settings {false};
@@ -758,3 +769,4 @@ TEST_CASE("ApplicationSettings")
 }
 
 FO_END_NAMESPACE
+

@@ -173,6 +173,18 @@ void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_vie
     _impl->Update(collection_name, id, key, value);
 }
 
+auto DataBase::TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool
+{
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->TryInsert(collection_name, id, doc);
+}
+
+auto DataBase::CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool
+{
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->CompareExchange(collection_name, id, key, expected, desired);
+}
+
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
@@ -500,6 +512,7 @@ auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<Da
 
         {
             scoped_lock locker {_stateLocker};
+
             auto it = _committedKeyChanges.find(collection_name);
             committed_before = it != _committedKeyChanges.end() ? it->second : 0;
         }
@@ -515,6 +528,7 @@ auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<Da
         }
 
         scoped_lock locker {_stateLocker};
+
         auto committed_it = _committedKeyChanges.find(collection_name);
         uint64_t committed_after = committed_it != _committedKeyChanges.end() ? committed_it->second : 0;
 
@@ -602,7 +616,7 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         scoped_lock locker {_stateLocker};
 
         for (const auto& id : unique_ids) {
-            _docReadRetryMarkers.emplace(collection_name, id);
+            _documentReadStates[{collection_name, id}].Readers++;
         }
     }
 
@@ -611,7 +625,12 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
             scoped_lock locker {_stateLocker};
 
             for (const auto& id : unique_ids) {
-                _docReadRetryMarkers.erase({collection_name, id});
+                auto it = _documentReadStates.find({collection_name, id});
+                FO_STRONG_ASSERT(it != _documentReadStates.end() && it->second.Readers != 0, "Database reader tracking is missing", collection_name, id);
+
+                if (--it->second.Readers == 0) {
+                    _documentReadStates.erase(it);
+                }
             }
         });
     });
@@ -620,10 +639,21 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
     vector<size_t> pending_indices(unique_ids.size());
     std::iota(pending_indices.begin(), pending_indices.end(), size_t {0});
 
-    // A record committed while it was being read loses its marker to the commit thread and is read again, so
+    // A record committed while it was being read changes its generation and is read again, so
     // every returned document is the stored one with the still-pending operations laid over it
     while (!pending_indices.empty()) {
         vector<DataBaseKey> request_ids = vec_transform(pending_indices, [&](size_t index) -> DataBaseKey { return storage_ids[index]; });
+        vector<uint64_t> expected_generations;
+        expected_generations.reserve(pending_indices.size());
+
+        {
+            scoped_lock locker {_stateLocker};
+
+            for (size_t index : pending_indices) {
+                expected_generations.emplace_back(_documentReadStates.at({collection_name, unique_ids[index]}).Generation);
+            }
+        }
+
         vector<AnyData::Document> records;
 
         try {
@@ -645,9 +675,10 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         {
             scoped_lock locker {_stateLocker};
 
-            for (size_t index : pending_indices) {
-                if (_docReadRetryMarkers.erase({collection_name, unique_ids[index]}) == 0) {
-                    _docReadRetryMarkers.emplace(collection_name, unique_ids[index]);
+            for (size_t request_index = 0; request_index < pending_indices.size(); request_index++) {
+                size_t index = pending_indices[request_index];
+
+                if (_documentReadStates.at({collection_name, unique_ids[index]}).Generation != expected_generations[request_index]) {
                     retry_indices.emplace_back(index);
                 }
                 else {
@@ -721,6 +752,51 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
 {
     FO_TRACE_ZONE(Database);
 
+    scoped_lock mutation_locker {_mutationLocker};
+
+    InsertInner(collection_name, id, doc);
+}
+
+auto DataBaseImpl::TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool
+{
+    FO_TRACE_ZONE(Database);
+
+    if (doc.Empty()) {
+        throw DataBaseException("Cannot insert empty document");
+    }
+
+    ValidateFiniteAnyDocument(doc);
+
+    scoped_lock mutation_locker {_mutationLocker};
+
+    if (!GetDocument(collection_name, id).Empty()) {
+        return false;
+    }
+
+    InsertInner(collection_name, id, doc);
+    return true;
+}
+
+auto DataBaseImpl::CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool
+{
+    FO_TRACE_ZONE(Database);
+
+    ValidateFiniteAnyValue(desired);
+
+    scoped_lock mutation_locker {_mutationLocker};
+
+    auto doc = GetDocument(collection_name, id);
+
+    if (!doc.Contains(key) || doc[string {key}] != expected) {
+        return false;
+    }
+
+    UpdateInner(collection_name, id, key, desired);
+    return true;
+}
+
+void DataBaseImpl::InsertInner(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
+{
     if (doc.Empty()) {
         throw DataBaseException("Cannot insert empty document");
     }
@@ -748,6 +824,13 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
 
 void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
+    scoped_lock mutation_locker {_mutationLocker};
+
+    UpdateInner(collection_name, id, key, value);
+}
+
+void DataBaseImpl::UpdateInner(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
+{
     ValidateFiniteAnyValue(value);
     ValidateCollectionKey(collection_name, id);
 
@@ -772,6 +855,8 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
 void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_TRACE_ZONE(Database);
+
+    scoped_lock mutation_locker {_mutationLocker};
 
     ValidateCollectionKey(collection_name, id);
 
@@ -857,6 +942,7 @@ auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
         safe_call([this] {
             {
                 scoped_lock locker {_stateLocker};
+
                 _snapshotInProgress = false;
             }
 
@@ -870,6 +956,8 @@ auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
 void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
 {
     FO_TRACE_ZONE(Database);
+
+    scoped_lock mutation_locker {_mutationLocker};
 
     if (snapshot_data.empty()) {
         throw DataBaseException("Database snapshot data is empty");
@@ -896,6 +984,7 @@ void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
         safe_call([this] {
             {
                 scoped_lock locker {_stateLocker};
+
                 _snapshotInProgress = false;
             }
 
@@ -918,6 +1007,7 @@ void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
 
 void DataBaseImpl::ClearChanges() noexcept
 {
+    scoped_lock mutation_locker {_mutationLocker};
     scoped_lock locker {_stateLocker};
 
     _pendingCommitOperations.clear();
@@ -1217,7 +1307,9 @@ void DataBaseImpl::CommitNextChange() noexcept
         scoped_lock state_locker {_stateLocker};
 
         // The change stops being laid over reads here, so a reader that fetched the record before the write reads it again
-        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
+        if (auto it = _documentReadStates.find({op->CollectionName, op->RecordId}); it != _documentReadStates.end()) {
+            it->second.Generation++;
+        }
 
         if (op->Type != CommitOperationType::Update) {
             _committedKeyChanges[op->CollectionName]++;
@@ -1506,12 +1598,16 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         return DataBase(std::move(impl));
     };
 
+    connection_info = strvex(connection_info).trim();
+
     if (auto options = strvex(connection_info).split(' '); !options.empty()) {
         logging::write("Connect to {} data base", options.front());
+        string_view storage_dir = strvex(connection_info.substr(options.front().size())).trim();
+        ignore_unused(storage_dir);
 
 #if FO_DATABASE_JSON
-        if (options.front() == "JSON" && options.size() == 2) {
-            return finish_connect(DataBaseJson::Create(db_settings, options[1], std::move(panic_callback)));
+        if (options.front() == "JSON" && !storage_dir.empty()) {
+            return finish_connect(DataBaseJson::Create(db_settings, storage_dir, std::move(panic_callback)));
         }
 #else
         if (options.front() == "JSON") {
@@ -1519,8 +1615,8 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
         }
 #endif
 #if FO_DATABASE_SQLITE
-        if (options.front() == "DbSQLite" && options.size() == 2) {
-            return finish_connect(DataBaseSQLite::Create(db_settings, options[1], std::move(panic_callback)));
+        if (options.front() == "DbSQLite" && !storage_dir.empty()) {
+            return finish_connect(DataBaseSQLite::Create(db_settings, storage_dir, std::move(panic_callback)));
         }
 #else
         if (options.front() == "DbSQLite") {

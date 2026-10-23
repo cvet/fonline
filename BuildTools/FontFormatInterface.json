@@ -79,7 +79,7 @@
     "updater_default_font": "Fonts/Default.fofnt",
     "runtime_side": "client",
     "bundled_descriptors": {
-      "fofnt": ["Big.fofnt", "BigNumbers.fofnt", "Default.fofnt", "Fallout.fofnt", "Fat.fofnt", "Numbers.fofnt", "OldDefault.fofnt", "SandNumbers.fofnt", "Special.fofnt", "Thin.fofnt"],
+      "fofnt": ["Big.fofnt", "BigNumbers.fofnt", "Default.fofnt", "Fat.fofnt", "Numbers.fofnt", "OldDefault.fofnt", "SandNumbers.fofnt", "Special.fofnt", "Thin.fofnt"],
       "fnt": ["CourierNewSmall.fnt", "DefaultExt.fnt"],
       "bmfc": ["CourierNewSmall.bmfc", "Settings.bmfc"]
     }
@@ -340,8 +340,8 @@
       "name": "Separately baked image",
       "stability": "experimental",
       "requirement": "Ship the referenced image as an independently supported image resource in the same pack and preserve its relative path.",
-      "rationale": "The descriptor is raw-copied, but its image is loaded through SpriteManager and the normal image-format pipeline.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["extract_dir().combine_path(image_name)", "_sprMngr->LoadSprite", "Font image file not found"]}]
+      "rationale": "The descriptor is raw-copied, but its image is loaded through ResourceManager and the normal image-format pipeline.",
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["extract_dir().combine_path(image_name)", "_resMngr->LoadSprite", "Font image file not found"]}]
     },
     {
       "id": "font-format.binding.font-slots",

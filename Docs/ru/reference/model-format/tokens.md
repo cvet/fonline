@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-tokens","locale":"ru","source_path":"Docs/en/reference/model-format/tokens.md","source_sha256":"15967cb3b83c2aa3d1e08681ae29fcf5f32977411dd9703f7a64b4a742a84322"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-tokens","locale":"ru","source_path":"Docs/en/reference/model-format/tokens.md","source_sha256":"8f9cb6a30dc92b4a65cf8896e4cb507f4e5d2c9aaf797d09321a2f65d818137f"} -->
 
 # Токены описания моделей
 
@@ -47,5 +47,5 @@ generated: true
 | <a id="entry-model-format-token-action-alias-ec34f04249"></a><code>model-format.token.action-alias</code> | <code>ActionAnimEqual</code> | <code>animation</code> | <code>ActionAnimEqual &lt;from-action&gt; &lt;to-action&gt;</code> | description | <code>experimental</code> | Определяет одношаговый action-animation alias. | Alias применяется один раз до exact lookup и имеет приоритет над exact source-key entry. |
 | <a id="entry-model-format-token-disable-shadow-9186a3e79e"></a><code>model-format.token.disable-shadow</code> | <code>DisableShadow</code> | <code>rendering</code> | <code>DisableShadow</code> | description | <code>experimental</code> | Отключает shadow rendering всех instances description. | Model-level flag объединяется с per-instance shadow toggle. |
 | <a id="entry-model-format-token-disable-interpolation-d9ef87329e"></a><code>model-format.token.disable-interpolation</code> | <code>DisableAnimationInterpolation</code> | <code>animation</code> | <code>DisableAnimationInterpolation</code> | description | <code>experimental</code> | Отключает keyframe interpolation model animation controller. | Registered controller выполняет sampling без interpolation. |
-| <a id="entry-model-format-token-disable-backward-a8f9cfd5f1"></a><code>model-format.token.disable-backward</code> | <code>DisableBackwardAnim</code> | <code>animation</code> | <code>DisableBackwardAnim</code> | description | <code>experimental</code> | Отключает выбор WalkBack и RunBack для movement-pose animation. | Movement всегда использует forward walk/run, а SetMoveDir выравнивает look direction. |
+| <a id="entry-model-format-token-disable-backward-a8f9cfd5f1"></a><code>model-format.token.disable-backward</code> | <code>DisableBackwardAnim</code> | <code>animation</code> | <code>DisableBackwardAnim</code> | description | <code>experimental</code> | Выбирает контекст движения вперёд вместо движения назад. | Движение использует контекст движения вперёд, а SetMoveDir также выравнивает направление взгляда; идентификаторы анимаций выбирает проект. |
 | <a id="entry-model-format-token-rotation-bone-446edca436"></a><code>model-format.token.rotation-bone</code> | <code>RotationBone</code> | <code>animation</code> | <code>RotationBone &lt;bone&gt;</code> | description | <code>experimental</code> | Выбирает проверенную torso/body rotation bone и включает movement overlay controller. | Look/move directions могут различаться; body и настроенные head bones получают directional rotation, пока movement/turn animations идут на overlay controller. |

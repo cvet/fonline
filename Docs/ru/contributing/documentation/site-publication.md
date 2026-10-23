@@ -5,9 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"32528d85420f3fc274376e485c781ba7d3a134f2d7e02c3acaaad5a2cf21287f"} -->
-
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"9ce232d077bcb86f09c6acf1022f254bf15bd45d53520c1c8c8c1de5a07e03c3"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -51,7 +49,7 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 - `Docs/Site/Layouts/default.html`
 - `Docs/Site/Assets/css/docs.css`
 - `Docs/Site/Assets/js/docs.js`
-- `Docs/Site/Assets/images/fonline-mark.png`
+- `Docs/Site/Assets/images/fonline-mark.svg`
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`

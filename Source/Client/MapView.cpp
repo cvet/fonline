@@ -279,6 +279,7 @@ void MapView::LoadFromFile(string_view map_name, string_view file_name, const st
 
             auto props = proto->GetProperties()->Copy();
             props.ApplyFromText(*kv);
+            MapLoader::ValidateItemProperties(props, *proto->GetProperties(), proto->GetName(), id);
 
             auto props_ptr = make_nptr(&props);
             auto item = safe_alloc::make_refcounted<ItemHexView>(this, id, proto, props_ptr);
@@ -805,6 +806,10 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
+    if (props) {
+        MapLoader::ValidateItemProperties(*props, *proto->GetProperties(), proto->GetName(), id);
+    }
+
     auto item = safe_alloc::make_refcounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
@@ -826,6 +831,8 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     item->SetIsTile(true);
     item->SetIsRoofTile(is_roof);
     item->SetTileLayer(layer);
+
+    MapLoader::ValidateItemProperties(*item->GetProperties(), *proto->GetProperties(), proto->GetName(), item->GetId());
 
     return AddItemInternal(item);
 }
@@ -1087,7 +1094,7 @@ auto MapView::GetHexContentSize(mpos hex) -> isize32
 
 auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePattern>
 {
-    auto spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+    auto spr = _engine->ResMngr.LoadSprite(name, AtlasType::MapSprites);
 
     if (!spr) {
         return nullptr;
@@ -1101,7 +1108,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
     pattern->Sprites.emplace_back(std::move(spr));
 
     for (size_t i = 1; i < count; i++) {
-        auto next_spr = _engine->SprMngr.LoadSprite(name, AtlasType::MapSprites);
+        auto next_spr = _engine->ResMngr.LoadSprite(name, AtlasType::MapSprites);
 
         next_spr->Prewarm();
         next_spr->PlayDefault();
@@ -3646,7 +3653,7 @@ void MapView::DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex)
         return;
     }
 
-    auto draw_order = cr->IsDead() && !cr->GetDeadDrawNoFlatten() ? DrawOrderType::DeadCritter : DrawOrderType::Critter;
+    auto draw_order = cr->GetDrawFlatten() ? DrawOrderType::FlatCritter : DrawOrderType::Critter;
     auto mspr = cr->AddSprite(_mapSprites, draw_order, hex, 0, &field->Offset);
     AddSpriteToChain(field, mspr);
 }
@@ -3908,7 +3915,7 @@ auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& targe
         }
 
         for (auto cr : cell.Critters) {
-            if (!cr->IsDead() && find_cr != cr) {
+            if (cr->GetPathfindingObstacle() && find_cr != cr) {
                 return HexBlockResult::DeferCritter;
             }
         }
@@ -4232,6 +4239,7 @@ auto MapView::SaveToText(string_view save_name) const -> string
     };
 
     auto fill_item = [&fill_item_section](ptr<const ItemView> item) {
+        MapLoader::ValidateItemProperties(*item->GetProperties(), *item->GetProto()->GetProperties(), item->GetProto()->GetName(), item->GetId());
         auto kv = item->GetProperties()->SaveToText(item->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();
@@ -4303,3 +4311,4 @@ void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor 
 }
 
 FO_END_NAMESPACE
+

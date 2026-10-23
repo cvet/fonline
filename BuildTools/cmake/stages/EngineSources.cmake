@@ -270,6 +270,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp")
 
 AppendList(FO_CLIENT_BASE_SOURCE
+    "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/AnimationMovement.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientConnection.cpp"
@@ -280,6 +282,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.h"
+    "${FO_ENGINE_ROOT}/Source/Client/CritterFramesCache.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/CritterFramesCache.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterView.cpp"
@@ -670,4 +674,3 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp")
-

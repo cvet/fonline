@@ -82,8 +82,9 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _binaryDir {GetClientBinaryDir(settings->Common.UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
-    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
-    _fontMngr(make_ptr(&_sprMngr))
+    _sprMngr(settings, window, make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
+    _resMngr(make_ptr(&_resources), make_ptr(&_sprMngr)),
+    _fontMngr(make_ptr(&_sprMngr), make_ptr(&_resMngr))
 {
     FO_TRACE_ZONE(Engine);
 
@@ -97,17 +98,19 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     if (!settings->Common.UserWritablePath.empty()) {
         _resources.AddDirSource(GetClientWritableResourceDir(*settings), false, true, true);
     }
+
     _effectMngr.LoadMinimalEffects();
 
-    _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
+    _resMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr, &_resMngr));
 
     // Wait screen. The splash pack is one of the packs this run repairs, so a damaged copy costs the picture, never the run
     try {
         if (!_settings->Client.DefaultSplashPack.empty()) {
             AddClientPackSource(_resources, *_settings, _settings->Client.DefaultSplashPack, true);
         }
+
         if (!_settings->Client.DefaultSplash.empty()) {
-            _splashPic = _sprMngr.LoadSprite(_settings->Client.DefaultSplash, AtlasType::OneImage);
+            _splashPic = _resMngr.LoadSprite(_settings->Client.DefaultSplash, AtlasType::OneImage);
         }
     }
     catch (const std::exception& ex) {
@@ -1915,3 +1918,4 @@ static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeade
 }
 
 FO_END_NAMESPACE
+

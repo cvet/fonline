@@ -168,7 +168,6 @@
         "Big.fofnt",
         "BigNumbers.fofnt",
         "Default.fofnt",
-        "Fallout.fofnt",
         "Fat.fofnt",
         "Numbers.fofnt",
         "OldDefault.fofnt",
@@ -682,13 +681,13 @@
       "name": "Separately baked image",
       "stability": "experimental",
       "requirement": "Ship the referenced image as an independently supported image resource in the same pack and preserve its relative path.",
-      "rationale": "The descriptor is raw-copied, but its image is loaded through SpriteManager and the normal image-format pipeline.",
+      "rationale": "The descriptor is raw-copied, but its image is loaded through ResourceManager and the normal image-format pipeline.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "extract_dir().combine_path(image_name)",
-            "_sprMngr->LoadSprite",
+            "_resMngr->LoadSprite",
             "Font image file not found"
           ]
         }
@@ -1257,5 +1256,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "bd9c37b4d3bf63b61cae7fd8068c071d2a0460a792715fb1f95229b326805480"
+  "contract_digest": "70d9dbcba198506cc15a781543364a77b8285e200765682ecec11a8446f281d0"
 }

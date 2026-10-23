@@ -105,7 +105,25 @@ Property components also generate Has/qualified-field accessors for entities and
 
 Use the project namespace and import `FOnline` for generated types. CoreScripts use file-scoped `namespace FOnline;`; game domain types belong outside it.
 
-Generated reference/entity APIs distinguish nullable values as part of the script/native contract. Branch on expected absence; use `Game.Verify` or `Game.VerifyNotNull` for invariant violations. Managed entity references own neither persistence nor lifetime.
+Generated reference/entity APIs distinguish nullable values as part of the script/native contract. Branch on expected absence; use `Invariant.Verify` or `Invariant.VerifyNotNull` for invariant violations. Managed entity references own neither persistence nor lifetime.
+
+Hand-written managed members use PascalCase at every access level, including
+private fields (`Continuations`, not `_continuations`). Underscores may separate
+segments starting with a capital letter or digit; they never lead or trail a name.
+A field required beside a property gets its own meaningful name, such as
+`RecordedGlobally` behind `GlobalCount`, rather than an access marker. Locals and
+parameters keep their established camelCase conventions.
+
+Two Engine-owned surfaces retain different spellings: script-visible value types
+mirror the native API (`ipos.x`, `hstr()`, `timespan.milliseconds`), and
+`ManagedScriptBaker` emits reserved `_`-prefixed interop internals (`_entityPtr`,
+`__event_OnStart`) to avoid collisions with properties declared by an embedding
+project. Do not apply the handwritten member rule to those generated names.
+
+Methods resolved by the native backend through `[CallableByEngine]` are
+`internal`, even though Mono lookup can find non-public methods. They are dispatch
+entry points, not ordinary direct-call helpers; a change must respect the owning
+dispatcher, synchronization and callback-lifetime contract.
 
 Each backend has an isolated load context, but gameplay state requires an explicit per-engine owner: `Game`, entity, property or ref type. Static constants and immutable type metadata are valid; mutable caches, registries, timer gates and collections do not gain ownership from C# static fields.
 
@@ -124,8 +142,10 @@ Managed marker attributes mirror the Engine dispatch roles rather than ordinary 
 - `[PropertyGetter]` and `[PropertySetter]`;
 - `[ServerRemoteCall]`, `[ClientRemoteCall]`, and `[AdminRemoteCall]`;
 - `[ItemTrigger]`, `[ItemInit]`, `[ItemStatic]`, `[CritterInit]`, `[MapInit]`, and `[LocationInit]`;
-- `[AnimCallback]`, `[ClassExtension]`, and project-registered marker attributes;
+- `[AnimCallback]` and project-registered marker attributes;
 - `[CallableByName]` for functions intentionally exposed to named invocation.
+
+Use standard C# extension methods to expose static helpers with instance-call syntax; no engine marker is required.
 
 Generated event wrappers reject a handler without `[Event]` before creating the native subscription. Named calls are likewise deny-by-default: `Game.Invoke` and administrative dispatch accept only explicitly marked functions and the applicable allowlist.
 

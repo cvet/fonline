@@ -395,7 +395,8 @@ void MasterBaker::BakeAllInternal()
     }
 
     string usage_path = MakeOutputPath("Resources.usage.json");
-    FO_VERIFY_AND_THROW(fs::remove_file(usage_path), "Unable to invalidate the resource usage manifest", usage_path);
+    bool usage_removed = fs::remove_file(usage_path);
+    FO_VERIFY_AND_THROW(usage_removed, "Unable to invalidate the resource usage manifest", usage_path);
     string build_hash_path = MakeOutputPath("Resources.build-hash");
     std::atomic_bool force_baking = ResolveRebuildMode(build_hash_path);
 
@@ -418,8 +419,10 @@ void MasterBaker::BakeAllInternal()
     logging::write("Baking complete!");
 
     string temporary_usage_path = usage_path + ".tmp";
-    FO_VERIFY_AND_THROW(fs::write_file(temporary_usage_path, usage_manifest), "Unable to write the resource usage manifest", temporary_usage_path);
-    FO_VERIFY_AND_THROW(fs::rename(temporary_usage_path, usage_path), "Unable to publish the resource usage manifest", usage_path);
+    bool usage_written = fs::write_file(temporary_usage_path, usage_manifest);
+    FO_VERIFY_AND_THROW(usage_written, "Unable to write the resource usage manifest", temporary_usage_path);
+    bool usage_published = fs::rename(temporary_usage_path, usage_path);
+    FO_VERIFY_AND_THROW(usage_published, "Unable to publish the resource usage manifest", usage_path);
 
     string baking_config_hash_path = MakeOutputPath("Resources.baking-config-hash");
     bool baking_config_hash_write_ok = fs::write_file(baking_config_hash_path, FO_BAKING_CONFIG_HASH);

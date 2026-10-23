@@ -58,9 +58,9 @@ class DocumentationSnippetTests(unittest.TestCase):
         report = docs_snippets.evaluate(BUILDTOOLS_DIR.parent)
 
         self.assertEqual(report["error_count"], 0)
-        self.assertEqual(report["snippet_count"], 469)
-        self.assertEqual(report["normative_count"], 313)
-        self.assertEqual(report["normative_validated_count"], 313)
+        self.assertEqual(report["snippet_count"], 470)
+        self.assertEqual(report["normative_count"], 314)
+        self.assertEqual(report["normative_validated_count"], 314)
         self.assertEqual(report["normative_coverage"], 1.0)
         self.assertEqual(report["evidence_count"], 156)
         self.assertEqual(report["external_parser_required_count"], 184)

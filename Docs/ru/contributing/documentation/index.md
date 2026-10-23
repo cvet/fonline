@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"9a5874ed5a015acf419cb3cff05b52a74d2b708c735c6c316b84f0952f398a25"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"165afc62b6ce52a378a0f1b0abde155daf265e04a838a3be2b318c5d55549598"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -303,7 +303,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Model bakers/loaders/converters, `.fo3d`, FBX/OBJ, layers, links, materials, animations или `FO_MODEL_*` | Обновить [формат моделей](../../how-to/content/model-format.md), [Model Animation](../../how-to/content/model-animation.md), model contract, native tests, force/incremental bake и визуальную проверку. |
 | `.fotxt`, language normalization, prototype `$Text`, text methods или inline colors | Обновить [Текст и локализация](../../how-to/content/text-and-localization.md), model/reference, tests, bake и visible language switch. |
 | `.fofx`, `EffectBaker`, render state/resources, runtime bindings или `FO_EFFECT_*` | Обновить [Формат эффектов](../../how-to/content/effect-format.md), model/reference, tests, bake и каждый affected backend/profile. |
-| Image formats, FOFRM, `ImageBaker`, sprite records/factories, atlas или caches | Обновить [Форматы изображений и спрайтов](../../how-to/content/image-format.md), model/reference, tests, bake и визуальные dimensions/alpha/directions/cadence/hit masks. |
+| Image formats, FOFRM, `ImageBaker`, sprite records/factories, atlas или caches `ResourceManager` | Обновить [Форматы изображений и спрайтов](../../how-to/content/image-format.md), model/reference, tests, bake и визуальные dimensions/alpha/directions/cadence/hit masks. |
 | Particle macros, SPARK/Effekseer sources/baking/rendering, Mapper tools, caches или model links | Обновить [формат и исполнение частиц](../../how-to/content/particle-format.md), model/reference, tests, bake и все enabled backends/integration paths. |
 | `MapperEngine`, штатные меню/окна/controls/hotkeys/history/layout Mapper, mapper-side exports, headless capture карты, TGA/atlas readback или свидетельства видимого окна | Обновить [интерактивное руководство по Mapper](../../how-to/tools/mapper-interactive.md) и [инструменты Mapper](../../how-to/tools/mapper.md), запустить `test_docs_mapper_tools.py` и проверить затронутый интерактивный или headless-путь на fixture движка. При изменении UI, захвата, fixture или recorded trigger заново снять точный screenshot, обновить provenance, собрать Jekyll и проверить desktop/mobile; изменения map format или particles также следуют их owning rows. |
 | `AnimationViewer`, `ParticleViewer`, их hosts/targets/packages, Mapper embedding или settings | Обновить [руководство по просмотру анимации и частиц](../../how-to/tools/animation-particle-viewers.md), focused test, affected binaries и visible workflow; также выполнить model/particle routes. |
@@ -400,6 +400,17 @@ Jobs `Validate documentation` и `Parse documentation snippets` в `.github/work
 [AGENTS.md](../../../../AGENTS.md) является точкой входа ИИ-maintainer. Он ведёт к human docs и фиксирует repository conventions, включая запрет commit/push без явной просьбы. Сохраняйте его кратким и навигационным, а подробные процедуры помещайте в `Docs/`. Root `llms.txt`, `llms-full.txt` и `docs-manifest.json` являются generated retrieval routes для внешних агентов; `Docs/Site/Data/docs-site.json`, оба locale search indexes и `docs-manifest.json#/routing` образуют соответствующую human navigation/search/routing projection. Все шесть артефактов должны выводиться из одного manifest/corpus.
 
 Будущий ИИ-agent, продолжающий roadmap, должен сначала восстановить контекст по git status, backlog и verification report. Контекст чата вторичен относительно состояния репозитория.
+
+Инструкции содержат устойчивые выполнимые правила и маршруты, а не журнал
+инцидентов или копии процедур всех подсистем. При рефакторинге `AGENTS.md`
+сопоставьте прежние разделы с оставшимися владельцами, сохраните входящие якоря
+и проверьте лимит загрузки инструкций клиента. Явно читайте владельцев контрактов
+задачи; не предполагайте, что вложенное руководство уже попало в контекст.
+Уточнение владельца с проверенным контекстом может обосновывать правило, но
+старые журналы и отчёты работников не предоставляют новых полномочий.
+Исходник устанавливает реализованное поведение, требования владельца — ожидаемое.
+Сырые частные доказательства аудита хранятся в рабочем каталоге задачи вне
+публикуемой документации.
 
 ## Контрольный список проверки
 

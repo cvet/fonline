@@ -30,6 +30,20 @@ The owning sources are:
 
 Use [Model Format](model-format.md) for the complete `.fo3d` language, FBX/OBJ inputs, layers, attachments, transforms, materials, cuts, rendering controls, and runtime composition. This page owns the narrower tuple, alias, speed, duration, and script-lookup contract; project gameplay policy remains project-owned.
 
+## Project playback selection
+
+Native `CritterStateAnim` and `CritterActionAnim` declare only `None = 0`. Other values, their names and their gameplay meaning belong to project metadata; numeric pairs in the examples are project-owned.
+
+`OnCritterAnimationInit(cr, stateAnim&, actionAnim&, contextItem, context, movingSpeed, flags&, normalizedTime&, speed&)` selects identifiers and playback independently. `CritterAnimationContext` reports Default, Moving, MovingBack, TurnLeft, TurnRight, Action or Preview; the editor preview path consumes its configured pair directly. Direction and body rotation remain generic geometry. The engine never substitutes a named walk/run/idle/death action based on an identifier or critter condition.
+
+`movingSpeed` is the movement plan speed, divided by model scale for 3D playback. Network catch-up advances movement time separately. `CritterAnimationFlags::Freeze` holds `normalizedTime` in [0,1]; `Movement` aligns 2D sprite frames and visual offsets with world movement, irrespective of the action number. Freeze takes precedence. The requested speed must be finite and positive and multiplies authored clip speed and instance/global playback adjustments. Queued frozen actions remain selected until stopped; ordinary queued actions play once. Projects choose condition-specific poses and walk/run thresholds in their subscriber.
+
+The Action context receives the same effective movement speed, or zero when stationary. A frozen model body owns the whole skeleton even while moving, and normalized time 1 holds the final pose without wrapping. Changing only the selected 3D playback speed preserves the current phase; changing normalized time seeks to that position. Frozen turns can be selected again with a different time or flags. Stopping the action queue immediately selects the current default or movement animation again.
+
+A non-frozen turn completes after the remaining clip duration from its selected normalized start. Changing its speed updates the completion deadline from its current position.
+
+`Animation.PreviewStateAnim` and `Animation.PreviewActionAnim` default to 0/0. Mapper and AnimationViewer use this exact pair. `ModelInfoBaker` prefers its bounds, then the first available clip bounds (or static bounds without clips); no numeric pair is recognized as an idle posture. The baking report counts exact selections as `viewBoundsPreview`. Projects that require a familiar preview must configure its pair explicitly.
+
 ## Authoring animation tuples
 
 `ModelInfoBaker` bakes non-template `.fo3d` model descriptions. A basename beginning with `TEMPLATE_` is an include-only template: its declarations affect concrete model descriptions after `Include` expansion, but it does not become an independent baked model or metadata section.
@@ -49,8 +63,8 @@ ActionAnimEqual <input-action> <resolved-action>
 An `Anim` declaration identifies one clip by a `(state, action)` tuple:
 
 ```text
-Anim CritterStateAnim::Unarmed CritterActionAnim::Walk ModelFile Walk
-Anim CritterStateAnim::Unarmed CritterActionAnim::Run ANIM_Human.fbx Run
+Anim 401 509 ModelFile Walk
+Anim 401 510 ANIM_Human.fbx Run
 ```
 
 - `ModelFile` selects the source named by the model description's `Model` declaration.
@@ -119,7 +133,7 @@ With a 1-second base clip, input `(0, 3)` resolves once to `(1, 5)` and therefor
 4. materializes input tuples with the one-step alias rules above;
 5. writes model sections in deterministic source-path order.
 
-The generated metadata file uses one section per concrete model path. Parallel `StateAnimations`, `ActionAnimations`, and `DurationsMs` arrays carry the effective durations. Bounds schema version 2 also carries aggregate model bounds, idle-priority view bounds, and parallel per-animation bounds arrays. Both that representation and the model-info/rig byte streams are private baker/runtime contracts. Game scripts must use typed engine methods instead of reading them.
+The generated metadata file uses one section per concrete model path. Parallel `StateAnimations`, `ActionAnimations`, and `DurationsMs` arrays carry the effective durations. Bounds schema version 2 also carries aggregate model bounds, project-selected preview view bounds, and parallel per-animation bounds arrays. Both that representation and the model-info/rig byte streams are private baker/runtime contracts. Game scripts must use typed engine methods instead of reading them.
 
 The behavior does not branch on resource `PackName`: any resource pack that selects `ModelInfo` can produce the table. Put the resulting pack on every runtime side that calls the common duration API. A common setup ships model metadata to server and client while keeping client-only mesh, texture, and rendering assets in client packs.
 
@@ -130,6 +144,8 @@ If the selected source set contains no concrete `.fo3d` files, no duration metad
 `ModelInformation` strictly loads one immutable canonical skeleton, clip set, binding table, remaps, presence/nearest data, and rest-pose contract from the required rig payload. It rejects old unversioned model-info data, missing/partial rigs, identity mismatches, malformed counts, and trailing data; there is no fallback to a legacy pose evaluator. `ModelAnimation` keeps Ozz objects behind the Engine-owned runtime interface, while each `ModelInstance` owns mutable controller timelines, sampled pose buffers, world matrices, linked children, and procedural overrides. Shared `ModelHierarchy` data remains physical mesh topology and never receives mutable pose output.
 
 Controller durations, positions, event times and instance elapsed time use `timespan`. Advance validates all tracks before mutation and keeps end-of-step speed/event ordering. Callbacks retain the two endpoint-cycle checks, at most once per update; they do not replay skipped middle cycles. Runtime clip/Ozz sampling DTOs and GPU absolute time use seconds only at their adapters. Instance duration queries preserve nanoseconds; common baked metadata retains whole milliseconds.
+
+At the sampling adapter, track position retains double precision until cycle wrapping. Only the wrapped sample time converts to float precision for Ozz. This keeps a frozen position just before the clip endpoint from rounding up to a full cycle and wrapping to the first pose.
 
 `BaseEngine` registers `ModelAnimationInfo.foinfo` during startup after prototypes and before metadata registration is finalized. Registration validates the versioned duration and bounds payload, unique model sections, and unique tuples. Each section path is registered in the engine hash storage and becomes the model key used by scripts.
 
@@ -230,6 +246,11 @@ python BuildTools/docs_site.py --check
 python BuildTools/docs_ai_delivery.py --check
 python BuildTools/docs_validate.py
 ```
+
+A frozen movement-layer clip can coexist with interpolating world facing. Projected
+bone coordinates therefore do not isolate animation time during a turn. The
+`FrozenTurnCanBeReselected` regression first settles facing with a failing deadline,
+then checks the changed normalized pose, its hold and the retained turn context.
 
 For engine behavior, build the embedding project's engine unit-test target. Run the focused model baker, mesh-data, source-loader, animation-data/converter/runtime, procedural-pose, skeleton-compatibility, Ozz, client-engine, and `ModelAnimationInfoLookup` cases, then run the complete unit-test target before integrating an engine revision.
 

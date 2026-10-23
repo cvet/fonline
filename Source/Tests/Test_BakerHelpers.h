@@ -293,7 +293,7 @@ namespace BakerTests
 
     // A baked sprite with several frames in one direction. Some runtime paths cast the loaded sprite to
     // SpriteSheet, which a single-frame sprite never becomes, so they need this instead
-    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint32_t ticks = 100) -> vector<uint8_t>
+    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint32_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
         auto writer = data_writer(sprite_data);
@@ -311,8 +311,8 @@ namespace BakerTests
             writer.write<uint32_t>(duration);
             writer.write<int32_t>(int32_t {0}); // Offset x
             writer.write<int32_t>(int32_t {0}); // Offset y
-            writer.write<int16_t>(int16_t {0}); // Frame x
-            writer.write<int16_t>(int16_t {0}); // Frame y
+            writer.write<int16_t>(frame_motion.x);
+            writer.write<int16_t>(frame_motion.y);
             writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
             writer.write<uint16_t>(width);
             writer.write<uint16_t>(height);
@@ -637,3 +637,4 @@ namespace BakerTests
 }
 
 FO_END_NAMESPACE
+

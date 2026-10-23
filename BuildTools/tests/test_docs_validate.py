@@ -85,6 +85,15 @@ class DocumentationValidatorTests(unittest.TestCase):
             'SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro");\n',
             encoding="utf-8",
         )
+        (root / "Source/Common/CritterAnimationEnums.h").write_text(
+            "///@ ExportEnum\n"
+            "enum class CritterStateAnim : uint16_t\n"
+            "{\n    None = 0,\n};\n"
+            "///@ ExportEnum\n"
+            "enum class CritterActionAnim : uint16_t\n"
+            "{\n    None = 0,\n};\n",
+            encoding="utf-8",
+        )
         (documentation_metadata.output_path(root, "CNAME")).write_text("fonline.ru\n", encoding="utf-8")
         (root / ".github/workflows").mkdir(parents=True)
         (documentation_metadata.output_path(root, ".ruby-version")).write_text("3.3.4\n", encoding="utf-8")
@@ -115,7 +124,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             "Docs/Site/Layouts/default.html": "<!doctype html><main>{{ content }}</main>\n",
             "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
             "Docs/Site/Assets/js/docs.js": "'use strict';\n",
-            "Docs/Site/Assets/images/fonline-mark.png": "fixture image\n",
+            "Docs/Site/Assets/images/fonline-mark.svg": "fixture image\n",
         }
         for relative_path, content in fixture_assets.items():
             path = documentation_metadata.output_path(root, relative_path)
@@ -629,7 +638,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "assets": [
                         "Docs/Site/Assets/css/docs.css",
                         "Docs/Site/Assets/js/docs.js",
-                        "Docs/Site/Assets/images/fonline-mark.png",
+                        "Docs/Site/Assets/images/fonline-mark.svg",
                     ],
                     "artifact_validator": "BuildTools/docs_site_artifact.py",
                     "artifact_report": "Workspace/docs-site-artifact-report.json",
@@ -1361,13 +1370,21 @@ class DocumentationValidatorTests(unittest.TestCase):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            # This fixture copies only part of the native API corpus. Keep the
-            # format anchors, but omit the full Engine inventory declaration.
-            source_text = "\n".join(
-                line for line in source_path.read_text(encoding="utf-8").splitlines()
-                if not line.startswith("///@ ApiContract scope:native-codegen ")
-            ) + "\n"
-            target_path.write_text(source_text, encoding="utf-8")
+            content = source_path.read_text(encoding="utf-8")
+            content = "\n".join(line for line in content.splitlines() if not line.startswith("///@ ApiContract scope:native-codegen ")) + "\n"
+            if relative_path.startswith("Source/Scripting/"):
+                existing = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
+                anchors = {
+                    anchor
+                    for collection in docs_image_format.COLLECTION_KINDS
+                    for entry in image_format_manifest[collection]
+                    for source in entry["source"] if source["path"] == relative_path
+                    for anchor in source["anchors"]
+                }
+                content = existing + "\n" + "\n".join("// " + anchor for anchor in sorted(anchors)) + "\n"
+            target_path.write_text(
+                content, encoding="utf-8"
+            )
         image_format_model_path = root / docs_image_format.DEFAULT_MODEL
         image_format_model_path.write_text(
             docs_image_format.render_image_format_model(root),

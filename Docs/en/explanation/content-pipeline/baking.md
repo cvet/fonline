@@ -599,8 +599,8 @@ required root-space contracts to every model section:
   animation envelopes, with exact static geometry used only when the model has
   no animation mappings;
 - `ViewBoundsMin*` / `ViewBoundsMax*` store a deterministic reference envelope:
-  `Unarmed + Idle` first, then any Idle, then the first valid animation or the
-  static fallback;
+  the configured `Animation.PreviewStateAnim` / `Animation.PreviewActionAnim`
+  pair first, then the first valid animation or the static fallback;
 - `BoundsStateAnimations` / `BoundsActionAnimations` and the parallel `BoundsMin*` /
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
@@ -905,7 +905,7 @@ Consumers that sample the image as a plain rectangular texture rather than a
 sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
 restore the cropped payload into the original logical canvas so their size and
 pixel-coordinate contracts do not change. In particular, font glyph positions
-are authored against the original sheet dimensions; `SpriteManager::LoadSpriteAsQuad`
+are authored against the original sheet dimensions; `ResourceManager::LoadSpriteAsQuad`
 must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove

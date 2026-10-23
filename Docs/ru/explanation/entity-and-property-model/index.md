@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"e65e09cb6248b894c63db50ac048b57fc3ae16e5b7112a5f0d7c529e8ed9e10d"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"c95401077f30fb38547d9e6282ba9e6a0541a28b406657bee34a0f1887e81776"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -277,3 +277,7 @@ Persistence backends хранят records `AnyData::Document`. Подробно�
 Перенос значений использует `MigrationRule Property <Owner> Transform <Property> <Function>` для существующего Persistent-свойства. `PropertiesSerializer::MigrateDocument` подготавливает отделённые значения с неизменным исходным контекстом документа БД до загрузки свойств сущности; изменённые поля ставятся в очередь БД после завершения всех функций. Переименование имени использует `Property <Owner> Rename <Old> <New>` с существующим назначением. При наличии обоих ключей выигрывает текущее имя. См. [контракт Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
 AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
+У динамических предметов карты нельзя переопределять сохраняемую конфигурацию Common или Client без существующего канала синхронизации. Проверка авторинга сравнивает эффективные значения с прототипом, включая ноль, false, пустые значения и неизменяемые игровые свойства без `Persistent`. См. [переопределения карты](../../how-to/content/map-format.md#переопределения-свойств). Раскладка свойств и версия сетевой совместимости не меняются.
+
+Изменение `NoBlock`, `ShootThru` и `LightThru` предмета пересчитывает весь зарегистрированный клиентский контур, включая нерисуемые mesh-клетки и развёрнутые прототипные линии.

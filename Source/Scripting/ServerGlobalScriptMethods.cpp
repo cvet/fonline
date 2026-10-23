@@ -1155,6 +1155,112 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> serv
     return result;
 }
 
+// SyncScope: database mutation only; no live entity cover is required
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbTryInsertRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    return server->DbStorage.TryInsert(collectionName, id, doc);
+}
+
+// SyncScope: database mutation only; no live entity cover is required
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbTryInsertRecord(ptr<ServerEngine> server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+    if (keyValues.empty()) {
+        throw ScriptException("Record values are empty");
+    }
+
+    AnyData::Document doc;
+
+    for (const auto& [key, value] : keyValues) {
+        if (key.empty()) {
+            throw ScriptException("Record key is empty");
+        }
+        if (!strvex(key).is_valid_utf8()) {
+            throw ScriptException("Record key has invalid encoding");
+        }
+        if (!strvex(value).is_valid_utf8()) {
+            throw ScriptException("Record value has invalid encoding");
+        }
+
+        doc.Emplace(key, string(value));
+    }
+
+    return server->DbStorage.TryInsert(collectionName, string(id), doc);
+}
+
+// SyncScope: database mutation only; no live entity cover is required
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbCompareExchangeRecordString(ptr<ServerEngine> server, hstring collectionName, ident_t id, string_view key, string_view expected, string_view desired)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (!id) {
+        throw ScriptException("Record id arg is zero");
+    }
+    if (key.empty()) {
+        throw ScriptException("Record key is empty");
+    }
+    if (!strvex(key).is_valid_utf8() || !strvex(expected).is_valid_utf8() || !strvex(desired).is_valid_utf8()) {
+        throw ScriptException("Record compare-exchange value has invalid encoding");
+    }
+
+    return server->DbStorage.CompareExchange(collectionName, id, key, AnyData::Value {string {expected}}, AnyData::Value {string {desired}});
+}
+
+// SyncScope: database mutation only; no live entity cover is required
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_DbCompareExchangeRecordString(ptr<ServerEngine> server, hstring collectionName, string_view id, string_view key, string_view expected, string_view desired)
+{
+    if (!collectionName) {
+        throw ScriptException("Collection name arg is empty");
+    }
+    if (id.empty()) {
+        throw ScriptException("Record id arg is empty");
+    }
+    if (key.empty()) {
+        throw ScriptException("Record key is empty");
+    }
+    if (!strvex(key).is_valid_utf8() || !strvex(expected).is_valid_utf8() || !strvex(desired).is_valid_utf8()) {
+        throw ScriptException("Record compare-exchange value has invalid encoding");
+    }
+
+    return server->DbStorage.CompareExchange(collectionName, string {id}, key, AnyData::Value {string {expected}}, AnyData::Value {string {desired}});
+}
+
 // SyncScope: database record insert only; no live entity cover is required
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DbInsertRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)

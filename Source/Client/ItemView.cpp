@@ -33,6 +33,7 @@
 
 #include "ItemView.h"
 #include "Client.h"
+#include "MapLoader.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -85,6 +86,8 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
+
+    MapLoader::ValidateItemProperties(*item->GetProperties(), *proto->GetProperties(), proto->GetName(), id);
 
     return AddRawInnerItem(item);
 }

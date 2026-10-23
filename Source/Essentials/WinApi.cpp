@@ -627,6 +627,11 @@ auto winapi::open_new_write_file(const string& path, bool append, bool exclusive
 
     if ((!append && ::_chsize_s(fd, 0) != 0) || ::_lseeki64(fd, 0, SEEK_END) < 0) {
         ::_close(fd);
+
+        if (exclusive) {
+            (void)::DeleteFileW(path_wide.c_str());
+        }
+
         return -1;
     }
 

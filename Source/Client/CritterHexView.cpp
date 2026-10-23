@@ -32,6 +32,7 @@
 //
 
 #include "CritterHexView.h"
+#include "AnimationMovement.h"
 #include "Client.h"
 #include "EffectManager.h"
 #include "ItemView.h"
@@ -218,8 +219,19 @@ void CritterHexView::NextAnim()
 
     _curAnim = std::move(_animSequence.front());
     _animSequence.erase(_animSequence.begin());
+    auto discard_invalid_animation = scope_fail([this]() noexcept { _curAnim.reset(); });
 
-    _engine->OnCritterAnimationInit.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem());
+    int32_t moving_speed = IsMoving() ? numeric_cast<int32_t>(GetMoving()->GetSpeed()) : 0;
+
+#if FO_ENABLE_3D
+    if (_model) {
+        int32_t scale_factor = GetScaleFactor();
+        float32_t scale = scale_factor != 0 ? numeric_cast<float32_t>(scale_factor) / 1000.0f : 1.0f;
+        moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving_speed) / scale);
+    }
+#endif
+
+    PrepareAnim(*_curAnim, CritterAnimationContext::Action, moving_speed);
 
 #if FO_ENABLE_3D
     if (_model) {
@@ -231,7 +243,7 @@ void CritterHexView::NextAnim()
     else
 #endif
     {
-        auto frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), _curAnim->StateAnim, _curAnim->ActionAnim, GetDir());
+        auto frames = _engine->CritterFrames.GetCritterAnimFrames(GetModelName(), _curAnim->StateAnim, _curAnim->ActionAnim, GetDir());
 
         if (!frames) {
             NextAnim();
@@ -239,7 +251,7 @@ void CritterHexView::NextAnim()
         }
 
         _curAnim->Frames = frames;
-        _curAnim->FrameIndex = 0;
+        _curAnim->FrameIndex = lerp(0, frames->GetFramesCount() - 1, _curAnim->NormalizedTime);
         _curAnim->FramesDuration = frames->GetDuration();
     }
 
@@ -247,12 +259,18 @@ void CritterHexView::NextAnim()
 
 #if FO_ENABLE_3D
     if (_model) {
-        constexpr auto anim_flags = combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
-        _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), 0.0f, anim_flags);
+        auto anim_flags = combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
+
+        if (is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze)) {
+            anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
+        }
+
+        _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), _curAnim->NormalizedTime, anim_flags, _curAnim->Speed);
     }
     else
 #endif
     {
+        RefreshAnimOffset(*_curAnim);
         SetAnimSpr(_curAnim->Frames, _curAnim->FrameIndex);
     }
 }
@@ -284,78 +302,70 @@ void CritterHexView::StopAnim()
 {
     _animSequence.clear();
     _curAnim.reset();
+    RefreshView();
+}
+
+void CritterHexView::PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed)
+{
+    _engine->OnCritterAnimationInit.Fire(this, anim.StateAnim, anim.ActionAnim, anim.GetContextItem(), context, moving_speed, anim.Flags, anim.NormalizedTime, anim.Speed);
+    FO_VERIFY_AND_THROW(std::isfinite(anim.NormalizedTime) && anim.NormalizedTime >= 0.0f && anim.NormalizedTime <= 1.0f, "Invalid normalized critter animation time", anim.NormalizedTime);
+    FO_VERIFY_AND_THROW(std::isfinite(anim.Speed) && anim.Speed > 0.0f, "Invalid critter animation speed", anim.Speed);
 }
 
 void CritterHexView::RefreshView(bool no_smooth)
 {
+    int32_t moving_speed = IsMoving() ? numeric_cast<int32_t>(GetMoving()->GetSpeed()) : 0;
+    bool moving = IsMoving() && !_movingHeld;
+    auto context = moving ? CritterAnimationContext::Moving : CritterAnimationContext::Default;
+
 #if FO_ENABLE_3D
     if (_model) {
         int32_t scale_factor = GetScaleFactor();
         float32_t scale = scale_factor != 0 ? numeric_cast<float32_t>(scale_factor) / 1000.0f : 1.0f;
         _model->SetScale(scale, scale, scale);
+        moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving_speed) / scale);
+    }
+#endif
 
-        int32_t moving_speed = 0;
+    CritterAnim selection;
+    PrepareAnim(selection, context, moving_speed);
 
-        if (IsMoving()) {
-            auto moving = GetMoving();
-            FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
-            moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving->GetSpeed()) / scale);
+#if FO_ENABLE_3D
+    if (_model) {
+        bool frozen = is_enum_set(selection.Flags, CritterAnimationFlags::Freeze) || (_curAnim && is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze));
+        _model->SetMovementState(!frozen, moving, moving_speed);
+
+        auto model_context = _model->GetMovingContext();
+
+        if (moving && !frozen && model_context != context) {
+            selection = {};
+            PrepareAnim(selection, model_context, moving_speed);
         }
-
-        _model->SetMovementState(GetCondition() == CritterCondition::Alive, IsMoving() && !_movingHeld, moving_speed);
     }
 #endif
 
     if (!_curAnim.has_value()) {
-        _animStartTime = _engine->GameTime.GetFrameTime();
-
-        auto state_anim = CritterStateAnim::None;
-        auto action_anim = CritterActionAnim::None;
-
-        _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
+        auto state_anim = selection.StateAnim;
+        auto action_anim = selection.ActionAnim;
 
 #if FO_ENABLE_3D
         if (_model) {
-            if (IsMoving() && !_movingHeld && GetCondition() == CritterCondition::Alive) {
-                action_anim = _model->GetMovingAnim();
-            }
-
-            if (!_model->ResolveAnimation(state_anim, action_anim)) {
-                state_anim = CritterStateAnim::Unarmed;
-                action_anim = CritterActionAnim::Idle;
-            }
-
             _engine->OnCritterAnimationProcess.Fire(this, state_anim, action_anim, nullptr, true);
 
             auto anim_flags = no_smooth ? ModelAnimFlags::NoSmooth : ModelAnimFlags::None;
 
-            if (GetCondition() == CritterCondition::Alive) {
-                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
-            }
-            else {
+            if (is_enum_set(selection.Flags, CritterAnimationFlags::Freeze)) {
                 anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
-                float32_t frozen_time = GetCondition() == CritterCondition::Dead ? 1.0f : 0.0f;
-                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
             }
+
+            _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), selection.NormalizedTime, anim_flags, selection.Speed);
         }
         else
 #endif
         {
             ignore_unused(no_smooth);
 
-            if (IsMoving() && !_movingHeld && GetCondition() == CritterCondition::Alive) {
-                auto moving = GetMoving();
-                FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
-
-                if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->Render.RunAnimStartSpeed)) {
-                    action_anim = CritterActionAnim::Walk;
-                }
-                else {
-                    action_anim = CritterActionAnim::Run;
-                }
-            }
-
-            auto frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
+            auto frames = _engine->CritterFrames.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
 
             if (!frames) {
                 frames = _engine->ResMngr.GetCritterDummyFrames();
@@ -363,21 +373,23 @@ void CritterHexView::RefreshView(bool no_smooth)
 
             FO_VERIFY_AND_THROW(frames, "Critter animation frames are missing");
 
-            _idle2dAnim.StateAnim = state_anim;
-            _idle2dAnim.ActionAnim = action_anim;
+            bool changed = _idle2dAnim.Frames != frames || _idle2dAnim.StateAnim != state_anim || _idle2dAnim.ActionAnim != action_anim || _idle2dAnim.Flags != selection.Flags || !is_float_equal(_idle2dAnim.NormalizedTime, selection.NormalizedTime) || !is_float_equal(_idle2dAnim.Speed, selection.Speed);
+            int32_t frame_index = _idle2dAnim.FrameIndex;
 
-            if (_idle2dAnim.Frames != frames) {
+            if (changed) {
+                _animStartTime = _engine->GameTime.GetFrameTime();
+
                 _engine->OnCritterAnimationProcess.Fire(this, state_anim, action_anim, nullptr, true);
 
-                _idle2dAnim.Frames = frames;
-                _idle2dAnim.FrameIndex = 0;
-                _idle2dAnim.FramesDuration = frames->GetDuration();
-
-                if (GetCondition() == CritterCondition::Dead) {
-                    _idle2dAnim.FrameIndex = _idle2dAnim.Frames->GetFramesCount() - 1;
-                }
+                frame_index = lerp(0, frames->GetFramesCount() - 1, selection.NormalizedTime);
             }
 
+            _idle2dAnim = std::move(selection);
+            _idle2dAnim.Frames = frames;
+            _idle2dAnim.FrameIndex = frame_index;
+            _idle2dAnim.FramesDuration = frames->GetDuration();
+
+            RefreshAnimOffset(_idle2dAnim);
             SetAnimSpr(_idle2dAnim.Frames, _idle2dAnim.FrameIndex);
         }
     }
@@ -391,7 +403,7 @@ auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionA
     }
 #endif
 
-    return !!_engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
+    return !!_engine->CritterFrames.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
 }
 
 #if FO_ENABLE_3D
@@ -414,6 +426,11 @@ void CritterHexView::RefreshModel()
     }
 
     _spr = nullptr;
+    _sprOffsetOverride.reset();
+    _walkAnchorAnim = nullptr;
+    _walkAnchorDisp = {};
+    _offsAnim = {};
+    RefreshOffs();
 
     _modelSpr.reset();
     _model.reset();
@@ -422,7 +439,7 @@ void CritterHexView::RefreshModel()
     string ext = strex(model_name).get_file_extension();
 
     if (ext == "fo3d") {
-        _modelSpr = _engine->SprMngr.LoadSprite(model_name, AtlasType::MapSprites).dyn_cast<ModelSprite>();
+        _modelSpr = _engine->ResMngr.LoadSprite(model_name, AtlasType::MapSprites).dyn_cast<ModelSprite>();
 
         if (_modelSpr) {
             _modelSpr->PlayDefault();
@@ -433,16 +450,15 @@ void CritterHexView::RefreshModel()
             FO_VERIFY_AND_THROW(_model, "Model sprite is missing its model instance");
 
             _model->SetAnimationCallbacks(std::move(animCallbacks));
-            _model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) FO_DEFERRED {
-                // Callback from 3d
-                _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
+            _model->SetAnimInitCallback([this](CritterAnimationContext context, int32_t moving_speed, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& speed) FO_DEFERRED { //
+                _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr, context, moving_speed, flags, normalized_time, speed);
             });
 
             _model->SetLookDir(GetDir());
             _model->SetMoveDir(GetDir(), false);
 
             if (_map->IsMapperMode()) {
-                _model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
+                _model->PlayAnim(_engine->Settings->Animation.PreviewStateAnim, _engine->Settings->Animation.PreviewActionAnim, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
                 _model->PrewarmParticles();
                 _model->StartMeshGeneration();
             }
@@ -537,78 +553,29 @@ void CritterHexView::Process()
     {
         auto& cur_anim = _curAnim.has_value() ? _curAnim.value() : _idle2dAnim;
 
-        auto action = cur_anim.Frames->GetActionAnimation();
-        bool root_motion_drive = !_curAnim.has_value() && IsMoving() && (action == CritterActionAnim::Walk || action == CritterActionAnim::Run);
+        bool frozen = is_enum_set(cur_anim.Flags, CritterAnimationFlags::Freeze);
+        bool movement_drives_frame = !frozen && IsMoving() && is_enum_set(cur_anim.Flags, CritterAnimationFlags::Movement);
 
-        if (root_motion_drive && cur_anim.Frames != _walkAnchorAnim) {
-            ipos32 pos = EvaluateMovementDisplacement();
-            auto new_anim = cur_anim.Frames;
-            FO_VERIFY_AND_THROW(new_anim, "New animation is null");
+        int32_t prev_frm_index = cur_anim.FrameIndex;
 
-            auto sum_total = [](ptr<const SpriteSheet> sheet) -> ipos32 {
-                ipos32 sum {};
+        if (frozen) {
+            cur_anim.FrameIndex = cur_anim.Frames->GetFrameIndexAtPhase(cur_anim.NormalizedTime);
+        }
+        else if (!movement_drives_frame) {
+            float64_t phase = cur_anim.NormalizedTime;
 
-                for (int32_t i = 0; i < sheet->GetFramesCount(); i++) {
-                    sum.x += sheet->GetSpriteOffset()[i].x;
-                    sum.y += sheet->GetSpriteOffset()[i].y;
-                }
-
-                return sum;
-            };
-
-            ipos32 new_anchor_disp = pos;
-
-            if (_walkAnchorAnim) {
-                ipos32 old_total = sum_total(_walkAnchorAnim);
-                int64_t old_total_dot_total = numeric_cast<int64_t>(old_total.x) * old_total.x + numeric_cast<int64_t>(old_total.y) * old_total.y;
-
-                if (old_total_dot_total > 0) {
-                    int32_t old_rel_x = pos.x - _walkAnchorDisp.x;
-                    int32_t old_rel_y = pos.y - _walkAnchorDisp.y;
-                    int64_t old_rel_dot_total = numeric_cast<int64_t>(old_rel_x) * old_total.x + numeric_cast<int64_t>(old_rel_y) * old_total.y;
-
-                    int64_t old_cycle_proj = old_rel_dot_total % old_total_dot_total;
-
-                    if (old_cycle_proj < 0) {
-                        old_cycle_proj += old_total_dot_total;
-                    }
-
-                    ipos32 new_total = sum_total(new_anim);
-
-                    auto div_round = [](int64_t num, int64_t den) -> int32_t {
-                        FO_VERIFY_AND_THROW(den > 0, "Rounding division denominator must be positive");
-                        int64_t half = den / 2;
-                        return numeric_cast<int32_t>(num >= 0 ? (num + half) / den : -((-num + half) / den));
-                    };
-
-                    new_anchor_disp = ipos32 {
-                        pos.x - div_round(old_cycle_proj * new_total.x, old_total_dot_total),
-                        pos.y - div_round(old_cycle_proj * new_total.y, old_total_dot_total),
-                    };
-                }
+            if (cur_anim.FramesDuration > timespan::zero) {
+                phase += std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(cur_anim.FramesDuration)) * cur_anim.Speed;
             }
 
-            _walkAnchorAnim = new_anim;
-            _walkAnchorDisp = new_anchor_disp;
-        }
-
-        int32_t frm_index;
-
-        if (root_motion_drive) {
-            frm_index = EvaluateMovementFrameIndex(cur_anim.Frames);
-        }
-        else {
-            float64_t phase = std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(cur_anim.FramesDuration));
             phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
-            frm_index = cur_anim.Frames->GetFrameIndexAtPhase(phase);
+            cur_anim.FrameIndex = cur_anim.Frames->GetFrameIndexAtPhase(phase);
         }
 
-        if (root_motion_drive) {
-            cur_anim.FrameIndex = frm_index;
-            SetAnimSpr(cur_anim.Frames, cur_anim.FrameIndex);
-        }
-        else if (frm_index != cur_anim.FrameIndex) {
-            cur_anim.FrameIndex = frm_index;
+        // Motion selects its pose and recomputes compensation even within the same frame.
+        RefreshAnimOffset(cur_anim);
+
+        if (cur_anim.FrameIndex != prev_frm_index) {
             SetAnimSpr(cur_anim.Frames, cur_anim.FrameIndex);
         }
     }
@@ -618,12 +585,12 @@ void CritterHexView::Process()
 
 #if FO_ENABLE_3D
         if (_model) {
-            anim_complete = !_model->IsAnimationPlaying();
+            anim_complete = !is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze) && !_model->IsAnimationPlaying();
         }
         else
 #endif
         {
-            anim_complete = _engine->GameTime.GetFrameTime() - _animStartTime >= _curAnim->FramesDuration;
+            anim_complete = !is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze) && (_curAnim->FramesDuration == timespan::zero || (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(_curAnim->FramesDuration) * _curAnim->Speed >= 1.0 - _curAnim->NormalizedTime);
         }
 
         if (anim_complete) {
@@ -777,63 +744,35 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
     int32_t cur_index = frm_index % anim->GetFramesCount();
 
     _spr = anim->GetSprite(cur_index);
+    _sprOffsetOverride = anim->GetSpriteOffset(cur_index);
+}
 
+void CritterHexView::RefreshAnimOffset(CritterAnim& anim)
+{
+    const_span<ipos32> offsets = anim.Frames->GetSpriteMotion();
     _offsAnim = {};
 
-    auto action = anim->GetActionAnimation();
-
-    if (action == CritterActionAnim::Walk || action == CritterActionAnim::Run) {
+    if (is_enum_set(anim.Flags, CritterAnimationFlags::Movement) && !is_enum_set(anim.Flags, CritterAnimationFlags::Freeze)) {
         if (IsMoving()) {
-            // Root motion holds still within a frame and jumps at each transition, so _offsAnim cancels the
-            // engine's linear hex_offset and leaves the sprite position constant per frame
-            const_span<ipos32> spr_offset = anim->GetSpriteOffset();
-            int32_t frames_count = anim->GetFramesCount();
+            ipos32 pos = EvaluateMovementDisplacement();
+            ipos32 total = AnimationMovement::AccumulateFrameOffsets(offsets, anim.Frames->GetFramesCount() - 1);
 
-            ipos32 total {};
+            if (_walkAnchorAnim != anim.Frames) {
+                ipos32 phase_offset {};
 
-            for (int32_t i = 0; i < frames_count; i++) {
-                total.x += spr_offset[i].x;
-                total.y += spr_offset[i].y;
-            }
-
-            ipos32 accum {};
-
-            for (int32_t i = 0; i < cur_index + 1; i++) {
-                accum.x += spr_offset[i].x;
-                accum.y += spr_offset[i].y;
-            }
-
-            int64_t total_dot_total = numeric_cast<int64_t>(total.x) * total.x + numeric_cast<int64_t>(total.y) * total.y;
-
-            if (total_dot_total > 0) {
-                ipos32 pos = EvaluateMovementDisplacement();
-                int32_t rel_x = pos.x - _walkAnchorDisp.x;
-                int32_t rel_y = pos.y - _walkAnchorDisp.y;
-                int64_t rel_dot_total = numeric_cast<int64_t>(rel_x) * total.x + numeric_cast<int64_t>(rel_y) * total.y;
-
-                // Floor division so negative projections still wrap into [0, total_dot_total)
-                int64_t cycle_number;
-
-                if (rel_dot_total >= 0) {
-                    cycle_number = rel_dot_total / total_dot_total;
-                }
-                else {
-                    cycle_number = -((-rel_dot_total + total_dot_total - 1) / total_dot_total);
+                if (_walkAnchorAnim) {
+                    phase_offset = AnimationMovement::TransferWalkPhase(_walkAnchorAnim->GetSpriteMotion(), pos, _walkAnchorDisp, total);
                 }
 
-                int32_t cycle_start_x = _walkAnchorDisp.x + numeric_cast<int32_t>(cycle_number * total.x);
-                int32_t cycle_start_y = _walkAnchorDisp.y + numeric_cast<int32_t>(cycle_number * total.y);
-
-                _offsAnim.x = cycle_start_x - pos.x + accum.x;
-                _offsAnim.y = cycle_start_y - pos.y + accum.y;
+                _walkAnchorAnim = anim.Frames;
+                _walkAnchorDisp = pos - phase_offset;
             }
+
+            AnimationMovement::EvaluateWalkFrame(offsets, total, pos, _walkAnchorDisp, anim.FrameIndex, _offsAnim);
         }
     }
     else {
-        for (int32_t i = 0; i < cur_index + 1; i++) {
-            _offsAnim.x += anim->GetSpriteOffset()[i].x;
-            _offsAnim.y += anim->GetSpriteOffset()[i].y;
-        }
+        _offsAnim = AnimationMovement::AccumulateFrameOffsets(offsets, anim.FrameIndex);
     }
 
     RefreshOffs();
@@ -859,62 +798,6 @@ auto CritterHexView::EvaluateMovementDisplacement() const -> ipos32
     };
 }
 
-auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t
-{
-    FO_VERIFY_AND_THROW(IsMoving(), "Critter is not currently moving");
-
-    int32_t frames_count = anim->GetFramesCount();
-    FO_VERIFY_AND_THROW(frames_count > 0, "Movement animation has no frames", frames_count);
-
-    const_span<ipos32> spr_offset = anim->GetSpriteOffset();
-
-    ipos32 total {};
-
-    for (int32_t i = 0; i < frames_count; i++) {
-        total.x += spr_offset[i].x;
-        total.y += spr_offset[i].y;
-    }
-
-    int64_t total_dot_total = numeric_cast<int64_t>(total.x) * total.x + numeric_cast<int64_t>(total.y) * total.y;
-
-    if (total_dot_total <= 0) {
-        return 0;
-    }
-
-    // Anchor-relative projection so direction changes restart the cycle from the critter's current
-    // position instead of measuring the entire past path against the new direction's T axis
-    ipos32 pos = EvaluateMovementDisplacement();
-    int32_t rel_x = pos.x - _walkAnchorDisp.x;
-    int32_t rel_y = pos.y - _walkAnchorDisp.y;
-    int64_t rel_dot_total = numeric_cast<int64_t>(rel_x) * total.x + numeric_cast<int64_t>(rel_y) * total.y;
-
-    int64_t cycle_proj = rel_dot_total % total_dot_total;
-
-    if (cycle_proj < 0) {
-        cycle_proj += total_dot_total;
-    }
-
-    // Find the frame whose accumulated root-motion projection along T is closest to cycle_proj
-    ipos32 accum {};
-    int32_t best_index = 0;
-    int64_t best_diff = std::numeric_limits<int64_t>::max();
-
-    for (int32_t i = 0; i < frames_count; i++) {
-        accum.x += spr_offset[i].x;
-        accum.y += spr_offset[i].y;
-
-        int64_t accum_dot_total = numeric_cast<int64_t>(accum.x) * total.x + numeric_cast<int64_t>(accum.y) * total.y;
-        int64_t diff = std::abs(accum_dot_total - cycle_proj);
-
-        if (diff < best_diff) {
-            best_diff = diff;
-            best_index = i;
-        }
-    }
-
-    return best_index;
-}
-
 void CritterHexView::AddExtraOffs(ipos32 offset)
 {
     _offsExt.x += numeric_cast<float32_t>(offset.x);
@@ -932,6 +815,8 @@ void CritterHexView::AddExtraOffs(ipos32 offset)
 void CritterHexView::RefreshOffs()
 {
     auto hex_offset = GetHexOffset();
+    // Logical interpolation, extra smoothing and the animation correction share the same pixel space.
+    // The selected frame's absolute draw anchor is applied separately by MapSprite.
     _sprOffset = ipos32(hex_offset) + _offsExt.round<int32_t>() + _offsAnim;
 }
 
@@ -948,3 +833,4 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 }
 
 FO_END_NAMESPACE
+

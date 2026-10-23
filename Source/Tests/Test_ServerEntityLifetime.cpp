@@ -603,20 +603,26 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                                                      }
                                                      return hash;
                                                  }});
+
                 for (bool local : {true, false}) {
                     workloads.emplace_back(Workload {local ? "fields_clustered" : "fields_scattered", scattered.size(), [&, local] {
                                                          uint64_t hash = 14695981039346656037ull;
+
                                                          for (mpos hex : local ? clustered : scattered) {
-                                                             hash = mix(hash, static_cast<uint64_t>(map->IsHexMovable(hex)) | (static_cast<uint64_t>(map->IsHexShootable(hex)) << 1) | (static_cast<uint64_t>(map->HasLivingCritter(hex, nullptr)) << 2));
+                                                             hash = mix(hash, static_cast<uint64_t>(map->IsHexMovable(hex)) | (static_cast<uint64_t>(map->IsHexShootable(hex)) << 1) | (static_cast<uint64_t>(map->HasPathfindingObstacle(hex, nullptr)) << 2));
                                                          }
+
                                                          return hash;
                                                      }});
                 }
+
                 workloads.emplace_back(Workload {"multihex_checks", writable.size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (mpos hex : writable) {
                                                          hash = mix(hash, map->IsHexesMovable(hex, 2));
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"items_on_hex", item_hexes.size(), [&] {
@@ -1341,3 +1347,4 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
 }
 
 FO_END_NAMESPACE
+

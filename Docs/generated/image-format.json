@@ -31,6 +31,8 @@
     "default_sprites_header": "Source/Client/DefaultSprites.h",
     "sprite_manager": "Source/Client/SpriteManager.cpp",
     "sprite_manager_header": "Source/Client/SpriteManager.h",
+    "resource_manager": "Source/Client/ResourceManager.cpp",
+    "resource_manager_header": "Source/Client/ResourceManager.h",
     "texture_atlas": "Source/Client/TextureAtlas.cpp",
     "texture_atlas_header": "Source/Client/TextureAtlas.h",
     "sprite_resource": "Source/Common/SpriteResource.cpp",
@@ -1447,7 +1449,7 @@
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 77"
+            "MigrationRule Version 0 0 78"
           ]
         }
       ]
@@ -1520,7 +1522,7 @@
           "anchors": [
             "DirectionFrameCounts",
             "FrameDurationsMs",
-            "auto GetDuration(const SpriteDirInfo& direction)"
+            "auto GetSpriteDirDuration(const SpriteDirInfo& direction)"
           ]
         }
       ]
@@ -1719,7 +1721,7 @@
       "id": "image-format.runtime.sprite-sheet",
       "name": "Direction and playback state",
       "stability": "experimental",
-      "requirement": "SpriteSheet durations/ends and GetDuration/GetFrameDurations use timespan; wire values are uint32 ms. Directions preserve phase; direction0 is independent. Copies retain timing and reset playback. Uniform constructors split ns; AdvanceTime keeps sub-ms time with continuous forward/reverse phase.",
+      "requirement": "SpriteSheet durations/ends and GetDuration/GetFrameDurations use timespan; wire values are positive uint32 ms. Directions preserve phase; direction0 is independent. Copies retain timing and reset playback. Uniform constructors split ns; AdvanceTime keeps sub-ms time with continuous forward/reverse phase. Explicit native/script-created zero-duration sequences retain manual normalized frame selection and do not play automatically; each timeline is entirely zero or entirely positive.",
       "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
       "source": [
         {
@@ -1741,23 +1743,45 @@
     },
     {
       "id": "image-format.runtime.frame-offset",
-      "name": "Per-frame sprite offsets",
+      "name": "Sprite offsets and frame motion",
       "stability": "experimental",
-      "requirement": "Baked int32 placement and int16 motion are independent per logical slot, including shared pixels. Runtime keeps per-direction displacement arrays. Trimming selects its frame duration; merges concatenate each direction timeline; clones preserve selected frames and their timing.",
-      "rationale": "Visual root-motion displacement must remain separate from sequence placement and authoritative world movement.",
+      "requirement": "Concrete/shared frames retain ordinary sprite offsets to the root in SpriteSheet::_sprOffset and Motion per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns each input to its matching field. CreateSpriteSequence retains original shared atlas sprites with independent offsets and motions arrays in that order. GetSpriteFrameOffset reads ordinary offsets; GetSpriteFrameMotion reads deltas. CritterHexView derives cumulative displacement, distance-driven frame selection, cycle phase and visual _offsAnim compensation from motion deltas against logical HexOffset and independent extra displacement. These presentation values do not drive entity movement. Projects own first/last selection, cumulative displacement, filename rules and sequence splices.",
+      "rationale": "Per-frame visual displacement must remain separate from image anchors and authoritative world movement.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "dir_anim->_spr[j]->SetOffset(frame.Offset);",
-            "dir_anim->_sprOffset[j] = frame.NextOffset;"
+            "dir_anim->SetFrame(",
+            "void SpriteSheet::SetFrame",
+            "frame.NextOffset"
           ]
         },
         {
-          "path": "Source/Client/ResourceManager.cpp",
+          "path": "Source/Client/DefaultSprites.h",
           "anchors": [
-            "dir_anim->SetFrameTimeline({selected_duration});",
-            "timeline.insert(timeline.end(), extra->_frameDurations.begin(), extra->_frameDurations.end());"
+            "auto GetSpriteMotion() const noexcept -> const_span<ipos32>",
+            "auto GetSpriteOffset(int32_t num_frm) const -> ipos32"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_GetSpriteFrameMotion",
+            "Client_Game_CreateSpriteSequence"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_SpriteSheet.cpp",
+          "anchors": [
+            "TEST_CASE(\"CritterFramesCacheCachesProjectOwnedDirectionalSequences\"",
+            "TEST_CASE(\"SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds\"",
+            "TEST_CASE(\"MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_AngelScriptClientEngine.cpp",
+          "anchors": [
+            "TEST_CASE(\"AngelScriptResourceManagerResolvesProjectSpriteHandles\""
           ]
         }
       ]
@@ -1795,7 +1819,7 @@
       "rationale": "Independent animation state must not mutate the cached prototype, and different atlas classes cannot share placement blindly.",
       "source": [
         {
-          "path": "Source/Client/SpriteManager.cpp",
+          "path": "Source/Client/ResourceManager.cpp",
           "anchors": [
             "_copyableSpriteCache.find({path, atlas_type})",
             "return it->second->MakeCopy()",
@@ -1806,7 +1830,7 @@
         {
           "path": "Source/Tests/Test_SpriteSheet.cpp",
           "anchors": [
-            "TEST_CASE(\"SpriteManagerReturnsIndependentSheetsFromTheFirstLoad\""
+            "TEST_CASE(\"ResourceManagerReturnsIndependentSheetsFromTheFirstLoad\""
           ]
         }
       ]
@@ -1816,18 +1840,18 @@
       "name": "Missing-path memoization",
       "stability": "experimental",
       "requirement": "Missing paths, absent extensions, unknown factories, and factory load failures are memoized by path in _nonFoundSprites; CleanupSpriteCache does not clear that set.",
-      "rationale": "Adding a previously missing resource during a live session normally requires recreating the manager or restarting the client before retrying the same path.",
+      "rationale": "ResourceManager preserves failures during cleanup; ForgetFailedSprite or InvalidateSpriteResource explicitly enables a retry after mounted sources change.",
       "source": [
         {
-          "path": "Source/Client/SpriteManager.cpp",
+          "path": "Source/Client/ResourceManager.cpp",
           "anchors": [
             "if (_nonFoundSprites.count(path) != 0)",
             "_nonFoundSprites.emplace(path)",
-            "void SpriteManager::CleanupSpriteCache()"
+            "void ResourceManager::CleanupSpriteCache()"
           ]
         },
         {
-          "path": "Source/Client/SpriteManager.h",
+          "path": "Source/Client/ResourceManager.h",
           "anchors": [
             "unordered_set<hstring> _nonFoundSprites {};"
           ]
@@ -2072,5 +2096,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "7caab4acaaa1ac2dca90b53a5ed95d33657af902d161184dbdc31d59004a47ac"
+  "contract_digest": "83766369be4be6c949abb3cdef0e1cc99be4a56648e6e3cfecdf6744f2363cd9"
 }

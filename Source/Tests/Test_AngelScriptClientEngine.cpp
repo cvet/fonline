@@ -339,6 +339,40 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
     REQUIRE_NOTHROW(client->ProcessInputEvent(key_up));
 }
 
+TEST_CASE("AngelScriptResourceManagerResolvesProjectSpriteHandles")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{"Sequence.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    CritterStateAnim state = static_cast<CritterStateAnim>(1);
+    CritterActionAnim action = static_cast<CritterActionAnim>(1);
+
+    for (string_view name : {"ScriptSequence", "art/critters/ScriptSequence"}) {
+        hstring model = client->Hashes.to_hashed_string(name);
+        auto first = client->CritterFrames.GetCritterAnimFrames(model, state, action, mdir {0});
+        REQUIRE(first);
+        CHECK(first->GetFramesCount() == 3);
+        CHECK(first == client->CritterFrames.GetCritterAnimFrames(model, state, action, mdir {0}));
+        int32_t handle = 0;
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::GetLastResolvedSprite"), handle));
+        CHECK_FALSE(client->AnimGetSpr(numeric_cast<uint32_t>(handle)));
+    }
+
+    hstring missing = client->Hashes.to_hashed_string("art/critters/NoProjectResolver");
+    CHECK_FALSE(client->CritterFrames.GetCritterAnimFrames(missing, state, action, mdir {0}));
+    int32_t result = -1;
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestSpriteSequencePrimitives"), result));
+    CHECK(result == 0);
+
+    uint32_t iface_id = client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::IfaceSprites);
+    auto iface_texture = client->AnimGetSpr(iface_id)->GetBatchTexture();
+    client->AnimFree(iface_id);
+    uint32_t map_id = client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::MapSprites);
+    CHECK(client->AnimGetSpr(map_id)->GetBatchTexture() != iface_texture);
+    client->AnimFree(map_id);
+}
+
 FO_END_NAMESPACE
 
 #endif
+

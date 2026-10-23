@@ -37,6 +37,7 @@
 
 #if FO_ENABLE_3D
 
+#include "ConfigFile.h"
 #include "ModelAnimation.h"
 #include "ModelAnimationData.h"
 #include "ModelBoundsCalculator.h"
@@ -389,7 +390,13 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
 
 static void AddModelInfoMetadata(BakerTests::TestRig& rig)
 {
-    rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+    // Animation identifiers belong to the fixture project, including ordinary numeric aliases and preview IDs.
+    rig.AddBakedFile("Metadata.fometa-client",
+        BakerTests::MakeMetadataBlob({{"Enum",
+            {
+                {"CritterStateAnim", "", "TestState", "1", "PreviewState", "401"},
+                {"CritterActionAnim", "", "TestAction", "1", "TestActionA", "3", "TestActionB", "4", "TestActionC", "5", "TestActionD", "6", "PreviewAction", "509", "MissingPreview", "600"},
+            }}}));
 }
 
 static void BakeModelInfoFiles(BakerTests::TestRig& rig, string_view target_path = {})
@@ -1417,6 +1424,34 @@ TEST_CASE("ModelInfoBakerOrchestration")
         }
 
         CHECK(baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
+    }
+
+    SECTION("PreviewBoundsUseTheConfiguredOpaquePair")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        OverrideSetting(rig.Settings.Animation.PreviewStateAnim, static_cast<CritterStateAnim>(401));
+        OverrideSetting(rig.Settings.Animation.PreviewActionAnim, static_cast<CritterActionAnim>(509));
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 1 1 ModelFile Default\nAnim 401 509 ModelFile Preview\n", 7);
+        ModelSourceAsset asset = MakeTestModelSource("Critters/Body.fbx", "Body", {"Default", "Preview"});
+        asset.Animations[1].Joints[0].Translation.Values = {vec3 {3.0f, 0.0f, 0.0f}, vec3 {3.0f, 0.0f, 0.0f}};
+        AddTestModelSource(rig, asset);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Body", true));
+        SECTION("ExactPair")
+        {
+            BakeModelInfoFiles(rig);
+            ConfigFile output(rig.GetOutputText("ModelAnimationInfo.foinfo"));
+            CHECK(strvex(output.GetAsStr("Critters/Test.fo3d", "ViewBoundsMinX")).to_float32() == Catch::Approx(2.5f).margin(0.02f));
+            CHECK(strvex(output.GetAsStr("Critters/Test.fo3d", "ViewBoundsMaxX")).to_float32() == Catch::Approx(3.5f).margin(0.02f));
+        }
+        SECTION("MissingPairUsesAvailableBounds")
+        {
+            OverrideSetting(rig.Settings.Animation.PreviewActionAnim, static_cast<CritterActionAnim>(600));
+            BakeModelInfoFiles(rig);
+            ConfigFile output(rig.GetOutputText("ModelAnimationInfo.foinfo"));
+            CHECK(strvex(output.GetAsStr("Critters/Test.fo3d", "ViewBoundsMinX")).to_float32() == Catch::Approx(-0.5f).margin(0.02f));
+            CHECK(strvex(output.GetAsStr("Critters/Test.fo3d", "ViewBoundsMaxX")).to_float32() == Catch::Approx(0.5f).margin(0.02f));
+        }
     }
 
     SECTION("BakesSelectableModelLinkBoundsIntoDescription")
@@ -2608,3 +2643,4 @@ TEST_CASE("ModelBoundsMeasurementModes")
 FO_END_NAMESPACE
 
 #endif
+

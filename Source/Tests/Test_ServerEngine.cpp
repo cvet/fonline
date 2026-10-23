@@ -900,7 +900,7 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
             CHECK(leaf_on_critter->GetProperties()->GetValueFast<int32_t>(marker_property(leaf_on_critter)) == 303);
         }
 
-        // Every pass ends through the real graceful path; the next pass reads the same files.
+        // Every pass ends through the real graceful path; the next pass reads the same files
         server->Shutdown();
     }
 }
@@ -2372,8 +2372,9 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     REQUIRE(static_cast<bool>(map_a));
     REQUIRE(static_cast<bool>(map_b));
 
-    auto cr_a = server->CreateCritter(critter_pid, false);
-    auto cr_b = server->CreateCritter(critter_pid, false);
+    auto cr_a = server->CreateCritter(critter_pid, false).hold_ref();
+    auto cr_b = server->CreateCritter(critter_pid, false).hold_ref();
+
     server->MapMngr.TransferToMap(cr_a, map_a, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map_b, mpos {12, 12}, mdir {}, std::nullopt);
 
@@ -2421,7 +2422,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         return primary_generation.load(std::memory_order_acquire) != gen && !failed.load(std::memory_order_acquire);
     };
 
-    auto cross_thread = [&](ServerEntity* own, ServerEntity* peer) {
+    auto cross_thread = [&](ptr<ServerEntity> own, ptr<ServerEntity> peer) {
         for (int32_t round = 0; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
             // Outer rendezvous while holding NO lock, so both threads start the locked section
             // together
@@ -2473,20 +2474,36 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         }
     };
 
-    std::thread t1(cross_thread, cr_a.get(), cr_b.get());
-    std::thread t2(cross_thread, cr_b.get(), cr_a.get());
+    std::thread t1(cross_thread, cr_a.as_ptr(), cr_b.as_ptr());
+    std::thread t2(cross_thread, cr_b.as_ptr(), cr_a.as_ptr());
 
-    // A correct implementation finishes well inside this window even on a loaded host, so a timeout means a
-    // deadlock: wake the abortable waiters and join before reporting
+    // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
+    // and the complete run; the owning critter references outlive both joins, including timeout shutdown.
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
-    nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {30}};
+    auto started = nanotime::now();
+    auto last_progress = started;
+    int64_t last_rounds = 0;
+    int64_t rounds_at_timeout = 0;
+    timespan idle_at_timeout {};
     bool timed_out = false;
+
     while (rounds_done.load(std::memory_order_acquire) < total_rounds && !failed.load(std::memory_order_acquire)) {
-        if (nanotime::now() > deadline) {
+        auto now = nanotime::now();
+        int64_t completed = rounds_done.load(std::memory_order_acquire);
+
+        if (completed != last_rounds) {
+            last_rounds = completed;
+            last_progress = now;
+        }
+
+        if (now - last_progress > timespan {std::chrono::seconds {30}} || now - started > timespan {std::chrono::seconds {120}}) {
             timed_out = true;
+            rounds_at_timeout = completed;
+            idle_at_timeout = now - last_progress;
             break;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
     }
 
     if (timed_out) {
@@ -2498,7 +2515,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     t1.join();
     t2.join();
 
-    CHECK_FALSE(timed_out); // a hang here is the sync-rail nested cross-entity deadlock (regression)
+    INFO("Nested sync timeout rounds=" << rounds_at_timeout << ", idle_ms=" << idle_at_timeout.milliseconds());
+    CHECK_FALSE(timed_out);
     CHECK_FALSE(failed.load());
 
     if (!timed_out && !failed.load()) {
@@ -2754,3 +2772,4 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
 }
 
 FO_END_NAMESPACE
+

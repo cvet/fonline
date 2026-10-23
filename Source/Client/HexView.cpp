@@ -80,6 +80,7 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
 
 void HexView::SetupSprite(ptr<MapSprite> mspr)
 {
+    mspr->SetSpriteOffsetOverride(&_sprOffsetOverride);
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
@@ -245,3 +246,4 @@ void HexView::SetSpriteVisiblity(bool enabled)
 }
 
 FO_END_NAMESPACE
+

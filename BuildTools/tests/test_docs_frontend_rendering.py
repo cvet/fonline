@@ -151,7 +151,7 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         self.assertIn("_mapSprites.Clear();", map_source)
         self.assertIn("DestroyRenderTargets();", map_source)
         self.assertIn("scope_fail", map_source)
-        self.assertIn("_atlasMngr.CleanupAtlases();", self._read("Source/Client/SpriteManager.cpp"))
+        self.assertIn("_sprMngr->GetAtlasMngr()->CleanupAtlases();", self._read("Source/Client/ResourceManager.cpp"))
         native_tests = self._read("Source/Tests/Test_ClientEntityLifetime.cpp")
         for marker in (
             "ClientMapUnloadReleasesRenderTargetsWithRetainedHandles",

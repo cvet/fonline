@@ -2077,7 +2077,10 @@ class Packager:
 		return icon_data if is_png_data(icon_data) else None
 
 	def patch_android_icon(self) -> None:
-		configured_icon = self.get_effective_config_section().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
+		configured_icon = self.get_effective_config_section().getStr('Android.Icon', '')
+		if not configured_icon:
+			return
+
 		icon_path = self.resolve_config_relative_path(configured_icon)
 		assert os.path.isfile(icon_path), 'Android icon file not found: ' + icon_path
 

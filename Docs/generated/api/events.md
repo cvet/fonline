@@ -25,17 +25,14 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-client-game-oncritteraction-786f365adb"></a>
 - [`symbol-script-event-client-game-oncritteraction-786f365adb`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteraction-786f365adb)
 
-<a id="symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3"></a>
-- [`symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationfallout-469fdff9f3)
-
-<a id="symbol-script-event-client-game-oncritteranimationframes-49ed07db22"></a>
-- [`symbol-script-event-client-game-oncritteranimationframes-49ed07db22`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationframes-49ed07db22)
-
 <a id="symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd"></a>
 - [`symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd)
 
 <a id="symbol-script-event-client-game-oncritteranimationprocess-2920f469c4"></a>
 - [`symbol-script-event-client-game-oncritteranimationprocess-2920f469c4`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationprocess-2920f469c4)
+
+<a id="symbol-script-event-client-game-oncritteranimationsprite-a8cf55844f"></a>
+- [`symbol-script-event-client-game-oncritteranimationsprite-a8cf55844f`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationsprite-a8cf55844f)
 
 <a id="symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29"></a>
 - [`symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationsubstitute-e704483e29)

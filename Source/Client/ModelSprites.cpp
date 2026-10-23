@@ -369,12 +369,13 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
     CommitFrameCrop(PrepareFrameCrop(frame_size, bounds));
 }
 
-ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
+ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
+    _resMngr {res_mngr},
     _settings {settings},
     _effectMngr {effect_mngr},
     _modelMngr {safe_alloc::make_unique<ModelManager>(
-        settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
+        settings, res_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
         [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.to_hashed_string(path)); }, //
         [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->IsDrawWireframe(); }, //
         [spr_mngr]() mutable FO_DEFERRED {
@@ -478,7 +479,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
 
     if (auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
         // Model UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
-        auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
+        auto atlas_spr = _resMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;
@@ -584,3 +585,4 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 FO_END_NAMESPACE
 
 #endif
+

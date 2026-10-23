@@ -1328,8 +1328,8 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
 
     if (result.Active) {
         float32_t duration = clip.GetDuration();
-        float32_t loop_position = std::fmod(input.Position, duration);
-        float32_t source_time = input.Reversed ? duration - loop_position : loop_position;
+        float64_t loop_position = std::fmod(input.Position, numeric_cast<float64_t>(duration));
+        float32_t source_time = numeric_cast<float32_t>(input.Reversed ? duration - loop_position : loop_position);
 
         if (result.Nearest) {
             source_time = SnapModelAnimationRuntimeSampleTime(source_time, joint_remap.NearestSampleTimes);

@@ -328,7 +328,7 @@ void precise_sleep(std::chrono::nanoseconds duration) noexcept
     }
 
     while (std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::yield();
+        // Wait in a tight loop instead of `std::this_thread::yield` to avoid the OS scheduler's minimum time slice
     }
 }
 

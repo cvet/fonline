@@ -21,6 +21,6 @@ generated: true
 
 | Suffix | Files |
 | --- | --- |
-| <code>.fofnt</code> | <code>Big.fofnt</code>, <code>BigNumbers.fofnt</code>, <code>Default.fofnt</code>, <code>Fallout.fofnt</code>, <code>Fat.fofnt</code>, <code>Numbers.fofnt</code>, <code>OldDefault.fofnt</code>, <code>SandNumbers.fofnt</code>, <code>Special.fofnt</code>, <code>Thin.fofnt</code> |
+| <code>.fofnt</code> | <code>Big.fofnt</code>, <code>BigNumbers.fofnt</code>, <code>Default.fofnt</code>, <code>Fat.fofnt</code>, <code>Numbers.fofnt</code>, <code>OldDefault.fofnt</code>, <code>SandNumbers.fofnt</code>, <code>Special.fofnt</code>, <code>Thin.fofnt</code> |
 | <code>.fnt</code> | <code>CourierNewSmall.fnt</code>, <code>DefaultExt.fnt</code> |
 | <code>.bmfc</code> | <code>CourierNewSmall.bmfc</code>, <code>Settings.bmfc</code> |

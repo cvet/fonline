@@ -23,7 +23,7 @@ This page lists `.fo3d` directives that participate in animation selection or mo
 | <code>StateAnimEqual</code> | <code>StateAnimEqual &lt;from-state&gt; &lt;to-state&gt;</code> | Defines a one-step state-animation alias. | The alias is applied once before exact animation lookup and has priority over an exact source-key entry. |
 | <code>ActionAnimEqual</code> | <code>ActionAnimEqual &lt;from-action&gt; &lt;to-action&gt;</code> | Defines a one-step action-animation alias. | The alias is applied once before exact animation lookup and has priority over an exact source-key entry. |
 | <code>DisableAnimationInterpolation</code> | <code>DisableAnimationInterpolation</code> | Disables keyframe interpolation on the model animation controller. | The registered animation controller samples without interpolation. |
-| <code>DisableBackwardAnim</code> | <code>DisableBackwardAnim</code> | Disables WalkBack and RunBack selection for movement-pose animation. | Movement always uses forward walk/run and SetMoveDir also aligns look direction. |
+| <code>DisableBackwardAnim</code> | <code>DisableBackwardAnim</code> | Selects forward locomotion context instead of backward locomotion. | Movement uses the forward context and SetMoveDir also aligns look direction; the project chooses animation identifiers. |
 | <code>RotationBone</code> | <code>RotationBone &lt;bone&gt;</code> | Selects the validated torso/body rotation bone and enables the movement overlay controller. | Look and move directions may diverge; body and configured head bones receive directional rotation while movement/turn animations play on the overlay controller. |
 
 ## Separation from 2D root motion

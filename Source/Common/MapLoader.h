@@ -56,6 +56,8 @@ namespace MapLoader
 
     void Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, hash_resolver& hashes, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load);
     auto EnumerateMaps(string_view file_name, const string& buf) -> vector<string>;
+    auto CanOverrideItemProperty(bool is_static, ptr<const Property> prop) -> bool;
+    void ValidateItemProperties(const Properties& props, const Properties& proto_props, string_view proto_name = {}, ident_t id = {});
     void ReadBakedFileHeader(data_reader& reader, string_view map_name);
 }
 

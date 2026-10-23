@@ -43,6 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
+class ResourceManager;
+
 FO_DECLARE_EXCEPTION(FontManagerException);
 
 class SpriteManager;
@@ -95,7 +97,7 @@ class FontManager final
 {
 public:
     FontManager() = delete;
-    explicit FontManager(ptr<SpriteManager> spr_mngr);
+    explicit FontManager(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr);
     FontManager(const FontManager&) = delete;
     FontManager(FontManager&&) noexcept = delete;
     auto operator=(const FontManager&) = delete;
@@ -184,9 +186,11 @@ private:
     static constexpr string_view InlineColorTagPrefix = "@color";
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     vector<optional<FontData>> _allFonts {};
     uint64_t _frameIndex {1};
     mutable unordered_map<uint64_t, unique_ptr<FontFormatInfo>> _formatCache {};
 };
 
 FO_END_NAMESPACE
+

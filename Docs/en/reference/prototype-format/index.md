@@ -20,12 +20,12 @@ This reference describes the engine-owned prototype grammar and the built-in met
 | Stability | <code>experimental</code> |
 | Support policy | The grammar is documented for a pinned engine revision. Concrete project entity types, properties, file extensions, ids, and gameplay semantics remain project-owned. |
 | Source manifest | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Contract digest | <code>fb49f5f02bf448c45d1c1bb9d7254042b711563916399b5c4fd2d45e4f0a43b4</code> |
+| Contract digest | <code>aed1f1d41a8e6262ed62e22bada21f611052c54c1d5b4ccf90965b2fcebb3821</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Syntax](syntax.md) | 5 | Discovery, sections, identity, and inheritance. |
-| [Properties](properties.md) | 112 | Built-in HasProtos types and engine-owned property keys. |
+| [Properties](properties.md) | 113 | Built-in HasProtos types and engine-owned property keys. |
 | [Validation](validation.md) | 15 | Source-backed bake and migration requirements. |
 
 ## Boundary

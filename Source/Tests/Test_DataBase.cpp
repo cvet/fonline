@@ -208,6 +208,12 @@ namespace
             _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return _blockedReadEntered; });
         }
 
+        auto WaitUntilBlockedReadEntered(std::chrono::nanoseconds timeout) -> bool
+        {
+            unique_lock locker {_blockedReadLocker};
+            return _blockedReadCv.wait_for(locker, timeout, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return _blockedReadEntered; });
+        }
+
         void UnblockRecordRead()
         {
             {
@@ -1219,6 +1225,366 @@ TEST_CASE("DataBaseConcurrentProducersCommitAllRecords")
     }
 }
 
+TEST_CASE("DataBaseTryInsertAtomicallyChoosesOneConcurrentWriter")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t record_id = ident_t {1001};
+
+    constexpr size_t writer_count = 16;
+    std::atomic_size_t ready_count {};
+    std::atomic_bool start {false};
+    std::atomic_size_t inserted_count {};
+    vector<std::exception_ptr> errors(writer_count);
+    vector<std::thread> writers;
+    writers.reserve(writer_count);
+    auto join_writers = scope_exit([&]() noexcept {
+        start = true;
+
+        for (auto& writer : writers) {
+            if (writer.joinable()) {
+                writer.join();
+            }
+        }
+    });
+
+    for (size_t writer_index = 0; writer_index < writer_count; writer_index++) {
+        writers.emplace_back([&, writer_index] {
+            ready_count.fetch_add(1, std::memory_order_release);
+
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+
+            try {
+                if (db.TryInsert(collection, record_id, MakeDoc({{"writer", numeric_cast<int64_t>(writer_index)}}))) {
+                    inserted_count.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            catch (const std::exception&) {
+                errors[writer_index] = std::current_exception();
+            }
+        });
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (ready_count.load(std::memory_order_acquire) != writer_count && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    bool all_ready = ready_count.load(std::memory_order_acquire) == writer_count;
+    start.store(true, std::memory_order_release);
+
+    for (auto& writer : writers) {
+        writer.join();
+    }
+
+    CHECK(all_ready);
+
+    for (const auto& error : errors) {
+        CHECK_FALSE(error);
+    }
+
+    CHECK(inserted_count.load(std::memory_order_relaxed) == 1);
+
+    auto pending_doc = db.GetDocument(collection, record_id);
+    REQUIRE_FALSE(pending_doc.Empty());
+    CHECK(pending_doc.Contains("writer"));
+
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    auto committed_doc = db.SnapshotRecord(collection, record_id);
+    REQUIRE_FALSE(committed_doc.Empty());
+    CHECK(committed_doc["writer"].AsInt64() == pending_doc["writer"].AsInt64());
+}
+
+TEST_CASE("DataBaseCompareExchangeAtomicallyAdvancesOneConcurrentWriter")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t record_id = ident_t {1001};
+
+    AnyData::Document initial_doc;
+    initial_doc.Emplace("state", string {"prepared"});
+    db.Insert(collection, record_id, initial_doc);
+
+    constexpr size_t writer_count = 16;
+    std::atomic_size_t ready_count {};
+    std::atomic_bool start {false};
+    std::atomic_size_t exchanged_count {};
+    vector<std::exception_ptr> errors(writer_count);
+    vector<std::thread> writers;
+    writers.reserve(writer_count);
+    auto join_writers = scope_exit([&]() noexcept {
+        start = true;
+
+        for (auto& writer : writers) {
+            if (writer.joinable()) {
+                writer.join();
+            }
+        }
+    });
+
+    for (size_t writer_index = 0; writer_index < writer_count; writer_index++) {
+        writers.emplace_back([&, writer_index] {
+            ready_count.fetch_add(1, std::memory_order_release);
+
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+
+            string desired = strex("player-bound-{}", writer_index).str();
+
+            try {
+                if (db.CompareExchange(collection, record_id, "state", AnyData::Value {string {"prepared"}}, AnyData::Value {std::move(desired)})) {
+                    exchanged_count.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            catch (const std::exception&) {
+                errors[writer_index] = std::current_exception();
+            }
+        });
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (ready_count.load(std::memory_order_acquire) != writer_count && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    bool all_ready = ready_count.load(std::memory_order_acquire) == writer_count;
+    start.store(true, std::memory_order_release);
+
+    for (auto& writer : writers) {
+        writer.join();
+    }
+
+    CHECK(all_ready);
+
+    for (const auto& error : errors) {
+        CHECK_FALSE(error);
+    }
+
+    CHECK(exchanged_count.load(std::memory_order_relaxed) == 1);
+
+    auto pending_doc = db.GetDocument(collection, record_id);
+    REQUIRE_FALSE(pending_doc.Empty());
+    CHECK(pending_doc["state"].AsString().starts_with("player-bound-"));
+}
+
+TEST_CASE("DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t id {1001};
+    db.PrimeRecord(collection, id, MakeDoc({{"value", 1}}));
+    db.Update(collection, id, "value", int64_t {2});
+    db.BlockRecordReadAfterCopy(id);
+
+    std::atomic_bool conditional_finished {};
+    std::atomic_bool reader_entered {};
+    std::atomic_bool release_reader {};
+    bool exchanged = false;
+    std::exception_ptr conditional_error;
+    std::exception_ptr reader_error;
+    AnyData::Document observed;
+    thread reader;
+    thread conditional = run_thread("ConditionalReadBeforeCommit", [&] {
+        try {
+            exchanged = db.CompareExchange(collection, id, "value", int64_t {1}, int64_t {3});
+        }
+        catch (const std::exception&) {
+            conditional_error = std::current_exception();
+        }
+
+        conditional_finished = true;
+    });
+    auto cleanup = scope_exit([&]() noexcept {
+        release_reader = true;
+        db.UnblockRecordRead();
+
+        if (conditional.joinable()) {
+            conditional.join();
+        }
+        if (reader.joinable()) {
+            reader.join();
+        }
+    });
+    REQUIRE(db.WaitUntilBlockedReadEntered(std::chrono::seconds {5}));
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+    db.SetOnGetRecord([&] {
+        reader_entered = true;
+
+        while (!release_reader.load()) {
+            std::this_thread::yield();
+        }
+    });
+    reader = run_thread("AnotherReadAfterCommit", [&] {
+        try {
+            observed = db.GetDocument(collection, id);
+        }
+        catch (const std::exception&) {
+            reader_error = std::current_exception();
+        }
+    });
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (!reader_entered.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    REQUIRE(reader_entered.load());
+    db.UnblockRecordRead();
+    deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (!conditional_finished.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    REQUIRE(conditional_finished.load());
+    conditional.join();
+    CHECK_FALSE(conditional_error);
+    CHECK_FALSE(exchanged);
+    release_reader = true;
+    reader.join();
+    CHECK_FALSE(reader_error);
+    REQUIRE_FALSE(observed.Empty());
+    CHECK(observed["value"].AsInt64() == 2);
+    db.WaitCommitChanges();
+    CHECK(db.SnapshotRecord(collection, id)["value"].AsInt64() == 2);
+}
+
+TEST_CASE("DataBaseConditionalMutationsFollowPendingStateAndTypedValues")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    hstring collection = hashes.to_hashed_string("test_strings");
+    auto db = ConnectToDataBase(&settings, "Memory", {{collection, DataBaseKeyType::String}}, {});
+    DataBaseKey id {string {"key with spaces"}};
+    AnyData::Document first;
+    first.Emplace("state", string {"first"});
+    AnyData::Document second;
+    second.Emplace("state", string {"second"});
+
+    CHECK_FALSE(db.CompareExchange(collection, id, "state", string {"first"}, string {"wrong"}));
+    REQUIRE(db.TryInsert(collection, id, first));
+    CHECK_FALSE(db.TryInsert(collection, id, second));
+    CHECK_FALSE(db.CompareExchange(collection, id, "missing", string {}, string {"wrong"}));
+    CHECK_FALSE(db.CompareExchange(collection, id, "state", int64_t {1}, string {"wrong"}));
+    REQUIRE(db.CompareExchange(collection, id, "state", string {"first"}, string {"advanced"}));
+    CHECK_FALSE(db.CompareExchange(collection, id, "state", string {"first"}, string {"wrong"}));
+    CHECK(db.Get(collection, id)["state"].AsString() == "advanced");
+
+    db.Update(collection, id, "state", string {"ordinary"});
+    REQUIRE(db.CompareExchange(collection, id, "state", string {"ordinary"}, string {"updated"}));
+    db.Delete(collection, id);
+    CHECK_FALSE(db.CompareExchange(collection, id, "state", string {"updated"}, string {"wrong"}));
+    REQUIRE(db.TryInsert(collection, id, second));
+    CHECK(db.Get(collection, id)["state"].AsString() == "second");
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+    CHECK(db.Get(collection, id)["state"].AsString() == "second");
+    CHECK_FALSE(db.TryInsert(collection, id, first));
+    REQUIRE(db.CompareExchange(collection, id, "state", string {"second"}, string {"committed"}));
+    db.WaitCommitChanges();
+    CHECK(db.Get(collection, id)["state"].AsString() == "committed");
+    CHECK_THROWS_AS(db.TryInsert(collection, id, {}), DataBaseException);
+    CHECK_THROWS_AS(db.CompareExchange(collection, id, "state", string {"committed"}, std::numeric_limits<float64_t>::infinity()), DataBaseException);
+    CHECK(db.Get(collection, id)["state"].AsString() == "committed");
+}
+
+TEST_CASE("DataBaseConditionalReadSerializesRestoreAndQueueClear")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t id {1001};
+    db.PrimeRecord(collection, id, MakeDoc({{"value", 1}}));
+    std::atomic_bool reading {};
+    std::atomic_bool release {};
+    std::atomic_bool other_started {};
+    std::atomic_bool other_finished {};
+    std::exception_ptr producer_error;
+    std::exception_ptr other_error;
+    bool exchanged = false;
+    bool restore = GENERATE(false, true);
+    db.SetOnGetRecord([&] {
+        reading = true;
+
+        while (!release.load()) {
+            std::this_thread::yield();
+        }
+    });
+    thread producer = run_thread("ConditionalRead", [&] {
+        try {
+            exchanged = db.CompareExchange(collection, id, "value", int64_t {1}, int64_t {2});
+        }
+        catch (const std::exception&) {
+            producer_error = std::current_exception();
+        }
+    });
+    auto release_producer = scope_exit([&]() noexcept {
+        release = true;
+        producer.join();
+    });
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (!reading.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    REQUIRE(reading.load());
+    thread other = run_thread("ConcurrentRestoreOrClear", [&] {
+        other_started = true;
+
+        try {
+            if (restore) {
+                db.RestoreSnapshot(vector<uint8_t> {1});
+            }
+            else {
+                db.ClearChanges();
+            }
+        }
+        catch (const std::exception&) {
+            other_error = std::current_exception();
+        }
+
+        other_finished = true;
+    });
+    auto release_other = scope_exit([&]() noexcept {
+        release = true;
+        other.join();
+    });
+    deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
+
+    while (!other_started.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+
+    REQUIRE(other_started.load());
+    coarse_sleep(std::chrono::milliseconds {20});
+    CHECK_FALSE(other_finished.load());
+    release = true;
+    producer.join();
+    release_producer.release();
+    other.join();
+    release_other.release();
+    CHECK_FALSE(producer_error);
+    CHECK(exchanged);
+    CHECK(bool {other_error} == restore);
+    CHECK(db.GetDocument(collection, id)["value"].AsInt64() == (restore ? 2 : 1));
+}
+
 TEST_CASE("DataBaseSlowReadDoesNotBlockOtherReads")
 {
     GlobalSettings settings {false};
@@ -1986,6 +2352,38 @@ TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
 #endif
 
 #if FO_DATABASE_JSON
+TEST_CASE("JsonDataBaseAcceptsStoragePathWithSpaces")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"json path with spaces"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "player session");
+    hstring collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_strings");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    string connection_info = strex("  JSON  {}  ", storage_dir).str();
+    ident_t record_id = ident_t {1001};
+
+    {
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+        CHECK(db.TryInsert(collection, record_id, MakeDoc({{"value", 42}})));
+        CHECK_FALSE(db.TryInsert(collection, record_id, MakeDoc({{"value", 99}})));
+        CHECK(db.CompareExchange(collection, record_id, "value", AnyData::Value {int64_t {42}}, AnyData::Value {int64_t {43}}));
+        CHECK_FALSE(db.CompareExchange(collection, record_id, "value", AnyData::Value {int64_t {42}}, AnyData::Value {int64_t {99}}));
+        CHECK(db.TryInsert(string_collection, string {"key with spaces"}, MakeDoc({{"value", 5}})));
+        CHECK(db.CompareExchange(string_collection, string {"key with spaces"}, "value", AnyData::Value {int64_t {5}}, AnyData::Value {int64_t {6}}));
+        CHECK(db.Get(collection, record_id)["value"].AsInt64() == 43);
+        db.StartCommitChanges();
+        db.WaitCommitChanges();
+        CHECK(db.Valid(collection, record_id));
+    }
+
+    auto reopened = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+    REQUIRE(reopened.Valid(collection, record_id));
+    CHECK(reopened.Get(collection, record_id)["value"].AsInt64() == 43);
+    CHECK(reopened.Get(string_collection, string {"key with spaces"})["value"].AsInt64() == 6);
+}
+
 TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
@@ -2173,6 +2571,38 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
 #endif
 
 #if FO_DATABASE_SQLITE
+TEST_CASE("SQLiteDataBaseAcceptsStoragePathWithSpaces")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"sqlite path with spaces"};
+    string storage_dir = fs::path_to_string(*storage_dir_scope.Dir() / "player session");
+    hstring collection = hashes.to_hashed_string("test_collection");
+    hstring string_collection = hashes.to_hashed_string("test_strings");
+    auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}, {string_collection, DataBaseKeyType::String}};
+    string connection_info = strex("  DbSQLite  {}  ", storage_dir).str();
+    ident_t record_id = ident_t {1001};
+
+    {
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+        CHECK(db.TryInsert(collection, record_id, MakeDoc({{"value", 42}})));
+        CHECK_FALSE(db.TryInsert(collection, record_id, MakeDoc({{"value", 99}})));
+        CHECK(db.CompareExchange(collection, record_id, "value", AnyData::Value {int64_t {42}}, AnyData::Value {int64_t {43}}));
+        CHECK_FALSE(db.CompareExchange(collection, record_id, "value", AnyData::Value {int64_t {42}}, AnyData::Value {int64_t {99}}));
+        CHECK(db.TryInsert(string_collection, string {"key with spaces"}, MakeDoc({{"value", 5}})));
+        CHECK(db.CompareExchange(string_collection, string {"key with spaces"}, "value", AnyData::Value {int64_t {5}}, AnyData::Value {int64_t {6}}));
+        CHECK(db.Get(collection, record_id)["value"].AsInt64() == 43);
+        db.StartCommitChanges();
+        db.WaitCommitChanges();
+        CHECK(db.Valid(collection, record_id));
+    }
+
+    auto reopened = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
+    REQUIRE(reopened.Valid(collection, record_id));
+    CHECK(reopened.Get(collection, record_id)["value"].AsInt64() == 43);
+    CHECK(reopened.Get(string_collection, string {"key with spaces"})["value"].AsInt64() == 6);
+}
+
 TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};

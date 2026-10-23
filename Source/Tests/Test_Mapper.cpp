@@ -1,4 +1,4 @@
-//      __________        ___               ______            _
+﻿//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "MapLoader.h"
 #include "Test_MapperHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -1245,8 +1246,8 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         });
     });
 
-    AnimationViewer animation_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr, &mapper->GameTime};
-    ParticleViewer particle_viewer {mapper.as_ptr(), &mapper->SprMngr};
+    AnimationViewer animation_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr, &mapper->CritterFrames, &mapper->GameTime};
+    ParticleViewer particle_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr};
     ParticleEditorManager particle_editor {mapper.as_ptr()};
 
     auto preview_map = mapper->LoadMapFromText("PreviewMap", "PreviewMap.fomap", MakeMapText(MakeItemBlock(30, TILE_A, 5, 5)));
@@ -1925,8 +1926,8 @@ TEST_CASE("MapViewLightingAndViewportOperations")
         };
 
         // Queued animations play one after another, and appending adds to the queue instead of replacing
-        REQUIRE_NOTHROW(critter->AppendAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr));
-        REQUIRE_NOTHROW(critter->AppendAnim(CritterStateAnim::Unarmed, CritterActionAnim::Walk, nullptr));
+        REQUIRE_NOTHROW(critter->AppendAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr));
+        REQUIRE_NOTHROW(critter->AppendAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3), nullptr));
         process_frames(12);
 
         // The action path picks its own animation for each kind of action
@@ -2221,4 +2222,721 @@ TEST_CASE("MapperConsoleCommands")
     }
 }
 
+TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto map = mapper->LoadMapFromText("DynamicAuthoring", "DynamicAuthoring.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 8, 8)));
+    REQUIRE(map);
+    mapper->ShowMap(map.as_ptr());
+    auto item = map->GetItems().front().as_ptr();
+    REQUIRE_FALSE(item->GetStatic());
+
+    SECTION("Constants and persistent NoSync data reject zero false and empty overrides atomically")
+    {
+        for (auto [name, value] : {pair<string_view, string_view> {"AuthoringNumber", "0"}, {"AuthoringFlag", "False"}, {"AuthoringText", ""}, {"AuthoringList", ""}, {"AuthoringPrivate", "1"}, {"DrawFlatten", "True"}, {"AuthoringClient", "0"}}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            string before = item->GetProperties()->SavePropertyToText(prop);
+            CHECK_FALSE(mapper->ApplyEntityPropertyText(item, prop, value));
+            CHECK(item->GetProperties()->SavePropertyToText(prop) == before);
+            CHECK_FALSE(mapper->IsMapDirty(map));
+        }
+    }
+
+    SECTION("Equal prototype values are accepted without a dirty change")
+    {
+        for (auto name : {"AuthoringNumber", "AuthoringClient"}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            CHECK(mapper->ApplyEntityPropertyText(item, prop, "20"));
+            CHECK_FALSE(mapper->IsMapDirty(map));
+        }
+    }
+
+    SECTION("Static placements retain client-only configuration overrides")
+    {
+        auto static_map = mapper->LoadMapFromText("StaticClient", "StaticClient.fomap", MakeMapText(MakeItemBlock(20, SCENERY_A, 12, 12, "Static = True\nAuthoringClient = 0")));
+        REQUIRE(static_map);
+        auto static_item = static_map->GetItems().front().as_ptr();
+        auto prop = static_item->GetProperties()->GetRegistrar()->FindProperty("AuthoringClient");
+        REQUIRE(prop);
+        CHECK(static_item->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK_NOTHROW(static_map->SaveToText("StaticClient"));
+    }
+
+    SECTION("Existing public owner and server channels remain authorable")
+    {
+        for (auto name : {"LightDistance", "AuthoringOwner", "AuthoringServer"}) {
+            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            REQUIRE(prop);
+            CHECK(mapper->ApplyEntityPropertyText(item, prop, "3"));
+            CHECK(item->GetProperties()->SavePropertyToText(prop) == "3");
+        }
+        CHECK_NOTHROW(map->SaveToText("AllowedChannels"));
+    }
+
+    SECTION("Static transition checks all overrides before committing")
+    {
+        auto static_map = mapper->LoadMapFromText("StaticAuthoring", "StaticAuthoring.fomap", MakeMapText(MakeItemBlock(20, TILE_A, 12, 12, "DrawFlatten = True")));
+        REQUIRE(static_map);
+        mapper->ShowMap(static_map.as_ptr());
+        auto static_item = static_map->GetItems().front().as_ptr();
+        CHECK_FALSE(mapper->ApplyEntityPropertyText(static_item, static_item->GetPropertyStatic(), "False"));
+        CHECK(static_item->GetStatic());
+        CHECK(static_item->GetDrawFlatten());
+        CHECK_FALSE(mapper->IsMapDirty(static_map));
+    }
+
+    SECTION("A rejected dynamic sibling leaves the primary static item unchanged")
+    {
+        string body = MakeItemBlock(20, TILE_A, 12, 12) + MakeItemBlock(21, TILE_A, 13, 12, "Static = False");
+        auto mixed_map = mapper->LoadMapFromText("MixedAuthoring", "MixedAuthoring.fomap", MakeMapText(body));
+        REQUIRE(mixed_map);
+        mapper->ShowMap(mixed_map.as_ptr());
+        auto primary = mixed_map->GetItem(ident_t {20});
+        auto sibling = mixed_map->GetItem(ident_t {21});
+        REQUIRE(primary);
+        REQUIRE(sibling);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        CHECK_FALSE(mapper->ApplyEntityPropertyText(primary, prop, "30"));
+        CHECK(primary->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK(sibling->GetProperties()->GetValueFast<int32_t>(prop) == 0);
+        CHECK_FALSE(mapper->IsMapDirty(mixed_map));
+    }
+
+    SECTION("Manual source text cannot load an undelivered override")
+    {
+        CHECK_FALSE(mapper->LoadMapFromText("InvalidDynamic", "InvalidDynamic.fomap", MakeMapText(MakeItemBlock(30, SCENERY_A, 10, 10, "AuthoringNumber = 0"))));
+    }
+
+    SECTION("Save and clone creation reject direct raw property bypasses")
+    {
+        auto prop = item->GetProperties()->GetRegistrar()->FindProperty("AuthoringList");
+        REQUIRE(prop);
+        item->GetPropertiesForEdit()->ApplyPropertyFromText(prop, "");
+        CHECK_THROWS_AS(map->SaveToText("InvalidRaw"), MapLoaderException);
+        size_t before_count = map->GetItems().size();
+        CHECK_THROWS_AS(map->AddMapperItem(item->GetProtoId(), mpos {10, 10}, item->GetProperties()), MapLoaderException);
+        CHECK(map->GetItems().size() == before_count);
+
+        auto cr = map->AddMapperCritter(mapper->Hashes.to_hashed_string(CRITTER_A), mpos {12, 12}, mdir {}, nullptr);
+        auto proto = mapper->GetProtoItem(item->GetProtoId());
+        REQUIRE(proto);
+        CHECK_THROWS_AS(cr->AddMapperInvItem(ident_t {101}, proto, CritterItemSlot::Inventory, item->GetProperties()), MapLoaderException);
+        CHECK(cr->GetInvItems().empty());
+        CHECK_THROWS_AS(item->AddMapperInnerItem(ident_t {102}, proto, any_t {}, item->GetProperties()), MapLoaderException);
+        CHECK(item->GetInnerItems().empty());
+    }
+}
+
+TEST_CASE("MapperDynamicItemsNeverCoalesceIntoMesh")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    for (auto proto : {TILE_A, TILE_U}) {
+        string body = MakeItemBlock(10, proto, 8, 8, "Static = False") + MakeItemBlock(11, proto, 9, 8, "Static = False") + MakeItemBlock(12, proto, 10, 8);
+        auto map = mapper->LoadMapFromText("DynamicMerge", "DynamicMerge.fomap", MakeMapText(body));
+        REQUIRE(map);
+        CHECK(map->GetItems().size() == 3);
+        CHECK(mapper->MergeItemsToMultihexMeshes(map.as_ptr()) == 0);
+
+        for (const auto& item : map->GetItems()) {
+            CHECK(item->GetMultihexMesh().empty());
+        }
+
+        CHECK_NOTHROW(map->SaveToText("DynamicMergeSaved"));
+        mapper->UnloadMap(map.as_ptr());
+    }
+}
+
+TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
+{
+    auto preview_action = static_cast<CritterActionAnim>(GENERATE(509, 600));
+    auto preview_state = static_cast<CritterStateAnim>(401);
+    auto settings = MakeMapperTestSettings();
+    BakerTests::OverrideSetting(settings.Animation.PreviewStateAnim, preview_state);
+    BakerTests::OverrideSetting(settings.Animation.PreviewActionAnim, preview_action);
+    auto resources = MakeMapperTestResources("Policy.fofrm");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PreviewPolicyResources");
+    source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100));
+    resources.AddCustomSource(std::move(source));
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    mapper->InitIface();
+    auto sprite = mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    REQUIRE(sprite);
+    uint32_t sprite_id = mapper->AnimAdd(sprite);
+    bool requested_preview = false;
+    Entity::EventCallbackData resolution;
+    resolution.Callback = [&](FuncCallData& call) {
+        auto state = *cast_from_void<CritterStateAnim*>(call.ArgsData[1]);
+        auto action = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
+        requested_preview |= state == preview_state && action == preview_action;
+
+        if (state == preview_state && action == static_cast<CritterActionAnim>(509)) {
+            *cast_from_void<uint32_t*>(call.ArgsData[3]) = sprite_id;
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    mapper->OnCritterAnimationSprite.Subscribe(std::move(resolution));
+
+    SettingsStorage viewer_settings {"AnimationViewer"};
+    string previous_proto = viewer_settings.GetString("SelectedProto");
+    viewer_settings.SetString("SelectedProto", CRITTER_A);
+    auto restore_settings = scope_exit([&]() noexcept { safe_call([&] { viewer_settings.SetString("SelectedProto", previous_proto); }); });
+    REQUIRE(ImGui::GetCurrentContext() == nullptr);
+    ImGuiExt::Init();
+    auto destroy_context = scope_exit([]() noexcept { ImGui::DestroyContext(); });
+    auto& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
+    io.DeltaTime = 1.0f / 60.0f;
+    io.IniFilename = nullptr;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+    AnimationViewer viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr, &mapper->CritterFrames, &mapper->GameTime};
+    viewer.SetVisible(true);
+    viewer.SetFillViewport(true);
+
+    for (int32_t frame = 0; frame < 3; frame++) {
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(viewer.Draw());
+        ImGui::Render();
+    }
+
+    CHECK(requested_preview);
+    CHECK(io.MetricsRenderVertices > 0);
+}
+
+TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
+{
+    auto settings = MakeMapperTestSettings();
+    auto resources = MakeMapperTestResources();
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationPolicyResources");
+    source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100, ipos16 {2, 0}));
+    resources.AddCustomSource(std::move(source));
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    mapper->InitIface();
+    auto map = mapper->LoadMapFromText("AnimationPolicyMap", "AnimationPolicyMap.fomap", MakeMapText(MakeCritterBlock(20, CRITTER_A, 6, 6)));
+    REQUIRE(map);
+    mapper->ShowMap(map);
+    auto critter = map->GetCritters().front();
+    CritterActionAnim observed {};
+    auto selected_action = static_cast<CritterActionAnim>(509);
+    auto sprite = mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    REQUIRE(sprite);
+
+    for (int32_t index = 0; index < sprite->GetFramesCount(); index++) {
+        sprite->SetFrame(index, sprite->GetSprite(index)->MakeCopy(), ipos32 {40 + index, -17}, sprite->GetSpriteMotion()[index]);
+    }
+
+    uint32_t spr_id = mapper->AnimAdd(sprite);
+    auto flags = CritterAnimationFlags::None;
+    float32_t normalized_time = 0.0f;
+    Entity::EventCallbackData selection;
+    selection.Callback = [&flags, &normalized_time, &selected_action](FuncCallData& call) {
+        *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = static_cast<CritterStateAnim>(401);
+        *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = selected_action;
+        *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = flags;
+        *cast_from_void<float32_t*>(call.ArgsData[7]) = normalized_time;
+        return Entity::EventResult::ContinueChain;
+    };
+    mapper->OnCritterAnimationInit.Subscribe(std::move(selection));
+    Entity::EventCallbackData resolution;
+    resolution.Callback = [&observed, &spr_id](FuncCallData& call) {
+        observed = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
+        *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
+        return Entity::EventResult::ContinueChain;
+    };
+    mapper->OnCritterAnimationSprite.Subscribe(std::move(resolution));
+    critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {60}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, mapper->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+    critter->RefreshView();
+    CHECK(observed == static_cast<CritterActionAnim>(509));
+
+    SECTION("FreezeIsIndependentOfLifeStateAndSurvivesProcessingAndDirectionChanges")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->RefreshView();
+        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        REQUIRE(frames);
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+        critter->Process();
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+        normalized_time = 0.75f;
+        critter->ChangeLookDir(mdir {1});
+        critter->Process();
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(3));
+        critter->SetCondition(CritterCondition::Dead);
+        flags = CritterAnimationFlags::None;
+        normalized_time = 0.0f;
+        critter->RefreshView();
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
+    }
+
+    SECTION("DrawOffsetAnchorsSpriteRootWithoutTouchingCumulativeMotion")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->RefreshView();
+        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        REQUIRE(frames);
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+        CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-41, 19});
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {6, 0});
+    }
+
+    SECTION("FrameOffsetsAnchorBeforeTheFirstProcessAtCurrentDisplacement")
+    {
+        critter->SetHexOffset(ipos16 {5, 0});
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {7, 0});
+        CHECK(critter->GetHexOffset() == ipos16 {5, 0});
+        CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-39, 19});
+    }
+
+    SECTION("AnimationOffsetCompensatesInterpolationWithoutChangingTheSelectedFrame")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        auto frame = critter->GetMapSprite()->GetSprite();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+        critter->SetHexOffset(ipos16 {1, 0});
+        critter->RefreshView();
+        CHECK(critter->GetMapSprite()->GetSprite() == frame);
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+        CHECK(critter->GetHexOffset() == ipos16 {1, 0});
+        critter->AddExtraOffs({3, -4});
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {5, -4});
+    }
+
+    SECTION("FrameAlignmentProjectsBothAxesAndFloorsNegativeCycles")
+    {
+        auto aligned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(aligned);
+        const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
+
+        for (int32_t index = 0; index < aligned->GetFramesCount(); index++) {
+            aligned->SetFrame(index, aligned->GetSprite(index)->MakeCopy(), aligned->GetSpriteOffset(index), deltas[index]);
+        }
+
+        spr_id = mapper->AnimAdd(aligned);
+        selected_action = static_cast<CritterActionAnim>(512);
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+        REQUIRE(frames);
+
+        // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles.
+        const tuple<ipos16, int32_t, ipos32> cases[] = {
+            {{3, 1}, 0, {2, 1}},
+            {{3, 2}, 1, {4, 2}},
+            {{4, 2}, 1, {4, 2}},
+            {{7, 4}, 2, {8, 4}},
+            {{11, 5}, 0, {10, 5}},
+            {{-1, 0}, 2, {0, 0}},
+            {{-1, 2}, 0, {2, 1}},
+            {{-8, -4}, 0, {-6, -3}},
+            {{-9, -4}, 2, {-8, -4}},
+        };
+
+        for (const auto& [position, frame, offset] : cases) {
+            critter->SetHexOffset(position);
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(frame));
+            CHECK(*critter->GetMapSprite()->GetPSprOffset() == offset);
+            CHECK(critter->GetHexOffset() == position);
+        }
+    }
+
+    SECTION("FrameAlignmentKeepsTheFirstEquidistantPose")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(ipos16 {3, 0});
+        critter->RefreshView();
+        // Positions 2 and 4 are equally close; retain the first pose, not the later one.
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+        CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-39, 19});
+    }
+
+    SECTION("SheetReplacementRoundsSignedHalfPhaseAwayFromZero")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(ipos16 {5, 0});
+        critter->RefreshView();
+        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(turned);
+
+        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
+        }
+
+        spr_id = mapper->AnimAdd(turned);
+        selected_action = static_cast<CritterActionAnim>(513);
+        critter->RefreshView();
+        // Half of (-5,7) rounds to (-3,4): anchor=(8,-4), first cumulative=(-5,7).
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {3, 3});
+        CHECK(critter->GetHexOffset() == ipos16 {5, 0});
+    }
+
+    SECTION("SheetReplacementPreservesNegativeAndFractionalPhase")
+    {
+        const auto [position, expected] = GENERATE((tuple<ipos16, ipos32> {ipos16 {4, 2}, ipos32 {2, 5}}), (tuple<ipos16, ipos32> {ipos16 {-4, -2}, ipos32 {-6, 1}}), (tuple<ipos16, ipos32> {ipos16 {2, 1}, ipos32 {-2, 6}}));
+        auto source_frames = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(source_frames);
+        const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
+
+        for (int32_t index = 0; index < source_frames->GetFramesCount(); index++) {
+            source_frames->SetFrame(index, source_frames->GetSprite(index)->MakeCopy(), source_frames->GetSpriteOffset(index), deltas[index]);
+        }
+
+        spr_id = mapper->AnimAdd(source_frames);
+        selected_action = static_cast<CritterActionAnim>(516);
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(position);
+        critter->RefreshView();
+        auto target_frames = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(target_frames);
+
+        for (int32_t index = 0; index < target_frames->GetFramesCount(); index++) {
+            target_frames->SetFrame(index, target_frames->GetSprite(index)->MakeCopy(), target_frames->GetSpriteOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
+        }
+
+        spr_id = mapper->AnimAdd(target_frames);
+        selected_action = static_cast<CritterActionAnim>(517);
+        critter->RefreshView();
+        // T=(8,4): positive/negative halves map to(-3,4), one quarter maps to(-1,2).
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == expected);
+        CHECK(critter->GetHexOffset() == position);
+    }
+
+    SECTION("SheetReplacementScalesPhaseWithoutOverflowingTheNumerator")
+    {
+        auto long_cycle = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(long_cycle);
+
+        for (int32_t index = 0; index < long_cycle->GetFramesCount(); index++) {
+            long_cycle->SetFrame(index, long_cycle->GetSprite(index)->MakeCopy(), long_cycle->GetSpriteOffset(index), index == 0 ? ipos32 {1000000000, 0} : ipos32 {});
+        }
+
+        spr_id = mapper->AnimAdd(long_cycle);
+        selected_action = static_cast<CritterActionAnim>(514);
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(ipos16 {32767, 0});
+        critter->RefreshView();
+        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(turned);
+
+        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), index == 0 ? ipos32 {-2000000001, 2000000001} : ipos32 {});
+        }
+
+        spr_id = mapper->AnimAdd(turned);
+        selected_action = static_cast<CritterActionAnim>(515);
+        critter->RefreshView();
+        // 32767/1e9 of the new cycle rounds to (-65534,65534); the naive numerator exceeds int64_t.
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {-1999901700, 1999934467});
+        CHECK(critter->GetHexOffset() == ipos16 {32767, 0});
+    }
+
+    SECTION("MotionReplacementTransfersPhaseBeforeTheNextProcess")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(ipos16 {5, 0});
+        critter->RefreshView();
+        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(turned);
+
+        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), ipos32 {0, 4});
+        }
+
+        spr_id = mapper->AnimAdd(turned);
+        selected_action = static_cast<CritterActionAnim>(510);
+        critter->ChangeLookDir(mdir {1});
+        // Half of (10,0) becomes half of (0,20): anchor=(5,-10), closest cumulative=(0,8).
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {5, -2});
+        CHECK(critter->GetHexOffset() == ipos16 {5, 0});
+        CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-40, 19});
+    }
+
+    SECTION("ZeroTotalMotionAndFrozenPoseUseSeparateOffsetPolicies")
+    {
+        auto zero = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        REQUIRE(zero);
+
+        for (int32_t index = 0; index < zero->GetFramesCount(); index++) {
+            ipos32 motion = index == 0 ? ipos32 {4, -2} : index == 1 ? ipos32 {-4, 2} : ipos32 {};
+            zero->SetFrame(index, zero->GetSprite(index)->MakeCopy(), zero->GetSpriteOffset(index), motion);
+        }
+
+        spr_id = mapper->AnimAdd(zero);
+        selected_action = static_cast<CritterActionAnim>(511);
+        critter->SetHexOffset(ipos16 {5, 3});
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {5, 3});
+        flags = CritterAnimationFlags::Freeze;
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {9, 1});
+    }
+
+    SECTION("FrozenMotionTakesPrecedenceOverMovementAlignment")
+    {
+        flags = combine_enum(CritterAnimationFlags::Movement, CritterAnimationFlags::Freeze);
+        normalized_time = 0.5f;
+        critter->SetHexOffset(ipos16 {5, 0});
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {11, 0});
+        CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-41, 19});
+    }
+
+    SECTION("StoppedMovementFlagDoesNotApplyThePreviousMotionCorrection")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+        critter->StopMoving();
+        critter->RefreshView();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32(critter->GetHexOffset()));
+    }
+
+#if FO_ENABLE_3D
+    SECTION("ModelRefreshClearsMotionBeforeAReplacementFrame")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->RefreshView();
+        critter->AddExtraOffs({3, -4});
+        auto mspr = critter->GetMapSprite();
+        CHECK(*mspr->GetPSprOffset() == ipos32 {9, -4});
+        critter->RefreshModel();
+        CHECK(*mspr->GetPSprOffset() == ipos32 {3, -4});
+    }
+#endif
+
+    SECTION("MovementFlagAlignsFramesWithPathForAnArbitraryAction")
+    {
+        flags = CritterAnimationFlags::Movement;
+        critter->RefreshView();
+        critter->SetHexOffset(ipos16 {5, 0});
+        critter->RefreshView();
+        auto driven_offset = *critter->GetMapSprite()->GetPSprOffset();
+        flags = CritterAnimationFlags::None;
+        critter->RefreshView();
+        auto timed_offset = *critter->GetMapSprite()->GetPSprOffset();
+        CHECK(driven_offset == ipos32 {4, 0});
+        CHECK(timed_offset == ipos32 {7, 0});
+    }
+
+    SECTION("QueuedActionKeepsSelectedFrameUntilStopped")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->AppendAnim(static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509));
+        critter->Process();
+        CHECK(critter->IsAnimPlaying());
+        flags = CritterAnimationFlags::None;
+        normalized_time = 0.0f;
+        critter->StopAnim();
+        CHECK_FALSE(critter->IsAnimPlaying());
+        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        REQUIRE(frames);
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
+    }
+
+    SECTION("InvalidSelectionDoesNotLeaveAnUninitializedQueuedAnimation")
+    {
+        normalized_time = 2.0f;
+        CHECK_THROWS(critter->AppendAnim(static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509)));
+        REQUIRE_FALSE(critter->IsAnimPlaying());
+        normalized_time = 0.0f;
+        CHECK_NOTHROW(critter->Process());
+    }
+
+    SECTION("MapperAppliesDrawFlattenWithoutExplicitReapply")
+    {
+        critter->SetDrawFlatten(true);
+        CHECK(critter->GetMapSprite()->GetDrawOrder() == DrawOrderType::FlatCritter);
+        critter->SetDrawFlatten(false);
+        CHECK(critter->GetMapSprite()->GetDrawOrder() == DrawOrderType::Critter);
+    }
+
+    SECTION("MapperPropertyTextEditInvokesPostSetterWithCommittedValue")
+    {
+        bool observed_dead = false;
+        critter->GetPropertyCondition()->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { observed_dead = critter->GetCondition() == CritterCondition::Dead; });
+        CHECK(mapper->ApplyEntityPropertyText(critter, critter->GetPropertyCondition(), "Dead"));
+        CHECK(observed_dead);
+    }
+}
+
+TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto body = MakeItemBlock(20, TILE_A, 12, 12, "LightDistance = 7") + MakeItemBlock(21, TILE_A, 13, 12, "LightDistance = 9") + MakeCritterBlock(30, CRITTER_A, 8, 8);
+    auto map = mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body));
+    REQUIRE(map);
+    mapper->ShowMap(map);
+    REQUIRE_FALSE(mapper->IsMapDirty(map));
+
+    SECTION("SwitchingTheCurrentMapKeepsTheEditOnItsOriginalMap")
+    {
+        auto other_map = mapper->LoadMapFromText("OtherPropertyCallbacks", "OtherPropertyCallbacks.fomap", MakeMapText(""));
+        REQUIRE(other_map);
+        auto critter = map->GetCritters().front();
+        bool callback_ran = false;
+        critter->GetPropertyCondition()->AddPostSetter([&](nptr<Entity>, ptr<const Property>) {
+            callback_ran = true;
+            CHECK(mapper->IsMapDirty(map));
+            mapper->ShowMap(other_map);
+        });
+        CHECK(mapper->ApplyEntityPropertyText(critter, critter->GetPropertyCondition(), "Dead"));
+        CHECK(callback_ran);
+        CHECK(mapper->GetCurMap() == other_map);
+        CHECK(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(other_map));
+    }
+
+    SECTION("UnloadingTheEditedMapDoesNotLeaveDeadTargetsOrDirtyEntries")
+    {
+        ptr<CritterHexView> critter = map->GetCritters().front();
+        auto prop = critter->GetPropertyCondition();
+        bool callback_ran = false;
+        prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) {
+            callback_ran = true;
+            CHECK(mapper->IsMapDirty(map));
+            mapper->UnloadMap(map);
+        });
+        CHECK(mapper->ApplyEntityPropertyText(critter, prop, "Dead"));
+        CHECK(callback_ran);
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->GetCurMap());
+    }
+
+    SECTION("DestroyingAnotherPreparedSiblingSkipsItsLaterCommit")
+    {
+        auto primary = map->GetItem(ident_t {20});
+        auto sibling = map->GetItem(ident_t {21});
+        REQUIRE(primary);
+        REQUIRE(sibling);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        bool callback_ran = false;
+        prop->AddPostSetter([&](nptr<Entity> entity, ptr<const Property>) {
+            if (entity == primary) {
+                callback_ran = true;
+                CHECK(mapper->IsMapDirty(map));
+                mapper->DeleteEntity(sibling);
+            }
+        });
+        CHECK_NOTHROW(mapper->ApplyEntityPropertyText(primary, prop, "30"));
+        CHECK(callback_ran);
+        CHECK(primary->GetProperties()->SavePropertyToText(prop) == "30");
+        CHECK_FALSE(map->GetItem(ident_t {21}));
+    }
+
+    SECTION("InspectorHistoryStaysWithTheOriginalMapAfterCallbackSwitchesMaps")
+    {
+        auto other_map = mapper->LoadMapFromText("OtherInspectorMap", "OtherInspectorMap.fomap", MakeMapText(""));
+        REQUIRE(other_map);
+        auto primary = map->GetItem(ident_t {20});
+        REQUIRE(primary);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        mapper->ShowProps = {prop};
+        mapper->InspectorSelectedLine = 3;
+        mapper->InspectorSelectedLineInitialValue = "0";
+        mapper->InspectorSelectedLineValue = "30";
+        prop->AddPostSetter([&](nptr<Entity> entity, ptr<const Property>) {
+            if (entity == primary && primary->GetProperties()->SavePropertyToText(prop) == "30") {
+                mapper->ShowMap(other_map);
+            }
+        });
+        REQUIRE_NOTHROW(mapper->ApplyInspectorPropertyEdit(primary));
+        CHECK(mapper->GetCurMap() == other_map);
+        CHECK_FALSE(mapper->CanUndo());
+        mapper->ShowMap(map);
+        REQUIRE(mapper->CanUndo());
+        REQUIRE(mapper->ExecuteUndo());
+        CHECK(primary->GetProperties()->SavePropertyToText(prop) == "0");
+        REQUIRE(mapper->ExecuteRedo());
+        CHECK(mapper->GetCurMap() == other_map);
+        CHECK_FALSE(mapper->CanUndo());
+    }
+
+    SECTION("InspectorEditCanUnloadItsMapDuringPostSetter")
+    {
+        ptr<CritterHexView> critter = map->GetCritters().front();
+        auto prop = critter->GetPropertyCondition();
+        mapper->ShowProps = {prop};
+        mapper->InspectorSelectedLine = 3;
+        mapper->InspectorSelectedLineInitialValue = "Alive";
+        mapper->InspectorSelectedLineValue = "Dead";
+        prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
+        CHECK_NOTHROW(mapper->ApplyInspectorPropertyEdit(critter));
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(mapper->GetCurMap());
+        CHECK_FALSE(mapper->IsMapDirty(map));
+    }
+
+    SECTION("UndoCanUnloadTheEditedMapFromItsPostSetter")
+    {
+        auto primary = map->GetItem(ident_t {20});
+        REQUIRE(primary);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        mapper->ShowProps = {prop};
+        mapper->InspectorSelectedLine = 3;
+        mapper->InspectorSelectedLineInitialValue = "0";
+        mapper->InspectorSelectedLineValue = "30";
+        mapper->ApplyInspectorPropertyEdit(primary);
+        REQUIRE(mapper->CanUndo());
+        prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
+        CHECK_FALSE(mapper->ExecuteUndo());
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(mapper->GetCurMap());
+        CHECK_FALSE(mapper->IsMapDirty(map));
+    }
+
+    SECTION("RedoCanUnloadTheEditedMapFromItsPostSetter")
+    {
+        auto primary = map->GetItem(ident_t {20});
+        REQUIRE(primary);
+        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        REQUIRE(prop);
+        mapper->ShowProps = {prop};
+        mapper->InspectorSelectedLine = 3;
+        mapper->InspectorSelectedLineInitialValue = "0";
+        mapper->InspectorSelectedLineValue = "30";
+        mapper->ApplyInspectorPropertyEdit(primary);
+        REQUIRE(mapper->ExecuteUndo());
+        REQUIRE(mapper->CanRedo());
+        prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
+        CHECK_FALSE(mapper->ExecuteRedo());
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(mapper->GetCurMap());
+        CHECK_FALSE(mapper->IsMapDirty(map));
+    }
+}
+
 FO_END_NAMESPACE
+

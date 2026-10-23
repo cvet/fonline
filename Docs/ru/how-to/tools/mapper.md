@@ -5,7 +5,7 @@ locale: ru
 document_id: mapper-tools
 permalink: /Docs/ru/how-to/tools/mapper.html
 ---
-<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a"} -->
+<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"a2dfe9ff18f0ff8bb60a5ab8116a3adeedd62753e9626ea27f42099538227f6f"} -->
 # Инструменты Mapper
 
 > Документация движка по переиспользуемым API жизненного цикла Mapper,
@@ -68,6 +68,13 @@ overlay inputs делают captures сравнимыми, но не обеща�
 
 Поэтому страница движка описывает переиспользуемые примитивы и схему
 интеграции, а не конвейер превью конкретной игры.
+
+Редактирование свойства сущности разбирает переданный текст, затем вызывает обычные setter-ы.
+Реактивные post-setter-ы видят уже записанное значение. Скрипты проекта могут поддерживать производные свойства
+при правках инспектора и undo/redo. Загрузка карты восстанавливает исходные авторские свойства;
+инициализируйте производное отображение в `OnEditMapLoad`, а новые экземпляры — через игровой
+обработчик инициализации анимации. Изменение `DrawFlatten` сразу обновляет слой персонажа в клиенте
+и Mapper.
 
 ## API жизненного цикла карты
 

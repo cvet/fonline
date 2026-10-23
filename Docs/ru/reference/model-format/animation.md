@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-animation","locale":"ru","source_path":"Docs/en/reference/model-format/animation.md","source_sha256":"59c48328d7dfb3f9afe748e2002174f6ee448cd5f1d4043a4f3e538ea49bcb2e"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-animation","locale":"ru","source_path":"Docs/en/reference/model-format/animation.md","source_sha256":"c0c90055df146cf245c99b2c25d48dc9680f0e86a3c07d82559e735600e771be"} -->
 
 # Директивы анимации моделей
 
@@ -25,7 +25,7 @@ generated: true
 | <code>StateAnimEqual</code> | <code>StateAnimEqual &lt;from-state&gt; &lt;to-state&gt;</code> | Определяет одношаговый state-animation alias. | Alias применяется один раз до exact lookup и имеет приоритет над exact source-key entry. |
 | <code>ActionAnimEqual</code> | <code>ActionAnimEqual &lt;from-action&gt; &lt;to-action&gt;</code> | Определяет одношаговый action-animation alias. | Alias применяется один раз до exact lookup и имеет приоритет над exact source-key entry. |
 | <code>DisableAnimationInterpolation</code> | <code>DisableAnimationInterpolation</code> | Отключает keyframe interpolation model animation controller. | Registered controller выполняет sampling без interpolation. |
-| <code>DisableBackwardAnim</code> | <code>DisableBackwardAnim</code> | Отключает выбор WalkBack и RunBack для movement-pose animation. | Movement всегда использует forward walk/run, а SetMoveDir выравнивает look direction. |
+| <code>DisableBackwardAnim</code> | <code>DisableBackwardAnim</code> | Выбирает контекст движения вперёд вместо движения назад. | Движение использует контекст движения вперёд, а SetMoveDir также выравнивает направление взгляда; идентификаторы анимаций выбирает проект. |
 | <code>RotationBone</code> | <code>RotationBone &lt;bone&gt;</code> | Выбирает проверенную torso/body rotation bone и включает movement overlay controller. | Look/move directions могут различаться; body и настроенные head bones получают directional rotation, пока movement/turn animations идут на overlay controller. |
 
 ## Отделение от 2D root motion

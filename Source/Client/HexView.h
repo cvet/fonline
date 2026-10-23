@@ -92,6 +92,7 @@ protected:
     nptr<const Sprite> _spr {};
     ipos32 _sprOffset {};
     ipos32 _rootOffset {};
+    optional<ipos32> _sprOffsetOverride {};
 
     virtual void SetupSprite(ptr<MapSprite> mspr);
     void ProcessFading();
@@ -121,3 +122,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

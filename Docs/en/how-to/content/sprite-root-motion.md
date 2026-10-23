@@ -1,12 +1,12 @@
 ---
 layout: default
-title: Sprite Root Motion and Walk Cycles
+title: Sprite Frame Offsets and Walk Cycles
 locale: en
 document_id: sprite-root-motion
 permalink: /Docs/en/how-to/content/sprite-root-motion.html
 ---
 
-# Sprite Root Motion and Walk Cycles
+# Sprite Frame Offsets and Walk Cycles
 
 FOnline transports baked 2D frame deltas and aligns walk/run poses with authoritative
 hex movement. Projects own art, animation mapping, tuning and visual acceptance.
@@ -33,12 +33,13 @@ The owning sources are:
 - `Source/Tools/ImageImport.*` for `FrameShot::Motion` and the shared loader context;
 - `Source/Tools/ImageBaker.*` for coordination, transformations, and baked sprite serialization; adjacent `ImageBaker-*.h/.cpp` pairs own source-format import;
 - `Source/Common/SpriteResource.*` for the shared SpriteResource v3 frame decoder and `NextOffset` transport;
-- `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset`, baked loading, shared frames, and per-direction sheets;
+- `Source/Client/DefaultSprites.*` for `SpriteSheet::_sprOffset` / `_sprMotion`, baked loading, shared frames, and per-direction sheets;
 - `Source/Common/Movement.*` for authoritative time/path progress and integer-pixel `HexOffset` construction;
 - `Source/Common/Geometry.*` for lossless hex/offset re-splitting and passability-aware normalization;
-- `Source/Client/CritterHexView.*` for cycle anchoring, movement displacement, frame selection, rendered animation offsets, and stop-time normalization;
-- `Source/Client/ResourceManager.cpp` for animation selection, frame extraction, merges, cloning, and their private offset transforms;
-- `Source/Tests/Test_ImageBaker.cpp` and `Source/Tests/Test_Geometry.cpp` for format-level offset and geometry-normalization coverage.
+- `Source/Client/AnimationMovement.*` for pure frame-delta accumulation, cycle projection, phase transfer, frame selection and visual compensation;
+- `Source/Client/CritterHexView.*` for the path-relative anchor, movement displacement, application of frame-offset compensation and stop-time normalization;
+- `Source/Client/CritterFramesCache.cpp` for caching project-resolved directional sheets and animation tags; projects select, extract and splice frames through the generic sprite API;
+- `Source/Tests/Test_Mapper.cpp`, `Source/Tests/Test_ImageBaker.cpp` and `Source/Tests/Test_Geometry.cpp` for actual critter cycle/alignment behavior, format transport and normalization coverage.
 
 Project documents and content repositories are useful integration evidence, but they are not the authority for reusable Engine behavior.
 
@@ -50,9 +51,11 @@ A moving 2D critter involves three related values:
 2. **Sub-hex interpolation**: `MovingContext::BuildProgress` converts the smooth segment position to integer pixel `HexOffset` values. `CritterHexView::ProcessMoving` applies the logical hex and offset.
 3. **Authored sprite displacement**: each animation frame carries an integer `(Motion.x, Motion.y)` delta. `CritterHexView` chooses a frame and computes `_offsAnim` so the rendered sprite follows the authored walk cycle while logical movement remains authoritative.
 
-Sprite root motion is presentation data. It does not move the entity, choose a path, change movement speed, authorize a hex transition, or replicate movement over the network.
+Sprite frame offsets are presentation data. They do not move the entity, choose a path, change movement speed, authorize a hex transition, or replicate movement over the network.
 
-## Authoring per-frame offsets
+<a id="authoring-per-frame-offsets"></a>
+
+## Authoring per-frame motion
 
 `ImageImport::FrameShot` stores:
 
@@ -88,9 +91,9 @@ the canvas and sequence placement. Source retains both; ordinary composition
 discards child sequence placement and retains frame placement/deltas.
 See [ART](image-format.md#art).
 
-Offsets vary by direction. Baking can mirror/crop/compose; clients can extract,
-clone or merge sheets. Fallout splicing subtracts the base cycle displacement
-from the extra sequence on both axes, covered by ResourceManagerMergesBothMotionAxes.
+Offsets are direction-specific. Projects select frames and splice sequences through
+the [generic sprite API](image-format.md#script-owned-2d-critter-animations). The Engine
+does not supply Fallout filename, trim or splice policy.
 
 ## Baked and runtime representation
 
@@ -99,29 +102,43 @@ int32 placement and positive uint32 duration into SpriteResource v3. Shared slot
 reference earlier pixels/geometry, retaining their own movement, placement and time.
 `ReadSpriteResource` decodes movement into `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` copies every slot's NextOffset into `_sprOffset`;
-shared sprites receive their own draw offset. `SpriteSheet::GetSpriteOffset()` exposes
-a read-only span. Each direction owns its count and timeline.
+`DefaultSpriteFactory::LoadSprite` assigns each record's `Offset` and `NextOffset`
+to independent placement and motion arrays, including shared pixel records. Each
+direction owns its count and timeline.
 
-In `ResolveCritterAnimationFrames`, first-frame extraction retains its delta; last-frame extraction sums all deltas
-on both axes. Each trimmed direction has one sprite/offset, and copies preserve
-those values without modifying the full cached sheet. `FirstFrame` takes
-precedence over `LastFrame` when both resolver flags are set.
+`SpriteSheet::GetSpriteOffset(frame)` reads the ordinary sprite offset to the root
+from `_sprOffset`. `GetSpriteMotion()[frame]` reads the per-frame visual displacement
+delta from `_sprMotion`. `SetFrame(index, sprite, offset, motion)` assigns each
+input to its matching field. Sheet copies retain independent values.
+`CritterHexView::RefreshAnimOffset` delegates motion accumulation and pose alignment
+to `AnimationMovement`, retaining the active sheet and path-relative anchor. There is no separate motion object or
+animation-driven movement system.
 
-This binary layout and `_sprOffset` storage are private Engine contracts. Game scripts and tools should author supported source formats and consume rendered behavior, not parse or patch the baked stream.
+`Game.GetSpriteFrameMotion` exposes a frame delta; `Game.CreateSpriteSequence` stores
+the supplied `motions` separately from absolute draw offsets. Projects own frame
+selection, cumulative last-frame displacement and sequence splices.
 
-## When root motion drives a critter
+Created sheets share original `AtlasSprite` frames. Independent absolute draw anchors
+live in `SpriteSheet::_sprOffset` / `_sprMotion`. `SetAnimSpr` selects only the image and draw
+anchor. `RefreshAnimOffset` selects a movement-driven pose and its presentation correction
+together before image application; frozen/timed frame indices come from playback.
+`RefreshOffs` combines `HexOffset + extra displacement + _offsAnim` once.
+MapSprite applies the draw anchor only to sprite placement, keeping it out of the
+motion cycle and logical world root. None of these values changes path progress.
+
+<a id="when-root-motion-drives-a-critter"></a>
+
+## When movement selects the frame
 
 The movement-driven branch in `CritterHexView::Process` is active only when all of these are true:
 
 - the critter uses a 2D sprite rather than a loaded 3D model;
-- no explicit queued action animation is currently active;
 - the critter has an active `MovingContext`;
-- the resolved locomotion sheet reports `CritterActionAnim::Walk` or `CritterActionAnim::Run`.
+- the project returned `CritterAnimationFlags::Movement` and did not return `Freeze` from `OnCritterAnimationInit`.
 
 In that branch, movement position selects the frame. Elapsed animation time does not advance the walk/run cycle independently.
 
-For non-walk/run animations, `SetAnimSpr` accumulates offsets through the selected frame into `_offsAnim`. This lets an authored action visually shift while the logical critter remains anchored. A walk/run sheet with no active movement is not treated as a free-standing root-motion command.
+Without the Movement flag, `RefreshAnimOffset` accumulates motion through the selected frame into `_offsAnim`. This lets an authored action visually shift while the logical critter remains anchored. A movement-driven sheet with no active movement is not treated as an entity-movement command.
 
 ## Continuous movement displacement
 
@@ -135,7 +152,7 @@ pos = GetHexOffset(start_hex, current_hex)
 
 The logical hex and `HexOffset` change in opposite directions when movement crosses a hex boundary, so their sum remains spatially continuous. This lets the animation phase survive logical hex snaps.
 
-`MovingContext::BuildProgress` computes the smooth segment interpolation and rounds each `HexOffset` component to an integer pixel. It intentionally does not clamp the result to one hex. Rounded path progress can lag the smooth position, and client reconciliation can fold an inter-hex delta into rapid stop/start input, so a valid moving offset may span more than one hex. Rendering remains correct because the sprite position is the sum of `current_hex + offset`; clamping would break that invariant. The light fan bounds its own copy in `CritterHexView::RefreshOffs` instead.
+`MovingContext::BuildProgress` computes the smooth segment interpolation and rounds each `HexOffset` component to an integer pixel. It intentionally does not clamp the result to one hex. Rounded path progress can lag the smooth position, and client reconciliation can fold an inter-hex delta into rapid stop/start input, so a valid moving offset may span more than one hex. Rendering remains correct because the sprite position is the sum of `current_hex + offset`; clamping would break that invariant.
 
 ## Movement stop and offset normalization
 
@@ -174,7 +191,7 @@ The first sheet in a new movement anchors at the current `pos`, giving phase zer
 
 ## Frame selection
 
-`EvaluateMovementFrameIndex` projects each cumulative authored displacement onto `T`:
+`AnimationMovement::EvaluateWalkFrame` projects each cumulative authored displacement onto `T`:
 
 ```text
 accum_dot_total[i] = dot(accum[i], T)
@@ -188,11 +205,11 @@ abs(accum_dot_total[i] - cycle_proj)
 
 Select the closest pose along the cycle axis using integer `int32_t`/`int64_t` displacement and dot products.
 
-If `T` is zero, `dot(T, T)` is zero and the function returns frame `0`. The walk/run offset branch also leaves `_offsAnim` at zero. A zero-total cycle is valid fallback data, but it cannot spatially drive a walk cycle.
+If `T` is zero, `dot(T, T)` is zero and frame `0` is selected. The walk/run offset branch also leaves `_offsAnim` at zero. A zero-total cycle is valid fallback data, but it cannot spatially drive a walk cycle.
 
 ## Rendered offset
 
-For non-zero `T`, `SetAnimSpr` computes the integer cycle number with floor division, including negative projected displacement:
+For non-zero `T`, `AnimationMovement::EvaluateWalkFrame` computes the integer cycle number with floor division, including negative projected displacement:
 
 ```text
 cycle_number = floor(rel_dot_total / total_dot_total)
@@ -204,20 +221,20 @@ Map placement includes logical hex position and `HexOffset`. `offs_anim` cancels
 within-frame linear movement, placing the sprite at the cumulative authored offset.
 Frame changes advance the visual by the next delta while logical movement continues.
 
-Root-motion pixels affect visual stepping/phase, never server travel distance or speed.
+Frame-offset pixels affect visual stepping/phase, never server travel distance or speed.
 
 ## Direction and sheet changes
 
 Turning during one `MovingContext` usually resolves a different direction-specific `SpriteSheet` with a different `T` and possibly a different frame count. Restarting at phase zero would visibly reset the gait on each turn.
 
-When the resolved sheet pointer changes, `Process` preserves the old wrapped phase. It shifts the new anchor so projection onto the new cycle vector begins at the same fraction:
+When the resolved sheet changes, `RefreshAnimOffset` calls `AnimationMovement::TransferWalkPhase` before either frame selection or offset calculation, including `RefreshView` before the next `Process`. It retains ownership of the new anchor, shifting it so projection onto the new cycle vector begins at the same fraction:
 
 ```text
 old_phase      = old_cycle_proj / dot(T_old, T_old)
 new_anchor     = pos - round(old_phase * T_new)
 ```
 
-The implementation performs the component calculations with signed integer rounding. If the old total vector is zero, there is no phase to preserve and the new sheet anchors at the current position.
+The module-local `ScaleWalkPhase` helper performs exact component scaling with signed nearest-integer rounding (ties away from zero), without overflowing an intermediate phase numerator. If the old total vector is zero, there is no phase to preserve and the new sheet anchors at the current position.
 
 This logic applies to any resolved walk/run sheet change, not only a direction change. Content substitution or resource selection that returns a different sheet uses the same re-anchoring path.
 
@@ -229,10 +246,10 @@ This logic applies to any resolved walk/run sheet change, not only a direction c
 | Motion exceeds signed 16-bit range during serialization | Numeric conversion fails instead of silently wrapping. |
 | Baked sprite has zero frames or directions | Client loading fails validation. |
 | Baked frame is a sprite reference | The referenced frame's sprite and offset are copied. |
-| Walk/run cycle total `T` is zero | Frame `0` is selected and movement root-motion offset remains zero. |
-| No active movement | Walk/run root motion does not move the logical or rendered critter through this branch. |
-| Non-walk/run animation | Offsets accumulate visually through the selected frame. |
-| 3D model critter | The 2D sprite root-motion branch is skipped. |
+| Movement-driven cycle total `T` is zero | Frame `0` is selected and movement frame-offset offset remains zero. |
+| No active movement with Movement and no Freeze | The alignment branch applies no animation correction. |
+| No Movement flag | Offsets accumulate visually through the selected frame. |
+| 3D model critter | The 2D sprite frame-offset branch is skipped. |
 | Stop-time target hex is outside the map or blocked | Normalization is refused; the current logical hex and offset remain unchanged. |
 
 ## Visual acceptance matrix
@@ -245,7 +262,7 @@ This logic applies to any resolved walk/run sheet change, not only a direction c
 | Rapid stop/start | Logical hex catches up without a rendered jump | Growing offset, stranded idle sprite, or blocked-path resync loop |
 | Hex boundary and reconciliation | Sprite world position stays continuous while hex/offset repartition | Cell-edge sticking or one-hex jump |
 | Extraction, merge, or substitution | Selected sheet retains intended per-axis cumulative offsets | First appended frame jumps or one axis is rebased incorrectly |
-| Zero-total fallback | Stable frame `0` with no root-motion offset | Divide-by-zero, unstable frame choice, or drift |
+| Zero-total fallback | Stable frame `0` with no frame-offset offset | Divide-by-zero, unstable frame choice, or drift |
 | Supported zoom/renderers | Foot placement remains acceptable in the project scene | Zoom-dependent jitter or unacceptable cadence |
 
 Automated baker and geometry tests establish data and normalization behavior. They do not replace visible client acceptance for gait quality.
@@ -286,10 +303,11 @@ The embedding project owns sprite assets, FOFRM composition, animation substitut
 
 Re-audit this page and its focused tests when a change touches any of these surfaces:
 
-- `FrameShot::Motion`, SpriteResource versioning, `NextOffset`, shared-frame behavior, or `SpriteSheet::_sprOffset`;
+- `FrameShot::Motion`, SpriteResource versioning, `NextOffset`, shared-frame behavior, or `SpriteSheet::_sprOffset` / `_sprMotion`;
 - FOFRM/legacy image import, mirroring, cropping, frame extraction, animation merge, cloning, or substitution;
 - `MovingContext::BuildProgress`, hex/offset interpolation, prediction reconciliation, or `GeometryHelper::NormalizeHexOffset`;
-- `CritterHexView` movement lifecycle, walk/run activation, anchor transfer, frame selection, `_offsAnim`, map passability, or light-offset bounding;
+- `AnimationMovement` accumulation, projection, phase transfer, frame selection and visual compensation;
+- `CritterHexView` movement lifecycle, project-controlled activation, anchor ownership, `_offsAnim`, map passability;
 - a pinned Last Frontier or TLA update that changes relevant assets, project policy, or historical evidence.
 
 For an external project or Engine update, fetch first, record the old/new commit range, audit the complete incoming range, update `BuildTools/ExternalProjectEvidence.json`, regenerate the site/AI/localization artifacts in dependency order, and keep this page independent of project-only helpers.
@@ -309,4 +327,4 @@ python BuildTools/docs_validate.py
 
 For offset import and baked transport, run the `ImageBaker` unit-test cases in the embedding project's Engine test binary. `Test_ImageBaker.cpp` covers signed FRM offsets, PascalCase FOFRM keys and sections, rejection of obsolete names, nested composition, mirroring, frame selection, and baked round trips. `Test_Geometry.cpp` covers successful re-splitting, blocked-target refusal, same-hex behavior, unrestricted normalization, and outside-map refusal.
 
-The current native suite does not expose a focused `CritterHexView` root-motion fixture. After changing `MovingContext`, `CritterHexView`, `SpriteSheet`, `ResourceManager` animation selection, or authored locomotion offsets, run the [visual acceptance matrix](#visual-acceptance-matrix) in a visible client scene. Baking proves the data path, geometry tests prove re-splitting, and the visible scene proves gait alignment.
+`CritterAnimationPreservesProjectSelectionWhileMoving` exercises the actual critter consumer with arbitrary identifiers, explicit movement flags and frozen frames. After changing `MovingContext`, `CritterHexView`, `SpriteSheet`, `CritterFramesCache` or project animation selection, or authored locomotion offsets, run the [visual acceptance matrix](#visual-acceptance-matrix) in a visible client scene. Baking proves the data path, geometry tests prove re-splitting, and the visible scene proves gait alignment.

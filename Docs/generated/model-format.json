@@ -1126,8 +1126,8 @@
       "context": "description",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Disables WalkBack and RunBack selection for movement-pose animation.",
-      "runtime_effect": "Movement always uses forward walk/run and SetMoveDir also aligns look direction.",
+      "description": "Selects forward locomotion context instead of backward locomotion.",
+      "runtime_effect": "Movement uses the forward context and SetMoveDir also aligns look direction; the project chooses animation identifiers.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1139,7 +1139,7 @@
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
-            "bool forbid_back = _modelInfo->_disableBackwardAnim",
+            "_modelInfo->_disableBackwardAnim",
             "if (!_modelInfo->_rotationBone ||"
           ]
         }
@@ -1579,7 +1579,7 @@
     },
     {
       "name": "ViewSize",
-      "replacement": "automatic view/name layout from baked idle-priority bounds",
+      "replacement": "automatic view/name layout from baked project-selected preview bounds",
       "description": "The client projects baked model bounds and active child layers instead of accepting an authored interaction rectangle."
     }
   ],
@@ -1605,5 +1605,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "4a031b18d9309997a1dec556156199b297f2a793c537c1e558f977fa448446ed"
+  "contract_digest": "496eb2ea2d6b5150b06217723895efce2ad6ef5d0b1a2c65d26da299f0c91b68"
 }

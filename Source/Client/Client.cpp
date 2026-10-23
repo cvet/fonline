@@ -100,9 +100,10 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
-    FontMngr(make_ptr(&SprMngr)),
-    ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
+    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr)),
+    CritterFrames(this),
+    FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
     _conn(Settings)
@@ -114,13 +115,13 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr));
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr, &ResMngr));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, &ResMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, &ResMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
 
-    ResMngr.IndexFiles();
+    ResMngr.LoadDefaultSprites(*Settings);
     AudioMngr.IndexFiles();
 
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
@@ -245,6 +246,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterModelName));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterElevation));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::DrawFlatten_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterDrawFlatten));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
@@ -275,13 +277,26 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
     BaseEngine(settings, std::move(resources), mapper_registrar),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
-    FontMngr(make_ptr(&SprMngr)),
-    ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
+    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr)),
+    CritterFrames(this),
+    FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
     _conn(Settings)
 {
+    auto registrar = GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME);
+    FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
+
+    auto prop = registrar->GetPropertyByIndex(CritterView::DrawFlatten_RegIndex);
+    FO_VERIFY_AND_THROW(prop, "Missing property by index");
+
+    prop->AddPostSetter([this](nptr<Entity> entity, ptr<const Property> prop) FO_DEFERRED {
+        FO_VERIFY_AND_THROW(entity, "Property owner entity is null");
+
+        OnSetCritterDrawFlatten(entity, prop);
+    });
+
     // Start-up is not finished here: the mapper builds on this constructor and keeps coming up through
     // its own body, so MapperEngine is what declares itself running
 }
@@ -315,6 +330,7 @@ void ClientEngine::Shutdown()
 
     SprMngr.GetRender().SetRenderTarget(nullptr);
     SprMngr.UnsubscribeWindowEvents();
+    ResMngr.UnsubscribeEvents();
 
     _chosen.reset();
 
@@ -387,19 +403,27 @@ void ClientEngine::ProcessScheduledCallbacks()
     }
 }
 
-auto ClientEngine::ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool
+auto ClientEngine::ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>
 {
-    return OnCritterAnimationFrames.Fire(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name) == EventResult::ContinueChain;
+    uint32_t spr_id = 0;
+    auto release_handle = scope_exit([&]() noexcept { safe_call([&] { AnimFree(spr_id); }); });
+
+    if (OnCritterAnimationSprite.Fire(model_name, state_anim, action_anim, spr_id) != EventResult::ContinueChain || spr_id == 0) {
+        return nullptr;
+    }
+
+    auto sprite = AnimGetSpr(spr_id);
+    FO_VERIFY_AND_THROW(sprite, "Animation resolver returned an unknown sprite handle", spr_id);
+
+    auto sprite_sheet = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+    FO_VERIFY_AND_THROW(sprite_sheet, "Animation resolver must return a sprite sheet", spr_id);
+
+    return sprite_sheet;
 }
 
 auto ClientEngine::ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
     return OnCritterAnimationSubstitute.Fire(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim) == EventResult::ContinueChain;
-}
-
-auto ClientEngine::ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool
-{
-    return OnCritterAnimationFallout.Fire(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags) == EventResult::ContinueChain;
 }
 
 auto ClientEngine::IsConnecting() const noexcept -> bool
@@ -2388,7 +2412,7 @@ void ClientEngine::UnregisterEntity(ptr<ClientEntity> entity)
 
 auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
 {
-    if (auto it = _ifaceAnimationsCache.find(name); it != _ifaceAnimationsCache.end()) {
+    if (auto it = _ifaceAnimationsCache.find({name, atlas_type}); it != _ifaceAnimationsCache.end()) {
         auto& cached_anim = it->second;
 
         cached_anim->Anim->PlayDefault();
@@ -2399,10 +2423,9 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
         return _ifaceAnimCounter;
     }
 
-    auto anim = SprMngr.LoadSprite(name, atlas_type);
+    auto anim = ResMngr.LoadSprite(name, atlas_type);
 
     if (!anim) {
-        break_into_debugger();
         return 0;
     }
 
@@ -2411,6 +2434,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
     auto iface_anim = safe_alloc::make_unique<IfaceAnim>();
 
     iface_anim->Name = name;
+    iface_anim->Atlas = atlas_type;
     iface_anim->Anim = anim;
 
     _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(iface_anim));
@@ -2418,15 +2442,28 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
     return _ifaceAnimCounter;
 }
 
+auto ClientEngine::AnimAdd(shared_ptr<Sprite> sprite) -> uint32_t
+{
+    FO_VERIFY_AND_THROW(sprite, "Cannot register a null sprite");
+
+    auto iface_anim = safe_alloc::make_unique<IfaceAnim>();
+    iface_anim->Anim = std::move(sprite);
+
+    _ifaceAnimations.emplace(++_ifaceAnimCounter, std::move(iface_anim));
+    return _ifaceAnimCounter;
+}
+
 void ClientEngine::AnimFree(uint32_t anim_id)
 {
     if (auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
-        auto& iface_anim = it->second;
+        auto iface_anim = std::move(it->second);
+        _ifaceAnimations.erase(it);
 
         iface_anim->Anim->Stop();
 
-        _ifaceAnimationsCache.emplace(iface_anim->Name, std::move(iface_anim));
-        _ifaceAnimations.erase(it);
+        if (iface_anim->Name) {
+            _ifaceAnimationsCache.emplace(pair {iface_anim->Name, iface_anim->Atlas}, std::move(iface_anim));
+        }
     }
 }
 
@@ -2651,6 +2688,15 @@ void ClientEngine::OnSetCritterElevation(ptr<Entity> entity, ptr<const Property>
     }
 }
 
+void ClientEngine::OnSetCritterDrawFlatten(ptr<Entity> entity, ptr<const Property> prop)
+{
+    ignore_unused(prop);
+
+    if (auto cr = entity.dyn_cast<CritterHexView>(); cr && cr->IsMapSpriteValid()) {
+        cr->GetMap()->ReapplyCritterView(cr);
+    }
+}
+
 void ClientEngine::OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop)
 {
     // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
@@ -2685,6 +2731,12 @@ void ClientEngine::OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop)
         if (rebuild_cache) {
             auto map = item->GetMap();
             map->RecacheHexFlags(item->GetHex());
+
+            if (auto entries = item->GetMultihexEntries()) {
+                for (auto hex : *entries) {
+                    map->RecacheHexFlags(hex);
+                }
+            }
         }
     }
 }
@@ -2910,8 +2962,9 @@ void ClientEngine::LmapPrepareMap()
 
 void ClientEngine::CleanupSpriteCache()
 {
-    ResMngr.CleanupCritterFrames();
-    SprMngr.CleanupSpriteCache();
+    _ifaceAnimationsCache.clear();
+    CritterFrames.CleanupCritterFrames();
+    ResMngr.CleanupSpriteCache();
 }
 
 void ClientEngine::DestroyInnerEntities()
@@ -3626,3 +3679,4 @@ auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType,
 }
 
 FO_END_NAMESPACE
+

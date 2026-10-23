@@ -302,7 +302,7 @@ the pack before this loader runs.
 
 ## Sprite loading and atlases
 
-The stock client does not decode source PNG/TGA or legacy image bytes. `SpriteManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately for the life of the manager.
+The stock client does not decode source PNG/TGA or legacy image bytes. `ResourceManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately; routine cleanup preserves them, while ForgetFailedSprite or InvalidateSpriteResource explicitly permits retry.
 
 The complete source-format, FOFRM, baked-record, default-extension, atlas, and cache contract is [Image And Sprite Formats](../../how-to/content/image-format.md). Project code should feed supported sources through the pinned baker rather than parse the private baked stream.
 
@@ -392,8 +392,8 @@ All three manager-owned map targets are retired at unload, and failed constructi
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes normalized sound-name mappings. See [Audio.md](../../../Audio.md) for extension precedence, effect identities, and numbered variants.
-- `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
+- `ResourceManager` owns sprite factories, extension dispatch, template/missing caches, invalidation and defaults. `CritterFramesCache` caches project-resolved directional sheets; Mapper owns mutable preview models. Audio path handling belongs to `AudioManager`; project sound naming belongs to scripts.
+- `SpriteManager` owns atlases, live sprite updates, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh
   produced by `ImageBaker`. The resource decoder also fills the `Sprite`
@@ -406,15 +406,15 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   mesh keeps the four-vertex path used by runtime-generated atlas sprites.
 - With `FO_ENABLE_3D`, `ModelSpriteFactory` turns model resources into
   atlas-backed sprites. It asks
-  `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
+  `EngineMetadata` for the already parsed version 2 aggregate, project-selected preview
   view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
   layer never reopens or reparses that companion, and no authored `.fo3d`
   `DrawSize` or `ViewSize` remains.
   Enabled body/movement animation envelopes are projected through the active
   model transform across every facing direction to derive a grid-aligned
   logical scratch frame large enough for the body and projected shadow. The
-  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
+  separate view envelope (the configured `Animation.PreviewStateAnim` /
+  `Animation.PreviewActionAnim` pair, then deterministic fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
   horizontal-lighting frame. Layout math without a live GPU uses
   `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
   (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), rather than treating the bake
@@ -491,7 +491,7 @@ advance, preventing time spent waiting off-screen from becoming one large first
 update that destroys the warmed particle-age distribution.
 
 Resource invalidation follows the same neutral boundary:
-`SpriteManager -> ParticleSpriteFactory -> ParticleManager` notifies every
+`ResourceManager -> ParticleSpriteFactory -> ParticleManager` notifies every
 backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
 changed file may be a dependency rather than a backend-owned root asset. SPARK
 drops the matching parsed graph for a changed `.spk` and clears its graph

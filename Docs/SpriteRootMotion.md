@@ -1,4 +1,4 @@
-# Sprite Root Motion and Walk Cycles
+# Sprite Frame Offsets and Walk Cycles
 
 > Legacy route.
 
@@ -18,17 +18,17 @@ Continue with the [canonical English guide](en/how-to/content/sprite-root-motion
 
 Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#three-independent-positions).
 
-## Authoring per-frame offsets
+## Authoring per-frame motion
 
-Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#authoring-per-frame-offsets).
+Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#authoring-per-frame-motion).
 
 ## Baked and runtime representation
 
 Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#baked-and-runtime-representation).
 
-## When root motion drives a critter
+## When movement selects the frame
 
-Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#when-root-motion-drives-a-critter).
+Continue with the [canonical English guide](en/how-to/content/sprite-root-motion.md#when-movement-selects-the-frame).
 
 ## Continuous movement displacement
 

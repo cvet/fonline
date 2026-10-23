@@ -108,6 +108,14 @@ End
         vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
+        string effects_dir = strex(bake_dir).combine_path("Embedded/Effects").str();
+        REQUIRE(fs::create_directories(effects_dir));
+
+        for (string_view name : {"ImGui_Default", "2D_Default", "Flush_RenderTarget"}) {
+            REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx", name).str()).str(), "[Effect]\nPasses = 1\n"));
+            REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx-1-info", name).str()).str(), "[EffectInfo]\n"));
+        }
+
         return bake_dir;
     }
 
@@ -383,3 +391,4 @@ TEST_CASE("ClientRuntimeBootstrapPublicationFailurePreservesThePreviousSelector"
 #endif
 
 FO_END_NAMESPACE
+

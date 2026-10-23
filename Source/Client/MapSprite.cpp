@@ -77,6 +77,7 @@ void MapSprite::Reset() noexcept
     _extraChainChild = nullptr;
     _itemOwner = nullptr;
     _itemHitTestWhenHidden = false;
+    _pSprOffsetOverride = nullptr;
 }
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
@@ -127,7 +128,7 @@ auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
     auto spr = GetSprite();
     FO_VERIFY_AND_RETURN_VALUE(spr, ipos32(), "Map sprite has no sprite while computing sprite root offset", _hex, _drawOrder, _index);
 
-    ipos32 spr_offset = spr->GetOffset();
+    ipos32 spr_offset = _pSprOffsetOverride && _pSprOffsetOverride->has_value() ? _pSprOffsetOverride->value() : spr->GetOffset();
     isize32 spr_size = spr->GetSize();
 
     return {spr_size.width / 2 - spr_offset.x, spr_size.height - spr_offset.y};
@@ -249,6 +250,11 @@ void MapSprite::SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) 
     _itemHitTestWhenHidden = hit_test_when_hidden;
 }
 
+void MapSprite::SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_override) noexcept
+{
+    _pSprOffsetOverride = spr_offset_override;
+}
+
 void MapSprite::CreateExtraChain(ptr<MapSprite*> mspr)
 {
     FO_VERIFY_AND_THROW(!_extraChainRoot, "Extra chain root is already set");
@@ -314,6 +320,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_pSpr = pspr;
     mspr->_pSprOffset = spr_offset;
     mspr->_pRootOffset = root_offset;
+    mspr->_pSprOffsetOverride = nullptr;
     mspr->_alpha = alpha;
     mspr->_light = nullptr;
     mspr->_lightRight = nullptr;
@@ -461,3 +468,4 @@ void MapSpriteHolder::StopDraw()
 }
 
 FO_END_NAMESPACE
+

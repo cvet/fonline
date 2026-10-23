@@ -47,13 +47,13 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["summary"]["domain_count"], 19)
         self.assertEqual(first["enforcement"], "complete")
-        self.assertEqual(first["summary"]["entry_count"], 4962)
-        self.assertEqual(first["summary"]["current_count"], 4962)
+        self.assertEqual(first["summary"]["entry_count"], 4973)
+        self.assertEqual(first["summary"]["current_count"], 4973)
         self.assertEqual(first["summary"]["missing_count"], 0)
         self.assertTrue(first["summary"]["complete"])
         for domain, count in (
             ("ai-control-protocol", 137),
-            ("api", 2577),
+            ("api", 2580),
             ("audio", 106),
             ("cli", 42),
             ("cmake", 79),
@@ -61,12 +61,12 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ("font-format", 187),
             ("helper-cli", 125),
             ("image-format", 243),
-            ("map-format", 209),
+            ("map-format", 216),
             ("model-format", 144),
             ("native-extension", 44),
             ("package", 66),
             ("particle-format", 339),
-            ("prototype-format", 193),
+            ("prototype-format", 194),
             ("public-examples", 13),
             ("support-matrix", 76),
             ("text-format", 119),
@@ -80,13 +80,14 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
                 self.assertTrue(
                     all("@index=" not in entry["locator"] for entry in status["entries"])
                 )
+        # The regenerated catalog records current locators directly, without relocation fallback.
         self.assertEqual(
             sum(
                 1
                 for entry in first["domains"]["api"]["entries"]
                 if "translation_source_locator" in entry
             ),
-            130,
+            0,
         )
 
     def test_application_uses_copy_and_translates_strings_and_lists(self) -> None:

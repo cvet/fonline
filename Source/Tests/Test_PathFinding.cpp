@@ -44,7 +44,7 @@ namespace
     constexpr mpos POCKET_CENTER {60, 60};
     constexpr mpos FAR_START {10, 10};
     constexpr msize RANDOM_MAP_SIZE {32, 32};
-    // The detour a living critter on the route costs, the value the game ships with
+    // The detour a project-marked critter obstacle costs, matching the engine default
     constexpr int32_t TEST_CRITTER_DETOUR = 12;
 
     // Helper: create settings for a clear map (no obstacles)
@@ -2349,3 +2349,4 @@ TEST_CASE("PathFinding::TraceDirection")
 }
 
 FO_END_NAMESPACE
+

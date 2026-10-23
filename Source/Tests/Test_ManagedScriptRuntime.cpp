@@ -105,6 +105,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     ManagedRuntimeTestResources assemblies;
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
+    BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
     auto resources = ServerEngineTests::MakeServerTestResources();
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
@@ -120,6 +121,10 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
     CHECK_FALSE(server->FindFunc<void>(name("MissingFunction")));
+
+    int32_t database_result = -1;
+    REQUIRE(server->CallFunc(name("TestConditionalDatabaseRecords"), database_result));
+    CHECK(database_result == 0);
 
     auto sum_array = server->FindFunc<int32_t, vector<int32_t>>(name("SumArray"));
     REQUIRE(sum_array);

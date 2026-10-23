@@ -108,6 +108,9 @@ private:
 
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
+        CritterAnimationFlags Flags {};
+        float32_t NormalizedTime {};
+        float32_t Speed {1.0f};
         refcount_nptr<Entity> ContextItem {};
         nptr<const SpriteSheet> Frames {};
         int32_t FrameIndex {};
@@ -121,15 +124,14 @@ private:
     void SetupSprite(ptr<MapSprite> mspr) override;
     void ProcessMoving();
     void NextAnim();
+    void PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed);
     void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
+
+    void RefreshAnimOffset(CritterAnim& anim);
 
     // Integer-pixel displacement from the current MovingContext start to the linear position.
     // Hex snaps preserve it by shifting cur_hex and hex_offset in opposite directions
     [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
-
-    // Picks the walk/run frame whose accumulated root motion sits closest (along T) to the current
-    // anchor-relative cycle position
-    [[nodiscard]] auto EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t;
 
     refcount_nptr<MovingContext> _moving {};
     timespan _movingCatchUpLeft {};
@@ -152,7 +154,7 @@ private:
     fpos32 _offsExtSpeed {};
     nanotime _offsExtNextTime {};
 
-    // Walk-cycle anchor mapping linear movement onto authored per-frame root motion.
+    // Align visual frames with distance along the path; sprite draw anchors stay separate.
     // Direction changes preserve phase; SetMoving and StopMoving reset it
     nptr<const SpriteSheet> _walkAnchorAnim {};
     ipos32 _walkAnchorDisp {};
@@ -164,3 +166,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

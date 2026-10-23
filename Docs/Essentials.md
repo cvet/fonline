@@ -22,6 +22,14 @@ Continue with the [canonical English reference](en/reference/native/essentials.m
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).
 
+### Naming and module namespaces
+
+Continue with [naming and module namespaces](en/reference/native/essentials.md#naming-and-module-namespaces).
+
+### Dependency ordering
+
+Continue with [dependency ordering](en/reference/native/essentials.md#dependency-ordering).
+
 ## Subsystem map
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).

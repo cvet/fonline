@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"1a22d99b160231d14ddf73563bedc4ea5d2caf2410f29ee72181f878c39b5d24"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"efbe65072dea3f02b4923c876a9c4c90734382229ae825cc23f15137fd526e6a"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -95,6 +95,8 @@ AngelScript. Комментарии и диагностические строк
 ## `Source/Client/`
 
 Client-side runtime и presentation-facing state. Он включает client startup/composition, connection handling, resource management, views для critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets и варианты network-client transport. Polygonal sprite submission принадлежит `DefaultSprites.*`; автоматическая проекция model frame/view изолирована в `ModelSpriteLayout.*`. Parsing font descriptors, slot binding, measurement, wrapping и glyph drawing проходят через `FontManager.*` и [Font Format](../../how-to/content/font-format.md).
+
+Чистая математика накопления дельт, проекции цикла, переноса фазы, выбора кадра и визуальной компенсации находится в `AnimationMovement.*`; `CritterHexView.*` владеет выбранным листом, контекстом движения и жизненным циклом привязки.
 
 Не помещайте authoritative решения game state в client без документированного server contract и validation.
 

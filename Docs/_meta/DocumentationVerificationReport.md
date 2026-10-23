@@ -1,5 +1,64 @@
 # Documentation Verification Report
 
+## 2026-10-20 - Reconcile published persistence and WebSocket updates with map authoring work
+
+Update the Engine worktree from `2860bb2755621976d199883e254d66808a659ec1`
+(`2026.1.52-dev`) to published `d947827d42ab7a8a6c5f0c168cdea5680423ddf9`
+(`2026.1.54-dev`), retaining the uncommitted map-authoring work as
+`2026.1.55-dev`. Preserve the incoming network migration marker `0.0.74`, all
+published history, the existing index state and safety stashes. The embedding
+project's committed gitlink is `bcabd4d6c192400790f577b9a165c79594aa8ee7`;
+its newer working gitlink remains uncommitted.
+
+Read all nineteen changed production, native-test, BuildTools and vendored
+source paths across all three incoming commits, together with their EN/RU
+documentation owners. Reconcile persistent custom-entity shutdown ownership,
+the weak WebSocket close handler queued onto the endpoint executor, best-effort
+partial ZIP cleanup, the removed unused managed ClassExtensionAttribute, native
+property-component guidance and the LibreSSL const-correctness patches. Review
+the two new native fixtures independently; their presence is not runtime proof.
+Check the outside-range `exit_app` owner and the removed IsPackaged test
+expectation against current source. Disposition identity includes change ID and
+both contract hashes, so equal IDs with different baselines are distinct.
+
+Retain both published `.53`/`.54` changelog sections and the removed-attribute
+migration. Resolve the Russian entity-model provenance only after reviewing its
+merged body. Move the local map-authoring migration base to the new published
+tip; no new property flag or additional wire-layout change is introduced.
+The final published removal commit did not increment VERSION: the complete
+incoming history gate fails its mandatory minor-step rule. Preserve that
+upstream limitation separately from validation of the working `.55` update;
+do not rewrite published commits or describe the history gate as passing.
+
+The added LibreSSL regression initially failed on Windows because Winsock
+headers exposed the X509_NAME macro before x509v3.h. Select WIN32_LEAN_AND_MEAN
+in the standalone probe, matching native Engine convention. Preserve the
+original compiler failure and verify the actual probe with the project MSVC
+toolchain. Clang-driver Windows builds also emitted existing vendored warnings;
+no warning suppression or crypto changes are added.
+
+Regeneration and verification receipts are retained by the embedding update
+task. Runtime, sanitizer and non-Windows qualification remain separate gates;
+this reconciliation does not qualify production data or claim fresh visual
+acceptance of the preserved map screenshots.
+
+Final native/Managed application builds passed. The final native run passed
+674 cases and 732954 assertions after retaining two earlier load-sensitive
+failures. Full baking completed all 33 packs and 662 map outputs; the following
+incremental invocation changed zero files. Documentation validation covered
+412 Markdown entries; the initial 575-test run had four environment failures,
+then all 21 tests in the affected modules passed with a canonical workspace
+temporary root and Git Bash. No sanitizer or rendered-site verdict is claimed.
+
+The embedding configuration enables MongoDB and disables JSON/SQLite. The new
+shutdown regression is compiled only with FO_DATABASE_JSON; its absence from
+this binary is an unperformed backend check, never a successful test. Preserve
+the original conditional fixture unchanged. A combined Catch2 filter initially
+ran only the WebSocket case while reporting a missing shutdown name; retain
+that receipt as incomplete selection. Subsequent task runners reject missing
+test selections. The MongoDB durability path needs an isolated database and is
+not qualified by the in-memory native server fixtures.
+
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
 ## 2026-10-16 - Integrate published movement fixes and preserve atomic writes
@@ -12443,3 +12502,301 @@ script API, resource schema, runtime `0.0.73` or Managed ABI `9` change is added
 by this rebase. Documentation/version checks and source-patch identity qualify
 the integration only; a fresh native build, console-event subprocess matrix,
 resource bake and runtime qualification remain unperformed for this revision.
+
+## 2026-10-21: reconcile project-owned policy and resource ownership onto master 57
+
+Integration range: `cd5c1168f8f4bdab63a2909ceacb049ba87e070a` to
+`aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a` (24 incoming commits).
+The unpublished combined update targets `2026.1.58-dev`, with runtime marker
+`0.0.76` after upstream `0.0.75`. The original worktree/index snapshot, named
+safety refs and restoration stash remain available until final qualification.
+
+- Preserve the complete incoming history, including all version 36-57 migration
+  notes. Keep game animation identifiers, frame composition, path/draw policy,
+  sound naming, day curves and themed assets in embedding projects.
+- Reconcile every incoming production/build contract from the complete frozen
+  diff; inspect changed and added native cases plus the complete Python test
+  diff. Backend-neutral helpers and AngelScript suites retain distinct owners.
+  Test-anchor comparison is a review aid, not a C++ parser or runtime proof.
+- Reconcile the independently derived 2,577-symbol API inventory and regenerate
+  the owning models/references. The exact 57-dev baseline contract report has
+  82 changes, 46 required dispositions and no missing dispositions; preserve
+  956 historical ledger entries and append 41 current-range records.
+- Replace remaining Unarmed/Idle preview-bound claims with the configured opaque
+  preview pair and deterministic available-animation/static fallback. Review both
+  locale changes before refreshing normalized translation hashes. Generated
+  description translations are complete for 4,886 entries.
+- The complete AI bundle measured 2,367,685 bytes before the paired ADR update,
+  8,389 above the published 2,359,296-byte cap. Retain document membership and
+  exclusions, add the reviewed 32 KiB growth to 2,392,064 bytes, and keep the
+  independent overflow fixture. The resulting bundle measures 2,367,944 bytes.
+- Version-transition validation and the focused 12-test API generator suite pass.
+  Final fixture migration, Mapper callback regression qualification, complete
+  native/script/project gates, 3D qualification, rendered-site validation and
+  isolated visible-client/Mapper checks are still pending at this checkpoint.
+
+### Final qualification of the 2026-10-21 source tree
+
+- The independent ownership review produced a reproducible frame-cache
+  reentrancy defect. Return the winning `try_emplace` entry, including a cached
+  missing result. Preserve causal failing/passing cases separately. Mapper
+  property changes now run setters after validating all candidates, retain the
+  edited map and entities across callbacks, and preserve map-local dirty/history
+  ownership. All 39 pre-update local test hunks retain an explicit destination.
+- `Verify :: All` completed with its final success marker: 639 native cases and
+  733,859 assertions, 110 script tests, and 156 project Python tests plus 82
+  subtests. Baking, all required native applications, validators and authored
+  formatting passed without warnings. The initial precise-sleep timing failure
+  under concurrent host load remains recorded; the isolated check and final
+  quiet full gate passed without changing its tolerance.
+- The actual separately configured 3D executable passed 130 cases and 7,137
+  assertions. Both standalone animation/particle viewer applications built in
+  2D and 3D output trees. These are compilation and native-test results, not a
+  viewer GUI, GPU-performance or other-platform qualification.
+- The additional complete Engine Python run recorded 1,840 passes, 19 failures,
+  67 skips and 297 passing subtests. All failures were traced to three test
+  modules: normalize the config-path stub like its real filesystem owner;
+  declare Make as a prerequisite for the Mach-O link fixture; provide the POSIX
+  header fixture and use a compile-only signature probe instead of requiring
+  Windows to link a POSIX function. The final complete rerun of those modules
+  passed 21 cases and skipped four unavailable Make-dependent cases, preserving
+  the original failing log and all type/diagnostic negative controls. Other
+  changed platform/codegen modules passed 24 cases with 16 tool-dependent skips.
+  The installed preview MSBuild repeats an unchanged custom command even in a
+  minimal project without Engine; the Ninja no-op control passes. No default
+  preview-MSBuild incremental-build qualification is claimed.
+- A fresh ordinary client/server run registered and logged in, rendered the
+  game map, observed movement, and reached the requested reachable hex. A fresh
+  Mapper GUI run rendered the project-owned noon and dawn palette and emitted
+  its completion marker. Screenshots were inspected, runtime diagnostics were
+  empty, and existing user cache hashes were preserved. Mapper Inspector
+  reentrancy is covered by native cases; no manual Inspector-click acceptance
+  is claimed by the palette run.
+- Final documentation preparation with external snippet parsers and validation
+  of all 413 Markdown entries passed. Rendered Jekyll site
+  validation remains unavailable locally: Ruby/Bundler are missing and WSL has
+  no installed distribution. The attempted build and its dependency failure are
+  retained. No remote deployment, commit, staging or push was performed.
+- The only production edit after the complete project gate separates adjacent
+  `if` blocks in Updater with a blank line; an independent byte comparison
+  confirms identical non-whitespace tokens. Current revisions, exact source
+  hashes, patches, untracked authored inputs, checks and publication ordering
+  are recorded in the embedding project's local publication packet. Publish
+  the new Engine object before advancing the embedding project's gitlink;
+  upstream 57 alone does not contain these unpublished fixes.
+
+## 2026-10-21 - Sprite-sheet draw anchors without atlas wrappers
+
+Remove `AtlasSprite::CopyWithOffset`, its source-wrapper constructor and
+`_sourceOwner`. Constructed sequences retain the original shared atlas frames;
+`SpriteSheet::_sprDrawOffset` stores independent absolute draw anchors alongside
+the existing movement table. Native `SetFrame` now takes the shared sprite,
+draw offset and movement separately; native anchor readers use
+`GetSprDrawOffset`. Script signatures, source offsets, pixels, geometry, sprite
+container v2 and Managed ABI 9 remain unchanged. This corrects the same pending
+58-dev/runtime 0.0.76 publication unit, with no additional data conversion.
+
+HexView owns the selected optional draw anchor. Primary and extra map sprites
+borrow that stable optional; reset/pool reuse clear the borrow and model refresh
+clears the override. Sprite-root geometry reads the selected anchor, while
+movement, light position and logical roots remain independent.
+
+- The compiled identity regression failed before the implementation: one
+  semantic failure in 12 assertions. After the change, focused native/script
+  cases pass 340 assertions in 14 cases. The new test's three redundant checks
+  on non-null `ptr` values initially failed compilation; those diagnostics are
+  retained separately and are not counted as the semantic failing control.
+- The fresh complete `Verify :: All` chain passes 733,905 assertions in 640
+  native cases, 110 script cases, and 156 project Python cases with 82 subtests.
+  Baking, all required applications, validators and authored formatting pass.
+- The actual separate 3D executable passes 7,189 assertions in 131 cases. Both
+  standalone viewers compile/link in 2D and 3D output trees; main 2D artifacts
+  remain unchanged by the external 3D builds. No viewer GUI/performance verdict
+  is inferred from those builds.
+- Six complete owning documentation Python modules pass 57 cases and 19
+  subtests. Image/API models and references are regenerated; equivalent English
+  and Russian ownership/migration notes and translation hashes are reconciled.
+  Contract validation reports 82 changes, 46 required dispositions and zero
+  missing dispositions against the exact published 57-dev base. All earlier
+  ledger records are retained.
+- A fresh ordinary client/server run registers, renders the game map, observes
+  movement and reaches the requested reachable hex. A fresh Mapper GUI run
+  renders noon and dawn palettes. All four screenshots are inspected, runtime
+  diagnostics are empty and existing user cache hashes remain unchanged.
+- Existing staged snapshots in both repositories are preserved. The new fixes
+  remain in the working tree; no agent staging, commit or push is performed.
+  The publication packet must include the current working source and update
+  TLA's gitlink only after the new Engine object is published. Earlier check
+  records above remain historical; final source hashes and receipts are stored
+  under the embedding project's `Build/sprite-frame-offset-20261021/`.
+
+Documentation preparation/validation are repeated after this record. Rendered
+Jekyll validation retains the recorded local Ruby/Bundler dependency limit;
+other-platform, Managed-runtime and performance qualification are not claimed.
+## 2026-10-21 - Sprite motion ownership and critter alignment
+
+Authored frame displacement now uses motion terminology. `SpriteMotion` owns only
+frame deltas, inclusive accumulation, cycle projection, closest-pose search and
+exact signed phase transfer. `SpriteSheet` retains image and absolute draw-anchor
+ownership. `CritterHexView::RefreshRootMotion` selects the motion-driven pose and
+its compensation together before image application, including `RefreshView`;
+`SetAnimSpr` selects image/draw metadata and `RefreshOffs` adds logical interpolation,
+extra displacement and root-motion compensation once. Model refresh clears the
+previous 2D motion contribution and immediately recomposes the offset.
+
+The script export is `GetSpriteFrameMotion`; sequence arrays use `motions` and
+TLA uses `TotalMotion`. World movement, `CritterAnimationFlags::Movement`, source
+`NextX`/`NextY`, SpriteResource v2 and the pending 58-dev/runtime76 boundary retain
+their existing meanings. Native scope inventory remains 2577 symbols with its
+reviewed updated digest. English/Russian owning guides, migration notes, changelog,
+image-format descriptions, generated API/reference models and source ownership
+were reconciled; exact publication-range dispositions pass (82 changes, 46 required,
+none missing), retaining the earlier reviewed rationales and history.
+
+Fresh evidence under `Build/sprite-root-motion-20261021/` in the embedding TLA tree:
+
+- `Verify :: All` completed successfully: 644 native cases / 733978 assertions,
+  110 script tests / no failures or skips, 156 Python tests and 82 subtests.
+- Focused sprite/motion/critter/native-AngelScript cases: 18 / 405 assertions.
+  Numeric oracles cover both axes, negative cycle floor, ties, zero totals and
+  signed phase scaling whose intermediate product exceeds int64. Real critter
+  cases cover first-use anchoring, pose/phase transfer before Process, same-frame
+  compensation, independent extra offsets, Freeze precedence and stop behavior.
+- Separate actual `FO_ENABLE_3D=ON` executable: 135 cases / 7259 assertions,
+  including model-refresh clearing of 2D compensation. Main 2D executable digest
+  was preserved. Both standalone viewers compile/link in 2D and 3D; the viewer
+  builds also validate the final CMake source-list ordering.
+- Documentation preparation, 413 Markdown validation and 57 focused documentation
+  tests pass. Rendered Jekyll remains limited by the previously recorded missing
+  Ruby/Bundler environment; this is not a rendered-site acceptance claim.
+- Ordinary client/server GUI flow registered/logged in, rendered the map and walked
+  from (82,31) to the requested (87,31), then stopped. Client moving/stopped images
+  and Mapper noon/dawn images were inspected. Both reports have empty diagnostics
+  and preserved user-cache hashes. Reports: `SpriteMotionClient-20261021-221133`
+  and `SpriteMotionMapper-20261021-221227` under the external Evidence directory.
+
+The first focused run preserved one old-fixture failure: it compared first-use
+motion/timed offsets before establishing an anchor. The fixture now compares exact
+positions after displacement; the initial failure is not presented as a causal RED
+for a new production fix. An additional refinement synchronizes the selected pose
+with transferred phase immediately rather than waiting for the next Process.
+
+Existing root/Engine staged snapshots are preserved. Current corrections remain
+reviewable in the working tree and publication packet; no staging, commit or push
+was performed. Other platforms, Managed runtime, standalone viewer GUI and
+performance/artistic gait qualification are outside this evidence.
+
+## 2026-10-21 - Frame offset simplification and final actor alignment
+
+This qualification supersedes the earlier SpriteMotion architecture entry for the
+same pending 2026.1.58-dev/runtime76 change. SpriteSheet now owns ordinary per-frame
+delta values in `_sprOffset` and independent absolute image anchors in
+`_sprDrawOffset`. The standalone SpriteMotion module/tests/source-list entries are
+removed. CritterHexView owns cumulative offsets, distance-driven pose selection,
+cycle phase transfer and the single `_offsAnim` correction. MovingContext remains
+the movement authority. GetSpriteFrameMotion/motions and SpriteResource v2 retain
+their public/baked meanings.
+
+- Full project Verify :: All passed:640 native cases/734000 assertions,
+  110 script tests/0failed/0skipped,156 Python tests+82subtests; validators and
+  formatters completed successfully. Current evidence: `Build/sprite-offsets-20261021/`.
+- Focused real sprite/actor/script fixtures passed15cases/376assertions. Numeric
+  controls cover both axes, negative cycles, first ties, signed half-phase transfer,
+  a numerator exceeding int64_t, copy isolation, same-frame interpolation,
+  initial/replaced anchors, Freeze precedence and stop/model reset.
+- Actual separate3D selected corpus passed131cases/7302assertions; both standalone
+  viewers built in2D and3D. External3D output preserved main2D executables.
+- One existing guarded3D test compared projected bone points while facing still
+  changed. Its controlled RED observed angles173.376->167.063->161.133 and point
+  (-4,0)->(-8,-3). The fixture now waits with a3s failing deadline for stable facing,
+  flushes the world pose once, then retains pose-change/hold and turn-context checks.
+  Isolation, whole model case and selected3D GREEN are retained separately.
+  ModelInstance runtime and original fixture hashes match the preceding packet.
+  Full2D qualification preceded this guarded fixture correction and the later
+  negative/fractional actor regression rows. Changed test bodies were compiled and
+  run in their affected2D/3D configurations. Removing the FO_ENABLE_3D block leaves
+  identical active2D source for that fixture, recorded in `2d-guard-invariance.json`.
+  No production code changed after the full gate.
+- Ordinary non-QA client registration/login/map/movement passed84,29->89,29,
+  including observed movement and final stop. Mapper noon/dawn passed. Four actual
+  screenshots were inspected; diagnostics are empty and user-local settings are
+  preserved. Reports: `SpriteOffsetsClient-20261022-001045/report.json` and
+  `SpriteOffsetsMapper-20261022-001333/report.json` under the existing local Evidence
+  root. These routes do not establish artistic gait quality for every asset or
+  performance qualification.
+- Reviewed bilingual offset/model/migration guidance and generated image/API
+  references pass38 focused documentation tests,413 Markdown validation and
+  contract82changes/46required/0missing. Native API inventory remains2577 symbols.
+- Native formatting preserves the project-required final blank line and BOM;
+  original stage-entry fingerprints remain unchanged. No staging, commit or push.
+  Publication remains Engine-first, followed by the embedding-project gitlink.
+
+Rendered Jekyll remains outside this refresh because Ruby/Bundler is unavailable
+in the recorded environment; other operating systems, Managed runtime and GPU/
+performance acceptance are not claimed by these results.
+
+## 2026-10-22 - Sprite offset and frame motion terminology
+
+The final terminology is explicit: offset is the ordinary sprite offset to its
+root; motion is a per-frame visual displacement delta. SpriteSheet stores
+`_sprOffset` and `_sprMotion`, SetFrame(offset,motion) assigns the matching fields,
+and GetSprOffset(frame)/GetSprMotion() expose those values. The renderer's borrowed
+optional frame offset is named OffsetOverride; its owner, reset and fallback are
+unchanged. CritterHexView derives cumulative motion and compensation from deltas.
+
+The exact transformation oracle covers ten native files. Public script sources,
+the embedded script fixture, Common.h and the generated public API model remain
+byte-identical to the pre-migration baseline. Existing fixtures retain distinct
+offset(42,-17) and motion(5,-9), copy/direction isolation, root positioning and
+negative/fractional phase cases. Both current Git stage-entry fingerprints, native
+format/BOM/EOF and control-flow spacing are preserved.
+
+Fresh zero-warning builds and selected tests passed: 2D15cases/376assertions;
+actual isolated3D131cases/7302assertions. Documentation checks:38Python,
+413Markdown entries, contracts82changes/46required/0missing. The previous authoring
+anchor remains as an explicit alias after the motion heading clarification.
+Evidence: Build/sprite-offset-motion-20261022/ in the embedding checkout.
+
+Earlier full-chain and ordinary client/Mapper/viewer evidence remains separate.
+It was not repeated for this native naming-only correction. No movement equation,
+serialized sprite format, script API or ownership policy changed; no new runtime,
+performance, artistic or rendered-site qualification is claimed here.
+
+## 2026-10-22 - Complete precommit review and exceptional sprite cleanup
+
+The review covers all pending Engine/TLA paths and preserves the published
+Engine baseline aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a. Pending version remains
+2026.1.58-dev/runtime 0.0.76; no additional schema or compatibility change is made.
+
+- AnimFree now consumes its active handle before virtual Stop. A throwing Stop
+  releases the local owner and propagates to direct callers; resolver cleanup
+  preserves the resolver result or original exception. The original production
+  failed four consumed-handle assertions; the corrected fixture passed 17/1.
+- SpriteSheet::MakeCopy keeps one per-frame motion copy. Current EN/RU image and
+  migration guides use the final offset/motion API. All 904 disposition entries
+  from HEAD are preserved; 36 unfinished newly added templates were removed, and
+  current migration instructions no longer point to an abandoned motion object.
+- A pre-existing nested-sync fixture failed its 30s absolute budget and shut down
+  before joining borrowed entity users. It now retains its critters through both
+  joins and bounds inactivity at 30s and total runtime at 120s. With forced delays,
+  the old budget failed after 524 completed rounds and 31ms idle; the corrected
+  fixture finished all 400 rounds per thread in 44.27s. An intentionally stalled
+  control still failed after 30s. The production EntitySync.cpp hash is unchanged.
+- Final Verify::All passed 640 native cases/734032 assertions,
+  110 script tests with 0 failed/0 skipped and 156 project Python tests + 82 subtests.
+  Extra actual 3D tests passed 132 cases/7319 assertions.
+  Both viewer applications built in 2D and 3D; main 2D executable hashes were
+  preserved during the private 3D build. Changed Engine Python tests passed with
+  warnings promoted to errors; explicit platform/tool skips remain in their log.
+  Their --basetemp is outside AppData, which the installed MSBuild FileTracker
+  excludes from dependency tracking. The default-root failure and direct API
+  proof are retained; no production codegen or fixture assertion was changed.
+- Source formatting, required EOF blank lines, control spacing and both initial
+  stage-entry fingerprints are checked separately. Final generated-document,
+  translation and aggregate contract validation follow this record. Evidence is
+  retained under Build/precommit-review-20261022/ in the embedding checkout.
+
+Earlier full/GUI evidence is retained separately from these fresh checks. No new
+ordinary GUI, rendered-site, Managed runtime, other-platform or performance
+qualification is claimed. Ruby/Bundler remains unavailable. No index entries,
+commits or remote publication were changed by the agent.

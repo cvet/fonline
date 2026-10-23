@@ -12,11 +12,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-10-23
+
+### Migration
+
+Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.78. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
+
+- Keep shared cropped sprite anchors in logical canvas coordinates, including chains of shared frames. Preserve explicit zero-duration native/script sequences for manual frame selection; file-backed timelines remain positive. Retain double precision until model cycle wrapping so frozen endpoint poses do not wrap to the first frame.
+
+
 - Model controller/instance and particle facade intervals use timespan; Ozz/backend/GPU
   seconds stay at adapters. UDP retry options are typed; bake reports quantize at JSON output.
 
 - MovingContext intervals/look-ahead and FogLayer.TransitionDuration use timespan.
-  Rebuild and rebake all roles for runtime 0.0.77; wire units and saves stay unchanged.
+  Rebuild and rebake all roles for runtime 0.0.78; wire units and saves stay unchanged.
 
 - Duration: float conversions retain fractions, AS constructors check overflow, Delay accepts timespan.
   Image DurationMs/GetDurationMs become Duration/GetDuration (timespan); files unchanged.
@@ -26,12 +35,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
   FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
   Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF
-  schema 5/runtime 0.0.76. Other model and image schemas are unchanged.
+  schema 5/runtime 0.0.78. Other model and image schemas are unchanged.
 
 - Native sprite methods use full names: `GetCurSpr` → `GetCurrentSprite`,
   `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
   `GetDirectionCount`, `GetStateAnim`/`GetActionAnim` →
-  `GetStateAnimation`/`GetActionAnimation`, `GetSprOffset` → `GetSpriteOffset`,
+  `GetStateAnimation`/`GetActionAnimation`, `GetSprOffset(frame)` → `GetSpriteOffset(frame)`,
   and `RefreshParams` → `RefreshParameters`. `Sprite::SetDir` and all its
   overrides become `SetDirection`; `GetCurrentDirection` keeps its full name.
 - Migration: update native sprite callers and rebuild. Entity/model-instance
@@ -48,9 +57,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   FixedType resource arrays. Constructors are not a resource-registration mechanism.
 
 
-## Current - 2026-10-20
+### FOFRM and resource migration
 
-### Changed
+### Changes
 
 - FOFRM: PascalCase Frame/Frames/Offset/FrameOffsets, indexed HexDir/SquareDir
   (root 0), physical Size/FrameSizes. Old names fail before source resolution.
@@ -60,7 +69,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   filtered packs and overlays. Content fingerprints update dependent outputs and
   SpriteInfo for same-stat input edits in full and on-demand baking.
 
-### Migration
+### Migration details
 
 - Source now inherits complete binary/FOFRM collections, directions, placement,
   motion and timing; root transforms default all directions. Frame/Frames defaults
@@ -68,13 +77,13 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   FrameIndices, Flip/FrameFlips, Rotate/FrameRotations, Size/FrameSizes,
   Canvas/FrameCanvases and CanvasOffset/FrameCanvasOffsets for composition.
   Per-reference lists precede grid/flattening; FrameIndices follows flattening.
-  Move/FrameMoves explicitly replaces int16 root motion; bitmap transforms keep
+  Motion/FrameMotions explicitly replaces int16 root motion; bitmap transforms keep
   literal placement/motion. Resample, PixelUsage and ColorSpace select filtering.
   Existing Color/Encoded/Bilinear bytes stay unchanged. Area cannot upscale;
   Data/Normal cannot declare ColorSpace. Alias and Effect are refused with dated
   markers through 2026-12-31; Fps in a named direction fails instead of being ignored.
 
-- `bcabd4d6c192400790f577b9a165c79594aa8ee7` (`2026.1.54-dev`) → `2026.1.55-dev`.
+- `bcabd4d6c192400790f577b9a165c79594aa8ee7` (`2026.1.54-dev`) → `2026.1.60-dev`.
   Rename `fps` → `Fps`; replace Alias with Source and remove Effect. Replace `offs_x/offs_y` or
   `OffsetX/OffsetY` with `Offset = X Y`, retaining carry. Replace
   `frm/Frm/frm_N/Frm_N` with exclusive, nonempty Frame/Frames; remove Count,
@@ -110,11 +119,114 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   advances0.0.74→0.0.75. Shared pixels retain independent logical timing/offsets/motion.
   Saves/IDs/DB/network schemas and Managed ABI9 are unchanged.
   Deploy/rollback matching binaries/packs/sources and regenerate metadata.
-- LFMODINF schema4 requires a full model rebake. Texture is one-frame/one-direction;
-  TextureAnimation explicitly loops a single-direction timeline per instance.
-  Mesh atlases grow for padded textures within backend limits. See
-  [model textures](../how-to/content/model-format.md#textures) for caching, UVs and inheritance.
-  LFMODMSH/LFOZZRIG are unchanged. Non-cached directory queries retain mount-relative paths.
+- LFMODINF schema5 requires a full model rebake. Textures remain single-frame, single-direction images; TextureAnimation is rejected. LFMODMSH/LFOZZRIG stay unchanged.
+
+
+## 2026.1.59-dev - 2026-10-23
+
+### Fixed
+
+- Keep a project-frozen idle/movement selection effective for the 3D locomotion layer while a queued action advances independently. Add a regression for the overlapping selections and retain the existing queued-frozen-action control.
+- Use an explicit mutable observer-slot borrow in the reentrant sprite-cache fixture, preserving the observed copy lifetime without a class reference member.
+
+### Documentation
+
+- Refactor the agent entry guide into concise routing and mandatory cross-cutting rules. Keep detailed native, lifecycle, managed-code, configuration and documentation contracts in their owning guides.
+- Clarify semantic grouping, exception safety, property/lifetime ownership, immutable data representations and verification boundaries in the English guides and their Russian translations.
+
+### Migration
+
+- Base `62102cfedbd165d9ce73c600f78cb4e5750afbdc` (`2026.1.58-dev`) → `2026.1.59-dev`. No new project API/configuration or saved-data conversion: existing numeric identifiers, units and formats are unchanged. A frozen idle/movement selection now continues to disable the visual locomotion layer while an advancing queued action retains its own playback controls; logical movement is unchanged. Rebuild affected clients/Mapper. Runtime `0.0.76`, Managed ABI `9` and sprite container v2 are unchanged. Projects upgrading from earlier versions must still apply the preceding migration below. Regenerate and validate documentation; rollback restores matching preceding binaries, documentation and version together.
+
+## 2026.1.58-dev - 2026-10-23
+
+### Changed
+
+- Isolate sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation in AnimationMovement. CritterHexView retains movement/anchor state; arithmetic, lifecycle, script APIs and resource formats are unchanged.
+
+- Store ordinary sprite offsets in SpriteSheet::_sprOffset and per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns matching fields; native GetSprOffset(frame) reads an ordinary offset, while GetSprMotion() replaces the former delta span GetSprOffset(). CritterHexView derives cumulative displacement, compensation and cycle phase from motion deltas. Generic GetSpriteFrameOffset/GetSpriteFrameMotion and explicit offsets,motions arrays expose the two values to project scripts.
+
+- Store absolute frame draw offsets in SpriteSheet and share original atlas sprites instead of wrapping each offset in another AtlasSprite. Keep frame movement, light position and logical roots independent.
+
+- Move sprite loading, factories, template/missing caches and invalidation into ResourceManager. Keep SpriteManager focused on rendering; split CritterFramesCache and Mapper-owned preview models. Preserve independent playback, retries, cleanup and script APIs.
+
+- Remove `View.GlobalDayColorTime` and `View.GlobalDayColor` from Engine settings; projects own their day curves in code/content and submit evaluated colors with `Map.SetDayColors`.
+
+- Move playback, movement-animation selection, preview poses, path obstacles, flat critter rendering, historical game messages and themed resources/defaults to embedding projects. Keep native animation identifiers opaque and expose explicit context/playback parameters. Android packaging preserves its platform launcher unless the project supplies an icon.
+
+- Move all Fallout filename, anchor, frame-selection and splice rules out of ResourceManager into project scripts. Replace the two specialized events with OnCritterAnimationSprite and generic 2D sprite inspection/construction. Keep loaded-source copies and atlas-specific handle reuse isolated.
+
+### Fixed
+
+- Keep precise_sleep's final short interval on the current thread instead of yielding its scheduling quantum to another ready thread. Preserve the existing sleep-test deadlines; OS preemption can still delay a wait.
+
+- Wait for the winning disconnect call's callback in the WebSocket teardown regression before checking its count. Competing calls may return while the IO thread is still reporting the disconnect; the test still requires exactly one callback before and after endpoint shutdown. Production networking is unchanged.
+
+- Keep the nested synchronization regression bounded by inactivity and an overall deadline, retaining its critters until both worker threads join even after timeout shutdown. Slow progress no longer counts as deadlock; the production synchronization implementation is unchanged.
+
+- Consume a sprite handle before stopping its resource, so a failing Stop cannot leave the handle active. Direct callers retain the stop exception; resolver cleanup reports it while preserving the resolver result or original exception.
+
+- Apply Mapper property edits through native setters and post-setters after validating every affected item. Keep dirty state and undo history with the edited map when a callback switches maps, unloads the map, or deletes another affected item.
+
+- Use the complete model/state/action tuple as the critter frame-cache key, with the shared tuple hasher; keep the original request identity across animation substitutions. Reentrant resolution returns the entry already inserted into the cache, including a cached missing result.
+
+- Keep AngelScript value-return ABI storage intact when a native call throws; only owned handle returns need explicit release.
+
+### Migration
+
+- The runtime marker advances from upstream `0.0.75` to `0.0.76` for the project-owned policy/API update. Rebuild and deploy matching clients, server, metadata and resources together; mixed artifacts must fail compatibility checks. Retain upstream 36–57 migration notes below, including dynamic-item placement validation and current filesystem/persistence contracts.
+
+- Base `aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a` (`2026.1.57-dev`); target `2026.1.58-dev`. Follow the exhaustive [script-owned animation migration](../how-to/migration/script-owned-sprite-animations.md) for both removed event signatures, the native resolver replacement, both script backends, ownership, arrays, offsets, duration units, detection, build/bake order and rollback. Runtime `0.0.76`; sprite container v2 and Managed ABI 9 remain unchanged. No saved-data conversion; enum meanings remain project-owned and unchanged.
+
+## 2026.1.57-dev - 2026-10-20
+
+### Documentation
+
+- Normalize native comments and JSON/SQLite backup-doc checks; describe path grammar and consolidate ClassExtension notes.
+
+### Migration
+
+- Base `6c88391e77d519885d54f8894d0781a7d0a14ee6` (`2026.1.56-dev`) → `2026.1.57-dev`. Existing APIs, configuration, data/resource formats and values are unchanged; wire `0.0.75`, Managed ABI `9`. No conversion. Regenerate/validate docs, rebuild matching native metadata/applications and rebake resources. Rollback restores the matching preceding artifacts.
+
+## 2026.1.56-dev - 2026-10-20
+
+### Added
+
+- Add `fs::write_file_durable_new` for exclusive new-file writes with descriptor flush, reusing the native path and stream primitives. Existing names are preserved; staged atomic replacement remains the existing `fs::write_file`/`fs::replace_file` contract.
+- Add instance-local `DataBase::TryInsert` and typed `CompareExchange`, with pending-queue visibility and producer synchronization against ordinary mutations, snapshot restore and queue clear. Export `Game.DbTryInsertRecord` and `Game.DbCompareExchangeRecordString` for integer and string keys on both script backends.
+
+### Removed
+
+- Remove the unused `ClassExtensionAttribute` placeholder. It never bound a global function as a class method; C# uses language extension methods, and no corresponding AngelScript tag is planned.
+
+### Fixed
+
+- Reject embedded NUL at every filesystem path boundary and malformed UTF-8 before native conversion on every platform. Use shared UTF-8 scalar validation in a single pass with the NUL check, preserving its U+FFFD error-sentinel rejection and rejecting surrogate encodings; validate native-to-string output as well. Honor I/O conversion errors and preserve literal POSIX backslashes. Make result-based file operations consistently `noexcept`, handling exceptions locally at native conversion, owned stream construction/read and iterator operations. Convert unexpected C++ exceptions at internal STL boundaries to an operation failure. Keep path converters, standard-stream interop and caller streams/visitors potentially throwing; preserve partial directory listings and hash-to-EOF semantics.
+- Give the standalone LibreSSL archive probe lean Windows headers so WinCrypt macros cannot collide with its X509 declarations; retain its AES, TLS, X509 and SRTP assertions with assembly enabled and disabled.
+- Track generations of active database reads so a concurrent reader cannot hide a completed commit from an earlier read or let a conditional mutation accept a stale value.
+- Preserve internal spaces in JSON/SQLite storage directories by parsing the complete trimmed remainder after the provider name, including connection strings with outer whitespace.
+
+### Migration
+
+- Base `8af9a71307196a1937c79389e83036d2face5ceb` (`2026.1.55-dev`); update `2026.1.56-dev`. Existing file helpers, ordinary DB methods and valid connection strings retain their meaning. New-file creation exposes its name during writing and flushes file content only; use a private stage plus atomic replacement when readers must see complete publication. Conditional DB success queues a mutation in one owning instance; it does not establish durable commit, a cross-process transaction or native backend CAS.
+- Rebuild native consumers/Baker and rebake all script roles so generated API/metadata and assemblies agree. Callers may adopt the two new methods explicitly; no existing call must be renamed and no game feature is enabled automatically. JSON/SQLite path values need no escaping for internal spaces; literal quote stripping is not part of the connection grammar. Memory/Mongo tokens and disabled-provider diagnostics are unchanged.
+- No entity/property, JSON/CBOR/BSON/oplog, snapshot, baked-resource or wire format conversion is introduced. The manual runtime marker advances from `0.0.74` to `0.0.75`; Managed ABI `9` stays unchanged; regenerate the source-derived API/compatibility metadata and deploy matching binaries/resources. Rollback uses the matching previous build/resources without data conversion. Validate native contention/pending/restore barriers, both script bindings, local-provider reopen with spaces, and filesystem success/refusal on each claimed platform.
+- Filesystem callers must pass complete NUL-free UTF-8 paths on every platform. Non-UTF-8 POSIX file names are no longer supported by `fs`. Pure converters now reject invalid paths with `filesystem_error`; result primitives refuse them without acting on the prefix. Rebuild native consumers for the read/write/hash/comparison/listing exception specifications. Result-based operations now report standard interop errors through failure results; oversized whole-file reads are refused before buffer allocation. The Engine terminate-on-OOM policy is unchanged. Visitor and caller-stream exceptions still propagate; valid paths, empty-path conventions and file publication/durability guarantees are preserved.
+
+- Remove `[ClassExtension]`; use standard C# extension methods and rebuild scripts with current CoreScripts. The compiler rejects the removed attribute. Unannotated helpers, entry-point attributes, bindings, data/resource formats, wire and ABI `9` are unchanged. No conversion or extra compatibility bump. Rollback restores matching previous CoreScripts/assemblies.
+
+## 2026.1.55-dev - 2026-10-20
+
+### Changed
+
+- Reject map-local unsynchronized Common or Client configuration overrides on dynamic items in Mapper and MapBaker, including constant project properties without `Persistent`. Check both server and client property candidates, including hidden items. Preserve server-only authoring and placement context; configure permanent geometry on prototypes. Automatic mesh coalescing applies only to static items.
+- Recache every registered client item footprint cell when `NoBlock`, `ShootThru`, or `LightThru` changes.
+- Keep the standalone LibreSSL regression probe portable on Windows by selecting lean Windows headers before the OpenSSL headers; preserve its real OtherName, IP/mask and SRTP checks.
+
+### Migration
+
+- Base `d947827d42ab7a8a6c5f0c168cdea5680423ddf9` (`2026.1.54-dev`); update `2026.1.55-dev`. Network compatibility remains `0.0.74`; no new property flags or wire layout are introduced.
+- Move differing unsynchronized Common or Client values from dynamic map placements into prototypes or inherited variants, or use an existing synchronization channel when runtime changes are required. Rebuild affected native targets and rebake resources. Explicit zero, false, and empty values count as overrides. Static placements, server-only fields, names, types, defaults and persistence flags retain their meanings. Existing saved worlds require the embedding project's normal content-update review; a map-source migration is not a database migration. Rollback restores matching baseline binaries and authored resources.
 
 ## 2026.1.54-dev - 2026-10-19
 

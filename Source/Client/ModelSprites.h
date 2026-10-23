@@ -39,6 +39,7 @@
 
 #include "DefaultSprites.h"
 #include "ModelSpriteLayout.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -135,7 +136,7 @@ class ModelSpriteFactory : public SpriteFactory
     friend class ModelSprite;
 
 public:
-    ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver);
+    ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver);
     ModelSpriteFactory(const ModelSpriteFactory&) = delete;
     ModelSpriteFactory(ModelSpriteFactory&&) noexcept = delete;
     auto operator=(const ModelSpriteFactory&) = delete;
@@ -155,6 +156,7 @@ private:
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     ptr<RenderSettings> _settings;
     ptr<EffectManager> _effectMngr;
     unique_ptr<ModelManager> _modelMngr;
@@ -165,3 +167,4 @@ private:
 FO_END_NAMESPACE
 
 #endif
+

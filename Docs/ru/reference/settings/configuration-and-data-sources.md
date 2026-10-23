@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"3a756bc7339d85f1185928f1656015e2618be7fc0d03cae7fa8510964d78c405"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"84eb4c1dbaaca87c17628a783036fcd3085f3dccef751c86a3188d5efc2d52d1"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -84,6 +84,18 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 Парсер хранит собственные строки и возвращает `string_view` из разобранных sections. Потребитель не должен считать, что эти views живут дольше экземпляра `ConfigFile`.
 
 ## Runtime settings
+
+Встроенные настройки объявляются через `SETTING(type, Group, Name, default)` и
+`SETTING_GROUP(Group, virtual bases)` в `Settings.inc`; каждая группа — вложенный
+aggregate, поэтому native-код читает `settings.Network.ServerPort`, а config,
+command-line и runtime lookup используют `Network.ServerPort`. Проектная
+`///@ Setting` тоже содержит полное имя с точками. Короткие имена могут повторяться
+в разных группах; имя без группы считается custom и отмечается config baker как
+`Unknown setting`. Managed-свойства `Settings.Group.Name` доступны только для
+чтения. Изменяемые во время работы значения принадлежат API владельца, например
+`MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume` или
+`Application::ScreenState`. Native-обход `BakerTests::OverrideSetting` из
+`Source/Tests/Test_BakerHelpers.h` разрешён только в тестах, не для production mutation.
 
 Защищённый сетевой канал добавляет `ServerNetwork.ChannelSecretKey` (обязательный статический секрет сервера) и `ClientNetwork.ChannelServerKeys` (публичные ключи, закреплённые клиентом). Это настройки запуска, а не изменяемое состояние скриптов. Серверная настройка содержит сам ключ из 64 шестнадцатеричных знаков, не путь: `$TARGET_FILE{...}` читает защищённый файл на целевом хосте без встраивания его содержимого при bake. Пустой или неверный серверный ключ блокирует запуск даже interthread-only сервера; отсутствие допустимого pin блокирует подключение клиента. См. [Сеть](../../explanation/authority-and-networking/#защищённый-канал) и [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 

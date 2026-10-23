@@ -818,6 +818,10 @@
           "source_sha256": "013362827657e08f22bc8870e4c3b12d21581b205cbfc923889081d8feed664f",
           "translation": "Настроенный каталог сборки CMake."
         },
+        "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.full/arguments/@id=helper-cli.codecoverage.command.full.argument.objects/description": {
+          "source_sha256": "7f20d12e6c1e63d0ee223080c922c8125add0a8b8825163ec79d9d534bcc0d2b",
+          "translation": "Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять."
+        },
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.full/arguments/@id=helper-cli.codecoverage.command.full.argument.output_dir/description": {
           "source_sha256": "e92181990d5b3f3cfd250411849c94143fb7ff5ee7a440dba2571e9e6be66aac",
           "translation": "Каталог выходных данных покрытия и отчётов."
@@ -849,6 +853,10 @@
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.report/arguments/@id=helper-cli.codecoverage.command.report.argument.build_dir/description": {
           "source_sha256": "013362827657e08f22bc8870e4c3b12d21581b205cbfc923889081d8feed664f",
           "translation": "Настроенный каталог сборки CMake."
+        },
+        "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.report/arguments/@id=helper-cli.codecoverage.command.report.argument.objects/description": {
+          "source_sha256": "7f20d12e6c1e63d0ee223080c922c8125add0a8b8825163ec79d9d534bcc0d2b",
+          "translation": "Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять."
         },
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.report/arguments/@id=helper-cli.codecoverage.command.report.argument.output_dir/description": {
           "source_sha256": "e92181990d5b3f3cfd250411849c94143fb7ff5ee7a440dba2571e9e6be66aac",
@@ -882,6 +890,10 @@
           "source_sha256": "013362827657e08f22bc8870e4c3b12d21581b205cbfc923889081d8feed664f",
           "translation": "Настроенный каталог сборки CMake."
         },
+        "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.run/arguments/@id=helper-cli.codecoverage.command.run.argument.objects/description": {
+          "source_sha256": "7f20d12e6c1e63d0ee223080c922c8125add0a8b8825163ec79d9d534bcc0d2b",
+          "translation": "Дополнительный инструментированный исполняемый файл или динамическая библиотека для отчёта LLVM; аргумент можно повторять."
+        },
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.run/arguments/@id=helper-cli.codecoverage.command.run.argument.output_dir/description": {
           "source_sha256": "e92181990d5b3f3cfd250411849c94143fb7ff5ee7a440dba2571e9e6be66aac",
           "translation": "Каталог выходных данных покрытия и отчётов."
@@ -903,9 +915,9 @@
           "translation": "Очищает, собирает и формирует отчёты покрытия кода движка для сгенерированных тестовых целей."
         },
         "/helpers/@id=helper-cli.codecoverage/invocation_owner": {
+          "preserve_source": true,
           "source_sha256": "7e50b49ce99d12956be862b13c12ed853b00bdfaa6d365a76b63f6a08ce8a6c5",
-          "translation": "BuildTools/cmake/stages/Applications.cmake",
-          "preserve_source": true
+          "translation": "BuildTools/cmake/stages/Applications.cmake"
         },
         "/helpers/@id=helper-cli.codecoverage/name": {
           "source_sha256": "fe858ca3d2e33ec4e9d345b040f4572c13d0e04c4935dff0bde44d6c35fcb5a4",
@@ -956,9 +968,9 @@
           "translation": "Подробный режим."
         },
         "/helpers/@id=helper-cli.codegen/invocation_owner": {
+          "preserve_source": true,
           "source_sha256": "1c26af52cb53a4e7fa6c94d181152db19d790bee9f90a23e5af95a13b101c6f1",
-          "translation": "BuildTools/cmake/stages/Codegen.cmake",
-          "preserve_source": true
+          "translation": "BuildTools/cmake/stages/Codegen.cmake"
         },
         "/helpers/@id=helper-cli.codegen/name": {
           "source_sha256": "b8baf7166150288cd864c84fe302b404bfcfe7e341f636e3a5860d43a48848c3",
@@ -1032,13 +1044,13 @@
           "source_sha256": "ba820e17a98ac121a047225dfce65e7b4649a494414fa69d5dfdaf4e227edc12",
           "translation": "Проверяет совместимость импортов слинкованных PE-файлов с Windows 7 и по запросу требует флаг большого адресного пространства у исполняемых файлов."
         },
-        "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.require_large_address_aware/description": {
-          "source_sha256": "743a32103531d7e2c4007292a72e971fa3007e94ef680bef0132b45622a5bc14",
-          "translation": "Требовать флаг большого адресного пространства у проверяемых исполняемых файлов."
-        },
         "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.binaries/description": {
           "source_sha256": "23a5ed3d50ff93b7d50d3bf8289f1cc1b46cfdbc2e7e5594fc451c37281d344e",
           "translation": "Проверяемый слинкованный исполняемый PE-файл или DLL."
+        },
+        "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.require_large_address_aware/description": {
+          "source_sha256": "743a32103531d7e2c4007292a72e971fa3007e94ef680bef0132b45622a5bc14",
+          "translation": "Требовать флаг большого адресного пространства у проверяемых исполняемых файлов."
         },
         "/helpers/@id=helper-cli.windows7-import-check/invocation_owner": {
           "source_sha256": "cb63fae5a48970683824fef1dadf41b3686d09074c4623c181dc296055923bba",
@@ -1512,24 +1524,24 @@
           "translation": "DefaultSpriteFactory регистрирует все встроенные расширения ImageBaker, кроме spr; прямым путям .spr нужна custom factory или, обычно, авторская .fofrm-обёртка."
         },
         "/runtime_rules/@id=image-format.runtime.frame-offset/name": {
-          "source_sha256": "0c8c20d8a49dafdf7bd78632341441ae0da406808f5eb862f19db10950c4c525",
-          "translation": "Смещения спрайта каждого кадра"
+          "source_sha256": "9b492d87725f14d7bd69b1850348f71f25327a441274a2053ce29d61a78cb68e",
+          "translation": "Смещения спрайтов и покадровый motion"
         },
         "/runtime_rules/@id=image-format.runtime.frame-offset/rationale": {
-          "source_sha256": "356efe7b3304eba7375b2540801a6b8f29d4969a326d4f41d82340b533a00b41",
-          "translation": "Визуальное root-motion displacement должно оставаться отдельным от sequence placement и authoritative world movement."
+          "source_sha256": "5e0b5a145f39651c14188e076ad9b34ca60815a8a094df50eeccb6344687b690",
+          "translation": "Визуальное покадровое смещение должно оставаться независимым от опор изображения и авторитетного движения сущности."
         },
         "/runtime_rules/@id=image-format.runtime.frame-offset/requirement": {
-          "source_sha256": "2a4b8594874d2d3056581a425c7725ed87b59bdda75eacc62b9449d30997e047",
-          "translation": "Запечённые int32 размещение и int16 движение независимы для каждого слота, включая общие пиксели. Runtime хранит массивы движения по направлениям. Обрезка выбирает время своего кадра, слияние соединяет таймлайны каждого направления, копирование сохраняет выбранные кадры и время."
+          "source_sha256": "0a58f1ae53614ab3e73d9e42ade7d24e88145a578b3c3c42ff77f3dcae44e9a7",
+          "translation": "Конкретные кадры и кадры с общими пикселями хранят обычные смещения спрайта относительно корня в SpriteSheet::_sprOffset, а покадровые визуальные дельты Motion — в _sprMotion. SetFrame(offset, motion) записывает входы в соответствующие поля. CreateSpriteSequence сохраняет исходные общие atlas-спрайты с независимыми массивами offsets и motions в этом порядке. GetSpriteFrameOffset читает обычные смещения; GetSpriteFrameMotion — дельты. CritterHexView вычисляет накопленный перенос, выбор кадра по расстоянию, фазу цикла и визуальную компенсацию _offsAnim из дельт движения относительно логического HexOffset и независимого дополнительного переноса. Эти значения представления не управляют перемещением сущности. Проект задаёт выбор первого/последнего кадра, накопление переноса, правила имён и склейки последовательностей."
         },
         "/runtime_rules/@id=image-format.runtime.missing-cache/name": {
           "source_sha256": "8aa6f76a704bd4d34fc50dc88c278348c2d4921a1a77b8f308c2d26c864ad07e",
           "translation": "Мемоизация отсутствующего пути"
         },
         "/runtime_rules/@id=image-format.runtime.missing-cache/rationale": {
-          "source_sha256": "0dad0addadb6ef2bae9af0b8039a9d280de6fb2a3df1570cbff9968965a263f1",
-          "translation": "Добавление ранее отсутствовавшего ресурса во время live session обычно требует пересоздать manager или перезапустить client перед повтором того же пути."
+          "source_sha256": "6108711de7b599d3874ade1cee0874d2fd63b5bdb5f5d81970ffacafcc376f87",
+          "translation": "ResourceManager сохраняет ошибки при обычной очистке; ForgetFailedSprite или InvalidateSpriteResource явно разрешает повторную попытку после обновления подключённых источников."
         },
         "/runtime_rules/@id=image-format.runtime.missing-cache/requirement": {
           "source_sha256": "5104928ca7a203f6ea8c2afae9eea8d0bc7c1f77de8fd8d17f962d7b1a18a91d",
@@ -1544,8 +1556,8 @@
           "translation": "Animation state является клиентским presentation state, а каждое направление владеет параллельным frame sheet."
         },
         "/runtime_rules/@id=image-format.runtime.sprite-sheet/requirement": {
-          "source_sha256": "deed2c7e10f3c94a1e19fd70b902e1f4f746f30e935f82b9a481a795e799aedb",
-          "translation": "Длительности/границы SpriteSheet и GetDuration/GetFrameDurations используют timespan; в файлах остаётся uint32 мс. Направления сохраняют фазу; направление0 независимо. Копии сохраняют тайминг и сбрасывают проигрывание. Равномерные конструкторы делят нс; AdvanceTime сохраняет доли мс и непрерывную прямую/обратную фазу."
+          "source_sha256": "0c0f4f789186afb3e0be58a012d08053a75831c02e34c72f9915020036d402e1",
+          "translation": "Длительности/границы SpriteSheet и GetDuration/GetFrameDurations используют timespan; в файлах остаются положительные uint32 мс. Направления сохраняют фазу; направление0 независимо. Копии сохраняют тайминг и сбрасывают проигрывание. Равномерные конструкторы делят нс; AdvanceTime сохраняет доли мс и непрерывную прямую/обратную фазу. Явные native/script-последовательности с нулевой длительностью сохраняют ручной нормализованный выбор кадра и не проигрываются автоматически; таймлайн целиком нулевой или целиком положительный."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/name": {
           "source_sha256": "1fa5917048511413fe454b412e646441428b6214cd80c08859786156742979af",
@@ -2471,12 +2483,12 @@
           "translation": "Combined geometry внутри или снаружи shapes удаляется; optional paired bones управляют unskin."
         },
         "/tokens/@id=model-format.token.disable-backward/description": {
-          "source_sha256": "51a440223fec1822c618a0826128e73374784a88064fd2ff99f2f122ee9245a2",
-          "translation": "Отключает выбор WalkBack и RunBack для movement-pose animation."
+          "source_sha256": "5d94d32c7e2e649f0b2b05197f89d503c6488575b1a04f692a26fb9709e4f08d",
+          "translation": "Выбирает контекст движения вперёд вместо движения назад."
         },
         "/tokens/@id=model-format.token.disable-backward/runtime_effect": {
-          "source_sha256": "80df31fa7fe23f7f578f86b8f32ef51ee8bf7f7dc718f7b8cb3af64331e3895a",
-          "translation": "Movement всегда использует forward walk/run, а SetMoveDir выравнивает look direction."
+          "source_sha256": "5bdab367ff8da829524166ab27d432064f6477d51cbe2d5d17f8f68dd38a1f9d",
+          "translation": "Движение использует контекст движения вперёд, а SetMoveDir также выравнивает направление взгляда; идентификаторы анимаций выбирает проект."
         },
         "/tokens/@id=model-format.token.disable-interpolation/description": {
           "source_sha256": "d5c6d7b15ed26104b38fce5c5af6379168e29f3004c074f43446ef7ef48effd9",
@@ -4081,9 +4093,9 @@
           "translation": "Основанный на исходниках контракт авторинга, запекания и runtime для контейнеров карт FOnline."
         },
         "/directives/@id=map-format.directive.entity-id/applies_to": {
+          "preserve_source": true,
           "source_sha256": "55b3af12db25dbfc226e3dbd5caabbc9b5c9efe06dae9732268da69a419b8747",
-          "translation": "Critter, Item",
-          "preserve_source": true
+          "translation": "Critter, Item"
         },
         "/directives/@id=map-format.directive.entity-id/default": {
           "source_sha256": "77d23c793205359e4675cb88c3cc105f3230473cf1899e37ec3b2b4c3e95acbe",
@@ -4094,9 +4106,9 @@
           "translation": "Задаёт общую идентичность размещения для ссылок владения. Отсутствующие, неположительные и повторяющиеся ID исправляются при загрузке; авторские карты не должны полагаться на исправление."
         },
         "/directives/@id=map-format.directive.entity-proto/applies_to": {
+          "preserve_source": true,
           "source_sha256": "55b3af12db25dbfc226e3dbd5caabbc9b5c9efe06dae9732268da69a419b8747",
-          "translation": "Critter, Item",
-          "preserve_source": true
+          "translation": "Critter, Item"
         },
         "/directives/@id=map-format.directive.entity-proto/default": {
           "source_sha256": "140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe",
@@ -4107,9 +4119,9 @@
           "translation": "Разрешает базовый прототип Critter или Item до применения переопределений размещения."
         },
         "/directives/@id=map-format.directive.map-name/applies_to": {
+          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap",
-          "preserve_source": true
+          "translation": "ProtoMap"
         },
         "/directives/@id=map-format.directive.map-name/default": {
           "source_sha256": "d1ea356bf0e78aac795d58efff427842503407d6af5108812204fb3c75078d3f",
@@ -4120,9 +4132,9 @@
           "translation": "Выбирает ID прототипа Map и базовые имена обоих запечённых ресурсов. Без $Name якорь разрешается в базовое имя исходника; в контейнере с несколькими картами каждый якорь следует именовать явно."
         },
         "/directives/@id=map-format.directive.map-parent/applies_to": {
+          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap",
-          "preserve_source": true
+          "translation": "ProtoMap"
         },
         "/directives/@id=map-format.directive.map-parent/default": {
           "source_sha256": "5113b2beb2cdabb90509bff8987abf0294a2d6d019e0e75a96b2283dfa996925",
@@ -4133,9 +4145,9 @@
           "translation": "Использует обычное наследование прототипов Map при запекании прототипов. Сохранение в Mapper выпускает развёрнутый результат и не сохраняет эту директиву."
         },
         "/directives/@id=map-format.directive.map-text/applies_to": {
+          "preserve_source": true,
           "source_sha256": "0600d388356a7f7ae6200c4c42b6c4ddde4d4f895002f6aded9179a638a5a0a2",
-          "translation": "ProtoMap",
-          "preserve_source": true
+          "translation": "ProtoMap"
         },
         "/directives/@id=map-format.directive.map-text/default": {
           "source_sha256": "7bdb0408d8e92839a2420b909e034593a0fa278dc725b1ec81b212f7d1aaddaf",
@@ -4170,22 +4182,22 @@
           "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
         },
         "/properties/@id=map-format.property.Critter.AttachMaster/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.Condition/description": {
-          "source_sha256": "2afcc291a8b5a505cd1930649d35673632251f86ff1ce75de5e9b6ec964f3e33",
-          "translation": "Текущее состояние жизни, используемое анимацией, фильтрацией и игровыми запросами."
+          "source_sha256": "0c76e058d9ee2f78551b3c7d5d7e3855af35bd1f9edd0fe0967fb64c4e2e04e4",
+          "translation": "Текущее состояние жизни для фильтров и игровых запросов проекта"
         },
         "/properties/@id=map-format.property.Critter.ControlledByPlayer/description": {
           "source_sha256": "6fe4912752db582cec69d3de354ada545935ac26ed477846853ab955c2b5c3c0",
           "translation": "Классифицирует криттера как управляемого игроком независимо от его текущего сетевого состояния."
         },
         "/properties/@id=map-format.property.Critter.ControlledByPlayer/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.CustomHolderEntry/description": {
           "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
@@ -4195,13 +4207,13 @@
           "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
           "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
         },
-        "/properties/@id=map-format.property.Critter.DeadDrawNoFlatten/description": {
-          "source_sha256": "891621e672774d5264b2ffb1613683cb9ab83fad4f2f877721d48851f40bd601",
-          "translation": "Сохраняет мёртвого криттера в обычном порядке отрисовки вместо плоского порядка мёртвых криттеров."
-        },
         "/properties/@id=map-format.property.Critter.Dir/description": {
           "source_sha256": "ec2df791dfe2567ef28726bdb6eb1631477d238ed40d57f9cfcffaaa445ddede",
           "translation": "Текущее направление взгляда на сетке карты."
+        },
+        "/properties/@id=map-format.property.Critter.DrawFlatten/description": {
+          "source_sha256": "f8b72625b6a7eaaa7edd97f77b5160dddf9630186508fe15399a3634127958fd",
+          "translation": "Выбирает плоскую отрисовку персонажа независимо от состояния жизни"
         },
         "/properties/@id=map-format.property.Critter.Elevation/description": {
           "source_sha256": "0d356e2b8b3c58596328c573c25bb438a96615db22c714bd5c0e23932af67cba",
@@ -4216,9 +4228,9 @@
           "translation": "Назначенный сервером идентификатор, общий для участников одной текущей поездки по глобальной карте."
         },
         "/properties/@id=map-format.property.Critter.GlobalMapTripId/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.Hex/description": {
           "source_sha256": "4673dc90632e2343fafd7d22411b309cb8670c1153963561fbbbf3bf76c08227",
@@ -4241,27 +4253,27 @@
           "translation": "Показывает, что этот криттер сейчас следует за другим криттером как прикреплённый."
         },
         "/properties/@id=map-format.property.Critter.IsAttached/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.IsChosen/description": {
           "source_sha256": "381e130d01d4c815747cf6091918b078756c0360817a237010518e9b5b3aee79",
           "translation": "Показывает, что этот криттер является локально выбранным на текущем клиенте."
         },
         "/properties/@id=map-format.property.Critter.IsChosen/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.IsPlayerOffline/description": {
           "source_sha256": "f153b3cf89aebef940af174bddc8a7f977265dfc401cd362959b2fc3a9246e71",
           "translation": "Клиентское состояние соединения, сообщённое для управляемого игроком криттера."
         },
         "/properties/@id=map-format.property.Critter.IsPlayerOffline/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.ItemIds/description": {
           "source_sha256": "b36a3cf283ea2690381cf7a72659b34381f660c9436d905a97d00694169ed90d",
@@ -4272,45 +4284,45 @@
           "translation": "Цвет RGBA, излучаемый клиентским источником света криттера."
         },
         "/properties/@id=map-format.property.Critter.LightColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.LightDistance/description": {
           "source_sha256": "f25441db4ccf37f9477696ec349a9229623d2e1b5d2d1a2a12e1d2f1cb062573",
           "translation": "Радиус действия клиентского источника света криттера в гексах."
         },
         "/properties/@id=map-format.property.Critter.LightDistance/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.LightFlags/description": {
           "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
           "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
         },
         "/properties/@id=map-format.property.Critter.LightFlags/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.LightIntensity/description": {
           "source_sha256": "f14dfed224d2691eccdc99cd59b5d17080fa909760b4424f94a30b2c9a361c0e",
           "translation": "Знаковая интенсивность клиентского источника света криттера в процентах."
         },
         "/properties/@id=map-format.property.Critter.LightIntensity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.LightSource/description": {
           "source_sha256": "81799139e0e90b3da0d8ff6cc9c815d3b7c033f5507e7a9d1eaa6e4673557b8c",
           "translation": "Включает клиентский источник света карты с центром на этом криттере."
         },
         "/properties/@id=map-format.property.Critter.LightSource/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.LookDistance/description": {
           "source_sha256": "c8034068f82917328834377f3d8b396d9ce4402ba0b433b81cadfbd44f8c031f",
@@ -4325,9 +4337,9 @@
           "translation": "Клиентские значения фиксированного размера, передаваемые слоям 3D-модели и обработчику анимации."
         },
         "/properties/@id=map-format.property.Critter.ModelLayers/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.ModelName/description": {
           "source_sha256": "69d124a0012e5742bdf62f5aee5c124f95d439b041e250f0006d87511f5ad63d",
@@ -4338,9 +4350,9 @@
           "translation": "Текущая серверная скорость активного движения."
         },
         "/properties/@id=map-format.property.Critter.MovingSpeed/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Critter.Multihex/description": {
           "source_sha256": "8243c8fafcd3fb39b49333e131ef30daff5ed37b5a7dd63c229c8facd67aaf19",
@@ -4349,6 +4361,10 @@
         "/properties/@id=map-format.property.Critter.NameOffset/description": {
           "source_sha256": "c1808ffa3b13587c823c7eef6cab1adc0e5d2d2987c2bc4ef07687ea887f74d2",
           "translation": "Вертикальная пиксельная поправка положения подписи имени криттера."
+        },
+        "/properties/@id=map-format.property.Critter.PathfindingObstacle/description": {
+          "source_sha256": "655cd31f9cb92c521af08cb86fa25268eec72aca4d0e0fdd0158382a9ce8d250",
+          "translation": "Задаёт штраф обхода персонажа при поиске пути независимо от состояния жизни"
         },
         "/properties/@id=map-format.property.Critter.ScaleFactor/description": {
           "source_sha256": "de043ac920f0dcf58b124093ede046063447afb7ad4d69db37585cbf6b868152",
@@ -4371,9 +4387,9 @@
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
         "/properties/@id=map-format.property.Critter.VisibilityMode/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
@@ -4608,18 +4624,18 @@
           "translation": "Текущий клиентский цвет глобального дневного освещения, переданный через SetDayColors для скриптов и эффектов."
         },
         "/properties/@id=map-format.property.Map.GlobalDayColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.GlobalDayLightCapacity/description": {
           "source_sha256": "0e896da615c499ca6b6d72bbfb4ff6cce8634eee240e64afb1eb6f58bb28a46d",
           "translation": "Текущая дневная ёмкость источников света с флагом global в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=map-format.property.Map.GlobalDayLightCapacity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.InitScript/description": {
           "source_sha256": "b346fcb09dd09317254f8bd4a470e5686139f49d77fdddb12cc789c9b9a54fdf",
@@ -4642,18 +4658,18 @@
           "translation": "Текущий клиентский оттенок карты, переданный через SetDayColors и используемый отрисовкой карты."
         },
         "/properties/@id=map-format.property.Map.MapDayColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.MapDayLightCapacity/description": {
           "source_sha256": "a7905a27180f72a6d5c60e80fbd6a24dcd91c21834c106f7ffbd18129444961f",
           "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=map-format.property.Map.MapDayLightCapacity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.RemovedStaticItemIds/description": {
           "source_sha256": "10145eb732c492e95bd1f053d5f0dd6f9130a2d46594d4d1bdd479c2eed8351f",
@@ -4668,9 +4684,9 @@
           "translation": "Округлённое клиентское смещение области просмотра в пикселях пространства карты."
         },
         "/properties/@id=map-format.property.Map.ScrollOffset/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.Size/description": {
           "source_sha256": "55bb18dc4ab688f68beaf3fb1b2bfed3d1d671b87a6c09cf6816c70f83e77e49",
@@ -4681,18 +4697,18 @@
           "translation": "Текущий клиентский коэффициент масштаба спрайтов карты."
         },
         "/properties/@id=map-format.property.Map.SpritesZoom/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.SpritesZoomTarget/description": {
           "source_sha256": "5cc47384c7e656b8df01bf7003c3ca3f136e115eb89e50dc18affa7ba19589d1",
           "translation": "Целевой коэффициент масштаба, к которому интерполируется клиентский вид карты."
         },
         "/properties/@id=map-format.property.Map.SpritesZoomTarget/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=map-format.property.Map.WorkHex/description": {
           "source_sha256": "39e3f4def04bf163c5b07c4ede4f0dbe86be876eeee8e51712a36a3b3162a429",
@@ -4733,6 +4749,18 @@
         "/rules/@id=map-format.rule.config-syntax/requirement": {
           "source_sha256": "3aa417dee22750670ac416a6f47945fc2db177aee1f50d3d97e9f87af095a1fd",
           "translation": "Используйте повторяющиеся INI-подобные секции, присваивания key = value, комментарии #, продолжение обратной косой чертой и добавление key += value там, где его поддерживает парсер свойства."
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/description": {
+          "source_sha256": "2c7b7414dcaebab2916a4ee77f68241b6723070618811e54f7dcacd1857d613c",
+          "translation": "Mapper и MapBaker проверяют серверные и клиентские свойства и отклоняют отличающиеся константы Common/Client и Persistent-значения NoSync, включая переопределения нулём, false и пустым значением. Серверные свойства и существующие PublicSync/OwnerSync остаются допустимыми; проверки только Persistent недостаточно."
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/name": {
+          "source_sha256": "84676fb86c2285638145eff6f830aea62ccb96c787b3505549c34669574cba7f",
+          "translation": "Доставка свойств динамического предмета"
+        },
+        "/rules/@id=map-format.rule.dynamic-property-overrides/requirement": {
+          "source_sha256": "52d5ce3cfd76a1119a6ebb7dc5cbb600b1d42b9fc898e1483840d0c8d7db6ab5",
+          "translation": "Сохраняемые несинхронизируемые значения Common или Client динамического предмета должны совпадать с прототипом, кроме нативных свойств контекста размещения."
         },
         "/rules/@id=map-format.rule.error-aggregation/description": {
           "source_sha256": "6764d3a0724bdfeac1eae9e41ade4f043490a52e793abb917cfdb054ea09c4e9",
@@ -4901,6 +4929,18 @@
         "/rules/@id=map-format.rule.static-items/requirement": {
           "source_sha256": "bb6f0ded9b3e7976ae564e9542c6100e43e4acb339853267be0e3da91e9345e2",
           "translation": "Предмет Static обязан использовать владение MapHex."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/description": {
+          "source_sha256": "ffdd270ddd1eb8f0d47ec53642fadbc9e7ff807c017b4f00ec9b2d4fb8d0eb38",
+          "translation": "Динамические экземпляры сохраняют отдельную идентичность даже при SameSibling или AnyUnique у прототипа. Постоянная относительная геометрия задаётся в прототипе или наследуемом варианте."
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/name": {
+          "source_sha256": "a97b89fa950db9ce96e494f51629ef4c197839ea7220d7ab28f24eb2ad21eb72",
+          "translation": "Объединение статических предметов в mesh"
+        },
+        "/rules/@id=map-format.rule.static-mesh-coalescing/requirement": {
+          "source_sha256": "ebda6dcbe9d676c0ef670f5de76d39039e4fe443999595db057f511ee9e2bbe7",
+          "translation": "Объединяйте экземпляры карты в MultihexMesh только тогда, когда оба предмета статические."
         },
         "/scope/excluded": {
           "source_sha256": "a9e51a633154c791421bad70658ea469fea847ea4d58b110c11e2f62e28ecf39",
@@ -5495,22 +5535,22 @@
           "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
         },
         "/properties/@id=prototype-format.property.Critter.AttachMaster/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.Condition/description": {
-          "source_sha256": "2afcc291a8b5a505cd1930649d35673632251f86ff1ce75de5e9b6ec964f3e33",
-          "translation": "Текущее состояние жизни, используемое анимацией, фильтрацией и игровыми запросами."
+          "source_sha256": "0c76e058d9ee2f78551b3c7d5d7e3855af35bd1f9edd0fe0967fb64c4e2e04e4",
+          "translation": "Текущее состояние жизни для фильтров и игровых запросов проекта"
         },
         "/properties/@id=prototype-format.property.Critter.ControlledByPlayer/description": {
           "source_sha256": "6fe4912752db582cec69d3de354ada545935ac26ed477846853ab955c2b5c3c0",
           "translation": "Классифицирует криттера как управляемого игроком независимо от его текущего сетевого состояния."
         },
         "/properties/@id=prototype-format.property.Critter.ControlledByPlayer/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.CustomHolderEntry/description": {
           "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
@@ -5520,13 +5560,13 @@
           "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
           "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
         },
-        "/properties/@id=prototype-format.property.Critter.DeadDrawNoFlatten/description": {
-          "source_sha256": "891621e672774d5264b2ffb1613683cb9ab83fad4f2f877721d48851f40bd601",
-          "translation": "Сохраняет мёртвого криттера в обычном порядке отрисовки вместо плоского порядка мёртвых криттеров."
-        },
         "/properties/@id=prototype-format.property.Critter.Dir/description": {
           "source_sha256": "ec2df791dfe2567ef28726bdb6eb1631477d238ed40d57f9cfcffaaa445ddede",
           "translation": "Текущее направление взгляда на сетке карты."
+        },
+        "/properties/@id=prototype-format.property.Critter.DrawFlatten/description": {
+          "source_sha256": "f8b72625b6a7eaaa7edd97f77b5160dddf9630186508fe15399a3634127958fd",
+          "translation": "Выбирает плоскую отрисовку персонажа независимо от состояния жизни"
         },
         "/properties/@id=prototype-format.property.Critter.Elevation/description": {
           "source_sha256": "0d356e2b8b3c58596328c573c25bb438a96615db22c714bd5c0e23932af67cba",
@@ -5541,9 +5581,9 @@
           "translation": "Назначенный сервером идентификатор, общий для участников одной текущей поездки по глобальной карте."
         },
         "/properties/@id=prototype-format.property.Critter.GlobalMapTripId/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.Hex/description": {
           "source_sha256": "4673dc90632e2343fafd7d22411b309cb8670c1153963561fbbbf3bf76c08227",
@@ -5566,27 +5606,27 @@
           "translation": "Показывает, что этот криттер сейчас следует за другим криттером как прикреплённый."
         },
         "/properties/@id=prototype-format.property.Critter.IsAttached/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.IsChosen/description": {
           "source_sha256": "381e130d01d4c815747cf6091918b078756c0360817a237010518e9b5b3aee79",
           "translation": "Показывает, что этот криттер является локально выбранным на текущем клиенте."
         },
         "/properties/@id=prototype-format.property.Critter.IsChosen/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.IsPlayerOffline/description": {
           "source_sha256": "f153b3cf89aebef940af174bddc8a7f977265dfc401cd362959b2fc3a9246e71",
           "translation": "Клиентское состояние соединения, сообщённое для управляемого игроком криттера."
         },
         "/properties/@id=prototype-format.property.Critter.IsPlayerOffline/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.ItemIds/description": {
           "source_sha256": "b36a3cf283ea2690381cf7a72659b34381f660c9436d905a97d00694169ed90d",
@@ -5597,45 +5637,45 @@
           "translation": "Цвет RGBA, излучаемый клиентским источником света криттера."
         },
         "/properties/@id=prototype-format.property.Critter.LightColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.LightDistance/description": {
           "source_sha256": "f25441db4ccf37f9477696ec349a9229623d2e1b5d2d1a2a12e1d2f1cb062573",
           "translation": "Радиус действия клиентского источника света криттера в гексах."
         },
         "/properties/@id=prototype-format.property.Critter.LightDistance/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.LightFlags/description": {
           "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
           "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
         },
         "/properties/@id=prototype-format.property.Critter.LightFlags/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.LightIntensity/description": {
           "source_sha256": "f14dfed224d2691eccdc99cd59b5d17080fa909760b4424f94a30b2c9a361c0e",
           "translation": "Знаковая интенсивность клиентского источника света криттера в процентах."
         },
         "/properties/@id=prototype-format.property.Critter.LightIntensity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.LightSource/description": {
           "source_sha256": "81799139e0e90b3da0d8ff6cc9c815d3b7c033f5507e7a9d1eaa6e4673557b8c",
           "translation": "Включает клиентский источник света карты с центром на этом криттере."
         },
         "/properties/@id=prototype-format.property.Critter.LightSource/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.LookDistance/description": {
           "source_sha256": "c8034068f82917328834377f3d8b396d9ce4402ba0b433b81cadfbd44f8c031f",
@@ -5650,9 +5690,9 @@
           "translation": "Клиентские значения фиксированного размера, передаваемые слоям 3D-модели и обработчику анимации."
         },
         "/properties/@id=prototype-format.property.Critter.ModelLayers/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.ModelName/description": {
           "source_sha256": "69d124a0012e5742bdf62f5aee5c124f95d439b041e250f0006d87511f5ad63d",
@@ -5663,9 +5703,9 @@
           "translation": "Текущая серверная скорость активного движения."
         },
         "/properties/@id=prototype-format.property.Critter.MovingSpeed/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Critter.Multihex/description": {
           "source_sha256": "8243c8fafcd3fb39b49333e131ef30daff5ed37b5a7dd63c229c8facd67aaf19",
@@ -5674,6 +5714,10 @@
         "/properties/@id=prototype-format.property.Critter.NameOffset/description": {
           "source_sha256": "c1808ffa3b13587c823c7eef6cab1adc0e5d2d2987c2bc4ef07687ea887f74d2",
           "translation": "Вертикальная пиксельная поправка положения подписи имени криттера."
+        },
+        "/properties/@id=prototype-format.property.Critter.PathfindingObstacle/description": {
+          "source_sha256": "655cd31f9cb92c521af08cb86fa25268eec72aca4d0e0fdd0158382a9ce8d250",
+          "translation": "Задаёт штраф обхода персонажа при поиске пути независимо от состояния жизни"
         },
         "/properties/@id=prototype-format.property.Critter.ScaleFactor/description": {
           "source_sha256": "de043ac920f0dcf58b124093ede046063447afb7ad4d69db37585cbf6b868152",
@@ -5696,9 +5740,9 @@
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
         "/properties/@id=prototype-format.property.Critter.VisibilityMode/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
@@ -5953,18 +5997,18 @@
           "translation": "Текущий клиентский цвет глобального дневного освещения, переданный через SetDayColors для скриптов и эффектов."
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayLightCapacity/description": {
           "source_sha256": "0e896da615c499ca6b6d72bbfb4ff6cce8634eee240e64afb1eb6f58bb28a46d",
           "translation": "Текущая дневная ёмкость источников света с флагом global в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=prototype-format.property.Map.GlobalDayLightCapacity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.InitScript/description": {
           "source_sha256": "b346fcb09dd09317254f8bd4a470e5686139f49d77fdddb12cc789c9b9a54fdf",
@@ -5987,18 +6031,18 @@
           "translation": "Текущий клиентский оттенок карты, переданный через SetDayColors и используемый отрисовкой карты."
         },
         "/properties/@id=prototype-format.property.Map.MapDayColor/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.MapDayLightCapacity/description": {
           "source_sha256": "a7905a27180f72a6d5c60e80fbd6a24dcd91c21834c106f7ffbd18129444961f",
           "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
         },
         "/properties/@id=prototype-format.property.Map.MapDayLightCapacity/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.RemovedStaticItemIds/description": {
           "source_sha256": "10145eb732c492e95bd1f053d5f0dd6f9130a2d46594d4d1bdd479c2eed8351f",
@@ -6013,9 +6057,9 @@
           "translation": "Округлённое клиентское смещение области просмотра в пикселях пространства карты."
         },
         "/properties/@id=prototype-format.property.Map.ScrollOffset/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.Size/description": {
           "source_sha256": "55bb18dc4ab688f68beaf3fb1b2bfed3d1d671b87a6c09cf6816c70f83e77e49",
@@ -6026,18 +6070,18 @@
           "translation": "Текущий клиентский коэффициент масштаба спрайтов карты."
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoom/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoomTarget/description": {
           "source_sha256": "5cc47384c7e656b8df01bf7003c3ca3f136e115eb89e50dc18affa7ba19589d1",
           "translation": "Целевой коэффициент масштаба, к которому интерполируется клиентский вид карты."
         },
         "/properties/@id=prototype-format.property.Map.SpritesZoomTarget/excluded_reason": {
+          "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
-          "translation": "temporary",
-          "preserve_source": true
+          "translation": "temporary"
         },
         "/properties/@id=prototype-format.property.Map.WorkHex/description": {
           "source_sha256": "39e3f4def04bf163c5b07c4ede4f0dbe86be876eeee8e51712a36a3b3162a429",
@@ -6054,18 +6098,6 @@
         "/rules/@id=prototype-format.rule.acyclic-inheritance/requirement": {
           "source_sha256": "bf22407129f7bb17b9d8044328a848c6c525b3fd834a234d78c465ef8c3b9d7d",
           "translation": "Граф родителей прототипов должен быть ациклическим."
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/name": {
-          "source_sha256": "3b7e486bfe39fde3fe810e8fa50b87ec0bf15e4a030b54bf4ec0023a96bcae86",
-          "translation": "Повторяющиеся ancestors"
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/description": {
-          "source_sha256": "49fc1cc07ea1b731fbd9045d6e4393b2c1437894cda80fba5fe3a383e2d8363b",
-          "translation": "Default permissive; задайте option false, если проект должен отклонять каждый inheritance diamond. ProtoBaker и ProtoTextBaker применяют одно правило."
-        },
-        "/rules/@id=prototype-format.rule.repeated-ancestors/requirement": {
-          "source_sha256": "ad9bcd40019167e91db1c5f6b54182cf5bb66797cd85c1072ecd4fd3197cc387",
-          "translation": "Parent, достигнутый по нескольким inheritance paths, добавляет поля только при первом достижении; Baking.AllowRepeatedProtoParents определяет, пропустить или отклонить поздний повтор."
         },
         "/rules/@id=prototype-format.rule.config-syntax/description": {
           "source_sha256": "02a95a175613626cecc94aceaeff6be8b3e3d78aeccc63715a4ca6aab09b0dba",
@@ -6151,6 +6183,18 @@
           "source_sha256": "5c3a76a9664b0ddf8429feaf38db44926abf7bcb5ebfee72f9b79e68f365eaf3",
           "translation": "Непустое встроенное свойство InitScript у Item, Critter, Map или Location должно разрешаться в глобальный void callback, принимающий тип этой сущности и bool firstTime."
         },
+        "/rules/@id=prototype-format.rule.property-migration/description": {
+          "source_sha256": "bf453e3b2c1bf6121f5ff1bce4dda4cb683a5ea7a32db3dfc3d0413d554032ee",
+          "translation": "Объявляйте MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator> или Remove <Old>. Property и Proto имеют общие записи Rename/Transform из пяти частей и Remove из четырёх. Старые значения пропускаются при загрузке документа/текста; bake и финализация метаданных отклоняют повторное имя."
+        },
+        "/rules/@id=prototype-format.rule.property-migration/name": {
+          "source_sha256": "da829260a47d3ceac8d95d856dd36e7e5c1952ae88ce84774643cd9c68af7c48",
+          "translation": "Действия миграции свойств"
+        },
+        "/rules/@id=prototype-format.rule.property-migration/requirement": {
+          "source_sha256": "93855f298e8d67ba0a54283730f0d572ef298728ef77d62149220fc35c52d5ed",
+          "translation": "Property Rename требует существующего назначения; Transform — существующего Persistent-свойства; Remove навсегда запрещает удалённое имя у того же владельца, включая поля RefType."
+        },
         "/rules/@id=prototype-format.rule.property-resolution/description": {
           "source_sha256": "18095fb7f65adf8b52e5b8f99923c0dde2a18bb10fadd4bed14433e3489aab99",
           "translation": "Неизвестные, отключённые для стороны, virtual и temporary свойства отклоняются; свойства только противоположной стороны пропускаются для этой стороны."
@@ -6186,6 +6230,18 @@
         "/rules/@id=prototype-format.rule.proto-reference/requirement": {
           "source_sha256": "d5c08397b2e94007068881bd23f42d4df47a0a538b13c12ddae387a051e1372d",
           "translation": "Ссылки свойств на сущности FixedType и Proto должны разрешаться после миграции, кроме nullable-свойства с пустым авторским значением."
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/description": {
+          "source_sha256": "49fc1cc07ea1b731fbd9045d6e4393b2c1437894cda80fba5fe3a383e2d8363b",
+          "translation": "Default permissive; задайте option false, если проект должен отклонять каждый inheritance diamond. ProtoBaker и ProtoTextBaker применяют одно правило."
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/name": {
+          "source_sha256": "3b7e486bfe39fde3fe810e8fa50b87ec0bf15e4a030b54bf4ec0023a96bcae86",
+          "translation": "Повторяющиеся ancestors"
+        },
+        "/rules/@id=prototype-format.rule.repeated-ancestors/requirement": {
+          "source_sha256": "ad9bcd40019167e91db1c5f6b54182cf5bb66797cd85c1072ecd4fd3197cc387",
+          "translation": "Parent, достигнутый по нескольким inheritance paths, добавляет поля только при первом достижении; Baking.AllowRepeatedProtoParents определяет, пропустить или отклонить поздний повтор."
         },
         "/rules/@id=prototype-format.rule.side-specific-output/description": {
           "source_sha256": "ea46ce8437e05b825c0848d267c2a049ec5f7db8a9639f77ee36a9e1a7c17023",
@@ -6247,9 +6303,9 @@
           "translation": "Каждая верхнеуровневая секция ProtoMap объявляет прототип Map. Вложенные секции размещения $Name/Item и $Name/Critter пропускаются ProtoBaker и обрабатываются MapBaker."
         },
         "/section_forms/@id=prototype-format.section.fomap-proto-map/resolves_to": {
+          "preserve_source": true,
           "source_sha256": "be176b0015c424b78e9f343f8bc3014a7a701cc2eb9000b6acbc04d67dbecb8f",
-          "translation": "Map",
-          "preserve_source": true
+          "translation": "Map"
         },
         "/section_forms/@id=prototype-format.section.proto-entity/description": {
           "source_sha256": "2ebf8283c65528d01a5d504b46ab727c900113a289d854dde04bf905f2ae0fc8",
@@ -6258,18 +6314,6 @@
         "/section_forms/@id=prototype-format.section.proto-entity/resolves_to": {
           "source_sha256": "6753cd36a218d5a6bdfbfcffea370f97f38d19f423e90df73859fa67f8dea9f6",
           "translation": "Метаданные сущности типа <Type> с HasProtos"
-        },
-        "/rules/@id=prototype-format.rule.property-migration/name": {
-          "source_sha256": "da829260a47d3ceac8d95d856dd36e7e5c1952ae88ce84774643cd9c68af7c48",
-          "translation": "Действия миграции свойств"
-        },
-        "/rules/@id=prototype-format.rule.property-migration/requirement": {
-          "source_sha256": "93855f298e8d67ba0a54283730f0d572ef298728ef77d62149220fc35c52d5ed",
-          "translation": "Property Rename требует существующего назначения; Transform — существующего Persistent-свойства; Remove навсегда запрещает удалённое имя у того же владельца, включая поля RefType."
-        },
-        "/rules/@id=prototype-format.rule.property-migration/description": {
-          "source_sha256": "bf453e3b2c1bf6121f5ff1bce4dda4cb683a5ea7a32db3dfc3d0413d554032ee",
-          "translation": "Объявляйте MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator> или Remove <Old>. Property и Proto имеют общие записи Rename/Transform из пяти частей и Remove из четырёх. Старые значения пропускаются при загрузке документа/текста; bake и финализация метаданных отклоняют повторное имя."
         }
       }
     },
@@ -7829,8 +7873,8 @@
           "translation": "Отдельно запечённое изображение"
         },
         "/binding_rules/@id=font-format.binding.image-resource/rationale": {
-          "source_sha256": "f223e1735f55aae5f18283eca1a4f47b687a9295b247ca6b93923151e27659f7",
-          "translation": "Дескриптор копируется raw-copy, а изображение загружается через SpriteManager и обычный конвейер image-format."
+          "source_sha256": "e1977b790c77192f6b603bc417a874b427cce6bf13925f6258e7fb530e40124c",
+          "translation": "Дескриптор копируется как сырой ресурс, а его изображение загружается через ResourceManager и обычный конвейер форматов изображений."
         },
         "/binding_rules/@id=font-format.binding.image-resource/requirement": {
           "source_sha256": "df7cea84870a53353570a2072ed5a22bcab46da76649f8bd466392c9083d5798",
@@ -7985,9 +8029,9 @@
           "translation": "Основанный на исходном коде контракт форматов ресурсов шрифтов, привязки, метрик, компоновки, отрисовки и проверки клиентского текста FOnline."
         },
         "/fofnt_fields/@id=font-format.fofnt.end-and-comments/name": {
+          "preserve_source": true,
           "source_sha256": "4e59d280b90503f292d4d9927e086a7a40d34461e57ad1f58f9340eee99bc2cd",
-          "translation": "End and comments",
-          "preserve_source": true
+          "translation": "End and comments"
         },
         "/fofnt_fields/@id=font-format.fofnt.end-and-comments/rationale": {
           "source_sha256": "24e4a83dd922b1be87cc1e8a9c5cb93d3e70babae188b84ca9fbed8be62826ef",
@@ -7998,9 +8042,9 @@
           "translation": "Завершите полезную часть дескриптора через End; # и ; начинают комментарий только внутри ключа, отделённого пробелами."
         },
         "/fofnt_fields/@id=font-format.fofnt.height/name": {
+          "preserve_source": true,
           "source_sha256": "bfe2eca401797325bc268f93c7397554551de4274d5d73ed421ee36fe9cd3ae0",
-          "translation": "Height",
-          "preserve_source": true
+          "translation": "Height"
         },
         "/fofnt_fields/@id=font-format.fofnt.height/rationale": {
           "source_sha256": "aab9b373e663dcba14a37554d7c4dcba5baa1ae43334b9f0bad3ed5db5e44ade",
@@ -8011,9 +8055,9 @@
           "translation": "Задайте высоту видимого прямоугольника глифа без однопиксельной рамки выборки."
         },
         "/fofnt_fields/@id=font-format.fofnt.image/name": {
+          "preserve_source": true,
           "source_sha256": "1aa4cb0bcca76e92e30677e809bb3d4b5c066715ef4d558184e319496bcc5125",
-          "translation": "Image",
-          "preserve_source": true
+          "translation": "Image"
         },
         "/fofnt_fields/@id=font-format.fofnt.image/rationale": {
           "source_sha256": "ecf0e8f842c7b6b7730639120d25a5906fcb058f35b12d37435c5ec98abf4034",
@@ -8024,9 +8068,9 @@
           "translation": "Укажите непустой ресурс изображения относительно дескриптора; добавьте * для нормализации серого и runtime-тонирования."
         },
         "/fofnt_fields/@id=font-format.fofnt.letter/name": {
+          "preserve_source": true,
           "source_sha256": "1bf163f269ae847bcc1f7d9fe26c27cbe20e5416ba8d6e6e8347324c428795d2",
-          "translation": "Letter",
-          "preserve_source": true
+          "translation": "Letter"
         },
         "/fofnt_fields/@id=font-format.fofnt.letter/rationale": {
           "source_sha256": "bf77e1fc37fa33087e3a0b0dd8eb27335efcb18b0c1a3fa096c44b1643692102",
@@ -8037,9 +8081,9 @@
           "translation": "Начинайте запись каждого глифа с Letter и одной корректной кодовой точки UTF-8 после первого апострофа."
         },
         "/fofnt_fields/@id=font-format.fofnt.line-height/name": {
+          "preserve_source": true,
           "source_sha256": "a6cbd7ab061ed3101c5e6e57bfa68720de01039b947e1175e5b6630cd98a7a31",
-          "translation": "LineHeight",
-          "preserve_source": true
+          "translation": "LineHeight"
         },
         "/fofnt_fields/@id=font-format.fofnt.line-height/rationale": {
           "source_sha256": "8d37dd3a640856302e909e63a94340444f7eb665efa7cb0865a46446d6b35324",
@@ -8050,9 +8094,9 @@
           "translation": "Задайте высоту строки глифов в пикселях или оставьте ноль/не задавайте, чтобы вывести максимальную высоту авторских глифов."
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-x/name": {
+          "preserve_source": true,
           "source_sha256": "90c34dc86b2e4be21b60e6899ae08595b0d096a69e3b6e463ab47a49ee81bbcb",
-          "translation": "OffsetX",
-          "preserve_source": true
+          "translation": "OffsetX"
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-x/rationale": {
           "source_sha256": "292631aedd839704e71574da5dc1c9827376e50bf2c24a37441769352b41116f",
@@ -8063,9 +8107,9 @@
           "translation": "Задайте знаковый горизонтальный вынос в координатах Engine; отрисовка размещает quad в позиции курсора X минус OffsetX."
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-y/name": {
+          "preserve_source": true,
           "source_sha256": "04780034bd7d3a0bbffb52e61cc01fd124edbb1f43d092086923fdebb79b5e64",
-          "translation": "OffsetY",
-          "preserve_source": true
+          "translation": "OffsetY"
         },
         "/fofnt_fields/@id=font-format.fofnt.offset-y/rationale": {
           "source_sha256": "292631aedd839704e71574da5dc1c9827376e50bf2c24a37441769352b41116f",
@@ -8076,9 +8120,9 @@
           "translation": "Задайте знаковый вертикальный вынос в координатах Engine; отрисовка размещает quad в позиции курсора Y минус OffsetY."
         },
         "/fofnt_fields/@id=font-format.fofnt.position-x/name": {
+          "preserve_source": true,
           "source_sha256": "5fb879043910349bf64bda5fb748459a2abcbfe1163ec27280baf8e6e114f0bb",
-          "translation": "PositionX",
-          "preserve_source": true
+          "translation": "PositionX"
         },
         "/fofnt_fields/@id=font-format.fofnt.position-x/rationale": {
           "source_sha256": "7ae62cbfe9e14aa975c047b6e8636cd6c86f1a65c2ef66c31cd0c7349f0b57fa",
@@ -8089,9 +8133,9 @@
           "translation": "Задайте левую координату прямоугольника глифа в изображении."
         },
         "/fofnt_fields/@id=font-format.fofnt.position-y/name": {
+          "preserve_source": true,
           "source_sha256": "7dd0605fb089286dbffe7ae7a78ae273c473ff2818e816e3d6e6f0d86ab92f79",
-          "translation": "PositionY",
-          "preserve_source": true
+          "translation": "PositionY"
         },
         "/fofnt_fields/@id=font-format.fofnt.position-y/rationale": {
           "source_sha256": "7ae62cbfe9e14aa975c047b6e8636cd6c86f1a65c2ef66c31cd0c7349f0b57fa",
@@ -8102,9 +8146,9 @@
           "translation": "Задайте верхнюю координату прямоугольника глифа в изображении."
         },
         "/fofnt_fields/@id=font-format.fofnt.version/name": {
+          "preserve_source": true,
           "source_sha256": "dd167905de0defcaf72de673ee44c07431770d129ccffab286bd2edfdaf62396",
-          "translation": "Version",
-          "preserve_source": true
+          "translation": "Version"
         },
         "/fofnt_fields/@id=font-format.fofnt.version/rationale": {
           "source_sha256": "419105395e79b4c43574bbff9b1ca5fd9d21a4f34fab0e62760ebaf97f20a989",
@@ -8115,9 +8159,9 @@
           "translation": "Сделайте Version первым разбираемым ключом; для текущих ресурсов задавайте версию 2. Значения больше 2 отклоняются."
         },
         "/fofnt_fields/@id=font-format.fofnt.width/name": {
+          "preserve_source": true,
           "source_sha256": "3019947b6daf18b0534a15d8c7ac30ab587e36cc93fb45a6e7b750348006d620",
-          "translation": "Width",
-          "preserve_source": true
+          "translation": "Width"
         },
         "/fofnt_fields/@id=font-format.fofnt.width/rationale": {
           "source_sha256": "f8af9f05c18aaef11b98bb63822d5147d0937b741f35751a3c351e7d0845a435",
@@ -8128,9 +8172,9 @@
           "translation": "Задайте ширину видимого прямоугольника глифа без однопиксельной рамки выборки."
         },
         "/fofnt_fields/@id=font-format.fofnt.x-advance/name": {
+          "preserve_source": true,
           "source_sha256": "0e0118c464db8899b0d227d045fe954c20a4fe0719cb2873aa51e5287c4eb37b",
-          "translation": "XAdvance",
-          "preserve_source": true
+          "translation": "XAdvance"
         },
         "/fofnt_fields/@id=font-format.fofnt.x-advance/rationale": {
           "source_sha256": "034b19341f57a8894f7c05347d0dd533309d33aa804db6edfdfeed4100e8cb42",
@@ -8141,9 +8185,9 @@
           "translation": "Задайте горизонтальное продвижение курсора после глифа; добавьте явный глиф пробела, если пробелы должны занимать ширину."
         },
         "/fofnt_fields/@id=font-format.fofnt.y-advance/name": {
+          "preserve_source": true,
           "source_sha256": "d93206fecf6fcab91f11275e3f4102fdd860353a08dc7678bb6b8956408725cd",
-          "translation": "YAdvance",
-          "preserve_source": true
+          "translation": "YAdvance"
         },
         "/fofnt_fields/@id=font-format.fofnt.y-advance/rationale": {
           "source_sha256": "2d7f1d9a15c63151e041081d845d994f4a54860b515bb0c5db8c064c1ff3573c",
@@ -9998,10 +10042,6 @@
           "source_sha256": "9d90725abb538f2b9625a7d62ad75882261ebb986df8fafb5cca7a8ef823ad7b",
           "translation": "Сопоставляет устаревшее имя свойства Critter IsControlledByPlayer с ControlledByPlayer при поиске миграции Engine."
         },
-        "/symbols/@id=migration.Property.Critter.IsNoFlatten/description": {
-          "source_sha256": "2d6fa9e283d0ab250e4c29f0f2dba09147e87d2ab3313fd2f934acdaa0b6c01a",
-          "translation": "Сопоставляет устаревшее имя свойства Critter IsNoFlatten с DeadDrawNoFlatten при поиске миграции Engine."
-        },
         "/symbols/@id=migration.Property.Critter.ScriptId/description": {
           "source_sha256": "2b6dd1daa3cd0c7072a4ee3dcfcdae6ad7d36c5a693b2248e4d95f75a79ac706",
           "translation": "Сопоставляет устаревшее имя свойства Critter ScriptId с InitScript при поиске миграции Engine."
@@ -10198,61 +10238,9 @@
           "source_sha256": "0c735c0a88d93f7f94e5085227cb52390023e457f830efb01411c390f8a90369",
           "translation": "Уведомляет наблюдателей о втором предмете, участвующем в обмене слотов."
         },
-        "/symbols/@id=script.enum-value.CritterActionAnim.DeadFront/description": {
-          "source_sha256": "4082fe09fbd60cb387e63aa43317c0876d8994c43f9ae48ceccf6fc78caef6aa",
-          "translation": "Запрашивает анимацию смерти лицом вперёд."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.Idle/description": {
-          "source_sha256": "169ed3e11bf079fac111071fa9b380b48616e37c4eb880eac8844933dda008e1",
-          "translation": "Запрашивает анимацию бездействия стоя."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.IdleProneFront/description": {
-          "source_sha256": "85f43644fb028c5823083002a95250a4330e94b872702d15a2228b92821ed9ef",
-          "translation": "Запрашивает анимацию бездействия лёжа лицом вперёд."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.Limp/description": {
-          "source_sha256": "657716073c33294e97f4c9e6d1990e92b651cc37b4419451eca8bc68911f52c3",
-          "translation": "Запрашивает анимацию движения хромая."
-        },
         "/symbols/@id=script.enum-value.CritterActionAnim.None/description": {
           "source_sha256": "91910a5c2dc605816747da99ce6acba6f2be1cf496a656fe39cea714686f1c64",
           "translation": "Не запрашивает анимацию действия."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.PanicRun/description": {
-          "source_sha256": "c0df09781d42290bb78cccce7da5892ff699ff144946974d5e2f0601d7daa962",
-          "translation": "Запрашивает анимацию панического бега."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.Run/description": {
-          "source_sha256": "73c9b483babea250e295c9f8237c525c1792ec1ed9d05345fc8c4fd3a35c8a04",
-          "translation": "Запрашивает бег вперёд."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.RunBack/description": {
-          "source_sha256": "d6018c597b71630788f4d7a467526af83afc2f29eec3522a6921ce57b2b0f566",
-          "translation": "Запрашивает бег назад."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.SneakRun/description": {
-          "source_sha256": "fa35693c121833cfff4e630fd5c37391101fff847f38ccdacb89c3243a5e9220",
-          "translation": "Запрашивает бег в крадущейся стойке."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.SneakWalk/description": {
-          "source_sha256": "933176d920d5661d33e3efeb7fa19dda208892e71c3dd68ec91ce8f8de3b6974",
-          "translation": "Запрашивает ходьбу в крадущейся стойке."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.TurnLeft/description": {
-          "source_sha256": "5126c17bc6ee2f92332f00693d31d79dc74226a041c7660de88a79a29da72b76",
-          "translation": "Запрашивает поворот на месте влево."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.TurnRight/description": {
-          "source_sha256": "67e3dde1f5dfebd7d9edd46fb7ce0e2bd8fd82457b57e79edf4f97ce19778ef8",
-          "translation": "Запрашивает поворот на месте вправо."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.Walk/description": {
-          "source_sha256": "5d8c617868af65baf6c05962bc0df4d25fea802d1c093c38a5bb95c18cf64596",
-          "translation": "Запрашивает ходьбу вперёд."
-        },
-        "/symbols/@id=script.enum-value.CritterActionAnim.WalkBack/description": {
-          "source_sha256": "fbd03c7b7625e6923da9a1d6fd8dcde2286b074c5cd9baae92bbb02d0cbe0c3c",
-          "translation": "Запрашивает ходьбу назад."
         },
         "/symbols/@id=script.enum-value.CritterCondition.Alive/description": {
           "source_sha256": "2c1a32828e06a34f43e0a500f03f06d6d7930b07f1211e7f1f579c37e4754407",
@@ -10334,10 +10322,6 @@
           "source_sha256": "3f3de3f7c648e0a869b491075db3d8610d87d361e7283fa236909e168e7ed088",
           "translation": "Не выбирает постоянную анимационную стойку криттера."
         },
-        "/symbols/@id=script.enum-value.CritterStateAnim.Unarmed/description": {
-          "source_sha256": "61e8349b4fd0aca8c55657b44a2b4a4b6b147df934aea94bf588a300cf0428e1",
-          "translation": "Выбирает постоянную безоружную анимационную стойку."
-        },
         "/symbols/@id=script.enum-value.CritterVisibilityMode.Full/description": {
           "source_sha256": "bcd79a19f2d2192204d82020d48484e286559d76b79b86b5dc2d1413c1d71641",
           "translation": "Принудительно включает полную видимость цели для выбранного отношения."
@@ -10397,10 +10381,6 @@
         "/symbols/@id=script.enum-value.DrawOrderType.Critter/description": {
           "source_sha256": "c5f8f68567049d3ddbd89cf46ac00fc782b3522cbb934fbb085813a614508296",
           "translation": "Сортируемый по глубине слой криттеров."
-        },
-        "/symbols/@id=script.enum-value.DrawOrderType.DeadCritter/description": {
-          "source_sha256": "618bbcb95079a6ccf181f1bdfb195c370324e3591eb84bdf49ab98a66bfd55cf",
-          "translation": "Плоский слой мёртвых криттеров, отрисовываемый после освещения."
         },
         "/symbols/@id=script.enum-value.DrawOrderType.FlatEnd/description": {
           "source_sha256": "98dcc422bb2998250a885ee13a00c00e62ddf5a55715518ef94fcea7d73359bc",
@@ -10686,10 +10666,6 @@
           "source_sha256": "e9e9ed3b33d82adb6770650d821957d12a3f6b5a2a9244d8bbf5b6a0703b8763",
           "translation": "Обозначает пароль с символами, запрещенными проектной политикой аккаунтов."
         },
-        "/symbols/@id=script.enum-value.EngineInfoMessage.NetPermanentDeath/description": {
-          "source_sha256": "f694b17f68cd25e085c66e5d08ba0fcbd1dc228c6d6b159544c051a99bfb63ec",
-          "translation": "Обозначает определенное проектом состояние окончательной смерти, которое запрещает продолжать игру затронутым персонажем или аккаунтом."
-        },
         "/symbols/@id=script.enum-value.EngineInfoMessage.NetPlayerAlready/description": {
           "source_sha256": "23c7c421e3b472daf2a54a883eed7cb8888c52a6eb89ea21568b964ddc380876",
           "translation": "Обозначает отказ в создании аккаунта, потому что запрошенный логин уже существует."
@@ -10733,10 +10709,6 @@
         "/symbols/@id=script.enum-value.EngineInfoMessage.NetWrongPass/description": {
           "source_sha256": "b212b5d0189060924c3c03931ab78095de7e0024b05c0d4250f5b7bb031d0fb5",
           "translation": "Обозначает отказ во входе из-за неверного пароля или другого секрета аутентификации."
-        },
-        "/symbols/@id=script.enum-value.EngineInfoMessage.NetWrongTagSkill/description": {
-          "source_sha256": "c1125e2a85249573f64e6d4a38ecf3923f187fa3a4a2cb54f5a9ff80e54677d9",
-          "translation": "Обозначает отказ в создании персонажа из-за недопустимого выбора обязательных tag skills."
         },
         "/symbols/@id=script.enum-value.EngineInfoMessage.None/description": {
           "source_sha256": "217bcd08c3da2b86cf409d83064dad576d81a9ccb04971dfa3197b746fcd8166",
@@ -12950,17 +12922,9 @@
           "source_sha256": "d667ed9c51ad1942a691b1356fe696c9fba888a4e9f4a36865c5fbbc067289a4",
           "translation": "Выполняется до применения клиентом действия криттера; `localCall` отличает локальную инициацию от доставки сервером."
         },
-        "/symbols/@id=script.event.client.Game.OnCritterAnimationFallout/description": {
-          "source_sha256": "51738cc916a503bdbd561c32092417a0b966f9463bb1e422173639f864257009",
-          "translation": "Разрешает номера и флаги устаревшей Fallout-анимации; обработчики могут заменить все выходные значения, а `StopChain` сообщает о неудаче разрешения."
-        },
-        "/symbols/@id=script.event.client.Game.OnCritterAnimationFrames/description": {
-          "source_sha256": "d208f8549936de368582493fb7d4f2345b9a2c67815bed297249c6a5cddad74c",
-          "translation": "Разрешает кортеж кадров 2D-анимации; обработчики могут заменить `pass`, `flags`, смещения и `animName`, а `StopChain` сообщает о неудаче разрешения."
-        },
         "/symbols/@id=script.event.client.Game.OnCritterAnimationInit/description": {
-          "source_sha256": "7ff01f550eb48737f5fdcae2277f51930fb8479124ffc526ab3001810e7027be",
-          "translation": "Выполняется до поиска анимации криттера; обработчики могут заменить `stateAnim` и `actionAnim`."
+          "source_sha256": "a4ecf8673ffde0f7fc2f640ccf0a2a07a1dc9b905136069ef8216c23875ff8a3",
+          "translation": "Выбирает идентификаторы анимаций и воспроизведение проекта по контексту и фактической скорости движения; normalizedTime находится в [0,1], speed должен быть конечным и положительным"
         },
         "/symbols/@id=script.event.client.Game.OnCritterAnimationProcess/description": {
           "source_sha256": "2e45f0bf37a9294dee6c1400c22547329eb09ce9c027d284b88323093d67688c",
@@ -13815,8 +13779,8 @@
           "translation": "Запрашивает привлечение внимания через панель задач или оконный менеджер, только если окно клиента не в фокусе."
         },
         "/symbols/@id=script.method.client.Game.FreeSprite/description": {
-          "source_sha256": "5a109f7b2aaf4409ae8f4a6c04706f88c0a244e3d5893f1758fb60acdbab68b1",
-          "translation": "Освобождает клиентский локальный дескриптор спрайта, останавливая анимацию и сохраняя ресурс в кеше повторного использования; неизвестные дескрипторы игнорируются."
+          "source_sha256": "6c9d6c20305abf0c22f52b6f15b8c98cbcd79198e835feed4542cbb47cd48812",
+          "translation": "Освобождает клиентский handle спрайта; именованные ресурсы попадают в кеш своего атласа, созданные последовательности освобождаются, неизвестные handle игнорируются"
         },
         "/symbols/@id=script.method.client.Game.GetCacheData/description": {
           "source_sha256": "804e4573855dbfc0a44f9d0845abe52bcf0f685ed7092692db7e10897eb0b451",
@@ -17423,8 +17387,8 @@
           "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
         },
         "/symbols/@id=script.property.Critter.Condition/description": {
-          "source_sha256": "2afcc291a8b5a505cd1930649d35673632251f86ff1ce75de5e9b6ec964f3e33",
-          "translation": "Текущее состояние жизни, используемое анимацией, фильтрацией и игровыми запросами."
+          "source_sha256": "0c76e058d9ee2f78551b3c7d5d7e3855af35bd1f9edd0fe0967fb64c4e2e04e4",
+          "translation": "Текущее состояние жизни для фильтров и игровых запросов проекта"
         },
         "/symbols/@id=script.property.Critter.ControlledByPlayer/description": {
           "source_sha256": "6fe4912752db582cec69d3de354ada545935ac26ed477846853ab955c2b5c3c0",
@@ -17437,10 +17401,6 @@
         "/symbols/@id=script.property.Critter.CustomHolderId/description": {
           "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
           "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
-        },
-        "/symbols/@id=script.property.Critter.DeadDrawNoFlatten/description": {
-          "source_sha256": "891621e672774d5264b2ffb1613683cb9ab83fad4f2f877721d48851f40bd601",
-          "translation": "Сохраняет мёртвого криттера в обычном порядке отрисовки вместо плоского порядка мёртвых криттеров."
         },
         "/symbols/@id=script.property.Critter.Dir/description": {
           "source_sha256": "ec2df791dfe2567ef28726bdb6eb1631477d238ed40d57f9cfcffaaa445ddede",
@@ -18794,14 +18754,6 @@
           "source_sha256": "7d2d5e222ae878817575d9c2ddc92995fee258db28debdea3000c887febf642b",
           "translation": "Длительность затухания в миллисекундах"
         },
-        "/symbols/@id=setting.client.View.GlobalDayColor/description": {
-          "source_sha256": "6f5abcaa621938e7241e47c66b4c6595fbd3c32364a8d161f1bde3b8b5f923a9",
-          "translation": "Общий для проекта DayColor по умолчанию (12 байт, сначала каналы: R0..R3 G0..G3 B0..B3); каждая карта может переопределить значение через Map.DayColor"
-        },
-        "/symbols/@id=setting.client.View.GlobalDayColorTime/description": {
-          "source_sha256": "e51f37165c1cb91383a33532d553d72d72533a1ae08eec31d6c628ff04c5c6d7",
-          "translation": "Общий для проекта DayColorTime по умолчанию в минутах (4 ключа); каждая карта может переопределить значение через Map.DayColorTime"
-        },
         "/symbols/@id=setting.client.View.HideNativeCursor/description": {
           "source_sha256": "315d207b60d547e9ea14b5b069e6c4835d4a5cf9536618f9f720c855265e490c",
           "translation": "Если true, нативный курсор скрыт"
@@ -19067,8 +19019,8 @@
           "translation": "Максимальная длина pathfinding"
         },
         "/symbols/@id=setting.common.Geometry.PathFindCritterDetour/description": {
-          "source_sha256": "7200452f94f033226946fc44667272fb2bdb485a2022d1e35520d3cb820d1843",
-          "translation": "Число шагов обхода, которыми поиск пути оценивает проход через одного живого криттера."
+          "source_sha256": "7d441d0e1e9a66d5ed91bab28d76c62f52541efb35f92a4752992f7e101e6bbe",
+          "translation": "Число гексов обхода, равноценное проходу через персонажа, помеченного проектом как препятствие"
         },
         "/symbols/@id=setting.common.Geometry.PathFindEnclosureProbe/description": {
           "source_sha256": "24045423e05f77bed9277f02454a15d54b29650e1b46334ad39593b547414256",
@@ -19422,14 +19374,6 @@
           "source_sha256": "f6688f9f023234ac4671b0f146111f7a4b163a02c237834010a45a49918eb87c",
           "translation": "Если true, включена отладка рендеринга"
         },
-        "/symbols/@id=setting.common.Render.RunAnimBaseSpeed/description": {
-          "source_sha256": "69616720af3749296ed7f1f096225bd7803519d5bd8e5ecfa1e7a4e84f0dfa9e",
-          "translation": "Базовая скорость анимации бега"
-        },
-        "/symbols/@id=setting.common.Render.RunAnimStartSpeed/description": {
-          "source_sha256": "8f459543b9f5bf1efe8a09599326731616e185d57d810d00b44cb55f11e79c8f",
-          "translation": "Начальная скорость анимации бега"
-        },
         "/symbols/@id=setting.common.Render.SDLGpuDriver/description": {
           "source_sha256": "c4d66721071d58e91f665c0183e0506097ef2d465b52a9353402265b9514951d",
           "translation": "Предпочтительное имя драйвера SDL_GPU (vulkan / metal / direct3d12); пустое значение позволяет SDL выбрать драйвер"
@@ -19445,10 +19389,6 @@
         "/symbols/@id=setting.common.Render.VSync/description": {
           "source_sha256": "df5169079f9114616d592fe7a9d4dfab1cdf16414b29faf19cbbc7d1971b7539",
           "translation": "Если true, включена вертикальная синхронизация"
-        },
-        "/symbols/@id=setting.common.Render.WalkAnimBaseSpeed/description": {
-          "source_sha256": "b47fad8701ac6ce43a0e6da675433228c1cb50f763af20de65c11946ee3b6984",
-          "translation": "Базовая скорость анимации ходьбы"
         },
         "/symbols/@id=setting.common.Render.WindowCentered/description": {
           "source_sha256": "9dcf89db3fb6c3658df416b67a7ef72ea2c98c3762e06d4af7fe0725fb7dab82",
@@ -19483,8 +19423,8 @@
           "translation": "Уровень Android compile SDK для инструментов упаковки"
         },
         "/symbols/@id=setting.server.Android.Icon/description": {
-          "source_sha256": "82127fa0a2a410fa0d7ef333fb31a7763552a24f1c8134e72e577d81727356fe",
-          "translation": "Путь исходного PNG значка launcher-а Android для инструментов упаковки"
+          "source_sha256": "39ab3262ed02d0bd1d30a8989382843bf366960e27675c7522f193b1e382bfe3",
+          "translation": "Необязательный PNG значка launcher-а проекта; пустое значение сохраняет значок платформы"
         },
         "/symbols/@id=setting.server.Android.KeyAlias/description": {
           "source_sha256": "4ba90124fb5e27d18d82e87891b4d4f6a194e48854940517810b08ba47fcdd05",
@@ -19773,6 +19713,642 @@
         "/symbols/@id=script.method.server.Critter.MapTransfersLocked/description": {
           "source_sha256": "8c7648eaf382694639b9103e3eb318692ed29378841ee627dfa22fdd78b8ab68",
           "translation": "SyncScope: требует self; возвращает временный снимок счётчика вложенных блокировок переноса, не приобретая покрытие и не резервируя состояние блокировки от последующего изменения."
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.Action/description": {
+          "source_sha256": "dea3c187133a173d449c67ad0f8a7b92bf81c05ea53a1af638816a962b5aa9b5",
+          "translation": "Выбрать однократную анимацию из очереди"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.Default/description": {
+          "source_sha256": "dd90a2e88fe6901646320ba0b7baa26a28f0dfd83afc95b31ae35032108ebfbd",
+          "translation": "Выбрать обычное отображение"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.Moving/description": {
+          "source_sha256": "a7660a83b288ba17221a434f1f4501fda56a8cd0eca55fd355a9533da1f4fb44",
+          "translation": "Выбрать движение вперёд"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.MovingBack/description": {
+          "source_sha256": "a0613e41cf9a51fa63cb2017bb6ef0b4d828ae548b228cdf4c75a44adf0cf5fc",
+          "translation": "Выбрать движение назад"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.Preview/description": {
+          "source_sha256": "24b7c6ba0848d5c52d0c4d1aea8d98b4381097d87695039c20b372984d493172",
+          "translation": "Выбрать превью редактора"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.TurnLeft/description": {
+          "source_sha256": "b0f2e9a5c20d266fa3fb0c1e16347e340d48c0c7df9ec00e1309346629d992e3",
+          "translation": "Выбрать поворот влево на месте"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationContext.TurnRight/description": {
+          "source_sha256": "e0ce2d7aebcfc4623b1dba08c9a7a50d543d8f5af61755e2eb2615afa8a1995f",
+          "translation": "Выбрать поворот вправо на месте"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationFlags.Freeze/description": {
+          "source_sha256": "eccd83affabf5c5167edbd3249ce7f8fc439b4e57254cfdd691b35d6f1022c46",
+          "translation": "Удерживать выбранное нормализованное время анимации"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationFlags.Movement/description": {
+          "source_sha256": "f3c676ce516d3ac1db5796d91007f4ecad5e0f770598b55ed60d26db0f69afeb",
+          "translation": "Согласовывать кадры спрайта и визуальные смещения с пройденным расстоянием"
+        },
+        "/symbols/@id=script.enum-value.CritterAnimationFlags.None/description": {
+          "source_sha256": "2dd2d899e23925c45409627507a5fe1bc45cdab1b7c2541af8382426ac191fce",
+          "translation": "Продвигать анимацию по прошедшему времени"
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.AttachMaster/description": {
+          "source_sha256": "7322c3094e8eed388df1fba240578d7855801138f86b0c715e6941ef08babbe4",
+          "translation": "Идентификатор ведущего прикрепления; равен нулю, если криттер не прикреплён."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.Condition/description": {
+          "source_sha256": "0c76e058d9ee2f78551b3c7d5d7e3855af35bd1f9edd0fe0967fb64c4e2e04e4",
+          "translation": "Текущее состояние жизни для фильтров и игровых запросов проекта"
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ControlledByPlayer/description": {
+          "source_sha256": "6fe4912752db582cec69d3de354ada545935ac26ed477846853ab955c2b5c3c0",
+          "translation": "Классифицирует криттера как управляемого игроком независимо от его текущего сетевого состояния."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.Dir/description": {
+          "source_sha256": "ec2df791dfe2567ef28726bdb6eb1631477d238ed40d57f9cfcffaaa445ddede",
+          "translation": "Текущее направление взгляда на сетке карты."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.DrawFlatten/description": {
+          "source_sha256": "f8b72625b6a7eaaa7edd97f77b5160dddf9630186508fe15399a3634127958fd",
+          "translation": "Выбирает плоскую отрисовку персонажа независимо от состояния жизни"
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.Elevation/description": {
+          "source_sha256": "0d356e2b8b3c58596328c573c25bb438a96615db22c714bd5c0e23932af67cba",
+          "translation": "Вертикальный уровень отрисовки криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.GlobalMapTripId/description": {
+          "source_sha256": "150133a813a0a180910efe456a696c997b1e7e0f9e443affb685091d90f2b678",
+          "translation": "Назначенный сервером идентификатор, общий для участников одной текущей поездки по глобальной карте."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.Hex/description": {
+          "source_sha256": "4673dc90632e2343fafd7d22411b309cb8670c1153963561fbbbf3bf76c08227",
+          "translation": "Исходный гекс, занимаемый криттером на текущей карте."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.HexOffset/description": {
+          "source_sha256": "d5b05576494249b7957e87938fb0c13671789b2fe9b5b252914a906a3fedc9bc",
+          "translation": "Внутригексовое смещение в пространстве карты для интерполяции движения и отрисовки."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.HideSprite/description": {
+          "source_sha256": "f65ac8e86db89b74cfbdc7b4435eecb83865fb9f2f5c899a1fa9208e9b141445",
+          "translation": "Скрывает текущий клиентский спрайт на карте, не удаляя присутствие криттера на карте."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.InitScript/description": {
+          "source_sha256": "b4b717c3f31356bff2f72d8197f7658746d0b2af05f9fb966c335c9f074412de",
+          "translation": "Серверная функция инициализации, вызываемая после события инициализации для нового или восстановленного криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.IsAttached/description": {
+          "source_sha256": "b8587bbd99ce1fc420a5c32a110491c986d513981939362dacd32bf490be8d36",
+          "translation": "Показывает, что этот криттер сейчас следует за другим криттером как прикреплённый."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.IsChosen/description": {
+          "source_sha256": "381e130d01d4c815747cf6091918b078756c0360817a237010518e9b5b3aee79",
+          "translation": "Показывает, что этот криттер является локально выбранным на текущем клиенте."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.IsPlayerOffline/description": {
+          "source_sha256": "f153b3cf89aebef940af174bddc8a7f977265dfc401cd362959b2fc3a9246e71",
+          "translation": "Клиентское состояние соединения, сообщённое для управляемого игроком криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ItemIds/description": {
+          "source_sha256": "b36a3cf283ea2690381cf7a72659b34381f660c9436d905a97d00694169ed90d",
+          "translation": "Сохраняемые идентификаторы предметов, непосредственно находящихся в инвентаре криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LightColor/description": {
+          "source_sha256": "88d328cc2723924031ded0647f20671259a644ea8b912439ab1560bf25e463cd",
+          "translation": "Цвет RGBA, излучаемый клиентским источником света криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LightDistance/description": {
+          "source_sha256": "f25441db4ccf37f9477696ec349a9229623d2e1b5d2d1a2a12e1d2f1cb062573",
+          "translation": "Радиус действия клиентского источника света криттера в гексах."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LightFlags/description": {
+          "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
+          "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LightIntensity/description": {
+          "source_sha256": "f14dfed224d2691eccdc99cd59b5d17080fa909760b4424f94a30b2c9a361c0e",
+          "translation": "Знаковая интенсивность клиентского источника света криттера в процентах."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LightSource/description": {
+          "source_sha256": "81799139e0e90b3da0d8ff6cc9c815d3b7c033f5507e7a9d1eaa6e4673557b8c",
+          "translation": "Включает клиентский источник света карты с центром на этом криттере."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.LookDistance/description": {
+          "source_sha256": "c8034068f82917328834377f3d8b396d9ce4402ba0b433b81cadfbd44f8c031f",
+          "translation": "Максимальная дистанция обзора карты в гексах для серверной обработки видимости."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.MapId/description": {
+          "source_sha256": "59c6b611b4325b1c6c16dc0993104036c13ddaf388c8b2c22a948c745f285633",
+          "translation": "Идентификатор карты, содержащей криттера; равен нулю, пока криттер находится на глобальной карте."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ModelLayers/description": {
+          "source_sha256": "1d2a56becb527cfd62f862977b11e16a1c119a556c7eec6702746d191b605974",
+          "translation": "Клиентские значения фиксированного размера, передаваемые слоям 3D-модели и обработчику анимации."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ModelName/description": {
+          "source_sha256": "69d124a0012e5742bdf62f5aee5c124f95d439b041e250f0006d87511f5ad63d",
+          "translation": "Ресурс спрайта или 3D-модели для представления криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.MovingSpeed/description": {
+          "source_sha256": "f473809fb05663ef513259a86b455e883426981039533dd06e89483977da8c01",
+          "translation": "Текущая серверная скорость активного движения."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.Multihex/description": {
+          "source_sha256": "8243c8fafcd3fb39b49333e131ef30daff5ed37b5a7dd63c229c8facd67aaf19",
+          "translation": "Радиус занимаемой криттером области в гексах для движения, поиска пути и расчёта расстояний."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.NameOffset/description": {
+          "source_sha256": "c1808ffa3b13587c823c7eef6cab1adc0e5d2d2987c2bc4ef07687ea887f74d2",
+          "translation": "Вертикальная пиксельная поправка положения подписи имени криттера."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.PathfindingObstacle/description": {
+          "source_sha256": "655cd31f9cb92c521af08cb86fa25268eec72aca4d0e0fdd0158382a9ce8d250",
+          "translation": "Задаёт штраф обхода персонажа при поиске пути независимо от состояния жизни"
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ScaleFactor/description": {
+          "source_sha256": "de043ac920f0dcf58b124093ede046063447afb7ad4d69db37585cbf6b868152",
+          "translation": "Масштаб 3D-модели в тысячных долях; ноль выбирает стандартный масштаб 1000."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ShowCritterDist1/description": {
+          "source_sha256": "f0fa76d680d51b3ca727d663ae6456c87525ae6da02daf967bce05532f3388b4",
+          "translation": "Необязательная первая дистанция событий видимости в гексах; ноль отключает эту группу расстояния."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ShowCritterDist2/description": {
+          "source_sha256": "b12e13e50471425a135e4e9f12be606edc4fcf3ae917ba5a6ff5d8d2573b7548",
+          "translation": "Необязательная вторая дистанция событий видимости в гексах; ноль отключает эту группу расстояния."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.ShowCritterDist3/description": {
+          "source_sha256": "3c063f897d07ccd7dc2d66e41a791e0e37c5d6793fa356076deaaade0b0adcfe",
+          "translation": "Необязательная третья дистанция событий видимости в гексах; ноль отключает эту группу расстояния."
+        },
+        "/symbols/@id=script.enum-value.CritterProperty.VisibilityMode/description": {
+          "source_sha256": "ba9e8d77f08fbaee8cd10f84866c21c5d60edd7a4f0c31ff9af07d0fe57c77fa",
+          "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
+        },
+        "/symbols/@id=script.enum-value.DrawOrderType.FlatCritter/description": {
+          "source_sha256": "5bf13336faa4ba5a918c3b0f095df46159e3e3474f14dc0c5c5c88ad4a60b3d5",
+          "translation": "Плоский слой персонажей, отрисовываемый после освещения"
+        },
+        "/symbols/@id=script.enum-value.GameProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.FrameDeltaTime/description": {
+          "source_sha256": "80b962a4dafcdc037c383b89a00f41a366509487ff4d8dc9a55c1e33185d1b60",
+          "translation": "Монотонный интервал времени между текущим и предыдущим продвижением кадра."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.FrameTime/description": {
+          "source_sha256": "4ac1adaf0ecb932d611fde730016a70376e7106562925745fdb1d61cc4b8df33",
+          "translation": "Монотонное время движка, зафиксированное для текущего кадра."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.FramesPerSecond/description": {
+          "source_sha256": "af7bcd808b483f6ba7ba99c5cb433354ca787d0805e517296552e9d66a7b18f1",
+          "translation": "Число кадров, измеренное за последний завершённый секундный интервал."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.GlobalDayTime/description": {
+          "source_sha256": "48b727c407fd07178ba3edb0eb1b8cb786cd993ac01eacc11393f49db28fbb7a",
+          "translation": "Текущая позиция глобального цикла освещения суток в минутах, управляемая игровыми скриптами."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.HistoryRecordsId/description": {
+          "source_sha256": "04fcda552bf4bc32e4565732e5d7f56670f4592df70a4d7217559518c448d04e",
+          "translation": "Сохраняемая верхняя граница, используемая при выделении идентификаторов серверных записей истории."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.LastEntityId/description": {
+          "source_sha256": "33c99a5565bd0372c65279444d594e7009d4d7c0b5c56975b92e55d9ef098157",
+          "translation": "Сохраняемая верхняя граница, используемая при выделении постоянных идентификаторов сущностей."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.LastGlobalMapTripId/description": {
+          "source_sha256": "f4713b13d34c539e17b09f7c87720671fa595feb006f13739d920c4bfed419e2",
+          "translation": "Последний назначенный сервером идентификатор путешествия по глобальной карте."
+        },
+        "/symbols/@id=script.enum-value.GameProperty.SynchronizedTime/description": {
+          "source_sha256": "b3b19825ecbf47932380edbc656ddb32ec464f78f78095ebbce4d777410e3dd9",
+          "translation": "Текущее синхронизированное игровое время, общее для сервера и клиентов и сохраняемое сервером."
+        },
+        "/symbols/@id=script.enum-value.ImGuiProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.ImGuiProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.ImGuiProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.AlwaysHideSprite/description": {
+          "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
+          "translation": "Не позволяет рисовать спрайт предмета во время выполнения и по умолчанию скрывает его в Mapper."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Colorize/description": {
+          "source_sha256": "fc4a04b90caa7c6602957d4a260cffa28ad283acc864ed3116d2f5339e341817",
+          "translation": "Включает тонирование спрайта предмета на карте цветом ColorizeColor."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.ColorizeColor/description": {
+          "source_sha256": "ebe85964e70fa2e7f5b2c315636c32f31b3a0a5115fb6d3f01eaf2ee68bd0de2",
+          "translation": "Оттенок RGBA, применяемый при включённом Colorize; альфа также задаёт исходную непрозрачность спрайта."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.ContainerId/description": {
+          "source_sha256": "c85a3e9812e7fc48a9e9a55573956448664d61f40174c8a48d8b6844555da73a",
+          "translation": "Идентификатор родительского предмета, пока Ownership равен ItemContainer; в остальных случаях равен нулю."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.ContainerStack/description": {
+          "source_sha256": "a88ea8a1f9f4099039b20d4ecede9d8894dd4fcda99b506ce39b39fd0b108481",
+          "translation": "Определяемый проектом ключ группировки для выбора и объединения предметов внутри контейнера."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Corner/description": {
+          "source_sha256": "daaaf946091f088f124d52c8573ad8e0b445dd278ffb9abb2bd6149263438b57",
+          "translation": "Ориентация угла стены, используемая освещением карты и прозрачностью переднего плана."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.CritterId/description": {
+          "source_sha256": "13163e321142cdc5a2132d01d1196e72b7881953b23a53297d7b9456720b3d56",
+          "translation": "Идентификатор владеющего криттера, пока Ownership равен CritterInventory; в остальных случаях равен нулю."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.CritterSlot/description": {
+          "source_sha256": "04356d847e6a4adad69bf5df6099ddd423664b953973627513ed2fb933c60886",
+          "translation": "Слот инвентаря или экипировки, занятый предметом, пока он принадлежит криттеру."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.DisableEgg/description": {
+          "source_sha256": "166fd72b77aab431e0f9a90190521321c69a4cc47972ada45f5515f2eaef9ff6",
+          "translation": "Отключает обработку прозрачности переднего плана для спрайта предмета на карте."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.DrawFlatten/description": {
+          "source_sha256": "8c42c5f7962a272d8b9e70aade0133b2beae3deb1203b7f6b0f01b2d864c097c",
+          "translation": "Рисует предмет в плоском проходе карты вместо обычного прохода предметов с сортировкой по глубине."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.DrawMultihexLines/description": {
+          "source_sha256": "e1f92c7770e5a03345518079545fbedfff6a27a97c418d31d7d98e5399525ae3",
+          "translation": "Рисует повторные спрайты предмета на гексах занимаемой области, созданных MultihexLines."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.DrawMultihexMesh/description": {
+          "source_sha256": "c24ca063a44af2b82ae183fab57ad10825260e0e22e2f52d4d288d5be2d51181",
+          "translation": "Рисует повторные спрайты предмета на явно заданных гексах MultihexMesh."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Elevation/description": {
+          "source_sha256": "1a2a1b15c27eca391a5e41748dc34b495971a1be9dd6d1f4bf7c1cb3a34cd53b",
+          "translation": "Вертикальный уровень отрисовки предмета на карте."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Hex/description": {
+          "source_sha256": "dffc781d0273108a8166191f1ee7febb58907456ba4a0c8571a8548e5dbf7a33",
+          "translation": "Исходный гекс карты, используемый пока предмет размещён на карте."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Hidden/description": {
+          "source_sha256": "637af3b02f94ec0a51dfc10801f441ca0dc7c2a5ad7f5bde36e947edcdecd812",
+          "translation": "Серверный флаг видимости, скрывающий динамический предмет из клиентских представлений."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.HideSprite/description": {
+          "source_sha256": "03595d24e3807b1bd2adda9a5d7fbc3e87341f55193ecc8f6ed0ef53830613db",
+          "translation": "Скрывает текущий клиентский спрайт на карте, не удаляя присутствие предмета на карте."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.InitScript/description": {
+          "source_sha256": "92c8c2cd2af271cbebda880be7310c5cdae7e3a75135bc0873b8dbb4dfa56b82",
+          "translation": "Серверная функция инициализации, вызываемая после события инициализации для нового или восстановленного предмета."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.InnerItemIds/description": {
+          "source_sha256": "e0d3bca11c2ebef564c2c5adaea9ac4544cd821ae15094f6fd6791ea1405a876",
+          "translation": "Сохраняемые идентификаторы предметов, непосредственно содержащихся в этом предмете."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsGag/description": {
+          "source_sha256": "d6ead5d157ce9a339e1981db6301c067f80773f5dc0006728c6a64a4efb2eb6d",
+          "translation": "Помечает блокирующий предмет как условно проходимый через callback gag карты."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsRoofTile/description": {
+          "source_sha256": "b019a3275120fddbf135b646be5d3691f333ec42ea2c77142e8263a5d66bc64a",
+          "translation": "Выбирает отрисовку крыши вместо тайла земли, когда включён IsTile."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsScenery/description": {
+          "source_sha256": "e41d65a20f9fbd4390072cc498f637608fde707756922c1a5692e7612c840c4a",
+          "translation": "Классифицирует предмет как декорацию для фильтрации в Mapper и правил освещения плоской отрисовки."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsTile/description": {
+          "source_sha256": "03a9b963535708e07109769fdd25dea31bae0958dda28e54cc151695caa469cb",
+          "translation": "Классифицирует предмет как тайл земли или крыши, отрисовываемый в слое тайлов."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsTrigger/description": {
+          "source_sha256": "7cfbc5d256b1e4dfb364fe05767e6bbb741d5b9696c0b4e07cbb0047694970c1",
+          "translation": "Включает предмет в поиск триггеров карты и обработку триггеров перемещения."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.IsWall/description": {
+          "source_sha256": "5dc61a298f187be1900a6a22c3319644558b714cd962655e392997b97f85b668",
+          "translation": "Классифицирует предмет как стену для фильтрации в Mapper и представления карты."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightColor/description": {
+          "source_sha256": "571e9fe8175d07be7ddd5db7a81dc0bcd27976f8e519632996682416dbb95931",
+          "translation": "Цвет RGBA, излучаемый источником света предмета."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightDistance/description": {
+          "source_sha256": "ad159f0529a1fdffa5884404e3e1f88a13da7381faf87c08f13a0918ab29bc6e",
+          "translation": "Радиус действия источника света предмета в гексах."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightFlags/description": {
+          "source_sha256": "8046c6aff9fc965d52aa6f346beacf6560ff28bdb8b15e8346f029d6fd0ddbc4",
+          "translation": "Битовая маска глобального, инверсного и блокирующего направления поведения источника света."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightIntensity/description": {
+          "source_sha256": "b58932e26f9f005302377f2cfa1110c75ded4c1ea422638619290be9f1ed37ba",
+          "translation": "Знаковая интенсивность источника света предмета в процентах."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightSource/description": {
+          "source_sha256": "d287baff16708fe3fc54acc82e11370dbe4c75368b824c1217b6701811552284",
+          "translation": "Включает источник света карты с центром на этом предмете."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.LightThru/description": {
+          "source_sha256": "1037af338e9b7376b3a18c459cdfadf082ea98fba93afd2c1cd145c9a404f823",
+          "translation": "Разрешает распространение света карты через все гексы, занятые предметом."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.MapId/description": {
+          "source_sha256": "2c46f45492a4e7e8b84eea7f0d09c5ddc481e712e59c1f4cb3f1a3847a38f066",
+          "translation": "Идентификатор владеющей карты, пока Ownership равен MapHex; в остальных случаях равен нулю."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.MultihexGeneration/description": {
+          "source_sha256": "fc29904b19512b32c28da26f6e561fade5d8e0e100c83d4cf5b83fd90d713b77",
+          "translation": "Стратегия объединения в Mapper, по которой MultihexMesh строится из совместимых размещений предметов."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.MultihexLines/description": {
+          "source_sha256": "cb8c7af3792f23d28e56ca10e77c1e42880daa622880376c303f6e8759237e73",
+          "translation": "Пары направления и числа шагов, прокладывающие дополнительные гексы занимаемой области от каждого начала сетки."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.MultihexMesh/description": {
+          "source_sha256": "64d3fad57d3b2158528f52ee892636e53709072c139e7c15d4e7cf2b36cd7e3b",
+          "translation": "Явно заданные гексы карты, разделяющие занимаемую область предмета и необязательный повторяемый спрайт."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.NoBlock/description": {
+          "source_sha256": "47c83de8812ede09ff101593fe047c00fe7fe8ad0df398ad0825d74c6e938d8c",
+          "translation": "Разрешает перемещение через все гексы, занятые предметом."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.NoHighlight/description": {
+          "source_sha256": "3913f9b16e667e72c3057841165a1c035be5191e2d72d60203a709d27322eb80",
+          "translation": "Запрещает клиенту применять обычное визуальное выделение предмета."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.NoLightInfluence/description": {
+          "source_sha256": "a0eac1c042bcb0ffd45a7ce06e9181e22ccf36207156193ed9c52f5ce387d08b",
+          "translation": "Не позволяет окружающему освещению карты тонировать спрайт предмета."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Offset/description": {
+          "source_sha256": "7a272511540548ee8b56d6ed151072068dcc37b4a6dfa1e42ea13f148ad16132",
+          "translation": "Пиксельное смещение спрайта предмета относительно его исходного гекса."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Ownership/description": {
+          "source_sha256": "7f18b6727e88f6a9f2dd9e4ac8fa9f2954debee9351d8c1d9cda9660afc20d7f",
+          "translation": "Текущая категория размещения: гекс карты, инвентарь криттера, контейнер-предмет или отсутствие размещения."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.PicInv/description": {
+          "source_sha256": "a14861a79d378dd986d0c5a1f31cb43d745b23dcd5502f66ca74fa8e5a4f15ee",
+          "translation": "Ресурс спрайта для представления предмета в интерфейсах инвентаря."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.PicMap/description": {
+          "source_sha256": "ab14f55b75cc41008483bf44e6eb5d60046db1eb89c820cc29227f941f262567",
+          "translation": "Ресурс спрайта для отрисовки предмета на карте."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.ShootThru/description": {
+          "source_sha256": "bc1513365e7604c60ab42986e2e235bf63ae81f5081ee66377dbc348d0a157ae",
+          "translation": "Разрешает трассировку снарядов через все гексы, занятые предметом."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.Static/description": {
+          "source_sha256": "5fd25d0321400cdb6825f1b256dbf52f6e3a41c4be58a508e6375fe045a30fb2",
+          "translation": "Помечает данные предмета на карте как статическую декорацию, а не динамическую сущность предмета."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.StaticScript/description": {
+          "source_sha256": "80accddad61a6cbeb107b37c7e6fc4691023d6304302fbd93627672e584a67ea",
+          "translation": "Серверный callback, вызываемый при взаимодействии криттера с этим статическим предметом."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.TileLayer/description": {
+          "source_sha256": "a406efdae80c13b34e1cd584889d5d940a6943a27c70fd1f486b7f7a37b131cf",
+          "translation": "Индекс с нуля слоя отрисовки земли или крыши для предмета-тайла."
+        },
+        "/symbols/@id=script.enum-value.ItemProperty.TriggerScript/description": {
+          "source_sha256": "8fde30c2a2608ca0eb769ffd696ba7fee6c5df33a2002299a603d40e4fe273d7",
+          "translation": "Серверный callback, вызываемый при входе криттера в этот триггер-предмет или выходе из него."
+        },
+        "/symbols/@id=script.enum-value.LocationProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.LocationProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.LocationProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.LocationProperty.InitScript/description": {
+          "source_sha256": "06ca5c2f44541f145f85a9eb9c2d230cb115412a59951ee233501cefa4eeae3a",
+          "translation": "Серверная функция инициализации, вызываемая после события инициализации для новой или восстановленной локации."
+        },
+        "/symbols/@id=script.enum-value.LocationProperty.MapIds/description": {
+          "source_sha256": "c534f6bf02f4b86795dfab21f1c845908827df13ba74c7a0a6d9b831e615232e",
+          "translation": "Сохраняемые идентификаторы карт этой локации в порядке списка карт локации."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.CritterIds/description": {
+          "source_sha256": "383b430c8c33bf1885c300520c17fd38067ff56b78d668e11ac9244035dd8e8f",
+          "translation": "Сохраняемые идентификаторы неигровых криттеров, принадлежащих этой карте."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.DayColor/description": {
+          "source_sha256": "8c28d7782ce766bae7a87f21602faf98ccc756e3917e876a0278936521dae885",
+          "translation": "Поканальные значения RGB для соответствующих ключевых цветов освещения карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.DayColorTime/description": {
+          "source_sha256": "063442b339f136a862ee76aca06b2b9f76af23eef2bdcef6d597bacafc297b48",
+          "translation": "Локальные для карты моменты ключевых цветов освещения в минутах суточного цикла."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.FixedDayTime/description": {
+          "source_sha256": "733a7356ce97118638d8a96d452edf88bb2b23c6af70c8ca437978b1124fee05",
+          "translation": "Локальное для карты значение переопределения времени суток, обычно выраженное в минутах и интерпретируемое игровыми скриптами."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.GlobalDayColor/description": {
+          "source_sha256": "5062b0632e9dfa916cb4a1452f07becc6317345af600ffa19e3857a4faf8a19d",
+          "translation": "Текущий клиентский цвет глобального дневного освещения, переданный через SetDayColors для скриптов и эффектов."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.GlobalDayLightCapacity/description": {
+          "source_sha256": "0e896da615c499ca6b6d72bbfb4ff6cce8634eee240e64afb1eb6f58bb28a46d",
+          "translation": "Текущая дневная ёмкость источников света с флагом global в процентах, ограниченная диапазоном от 0 до 100."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.InitScript/description": {
+          "source_sha256": "b346fcb09dd09317254f8bd4a470e5686139f49d77fdddb12cc789c9b9a54fdf",
+          "translation": "Серверная функция инициализации, вызываемая после события инициализации для новой или восстановленной карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.ItemIds/description": {
+          "source_sha256": "f68bdd19c02a3c7072ef0c3f60c46e20895921dc5864e549679ff50e67587c65",
+          "translation": "Сохраняемые идентификаторы динамических предметов, размещённых непосредственно на этой карте."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.LocId/description": {
+          "source_sha256": "a03a7cf8f8affc1651b2f66086f024e3a3e58ae8f73bc470d3f60fd31ec661e9",
+          "translation": "Идентификатор локации, владеющей этой картой."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.LocMapIndex/description": {
+          "source_sha256": "edc543ed913945fdf817c99f20c8174c2f26112564f57b9a1d30a42ba8ba5d59",
+          "translation": "Индекс с нуля этой карты в списке карт владеющей локации."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.MapDayColor/description": {
+          "source_sha256": "7d45ea8d535569211311209d1e1b090eff8bd95a7711ad597fe4674d6b8c39f3",
+          "translation": "Текущий клиентский оттенок карты, переданный через SetDayColors и используемый отрисовкой карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.MapDayLightCapacity/description": {
+          "source_sha256": "a7905a27180f72a6d5c60e80fbd6a24dcd91c21834c106f7ffbd18129444961f",
+          "translation": "Текущая дневная ёмкость обычных источников света карты в процентах, ограниченная диапазоном от 0 до 100."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.ScrollAxialArea/description": {
+          "source_sha256": "3fa8a2bad17f4366872010bfc71dd29fae1130ec58631caac1921a43c94da421",
+          "translation": "Прямоугольник в аксиальных координатах, ограничивающий прокрутку карты; нулевой прямоугольник оставляет доступной всю карту."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.ScrollOffset/description": {
+          "source_sha256": "db936c3fe0561e0b2e76721fec01b38c190f6d0df6c06e0c0de5db60f847e17c",
+          "translation": "Округлённое клиентское смещение области просмотра в пикселях пространства карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.Size/description": {
+          "source_sha256": "55bb18dc4ab688f68beaf3fb1b2bfed3d1d671b87a6c09cf6816c70f83e77e49",
+          "translation": "Ширина и высота сетки карты в гексах."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.SpritesZoom/description": {
+          "source_sha256": "e7dab76f2064735454657cf83bfd532048bf61a2dbf2c0e7a92b8e919305b47c",
+          "translation": "Текущий клиентский коэффициент масштаба спрайтов карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.SpritesZoomTarget/description": {
+          "source_sha256": "5cc47384c7e656b8df01bf7003c3ca3f136e115eb89e50dc18affa7ba19589d1",
+          "translation": "Целевой коэффициент масштаба, к которому интерполируется клиентский вид карты."
+        },
+        "/symbols/@id=script.enum-value.MapProperty.WorkHex/description": {
+          "source_sha256": "39e3f4def04bf163c5b07c4ede4f0dbe86be876eeee8e51712a36a3b3162a429",
+          "translation": "Рабочий гекс редактирования, используемый как начальный центр вида Mapper."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.ControlledCritterId/description": {
+          "source_sha256": "50735bd539780ae0a251c72d1a8fae09c6c4cec76045a2822db625e07ca4e0e9",
+          "translation": "Идентификатор криттера, которым сейчас управляет этот игрок; равен нулю, если криттер не прикреплён."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.CustomHolderEntry/description": {
+          "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
+          "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.CustomHolderId/description": {
+          "source_sha256": "f84e0928a758c5e497d28a042fd88d98879212b1ac2f6931f329526772f507b3",
+          "translation": "Для пользовательской сущности хранит постоянный идентификатор владеющего держателя; равен нулю, если у держателя нет постоянного идентификатора."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.ExplicitlyPersistent/description": {
+          "source_sha256": "909a82b41efa2f84a7e1fd273e8267c3b69fc21f3390ff505defbb973cf11e51",
+          "translation": "Помечает сущность как самостоятельно сохраняемую, а не сохраняемую только из-за вложения в другую сущность."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.LastControlledCritterId/description": {
+          "source_sha256": "c2855b57f97fd38a8854d0420584adcc506c88f70d5c20aadd6a91e6bad27cf7",
+          "translation": "Сохраняемый идентификатор последнего управляемого криттера, остающийся после отвязки для восстановления управления."
+        },
+        "/symbols/@id=script.enum-value.PlayerProperty.LoggedIn/description": {
+          "source_sha256": "28d0480c6e66d4c5f83b55070dd129b6a59345fea9256a118058fa790a152ba3",
+          "translation": "Показывает, завершило ли это соединение игрока вход на сервер."
+        },
+        "/symbols/@id=script.enum.CritterAnimationContext/description": {
+          "source_sha256": "4d5747bccd6f2927feee9bb2b9dc53a292866ef39c3195dfb2e24d73fe390195",
+          "translation": "Контекст запроса воспроизведения; идентификаторы анимаций для каждого контекста выбирает проект"
+        },
+        "/symbols/@id=script.enum.CritterAnimationFlags/description": {
+          "source_sha256": "81a12179ba2488b1894c9085ed12434167671e74b7e3b5cb961dd2e81e374e2f",
+          "translation": "Независимые параметры воспроизведения, возвращаемые выбором анимации проекта"
+        },
+        "/symbols/@id=script.event.client.Game.OnCritterAnimationSprite/description": {
+          "source_sha256": "ea23d73020ff8ad4903a1581216ee2f970f8308c4b9848bb79b908555f757213",
+          "translation": "Выбирает принадлежащую проекту 2D-анимацию; ненулевой sprId передаёт handle загруженного спрайта движку, StopChain сообщает о неудаче"
+        },
+        "/symbols/@id=script.method.client.Game.CreateSpriteSequence/description": {
+          "source_sha256": "d9d2101deea97dbd8ff4b12658172e9ec42d4d69c26cfb10f310ee3922fa8bae",
+          "translation": "Создаёт остановленную независимую 2D-последовательность из явных массивов кадров по направлениям и длительности"
+        },
+        "/symbols/@id=script.method.client.Game.GetSpriteDirectionCount/description": {
+          "source_sha256": "fbc42ebd845709240ba48b847b1caa6650302bf51911aa5386a08af283c77d54",
+          "translation": "Возвращает число направлений проверенного 2D-спрайта; у статического изображения одно направление"
+        },
+        "/symbols/@id=script.method.client.Game.GetSpriteDuration/description": {
+          "source_sha256": "2ec861648dbcc6ab81363c9987a0f83545763c8e1f53c8cd2b24fdf09c1ec8a4",
+          "translation": "Возвращает длительность проверенного 2D-спрайта; у статического изображения она нулевая"
+        },
+        "/symbols/@id=script.method.client.Game.GetSpriteFrameCount/description": {
+          "source_sha256": "dc2f27e6a5b3b78bfd21c13e1ca5cd5b6036fb02959a90a1d3c9a3c1c6b8a1c0",
+          "translation": "Возвращает число кадров проверенного 2D-спрайта; у статического изображения один кадр"
+        },
+        "/symbols/@id=script.method.client.Game.GetSpriteFrameMotion/description": {
+          "source_sha256": "60e9b6561770fc35b71a3642d9dd395687d37c9dc735ee625cb0574a63712776",
+          "translation": "Возвращает проверенную покадровую дельту motion в пикселях; для статического изображения смещение нулевое."
+        },
+        "/symbols/@id=script.method.client.Game.GetSpriteFrameOffset/description": {
+          "source_sha256": "659753545f45a4ef24fa102e90f9b67bb0ee03c2ea8d4ff07a1424e1bcddd03e",
+          "translation": "Возвращает абсолютное опорное смещение проверенного кадра в пикселях; одно направление источника обслуживает любое выходное направление"
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%2328dbc09a155eeea9/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbCompareExchangeRecordString%23d7c0eb9e97e0795d/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%23148cb7fe9d0c7284/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.DbTryInsertRecord%235d786aff58d93d01/description": {
+          "source_sha256": "b77dd7865f43ff57f7b0aaacfd3469a3eac9eadf595055cb34654c59c0738371",
+          "translation": "SyncScope: только изменяет базу данных; покрытие активной сущности не требуется."
+        },
+        "/symbols/@id=script.property.Critter.DrawFlatten/description": {
+          "source_sha256": "f8b72625b6a7eaaa7edd97f77b5160dddf9630186508fe15399a3634127958fd",
+          "translation": "Выбирает плоскую отрисовку персонажа независимо от состояния жизни"
+        },
+        "/symbols/@id=script.property.Critter.PathfindingObstacle/description": {
+          "source_sha256": "655cd31f9cb92c521af08cb86fa25268eec72aca4d0e0fdd0158382a9ce8d250",
+          "translation": "Задаёт штраф обхода персонажа при поиске пути независимо от состояния жизни"
+        },
+        "/symbols/@id=setting.common.Animation.PreviewActionAnim/description": {
+          "source_sha256": "00fb862b95d1516685ff093fc2807001a147cd979f414481b32c001c994e4427",
+          "translation": "Выбранный проектом идентификатор действия для превью"
+        },
+        "/symbols/@id=setting.common.Animation.PreviewStateAnim/description": {
+          "source_sha256": "a6bb9da90858dd2c2855b7ed515a6e7500ad48e95ebcbdae91d0475de1f83830",
+          "translation": "Выбранный проектом идентификатор состояния для превью"
         }
       }
     }

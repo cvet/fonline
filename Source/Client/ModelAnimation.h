@@ -248,7 +248,7 @@ public:
         int32_t ClipIndex {-1};
         bool Enabled {};
         bool Reversed {};
-        float32_t Position {};
+        float64_t Position {};
         float32_t Weight {};
         const_span<uint8_t> JointMask {};
     };

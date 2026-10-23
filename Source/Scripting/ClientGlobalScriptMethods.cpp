@@ -872,7 +872,7 @@ FO_SCRIPT_API string Client_Game_ReplaceText(ptr<ClientEngine> client, string_vi
 FO_SCRIPT_API void Client_Game_Preload3dFiles(ptr<ClientEngine> client, readonly_vector<string> fnames)
 {
 #if FO_ENABLE_3D
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     FO_VERIFY_AND_THROW(factory, "Missing model sprite factory");
 
     for (const auto& fname : fnames) {
@@ -1120,7 +1120,127 @@ FO_SCRIPT_API uint32_t Client_Game_LoadSeparateSprite(ptr<ClientEngine> client, 
     return client->AnimLoad(nameHash, AtlasType::OneImage);
 }
 
-// Releases a client-local sprite handle, stopping its animation and retaining the resource in the reuse cache; unknown handles are ignored
+static auto RequireAnimationSprite(ptr<ClientEngine> client, uint32_t spr_id) -> ptr<Sprite>
+{
+    auto sprite = client->AnimGetSpr(spr_id);
+    FO_VERIFY_AND_THROW(sprite, "Unknown sprite handle", spr_id);
+    FO_VERIFY_AND_THROW(sprite.dyn_cast<SpriteSheet>() || sprite.dyn_cast<AtlasSprite>(), "Sprite is not a 2D frame resource", spr_id);
+
+    return sprite;
+}
+
+static auto RequireAnimationFrame(ptr<ClientEngine> client, uint32_t spr_id, int32_t frame, mdir dir) -> ptr<const Sprite>
+{
+    auto sprite = RequireAnimationSprite(client, spr_id);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    if (sheet) {
+        auto direction = sheet->GetDirection(dir);
+        FO_VERIFY_AND_THROW(direction, "Missing sprite direction", spr_id, dir);
+        int32_t frame_count = direction->GetFramesCount();
+        FO_VERIFY_AND_THROW(frame >= 0 && frame < frame_count, "Sprite frame index is out of range", spr_id, frame, frame_count);
+
+        return direction->GetSprite(frame);
+    }
+
+    FO_VERIFY_AND_THROW(frame == 0, "Static sprite frame index must be zero", spr_id, frame);
+
+    return sprite;
+}
+
+// Returns a checked 2D sprite's frame count; static images have one frame
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetSpriteFrameCount(ptr<ClientEngine> client, uint32_t sprId)
+{
+    auto sprite = RequireAnimationSprite(client, sprId);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    return sheet ? sheet->GetFramesCount() : 1;
+}
+
+// Returns a checked 2D sprite's direction count; static images have one direction
+///@ ExportMethod
+FO_SCRIPT_API int32_t Client_Game_GetSpriteDirectionCount(ptr<ClientEngine> client, uint32_t sprId)
+{
+    auto sprite = RequireAnimationSprite(client, sprId);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    return sheet ? sheet->GetDirectionCount() : 1;
+}
+
+// Returns a checked 2D sprite's duration; static images have zero duration
+///@ ExportMethod
+FO_SCRIPT_API timespan Client_Game_GetSpriteDuration(ptr<ClientEngine> client, uint32_t sprId)
+{
+    auto sprite = RequireAnimationSprite(client, sprId);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    return sheet ? sheet->GetDuration() : timespan::zero;
+}
+
+// Returns a checked frame's absolute pixel draw offset; one-direction sources serve every direction
+///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Game_GetSpriteFrameOffset(ptr<ClientEngine> client, uint32_t sprId, int32_t frame, mdir dir)
+{
+    auto frame_sprite = RequireAnimationFrame(client, sprId, frame, dir);
+    auto sprite = RequireAnimationSprite(client, sprId);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    return sheet ? sheet->GetDirection(dir)->GetSpriteOffset(frame) : frame_sprite->GetOffset();
+}
+
+// Returns a checked frame's pixel motion delta; static images have zero displacement
+///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Game_GetSpriteFrameMotion(ptr<ClientEngine> client, uint32_t sprId, int32_t frame, mdir dir)
+{
+    (void)RequireAnimationFrame(client, sprId, frame, dir);
+
+    auto sprite = RequireAnimationSprite(client, sprId);
+    auto sheet = sprite.dyn_cast<SpriteSheet>();
+
+    return sheet ? sheet->GetDirection(dir)->GetSpriteMotion()[frame] : ipos32 {};
+}
+
+// Creates a stopped independent 2D sequence from explicit direction-major frame arrays and duration
+///@ ExportMethod
+FO_SCRIPT_API uint32_t Client_Game_CreateSpriteSequence(ptr<ClientEngine> client, readonly_vector<uint32_t> sources, readonly_vector<int32_t> frames, readonly_vector<ipos32> offsets, readonly_vector<ipos32> motions, int32_t framesPerDirection, timespan duration)
+{
+    FO_VERIFY_AND_THROW(framesPerDirection > 0 && !sources.empty(), "Sprite sequence must contain frames");
+    FO_VERIFY_AND_THROW(sources.size() == frames.size() && sources.size() == offsets.size() && sources.size() == motions.size(), "Sprite sequence frame arrays differ in length");
+    size_t frames_per_direction = numeric_cast<size_t>(framesPerDirection);
+    FO_VERIFY_AND_THROW(sources.size() % frames_per_direction == 0, "Sprite sequence direction is incomplete");
+
+    int32_t directions = numeric_cast<int32_t>(sources.size() / frames_per_direction);
+    FO_VERIFY_AND_THROW(directions == 1 || directions == GameSettings::MAP_DIR_COUNT, "Sprite sequence direction count is unsupported", directions);
+    FO_VERIFY_AND_THROW(duration >= timespan::zero, "Sprite sequence duration must be nonnegative");
+
+    vector<shared_ptr<Sprite>> frame_owners;
+    frame_owners.reserve(sources.size());
+
+    for (size_t i = 0; i < sources.size(); i++) {
+        mdir dir {hdir {numeric_cast<int32_t>(i / frames_per_direction)}};
+        auto source = RequireAnimationFrame(client, sources[i], frames[i], dir);
+
+        auto atlas = source.dyn_cast<const AtlasSprite>();
+        FO_VERIFY_AND_THROW(atlas, "Sprite sequence frame must be an atlas sprite");
+
+        frame_owners.emplace_back(atlas->shared_from_this().cast_no_const());
+    }
+
+    auto sequence = safe_alloc::make_shared<SpriteSheet>(&client->SprMngr, framesPerDirection, duration, directions);
+
+    for (size_t i = 0; i < sources.size(); i++) {
+        mdir dir {hdir {numeric_cast<int32_t>(i / frames_per_direction)}};
+        auto direction = sequence->GetDirection(dir);
+        FO_VERIFY_AND_THROW(direction, "Missing sprite sequence direction");
+
+        direction->SetFrame(numeric_cast<int32_t>(i % frames_per_direction), std::move(frame_owners[i]), offsets[i], motions[i]);
+    }
+
+    return client->AnimAdd(std::move(sequence));
+}
+
+// Releases a client-local sprite handle; named resources enter the atlas-specific reuse cache, constructed sequences are released, and unknown handles are ignored
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_FreeSprite(ptr<ClientEngine> client, uint32_t sprId)
 {
@@ -1432,7 +1552,7 @@ FO_SCRIPT_API void Client_Game_DrawPrimitive(ptr<ClientEngine> client, RenderPri
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, mdir dir, int32_t l, int32_t t, int32_t r, int32_t b, bool scratch, bool center, ucolor color)
 {
-    auto frames = client->ResMngr.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
+    auto frames = client->CritterFrames.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
     if (frames) {
         client->SprMngr.DrawSpriteSize(frames->GetCurrentSprite(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : Color::Neutral);
@@ -1460,7 +1580,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
     auto& model_spr = client->DrawCritterModel[instance_index];
 
     if (!model_spr || client->DrawCritterModelCrType[instance_index] != modelName) {
-        model_spr = client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites).dyn_cast<ModelSprite>();
+        model_spr = client->ResMngr.LoadSprite(modelName, AtlasType::IfaceSprites).dyn_cast<ModelSprite>();
 
         client->DrawCritterModelCrType[instance_index] = modelName;
         client->DrawCritterModelFailedToLoad[instance_index] = false;
@@ -2021,3 +2141,4 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
 }
 
 FO_END_NAMESPACE
+

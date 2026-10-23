@@ -264,6 +264,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-connect-b08c9badb0"></a>
 - [`symbol-script-method-client-game-connect-b08c9badb0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-connect-b08c9badb0)
 
+<a id="symbol-script-method-client-game-createspritesequence-adaeafb3b6"></a>
+- [`symbol-script-method-client-game-createspritesequence-adaeafb3b6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-createspritesequence-adaeafb3b6)
+
 <a id="symbol-script-method-client-game-createvideoplayback-6ac4d2ee32"></a>
 - [`symbol-script-method-client-game-createvideoplayback-6ac4d2ee32`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-createvideoplayback-6ac4d2ee32)
 
@@ -392,6 +395,21 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-getsoundvolume-4387d3e6c6"></a>
 - [`symbol-script-method-client-game-getsoundvolume-4387d3e6c6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getsoundvolume-4387d3e6c6)
+
+<a id="symbol-script-method-client-game-getspritedirectioncount-6388744345"></a>
+- [`symbol-script-method-client-game-getspritedirectioncount-6388744345`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritedirectioncount-6388744345)
+
+<a id="symbol-script-method-client-game-getspriteduration-c447e01d86"></a>
+- [`symbol-script-method-client-game-getspriteduration-c447e01d86`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteduration-c447e01d86)
+
+<a id="symbol-script-method-client-game-getspriteframecount-6679584838"></a>
+- [`symbol-script-method-client-game-getspriteframecount-6679584838`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframecount-6679584838)
+
+<a id="symbol-script-method-client-game-getspriteframemotion-2a2cf10af9"></a>
+- [`symbol-script-method-client-game-getspriteframemotion-2a2cf10af9`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframemotion-2a2cf10af9)
+
+<a id="symbol-script-method-client-game-getspriteframeoffset-7138f2e256"></a>
+- [`symbol-script-method-client-game-getspriteframeoffset-7138f2e256`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframeoffset-7138f2e256)
 
 <a id="symbol-script-method-client-game-getspritesize-15077f6fce"></a>
 - [`symbol-script-method-client-game-getspritesize-15077f6fce`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritesize-15077f6fce)
@@ -2448,6 +2466,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-createnotloggedinplayer-97201edbe3"></a>
 - [`symbol-script-method-server-game-createnotloggedinplayer-97201edbe3`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createnotloggedinplayer-97201edbe3)
 
+<a id="symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf"></a>
+- [`symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbcompareexchangerecordstring-28dbc09a155eeea9-ac96f45aaf)
+
+<a id="symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95"></a>
+- [`symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbcompareexchangerecordstring-d7c0eb9e97e0795d-445d4fff95)
+
 <a id="symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19"></a>
 - [`symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbgetallrecordids-00fbe0ef19)
 
@@ -2483,6 +2507,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373"></a>
 - [`symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbremoverecord-2749ed5b0c8482ba-bfafd06373)
+
+<a id="symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2"></a>
+- [`symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbtryinsertrecord-148cb7fe9d0c7284-44efb614b2)
+
+<a id="symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0"></a>
+- [`symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbtryinsertrecord-5d786aff58d93d01-4485f685d0)
 
 <a id="symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989"></a>
 - [`symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-dbupdaterecordbool-6b7737017a2e23dd-8e201a9989)

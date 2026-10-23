@@ -45,7 +45,7 @@ convert to PNG/supported TGA. Renderer/library support does not extend the
 1. Mounted sources form a dependency graph before output filters select roots.
 2. Loaders build `FrameCollection`; meshing pads/crops RGBA and resolves anchors.
 3. Root containers and `SpriteInfo/<PackName>.foinfo` are published.
-4. `SpriteManager` dispatches baked bytes to atlas sprites or `SpriteSheet`.
+4. `ResourceManager` dispatches baked bytes to atlas sprites or `SpriteSheet`.
 
 The stock client runs no source decoders. Baked `Sprite.png` contains the Engine
 container; its extension selects dispatch, not payload format.
@@ -289,10 +289,10 @@ or producing this stream. Rebuild matching binaries and packs after a layout cha
 
 `SpriteSheet` exposes `GetCurrentSprite`, `GetSprite`, `GetDirection`,
 `GetDirectionCount`, `GetStateAnimation`, `GetActionAnimation` and
-`GetSpriteOffset`. Direction changes use the virtual `Sprite::SetDirection`
+`GetSpriteOffset(frame)` and `GetSpriteMotion()`. Direction changes use the virtual `Sprite::SetDirection`
 interface, also implemented by model and particle sprites.
 
-`SpriteManager` selects a registered `SpriteFactory` by lowercased extension.
+`ResourceManager` selects a registered `SpriteFactory` by lowercased extension.
 The default factory passes all bytes to `ReadSpriteResource` to validate magic,
 version, records, mesh geometry, footer and trailing data, then checks one/full directions.
 
@@ -300,11 +300,15 @@ A single frame/direction becomes `AtlasSprite`: placement uses the baked draw of
 `Motion` is read but ignored. Otherwise `SpriteSheet` stores parallel
 direction sheets and concrete/shared frame displacement in `_sprOffset`.
 
+Shared cropped frames retain the referenced image's logical canvas correction and their own placement delta. Sharing pixels does not share placement or motion metadata.
+
 `SpriteSheet` supports `Prewarm`, loop/reverse and phase-preserving directions;
 `Play` ignores one frame. `GetDuration`/`GetFrameDurations` and frame ends use
 `timespan`, retaining sub-ms time. FrameShot, SpriteFrameInfo and decoded frames use
 timespan Duration/GetDuration. GetSpriteDurationMilliseconds requires whole positive
 uint32 ms at output; legacy millisecond boundaries and file layouts stay unchanged.
+
+Explicit native constructors and `Game.CreateSpriteSequence` accept zero duration for manual frame selection. Such sequences do not play automatically; `SetTime` selects a frame by normalized index. A timeline must be entirely zero or entirely positive. FOFRM and baked resources still require positive frame durations.
 
 Concrete positive-size RGBA frames use the requested `AtlasType`, duplicated
 one-pixel edges for linear filtering and an alpha hit mask from
@@ -336,14 +340,32 @@ motion. Server/client `EngineMetadata` reads it without
 RGBA decoding. The baker maintains this index from current output snapshots;
 an absent index can be reconstructed during ordinary or on-demand baking.
 
-Every copyable load, including the first, returns `MakeCopy()`; the cache retains
-the factory prototype. `SpriteSheet` copies own playback and frame tables, start
-at frame/direction zero with valid size/anchor and retain state/action tags.
-`AtlasSprite::MakeCopy()` shares atlas pixels/geometry. First/last extraction
-cannot shorten later loads; each trimmed direction has one sprite and offset.
-`_nonFoundSprites` memoizes missing files/extensions, unknown factories and load
-failures by path. `CleanupSpriteCache()` does not clear it: recreate the manager
-or restart after adding a previously failed resource.
+Copyable loads return `MakeCopy()`; the cache keeps the factory prototype.
+`SpriteSheet` copies own playback/frame tables, start at frame/direction zero with valid
+size/anchor and retain state/action tags. `AtlasSprite::MakeCopy()` shares pixels/geometry.
+
+Constructed sheets retain the original shared `AtlasSprite` frames; their independent
+absolute draw offsets live in `SpriteSheet::_sprOffset`, alongside the separate
+per-frame `_sprMotion` table. Copies preserve both tables. Map sprites use the selected draw anchor
+without adding it to accumulated motion, light position or the logical world root.
+First/last extraction preserves later loads; trimmed directions keep one sprite/offset.
+`_nonFoundSprites` caches missing files/extensions, unknown factories and failures by path.
+Cleanup preserves misses; `ResourceManager::ForgetFailedSprite` or `InvalidateSpriteResource` explicitly permits another load after the resource source is updated.
+`FreeSprite` caches named script sprites by name/atlas. Map-unload cleanup drops unused
+entries before sprite/atlas collection; active handles retain their frames.
+Handle invalidation precedes Stop. If stopping throws, the released instance is not
+left in the active-handle map; direct callers still receive the stop exception.
+
+### Script-owned 2D critter animations
+
+Projects resolve `Game.OnCritterAnimationSprite` to a transferred sprite handle and own
+filenames, anchors, first/last selection and splices. The Engine caches an independent sheet;
+FRM decoding and common substitutions remain separate. Read checked frame count, directions,
+duration, draw offsets and motion through the generic sprite getters; construct explicit
+direction-major arrays with `Game.CreateSpriteSequence`. No implicit Fallout policy remains.
+The [migration guide](../migration/script-owned-sprite-animations.md) specifies removed
+events, both backends, arrays, ownership, timing, failures, acceptance and rollout/rollback.
+
 
 ## Authoring practices
 
@@ -372,7 +394,7 @@ for grammar, dependency, direction, pixel and timeline refusals.
 
 For missing-cache retries, atlas alpha/hit area, TGA origin and directional placement,
 use the corresponding runtime/source sections above. A one-frame collection does not
-play; other timelines require positive durations, without a global integer frame period.
+play; file-backed timelines require positive durations, without a global integer frame period. Explicit zero-duration native/script sequences support manual frame selection.
 
 Every loader raises `Image import failed` with source path/options/size and the
 original exception. Each FOFRM `Source`/nested `Frame` level retains that context.

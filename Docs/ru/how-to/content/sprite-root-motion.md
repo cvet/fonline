@@ -1,11 +1,11 @@
 ---
 layout: default
-title: Корневое движение спрайтов и циклы ходьбы
+title: Смещения кадров спрайтов и циклы ходьбы
 locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"f704e0405ffbc7776090589bf882240450177b25413cd98c5b8c322927288c79"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"8e78188e1413934cec23eb5d7bb40f4a731a2d05dfbe1f6357b677529bd30bc1"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -34,12 +34,13 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 - `Source/Tools/ImageImport.*` - `FrameShot::Motion` и общий контекст загрузчика;
 - `Source/Tools/ImageBaker.*` - координация, преобразования и сериализация запечённых спрайтов; соседние пары `ImageBaker-*.h/.cpp` владеют импортом исходных форматов;
 - `Source/Common/SpriteResource.*` - общий декодер кадров SpriteResource v3 и перенос `NextOffset`;
-- `Source/Client/DefaultSprites.*` - `SpriteSheet::_sprOffset`, загрузка запечённых данных, общие кадры и листы по направлениям;
+- `Source/Client/DefaultSprites.*` - `SpriteSheet::_sprOffset` / `_sprMotion`, загрузка запечённых данных, общие кадры и листы по направлениям;
 - `Source/Common/Movement.*` - авторитетный прогресс времени/пути и построение целочисленного пиксельного `HexOffset`;
 - `Source/Common/Geometry.*` - re-split без потери позиции между гексом и offset с учётом проходимости;
-- `Source/Client/CritterHexView.*` - anchor цикла, displacement движения, выбор кадра, отображаемый animation offset и нормализация при остановке;
-- `Source/Client/ResourceManager.cpp` - выбор анимации, извлечение кадров, merge, clone и их внутренние преобразования offsets;
-- `Source/Tests/Test_ImageBaker.cpp` и `Source/Tests/Test_Geometry.cpp` - покрытие offsets на уровне формата и нормализации геометрии.
+- `Source/Client/AnimationMovement.*` — чистая математика накопления дельт, проекции цикла, переноса фазы, выбора кадра и визуальной компенсации;
+- `Source/Client/CritterHexView.*` — anchor цикла, displacement движения, применение animation offset и нормализация при остановке;
+- `Source/Client/CritterFramesCache.cpp` - кеш листов по направлениям и тегов анимации, разрешённых проектом; проект выбирает, извлекает и склеивает кадры через общий API спрайтов;
+- `Source/Tests/Test_Mapper.cpp`, `Source/Tests/Test_ImageBaker.cpp` и `Source/Tests/Test_Geometry.cpp` — математика цикла, реальный потребитель CritterHexView, перенос формата и нормализация геометрии.
 
 Документация и контент проектов полезны как integration evidence, но не являются источником истины для переиспользуемого поведения Engine.
 
@@ -51,7 +52,7 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 2. **Интерполяция внутри гекса**: `MovingContext::BuildProgress` преобразует плавную позицию сегмента в целочисленные пиксельные значения `HexOffset`. `CritterHexView::ProcessMoving` применяет логический гекс и offset.
 3. **Авторское смещение спрайта**: каждый кадр анимации содержит целочисленную delta `(Motion.x, Motion.y)`. `CritterHexView` выбирает кадр и вычисляет `_offsAnim`, чтобы отображаемый спрайт следовал созданному циклу ходьбы, пока логическое движение остаётся авторитетным.
 
-Sprite root motion является данными представления. Оно не перемещает сущность, не выбирает путь, не меняет скорость, не разрешает переход между гексами и не реплицирует движение по сети.
+Смещения кадров — данные представления. Они не перемещают сущность, не выбирают путь, не меняют скорость, не разрешают переход между гексами и не реплицируют движение по сети.
 
 ## Создание покадровых offsets
 
@@ -89,10 +90,9 @@ ART сохраняет DeltaX/DeltaY как Motion со знаками отра�
 обычная композиция отбрасывает размещение дочерней последовательности,
 сохраняя покадровое размещение/дельты. См. [ART](image-format.md#art).
 
-Offsets зависят от направления. Запекание может отражать/обрезать/компоновать;
-клиент — извлекать, клонировать или объединять sheet. Fallout splice вычитает
-смещение базового цикла из дополнительной последовательности по обеим осям;
-проверка — ResourceManagerMergesBothMotionAxes.
+Offsets зависят от направления. Проект выбирает кадры и объединяет последовательности
+через [общий API спрайтов](image-format.md#script-owned-2d-critter-animations). Движок
+не задаёт правила Fallout-имён, обрезки или склейки.
 
 ## Запечённое и runtime-представление
 
@@ -101,29 +101,44 @@ int32 и положительную uint32 длительность каждог
 Shared-слот ссылается на прежние пиксели/геометрию, сохраняя собственные движение,
 размещение и время. `ReadSpriteResource` декодирует движение в `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` копирует NextOffset каждого слота в `_sprOffset`;
-shared-спрайт получает собственное размещение. `SpriteSheet::GetSpriteOffset()`
-возвращает read-only span. У направлений собственные числа кадров и таймлайны.
+`DefaultSpriteFactory::LoadSprite` записывает `Offset` и `NextOffset` каждой записи
+в отдельные массивы размещения и движения, включая записи с общими пикселями.
+У направлений собственные числа кадров и таймлайны.
 
-В `ResolveCritterAnimationFrames` извлечение первого кадра сохраняет его delta; последнего — сумму всех deltas
-по обеим осям. Направление содержит один спрайт/offset, копирование сохраняет
-эти значения без изменения полного cached sheet. При обоих resolver flags
-`FirstFrame` имеет приоритет над `LastFrame`.
+`SpriteSheet::GetSpriteOffset(frame)` читает обычное смещение спрайта до рута из
+`_sprOffset`. `GetSpriteMotion()[frame]` читает покадровую дельту визуального переноса
+из `_sprMotion`. `SetFrame(index, sprite, offset, motion)` записывает каждый вход
+в соответствующее поле. Копии листов содержат независимые значения.
+`CritterHexView::RefreshAnimOffset` передаёт накопление дельт motion и согласование позы
+в `AnimationMovement`, сохраняя выбранный лист и anchor относительно пути. Отдельного объекта motion и системы перемещения
+персонажа по анимации нет.
 
-Binary layout и хранение `_sprOffset` являются приватными контрактами Engine. Игровые скрипты и инструменты должны создавать поддерживаемые исходные форматы и проверять отображаемое поведение, а не разбирать или изменять baked stream.
+`Game.GetSpriteFrameMotion` читает дельту кадра; `Game.CreateSpriteSequence` хранит
+переданные `motions` отдельно от абсолютных draw offsets. Выбор кадров, накопление
+для последней позы и склейка последовательностей принадлежат проекту.
 
-## Когда root motion управляет криттером
+Созданные листы разделяют исходные кадры `AtlasSprite`. Независимые абсолютные опоры
+отрисовки хранятся в `SpriteSheet::_sprOffset` / `_sprMotion`. `SetAnimSpr` выбирает только
+изображение и draw anchor. `RefreshAnimOffset` вместе выбирает позу по движению и её
+визуальную компенсацию до применения изображения; frozen/timed кадры задаёт playback.
+`RefreshOffs` однократно складывает
+`HexOffset + extra displacement + _offsAnim`. MapSprite применяет draw anchor
+только к размещению изображения, не добавляя его в motion или логический мировой
+корень. Ни одно из этих значений не меняет прохождение пути.
+
+<a id="когда-root-motion-управляет-криттером"></a>
+
+## Когда движение выбирает кадр
 
 Ветка движения в `CritterHexView::Process` активна, только когда выполняются все условия:
 
 - криттер использует 2D-спрайт, а не загруженную 3D-модель;
-- сейчас не активна явно поставленная в очередь action animation;
 - у криттера есть активный `MovingContext`;
-- выбранный locomotion sheet сообщает `CritterActionAnim::Walk` или `CritterActionAnim::Run`.
+- проект вернул `CritterAnimationFlags::Movement` без `Freeze` из `OnCritterAnimationInit`.
 
 В этой ветке кадр выбирает позиция движения. Прошедшее время анимации не продвигает цикл ходьбы/бега независимо.
 
-Для анимаций, отличных от walk/run, `SetAnimSpr` накапливает offsets до выбранного кадра включительно в `_offsAnim`. Это позволяет авторскому action визуально смещаться, пока логический криттер остаётся привязанным к месту. Sheet walk/run без активного движения не считается самостоятельной командой root motion.
+Без флага Movement `RefreshAnimOffset` накапливает offsets до выбранного кадра включительно в `_offsAnim`. Это позволяет авторскому action визуально смещаться, пока логический криттер остаётся привязанным к месту. Sheet walk/run без активного движения не считается самостоятельной командой движения сущности.
 
 ## Непрерывный displacement движения
 
@@ -137,7 +152,7 @@ pos = GetHexOffset(start_hex, current_hex)
 
 Логический гекс и `HexOffset` при пересечении границы гекса меняются в противоположных направлениях, поэтому их сумма остаётся пространственно непрерывной. Благодаря этому animation phase переживает логические snap между гексами.
 
-`MovingContext::BuildProgress` вычисляет плавную интерполяцию сегмента и округляет каждый компонент `HexOffset` до целого пикселя. Результат намеренно не ограничивается одним гексом. Округлённый прогресс пути может отставать от плавной позиции, а client reconciliation при быстром stop/start может включить межгексовую delta, поэтому корректный движущийся offset способен охватывать больше одного гекса. Отображение остаётся правильным, потому что позиция спрайта равна сумме `current_hex + offset`; clamp нарушил бы этот invariant. Light fan отдельно ограничивает собственную копию в `CritterHexView::RefreshOffs`.
+`MovingContext::BuildProgress` вычисляет плавную интерполяцию сегмента и округляет каждый компонент `HexOffset` до целого пикселя. Результат намеренно не ограничивается одним гексом. Округлённый прогресс пути может отставать от плавной позиции, а client reconciliation при быстром stop/start может включить межгексовую delta, поэтому корректный движущийся offset способен охватывать больше одного гекса. Отображение остаётся правильным, потому что позиция спрайта равна сумме `current_hex + offset`; clamp нарушил бы этот invariant.
 
 ## Остановка и нормализация offset
 
@@ -174,9 +189,11 @@ cycle_proj      = rel_dot_total mod total_dot_total
 
 Первый sheet нового движения получает anchor в текущем `pos`, то есть фазу ноль. Следующее движение получает новый anchor, потому что оба lifecycle-метода очищают предыдущий sheet и displacement.
 
+При смене листа `RefreshAnimOffset` устанавливает привязку до выбора кадра и расчёта компенсации, включая `RefreshView` перед следующим `Process`. Чистая математика находится в `AnimationMovement`, состояние привязки — в `CritterHexView`; изображение и его draw anchor в расчёты не входят.
+
 ## Выбор кадра
 
-`EvaluateMovementFrameIndex` проецирует каждое накопленное авторское смещение на `T`:
+`AnimationMovement::EvaluateWalkFrame` проецирует каждое накопленное авторское смещение на `T`:
 
 ```text
 accum_dot_total[i] = dot(accum[i], T)
@@ -190,11 +207,11 @@ abs(accum_dot_total[i] - cycle_proj)
 
 Таким образом выбирается авторская pose, ближайшая к текущей позиции криттера вдоль оси цикла. Алгоритм использует целочисленную арифметику `int32_t` / `int64_t` для displacement и dot products.
 
-Если `T` равен нулю, `dot(T, T)` также равен нулю и функция возвращает кадр `0`. Ветка offset walk/run также оставляет `_offsAnim` нулевым. Цикл с нулевой суммой является допустимыми fallback-данными, но не может пространственно управлять циклом ходьбы.
+Если `T` равен нулю, `dot(T, T)` также равен нулю и выбирается кадр `0`. Ветка offset walk/run также оставляет `_offsAnim` нулевым. Цикл с нулевой суммой является допустимыми fallback-данными, но не может пространственно управлять циклом ходьбы.
 
 ## Отображаемый offset
 
-Для ненулевого `T` метод `SetAnimSpr` вычисляет целый номер цикла floor division, включая отрицательный проецируемый displacement:
+Для ненулевого `T` функция `AnimationMovement::EvaluateWalkFrame` вычисляет целый номер цикла floor division, включая отрицательный проецируемый displacement:
 
 ```text
 cycle_number = floor(rel_dot_total / total_dot_total)
@@ -213,14 +230,14 @@ offs_anim    = (cycle_start - pos) + accum[i]
 
 Поворот внутри одного `MovingContext` обычно выбирает другой direction-specific `SpriteSheet` с иным `T` и, возможно, числом кадров. Перезапуск с нулевой фазы визуально сбрасывал бы походку на каждом повороте.
 
-Когда pointer выбранного sheet меняется, `Process` сохраняет прежнюю обёрнутую фазу. Новый anchor сдвигается так, чтобы projection на новый cycle vector начиналась с той же доли:
+При смене выбранного листа `RefreshAnimOffset` вызывает `AnimationMovement::TransferWalkPhase` до выбора кадра и расчёта смещения, включая `RefreshView` до следующего `Process`. Владельцем нового anchor остаётся `CritterHexView`: он сдвигает привязку так, чтобы projection на новый cycle vector начиналась с той же доли:
 
 ```text
 old_phase      = old_cycle_proj / dot(T_old, T_old)
 new_anchor     = pos - round(old_phase * T_new)
 ```
 
-Компоненты вычисляются знаковым целочисленным округлением. Если прежний total vector равен нулю, сохранять нечего и новый sheet получает anchor в текущей позиции.
+Локальная функция модуля `ScaleWalkPhase` точно масштабирует компоненты с округлением к ближайшему целому со знаком (половины от нуля), без переполнения промежуточного числителя. Если прежний total vector равен нулю, сохранять нечего и новый sheet получает anchor в текущей позиции.
 
 Логика действует для любой смены выбранного sheet walk/run, не только для изменения направления. Content substitution или resource selection, вернувшие другой sheet, проходят тот же re-anchoring path.
 
@@ -232,10 +249,10 @@ new_anchor     = pos - round(old_phase * T_new)
 | При сериализации Motion выходит за диапазон знакового 16-битного числа | Numeric conversion завершается ошибкой вместо тихого переполнения. |
 | В запечённом спрайте нет кадров или направлений | Клиентская загрузка не проходит validation. |
 | Запечённый кадр является sprite reference | Копируются спрайт и offset кадра по ссылке. |
-| Сумма цикла walk/run `T` равна нулю | Выбирается кадр `0`, root-motion offset движения остаётся нулевым. |
-| Нет активного движения | Root motion walk/run не перемещает логический или отображаемый криттер через эту ветку. |
-| Анимация не является walk/run | Offsets визуально накапливаются до выбранного кадра. |
-| Криттер использует 3D-модель | Ветка root motion 2D-спрайта пропускается. |
+| Сумма цикла walk/run `T` равна нулю | Выбирается кадр `0`, frame-offset offset движения остаётся нулевым. |
+| Нет активного движения при Movement без Freeze | Ветка согласования не применяет поправку анимации. |
+| Нет флага Movement | Offsets визуально накапливаются до выбранного кадра. |
+| Криттер использует 3D-модель | Ветка смещений кадров 2D-спрайта пропускается. |
 | Целевой гекс при остановке находится вне карты или заблокирован | Нормализация отклоняется; текущий логический гекс и offset сохраняются. |
 
 ## Матрица визуальной приёмки
@@ -248,7 +265,7 @@ new_anchor     = pos - round(old_phase * T_new)
 | Быстрый stop/start | Логический гекс догоняет позицию без отображаемого скачка | Растущий offset, отделившийся idle sprite или цикл blocked-path resync |
 | Граница гекса и reconciliation | Мировая позиция спрайта непрерывна при re-partition гекс/offset | Залипание на краю клетки или скачок на один гекс |
 | Extraction, merge или substitution | Выбранный sheet сохраняет ожидаемые cumulative offsets по обеим осям | Первый добавленный кадр скачет или одна ось переносится неверно |
-| Fallback с нулевой суммой | Стабильный кадр `0` без root-motion offset | Деление на ноль, нестабильный выбор кадра или drift |
+| Fallback с нулевой суммой | Стабильный кадр `0` без frame-offset offset | Деление на ноль, нестабильный выбор кадра или drift |
 | Поддерживаемые zoom/renderers | Foot placement остаётся приемлемым в сцене проекта | Зависящий от zoom jitter или неприемлемый cadence |
 
 Автоматические тесты baker и geometry подтверждают данные и нормализацию. Они не заменяют видимую клиентскую приёмку качества походки.
@@ -290,10 +307,11 @@ Engine владеет импортом исходных форматов, пер
 
 Повторно проверяйте эту страницу и focused tests, когда изменение затрагивает любую из следующих поверхностей:
 
-- `FrameShot::Motion`, версию SpriteResource, `NextOffset`, shared-frame behavior или `SpriteSheet::_sprOffset`;
+- `FrameShot::Motion`, версию SpriteResource, `NextOffset`, shared-frame behavior или `SpriteSheet::_sprOffset` / `_sprMotion`;
 - импорт FOFRM/legacy images, mirroring, cropping, frame extraction, animation merge, cloning или substitution;
 - `MovingContext::BuildProgress`, интерполяцию гекс/offset, prediction reconciliation или `GeometryHelper::NormalizeHexOffset`;
-- lifecycle движения `CritterHexView`, активацию walk/run, передачу anchor, выбор кадра, `_offsAnim`, проходимость карты или ограничение light offset;
+- накопление дельт, проекцию цикла, перенос фазы, выбор кадра и визуальную компенсацию в `AnimationMovement`;
+- lifecycle движения `CritterHexView`, активацию правилами проекта, владение anchor, `_offsAnim`, проходимость карты;
 - обновление закреплённого Last Frontier или TLA, меняющее соответствующие assets, project policy или historical evidence.
 
 При обновлении внешнего проекта или Engine сначала выполните fetch, запишите старый/новый диапазон commits, проверьте весь входящий диапазон, обновите `BuildTools/ExternalProjectEvidence.json`, перегенерируйте site/AI/localization artifacts в порядке зависимостей и сохраняйте независимость страницы от project-only helpers.
@@ -313,4 +331,4 @@ python BuildTools/docs_validate.py
 
 Для импорта offsets и переноса запечённых данных запустите тесты `ImageBaker` в Engine test binary встраиваемого проекта. `Test_ImageBaker.cpp` покрывает знаковые FRM offsets, ключи и разделы FOFRM в PascalCase, отклонение старых имён, вложенную композицию, mirroring, выбор кадров и baked round trips. `Test_Geometry.cpp` покрывает успешный re-split, отказ для заблокированной цели, поведение внутри текущего гекса, unrestricted normalization и отказ за пределами карты.
 
-В текущем native suite нет focused fixture для root motion `CritterHexView`. После изменения `MovingContext`, `CritterHexView`, `SpriteSheet`, выбора анимации `ResourceManager` или созданных locomotion offsets выполните [матрицу визуальной приёмки](#матрица-визуальной-приёмки) в видимой клиентской сцене. Baking подтверждает data path, geometry tests - re-split, а видимая сцена - согласование походки.
+`CritterAnimationPreservesProjectSelectionWhileMoving` проверяет реальный потребитель криттера с произвольными идентификаторами, явным флагом движения и замороженными кадрами. После изменения `MovingContext`, `CritterHexView`, `SpriteSheet`, `CritterFramesCache` или выбора анимации проекта или созданных locomotion offsets выполните [матрицу визуальной приёмки](#матрица-визуальной-приёмки) в видимой клиентской сцене. Baking подтверждает data path, geometry tests - re-split, а видимая сцена - согласование походки.
