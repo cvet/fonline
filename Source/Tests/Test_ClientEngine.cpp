@@ -33,11 +33,148 @@
 
 #include "Common.h"
 
+#include "MapView.h"
 #include "Test_ClientEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
+
+void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr);
+bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
+
+TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
+{
+    class RecordingSceneSprite final : public Sprite
+    {
+    public:
+        explicit RecordingSceneSprite(ptr<SpriteManager> manager) :
+            Sprite(manager, isize32 {8, 8}, ipos32 {})
+        {
+        }
+
+        auto IsDirectDraw() const -> bool override { return true; }
+
+        auto FillData(ptr<RenderDrawBuffer> buffer, const frect32& position, const tuple<ucolor, ucolor>& colors) const -> size_t override
+        {
+            ignore_unused(buffer, position, colors);
+            return 0;
+        }
+
+        void DrawInScene(fpos32 position, float32_t depth) const override
+        {
+            Calls.emplace_back(position, depth);
+        }
+
+        mutable vector<pair<fpos32, float32_t>> Calls;
+    };
+
+    auto settings = MakeClientTestSettings();
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    RecordingQuadEffect effect;
+    ipos32 field_offset {100, 100};
+
+    SECTION("DirectSceneReceivesTheDepthWithoutMovingItsAnchor")
+    {
+        RecordingSceneSprite visual {&client->SprMngr};
+        MapSpriteList list;
+        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, &visual, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+
+        for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
+            sprite->SetDepthOffset(delta);
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false,
+                DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            REQUIRE(visual.Calls.size() > 0);
+            const auto& baseline = visual.Calls.front();
+            const auto& actual = visual.Calls.back();
+            CHECK(actual.first == baseline.first);
+            CHECK(is_float_equal(actual.second, baseline.second + delta));
+        }
+
+        REQUIRE(visual.Calls.size() == 3);
+    }
+
+    SECTION("StandingSpriteVerticesReceiveTheSameDepthAdjustment")
+    {
+        auto visual = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+        REQUIRE(visual);
+        MapSpriteList list;
+        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        vector<Vertex2D> baseline;
+
+        for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
+            sprite->SetDepthOffset(delta);
+            effect.Draws.clear();
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false,
+                DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            REQUIRE(effect.Draws.size() == 1);
+            const auto& vertices = effect.Draws.front().Vertices;
+            REQUIRE(vertices.size() == 4);
+
+            if (baseline.empty()) {
+                baseline = vertices;
+            }
+
+            for (size_t index = 0; index < vertices.size(); index++) {
+                CHECK(is_float_equal(vertices[index].PosX, baseline[index].PosX));
+                CHECK(is_float_equal(vertices[index].PosY, baseline[index].PosY));
+                CHECK(is_float_equal(vertices[index].PosZ, baseline[index].PosZ + delta));
+            }
+        }
+    }
+}
+
+TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
+{
+    auto settings = MakeClientTestSettings();
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    ProtoMap proto {client->Hashes.to_hashed_string("DepthMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
+    proto.SetSize(msize {16, 16});
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, make_ptr(&proto), isize32 {320, 200}, nullptr);
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(map->IsHexToDraw(mpos {8, 8}));
+
+    MapSpriteHolder holder;
+    holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+    holder.Hex = mpos {8, 8};
+    holder.DepthOffset = 12.5f;
+    REQUIRE(holder.SprId != 0);
+    REQUIRE_NOTHROW(Client_Map_DrawMapSprite(map, &holder));
+    REQUIRE(holder.Valid);
+    REQUIRE(holder.MSpr);
+    CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
+    auto original_sprite = holder.MSpr;
+
+    for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
+             std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+        holder.DepthOffset = invalid;
+        CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &holder), ScriptException);
+        CHECK(holder.Valid);
+        CHECK(holder.MSpr == original_sprite);
+        CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
+
+        // Validation must also reject non-finite input before the invalid-hex/missing-sprite early returns.
+        MapSpriteHolder invalid_holder;
+        invalid_holder.Hex = mpos {100, 100};
+        invalid_holder.DepthOffset = invalid;
+        CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &invalid_holder), ScriptException);
+        CHECK_FALSE(invalid_holder.Valid);
+        CHECK_FALSE(invalid_holder.MSpr);
+    }
+
+    holder.StopDraw();
+    CHECK_FALSE(holder.Valid);
+}
 
 TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
@@ -714,6 +851,217 @@ TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
+{
+    constexpr string_view MESH_PATH = "Models/BoneAnchor.fbx";
+    constexpr string_view MODEL_PATH = "Models/RuntimeInstance.fo3d";
+    constexpr string_view DESCRIPTION = "Model BoneAnchor.fbx\nScale 1.25\nAnim 1 1 BoneAnchor.fbx Base\n";
+    auto mesh = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    resources.emplace_back(string {MESH_PATH}, mesh);
+    resources.emplace_back(string {MODEL_PATH},
+        MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    resources.emplace_back("AnchorSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    ProtoMap proto {client->Hashes.to_hashed_string("BoneAnchorMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
+    proto.SetSize(msize {16, 16});
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, make_ptr(&proto), isize32 {320, 200}, nullptr);
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->EnableMapperMode();
+    map->InstantScrollTo(mpos {8, 8});
+    auto cr = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {8, 8}, mdir {int16_t {180}}, nullptr);
+    REQUIRE(cr->IsMapSpriteValid());
+    auto model = cr->GetModel();
+    REQUIRE(model);
+    cr->SetHexOffset(ipos16 {13, -7});
+    cr->RefreshOffs();
+    model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+    hstring bone = client->Hashes.to_hashed_string(MESH_PATH);
+    float32_t angle = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+
+    SECTION("AHolderReconstructsThePhysicalPointAtEachElevationAndFacing")
+    {
+        MapSpriteHolder holder;
+        holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("AnchorSprite.png"), AtlasType::MapSprites);
+        holder.Hex = cr->GetHex();
+        REQUIRE(holder.SprId != 0);
+        auto stop_holder = scope_exit([&holder]() noexcept { holder.StopDraw(); });
+        vec3 local {0.7f, 0.4f, 0.3f};
+
+        for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-12}}) {
+            cr->SetElevation(elevation);
+            cr->RefreshSprite();
+
+            for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+                model->SetDir(mdir {direction}, false);
+                model->PoseSpriteFrame(false);
+                float32_t yaw = numeric_cast<float32_t>(180 - direction) * DEG_TO_RAD_FLOAT;
+                vec3 local_world {
+                    (std::cos(yaw) * local.x + std::sin(yaw) * local.z) * 40.0f,
+                    local.y * 40.0f,
+                    (-std::sin(yaw) * local.x + std::cos(yaw) * local.z) * 40.0f,
+                };
+                ipos32 sprite_offset = cr->GetSpriteOffset();
+                ipos32 center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+                vec3 carrier_world = GeometryHelper::GetHexWorldPos(cr->GetHex(), center + sprite_offset, numeric_cast<float32_t>(elevation));
+                vec3 expected = GeometryHelper::ProjectWorldToMap(carrier_world + local_world);
+                ipos32 offset {};
+                float32_t depth = 0.0f;
+                REQUIRE(Client_Critter_GetBoneMapAnchor(cr, bone, local.x, local.y, local.z, offset, depth));
+                vec3 local_screen = GeometryHelper::ProjectWorldToMap(local_world);
+                CHECK(offset.x == sprite_offset.x + iround<int32_t>(local_screen.x));
+                CHECK(offset.y == sprite_offset.y + iround<int32_t>(local_screen.y) - iround<int32_t>(std::cos(angle) * elevation));
+                holder.StopDraw();
+                holder.Offset = offset;
+                holder.DepthOffset = depth;
+                Client_Map_DrawMapSprite(map, &holder);
+                REQUIRE(holder.Valid);
+                REQUIRE(holder.MSpr);
+                CHECK(is_float_equal(holder.MSpr->GetMapRootProjection().z, expected.z));
+            }
+        }
+    }
+
+    SECTION("InvalidAndDetachedPointsLeaveDeterministicOutputs")
+    {
+        model->PoseSpriteFrame(false);
+        ipos32 offset {123, 456};
+        float32_t depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, client->Hashes.to_hashed_string("MissingBone"), 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity()}) {
+            offset = ipos32 {123, 456};
+            depth = 123.0f;
+            CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, bone, invalid, 0.0f, 0.0f, offset, depth));
+            CHECK(offset == cr->GetSpriteOffset());
+            CHECK(depth == 0.0f);
+        }
+
+        cr->InvalidateSprite();
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto flat = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestClientCritter"), mpos {9, 8}, mdir {}, nullptr);
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(flat, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == flat->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002},
+            client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
+        auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
+        CHECK_THROWS_AS(Client_Critter_GetBoneMapAnchor(off_map, bone, 0.0f, 0.0f, 0.0f, offset, depth), ScriptException);
+    }
+}
+
+
+TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
+{
+    constexpr string_view MESH_PATH = "Models/BoneDepth.fbx";
+    constexpr string_view MODEL_PATH = "Models/BoneDepth.fo3d";
+    constexpr string_view DESCRIPTION = "Model BoneDepth.fbx\nScale 1.25\nAnim 1 1 BoneDepth.fbx Base\n";
+    auto mesh = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    resources.emplace_back(string {MESH_PATH}, mesh);
+    resources.emplace_back(string {MODEL_PATH},
+        MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+    BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, GameSettings::MAP_CAMERA_ANGLE);
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    REQUIRE(model->HasAnimation(CritterStateAnim::Unarmed, CritterActionAnim::Idle));
+    ignore_unused(model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr, 0.0f, ModelAnimFlags::Freeze));
+    CHECK(model->GetStateAnim() == CritterStateAnim::Unarmed);
+    CHECK(model->GetActionAnim() == CritterActionAnim::Idle);
+    hstring bone = client->Hashes.to_hashed_string(MESH_PATH);
+    float32_t angle = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+
+    SECTION("OneScreenPointCanHaveDifferentPhysicalDepths")
+    {
+        model->SetDir(mdir {int16_t {180}}, false);
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->PoseSpriteFrame(false);
+        float32_t near_depth = -1.0f;
+        float32_t far_depth = -1.0f;
+        auto far = model->GetBonePos(bone, vec3 {}, make_ptr(&far_depth));
+        auto near = model->GetBonePos(bone, vec3 {0.0f, std::sin(angle), std::cos(angle)}, make_ptr(&near_depth));
+        REQUIRE(far);
+        REQUIRE(near);
+        CHECK(*far == *near);
+        CHECK(is_float_equal(far_depth, 0.0f));
+        CHECK(is_float_equal(near_depth, 40.0f));
+    }
+
+    SECTION("WorldProjectionIsIndependentOfPivotAndDirectSceneScale")
+    {
+        vec3 local {0.7f, 0.4f, 0.3f};
+
+        for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+            float32_t yaw = numeric_cast<float32_t>(180 - direction) * DEG_TO_RAD_FLOAT;
+            vec3 world {
+                (std::cos(yaw) * local.x + std::sin(yaw) * local.z) * 40.0f,
+                local.y * 40.0f,
+                (-std::sin(yaw) * local.x + std::cos(yaw) * local.z) * 40.0f,
+            };
+            vec3 expected = GeometryHelper::ProjectWorldToMap(world);
+
+            for (ipos32 pivot : {ipos32 {64, 96}, ipos32 {23, 71}}) {
+                model->SetDir(mdir {direction}, false);
+                model->SetupFrame(isize32 {128, 128}, pivot);
+                model->PoseSpriteFrame(false);
+                float32_t depth = -1.0f;
+                auto offset = model->GetBonePos(bone, local, make_ptr(&depth));
+                REQUIRE(offset);
+                CHECK(offset == model->GetBonePos(bone, local));
+                CHECK(offset->x == iround<int32_t>(expected.x));
+                CHECK(offset->y == iround<int32_t>(expected.y));
+                CHECK(is_float_equal(depth, expected.z));
+
+                for (float32_t scale : {0.5f, 2.0f}) {
+                    mat44 projection = client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+                    model->DrawInScene(projection, scale);
+                    float32_t direct_depth = -1.0f;
+                    auto direct_offset = model->GetBonePos(bone, local, make_ptr(&direct_depth));
+                    CHECK(direct_offset == offset);
+                    CHECK(is_float_equal(direct_depth, expected.z));
+                }
+            }
+        }
+    }
+
+    SECTION("InvalidPointsClearTheRequestedDepth")
+    {
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->PoseSpriteFrame(false);
+        float32_t depth = 123.0f;
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone"), vec3 {}, make_ptr(&depth)));
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
+                 std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+            depth = 123.0f;
+            CHECK_FALSE(model->GetBonePos(bone, vec3 {invalid, 0.0f, 0.0f}, make_ptr(&depth)));
+            CHECK(depth == 0.0f);
+        }
+    }
+}
+
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a

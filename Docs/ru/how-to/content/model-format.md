@@ -260,6 +260,8 @@ Particle path является глобальным путём запечённ�
 
 `MoveX/Y/Z` и `RotY` определяют placement частицы. Instance живёт, пока активна точная пара layer/value, и удаляется при изменении композиции. XML, SPARK objects, renderer fields, effects/textures, runtime cache и визуальная проверка принадлежат [формату частиц](particle-format.md). Частицы на bones используют прямой путь 3D-композиции, а не selector atlas/direct-scene у `ParticleSprite`.
 
+Для независимых [эффектов карты](particle-format.md#интеграция) используйте `Critter.GetBoneMapAnchor`.
+
 ## Преобразования и скорость
 
 Поля link: `RotX/Y/Z` в градусах, `MoveX/Y/Z` в координатах модели, `ScaleX/Y/Z` и playback multiplier `Speed`. `Scale` задаёт все три оси.

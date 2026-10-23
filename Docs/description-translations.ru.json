@@ -5447,8 +5447,8 @@
           "translation": "Рисует загруженную карту во время события RenderIface; при вызове вне этого обработчика рендера выбрасывает исключение."
         },
         "/symbols/@id=script.method.client.Map.DrawMapSprite/description": {
-          "source_sha256": "bb973ead3728041e1604a054507de96f3d105f06939ae57370046a020448f66c",
-          "translation": "Добавляет в отрисовку карты спрайт, заданный держателем, молча пропуская некорректные, внеэкранные или неразрешенные спрайты и применяя правила рендера указанного прототипа предмета, если он задан."
+          "source_sha256": "650c4ba947628a3ffaed154753045cdc5a54f34dab6e8528bf43447d0b6ea9e2",
+          "translation": "Добавляет определённый holder спрайт в отрисовку карты, применяя правила отображения прототипа предмета при его наличии. Отклоняет неконечный DepthOffset до обработки holder; иначе пропускает некорректный, невидимый или неразрешённый спрайт."
         },
         "/symbols/@id=script.method.client.Map.GetCritter/description": {
           "source_sha256": "92fc36c66b646342fa432031066462e6bf0df158dbfb56ef422c2fafc96e6aff",
@@ -10945,6 +10945,14 @@
         "/symbols/@id=script.event.server.Game.OnPlayerMovementAuthority/description": {
           "source_sha256": "f78d9c7662aaff2db76c088597e10e1d7d09883d1321adbf470e1296225a496b",
           "translation": "Проверяет право игрока на движение; начальное `allowed` истинно только для выбранного актора, а `StopChain` запрещает запрос."
+        },
+        "/symbols/@id=script.ref-field.client.MapSpriteHolder.DepthOffset/description": {
+          "source_sha256": "4022b30f0a60c31fab117ccb55826d0b29ec18979890d420e213251cb22f5c34",
+          "translation": "Поправка к глубине вида в логических пикселях карты, копируемая при прикреплении; положительное значение приближает, по умолчанию 0."
+        },
+        "/symbols/@id=script.method.client.Critter.GetBoneMapAnchor/description": {
+          "source_sha256": "3262e73d01bf1b7ca230babd23080b5f9f4bace8811dde57371bb08986ee198d",
+          "translation": "Проецирует локальную точку кости в смещение спрайта карты и поправку только к глубине в логических пикселях. Возвращает false со смещением спрайта и нулевой глубиной для недоступного или некорректного якоря; выбрасывает исключение вне карты."
         }
       }
     },
@@ -16361,6 +16369,18 @@
         "/rules/@id=model-format.rule.texture-wire/rationale": {
           "source_sha256": "282873e4ef1e1c27b53172c90177971b14deb0869560eca5ea1ccfd7ca582474",
           "translation": "Текстуры моделей статические; многокадровые изображения и директива TextureAnimation отвергаются вместо неявного выбора первого кадра."
+        },
+        "/rules/@id=model-format.rule.bone-point-depth/name": {
+          "source_sha256": "c2b0601198408ee7e02255f6d66762a0171fc4fb3c24c6119331e171f441ab66",
+          "translation": "Проекция локальной точки кости"
+        },
+        "/rules/@id=model-format.rule.bone-point-depth/rationale": {
+          "source_sha256": "0cda7701653a2bbc9b0fe0a890b666757a0e23282f601ee79f8870efc1658d93",
+          "translation": "Экранные XY не различают глубины вдоль луча камеры."
+        },
+        "/rules/@id=model-format.rule.bone-point-depth/requirement": {
+          "source_sha256": "ffb7dcdaec6ec8e4f625f71096e484311c66dce868fd3d0f88c9215401750f48",
+          "translation": "Перегрузка ModelInstance.GetBonePos с глубиной проецирует авторские единицы модели в целочисленные пиксели относительно спрайта и логическую глубину вида из одной позы, независимо от pivot и масштаба прямого рендеринга. Сохраняйте 2D-результат метода с двумя аргументами; некорректная точка не имеет позиции и обнуляет запрошенную глубину."
         }
       }
     },
@@ -16843,6 +16863,18 @@
         "/description": {
           "source_sha256": "734ab1ad61c0c614cdcf7b72bceec3cdbb567a2da3f397a4412f76653d80376c",
           "translation": "Основанный на исходном коде контракт авторинга, запекания, runtime, отрисовки, инструментов и интеграции частиц SPARK и Effekseer в FOnline."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/name": {
+          "source_sha256": "e8222f0f359e5d50a6bdb50ef7ca8dbdf3423b3693d1843875003f7f6b28c8b8",
+          "translation": "Независимый спрайт карты в точке кости"
+        },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/rationale": {
+          "source_sha256": "bf62762a45977ade1334af4318367c68ce321a084829cb089ef667d5f98f6011",
+          "translation": "Точке кости нужна глубина её позы; восстановление на плоскости земли теряет высоту."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/requirement": {
+          "source_sha256": "5ffca7dd1a9a1f17c37b89893a6f8469c12f1cc4b47500184baecef543f8455c",
+          "translation": "Вызывайте Critter.GetBoneMapAnchor в авторских единицах модели. Задавайте Hex, Offset и DepthOffset одного MapSpriteHolder из текущего гекса криттера и обоих выходов. DepthOffset конечен, по умолчанию равен 0, измеряется в логических пикселях карты, сохраняет XY и приближает при положительном значении. Заново прикрепляйте после перестроения карты. Некорректный/недоступный якорь даёт false со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение. Сохраняйте прежние 2D-методы."
         },
         "/integration_rules/@id=particle-format.integration.client-script/name": {
           "source_sha256": "60b2ee2d720b775a1d974f13afd1b111a37caa1dda21572185898cf4b37f2eeb",

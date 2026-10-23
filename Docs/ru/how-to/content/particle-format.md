@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"ed9d71046451b430eb2413b80d924540760bca1cd80d6e12c6dd2c6bbad7bfc0"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"a1db59f5844aea5b2e9c0771143ebe2a7a90839c6d4de075002413e543d2b2dd"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -268,6 +268,21 @@ refresh. Отложенный rebase остаётся ожидающим на с
 
 Клиентские script exports предоставляют seeded playback, prewarm и управление scale.
 `Critter.RunParticle` запускает живую частицу на кости модели в сборках с 3D.
+
+`MapSpriteHolder.DepthOffset` — конечная поправка глубины вида в логических
+пикселях: по умолчанию ноль, положительная приближает, экранные XY сохраняются
+в обоих путях рендеринга. `Map.DrawMapSprite` копирует её при прикреплении;
+изменение поля/перестроение карты требует повторного прикрепления.
+NaN/бесконечность дают исключение до любой обработки holder, даже невалидного/невидимого.
+
+`Critter.GetBoneMapAnchor` проецирует авторские локальные единицы кости в
+целочисленное смещение и `DepthOffset` для текущего гекса криттера. Оба выхода
+используют одну сохранённую позу, фактическую высоту/глубину корня носителя
+и округление пикселей при atlas/direct. Отсутствующая модель/кость,
+неприкреплённый спрайт и некорректная/непредставимая точка дают `false`
+со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение.
+Прежние 2D-методы не меняются. Независимые спрайты следуют дальнейшему движению
+только при явном обновлении.
 
 Описания моделей прикрепляют запечённую частицу через `AttachParticles`:
 

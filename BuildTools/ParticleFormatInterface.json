@@ -39,6 +39,9 @@
     "BuildTools/buildtools.py",
     "Source/Tools/ModelInfoBaker.cpp",
     "Source/Client/ModelInstance.cpp",
+    "Source/Client/MapSprite.h",
+    "Source/Client/MapSprite.cpp",
+    "Source/Scripting/ClientMapScriptMethods.cpp",
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
@@ -2779,6 +2782,31 @@
           "anchors": [
             "Client_Critter_RunParticle"
           ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.bone-map-anchor",
+      "name": "Independent map sprite at a bone point",
+      "stability": "experimental",
+      "requirement": "Call Critter.GetBoneMapAnchor in authored model units. Set one MapSpriteHolder's Hex, Offset and DepthOffset from the current critter hex and both outputs. DepthOffset is finite, defaults to 0, uses logical map pixels and preserves XY; positive values are nearer. Reattach after rebuild. Invalid/unavailable anchors return false with sprite offset/zero depth; off-map critters throw. Keep the old 2D methods.",
+      "rationale": "A bone point needs its posed depth; reconstructing it on the ground loses height.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": ["Client_Critter_GetBoneMapAnchor", "RequireHexCritter"]
+        },
+        {
+          "path": "Source/Client/MapSprite.h",
+          "anchors": ["float32_t DepthOffset {};"]
+        },
+        {
+          "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+          "anchors": ["Map sprite depth offset must be finite", "mspr->SetDepthOffset(mapSpr->DepthOffset)"]
+        },
+        {
+          "path": "Source/Client/MapSprite.cpp",
+          "anchors": ["GetMapRootProjection", "projection.z += _depthOffset"]
         }
       ]
     },

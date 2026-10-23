@@ -461,6 +461,72 @@ FO_SCRIPT_API bool Client_Critter_GetBonePosWithOffset(ptr<CritterView> self, hs
 #endif
 }
 
+// Projects a bone-local point to a map sprite offset and depth-only correction in logical pixels.
+// Returns false with sprite offset and zero depth for unavailable or invalid anchors; throws off-map.
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset)
+{
+    auto hex_cr = RequireHexCritter(self);
+    boneOffset = hex_cr->GetSpriteOffset();
+    depthOffset = 0.0f;
+
+#if FO_ENABLE_3D
+    auto model = hex_cr->GetModel();
+
+    if (!model || !hex_cr->IsMapSpriteValid()) {
+        return false;
+    }
+
+    float32_t point_depth = 0.0f;
+    auto point = model->GetBonePos(boneName, vec3 {moveX, moveY, moveZ}, make_ptr(&point_depth));
+
+    if (!point) {
+        return false;
+    }
+
+    auto carrier = hex_cr->GetMapSprite();
+    float32_t elevation = numeric_cast<float32_t>(carrier->GetElevation());
+    int32_t elevation_y = iround<int32_t>(std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation);
+    int64_t x = numeric_cast<int64_t>(boneOffset.x) + point->x;
+    int64_t y = numeric_cast<int64_t>(boneOffset.y) + point->y - elevation_y;
+    constexpr int32_t CENTER_X = GameSettings::MAP_HEX_WIDTH / 2;
+    constexpr int32_t CENTER_Y = GameSettings::MAP_HEX_HEIGHT / 2;
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder.
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() - CENTER_X) {
+        return false;
+    }
+
+    if (y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max() - CENTER_Y) {
+        return false;
+    }
+
+    ipos32 offset {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+    ipos32 ground_offset {CENTER_X + offset.x, CENTER_Y + offset.y};
+    vec3 ground = GeometryHelper::GetHexWorldPos(hex_cr->GetHex(), ground_offset);
+    float32_t ground_depth = GeometryHelper::ProjectWorldToMap(ground).z;
+    float32_t target_depth = carrier->GetMapRootProjection().z + point_depth;
+    float32_t correction = target_depth - ground_depth;
+
+    if (!std::isfinite(correction)) {
+        return false;
+    }
+
+    boneOffset = offset;
+    depthOffset = correction;
+
+    return true;
+#else
+    ignore_unused(boneName);
+    ignore_unused(moveX);
+    ignore_unused(moveY);
+    ignore_unused(moveZ);
+
+    return false;
+#endif
+}
+
+
 // Starts local movement exactly to the target hex and clamped sub-hex offset, returning the movement context or null when no movement remains; throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)

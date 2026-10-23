@@ -998,6 +998,9 @@ per `(pass, primitive, blend, depth slot, cull mode)`, SDL_GPU — cache key,
 OpenGL — immediate `glCullFace`. `ResolveCullMode()` throws при unbuilt mode,
 исключая silent drop/fallback. Front face везде counter-clockwise.
 
+Оба пути рендеринга используют `MapSprite::GetMapRootProjection`, включая
+`DepthOffset`; см. [интеграцию частиц](../../how-to/content/particle-format.md#интеграция).
+
 `MapView::_rtMap` создаётся `with_depth`, поэтому world использует общий depth
 buffer. `EffectUsage::QuadSprite` и `Model` участвуют в нём; на targets без
 depth attachment (UI, light, final screen flush) state является no-op.
@@ -1006,6 +1009,7 @@ depth attachment (UI, light, final screen flush) state является no-op.
 - **Standing map sprites** (`Item`, `Critter`) пишут depth, но не test-ят его (`Always` + write в `2D_Default`/`2D_WithoutEgg`). Depth нужен direct particles/models; sprite-vs-sprite решает painter order. Их vertical planes имеют общий gradient `ProjectMapYToVerticalDepth` и не пересекаются, поэтому order по anchor depth точно совпадает с per-pixel `LessEqual`, не создавая z-fighting coincident rows.
 - `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Внутри строки ключ имеет порядок `[group 8][row 24][layer 8][sub-layer 8][hex X 16]`: персонаж рисуется перед любым стоящим предметом своей экранной строки, а среди предметов стены с низким sub-layer рисуются раньше. Ближние строки по-прежнему побеждают; при равном ключе действует порядок добавления. `Item.DrawOrderSubLayer` изменяем и публично синхронизируется: получив новое значение, клиент пересоздаёт спрайты предмета с новым ключом без перезагрузки карты. Контракт закреплён `Test_Geometry.cpp` и `Test_MapSprite.cpp`.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
+
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.
 - Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Critters с заданным проектом `DrawFlatten` сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном слое и ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.

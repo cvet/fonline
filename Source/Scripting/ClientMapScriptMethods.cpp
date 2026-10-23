@@ -51,10 +51,15 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
     self->DrawMap();
 }
 
-// Adds a holder-defined sprite to this map draw, silently skipping invalid, offscreen, or unresolved sprites and applying referenced item-prototype rendering rules when present
+// Adds a holder-defined sprite to this map draw, applying item-prototype rendering rules when present.
+// Rejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites.
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
+    if (!std::isfinite(mapSpr->DepthOffset)) {
+        throw ScriptException("Map sprite depth offset must be finite");
+    }
+
     auto engine = self->GetEngine();
 
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
@@ -107,6 +112,9 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     if (mapSpr->MapProjected) {
         mspr->SetMapProjected(true);
     }
+
+    mspr->SetDepthOffset(mapSpr->DepthOffset);
+
     if (!no_light) {
         mspr->SetLight(corner, self->GetLightData(), self->GetSize());
     }

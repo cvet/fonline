@@ -263,6 +263,18 @@ Client script exports provide seeded playback, prewarm, and scale controls.
 `Critter.RunParticle` starts a live particle on a model bone in 3D-enabled
 builds.
 
+`MapSpriteHolder.DepthOffset` is a finite logical-pixel view-depth correction:
+zero default, positive nearer, unchanged screen XY in both render paths.
+`Map.DrawMapSprite` copies it on attachment; field changes/rebuilds require
+reattachment. NaN/infinity throw before any holder processing, even invalid/offscreen.
+
+`Critter.GetBoneMapAnchor` projects authored bone-local units to integer offset
+and `DepthOffset` for the critter's current hex. Both outputs use one retained
+pose, actual carrier elevation/root depth and pixel rounding across atlas/direct.
+Missing models/bones, detached sprites and invalid/unrepresentable points return
+`false` with sprite offset/zero depth; off-map throws. Existing 2D methods stay
+unchanged. Independent sprites follow later movement only if updated.
+
 Model descriptions attach a baked particle with `AttachParticles`:
 
 ```text

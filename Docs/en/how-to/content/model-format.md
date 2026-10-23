@@ -301,6 +301,8 @@ The link's `MoveX`, `MoveY`, `MoveZ`, and `RotY` feed particle placement. The pa
 
 The attached resource's XML, registered SPARK objects, renderer fields, effects/textures, runtime cache, and visible validation are owned by [Particle Format And Runtime](particle-format.md). Model-bone particles use the direct 3D composition path rather than `ParticleSprite`'s atlas/direct-scene selector.
 
+Use `Critter.GetBoneMapAnchor` for independent [map effects](particle-format.md#integration).
+
 ## Transforms and speed
 
 Per-link fields are:

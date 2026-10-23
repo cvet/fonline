@@ -113,6 +113,7 @@ public:
     [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset = vec3 {0.0f}) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;

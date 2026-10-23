@@ -14808,6 +14808,30 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; allocate the next published minor and date at eventual master integration.",
       "compatibility": "Based on published 2026.1.54-dev. Network compatibility advances 0.0.74 to 0.0.75; Managed ABI 9, packet fields, stored properties and resource payload grammar are unchanged. Mixed endpoints are rejected.",
       "owner": "Engine particle/model integration and movement-authority contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.2cb5f503dbccea3d",
+      "baseline_contract_sha256": "91d578fcab3f2c58527652c4a6eefd06b55dde427bf824551c5dc0ef61060ea4",
+      "current_contract_sha256": "c3d5d10b7c70de29b538cd7064257f6b7bb8e5929f8a24da9ed07529dc90ca35",
+      "classification": "breaking",
+      "rationale": "Review the native-codegen inventory expansion from 2576 to 2578 symbols: add Critter.GetBoneMapAnchor and MapSpriteHolder.DepthOffset, retain every previous ID and stability, and update the explicit scope digest. This is a conservative model-scope break; it does not withdraw an existing script method.",
+      "migration": "Docs/en/how-to/content/particle-format.md#integration and its Russian mirror. Rebuild affected native roles/extensions and rebake matching metadata/scripts. Copy the current critter hex and both GetBoneMapAnchor outputs to one holder; preserve DepthOffset on reattachment. Existing 2D script methods and the two-argument native GetBonePos signature remain. Native code taking an unqualified member pointer to GetBonePos must select the intended overload; no such caller was found in Engine/Source or the embedding project's SourceExt.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased. This is unpublished feature work based on 2026.1.54-dev; allocate the next minor and dated Current entry only at eventual master integration.",
+      "compatibility": "The explicit MigrationRule marker stays 0.0.75 and Managed ABI stays 9. Generated compatibility hashes change with the added native API, so old and new endpoints are not a matching set. Native layout and generated metadata change, so binaries, metadata and script assemblies must be rebuilt and deployed or rolled back as one matching set; independently built native revisions are not binary-compatible. Saved properties, packet fields, authored particle formats and existing zero-depth attachments need no conversion. Native regression proof is separate from the embedding project's pending visual/platform qualification.",
+      "owner": "Engine particle/model rendering and native-codegen contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.5343ce968b02831d",
+      "baseline_contract_sha256": "91d578fcab3f2c58527652c4a6eefd06b55dde427bf824551c5dc0ef61060ea4",
+      "current_contract_sha256": "c3d5d10b7c70de29b538cd7064257f6b7bb8e5929f8a24da9ed07529dc90ca35",
+      "classification": "breaking",
+      "rationale": "Extend the experimental MapSpriteHolder Export member list with DepthOffset. The comparator treats the changed flags as structural. The new field defaults to zero, preserving existing scripted attachments; finite corrections add posed bone depth without moving screen XY. Native object layout changes require recompiling native consumers.",
+      "migration": "Docs/en/how-to/content/particle-format.md#integration and its Russian mirror. Rebuild affected native roles/extensions and rebake matching metadata/scripts. Copy the current critter hex and both GetBoneMapAnchor outputs to one holder; preserve DepthOffset on reattachment. Existing 2D script methods and the two-argument native GetBonePos signature remain. Native code taking an unqualified member pointer to GetBonePos must select the intended overload; no such caller was found in Engine/Source or the embedding project's SourceExt.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased. This is unpublished feature work based on 2026.1.54-dev; allocate the next minor and dated Current entry only at eventual master integration.",
+      "compatibility": "The explicit MigrationRule marker stays 0.0.75 and Managed ABI stays 9. Generated compatibility hashes change with the added native API, so old and new endpoints are not a matching set. Native layout and generated metadata change, so binaries, metadata and script assemblies must be rebuilt and deployed or rolled back as one matching set; independently built native revisions are not binary-compatible. Saved properties, packet fields, authored particle formats and existing zero-depth attachments need no conversion. Native regression proof is separate from the embedding project's pending visual/platform qualification.",
+      "owner": "Engine particle/model rendering and native-codegen contracts"
     }
   ]
 }

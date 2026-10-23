@@ -43,6 +43,9 @@
     "BuildTools/buildtools.py",
     "Source/Tools/ModelInfoBaker.cpp",
     "Source/Client/ModelInstance.cpp",
+    "Source/Client/MapSprite.h",
+    "Source/Client/MapSprite.cpp",
+    "Source/Scripting/ClientMapScriptMethods.cpp",
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
@@ -2787,6 +2790,42 @@
       ]
     },
     {
+      "id": "particle-format.integration.bone-map-anchor",
+      "name": "Independent map sprite at a bone point",
+      "stability": "experimental",
+      "requirement": "Call Critter.GetBoneMapAnchor in authored model units. Set one MapSpriteHolder's Hex, Offset and DepthOffset from the current critter hex and both outputs. DepthOffset is finite, defaults to 0, uses logical map pixels and preserves XY; positive values are nearer. Reattach after rebuild. Invalid/unavailable anchors return false with sprite offset/zero depth; off-map critters throw. Keep the old 2D methods.",
+      "rationale": "A bone point needs its posed depth; reconstructing it on the ground loses height.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_GetBoneMapAnchor",
+            "RequireHexCritter"
+          ]
+        },
+        {
+          "path": "Source/Client/MapSprite.h",
+          "anchors": [
+            "float32_t DepthOffset {};"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+          "anchors": [
+            "Map sprite depth offset must be finite",
+            "mspr->SetDepthOffset(mapSpr->DepthOffset)"
+          ]
+        },
+        {
+          "path": "Source/Client/MapSprite.cpp",
+          "anchors": [
+            "GetMapRootProjection",
+            "projection.z += _depthOffset"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.integration.project-boundary",
       "name": "Embedding-project ownership",
       "stability": "stable",
@@ -2970,7 +3009,7 @@
     }
   ],
   "summary": {
-    "entry_count": 116,
+    "entry_count": 117,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
@@ -2978,14 +3017,14 @@
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
     "runtime_rule_count": 17,
-    "integration_rule_count": 6,
+    "integration_rule_count": 7,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 109,
+      "experimental": 110,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "23a1c7813234bcb10ee411480ba1fbe45b292541f679b69cae2db52231d4da1f"
+  "contract_digest": "16ec00911806a7e121daf9944346c2f1ad47f39d53f2c8fa6726ea6661178c4f"
 }

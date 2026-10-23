@@ -848,6 +848,9 @@ Which faces a draw discards is a property of the **draw**, not of the effect's u
 
 Backends that bake the rasterizer state into a device object build one per mode the effect can be drawn with, so an effect declares `CullVariants = True` in its `[Effect]` block to pay for them: `Rendering-Direct3D.cpp` builds one `ID3D11RasterizerState` per mode, `Rendering-Vulkan.cpp` one pipeline per `(pass, primitive, blend, depth slot, cull mode)`, `Rendering-SDLGpu.cpp` folds the mode into its lazy pipeline-cache key, and `Rendering-OpenGL.cpp` issues `glCullFace` directly. `RenderEffect::ResolveCullMode()` is the single choke point: it throws when a draw asks for a mode the effect never built, because a backend that quietly skipped the missing object would drop the draw (Vulkan) or fall back to a different mode (Direct3D) instead of reporting the mismatch. Counter-clockwise is the front face on every backend.
 
+Both render paths use `MapSprite::GetMapRootProjection`, including `DepthOffset`;
+see [particle integration](../../how-to/content/particle-format.md#integration).
+
 The map render target (`MapView::_rtMap`) is created `with_depth`, giving the world one shared depth buffer. `EffectUsage::QuadSprite` and `EffectUsage::Model` effects participate in it (depth state is a hardware no-op on targets without a depth attachment — UI, light, flush-to-screen):
 
 - Screen-space quads (GUI, fonts, render-target blits, and non-map sprite effects) initialize `Vertex2D::PosZ` to `0.0f`; map sprites may start from the same atlas data, but `SpriteManager` overwrites their Z before flushing them into `_rtMap`.

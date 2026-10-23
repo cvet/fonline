@@ -934,10 +934,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     const_span<unique_ptr<MapSprite>> sprites = mspr_list.GetActiveSprites();
     bool apply_brightness = _settings->Render.Brightness != 0;
 
-    auto get_map_sprite_proj = [](const MapSprite* mspr) -> vec3 {
-        float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
-        return GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(mspr->GetHex(), mspr->GetMapRootOffset(), elevation));
-    };
     auto is_standing_sprite = [](DrawOrderType draw_order) -> bool { //
         return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
     };
@@ -965,7 +961,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (spr->IsDirectDraw()) {
-            vec3 map_proj = get_map_sprite_proj(mspr.get());
+            vec3 map_proj = mspr->GetMapRootProjection();
             // Only a tiny ground separation, because inheriting the direct-draw draw-order bias would pull
             // particles in front of critters and scenery
             float32_t direct_layer_bias = MAP_LAYER_DEPTH_BIAS;
@@ -1044,7 +1040,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         auto& vbuf = _spritesDrawBuf->Vertices;
         bool standing_sprite = is_standing_sprite(draw_order);
-        vec3 sprite_proj = get_map_sprite_proj(mspr.get());
+        vec3 sprite_proj = mspr->GetMapRootProjection();
         float32_t pos_z = sprite_proj.z;
 
         for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {

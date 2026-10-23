@@ -2664,6 +2664,15 @@ void ModelInstance::DrawAllParticles()
 
 auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset) const -> optional<ipos32>
 {
+    return GetBonePos(bone_name, local_offset, nullptr);
+}
+
+auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>
+{
+    if (view_depth) {
+        *view_depth = 0.0f;
+    }
+
     if (!std::isfinite(local_offset.x) || !std::isfinite(local_offset.y) || !std::isfinite(local_offset.z)) {
         return std::nullopt;
     }
@@ -2697,6 +2706,16 @@ auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset) const -> op
 
     if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
         return std::nullopt;
+    }
+
+    if (view_depth) {
+        float32_t depth = pos.z * _modelMngr->_settings->Render.ModelProjFactor / const_numeric_cast<float32_t>(FRAME_SCALE);
+
+        if (!std::isfinite(depth)) {
+            return std::nullopt;
+        }
+
+        *view_depth = depth;
     }
 
     return ipos32 {iround<int32_t>(x), iround<int32_t>(y)};

@@ -28,6 +28,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-getbodyangle-8cb57229bd"></a>
 - [`symbol-script-method-client-critter-getbodyangle-8cb57229bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbodyangle-8cb57229bd)
 
+<a id="symbol-script-method-client-critter-getbonemapanchor-e6b67bb839"></a>
+- [`symbol-script-method-client-critter-getbonemapanchor-e6b67bb839`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonemapanchor-e6b67bb839)
+
 <a id="symbol-script-method-client-critter-getbonepos-e97f807758"></a>
 - [`symbol-script-method-client-critter-getbonepos-e97f807758`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonepos-e97f807758)
 
