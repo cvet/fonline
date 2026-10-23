@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"24a6d785a55c0dce7c0f5bebaaca996bd0f2d58e979d8784bf8785331143932f"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"7eb90697227e978f6263fc01ff847a68005707244924cace37f775d6b3da06bd"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.

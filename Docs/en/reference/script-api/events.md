@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **121** exported engine events.
+This page contains **122** exported engine events.
 
 <a id="group-event-client-game-dc8d6b5523"></a>
 ## <code>Game</code> (client)

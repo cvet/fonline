@@ -100,7 +100,7 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
 
     SECTION("StandingSpriteVerticesReceiveTheSameDepthAdjustment")
     {
-        auto visual = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+        auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
         REQUIRE(visual);
         MapSpriteList list;
         auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
@@ -980,15 +980,15 @@ TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
     BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, GameSettings::MAP_CAMERA_ANGLE);
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
     REQUIRE(model);
     model->StartMeshGeneration();
-    REQUIRE(model->HasAnimation(CritterStateAnim::Unarmed, CritterActionAnim::Idle));
-    ignore_unused(model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr, 0.0f, ModelAnimFlags::Freeze));
-    CHECK(model->GetStateAnim() == CritterStateAnim::Unarmed);
-    CHECK(model->GetActionAnim() == CritterActionAnim::Idle);
+    REQUIRE(model->HasAnimation(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
+    ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr, 0.0f, ModelAnimFlags::Freeze));
+    CHECK(model->GetStateAnim() == static_cast<CritterStateAnim>(1));
+    CHECK(model->GetActionAnim() == static_cast<CritterActionAnim>(1));
     hstring bone = client->Hashes.to_hashed_string(MESH_PATH);
     float32_t angle = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
 
@@ -1264,7 +1264,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         hstring root_bone = client->Hashes.to_hashed_string(MESH_PATH);
         CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone")));
 
-        ignore_unused(model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, nullptr, 0.0f, ModelAnimFlags::Freeze));
+        ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr, 0.0f, ModelAnimFlags::Freeze));
         model->StartMeshGeneration();
 
         for (ipos32 pivot : {ipos32 {64, 96}, ipos32 {23, 71}}) {

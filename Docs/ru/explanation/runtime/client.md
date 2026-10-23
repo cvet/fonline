@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"f3bf74d7049f719e70a87bbd0635f3ea0bf3dea9682b16347fc2fcc61229f4ca"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"d32653bc08dd55f2f5a079200135c061bcdde0afddcf2192e783fffe613d09f8"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
