@@ -710,9 +710,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->ResetEvents();
 
         bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
-        timespan smooth_time = no_smooth ? timespan {} : _modelMngr->_moveTransitionTime;
-        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::milliseconds {1}}, timespan {}));
-        timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan {} : _animDuration - anim_start_time;
+        timespan smooth_time = no_smooth ? timespan::zero : _modelMngr->_moveTransitionTime;
+        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::milliseconds {1}}, timespan::zero));
+        timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan::zero : _animDuration - anim_start_time;
 
         // Disable current track
         if (no_smooth) {
@@ -1458,7 +1458,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     timespan prev_track_pos {};
     timespan new_track_pos {};
 
-    if (_bodyAnimController && elapsed >= timespan {}) {
+    if (_bodyAnimController && elapsed >= timespan::zero) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
         _bodyAnimController->AdvanceTimeline(ScaleModelAnimationTime(elapsed, GetSpeed()));
@@ -1474,7 +1474,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
 
         new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
-        if (_animDuration > timespan {}) {
+        if (_animDuration > timespan::zero) {
             _animPosProc = new_track_pos.div<float32_t>(_animDuration);
 
             if (_animPosProc >= 1.0f) {
@@ -1557,7 +1557,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
 
         // Model-attached effects have no update loop of their own, so they advance on the pose's logical delta;
         // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(elapsed, timespan {}));
+        model_particle.Particle->Update(std::max(elapsed, timespan::zero));
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
@@ -1574,7 +1574,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     }
 
     // Animation callbacks
-    if (_bodyAnimController && elapsed >= timespan {} && _animDuration > timespan {}) {
+    if (_bodyAnimController && elapsed >= timespan::zero && _animDuration > timespan::zero) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
                 if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime)) {

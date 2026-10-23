@@ -77,7 +77,7 @@ auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan
     const timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     for (const auto& frame : direction.Frames) {
-        FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Sprite frame duration must be positive");
+        FO_VERIFY_AND_THROW(frame.Duration > timespan::zero, "Sprite frame duration must be positive");
         FO_VERIFY_AND_THROW(frame.Duration <= maximum - total, "Sprite direction duration exceeds uint32 milliseconds");
         total += frame.Duration;
     }

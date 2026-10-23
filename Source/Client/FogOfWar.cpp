@@ -188,7 +188,7 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 {
     // One morph duration for every change: the oval grows from its center on appearance, glides between
     // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal
-    _transitionDuration = std::max(duration, timespan {});
+    _transitionDuration = std::max(duration, timespan::zero);
 
     if (points.empty()) {
         // Disappear: shrink the current fan to its center, then clear when the morph finishes. Nothing to
@@ -199,7 +199,7 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 
         _collapsingToOff = true;
 
-        if (_transitionDuration > timespan {}) {
+        if (_transitionDuration > timespan::zero) {
             _startPoints = _points;
             _targetPoints = MakeCollapsed(_points);
             _transitionTime = frame_time;
@@ -217,7 +217,7 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 
     _collapsingToOff = false;
 
-    if (_transitionDuration == timespan {}) {
+    if (_transitionDuration == timespan::zero) {
         _points = std::move(points);
         _startPoints.clear();
         _targetPoints = _points;
@@ -241,7 +241,7 @@ void FogShape::UpdateTransition(nanotime frame_time)
         return;
     }
 
-    if (_transitionDuration == timespan {}) {
+    if (_transitionDuration == timespan::zero) {
         FinishTransition();
         return;
     }

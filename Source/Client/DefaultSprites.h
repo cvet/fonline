@@ -83,8 +83,8 @@ class SpriteSheet final : public Sprite
     friend class ResourceManager;
 
 public:
-    SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs);
-    SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines);
+    explicit SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs);
+    explicit SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;

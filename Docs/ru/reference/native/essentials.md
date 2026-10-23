@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"a9a690564dcc1792caa2f7732aabbab9ee0bfcb0d6342dcfe8ef48dfbc883674"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3742aba7bf1377812559d1b3c325cad88289369775d5a0eab57d4fc8dd1f369c"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -374,6 +374,8 @@ standard stream копируется через `make_stream_string`,
 
 `timespan::to_ms/to_sec` сохраняют дробь для floating T; целые усекают к нулю.
 Для отношений — `div<T>`. Числовым единицам файлов/конфигов/сети нужны явные адаптеры.
+Для явного нулевого интервала используйте существующую `timespan::zero`;
+обычная инициализация полей и переменных сохраняет `{}`.
 
 ### Файловая система, сжатие, сокеты и рабочие потоки
 

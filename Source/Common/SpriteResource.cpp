@@ -68,7 +68,7 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
             auto& frame = direction.Frames[frame_index];
             auto& frame_info = direction_info.Frames[frame_index];
             frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};
-            FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Sprite frame duration must be positive", direction_index, frame_index);
+            FO_VERIFY_AND_THROW(frame.Duration > timespan::zero, "Sprite frame duration must be positive", direction_index, frame_index);
             frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};
             frame.NextOffset = {reader.GetLEInt16(), reader.GetLEInt16()};
             uint8_t shared = reader.GetUInt8();

@@ -60,7 +60,7 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
     _startHexOffset {start_hex_offset},
     _endHexOffset {end_hex_offset}
 {
-    _elapsedTime = std::max(offset_time, timespan {});
+    _elapsedTime = std::max(offset_time, timespan::zero);
     RecalculateMetrics();
 }
 
@@ -81,9 +81,9 @@ void MovingContext::RecalculateMetrics()
 
 auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept -> timespan
 {
-    timespan runtime_elapsed = std::max(current_time - _startTime + _offsetTime, timespan {});
+    timespan runtime_elapsed = std::max(current_time - _startTime + _offsetTime, timespan::zero);
 
-    if (_leaseTime > timespan {} && runtime_elapsed > _leaseTime) {
+    if (_leaseTime > timespan::zero && runtime_elapsed > _leaseTime) {
         return _leaseTime;
     }
 
@@ -93,9 +93,9 @@ auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept 
 // The time a plan spends waiting at its lease is taken out of its clock, so a longer lease resumes it where it stood
 auto MovingContext::HoldAtLease(nanotime current_time) -> timespan
 {
-    timespan clock_elapsed = std::max(current_time - _startTime + _offsetTime, timespan {});
+    timespan clock_elapsed = std::max(current_time - _startTime + _offsetTime, timespan::zero);
 
-    if (_leaseTime > timespan {} && clock_elapsed > _leaseTime) {
+    if (_leaseTime > timespan::zero && clock_elapsed > _leaseTime) {
         _offsetTime -= clock_elapsed - _leaseTime;
         return _leaseTime;
     }
@@ -136,7 +136,7 @@ auto MovingContext::EvaluateRawProgress(timespan elapsed_time) const -> MovingRa
     MovingRawProgress raw_progress;
     raw_progress.Hex = _startHex;
 
-    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan {} || _wholeDist <= 0.0f) {
+    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan::zero || _wholeDist <= 0.0f) {
         return raw_progress;
     }
 
@@ -191,19 +191,19 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 
     timespan new_offset_time = RescaleMovementTime(_elapsedTime, _speed, speed, std::chrono::milliseconds {1});
     timespan new_whole_time = std::max(RescaleMovementTime(_wholeTime, _speed, speed, std::chrono::nanoseconds {1}), timespan {100});
-    timespan new_lease_time = _leaseTime > timespan {} ? RescaleMovementTime(_leaseTime, _speed, speed, std::chrono::nanoseconds {1}) : timespan {};
+    timespan new_lease_time = _leaseTime > timespan::zero ? RescaleMovementTime(_leaseTime, _speed, speed, std::chrono::nanoseconds {1}) : timespan::zero;
 
     _wholeTime = new_whole_time;
     _leaseTime = new_lease_time;
     _startTime = current_time;
     _offsetTime = new_offset_time;
-    _elapsedTime = std::max(_offsetTime, timespan {});
+    _elapsedTime = std::max(_offsetTime, timespan::zero);
     _speed = speed;
 }
 
 void MovingContext::SetLeaseTime(timespan lease_time, nanotime current_time)
 {
-    FO_VERIFY_AND_THROW(lease_time >= timespan {}, "Movement lease must not be negative", lease_time);
+    FO_VERIFY_AND_THROW(lease_time >= timespan::zero, "Movement lease must not be negative", lease_time);
 
     // The wait under the old lease is settled first, so a longer lease resumes from where the plan stood
     (void)HoldAtLease(current_time);
@@ -238,7 +238,7 @@ void MovingContext::ValidateRuntimeState() const
 {
     FO_VERIFY_AND_THROW(!_steps.empty(), "Moving context has no movement steps in runtime state", _startHex, _wholeTime, _wholeDist);
     FO_VERIFY_AND_THROW(!_controlSteps.empty(), "Moving context has no control steps in runtime state", _startHex, _steps.size(), _wholeTime, _wholeDist);
-    FO_VERIFY_AND_THROW(_wholeTime > timespan {}, "Whole time must be positive");
+    FO_VERIFY_AND_THROW(_wholeTime > timespan::zero, "Whole time must be positive");
     FO_VERIFY_AND_THROW(_wholeDist > 0.0f, "Whole dist must be positive");
 }
 
@@ -281,12 +281,12 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
 
 auto MovingContext::EvaluateProjectedHex(timespan look_ahead) const -> mpos
 {
-    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan {} || _wholeDist <= 0.0f) {
+    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan::zero || _wholeDist <= 0.0f) {
         return _endHex;
     }
 
-    timespan remaining = std::max(_wholeTime - _elapsedTime, timespan {});
-    timespan advance = std::min(std::max(look_ahead, timespan {}), remaining);
+    timespan remaining = std::max(_wholeTime - _elapsedTime, timespan::zero);
+    timespan advance = std::min(std::max(look_ahead, timespan::zero), remaining);
 
     return EvaluateRawProgress(_elapsedTime + advance).Hex;
 }

@@ -90,7 +90,7 @@ auto ScaleModelAnimationTime(timespan time, float64_t factor) -> timespan
 
 auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time) -> bool
 {
-    FO_VERIFY_AND_THROW(duration > timespan {} && std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Animation callback phase or duration is invalid");
+    FO_VERIFY_AND_THROW(duration > timespan::zero && std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Animation callback phase or duration is invalid");
 
     if (current <= previous) {
         return false;
@@ -133,7 +133,7 @@ auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, timespan d
 {
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(clip_index <= numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max()), "Animation clip index exceeds controller range", clip_index);
-    FO_VERIFY_AND_THROW(duration > timespan {}, "Animation duration is invalid", duration);
+    FO_VERIFY_AND_THROW(duration > timespan::zero, "Animation duration is invalid", duration);
     FO_VERIFY_AND_THROW(_animationBindings->size() < numeric_cast<size_t>(std::numeric_limits<int32_t>::max()), "Animation controller table is full", _animationBindings->size());
 
     int32_t animation_index = numeric_cast<int32_t>(_animationBindings->size());
@@ -294,7 +294,7 @@ void ModelAnimationController::AddEventEnable(int32_t track, bool enable, timesp
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    FO_VERIFY_AND_THROW(start_time >= timespan {}, "Animation event start time is negative", start_time);
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = {}});
 }
@@ -304,9 +304,9 @@ void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, tim
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    FO_VERIFY_AND_THROW(start_time >= timespan {}, "Animation event start time is negative", start_time);
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
 
-    FO_VERIFY_AND_THROW(smooth_time >= timespan {} && std::isfinite(speed), "Animation event value or smoothing is invalid");
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(speed), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -316,9 +316,9 @@ void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, t
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    FO_VERIFY_AND_THROW(start_time >= timespan {}, "Animation event start time is negative", start_time);
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
 
-    FO_VERIFY_AND_THROW(smooth_time >= timespan {} && std::isfinite(weight), "Animation event value or smoothing is invalid");
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(weight), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -400,12 +400,12 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
             track.Enabled = enabled;
             track.Speed = speed;
             track.Weight = weight;
-            return timespan {};
+            return timespan::zero;
         }
 
         FO_VERIFY_AND_THROW(std::isfinite(speed) && std::isfinite(weight), "Animation track resolved non-finite values", speed, weight);
 
-        timespan advance = enabled ? ScaleModelAnimationTime(elapsed, speed) : timespan {};
+        timespan advance = enabled ? ScaleModelAnimationTime(elapsed, speed) : timespan::zero;
         return timespan {checked_add<int64_t>(track.Position.nanoseconds(), advance.nanoseconds())};
     };
 

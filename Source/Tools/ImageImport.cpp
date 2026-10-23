@@ -66,7 +66,7 @@ auto ImageImport::GetDuration(const FrameSequence& sequence) -> timespan
     const timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     for (const auto& frame : sequence.Frames) {
-        FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Image frame duration must be positive");
+        FO_VERIFY_AND_THROW(frame.Duration > timespan::zero, "Image frame duration must be positive");
         FO_VERIFY_AND_THROW(frame.Duration <= maximum - duration, "Image sequence duration exceeds uint32 milliseconds");
         duration += frame.Duration;
     }

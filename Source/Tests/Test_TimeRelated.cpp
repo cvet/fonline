@@ -68,7 +68,7 @@ TEST_CASE("TimeRelated")
 
         CHECK(timespan {1}.to_ms<double>() == 0.000001);
         CHECK(timespan {1}.to_sec<double>() == 0.000000001);
-        CHECK(timespan {}.to_sec<double>() == 0.0);
+        CHECK(timespan::zero.to_sec<double>() == 0.0);
     }
 
     SECTION("NanoAndSyncTime")
@@ -181,7 +181,7 @@ TEST_CASE("TimeRelated")
 
     SECTION("DurationFormatterMinuteAndDayBoundaries")
     {
-        CHECK(std::format("{}", timespan {}) == "0.000 us");
+        CHECK(std::format("{}", timespan::zero) == "0.000 us");
         CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
         CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
         CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");

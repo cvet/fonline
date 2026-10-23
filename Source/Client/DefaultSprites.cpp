@@ -450,7 +450,7 @@ void SpriteSheet::SetFrameTimeline(vector<timespan> durations)
     timespan total {};
 
     for (timespan duration : durations) {
-        FO_VERIFY_AND_THROW(duration > timespan {}, "Sprite frame duration must be positive");
+        FO_VERIFY_AND_THROW(duration > timespan::zero, "Sprite frame duration must be positive");
         FO_VERIFY_AND_THROW(duration <= max_duration - total, "Sprite duration exceeds uint32 milliseconds", total, duration);
 
         total += duration;
@@ -538,7 +538,7 @@ void SpriteSheet::Prewarm()
 {
     auto direction = GetCurrentDirection();
     int32_t frame = _sprMngr->Random(0, direction->_framesCount - 1);
-    timespan start = frame == 0 ? timespan {} : direction->_frameEnds[frame - 1];
+    timespan start = frame == 0 ? timespan::zero : direction->_frameEnds[frame - 1];
     _phase = start.div<float64_t>(direction->_duration);
     RefreshParameters();
 }
@@ -599,12 +599,12 @@ auto SpriteSheet::Update() -> bool
     timespan elapsed = current - _startTick;
     _startTick = current;
 
-    return AdvanceTime(elapsed < timespan {} ? timespan {} : elapsed);
+    return AdvanceTime(elapsed < timespan::zero ? timespan::zero : elapsed);
 }
 
 auto SpriteSheet::AdvanceTime(timespan elapsed_time) -> bool
 {
-    FO_VERIFY_AND_THROW(elapsed_time >= timespan {}, "Sprite elapsed time must be nonnegative");
+    FO_VERIFY_AND_THROW(elapsed_time >= timespan::zero, "Sprite elapsed time must be nonnegative");
 
     if (!_playing) {
         return false;

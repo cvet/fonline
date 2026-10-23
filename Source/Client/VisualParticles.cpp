@@ -334,7 +334,7 @@ void ParticleSystem::Update()
     nanotime time = GetTime();
     timespan elapsed = time - _lastUpdateTime;
 
-    if (_forceDraw && elapsed <= timespan {}) {
+    if (_forceDraw && elapsed <= timespan::zero) {
         elapsed = std::max(_particleMngr->_animUpdateThreshold, timespan {std::chrono::milliseconds {1}});
     }
 
@@ -344,7 +344,7 @@ void ParticleSystem::Update()
 
 void ParticleSystem::Update(timespan elapsed)
 {
-    FO_VERIFY_AND_THROW(elapsed >= timespan {}, "Particle update duration must be non-negative", elapsed);
+    FO_VERIFY_AND_THROW(elapsed >= timespan::zero, "Particle update duration must be non-negative", elapsed);
     bool was_active = _runtimeSystem->IsActive();
 
     if (!was_active) {
@@ -356,7 +356,7 @@ void ParticleSystem::Update(timespan elapsed)
 
     bool is_active = _runtimeSystem->IsActive();
 
-    if (elapsed > timespan {} || !is_active) {
+    if (elapsed > timespan::zero || !is_active) {
         _renderPending = true;
     }
     _elapsedTime = elapsed_time;

@@ -123,7 +123,7 @@ public:
     [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> timespan;
     // Plan time the plan may run to, zero when it may run to its end; see SetLeaseTime
     [[nodiscard]] auto GetLeaseTime() const noexcept -> timespan { return _leaseTime; }
-    [[nodiscard]] auto IsHeldByLease() const noexcept -> bool { return _leaseTime > timespan {} && _elapsedTime >= _leaseTime && _elapsedTime < _wholeTime; }
+    [[nodiscard]] auto IsHeldByLease() const noexcept -> bool { return _leaseTime > timespan::zero && _elapsedTime >= _leaseTime && _elapsedTime < _wholeTime; }
     // Returns whether the movement has been explicitly completed
     [[nodiscard]] auto IsCompleted() const noexcept -> bool { return _completed; }
     // Returns the reason supplied when the movement was completed

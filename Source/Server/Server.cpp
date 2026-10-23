@@ -2281,7 +2281,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
         // plan left waiting at its lease would wait there for good and the player would find it still under way on return
-        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > timespan {}) {
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > timespan::zero) {
             StopCritterMoving(cr);
         }
 
@@ -3611,7 +3611,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     // A held direction runs on the server only as far as the player has confirmed holding it
     // A corrected path replaces the client's held plan; it must finish without renewals for that retired plan
     if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
-        auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+        auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan::zero, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
         plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
         server_moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + plan_distance_shift, numeric_cast<uint16_t>(corrected_speed)), GameTime.GetFrameTime());
     }
@@ -3669,7 +3669,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
 
     // An authoritative finite correction has retired this plan's lease, including renewals already in transit
-    if (moving->GetLeaseTime() == timespan {}) {
+    if (moving->GetLeaseTime() == timespan::zero) {
         return;
     }
 

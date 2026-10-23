@@ -867,7 +867,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
     system.Update();
-    REQUIRE(system.GetElapsedTime() > timespan {});
+    REQUIRE(system.GetElapsedTime() > timespan::zero);
 
     rig.ClearDraws();
     system.Draw();

@@ -3007,7 +3007,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
     }
 
     if (try_move) {
-        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan::zero, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
         auto moving = cr->GetMoving();
         FO_VERIFY_AND_THROW(moving, "Missing active movement state");
         moving->ValidateRuntimeState();
@@ -3195,7 +3195,7 @@ void ClientEngine::PlanDirectMove(ptr<CritterHexView> cr, string_view reason, ui
         return;
     }
 
-    refcount_ptr<MovingContext> plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(trace.Steps), std::move(trace.ControlSteps), GameTime.GetFrameTime(), timespan {}, start_hex, start_hex_offset, trace.EndHexOffset);
+    refcount_ptr<MovingContext> plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(trace.Steps), std::move(trace.ControlSteps), GameTime.GetFrameTime(), timespan::zero, start_hex, start_hex_offset, trace.EndHexOffset);
     plan->ValidateRuntimeState();
 
     // A fresh plan is leased a few steps ahead; ProcessDirectMove renews the lease while the direction is held

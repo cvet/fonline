@@ -934,7 +934,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->SwitchPlayerCritter(player, cr);
 
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start_hex, ipos16 {}, ipos16 {});
+        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan::zero, start_hex, ipos16 {}, ipos16 {});
         moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(cr, moving, player, 7);
         server->ChangeCritterMovingSpeed(cr, uint16_t {150});

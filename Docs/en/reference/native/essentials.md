@@ -363,6 +363,8 @@ storage.
 
 `timespan::to_ms/to_sec` retain fractions for floating T; integers truncate toward zero.
 Use `div<T>` for ratios. Numeric file/config/wire units need explicit adapters.
+Use the existing `timespan::zero` for explicit zero-duration expressions;
+ordinary field and variable initialization can keep `{}`.
 
 ### Filesystem, compression, sockets, and work threads
 

@@ -52,10 +52,10 @@ TEST_CASE("LinkDelayEstimator")
     SECTION("FractionalRebaseTimeDoesNotBecomeImmediate")
     {
         LinkDelayEstimator fractional {std::chrono::seconds {30}, std::chrono::microseconds {500}, std::chrono::microseconds {500}};
-        CHECK(fractional.AddSample(0, At(0)) == timespan {});
+        CHECK(fractional.AddSample(0, At(0)) == timespan::zero);
         CHECK(fractional.AddSample(0, At(1)) == timespan {std::chrono::milliseconds {1}});
         CHECK(fractional.AddSample(0, At(1) + timespan {499999}) == timespan {std::chrono::milliseconds {1}});
-        CHECK(fractional.AddSample(0, At(1) + timespan {500000}) == timespan {});
+        CHECK(fractional.AddSample(0, At(1) + timespan {500000}) == timespan::zero);
     }
 
     SECTION("RejectsUnrepresentableSenderTimesBeforeChangingSamples")

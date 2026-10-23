@@ -211,7 +211,7 @@ void FrameBalancer::EndLoop()
     else if (_yieldAfterLoop) {
         std::this_thread::yield();
     }
-    else if (_sleep > timespan {}) {
+    else if (_sleep > timespan::zero) {
         coarse_sleep(_sleep.value());
     }
 }

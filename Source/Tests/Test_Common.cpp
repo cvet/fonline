@@ -383,7 +383,7 @@ TEST_CASE("SpriteDurationsRequireExactSerializedMilliseconds")
 {
     CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {1}) == 1);
     CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}) == std::numeric_limits<uint32_t>::max());
-    CHECK_THROWS(GetSpriteDurationMilliseconds(timespan {}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(timespan::zero));
     CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::milliseconds {-1}));
     CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::microseconds {1500}));
     CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::nanoseconds {1}));

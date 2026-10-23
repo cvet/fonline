@@ -220,7 +220,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         nanotime paused_frame_time = server->GameTime.GetFrameTime();
         server->FrameAdvance();
         CHECK(server->GameTime.GetFrameTime() == paused_frame_time);
-        CHECK(server->GameTime.GetFrameDeltaTime() == timespan {});
+        CHECK(server->GameTime.GetFrameDeltaTime() == timespan::zero);
     }));
 
     CHECK(callback_invoked);
@@ -303,7 +303,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
             ScriptFunc<void> event_func {&event_desc};
             REQUIRE(event_func);
-            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
+            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan::zero, {}));
         }
 
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});

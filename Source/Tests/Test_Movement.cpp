@@ -49,7 +49,7 @@ namespace
 
     static auto MakeMovingContext() -> refcount_ptr<MovingContext>
     {
-        return safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan::zero, TEST_START_HEX, ipos16 {}, ipos16 {});
     }
 
     static auto MakeTimePoint(int32_t milliseconds) -> nanotime
@@ -124,7 +124,7 @@ TEST_CASE("MovingContext")
         CHECK(moving->GetSpeed() == TEST_SPEED);
         CHECK(moving->GetWholeTime() == whole);
         CHECK(moving->GetLeaseTime() == lease);
-        CHECK(moving->GetElapsedTime() == timespan {});
+        CHECK(moving->GetElapsedTime() == timespan::zero);
     }
 
     SECTION("SubMillisecondLeaseSettlesOnlyWaitingTime")
@@ -142,7 +142,7 @@ TEST_CASE("MovingContext")
         CHECK(moving->GetElapsedTime() == timespan {750});
         CHECK_FALSE(moving->IsHeldByLease());
 
-        moving->SetLeaseTime(timespan {}, nanotime {timespan {1250}});
+        moving->SetLeaseTime(timespan::zero, nanotime {timespan {1250}});
         moving->UpdateCurrentTime(nanotime {timespan {2000}});
 
         CHECK(moving->GetElapsedTime() == timespan {1500});
@@ -356,7 +356,7 @@ TEST_CASE("MovingPathJoin")
 
         CHECK(joined_control_steps == vector<uint16_t> {2, 3});
 
-        auto moving = safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, joined_steps, joined_control_steps, nanotime {}, timespan {}, second_hex, ipos16 {}, ipos16 {});
+        auto moving = safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, joined_steps, joined_control_steps, nanotime {}, timespan::zero, second_hex, ipos16 {}, ipos16 {});
         CHECK(moving->GetEndHex() == MakeMovingContext()->GetEndHex());
     }
 

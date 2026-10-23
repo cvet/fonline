@@ -78,7 +78,7 @@ void BakingReport::RecordBakerRegistration(string_view pack_name, string_view ba
 
 void BakingReport::RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, timespan duration, bool success, string_view failure_message)
 {
-    FO_VERIFY_AND_THROW(duration >= timespan {}, "Baking report duration is negative", duration);
+    FO_VERIFY_AND_THROW(duration >= timespan::zero, "Baking report duration is negative", duration);
 
     scoped_lock lock {_locker};
     auto& aggregate_stats = GetAggregateBaker(baker_name);

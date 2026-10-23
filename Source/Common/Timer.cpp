@@ -107,7 +107,7 @@ void GameTimer::Resume()
 void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
     if (_paused.load(std::memory_order_acquire)) {
-        _frameDeltaTime.store(timespan {}, std::memory_order_relaxed);
+        _frameDeltaTime.store(timespan::zero, std::memory_order_relaxed);
         return;
     }
 

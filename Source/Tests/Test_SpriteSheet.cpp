@@ -336,7 +336,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         const_span<timespan> durations = sheet.GetFrameDurations();
         REQUIRE(durations.size() == 65535);
         CHECK(std::ranges::all_of(durations, [](timespan duration) { return duration == std::chrono::milliseconds {65537}; }));
-        CHECK(std::accumulate(durations.begin(), durations.end(), timespan {}) == maximum);
+        CHECK(std::accumulate(durations.begin(), durations.end(), timespan::zero) == maximum);
         CHECK(sheet.GetDuration() == maximum);
         CHECK(sheet.GetFrameIndexAtPhase(1.0) == 65534);
     }
@@ -344,7 +344,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
     SECTION("RejectsInvalidNativeDurationsBeforeAccumulation")
     {
         SpriteSheetFixture fixture;
-        timespan invalid = GENERATE(timespan {}, timespan {std::chrono::nanoseconds {-1}});
+        timespan invalid = GENERATE(timespan::zero, timespan {std::chrono::nanoseconds {-1}});
         CHECK_THROWS(SpriteSheet(&fixture.Sprites, vector<vector<timespan>> {{invalid}}));
         CHECK_THROWS(SpriteSheet(&fixture.Sprites, 3, std::chrono::nanoseconds {2}, 1));
         timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
