@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"f83af12386cf590e1ed6df4079bdbb7af1a453d67cbe37f584bd28befde7927b"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"ea12efb6d1da41d1e3a1624d29d024920385c22d6d8936afe240bfa2a4473c96"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -14,11 +14,39 @@ permalink: /Docs/ru/reference/native/essentials.html
 
 Используйте эту страницу при изменении кода ниже `Source/Common/` и когда нужно определить, относится ли новая утилита к переиспользуемому фундаменту движка, а не к клиенту, серверу, инструментам или конкретной игре.
 
-Контракт обработки исключений в модели памяти описан в разделе [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md): `SafeAlloc` / `SafeAllocator` завершают процесс при нехватке памяти, поэтому `std::bad_alloc` не является восстанавливаемой ошибкой, а уровни `throw` / `FO_VERIFY_*` / `FO_STRONG_ASSERT` строятся поверх `ExceptionHandling.h`.
+Контракт обработки исключений в модели памяти описан в разделе [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md): `safe_alloc` / `safe_allocator` завершают процесс при нехватке памяти, поэтому `std::bad_alloc` не является восстанавливаемой ошибкой, а уровни `throw` / `FO_VERIFY_*` / `FO_STRONG_ASSERT` строятся поверх `ExceptionHandling.h`.
 
 Слой Essentials должен сохранять минимум зависимостей. Большая часть движка подключает его через `Source/Essentials/Essentials.h`, поэтому изменение здесь способно затронуть каждое приложение.
 
 ## Решение между слоями
+
+### Имена и пространства имён модулей
+
+Типы, свободные функции, методы и поля Essentials используют snake_case;
+вышележащие слои и нативный код проекта — PascalCase. Имена файлов модулей
+остаются PascalCase: по ним работают umbrella order и проверки слоёв. Внутри
+Essentials параметры шаблонов (`CharT`, `Traits`, `Alloc`, `InlineCapacity`), типы
+исключений, имена внешнего API и протокол подсчёта ссылок AngelScript (`AddRef`,
+`TryAddRef`, `Release`) сохраняют правила владельца. Engine `refcounted` использует
+`addref`, `release`, `get_refcount`; `refcountable` / `refcount_ptr` поддерживают
+нужное написание.
+
+Утилитарный класс только со static-членами становится namespace, если не требуется
+идентичность класса, как в `friend class safe_alloc`. Уберите class-member `static`:
+у функции namespace он означал бы internal linkage. Namespace разрешает имена
+в порядке объявлений и не может быть friend; inline-вызовам могут понадобиться
+предварительные объявления.
+
+Свободный API, повторяющий имя модуля в именах функций, целиком переходит в namespace
+модуля, включая типы: `logging::write_base`, `memory::copy`, `stack_trace::get`,
+`exceptions::report_and_continue`, `winapi::`, `posix::`, `platform::`, `utf8::`.
+Не разделяйте один модуль между scopes. Существующая лексика без префикса —
+`numeric_cast`, `safe_call`, `copy_hold_ref`, `coarse_sleep`, `run_async`, `exit_app`,
+`vec_*` — остаётся без namespace. Для логирования используется `logging`: `log`
+конфликтует с глобальной математической функцией, вызываемой vendored headers
+без квалификатора.
+
+### Порядок зависимостей
 
 Essentials следует строгому dependency DAG: зависимость должна находиться раньше
 в umbrella block, а обратную зависимость следует передать вверх через параметры
@@ -152,7 +180,7 @@ test Essentials не обходит contract-change gate.
 
 `BasicCore.h` проверяет выбранный макрос ОС (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS` или `FO_WEB`) и требует C++20. Здесь же часто используемые стандартные типы вводятся в namespace движка и объявляются базовые макросы, включая `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL` и helpers для namespace. Средства подавления предупреждений также находятся здесь: `FO_DISABLE_WARNINGS_PUSH/POP` отключает все предупреждения при обёртывании third-party headers, а пары `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP` и `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` подавляют одно именованное предупреждение только в соответствующем компиляторе. Это позволяет изолировать false positive одного toolchain, не заставляя остальные отвергать неизвестный номер `-W` или warning. Сначала исправляйте причину предупреждения; per-compiler helper допустим только для документированного false positive компилятора.
 
-`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` предпочитает окружение и не использует shell/SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Если окружение не задаёт путь, Windows использует `SHGetKnownFolderPath`, а поддерживаемые POSIX hosts — `getpwuid_r`; host без обоих источников не возвращает путь. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
+`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `platform::get_user_data_base()` предпочитает окружение и не использует shell/SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Если окружение не задаёт путь, Windows использует `SHGetKnownFolderPath`, а поддерживаемые POSIX hosts — `getpwuid_r`; host без обоих источников не возвращает путь. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `platform::get_cpu_usage_snapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
 
 `platform::get_last_module_error()` сразу после неудачной загрузки модуля или поиска символа возвращает текст ошибки загрузчика Windows либо POSIX `dlerror()`. `platform::get_os_version()` получает версию ОС через `RtlGetVersion` в Windows и `uname` на остальных поддерживаемых системах для диагностики клиента.
 
@@ -188,18 +216,18 @@ CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/c
 
 ### Диагностика и обработка сбоев
 
-`BaseLogging.*` и `Logging.*` образуют фундамент журналирования. `WriteLogMessage()` объединяет последовательные дубликаты с одинаковыми `LogType` и текстом: повторения пропускаются, а перед следующей отличающейся строкой выводится сводка вида `...and 25 more same messages`. `LogToFile()` открывает файл без exclusive lock в рамках поведения платформы: `std::ofstream` MSVC использует deny-none, а POSIX не вводит обязательную блокировку при открытии. Благодаря этому два модуля движка в одном процессе, например runtime host EXE и загруженная им runtime DLL со своей копией engine global data, могут одновременно держать один файл открытым. Перед каждой записью `WriteSync` перемещается в конец файла, поэтому один handle не перезапишет данные, добавленные другим; параметр `append` по-прежнему выбирает truncate по умолчанию либо append при первоначальном открытии.
+`BaseLogging.*` и `Logging.*` образуют фундамент журналирования. `logging::write_message()` объединяет последовательные дубликаты с одинаковыми `logging::type` и текстом: повторения пропускаются, а перед следующей отличающейся строкой выводится сводка вида `...and 25 more same messages`. `logging::to_file()` открывает файл без exclusive lock в рамках поведения платформы: `std::ofstream` MSVC использует deny-none, а POSIX не вводит обязательную блокировку при открытии. Благодаря этому два модуля движка в одном процессе, например runtime host EXE и загруженная им runtime DLL со своей копией engine global data, могут одновременно держать один файл открытым. Перед каждой записью `WriteSync` перемещается в конец файла, поэтому один handle не перезапишет данные, добавленные другим; параметр `append` по-прежнему выбирает truncate по умолчанию либо append при первоначальном открытии.
 
-`WriteLog` / `WriteBaseLog` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
+`logging::write` / `logging::write_base` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
 
-`FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `BasicCore::ExitApp(false)` только механическое завершение. Ему принадлежат `ReportFatalAndExit`, `ReportStrongAssertAndExit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `ExitApp(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
+`FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `exit_app(false)` только механическое завершение. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `exit_app(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
 
 `StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 
 <a id="memory-pointers-and-lifetime-utilities"></a>
 ### Память, указатели и время жизни
 
-`MemorySystem.*` владеет резервными блоками памяти, отчётами о failed allocation и `SafeAllocator`. `SmartPointers.*` содержит wrappers, явно выражающие владение, nullability и назначение raw reference; словарь `ptr` / `nptr` и правила миграции приведены в разделе [Умные указатели](../../contributing/coding-contracts/smart-pointers.md). В этом слое должны находиться только общие средства владения; время жизни entity и holder semantics принадлежат [модели сущностей](../../explanation/entity-and-property-model/).
+`MemorySystem.*` владеет резервными блоками памяти, отчётами о failed allocation и `safe_allocator`. `SmartPointers.*` содержит wrappers, явно выражающие владение, nullability и назначение raw reference; словарь `ptr` / `nptr` и правила миграции приведены в разделе [Умные указатели](../../contributing/coding-contracts/smart-pointers.md). В этом слое должны находиться только общие средства владения; время жизни entity и holder semantics принадлежат [модели сущностей](../../explanation/entity-and-property-model/).
 
 #### Словарь callable
 
@@ -219,12 +247,12 @@ script provider в `StackTrace.h`, расположенный до `FunctionObje
 
 Код движка выделяет память только через две поверхности:
 
-- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. `string` и `wstring` используют engine `basic_string` из `StringObject.h`, `deque` использует `basic_deque` из `DequeObject.h`, остальные allocator-aware aliases используют `SafeAllocator`. Используйте их вместо вариантов из `std::`.
-- **`SafeAlloc`**: `MakeUnique` / `MakeShared` / `MakeRefCounted` / `MakeRawArr` / `MakeUniqueArr` для типизированных объектов и raw-уровень `MallocRaw` / `CallocRaw` / `ReallocRaw` / `FreeRaw`, а также `MallocAlignedRaw` / `FreeAlignedRaw` для C ABI.
+- **Псевдонимы контейнеров `fo`** из `Containers.h`: `string`, `wstring`, `vector`, `map`, `unordered_map`, `set`, `list`, `deque`, `stringstream`, `small_vector` и связанные типы. `string` и `wstring` используют engine `basic_string` из `StringObject.h`, `deque` использует `basic_deque` из `DequeObject.h`, остальные allocator-aware aliases используют `safe_allocator`. Используйте их вместо вариантов из `std::`.
+- **`safe_alloc`**: `make_raw` / `make_unique` / `make_shared` / `make_refcounted` / `make_raw_arr` / `make_unique_arr` для типизированных объектов и raw-уровень `malloc_raw` / `calloc_raw` / `realloc_raw` / `free_raw`, а также `malloc_aligned_raw` / `free_aligned_raw` для C ABI.
 
-Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `SafeAllocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
+Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `safe_allocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
 
-Примитивы `rpmalloc` намеренно не экспортируются из `MemorySystem.h`. Они возвращают null при сбое и создали бы вторую доступную точку входа, обходящую контракт, поэтому остаются file-local statics в `MemorySystem.cpp`. Vendored allocator возвращает null и при on-demand commit зарезервированного span, и при неудачном recommit ранее decommitted свободной страницы. Страница recommit-ится до публикации как доступная; при отказе она возвращается в free list, поэтому повторная попытка после освобождения резервного пула не выдаст reserve-only память. `Test_MemorySystem.cpp` инъецирует оба сбоя. Отчёты о нехватке памяти сериализуются между потоками; если построение stack trace само не может выделить память, вложенный отчёт пишет только заголовок без рекурсии. Освобождённые другим потоком резервные chunks возвращаются в исходный thread heap и не гарантируют память каждому потоку. Lock-free allocator Mono находится вне этого контракта и может вызвать abort при OOM. Операции над блоками `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` не выделяют память и остаются публичными.
+Примитивы `rpmalloc` намеренно не экспортируются из `MemorySystem.h`. Они возвращают null при сбое и создали бы вторую доступную точку входа, обходящую контракт, поэтому остаются file-local statics в `MemorySystem.cpp`. Vendored allocator возвращает null и при on-demand commit зарезервированного span, и при неудачном recommit ранее decommitted свободной страницы. Страница recommit-ится до публикации как доступная; при отказе она возвращается в free list, поэтому повторная попытка после освобождения резервного пула не выдаст reserve-only память. `Test_MemorySystem.cpp` инъецирует оба сбоя. Отчёты о нехватке памяти сериализуются между потоками; если построение stack trace само не может выделить память, вложенный отчёт пишет только заголовок без рекурсии. Освобождённые другим потоком резервные chunks возвращаются в исходный thread heap и не гарантируют память каждому потоку. Lock-free allocator Mono находится вне этого контракта и может вызвать abort при OOM. Операции над блоками `memory::copy` / `memory::move` / `memory::fill` / `memory::compare` / `memory::read_unaligned` / `memory::write_unaligned` не выделяют память и остаются публичными.
 
 Vendored rpmalloc сохраняет upstream spans размером 256 MiB на 64-bit targets.
 На 32-bit targets один span уменьшен до `LARGE_PAGE_SIZE` (16 MiB). Старые
@@ -238,11 +266,11 @@ space и сорвать уже первое небольшое allocation. Span 
 
 | | Фактическое поведение |
 |---|---|
-| **Отдельная куча** | Глобальные `operator new` / `delete` заменены на rpmalloc, поэтому любой `new` и `std::allocator` уже попадает в engine heap. Но rpmalloc собирается с `ENABLE_OVERRIDE=0`, C `malloc` / `free` не перехватываются, и использующие их библиотеки остаются в CRT heap, вне rpmalloc, статистики `AllocatorGetInUseBytes()` и Tracy allocation tracking. |
+| **Отдельная куча** | Глобальные `operator new` / `delete` заменены на rpmalloc, поэтому любой `new` и `std::allocator` уже попадает в engine heap. Но rpmalloc собирается с `ENABLE_OVERRIDE=0`, C `malloc` / `free` не перехватываются, и использующие их библиотеки остаются в CRT heap, вне rpmalloc, статистики `memory::get_in_use_bytes()` и Tracy allocation tracking. |
 | **Неверная политика нехватки памяти** | `std::allocator` бросает `std::bad_alloc` вместо terminate-on-OOM модели из раздела [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md), пункт 1. |
-| **Выравнивание** | `SafeAllocator` направляет over-aligned element types через aligned-перегрузки `operator new` / `delete`. Проверка over-alignment должна оставаться member-функцией: `alignof(T)` требует полного `T`, но allocator обязан работать с неполным типом, поскольку `std::vector<T>` может быть объявлен до определения `T`. |
+| **Выравнивание** | `safe_allocator` направляет over-aligned element types через aligned-перегрузки `operator new` / `delete`. Проверка over-alignment должна оставаться member-функцией: `alignof(T)` требует полного `T`, но allocator обязан работать с неполным типом, поскольку `std::vector<T>` может быть объявлен до определения `T`. |
 
-Известные допустимые ограничения: `std::future` / `std::promise` / `std::packaged_task`, `std::thread`, `std::filesystem::path` и файловые streams не принимают allocator. Они попадают в engine heap через global `new`, но бросают исключение при исчерпании памяти. Единственный `std::function` в `StackTrace.h` также расположен до callable module движка. Отдельно `BasicCore`, `StackTrace` и `BaseLogging` расположены до `MemorySystem` в порядке `Essentials.h` и поэтому намеренно используют контейнеры `std::`: `MemorySystem.cpp` вызывает `GetStackTrace()` из `ReportBadAlloc`, и reporting path не должен зависеть от allocator, который только что отказал.
+Известные допустимые ограничения: `std::future` / `std::promise` / `std::packaged_task`, `std::thread`, `std::filesystem::path` и файловые streams не принимают allocator. Они попадают в engine heap через global `new`, но бросают исключение при исчерпании памяти. Единственный `std::function` в `StackTrace.h` также расположен до callable module движка. Отдельно `BasicCore`, `StackTrace` и `BaseLogging` расположены до `MemorySystem` в порядке `Essentials.h` и поэтому намеренно используют контейнеры `std::`: `MemorySystem.cpp` вызывает `stack_trace::get()` из `memory::report_bad_alloc`, и reporting path не должен зависеть от allocator, который только что отказал.
 
 #### Диагностика заполнения аллокатора
 
@@ -280,12 +308,12 @@ Vendored vkd3d-shader не предоставляет allocator hook. Его в�
 
 | Библиотека | Направляется в | Место |
 |---|---|---|
-| ImGui | `SafeAllocator` | `Common/ImGuiExt/ImGuiStuff.cpp` |
-| AngelScript | `SafeAllocator` | `Scripting/AngelScript/AngelScriptScripting.cpp` |
-| zlib | `SafeAllocator` | `Essentials/Compressor.cpp` |
-| ozz-animation | aligned-уровень `SafeAlloc` | `Common/ModelAnimationData.cpp` |
-| meshoptimizer | `SafeAllocator` | `Tools/ModelMeshBaker.cpp` |
-| ufbx | `SafeAllocator` | compile-time `UFBX_EXTERNAL_MALLOC` и `extern "C" ufbx_malloc/realloc/free` в `Tools/ModelMeshBaker.cpp` |
+| ImGui | `safe_allocator` | `Common/ImGuiExt/ImGuiStuff.cpp` |
+| AngelScript | `safe_allocator` | `Scripting/AngelScript/AngelScriptScripting.cpp` |
+| zlib | `safe_allocator` | `Essentials/Compressor.cpp` |
+| ozz-animation | aligned-уровень `safe_alloc` | `Common/ModelAnimationData.cpp` |
+| meshoptimizer | `safe_allocator` | `Tools/ModelMeshBaker.cpp` |
+| ufbx | `safe_allocator` | compile-time `UFBX_EXTERNAL_MALLOC` и `extern "C" ufbx_malloc/realloc/free` в `Tools/ModelMeshBaker.cpp` |
 | SDL | `safe_alloc::*_raw` | `Frontend/Application.cpp` |
 | Effekseer | `safe_alloc::*_raw` + aligned | `Client/EffekseerExtension.cpp`, объявление в его header; оба владельца, client runtime и `Tools/ParticleBaker.cpp`, устанавливают callbacks через одно определение |
 | libpng | `safe_alloc::*_raw` | `Tools/ImageBaker-Png.cpp` через `png_create_read_struct_2` |
@@ -305,10 +333,10 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 <a id="vector-containers-and-inline-storage"></a>
 #### Векторные контейнеры и inline storage
 
-`Containers.h` предоставляет два sequence aliases с `SafeAllocator<T>`:
+`Containers.h` предоставляет два sequence aliases с `safe_allocator<T>`:
 
 - `vector<T>` является обычной динамически выделяемой последовательностью и остаётся default для неограниченных данных, persistent collections с амортизируемым allocation, move-heavy pipelines и точных интерфейсов движка.
-- `small_vector<T, InlineCapacity>` хранит до `InlineCapacity` элементов внутри объекта и переходит на storage с `SafeAllocator` при превышении лимита. Alias движка требует явную capacity; `GCH_SMALL_VECTOR_DEFAULT_SIZE` настраивает vendored implementation, но не задаёт политику выбора capacity.
+- `small_vector<T, InlineCapacity>` хранит до `InlineCapacity` элементов внутри объекта и переходит на storage с `safe_allocator` при превышении лимита. Alias движка требует явную capacity; `GCH_SMALL_VECTOR_DEFAULT_SIZE` настраивает vendored implementation, но не задаёт политику выбора capacity.
 
 Используйте `small_vector` только тогда, когда измерения или жёсткий protocol limit доказывают, что часто создаваемая коллекция обычно мала. Выбирайте capacity по наблюдаемой типичной cardinality, сохраняйте корректность редких больших случаев через heap spill и учитывайте inline bytes в каждом экземпляре. Scratch list на один вызов может быть хорошим кандидатом; несколько inline buffers в каждой ячейке плотной карты способны потребить больше памяти, чем сэкономит отсутствие первой allocation. Метод `inlined()` показывает текущий storage mode и полезен в focused tests и profiling instrumentation.
 
@@ -318,12 +346,12 @@ Hook SQLite требует callback `xSize` и передаёт функциям
 2. Inline moves и swaps выполняют операции над элементами и являются `noexcept` только условно. Заново определите гарантию exception safety затронутой функции, не наследуйте предположения от `vector`.
 3. Member `small_vector<T, N>` инстанцирует уничтожение inline elements на границе содержащего class. Тип `T` должен быть полным в этой точке; это не drop-in замена member `vector`, элемент которого только forward-declared.
 4. В vendored implementation member с вложенным element type, имеющим default member initializers, способен сделать default-inserting операции ill-formed, пока внешний class неполон, особенно под Clang. Для сокращения используйте `erase(begin() + new_size, end())`; в остальных случаях вынесите element type из внешнего class либо явно задайте требования к конструированию.
-5. Heap spill сохраняет terminate-on-OOM policy движка, потому что alias использует `SafeAllocator`. Конструирование, преобразование и move элементов всё ещё могут бросать исключения; см. [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md).
+5. Heap spill сохраняет terminate-on-OOM policy движка, потому что alias использует `safe_allocator`. Конструирование, преобразование и move элементов всё ещё могут бросать исключения; см. [Безопасность исключений](../../contributing/coding-contracts/exception-safety.md).
 
 Не заменяйте `vector` на `small_vector` через границу точного типа только потому, что набор операций выглядит одинаковым:
 
 - script export/codegen signatures и регистрация `ScriptSystem` используют точные написания и type identities `vector<T>` / `readonly_vector<T>`;
-- property writes, serialized backing stores, `DataReader` / `DataWriter`, `NetBuffer` и `CScriptArray` на отдельных границах имеют точный контракт `vector`;
+- property writes, serialized backing stores, `data_reader` / `data_writer`, `NetBuffer` и `CScriptArray` на отдельных границах имеют точный контракт `vector`;
 - внутренний helper, принимающий span, может обслуживать оба представления без раскрытия concrete container type, и это предпочтительная граница, когда допустимы оба;
 - `FO_ENTITY_PROPERTY` не может непосредственно принять `small_vector<T, N>`, потому что запятая одновременно разделяет аргументы макроса.
 
@@ -359,18 +387,23 @@ SplitMix64. Используйте `next()` для сырых битов, `next_
 
 ### Сериализация, значения, строки и хеши
 
+Для существующих операций форматирования и разбора предпочитайте `strex` и
+`strvex`. Повторяющаяся недостающая операция относится к подходящему
+переиспользуемому слою утилит, а не к очередному parser или formatter у каждого
+вызывающего кода.
+
 `StringObject.*` владеет реализацией engine `basic_string`. API следует
 `std::basic_string`, а `FO_STRING_INLINE_CAPACITY` выбирает compiled small-string
 buffer для `string` и `wstring`; это build-wide ABI choice, а не per-call
 optimization. На трёх границах standard library нужны явные adapters: текст для
 standard stream копируется через `make_stream_string`,
-`std::filesystem::path` строится через `fs_make_path`, а `getline` вызывается
+`std::filesystem::path` строится через `fs::make_path`, а `getline` вызывается
 без квалификатора, чтобы ADL выбрал overload движка. Рост строки следует тому же
 детерминированному terminate-on-OOM contract, что и остальные engine storage.
 
-`DataSerialization.*` содержит binary read/write helpers, используемые сетью, persistence, ресурсами и тестами. `DataReader::Read<T>()` и `DataWriter::Write<T>()` копируют standard-layout values через byte copies, поэтому serialized streams не зависят от выравнивания buffer. Zero-copy overload `ReadPtr<T>(size)` предназначен только для raw byte/string views (`uint8_t`, `char` или `void`); типизированные значения, которым нужно alignment, должны использовать `Read<T>()` или `ReadPtr(destination, size)`.
+`DataSerialization.*` содержит binary read/write helpers, используемые сетью, persistence, ресурсами и тестами. `data_reader::read<T>()` и `data_writer::write<T>()` копируют standard-layout values через byte copies, поэтому serialized streams не зависят от выравнивания buffer. Zero-copy overload `read_ptr<T>(size)` предназначен только для raw byte/string views (`uint8_t`, `char` или `void`); типизированные значения, которым нужно alignment, должны использовать `read<T>()` или `read_ptr(destination, size)`.
 
-`StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` предоставляют небольшие переиспользуемые значения, которые вышележащие слои считают примитивами. `iround` отвергает non-finite и выходящие за диапазон int64 floating-point values до округления, чтобы ни одно значение с неопределённым для `std::llround` поведением не достигло функции. `HashStorage::SetResolveHashFailureHandler` позволяет вышележащему слою наблюдать неудачное разрешение hash как в throwing, так и во flagged no-throw lookup path, не обучая Essentials конкретной recovery policy.
+`StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` предоставляют небольшие переиспользуемые значения, которые вышележащие слои считают примитивами. `iround` отвергает non-finite и выходящие за диапазон int64 floating-point values до округления, чтобы ни одно значение с неопределённым для `std::llround` поведением не достигло функции. `hash_storage::set_resolve_hash_failure_handler` позволяет вышележащему слою наблюдать неудачное разрешение hash как в throwing, так и во flagged no-throw lookup path, не обучая Essentials конкретной recovery policy.
 
 ### Файловая система, сжатие, сокеты и рабочие потоки
 

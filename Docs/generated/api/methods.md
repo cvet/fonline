@@ -738,9 +738,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-applyscreenscroll-9c784d1df5"></a>
 - [`symbol-script-method-client-map-applyscreenscroll-9c784d1df5`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-applyscreenscroll-9c784d1df5)
 
-<a id="symbol-script-method-client-map-blockhex-4390cf0769"></a>
-- [`symbol-script-method-client-map-blockhex-4390cf0769`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-blockhex-4390cf0769)
-
 <a id="symbol-script-method-client-map-changezoom-17db72d105"></a>
 - [`symbol-script-method-client-map-changezoom-17db72d105`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-changezoom-17db72d105)
 
@@ -929,9 +926,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-setvisiblelayers-876540cf37"></a>
 - [`symbol-script-method-client-map-setvisiblelayers-876540cf37`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setvisiblelayers-876540cf37)
-
-<a id="symbol-script-method-client-map-unblockhex-5574f205a2"></a>
-- [`symbol-script-method-client-map-unblockhex-5574f205a2`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-unblockhex-5574f205a2)
 
 <a id="group-method-common-game-ab04446c71"></a>
 - [`group-method-common-game-ab04446c71`](../../en/reference/script-api/methods.md#group-method-common-game-ab04446c71)

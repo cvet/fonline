@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2579,
-      "inventory_sha256": "df50fe5a44c3594928aba7b099c8557f395cebfbdf91225a47e904c3696ae7f1",
+      "symbol_count": 2577,
+      "inventory_sha256": "85c713e5ffbad3ca78deaeaa8db5ec9511576cd09ec6ec6d9d08d4fbccb8c047",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2579,
+    "symbol_count": 2577,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 768,
       "event": 121,
-      "method": 1014,
+      "method": 1012,
       "migration-rule": 27,
       "property": 133,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2578,
+      "experimental": 2576,
       "internal": 1
     },
     "explicit_contract_declaration_count": 3,
-    "explicit_contract_symbol_count": 2579,
+    "explicit_contract_symbol_count": 2577,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2578,
+      "experimental": 2576,
       "internal": 1
     },
-    "described_symbol_count": 2579,
+    "described_symbol_count": 2577,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -48551,7 +48551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1021
+        "line": 993
       },
       "contract": {
         "explicit": true,
@@ -48613,7 +48613,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1034
+        "line": 1006
       },
       "contract": {
         "explicit": true,
@@ -48711,61 +48711,6 @@
         },
         {
           "name": "canStop",
-          "type": "bool",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Map.BlockHex",
-      "family_id": "script.method.client.Map.BlockHex",
-      "kind": "method",
-      "name": "BlockHex",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Map",
-      "signature": "void Map.BlockHex(mpos hex, bool full)",
-      "description": "Blocks movement locally and optionally shooting; does not replicate or restart active movement",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 960
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "void",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "hex",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "full",
           "type": "bool",
           "nullable": false,
           "by_reference": false,
@@ -48888,7 +48833,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1070
+        "line": 1042
       },
       "contract": {
         "explicit": true,
@@ -49933,7 +49878,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1063
+        "line": 1035
       },
       "contract": {
         "explicit": true,
@@ -50194,7 +50139,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1105
+        "line": 1077
       },
       "contract": {
         "explicit": true,
@@ -50823,7 +50768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1094
+        "line": 1066
       },
       "contract": {
         "explicit": true,
@@ -51031,7 +50976,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 988
+        "line": 960
       },
       "contract": {
         "explicit": true,
@@ -51079,7 +51024,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 999
+        "line": 971
       },
       "contract": {
         "explicit": true,
@@ -51223,7 +51168,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1010
+        "line": 982
       },
       "contract": {
         "explicit": true,
@@ -51577,7 +51522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1051
+        "line": 1023
       },
       "contract": {
         "explicit": true,
@@ -51749,7 +51694,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1087
+        "line": 1059
       },
       "contract": {
         "explicit": true,
@@ -52095,54 +52040,6 @@
         {
           "name": "layers",
           "type": "MapLayers",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Map.UnblockHex",
-      "family_id": "script.method.client.Map.UnblockHex",
-      "kind": "method",
-      "name": "UnblockHex",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Map",
-      "signature": "void Map.UnblockHex(mpos hex)",
-      "description": "Clears local manual blocking while preserving item and map obstacles",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 974
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "void",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "hex",
-          "type": "mpos",
           "nullable": false,
           "by_reference": false,
           "default": null

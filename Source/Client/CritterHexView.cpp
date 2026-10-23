@@ -332,7 +332,7 @@ void CritterHexView::RefreshView(bool no_smooth)
 
 #if FO_ENABLE_3D
     if (_model) {
-        bool frozen = is_enum_set(_curAnim ? _curAnim->Flags : selection.Flags, CritterAnimationFlags::Freeze);
+        bool frozen = is_enum_set(selection.Flags, CritterAnimationFlags::Freeze) || (_curAnim && is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze));
         _model->SetMovementState(!frozen, moving, moving_speed);
 
         auto model_context = _model->GetMovingContext();

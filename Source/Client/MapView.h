@@ -180,8 +180,6 @@ public:
         bool HasWall {};
         bool HasTransparentWall {};
         bool HasScenery {};
-        bool ManualBlock {};
-        bool ManualBlockFull {};
         bool MoveBlocked {};
         bool MovableWithGag {};
         bool ShootBlocked {};
@@ -255,7 +253,6 @@ public:
     auto MeasureMapBorders(ptr<const Sprite> spr, ipos32 offset) -> bool;
     auto MeasureMapBorders(ptr<const ItemHexView> item) -> bool;
     void RecacheHexFlags(mpos hex);
-    void SetHexManualBlock(mpos hex, bool enable, bool full);
     void Resize(msize size);
 
     void ChangeZoom(float32_t new_zoom, fpos32 anchor);

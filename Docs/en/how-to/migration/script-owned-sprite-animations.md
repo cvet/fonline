@@ -74,6 +74,11 @@ Native `CritterStateAnim` and `CritterActionAnim` now declare only `None=0`. Dec
 
 Move the former `Render.WalkAnimBaseSpeed`, `Render.RunAnimStartSpeed`, and `Render.RunAnimBaseSpeed` to project settings if preserving that policy. Set `Animation.PreviewStateAnim` and `Animation.PreviewActionAnim` explicitly for Mapper, AnimationViewer and canonical model bounds. Both engine defaults are zero. Bounds select the configured pair, falling back to available bounds when that clip is absent; no unarmed/idle heuristic remains. Rebake model metadata after changing the pair. Native ModelInstance animation callbacks now receive context, moving speed and all playback outputs; `GetMovingContext()` replaces the former `GetMovingAnim()`.
 
+The current idle/movement selection and a queued action retain independent playback
+controls. A `Freeze` on either relevant selection disables the 3D locomotion layer;
+an advancing queued action still uses its own flags, normalized time and speed.
+Logical movement is unaffected by disabling that visual layer.
+
 ### Project-owned path and draw policy
 
 Set `Critter.PathfindingObstacle` to classify a character as a pathfinding detour independently of life condition. It adds the configured detour cost, not a hard movement block. Set `Critter.DrawFlatten` to select `DrawOrderType.FlatCritter` (numeric value 13); neither property defaults to a game rule. Install project lifecycle/property handlers for new and restored entities and for condition transitions. Projects retaining `DeadDrawNoFlatten` declare that persistent PublicSync bool themselves and carry the former `IsNoFlatten -> DeadDrawNoFlatten` migration rule.

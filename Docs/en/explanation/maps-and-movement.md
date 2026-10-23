@@ -234,8 +234,6 @@ When gameplay code changes blocker semantics, update the callback provider and t
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
 
-Client and mapper scripts can call `Map.BlockHex(hex, full)` and `Map.UnblockHex(hex)` to control local manual blocking. Blocking always prevents movement; `full = true` also blocks shooting, without changing light propagation. Manual flags survive field recaching and cannot be bypassed by a gag callback. Unblocking clears only the manual flags, preserving item and map obstacles. Calls replace the current manual state rather than counting owners; scripts must coordinate overlapping blockers. These flags belong to the local map instance, are not replicated, and do not restart an active movement route. Scripts own critter occupancy, visibility updates, and any required route replanning; server blocking remains authoritative.
-
 Map item blocking flags are cached across the item's entire registered footprint:
 the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
 Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.

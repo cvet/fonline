@@ -12132,18 +12132,6 @@
       "release_note": "Docs/en/reference/changelog.md Current2026-10-21 (2026.1.58-dev), equivalent Russian notes.",
       "compatibility": "Native naming correction within pending2026.1.58-dev/runtime0.0.76. Public script API and native-codegen inventory remain unchanged, as do NextX/NextY, SpriteResource v2, saved state and authoritative movement. Rebuild native consumers together.",
       "owner": "engine-sprite-frame-offsets"
-    },
-    {
-      "domain": "api",
-      "change_id": "api-change.model-scope.6afaaf9fd40486d1",
-      "baseline_contract_sha256": "6da1f6d421106cc7379c37e7df4a247d0595ee24d8cfd72866a9a1122348cb41",
-      "current_contract_sha256": "eed8ac7952075bc23a54d3dc9a1a4b8e5ef0231a68c3440a67660474c7794ad1",
-      "classification": "breaking",
-      "rationale": "Add two client/mapper Map manual blocking methods to the revision-pinned native-codegen inventory (2577 to 2579 symbols); existing method signatures and authoritative server behavior are unchanged.",
-      "migration": "Regenerate metadata and rebuild/rebake client and mapper resources before using the new methods. No persisted-data or network-message migration is required. Projects older than 2026.1.58-dev must first follow the script-owned animation migration.",
-      "release_note": "2026.1.59-dev: instance-local manual hex blocking survives recaching and preserves item/map obstacles when cleared.",
-      "compatibility": "The strict inventory digest changes intentionally. Runtime compatibility marker 0.0.76, existing API meanings and resource formats are unchanged; manual client/mapper flags are local and not replicated.",
-      "owner": "client-map"
     }
   ]
 }

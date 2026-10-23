@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"30f8752b0f99c5fbb3c565405a8a07513c6abdce8613b195cb533069af68490a"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"839ccd6fecbd5c86e8dee61751eb7c39df133316da617e97f08752f7bd57251e"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -19,33 +19,33 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 Пути выделения памяти движка **завершают процесс при исчерпании памяти, а не
 бросают исключение**:
 
-- `safe_alloc::make_refcounted` / `MakeRaw` / `MakeUnique` / `MakeRawArr`
+- `safe_alloc::make_refcounted` / `MakeRaw` / `make_unique` / `make_raw_arr`
   (`Source/Essentials/MemorySystem.h`) используют `nothrow new`, освобождают
   фиксированный резерв, повторяют попытку и вызывают `ReportAndExit`. Так
   создаются все сущности (`Item`, `Critter`, `Map`, `Location`,
   `CustomEntity` и другие).
-- `SafeAllocator<T>` обслуживает все контейнерные псевдонимы движка из
+- `safe_allocator<T>` обслуживает все контейнерные псевдонимы движка из
   `Source/Essentials/Containers.h`: `vector`, `small_vector`, хешированные и
   упорядоченные наборы и словари, `list`, `deque`, `string` и потоки строк.
   Рост, вставка, резервирование и рехеширование не бросают `std::bad_alloc`:
   процесс детерминированно завершается в точке неудачного выделения.
 - Кодек анимации моделей устанавливает в `ModelAnimationData.cpp` адаптер Ozz
-  на основе `SafeAllocator<uint8_t>` до создания объектов Ozz. Каждый
+  на основе `safe_allocator<uint8_t>` до создания объектов Ozz. Каждый
   статически связанный модуль устанавливает собственный адаптер, а vendored
   исходники Ozz остаются идентичны закрепленной upstream-версии.
-- `safe_alloc::malloc_raw` / `CallocRaw` / `ReallocRaw` / `FreeRaw` и
+- `safe_alloc::malloc_raw` / `calloc_raw` / `realloc_raw` / `free_raw` и
   выровненные варианты применяют ту же последовательность report, резерв,
   retry, `ReportAndExit` к C-совместимому выделению. Через них подключены SDL,
   Effekseer, spine-cpp, libpng и curl; низкоуровневые rpmalloc-примитивы
   остаются локальными для `MemorySystem.cpp`.
 - `move_only_function` / `copyable_function` из
   `Source/Essentials/FunctionObjects.h` держат небольшой nothrow-movable target
-  inline, а крупный выделяют через nothrow path с `ReportFatalAndExit` при
+  inline, а крупный выделяют через nothrow path с `fatal::report_and_exit` при
   исчерпании. Модуль расположен до `MemorySystem` и не может использовать
-  `SafeAlloc`, но хранение callable движка всё равно завершает процесс, а не
+  `safe_alloc`, но хранение callable движка всё равно завершает процесс, а не
   возвращает `std::bad_alloc`.
 - `ModelMeshBaker` один раз, до параллельных заданий, передает приватной
-  meshoptimizer callbacks на `SafeAllocator<uint8_t>`. Эта зависимость
+  meshoptimizer callbacks на `safe_allocator<uint8_t>`. Эта зависимость
   используется только baker-ом и не входит в runtime-читатели моделей.
 
 **Следствие: не пишите откат ради возможного выделения памяти.** Если
@@ -55,7 +55,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 роста контейнера, строки или счетчика ссылок между двумя изменениями.
 
 Глобальный бросающий `operator new` по-прежнему доступен для `new T` и
-`std::allocator`. Код движка должен предпочитать `SafeAlloc` и контейнеры
+`std::allocator`. Код движка должен предпочитать `safe_alloc` и контейнеры
 движка, если ему нужен контракт terminate-on-OOM.
 
 Этот контракт не делает любую операцию контейнера `noexcept`: конструктор
@@ -81,7 +81,7 @@ state у `std::future`, `std::promise` и `std::packaged_task`, `std::thread`,
 или сокета тоже может отказать. Например, `spawn_pool_worker` не является
 `noexcept`, а `submit_impl` откатывает только что поставленную задачу, если
 создание потока не удалось. Убирать guard допустимо только когда единственная
-причина исключения действительно состоит в выделении через `SafeAlloc`.
+причина исключения действительно состоит в выделении через `safe_alloc`.
 
 ## 2. Что может быть брошено и где это перехватывается
 
@@ -387,6 +387,11 @@ throw points, а `NOT_DESTROYED` завершает процесс. Ручные
 C/OS ABI callback-ов и документированных небросающих Essentials-примитивов.
 Снять случайный `noexcept` при появлении законной проверки нормально; уровень
 и project-owned baseline при этом выводятся заново.
+
+Не дублируйте неявный `noexcept` деструктора избыточным явным спецификатором.
+Используйте `noexcept(false)`, когда бросающее уничтожение является намеренным
+контрактом; проверки через traits сохраняются, если они независимо проверяют
+требуемое небросающее поведение.
 
 Для обоснованного `noexcept` учитывайте три опасности:
 

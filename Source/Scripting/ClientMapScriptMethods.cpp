@@ -956,34 +956,6 @@ FO_SCRIPT_API bool Client_Map_IsHexVisible(ptr<MapView> self, mpos hex)
     return self->GetField(hex).IsView;
 }
 
-// Blocks movement locally and optionally shooting; does not replicate or restart active movement
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_BlockHex(ptr<MapView> self, mpos hex, bool full)
-{
-    if (self->IsDestroying()) {
-        throw ScriptException("Cannot modify a map that is being destroyed", self->GetId());
-    }
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex arg");
-    }
-
-    self->SetHexManualBlock(hex, true, full);
-}
-
-// Clears local manual blocking while preserving item and map obstacles
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_UnblockHex(ptr<MapView> self, mpos hex)
-{
-    if (self->IsDestroying()) {
-        throw ScriptException("Cannot modify a map that is being destroyed", self->GetId());
-    }
-    if (!self->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid hex arg");
-    }
-
-    self->SetHexManualBlock(hex, false, false);
-}
-
 // Returns whether movement is currently unblocked on a valid hex; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexMovable(ptr<MapView> self, mpos hex)

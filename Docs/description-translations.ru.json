@@ -10885,14 +10885,6 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.client.Map.BlockHex/description": {
-          "source_sha256": "bbeffa3dee5ff911b0fe84d264c18770e5f21c4db0c54f5d037abc81e41efabf",
-          "translation": "Локально блокирует движение и при необходимости стрельбу; не передаёт состояние по сети и не перезапускает активное движение"
-        },
-        "/symbols/@id=script.method.client.Map.UnblockHex/description": {
-          "source_sha256": "8d297d4097333afdc9182c3462723745ec84bf06c89a4e9d98ba845e5cca4546",
-          "translation": "Снимает локальную ручную блокировку, сохраняя препятствия предметов и карты"
         }
       }
     },

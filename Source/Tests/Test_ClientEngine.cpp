@@ -1893,7 +1893,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
     class ObservedCopySprite final : public Sprite
     {
     public:
-        ObservedCopySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> source, shared_ptr<Sprite>& observed_copy) :
+        ObservedCopySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> source, ptr<shared_ptr<Sprite>> observed_copy) :
             Sprite(spr_mngr, source->GetSize(), source->GetOffset()),
             _source {std::move(source)},
             _observedCopy {observed_copy}
@@ -1903,7 +1903,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
         auto MakeCopy() const -> shared_ptr<Sprite> override
         {
             auto copy = _source->MakeCopy();
-            _observedCopy = copy;
+            *_observedCopy = copy;
             return copy;
         }
 
@@ -1911,7 +1911,9 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
 
     private:
         shared_ptr<Sprite> _source;
-        shared_ptr<Sprite>& _observedCopy;
+
+        // Const copies still publish their result to the test observer slot
+        mutable ptr<shared_ptr<Sprite>> _observedCopy;
     };
 
     auto settings = MakeClientTestSettings();
@@ -1938,7 +1940,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
     auto inner_source = client->ResMngr.LoadSprite("Inner.fofrm", AtlasType::MapSprites);
     REQUIRE(inner_source);
     shared_ptr<Sprite> observed_outer_copy;
-    auto outer_source = safe_alloc::make_shared<ObservedCopySprite>(&client->SprMngr, client->ResMngr.LoadSprite("Outer.fofrm", AtlasType::MapSprites), observed_outer_copy);
+    auto outer_source = safe_alloc::make_shared<ObservedCopySprite>(&client->SprMngr, client->ResMngr.LoadSprite("Outer.fofrm", AtlasType::MapSprites), make_ptr(&observed_outer_copy));
     nptr<const SpriteSheet> nested;
     bool resolving = false;
     client->OnCritterAnimationSprite.UnsubscribeAll();
@@ -2075,7 +2077,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         model->SetMovementState(true, false, 0);
         pose();
         model->SetLookDir(mdir {120});
-        auto turn_deadline = client->GameTime.GetFrameTime() + std::chrono::seconds {3};
+        nanotime turn_deadline = client->GameTime.GetFrameTime() + std::chrono::seconds {3};
 
         // Bone positions include world facing; settle the turn before comparing frozen animation samples.
         while (!is_float_equal(model->GetMoveDirAngle(), 60.0f) && client->GameTime.GetFrameTime() < turn_deadline) {
@@ -2084,7 +2086,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
         REQUIRE(is_float_equal(model->GetMoveDirAngle(), 60.0f));
         pose();
-        auto turn_angle = model->GetMoveDirAngle();
+        float32_t turn_angle = model->GetMoveDirAngle();
         auto first = model->GetBonePos(root);
         REQUIRE(first);
         REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
@@ -2210,6 +2212,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
+
         client->OnCritterAnimationInit.Subscribe(std::move(selection));
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
         auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
@@ -2223,6 +2226,40 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         CHECK(actor_model->GetStateAnim() == state);
         CHECK(actor_model->GetActionAnim() == action);
         CHECK(observed_speed == 69);
+    }
+
+    SECTION("FrozenDefaultSelectionDisablesLocomotionDuringAdvancingAction")
+    {
+        Entity::EventCallbackData selection;
+        selection.Callback = [&](FuncCallData& call) {
+            *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+            *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) != CritterAnimationContext::Action) {
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 1.0f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+
+        auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+
+        map->EnableMapperMode();
+
+        auto critter = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr);
+        auto actor_model = critter->GetModel();
+        REQUIRE(actor_model);
+
+        critter->AppendAnim(state, action);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+
+        CHECK(actor_model->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(critter->IsAnimPlaying());
+        CHECK(actor_model->GetActionAnim() == action);
     }
 
     SECTION("QueuedFrozenActionOwnsMovingCritterLegs")

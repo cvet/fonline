@@ -2160,26 +2160,14 @@ void MapView::RecacheHexFlags(mpos hex)
     RecacheHexFlags(field);
 }
 
-void MapView::SetHexManualBlock(mpos hex, bool enable, bool full)
-{
-    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Client map cannot change manual blocking outside map bounds", GetId(), hex, _mapSize);
-
-    auto field = _hexField->GetCellForWriting(hex);
-
-    field->ManualBlock = enable;
-    field->ManualBlockFull = full;
-
-    RecacheHexFlags(field);
-}
-
 void MapView::RecacheHexFlags(ptr<Field> field)
 {
     field->HasWall = false;
     field->HasTransparentWall = false;
     field->HasScenery = false;
-    field->MoveBlocked = field->ScrollBlock || field->ManualBlock;
-    field->MovableWithGag = !field->ScrollBlock && !field->ManualBlock;
-    field->ShootBlocked = field->ManualBlock && field->ManualBlockFull;
+    field->MoveBlocked = field->ScrollBlock;
+    field->MovableWithGag = !field->ScrollBlock;
+    field->ShootBlocked = false;
     field->LightBlocked = false;
     field->Corner = CornerType::NorthSouth;
     field->GroundTile.reset();

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"bc7917da34eec287bfd8815759c81b6335525ff7ac97795492d6f9c7b7c82b39"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"694e68cad5e93d24c532b13a54f81b43ee526780fdc9a825961fb99ce8de771c"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -309,7 +309,32 @@ resolve entity -> Game.Sync(entity) -> read/mutate -> Yield(...)
 resolve or revalidate entity -> Game.Sync(entity) -> re-read -> decide/mutate
 ```
 
-У native extension есть дополнительный helper расширения `EnsureEntitySynced(...)` для операций движка, которые включают покрытого descendant или только что созданную сущность в текущий context. Он не заменяет видимый скриптам контракт `Game.Sync(...)` и не должен предоставляться как проектный workaround для неверно ограниченной операции.
+### Нативное удержание покрытых сущностей
+
+Перед обычным серверным script export вызывающий код покрывает все существующие
+сущности, доступные нативному графу вызовов: map/location, holder, управляемого
+персонажа и зависимости группы. `ValidateEntityAccess` проверяет этот набор;
+`EnsureEntitySynced` идемпотентно удерживает собственный lock уже покрытой сущности.
+Повторные вызовы, циклы, catch-обработчики и рекурсия не ограничены числом вызовов.
+
+Удержание добавляет собственный lock и необходимые ancestor marks одной
+атомарной транзакцией state mutex в порядке адресов. Покрытие вызывающего кода
+не освобождается и не захватывается заново; ожидания на entity lock нет.
+Временное окно acquire/release повторяет весь набор через `BackoffBeforeSyncRetry`,
+не удерживая частичный набор между попытками. Текущая реализация ограничивает
+попытки через `MAX_SYNC_RETRIES`; исчерпание выбрасывает `EntitySyncException`,
+сохраняя покрытие вызывающего кода. Ни описание одной попытки, ни безусловное
+обещание отсутствия отказа не описывают эту реализацию.
+
+Обычное удержание не обнаруживает и не захватывает пропущенную существующую
+зависимость. Новые parentless-сущности используют отдельный приватный trusted
+capture до публикации; он не разрешает обнаружение существующих зависимостей.
+Нативный callee не исправляет пропущенное покрытие через `SyncEntity` /
+`SyncEntities`. Явные script primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`
+и `Game.Unlock` — исключения, поскольку синхронизация является их видимым
+назначением. `Server.SingleThreadedLogic` обходит модель покрытия на единственном
+logic worker. Контракт общий для backends, а не проектный workaround или правило
+только для AngelScript.
 
 ## Владение изменяемым состоянием
 

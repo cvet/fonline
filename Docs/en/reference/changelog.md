@@ -14,15 +14,34 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-23
 
+### Fixed
+
+- Preserve fractional milliseconds when advancing moving item sprites, avoiding cumulative motion loss on high-refresh clients.
+
 ### Changed
 
-- Add client/mapper `Map.BlockHex(hex, full)` and `Map.UnblockHex(hex)` for instance-local manual movement and optional shooting obstacles. Field recaching preserves manual blocks; clearing them preserves item and map obstacles. These methods do not replicate state or replan an active route.
-- Preserve fractional milliseconds when advancing moving item sprites on high-refresh clients.
-- Reconcile the original FRM fixes with the script-owned animation API introduced in `2026.1.58-dev`: projects retain corpse-frame selection and Fallout sequence construction; sprite sheets retain absolute frame offsets.
+- Withdraw the client/mapper `Map.BlockHex(mpos hex, bool full)` and `Map.UnblockHex(mpos hex)` proposed in PR #227. Server manual blocks are not replicated to clients, so independent local flags cannot provide consistent pathfinding and lead to repeated authoritative movement corrections. Remove the local flags, native setter and their tests instead of exposing an incomplete mechanism.
 
 ### Migration
 
-No persisted-data, network-message or resource-format migration is required for this update. The runtime compatibility marker remains `0.0.76`. Regenerate metadata and rebuild/rebake matching client and mapper resources before using the two new methods; server-side `Map.BlockHex` and `Map.UnblockHex` keep their existing authoritative semantics. Projects upgrading from earlier versions must first complete the `2026.1.58-dev` animation migration below.
+- Base `ca18bfeededf7777db2fdc2b9dcd77ec4c2ce135` (`2026.1.59-dev`) to `2026.1.60-dev`. The published master API is unchanged; the withdrawal affects only users of earlier PR #227 heads `9c8237b0520041e3de78d878829c25c59ed5e030` and `6f31a6404207310332a39703ef784f26b054e644`. Remove client/mapper calls to `Map.BlockHex` and `Map.UnblockHex` in AngelScript/managed sources, and native uses of `MapView::SetHexManualBlock` or its `Field::ManualBlock` / `ManualBlockFull` flags. No replacement client API is provided: a future server-driven mechanism must synchronize initial state and updates before it can be exposed. The existing server methods retain their behavior and are not substitutes for client calls.
+- Detect affected sources with `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` and review each side: client/mapper script calls fail compilation against regenerated bindings; native uses fail compilation because the declarations are absent. Regenerate metadata, rebuild affected binaries and rebake matching client/mapper resources together. Ordinary item/map obstacles and their property synchronization are unchanged. No persisted-data or resource-format conversion is required; the runtime marker remains `0.0.76`, Managed ABI `9` and sprite container v2 are unchanged. Roll back binaries and baked resources together; earlier PR builds reintroduce the unsynchronized API.
+
+## 2026.1.59-dev - 2026-10-23
+
+### Fixed
+
+- Keep a project-frozen idle/movement selection effective for the 3D locomotion layer while a queued action advances independently. Add a regression for the overlapping selections and retain the existing queued-frozen-action control.
+- Use an explicit mutable observer-slot borrow in the reentrant sprite-cache fixture, preserving the observed copy lifetime without a class reference member.
+
+### Documentation
+
+- Refactor the agent entry guide into concise routing and mandatory cross-cutting rules. Keep detailed native, lifecycle, managed-code, configuration and documentation contracts in their owning guides.
+- Clarify semantic grouping, exception safety, property/lifetime ownership, immutable data representations and verification boundaries in the English guides and their Russian translations.
+
+### Migration
+
+- Base `62102cfedbd165d9ce73c600f78cb4e5750afbdc` (`2026.1.58-dev`) → `2026.1.59-dev`. No new project API/configuration or saved-data conversion: existing numeric identifiers, units and formats are unchanged. A frozen idle/movement selection now continues to disable the visual locomotion layer while an advancing queued action retains its own playback controls; logical movement is unchanged. Rebuild affected clients/Mapper. Runtime `0.0.76`, Managed ABI `9` and sprite container v2 are unchanged. Projects upgrading from earlier versions must still apply the preceding migration below. Regenerate and validate documentation; rollback restores matching preceding binaries, documentation and version together.
 
 ## 2026.1.58-dev - 2026-10-23
 
