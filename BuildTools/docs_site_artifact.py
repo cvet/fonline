@@ -189,7 +189,7 @@ class RenderedPageParser(HTMLParser):
 
 
 def _expected_static_paths(manifest: dict[str, object]) -> list[str]:
-    paths = {"CNAME", "VERSION", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png"}
+    paths = {"CNAME", "VERSION", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.svg"}
     ai_delivery = _required_object(manifest.get("ai_delivery"), "documentation manifest ai_delivery")
     for field in ("llms", "full_context", "public_manifest"):
         config = _required_object(ai_delivery.get(field), f"documentation manifest ai_delivery.{field}")

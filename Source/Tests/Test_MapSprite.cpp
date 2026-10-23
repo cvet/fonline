@@ -194,7 +194,7 @@ TEST_CASE("MapSpriteListDrawOrder")
 
     SECTION("DeadCritterStaysBelowStandingSpritesOnEveryRow")
     {
-        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::DeadCritter, WALL_CELL, std::numeric_limits<int8_t>::max());
+        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::FlatCritter, WALL_CELL, std::numeric_limits<int8_t>::max());
         uint64_t far_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, mpos {100, 99}, std::numeric_limits<int8_t>::min());
         uint64_t far_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, mpos {100, 99}, std::numeric_limits<int8_t>::min());
         uint64_t same_hex_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, std::numeric_limits<int8_t>::min());
@@ -210,3 +210,4 @@ TEST_CASE("MapSpriteListDrawOrder")
 }
 
 FO_END_NAMESPACE
+

@@ -165,10 +165,11 @@ void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
     _particle->Draw();
 }
 
-ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes) :
+ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes) :
     _sprMngr {spr_mngr},
+    _resMngr {res_mngr},
     _settings {settings},
-    _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), spr_mngr->GetResources(), game_time, //
+    _particleMngr {settings, effect_mngr, &spr_mngr->GetRender(), res_mngr->GetResources(), game_time, //
         [this, hashes](string_view path) mutable FO_DEFERRED { return LoadTexture(hashes->to_hashed_string(path)); }, //
         [spr_mngr]() mutable FO_DEFERRED { return spr_mngr->IsDrawWireframe(); }, //
         [spr_mngr]() mutable FO_DEFERRED {
@@ -217,7 +218,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
 
     if (auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
         // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
-        auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
+        auto atlas_spr = _resMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;
@@ -240,7 +241,7 @@ void ParticleSpriteFactory::RetryFailedLoads()
 {
     for (auto it = _loadedParticleTextures.begin(); it != _loadedParticleTextures.end();) {
         if (!it->second) {
-            _sprMngr->ForgetFailedSprite(it->first.as_str());
+            _resMngr->ForgetFailedSprite(it->first.as_str());
             it = _loadedParticleTextures.erase(it);
         }
         else {
@@ -296,3 +297,4 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr
 }
 
 FO_END_NAMESPACE
+

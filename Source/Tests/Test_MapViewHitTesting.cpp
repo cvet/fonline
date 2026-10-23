@@ -35,6 +35,7 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "CritterHexView.h"
 #include "MapView.h"
 #include "Test_BakerHelpers.h"
 
@@ -62,6 +63,9 @@ namespace
         vector<pair<string, function<void(ProtoMap&)>>> maps;
         maps.emplace_back("HitTestMap", [](ProtoMap& proto) { proto.SetSize(msize {20, 20}); });
         source->AddFile("HitTestMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
+        vector<pair<string, function<void(ProtoCritter&)>>> critters;
+        critters.emplace_back("HitTestCritter", [](ProtoCritter&) { });
+        source->AddFile("HitTestCritter.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.to_hashed_string("Critter"), critters));
         vector<pair<string, function<void(ProtoItem&)>>> items;
         items.emplace_back("HitTestWall", [&proto_engine](ProtoItem& proto) {
             proto.SetIsWall(true);
@@ -73,6 +77,12 @@ namespace
         });
         source->AddFile("HitTestItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), items));
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
+
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned"}) {
+            source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
+            source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
+        }
+
         FileSystem resources;
         resources.AddCustomSource(std::move(source));
         return resources;
@@ -228,4 +238,80 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
     }
 }
 
+TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")
+{
+    GlobalSettings settings(false);
+    settings.ApplyDefaultSettings();
+    settings.ApplyAutoSettings();
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->EnableMapperMode();
+    auto cr = map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr);
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(cr->IsMapSpriteValid());
+    cr->SetCondition(CritterCondition::Alive);
+    cr->SetDrawFlatten(true);
+    CHECK(cr->GetMapSprite()->GetDrawOrder() == DrawOrderType::FlatCritter);
+    cr->SetCondition(CritterCondition::Dead);
+    cr->SetDrawFlatten(false);
+    CHECK(cr->GetMapSprite()->GetDrawOrder() == DrawOrderType::Critter);
+}
+
+TEST_CASE("MapViewPathfindingUsesProjectObstacleProperty")
+{
+    GlobalSettings settings(false);
+    settings.ApplyDefaultSettings();
+    settings.ApplyAutoSettings();
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->EnableMapperMode();
+    auto cr = map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr);
+    auto from_hex = cr->GetHex();
+    auto to_hex = cr->GetHex();
+
+    for (int32_t i = 0; i < 2; i++) {
+        REQUIRE(GeometryHelper::MoveHexByDir(from_hex, mdir {0}.reverse(), map->GetSize()));
+        REQUIRE(GeometryHelper::MoveHexByDir(to_hex, mdir {0}, map->GetSize()));
+    }
+
+    auto check_path = [&](bool should_cross) {
+        auto target_hex = to_hex;
+        auto path = map->FindPath(nullptr, from_hex, target_hex, 0);
+        REQUIRE(path);
+
+        auto hex = from_hex;
+        bool crossed = false;
+
+        for (auto dir : path->DirSteps) {
+            REQUIRE(GeometryHelper::MoveHexByDir(hex, dir, map->GetSize()));
+            crossed = crossed || hex == cr->GetHex();
+        }
+
+        CHECK(crossed == should_cross);
+    };
+
+    cr->SetCondition(CritterCondition::Alive);
+    cr->SetPathfindingObstacle(false);
+    check_path(true);
+
+    cr->SetCondition(CritterCondition::Dead);
+    cr->SetPathfindingObstacle(true);
+    check_path(false);
+
+    cr->SetPathfindingObstacle(false);
+    check_path(true);
+}
+
 FO_END_NAMESPACE
+

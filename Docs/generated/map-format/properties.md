@@ -95,11 +95,11 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 <a id="entry-map-format-property-critter-customholderid-5f6a9080cb"></a>
 - [`entry-map-format-property-critter-customholderid-5f6a9080cb`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-customholderid-5f6a9080cb)
 
-<a id="entry-map-format-property-critter-deaddrawnoflatten-cc3942e643"></a>
-- [`entry-map-format-property-critter-deaddrawnoflatten-cc3942e643`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-deaddrawnoflatten-cc3942e643)
-
 <a id="entry-map-format-property-critter-dir-da31c1e3a2"></a>
 - [`entry-map-format-property-critter-dir-da31c1e3a2`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-dir-da31c1e3a2)
+
+<a id="entry-map-format-property-critter-drawflatten-4035c88e11"></a>
+- [`entry-map-format-property-critter-drawflatten-4035c88e11`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-drawflatten-4035c88e11)
 
 <a id="entry-map-format-property-critter-elevation-1d6dc06ac6"></a>
 - [`entry-map-format-property-critter-elevation-1d6dc06ac6`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-elevation-1d6dc06ac6)
@@ -169,6 +169,9 @@ Continue with the [canonical reference](../../en/reference/map-format/properties
 
 <a id="entry-map-format-property-critter-nameoffset-a92d7357b6"></a>
 - [`entry-map-format-property-critter-nameoffset-a92d7357b6`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-nameoffset-a92d7357b6)
+
+<a id="entry-map-format-property-critter-pathfindingobstacle-233aa59ddf"></a>
+- [`entry-map-format-property-critter-pathfindingobstacle-233aa59ddf`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-pathfindingobstacle-233aa59ddf)
 
 <a id="entry-map-format-property-critter-scalefactor-eb9e3a503a"></a>
 - [`entry-map-format-property-critter-scalefactor-eb9e3a503a`](../../en/reference/map-format/properties.md#entry-map-format-property-critter-scalefactor-eb9e3a503a)

@@ -169,3 +169,11 @@ Continue with the [canonical English explanation](en/explanation/rendering/#fron
 ## Validation checklist
 
 Continue with the [canonical English explanation](en/explanation/rendering/#validation-checklist).
+
+## Bounded map view presentation
+
+Continue with the [canonical English reference](en/explanation/rendering/#bounded-map-view-presentation).
+
+## Resource ownership
+
+Continue with the [canonical English explanation](en/explanation/rendering/#resource-ownership).

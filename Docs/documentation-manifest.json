@@ -202,13 +202,14 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2367488,
+      "max_bytes": 2392064,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
         "script-methods-map",
         "buildtools-readme",
-        "documentation-site-publication"
+        "documentation-site-publication",
+        "script-owned-sprite-animations"
       ]
     },
     "public_manifest": {
@@ -312,6 +313,7 @@
           "configuration-data-sources",
           "generated-content-workflow",
           "engine-upgrade-guide",
+          "script-owned-sprite-animations",
           "support-matrix",
           "generated-cmake-index",
           "generated-cli-index",
@@ -1086,7 +1088,7 @@
       "assets": [
         "Docs/Site/Assets/css/docs.css",
         "Docs/Site/Assets/js/docs.js",
-        "Docs/Site/Assets/images/fonline-mark.png"
+        "Docs/Site/Assets/images/fonline-mark.svg"
       ],
       "artifact_validator": "BuildTools/docs_site_artifact.py",
       "artifact_report": "Workspace/docs-site-artifact-report.json",
@@ -1675,6 +1677,14 @@
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
       "owner": "build-release", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/build/generated-content.md", "redirect_to": "generated-content-workflow",
       "sources": ["Docs/en/how-to/build/generated-content.md", "Docs/ru/how-to/build/generated-content.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
+    },
+    "Docs/en/how-to/migration/script-owned-sprite-animations.md": {
+      "id": "script-owned-sprite-animations",
+      "title": "Migrate Script-Owned Sprite Animations",
+      "audiences": ["game-developer", "engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/migration/script-owned-sprite-animations.md",
+      "sources": ["Source/Client/ResourceManager.cpp", "Source/Client/Client.h", "Source/Scripting/ClientGlobalScriptMethods.cpp", "Source/Tests/Test_SpriteSheet.cpp", "Source/Tests/Test_ClientEngine.cpp", "VERSION"]
     },
     "Docs/en/how-to/migration/engine-upgrade.md": {
       "id": "engine-upgrade-guide",
@@ -3782,15 +3792,15 @@
     },
     "Docs/en/how-to/content/sprite-root-motion.md": {
       "id": "sprite-root-motion",
-      "title": "Sprite Root Motion and Walk Cycles",
+      "title": "Sprite Frame Offsets and Walk Cycles",
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "content-data", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/content/sprite-root-motion.md",
-      "sources": ["BuildTools/ExternalProjectEvidence.json", "Source/Tools/ImageBaker.h", "Source/Tools/ImageBaker.cpp", "Source/Common/SpriteResource.h", "Source/Common/SpriteResource.cpp", "Source/Client/DefaultSprites.h", "Source/Client/DefaultSprites.cpp", "Source/Client/ResourceManager.cpp", "Source/Common/Movement.h", "Source/Common/Movement.cpp", "Source/Common/Geometry.h", "Source/Common/Geometry.cpp", "Source/Client/CritterHexView.h", "Source/Client/CritterHexView.cpp", "Source/Tests/Test_ImageBaker.cpp", "Source/Tests/Test_Geometry.cpp", "BuildTools/tests/test_docs_sprite_root_motion.py"]
+      "sources": ["BuildTools/ExternalProjectEvidence.json", "Source/Tools/ImageBaker.h", "Source/Tools/ImageBaker.cpp", "Source/Common/SpriteResource.h", "Source/Common/SpriteResource.cpp", "Source/Client/DefaultSprites.h", "Source/Client/DefaultSprites.cpp", "Source/Client/ResourceManager.cpp", "Source/Common/Movement.h", "Source/Common/Movement.cpp", "Source/Common/Geometry.h", "Source/Common/Geometry.cpp", "Source/Client/AnimationMovement.h", "Source/Client/AnimationMovement.cpp", "Source/Client/CritterHexView.h", "Source/Client/CritterHexView.cpp", "Source/Tests/Test_ImageBaker.cpp", "Source/Tests/Test_Geometry.cpp", "BuildTools/tests/test_docs_sprite_root_motion.py", "Source/Tests/Test_Mapper.cpp", "Source/Tests/Test_SpriteSheet.cpp"]
     },
     "Docs/SpriteRootMotion.md": {
       "id": "legacy-sprite-root-motion-route",
-      "title": "Sprite Root Motion and Walk Cycles",
+      "title": "Sprite Frame Offsets and Walk Cycles",
       "audiences": ["game-developer", "content-author", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
       "owner": "content-data", "state": "redirect", "disposition": "replace", "target": "Docs/en/how-to/content/sprite-root-motion.md", "redirect_to": "sprite-root-motion",
@@ -4314,7 +4324,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/documentation/site-publication.md",
-      "sources": ["Docs/Site/_config.yml", "BuildTools/docs_site_build.py", "BuildTools/docs_prepare.py", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "docs-manifest.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "BuildTools/documentation_metadata.py"]
+      "sources": ["Docs/Site/_config.yml", "BuildTools/docs_site_build.py", "BuildTools/docs_prepare.py", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.svg", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "docs-manifest.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "BuildTools/documentation_metadata.py"]
     },
     "Docs/SitePublication.md": {
       "id": "legacy-documentation-site-publication-route",
@@ -4378,7 +4388,7 @@
       "audiences": ["game-developer", "engine-contributor", "tool-developer", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md",
-      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "Docs/Site/_config.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json"]
+      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "Docs/Site/_config.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.svg", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json"]
     },
     "Docs/Decisions/0004-manifest-backed-site-navigation-search.md": {
       "id": "legacy-adr-manifest-backed-site-navigation-search-route",

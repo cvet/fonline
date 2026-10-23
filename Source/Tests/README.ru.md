@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"08c7eed4dfaa381b091df6d5c2581feb8117fc38d9a6077978d7c2d8057b4992"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"10848253df3a7f279a26361271710bc5f4379403393e3a92830e1a6ebed56a6c"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -39,6 +39,9 @@ python BuildTools/docs_inventory.py --check
 Регрессии отсоединения при уничтожении выполняются при любом scripting backend: `CritterAttachmentTeardown`
 проверяет связи сервера, native-отчёты и доставку оставшемуся игроку; `ClientCritterFinalizationDropsAttachmentIds`
 проверяет очистку клиентского кеша с сохранением живого peer. Они входят в существующие наборы жизненного цикла сущностей сервера и клиента.
+
+- `Source/Tests/Test_AudioBakerAcm.cpp` — опциональный декодер Fallout ACM и некорректные входные данные.
+- `Source/Tests/Test_SpriteSheet.cpp` — независимые кадры, явные смещения, направления, кэш обработчика и границы.
 
 ## Запуск тестов
 

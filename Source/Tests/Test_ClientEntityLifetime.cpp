@@ -175,7 +175,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
     BakerTests::OverrideSetting(settings.Render.ModelSpriteMaxTextureHeight, int32_t {4096});
     auto client = MakeClientLifetimeEngine(settings, MakeScratchModelResources());
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites).dyn_cast<ModelSprite>();
     REQUIRE(sprite);
@@ -198,7 +198,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
             sprite->DrawToAtlas();
         }
 
-        client->SprMngr.CleanupSpriteCache();
+        client->ResMngr.CleanupSpriteCache();
         CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 1);
         CHECK_FALSE(client->EffectMngr.Effects.FlushRenderTarget->MainTex);
         REQUIRE(sprite->GetAtlas());
@@ -299,7 +299,7 @@ TEST_CASE("MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     ProtoMap proto {client->Hashes.to_hashed_string("LifetimeMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
     proto.SetSize(msize {16, 16});
-    auto sprite = client->SprMngr.LoadSprite("LifetimeSprite.png", AtlasType::IfaceSprites);
+    auto sprite = client->ResMngr.LoadSprite("LifetimeSprite.png", AtlasType::IfaceSprites);
     REQUIRE(sprite);
     auto& targets = client->SprMngr.GetRtMngr();
     size_t baseline = targets.GetRenderTargetCount();
@@ -510,6 +510,150 @@ TEST_CASE("ClientManualHexBlockingSurvivesRecacheAndControlsPathFinding")
     CHECK(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
     CHECK_THROWS_AS(map->SetHexManualBlock(mpos {32, 32}, true, false), VerificationException);
     CHECK_FALSE(map->GetField(target).MoveBlocked);
+}
+
+TEST_CASE("ClientManualHexBlockingPreservesItemObstacleUntilDestroyed")
+{
+    BakerTests::TestRig rig;
+    vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
+    rig.AddBakedFile("Metadata.fometa-server", metadata);
+    rig.AddBakedFile("Metadata.fometa-client", metadata);
+
+    BakerClientEngine client_engine {rig.BakedFiles};
+
+    vector<pair<string, function<void(ProtoItem&)>>> protos;
+    protos.emplace_back(string {"ManualHexBlockLifetimeItem"}, [&client_engine](ProtoItem& proto) {
+        proto.SetPicMap(client_engine.Hashes.to_hashed_string("LifetimeSprite.png"));
+        proto.SetNoBlock(false);
+        proto.SetShootThru(false);
+        proto.SetIsGag(false);
+        proto.SetLightThru(true);
+    });
+    auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(client_engine, client_engine.Hashes.to_hashed_string("Item"), protos);
+    vector<pair<string, vector<uint8_t>>> extra_resources;
+    extra_resources.emplace_back("HexBlockItems.fopro-bin-client", std::move(proto_blob));
+
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings, std::move(extra_resources));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("ManualItemBlockMap"), client->GetPropertyRegistrar("Map"));
+    proto->SetSize(msize {32, 32});
+    proto->SetWorkHex(mpos {16, 16});
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    });
+    mpos target {17, 16};
+    mpos control {16, 17};
+    auto item = map->AddLocalItem(client->Hashes.to_hashed_string("ManualHexBlockLifetimeItem"), target);
+    CHECK_FALSE(item->GetNoBlock());
+    CHECK_FALSE(item->GetShootThru());
+    CHECK_FALSE(item->GetIsGag());
+    CHECK(item->GetLightThru());
+
+    REQUIRE(map->GetField(target).MoveBlocked);
+    REQUIRE(map->GetField(target).ShootBlocked);
+    CHECK_FALSE(map->GetField(target).LightBlocked);
+    CHECK_FALSE(map->GetField(control).MoveBlocked);
+    CHECK_FALSE(map->GetField(control).ShootBlocked);
+    REQUIRE(map->FindPath(nullptr, mpos {16, 16}, control, 0).has_value());
+
+    map->SetHexManualBlock(target, true, true);
+    CHECK(map->GetField(target).ManualBlock);
+    CHECK(map->GetField(target).ManualBlockFull);
+    map->SetHexManualBlock(target, false, false);
+    CHECK_FALSE(map->GetField(target).ManualBlock);
+    CHECK_FALSE(map->GetField(target).ManualBlockFull);
+    CHECK(map->GetField(target).MoveBlocked);
+    CHECK(map->GetField(target).ShootBlocked);
+    CHECK_FALSE(map->GetField(target).MovableWithGag);
+    CHECK_FALSE(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map->RecacheHexFlags(target);
+    CHECK(map->GetField(target).MoveBlocked);
+    CHECK(map->GetField(target).ShootBlocked);
+    CHECK_FALSE(map->GetField(target).MovableWithGag);
+    CHECK_FALSE(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    CHECK_FALSE(map->GetField(control).MoveBlocked);
+    CHECK_FALSE(map->GetField(control).ShootBlocked);
+    CHECK(map->FindPath(nullptr, mpos {16, 16}, control, 0).has_value());
+
+    map->DestroyItem(item);
+    CHECK_FALSE(map->GetField(target).MoveBlocked);
+    CHECK_FALSE(map->GetField(target).ShootBlocked);
+    CHECK(map->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    CHECK_FALSE(map->GetField(control).MoveBlocked);
+    CHECK(map->FindPath(nullptr, mpos {16, 16}, control, 0).has_value());
+}
+
+TEST_CASE("ClientManualHexBlockingIsIsolatedBetweenMaps")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("SharedManualBlockMap"), client->GetPropertyRegistrar("Map"));
+    proto->SetSize(msize {32, 32});
+    proto->SetWorkHex(mpos {16, 16});
+    auto map_a = safe_alloc::make_refcounted<MapView>(client, ident_t {9101}, proto, isize32 {320, 200});
+    auto destroy_map_a = scope_exit([&map_a]() noexcept {
+        safe_call([&map_a] {
+            if (!map_a->IsDestroyed()) {
+                map_a->DestroySelf();
+            }
+        });
+    });
+    auto map_b = safe_alloc::make_refcounted<MapView>(client, ident_t {9102}, proto, isize32 {320, 200});
+    auto destroy_map_b = scope_exit([&map_b]() noexcept {
+        safe_call([&map_b] {
+            if (!map_b->IsDestroyed()) {
+                map_b->DestroySelf();
+            }
+        });
+    });
+    mpos target {17, 16};
+    REQUIRE(map_a->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    REQUIRE(map_b->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map_a->SetHexManualBlock(target, true, true);
+    CHECK(map_a->GetField(target).MoveBlocked);
+    CHECK(map_a->GetField(target).ShootBlocked);
+    CHECK(map_a->GetField(target).ManualBlockFull);
+    CHECK_FALSE(map_a->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    CHECK_FALSE(map_b->GetField(target).ManualBlock);
+    CHECK_FALSE(map_b->GetField(target).ManualBlockFull);
+    CHECK_FALSE(map_b->GetField(target).MoveBlocked);
+    CHECK_FALSE(map_b->GetField(target).ShootBlocked);
+    CHECK(map_b->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map_a->SetHexManualBlock(target, false, false);
+    CHECK_FALSE(map_a->GetField(target).ManualBlock);
+    CHECK_FALSE(map_a->GetField(target).ManualBlockFull);
+    CHECK_FALSE(map_a->GetField(target).MoveBlocked);
+    CHECK_FALSE(map_a->GetField(target).ShootBlocked);
+    CHECK(map_a->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    CHECK_FALSE(map_b->GetField(target).MoveBlocked);
+    CHECK_FALSE(map_b->GetField(target).ShootBlocked);
+    CHECK(map_b->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map_b->SetHexManualBlock(target, true, true);
+    CHECK(map_b->GetField(target).MoveBlocked);
+    CHECK_FALSE(map_a->GetField(target).MoveBlocked);
+    CHECK_FALSE(map_a->GetField(target).ShootBlocked);
+    CHECK(map_a->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+    map_b->SetHexManualBlock(target, false, false);
+    CHECK_FALSE(map_b->GetField(target).MoveBlocked);
+    CHECK(map_b->FindPath(nullptr, mpos {16, 16}, target, 0).has_value());
+
+    map_a->DestroySelf();
+    map_b->DestroySelf();
+    CHECK(map_a->IsDestroyed());
+    CHECK(map_b->IsDestroyed());
+    CHECK_FALSE(client->GetEntity(map_a->GetId()));
+    CHECK_FALSE(client->GetEntity(map_b->GetId()));
 }
 
 TEST_CASE("ClientLargeMapFieldsStayWithinMemoryBudget")

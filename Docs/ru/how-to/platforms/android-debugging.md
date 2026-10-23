@@ -5,7 +5,7 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"ab2804a6ebebe324a9c21dd00b9ff52063f0d90269a3adf101210d900ebec66d"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"32c375efae4314c0f0a5f89d246724d8f9729436946ab7345a686c499b24c37f"} -->
 # Сборка, упаковка и отладка FOnline на Android
 
 Это принадлежащая Engine инструкция по сборке Android-клиента, созданию и сборке APK, установке через Wi-Fi ADB, подключению к серверу разработки и разделению ошибок сборки, пакета, устройства и runtime. Она опирается на текущую реализацию BuildTools, шаблон Android-проекта, модель поддержки, грамматику пакетов, settings и границу updater. Встраивающий проект отвечает за идентичность приложения, release-политику, парк устройств, серверный профиль, доставку через магазин и evidence приёмки.
@@ -161,7 +161,7 @@ Fixed package settings зарегистрированы в `Source/Common/Settin
 | `Android.TargetSdk` | `35` | Target SDK Gradle; store policy принадлежит проекту. |
 | `Android.CompileSdk` | `35` | Compile SDK Gradle; соответствующая SDK platform должна быть установлена. |
 | `Android.ScreenOrientation` | `landscape` | Значение orientation для activity в manifest. |
-| `Android.Icon` | `Engine/Resources/Radiation.png` | Существующий PNG, копируемый во все legacy mipmap densities. |
+| `Android.Icon` | пусто | PNG проекта копируется во все legacy mipmap densities; пустое значение сохраняет значок платформы. |
 | `Android.Keystore` | пусто | Путь release keystore, читаемый из baked target config и разрешаемый относительно project config. |
 | `Android.KeystorePassword` | пусто | Пароль release store. |
 | `Android.KeyAlias` | пусто | Alias release key. |

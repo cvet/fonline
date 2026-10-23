@@ -63,6 +63,8 @@ If a change is reusable and shared by both client and server, it likely starts h
 
 Client-side runtime and presentation-facing state. It includes client startup/composition, connection handling, resource management, views for critters/items/maps/locations/player state, sprite/model/effect/font managers, render targets, and network-client transport variants. Polygonal sprite submission is owned by `DefaultSprites.*`; automatic model frame/view projection is isolated in `ModelSpriteLayout.*`. Font descriptor parsing, slot binding, measurement, wrapping, and glyph drawing are routed through `FontManager.*` and [Font Format](../../how-to/content/font-format.md).
 
+Pure sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation live in `AnimationMovement.*`; `CritterHexView.*` owns the active sheet, movement context and anchor lifecycle.
+
 Keep authoritative game-state decisions out of the client unless the server contract and validation are documented.
 
 ## `Source/Server/`

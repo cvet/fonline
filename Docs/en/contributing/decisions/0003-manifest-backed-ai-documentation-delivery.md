@@ -35,7 +35,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 3. `llms-full.txt` includes complete authored public current documents and
    generated reference index pages. Generated detail pages stay out because
    their canonical JSON models are more precise. A reviewed
-   `exclude_document_ids` list may omit a redundant routing/index page while
+   `exclude_document_ids` list may omit a redundant routing/index page or a specialized migration record linked from an included owner while
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
@@ -51,9 +51,9 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    | 2026-10-09, published version 20 | 2,228,855; 112 complete documents | +32 KiB; 631 bytes over the prior limit. Retain current owners and required migration history. |
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2,282,913 | +32 KiB: optional-component, baking-lock and migration guides; 21,921 bytes over the prior limit. Already in the published manifest. |
    | 2026-10-13, placement selection | 2,294,456 before this ADR row | +32 KiB: retain the effective-placement contract and required version-38 migration record; 696 bytes over the previous limit. No membership or exclusion changes. |
-   | 2026-10-21, client map blocking | 2,361,577 before this ADR row | +8 KiB: retain complete FRM fix and client map-blocking migration notes and generated API additions; no membership or exclusion changes. |
+   | 2026-10-21, project-owned resource and animation policy | 2,367,685 before this ADR row | +32 KiB to 2,392,064: retain the complete ownership guides and version-58 migration record; 8,389 bytes over the prior limit. No membership or exclusion changes. |
 
-   The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Omitted pages remain in `llms.txt`, search and the public manifest. Budget review retains complete owning guides and required migration notes.
+   The e1 measurement left 10,847 bytes before its documentation correction; remeasure generated output. Exclusions retain their owning replacements: `tools` after dedicated Mapper/viewer/particle manuals; `ScriptMethodsMap.md` after generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` and native API index; `BuildTools/README.md` after generated CLI/helper/package references and `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. The specialized `script-owned-sprite-animations` migration remains complete and bilingual, linked from the included Engine-upgrade and changelog owners. Omitted pages remain in `llms.txt`, search and the public manifest. Budget review retains complete owning guides and required migration notes.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.

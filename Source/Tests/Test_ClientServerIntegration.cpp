@@ -670,3 +670,4 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 }
 
 FO_END_NAMESPACE
+

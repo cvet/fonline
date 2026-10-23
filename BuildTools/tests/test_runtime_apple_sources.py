@@ -171,6 +171,9 @@ def test_apple_source_patches_are_idempotent_and_reject_source_drift(runtime: Pa
 @pytest.mark.parametrize("disable_jit", [False, True])
 def test_apple_native_source_corrections_compile_without_masking_diagnostics(runtime: Path, disable_jit: bool) -> None:
     clang = shutil.which("clang-20") or shutil.which("clang")
+    sdk = runtime.parent / "sdk"
+    sdk.mkdir()
+    (sdk / "unistd.h").write_text("#include <stddef.h>\nint gethostname(char*, size_t);\n")
     original = {}
     for source in runtime.rglob("*.c"):
         original[source] = source.read_bytes()
@@ -178,7 +181,7 @@ def test_apple_native_source_corrections_compile_without_masking_diagnostics(run
     results = []
     for source in original:
         is_pal = "/libs/" in source.as_posix()
-        command = [clang, "-x", "c++" if is_pal else "c", "-Wall", "-Wextra", "-Werror", "-Werror=vla", "-DHAVE_GETIFADDRS=1"]
+        command = [clang, "-I", str(sdk), "-x", "c++" if is_pal else "c", "-Wall", "-Wextra", "-Werror", "-Werror=vla", "-DHAVE_GETIFADDRS=1"]
         if disable_jit:
             command.append("-DDISABLE_JIT")
         previous = source.with_name("before_" + source.name)
@@ -216,6 +219,7 @@ def test_domain_name_probe_checks_the_function_type_independently_of_conversion_
     (source / "unistd.h").write_text(f"#include <stddef.h>\nint getdomainname(char*, {parameter_type});\n")
     (source / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\nproject(DomainNameSignature C)\n"
+        "set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)\n"
         f'set(CMAKE_REQUIRED_INCLUDES "{source.as_posix()}")\n'
         f'include("{(runtime / "src/native/libs/configure.cmake").as_posix()}")\n'
         'file(WRITE "${CMAKE_BINARY_DIR}/result.txt" "${HAVE_GETDOMAINNAME_SIZET}")\n'

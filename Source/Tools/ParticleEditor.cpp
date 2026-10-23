@@ -110,7 +110,7 @@ private:
 
 void ParticlePreviewSubEditor::Initialize()
 {
-    _particleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    _particleFactory = _mapper->ResMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
     FO_VERIFY_AND_THROW(_particleFactory, "Particle sprite factory is not registered");
 
     _extensions = _particleFactory->GetExtensions();
@@ -340,7 +340,7 @@ void ParticlePreviewSubEditor::Play(mpos hex)
         return;
     }
 
-    shared_ptr<Sprite> preview_sprite = _mapper->SprMngr.LoadSprite(_resourcePath, AtlasType::MapSprites);
+    shared_ptr<Sprite> preview_sprite = _mapper->ResMngr.LoadSprite(_resourcePath, AtlasType::MapSprites);
 
     if (!preview_sprite) {
         _mapper->AddMess(strex("Particle preview load failed: {}", _resourcePath));
@@ -466,7 +466,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     for (const string& changed_path : changed_paths) {
-        _mapper->SprMngr.InvalidateSpriteResource(changed_path);
+        _mapper->ResMngr.InvalidateSpriteResource(changed_path);
     }
 
     bool had_index = _resourcesIndexed;
@@ -498,7 +498,7 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
     }
 
     for (const string& particle_path : _resourcePaths) {
-        _mapper->SprMngr.ForgetFailedSprite(particle_path);
+        _mapper->ResMngr.ForgetFailedSprite(particle_path);
     }
 
     if (had_index && (added_count != 0 || modified_count != 0 || removed_count != 0)) {
@@ -602,3 +602,4 @@ void ParticleEditorManager::DrawWindows()
 }
 
 FO_END_NAMESPACE
+

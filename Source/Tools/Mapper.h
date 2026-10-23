@@ -67,6 +67,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapperException);
 
+class ModelSprite;
+
 class MapperEngine final : public ClientEngine
 {
     friend class MapperScriptSystem;
@@ -465,6 +467,12 @@ public:
     ucolor SelectContourColor {255, 215, 40};
 
 private:
+    auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>;
+#if FO_ENABLE_3D
+    auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>;
+    unordered_map<hstring, shared_ptr<ModelSprite>> _critterPreviewModels {};
+#endif
+
     struct ImGuiInputTextStringUserData
     {
         ptr<string> Value;
@@ -506,3 +514,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

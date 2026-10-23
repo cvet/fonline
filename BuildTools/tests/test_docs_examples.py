@@ -175,7 +175,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
             docs_examples.PLACEHOLDER_PATTERN,
         )
 
-        asset_path = output_root / "Engine" / "Resources" / "Radiation.png"
+        asset_path = output_root / "Engine" / "Resources" / "Core" / "ItemStub.png"
         asset_path.parent.mkdir(parents=True)
         asset_path.write_bytes(b"not the recorded asset")
         with self.assertRaisesRegex(ValueError, "digest does not match"):

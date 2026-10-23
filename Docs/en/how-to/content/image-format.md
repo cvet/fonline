@@ -46,7 +46,7 @@ The owning sources are:
   shared decoder, frame/mesh records, and `SpriteInfo` index format;
 - `Source/Client/DefaultSprites.cpp` and `DefaultSprites.h` for baked-container
   loading, `AtlasSprite`, `SpriteSheet`, frame offsets, and atlas upload;
-- `Source/Client/SpriteManager.cpp` for extension dispatch and sprite caches;
+- `Source/Client/ResourceManager.cpp` for extension dispatch and sprite caches;
 - `Source/Client/TextureAtlas.cpp` for atlas allocation;
 - `Source/Tests/Test_ImageBaker.cpp` and `Test_TextureAtlas.cpp` for executable
   import, failure, and allocation examples.
@@ -93,7 +93,7 @@ The normal path is:
    unique frame, pads or crops the RGBA canvas, and resolves its logical root.
 5. It writes the private RGBA/mesh frame container under the source path or a
    loader-provided `NewName`, and maintains `SpriteInfo/<PackName>.foinfo`.
-6. At client runtime, `SpriteManager` selects a factory from the lowercased
+6. At client runtime, `ResourceManager` selects a factory from the lowercased
    extension and `DefaultSpriteFactory` reads the baked bytes.
 7. Concrete frames enter the requested texture atlas; animation/direction
    metadata becomes a `SpriteSheet` when needed.
@@ -404,7 +404,7 @@ cross-revision byte compatibility.
 
 ## Runtime loading, atlas, and caches
 
-`SpriteManager` selects a registered `SpriteFactory` by lowercased extension.
+`ResourceManager` selects a registered `SpriteFactory` by lowercased extension.
 The default factory passes all bytes to `ReadSpriteResource` to validate magic,
 version, records, mesh geometry, footer and trailing data, then checks one/full directions.
 
@@ -444,14 +444,32 @@ owns candidate policy and report fields.
 offsets and shared references. Server/client `EngineMetadata` reads it without
 RGBA decoding. Adding or losing this per-pack index requires a full rebake.
 
-Every copyable load, including the first, returns `MakeCopy()`; the cache retains
-the factory prototype. `SpriteSheet` copies own playback and frame tables, start
-at frame/direction zero with valid size/anchor and retain state/action tags.
-`AtlasSprite::MakeCopy()` shares atlas pixels/geometry. First/last extraction
-cannot shorten later loads; each trimmed direction has one sprite and offset.
-`_nonFoundSprites` memoizes missing files/extensions, unknown factories and load
-failures by path. `CleanupSpriteCache()` does not clear it: recreate the manager
-or restart after adding a previously failed resource.
+Copyable loads return `MakeCopy()`; the cache keeps the factory prototype.
+`SpriteSheet` copies own playback/frame tables, start at frame/direction zero with valid
+size/anchor and retain state/action tags. `AtlasSprite::MakeCopy()` shares pixels/geometry.
+
+Constructed sheets retain the original shared `AtlasSprite` frames; their independent
+absolute draw offsets live in `SpriteSheet::_sprOffset`, alongside the separate
+per-frame `_sprMotion` table. Copies preserve both tables. Map sprites use the selected draw anchor
+without adding it to accumulated motion, light position or the logical world root.
+First/last extraction preserves later loads; trimmed directions keep one sprite/offset.
+`_nonFoundSprites` caches missing files/extensions, unknown factories and failures by path.
+Cleanup preserves misses; `ResourceManager::ForgetFailedSprite` or `InvalidateSpriteResource` explicitly permits another load after the resource source is updated.
+`FreeSprite` caches named script sprites by name/atlas. Map-unload cleanup drops unused
+entries before sprite/atlas collection; active handles retain their frames.
+Handle invalidation precedes Stop. If stopping throws, the released instance is not
+left in the active-handle map; direct callers still receive the stop exception.
+
+### Script-owned 2D critter animations
+
+Projects resolve `Game.OnCritterAnimationSprite` to a transferred sprite handle and own
+filenames, anchors, first/last selection and splices. The Engine caches an independent sheet;
+FRM decoding and common substitutions remain separate. Read checked frame count, directions,
+duration, draw offsets and motion through the generic sprite getters; construct explicit
+direction-major arrays with `Game.CreateSpriteSequence`. No implicit Fallout policy remains.
+The [migration guide](../migration/script-owned-sprite-animations.md) specifies removed
+events, both backends, arrays, ownership, timing, failures, acceptance and rollout/rollback.
+
 
 ## Authoring practices
 
@@ -481,7 +499,7 @@ or restart after adding a previously failed resource.
 | `FOFRM file invalid data` | Missing slot, unequal/partial directions, empty child | Check `count`, `frm_N`, directions and flattened counts. |
 | `FOFRM file invalid data (shared index)` | Nested shared records | Use concrete sources or remove nesting. |
 | Direct `.spr` unknown extension | Runtime factory | Use baked `.fofrm` or a project factory. |
-| Added sprite still missing | `_nonFoundSprites` | Confirm output; recreate manager/restart. |
+| Added sprite still missing | `_nonFoundSprites` | Confirm output and update the mounted source; use ResourceManager::ForgetFailedSprite/InvalidateSpriteResource or restart. |
 | Animation stopped | One frame, zero ticks, invalid cadence | Check flattened count, `AnimTicks`, integer ticks/frame. |
 | Wrong directional framing | Inherited/missing offsets, remap | Set explicit offsets; inspect every direction. |
 | TGA flipped/shifted | Unsupported origin/image ID | Re-export supported TGA or PNG. |

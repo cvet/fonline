@@ -26,6 +26,7 @@ def test_ios_runtime_architecture_matches_native_target(tmp_path: Path, platform
     (tmp_path / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(AppleRuntimeArchitecture NONE)\n"
+        "set(WIN32 FALSE)\n"
         f'include("{(BUILDTOOLS_DIR / "Init.cmake").as_posix()}")\n'
         "set(CMAKE_SYSTEM_NAME iOS)\n"
         f"set(CMAKE_SYSTEM_PROCESSOR {processor})\n"

@@ -54,7 +54,7 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         self.assertIn("/Docs/Site/Assets/js/docs.js", layout)
         self.assertIn("/Docs/Site/Assets/docs-search.json", layout)
         self.assertIn("/Docs/Site/Assets/docs-search.ru.json", layout)
-        self.assertIn("/Docs/Site/Assets/images/fonline-mark.png", layout)
+        self.assertIn("/Docs/Site/Assets/images/fonline-mark.svg", layout)
         self.assertNotRegex(layout, r"<(?:script|link)[^>]+(?:src|href)=\"https?://")
 
     def test_styles_and_script_cover_responsive_navigation_search_and_theme(self) -> None:
@@ -701,13 +701,6 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
                 front_matter,
                 rf"(?m)^permalink:\s*{re.escape(permalink)}\s*$",
             )
-
-    def test_engine_owned_mark_is_published_byte_for_byte(self) -> None:
-        source = (ROOT / "Resources/Radiation.png").read_bytes()
-        published = (ROOT / "Docs/Site/Assets/images/fonline-mark.png").read_bytes()
-
-        self.assertEqual(hashlib.sha256(published).digest(), hashlib.sha256(source).digest())
-        self.assertGreater(len(published), 1024)
 
     def test_buildtools_entrypoint_uses_aggregate_current_docs_validation(self) -> None:
         readme = (ROOT / "BuildTools/README.md").read_text(encoding="utf-8")

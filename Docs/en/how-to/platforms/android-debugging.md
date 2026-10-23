@@ -161,7 +161,7 @@ The fixed package settings are registered in `Source/Common/Settings.inc` and ex
 | `Android.TargetSdk` | `35` | Gradle target SDK; store policy remains project-owned. |
 | `Android.CompileSdk` | `35` | Gradle compile SDK; provision the matching SDK platform. |
 | `Android.ScreenOrientation` | `landscape` | Manifest activity orientation value. |
-| `Android.Icon` | `Engine/Resources/Radiation.png` | Existing PNG copied to every legacy mipmap density. |
+| `Android.Icon` | empty | Optional project PNG copied to every legacy mipmap density; empty preserves the platform launcher. |
 | `Android.Keystore` | empty | Release keystore path read from baked target config and resolved relative to project config. |
 | `Android.KeystorePassword` | empty | Release store password. |
 | `Android.KeyAlias` | empty | Release key alias. |

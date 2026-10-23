@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "EffectManager.h"
-#include "FileSystem.h"
 #include "Geometry.h"
 #include "MapSprite.h"
 #include "RenderTarget.h"
@@ -120,25 +119,6 @@ protected:
     mutable nptr<RenderEffect> _drawEffect {};
 };
 
-class SpriteFactory
-{
-public:
-    SpriteFactory() = default;
-    SpriteFactory(const SpriteFactory&) = delete;
-    SpriteFactory(SpriteFactory&&) noexcept = default;
-    auto operator=(const SpriteFactory&) = delete;
-    auto operator=(SpriteFactory&&) noexcept -> SpriteFactory& = delete;
-    virtual ~SpriteFactory() = default;
-
-    [[nodiscard]] virtual auto GetExtensions() const -> vector<string> = 0;
-
-    virtual auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> = 0;
-    virtual void Update() { }
-    virtual void RetryFailedLoads() { }
-    virtual void InvalidateResource(hstring path) { ignore_unused(path); }
-    virtual void ClenupCache() { }
-};
-
 struct PrimitivePoint
 {
     ipos32 PointPos {};
@@ -176,7 +156,7 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -184,13 +164,9 @@ public:
     ~SpriteManager() = default;
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
-    [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
-    // Copied on demand and at most once per direct-draw replay, so a frame with nothing refracting never pays
-    // for it
     [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
-
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -209,9 +185,7 @@ public:
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
-    [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    [[nodiscard]] auto GetOnBeginScene() noexcept -> ptr<EventObserver<>> { return &_onBeginScene; }
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -222,12 +196,6 @@ public:
     void SetAlwaysOnTop(bool enable);
     void SetDrawWireframe(bool enable) noexcept { _drawWireframe = enable; }
 
-    void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
-    auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
-    void ForgetFailedSprite(string_view path);
-    void InvalidateSpriteResource(string_view path);
-    void RetryFailedSpriteLoads();
-    void CleanupSpriteCache();
     void UnsubscribeWindowEvents() noexcept;
 
     void PushScissor(irect32 rect);
@@ -280,7 +248,6 @@ private:
 
     ptr<RenderSettings> _settings;
     ptr<IAppWindow> _window;
-    ptr<FileSystem> _resources;
     ptr<GameTimer> _gameTimer;
     RenderTargetManager _rtMngr;
     TextureAtlasManager _atlasMngr;
@@ -289,11 +256,6 @@ private:
     ptr<EffectManager> _effectMngr;
     ptr<hash_resolver> _hashResolver;
     random_generator _randomGenerator {};
-
-    vector<unique_ptr<SpriteFactory>> _spriteFactories {};
-    unordered_map<string, ptr<SpriteFactory>> _spriteFactoryMap {};
-    unordered_set<hstring> _nonFoundSprites {};
-    unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
 
     nptr<RenderTarget> _rtMain {};
@@ -319,7 +281,9 @@ private:
     ipos32 _windowSizeDiff {};
     optional<isize32> _pendingWindowedSize {};
 
+    EventObserver<> _onBeginScene {};
     EventUnsubscriber _eventUnsubscriber {};
 };
 
 FO_END_NAMESPACE
+

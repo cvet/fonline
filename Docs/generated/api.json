@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2580,
-      "inventory_sha256": "f98d98b751b138d7187bb6794c285ace8ffd72220ba92da959884033f610bb83",
+      "symbol_count": 2579,
+      "inventory_sha256": "df50fe5a44c3594928aba7b099c8557f395cebfbdf91225a47e904c3696ae7f1",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,34 +70,34 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2580,
+    "symbol_count": 2579,
     "symbols_by_kind": {
       "entity": 7,
-      "enum": 58,
-      "enum-value": 773,
-      "event": 122,
-      "method": 1008,
-      "migration-rule": 28,
-      "property": 132,
+      "enum": 60,
+      "enum-value": 768,
+      "event": 121,
+      "method": 1014,
+      "migration-rule": 27,
+      "property": 133,
       "ref-field": 41,
       "ref-method": 28,
       "ref-type": 6,
-      "setting": 293,
+      "setting": 290,
       "value-field": 62,
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2579,
+      "experimental": 2578,
       "internal": 1
     },
     "explicit_contract_declaration_count": 3,
-    "explicit_contract_symbol_count": 2580,
+    "explicit_contract_symbol_count": 2579,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2579,
+      "experimental": 2578,
       "internal": 1
     },
-    "described_symbol_count": 2580,
+    "described_symbol_count": 2579,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -219,42 +219,6 @@
       "rule_kind": "Property",
       "scope": "Critter",
       "replacement": "ControlledByPlayer",
-      "action": "Rename"
-    },
-    {
-      "id": "migration.Property.Critter.IsNoFlatten",
-      "family_id": "migration.Property.Critter.IsNoFlatten",
-      "kind": "migration-rule",
-      "name": "IsNoFlatten",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "Property Critter Rename IsNoFlatten DeadDrawNoFlatten",
-      "description": "Maps the legacy Critter property name IsNoFlatten to DeadDrawNoFlatten during Engine migration lookup",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 386
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "rule_kind": "Property",
-      "scope": "Critter",
-      "replacement": "DeadDrawNoFlatten",
       "action": "Rename"
     },
     {
@@ -997,7 +961,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 493
+        "line": 494
       },
       "contract": {
         "explicit": true,
@@ -1033,7 +997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 456
+        "line": 457
       },
       "contract": {
         "explicit": true,
@@ -1069,7 +1033,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 461
+        "line": 462
       },
       "contract": {
         "explicit": true,
@@ -1105,7 +1069,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 418
+        "line": 419
       },
       "contract": {
         "explicit": true,
@@ -1132,7 +1096,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 75",
+      "signature": "Version 0 0 76",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1154,7 +1118,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "75"
+      "replacement": "76"
     },
     {
       "id": "script.entity.Critter",
@@ -1483,7 +1447,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1077
+        "line": 1083
       },
       "contract": {
         "explicit": true,
@@ -1519,7 +1483,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1080
+        "line": 1086
       },
       "contract": {
         "explicit": true,
@@ -1555,7 +1519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1079
+        "line": 1085
       },
       "contract": {
         "explicit": true,
@@ -1591,7 +1555,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1075
+        "line": 1081
       },
       "contract": {
         "explicit": true,
@@ -1627,7 +1591,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1078
+        "line": 1084
       },
       "contract": {
         "explicit": true,
@@ -1663,7 +1627,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1076
+        "line": 1082
       },
       "contract": {
         "explicit": true,
@@ -1699,7 +1663,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 995
+        "line": 993
       },
       "contract": {
         "explicit": true,
@@ -1735,7 +1699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 994
+        "line": 992
       },
       "contract": {
         "explicit": true,
@@ -1771,7 +1735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 996
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -1807,7 +1771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 991
+        "line": 989
       },
       "contract": {
         "explicit": true,
@@ -1843,7 +1807,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 992
+        "line": 990
       },
       "contract": {
         "explicit": true,
@@ -1879,7 +1843,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 989
+        "line": 987
       },
       "contract": {
         "explicit": true,
@@ -1915,7 +1879,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 988
+        "line": 986
       },
       "contract": {
         "explicit": true,
@@ -1951,7 +1915,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 998
+        "line": 996
       },
       "contract": {
         "explicit": true,
@@ -1987,7 +1951,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 997
+        "line": 995
       },
       "contract": {
         "explicit": true,
@@ -2023,7 +1987,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 993
+        "line": 991
       },
       "contract": {
         "explicit": true,
@@ -2059,7 +2023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 990
+        "line": 988
       },
       "contract": {
         "explicit": true,
@@ -2073,150 +2037,6 @@
       "parent_id": "script.enum.CritterAction",
       "value": "3",
       "evaluated_value": 3,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.DeadFront",
-      "family_id": "script.enum-value.CritterActionAnim.DeadFront",
-      "kind": "enum-value",
-      "name": "DeadFront",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.DeadFront = 102",
-      "description": "Requests the front-facing death animation",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1026
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "102",
-      "evaluated_value": 102,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.Idle",
-      "family_id": "script.enum-value.CritterActionAnim.Idle",
-      "kind": "enum-value",
-      "name": "Idle",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.Idle = 1",
-      "description": "Requests the standing idle animation",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1014
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "1",
-      "evaluated_value": 1,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.IdleProneFront",
-      "family_id": "script.enum-value.CritterActionAnim.IdleProneFront",
-      "kind": "enum-value",
-      "name": "IdleProneFront",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.IdleProneFront = 86",
-      "description": "Requests the front-facing prone idle animation",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1025
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "86",
-      "evaluated_value": 86,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.Limp",
-      "family_id": "script.enum-value.CritterActionAnim.Limp",
-      "kind": "enum-value",
-      "name": "Limp",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.Limp = 4",
-      "description": "Requests the limping movement animation",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1017
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "4",
-      "evaluated_value": 4,
       "generated": false
     },
     {
@@ -2239,7 +2059,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1013
+        "line": 1010
       },
       "contract": {
         "explicit": true,
@@ -2256,18 +2076,18 @@
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.PanicRun",
-      "family_id": "script.enum-value.CritterActionAnim.PanicRun",
+      "id": "script.enum-value.CritterAnimationContext.Action",
+      "family_id": "script.enum-value.CritterAnimationContext.Action",
       "kind": "enum-value",
-      "name": "PanicRun",
+      "name": "Action",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.PanicRun = 6",
-      "description": "Requests the panic-running animation",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.Action = 5",
+      "description": "Select a queued one-shot animation",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2286,24 +2106,60 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "6",
-      "evaluated_value": 6,
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "5",
+      "evaluated_value": 5,
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.Run",
-      "family_id": "script.enum-value.CritterActionAnim.Run",
+      "id": "script.enum-value.CritterAnimationContext.Default",
+      "family_id": "script.enum-value.CritterAnimationContext.Default",
       "kind": "enum-value",
-      "name": "Run",
+      "name": "Default",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.Run = 5",
-      "description": "Requests forward running",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.Default = 0",
+      "description": "Select the normal presentation",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1017
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "0",
+      "evaluated_value": 0,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.CritterAnimationContext.Moving",
+      "family_id": "script.enum-value.CritterAnimationContext.Moving",
+      "kind": "enum-value",
+      "name": "Moving",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.Moving = 1",
+      "description": "Select forward locomotion",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2322,24 +2178,24 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "5",
-      "evaluated_value": 5,
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "1",
+      "evaluated_value": 1,
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.RunBack",
-      "family_id": "script.enum-value.CritterActionAnim.RunBack",
+      "id": "script.enum-value.CritterAnimationContext.MovingBack",
+      "family_id": "script.enum-value.CritterAnimationContext.MovingBack",
       "kind": "enum-value",
-      "name": "RunBack",
+      "name": "MovingBack",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.RunBack = 16",
-      "description": "Requests backward running",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.MovingBack = 2",
+      "description": "Select backward locomotion",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2358,60 +2214,24 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "16",
-      "evaluated_value": 16,
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "2",
+      "evaluated_value": 2,
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.SneakRun",
-      "family_id": "script.enum-value.CritterActionAnim.SneakRun",
+      "id": "script.enum-value.CritterAnimationContext.Preview",
+      "family_id": "script.enum-value.CritterAnimationContext.Preview",
       "kind": "enum-value",
-      "name": "SneakRun",
+      "name": "Preview",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.SneakRun = 8",
-      "description": "Requests running in the sneaking posture",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1024
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "8",
-      "evaluated_value": 8,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.SneakWalk",
-      "family_id": "script.enum-value.CritterActionAnim.SneakWalk",
-      "kind": "enum-value",
-      "name": "SneakWalk",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.SneakWalk = 7",
-      "description": "Requests walking in the sneaking posture",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.Preview = 6",
+      "description": "Select an editor preview",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2430,14 +2250,14 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "7",
-      "evaluated_value": 7,
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "6",
+      "evaluated_value": 6,
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.TurnLeft",
-      "family_id": "script.enum-value.CritterActionAnim.TurnLeft",
+      "id": "script.enum-value.CritterAnimationContext.TurnLeft",
+      "family_id": "script.enum-value.CritterAnimationContext.TurnLeft",
       "kind": "enum-value",
       "name": "TurnLeft",
       "runtime_sides": [
@@ -2445,45 +2265,9 @@
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.TurnLeft = 18",
-      "description": "Requests an in-place left turn",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1021
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "18",
-      "evaluated_value": 18,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.TurnRight",
-      "family_id": "script.enum-value.CritterActionAnim.TurnRight",
-      "kind": "enum-value",
-      "name": "TurnRight",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.TurnRight = 17",
-      "description": "Requests an in-place right turn",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.TurnLeft = 3",
+      "description": "Select an in-place left turn",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2502,60 +2286,24 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "17",
-      "evaluated_value": 17,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterActionAnim.Walk",
-      "family_id": "script.enum-value.CritterActionAnim.Walk",
-      "kind": "enum-value",
-      "name": "Walk",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.Walk = 3",
-      "description": "Requests forward walking",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1015
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterActionAnim",
+      "parent_id": "script.enum.CritterAnimationContext",
       "value": "3",
       "evaluated_value": 3,
       "generated": false
     },
     {
-      "id": "script.enum-value.CritterActionAnim.WalkBack",
-      "family_id": "script.enum-value.CritterActionAnim.WalkBack",
+      "id": "script.enum-value.CritterAnimationContext.TurnRight",
+      "family_id": "script.enum-value.CritterAnimationContext.TurnRight",
       "kind": "enum-value",
-      "name": "WalkBack",
+      "name": "TurnRight",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
-      "receiver": "CritterActionAnim",
-      "signature": "CritterActionAnim.WalkBack = 15",
-      "description": "Requests backward walking",
+      "receiver": "CritterAnimationContext",
+      "signature": "CritterAnimationContext.TurnRight = 4",
+      "description": "Select an in-place right turn",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -2563,7 +2311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1016
+        "line": 1021
       },
       "contract": {
         "explicit": true,
@@ -2574,9 +2322,117 @@
         },
         "notes": ""
       },
-      "parent_id": "script.enum.CritterActionAnim",
-      "value": "15",
-      "evaluated_value": 15,
+      "parent_id": "script.enum.CritterAnimationContext",
+      "value": "4",
+      "evaluated_value": 4,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.CritterAnimationFlags.Freeze",
+      "family_id": "script.enum-value.CritterAnimationFlags.Freeze",
+      "kind": "enum-value",
+      "name": "Freeze",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterAnimationFlags",
+      "signature": "CritterAnimationFlags.Freeze = 1",
+      "description": "Hold the selected normalized animation time",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1031
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterAnimationFlags",
+      "value": "1",
+      "evaluated_value": 1,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.CritterAnimationFlags.Movement",
+      "family_id": "script.enum-value.CritterAnimationFlags.Movement",
+      "kind": "enum-value",
+      "name": "Movement",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterAnimationFlags",
+      "signature": "CritterAnimationFlags.Movement = 2",
+      "description": "Align sprite frames and visual offsets with movement displacement",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1032
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterAnimationFlags",
+      "value": "2",
+      "evaluated_value": 2,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.CritterAnimationFlags.None",
+      "family_id": "script.enum-value.CritterAnimationFlags.None",
+      "kind": "enum-value",
+      "name": "None",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterAnimationFlags",
+      "signature": "CritterAnimationFlags.None = 0",
+      "description": "Advance by elapsed time",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1030
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterAnimationFlags",
+      "value": "0",
+      "evaluated_value": 0,
       "generated": false
     },
     {
@@ -2599,7 +2455,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 978
+        "line": 976
       },
       "contract": {
         "explicit": true,
@@ -2635,7 +2491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 980
+        "line": 978
       },
       "contract": {
         "explicit": true,
@@ -2671,7 +2527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 979
+        "line": 977
       },
       "contract": {
         "explicit": true,
@@ -2707,7 +2563,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1050
+        "line": 1056
       },
       "contract": {
         "explicit": true,
@@ -2743,7 +2599,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1052
+        "line": 1058
       },
       "contract": {
         "explicit": true,
@@ -2779,7 +2635,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1058
+        "line": 1064
       },
       "contract": {
         "explicit": true,
@@ -2815,7 +2671,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1056
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -2851,7 +2707,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1051
+        "line": 1057
       },
       "contract": {
         "explicit": true,
@@ -2887,7 +2743,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1057
+        "line": 1063
       },
       "contract": {
         "explicit": true,
@@ -2923,7 +2779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1055
+        "line": 1061
       },
       "contract": {
         "explicit": true,
@@ -2959,7 +2815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1054
+        "line": 1060
       },
       "contract": {
         "explicit": true,
@@ -2995,7 +2851,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1053
+        "line": 1059
       },
       "contract": {
         "explicit": true,
@@ -3031,7 +2887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 969
+        "line": 967
       },
       "contract": {
         "explicit": true,
@@ -3067,7 +2923,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 970
+        "line": 968
       },
       "contract": {
         "explicit": true,
@@ -3103,7 +2959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 971
+        "line": 969
       },
       "contract": {
         "explicit": true,
@@ -3167,7 +3023,7 @@
       ],
       "receiver": "CritterProperty",
       "signature": "CritterProperty.Condition = 27",
-      "description": "Current life-state condition used by animation, filtering, and gameplay queries",
+      "description": "Current life-state condition used by filtering and project gameplay queries",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -3300,42 +3156,6 @@
       "generated": true
     },
     {
-      "id": "script.enum-value.CritterProperty.DeadDrawNoFlatten",
-      "family_id": "script.enum-value.CritterProperty.DeadDrawNoFlatten",
-      "kind": "enum-value",
-      "name": "DeadDrawNoFlatten",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterProperty",
-      "signature": "CritterProperty.DeadDrawNoFlatten = 30",
-      "description": "Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 388
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterProperty",
-      "value": "30",
-      "evaluated_value": 30,
-      "generated": true
-    },
-    {
       "id": "script.enum-value.CritterProperty.Dir",
       "family_id": "script.enum-value.CritterProperty.Dir",
       "kind": "enum-value",
@@ -3369,6 +3189,42 @@
       "parent_id": "script.enum.CritterProperty",
       "value": "10",
       "evaluated_value": 10,
+      "generated": true
+    },
+    {
+      "id": "script.enum-value.CritterProperty.DrawFlatten",
+      "family_id": "script.enum-value.CritterProperty.DrawFlatten",
+      "kind": "enum-value",
+      "name": "DrawFlatten",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterProperty",
+      "signature": "CritterProperty.DrawFlatten = 29",
+      "description": "Selects flat critter rendering independently of its life condition",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 383
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterProperty",
+      "value": "29",
+      "evaluated_value": 29,
       "generated": true
     },
     {
@@ -3778,7 +3634,7 @@
         "mapper"
       ],
       "receiver": "CritterProperty",
-      "signature": "CritterProperty.LightColor = 35",
+      "signature": "CritterProperty.LightColor = 36",
       "description": "RGBA color emitted by the critter's client-side light source",
       "flags": [],
       "stability": "experimental",
@@ -3787,7 +3643,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 403
+        "line": 404
       },
       "contract": {
         "explicit": true,
@@ -3799,8 +3655,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.CritterProperty",
-      "value": "35",
-      "evaluated_value": 35,
+      "value": "36",
+      "evaluated_value": 36,
       "generated": true
     },
     {
@@ -3814,7 +3670,7 @@
         "mapper"
       ],
       "receiver": "CritterProperty",
-      "signature": "CritterProperty.LightDistance = 33",
+      "signature": "CritterProperty.LightDistance = 34",
       "description": "Radius in hexes reached by the critter's client-side light source",
       "flags": [],
       "stability": "experimental",
@@ -3823,43 +3679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 397
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterProperty",
-      "value": "33",
-      "evaluated_value": 33,
-      "generated": true
-    },
-    {
-      "id": "script.enum-value.CritterProperty.LightFlags",
-      "family_id": "script.enum-value.CritterProperty.LightFlags",
-      "kind": "enum-value",
-      "name": "LightFlags",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterProperty",
-      "signature": "CritterProperty.LightFlags = 34",
-      "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 400
+        "line": 398
       },
       "contract": {
         "explicit": true,
@@ -3876,6 +3696,42 @@
       "generated": true
     },
     {
+      "id": "script.enum-value.CritterProperty.LightFlags",
+      "family_id": "script.enum-value.CritterProperty.LightFlags",
+      "kind": "enum-value",
+      "name": "LightFlags",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterProperty",
+      "signature": "CritterProperty.LightFlags = 35",
+      "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 401
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterProperty",
+      "value": "35",
+      "evaluated_value": 35,
+      "generated": true
+    },
+    {
       "id": "script.enum-value.CritterProperty.LightIntensity",
       "family_id": "script.enum-value.CritterProperty.LightIntensity",
       "kind": "enum-value",
@@ -3886,7 +3742,7 @@
         "mapper"
       ],
       "receiver": "CritterProperty",
-      "signature": "CritterProperty.LightIntensity = 32",
+      "signature": "CritterProperty.LightIntensity = 33",
       "description": "Signed percentage intensity of the critter's client-side light source",
       "flags": [],
       "stability": "experimental",
@@ -3895,7 +3751,43 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 394
+        "line": 395
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterProperty",
+      "value": "33",
+      "evaluated_value": 33,
+      "generated": true
+    },
+    {
+      "id": "script.enum-value.CritterProperty.LightSource",
+      "family_id": "script.enum-value.CritterProperty.LightSource",
+      "kind": "enum-value",
+      "name": "LightSource",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterProperty",
+      "signature": "CritterProperty.LightSource = 32",
+      "description": "Enables a client-side map light source centered on this critter",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 392
       },
       "contract": {
         "explicit": true,
@@ -3912,18 +3804,18 @@
       "generated": true
     },
     {
-      "id": "script.enum-value.CritterProperty.LightSource",
-      "family_id": "script.enum-value.CritterProperty.LightSource",
+      "id": "script.enum-value.CritterProperty.LookDistance",
+      "family_id": "script.enum-value.CritterProperty.LookDistance",
       "kind": "enum-value",
-      "name": "LightSource",
+      "name": "LookDistance",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
       "receiver": "CritterProperty",
-      "signature": "CritterProperty.LightSource = 31",
-      "description": "Enables a client-side map light source centered on this critter",
+      "signature": "CritterProperty.LookDistance = 31",
+      "description": "Maximum map-view distance in hexes used by server visibility processing",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -3931,7 +3823,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 391
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -3945,42 +3837,6 @@
       "parent_id": "script.enum.CritterProperty",
       "value": "31",
       "evaluated_value": 31,
-      "generated": true
-    },
-    {
-      "id": "script.enum-value.CritterProperty.LookDistance",
-      "family_id": "script.enum-value.CritterProperty.LookDistance",
-      "kind": "enum-value",
-      "name": "LookDistance",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterProperty",
-      "signature": "CritterProperty.LookDistance = 29",
-      "description": "Maximum map-view distance in hexes used by server visibility processing",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 383
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterProperty",
-      "value": "29",
-      "evaluated_value": 29,
       "generated": true
     },
     {
@@ -4174,7 +4030,7 @@
         "mapper"
       ],
       "receiver": "CritterProperty",
-      "signature": "CritterProperty.NameOffset = 28",
+      "signature": "CritterProperty.NameOffset = 30",
       "description": "Vertical pixel adjustment applied to the critter name label",
       "flags": [],
       "stability": "experimental",
@@ -4183,7 +4039,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 380
+        "line": 386
       },
       "contract": {
         "explicit": true,
@@ -4195,8 +4051,8 @@
         "notes": ""
       },
       "parent_id": "script.enum.CritterProperty",
-      "value": "28",
-      "evaluated_value": 28,
+      "value": "30",
+      "evaluated_value": 30,
       "generated": true
     },
     {
@@ -4230,6 +4086,42 @@
       "parent_id": "script.enum.CritterProperty",
       "value": "0",
       "evaluated_value": 0,
+      "generated": true
+    },
+    {
+      "id": "script.enum-value.CritterProperty.PathfindingObstacle",
+      "family_id": "script.enum-value.CritterProperty.PathfindingObstacle",
+      "kind": "enum-value",
+      "name": "PathfindingObstacle",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterProperty",
+      "signature": "CritterProperty.PathfindingObstacle = 28",
+      "description": "Makes this critter a pathfinding detour independently of its life condition",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 380
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterProperty",
+      "value": "28",
+      "evaluated_value": 28,
       "generated": true
     },
     {
@@ -4432,7 +4324,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1033
+        "line": 1039
       },
       "contract": {
         "explicit": true,
@@ -4468,7 +4360,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1035
+        "line": 1041
       },
       "contract": {
         "explicit": true,
@@ -4504,7 +4396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1034
+        "line": 1040
       },
       "contract": {
         "explicit": true,
@@ -4540,7 +4432,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1005
+        "line": 1003
       },
       "contract": {
         "explicit": true,
@@ -4554,42 +4446,6 @@
       "parent_id": "script.enum.CritterStateAnim",
       "value": "0",
       "evaluated_value": 0,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.CritterStateAnim.Unarmed",
-      "family_id": "script.enum-value.CritterStateAnim.Unarmed",
-      "kind": "enum-value",
-      "name": "Unarmed",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "CritterStateAnim",
-      "signature": "CritterStateAnim.Unarmed = 1",
-      "description": "Selects the unarmed persistent animation posture",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 1006
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.CritterStateAnim",
-      "value": "1",
-      "evaluated_value": 1,
       "generated": false
     },
     {
@@ -4612,7 +4468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1043
+        "line": 1049
       },
       "contract": {
         "explicit": true,
@@ -4648,7 +4504,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1042
+        "line": 1048
       },
       "contract": {
         "explicit": true,
@@ -5133,18 +4989,18 @@
       "generated": false
     },
     {
-      "id": "script.enum-value.DrawOrderType.DeadCritter",
-      "family_id": "script.enum-value.DrawOrderType.DeadCritter",
+      "id": "script.enum-value.DrawOrderType.FlatCritter",
+      "family_id": "script.enum-value.DrawOrderType.FlatCritter",
       "kind": "enum-value",
-      "name": "DeadCritter",
+      "name": "FlatCritter",
       "runtime_sides": [
         "server",
         "client",
         "mapper"
       ],
       "receiver": "DrawOrderType",
-      "signature": "DrawOrderType.DeadCritter = 13",
-      "description": "Flat dead-critter layer rendered after lighting",
+      "signature": "DrawOrderType.FlatCritter = 13",
+      "description": "Flat critter layer rendered after lighting",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -6844,7 +6700,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 455
+        "line": 453
       },
       "contract": {
         "explicit": true,
@@ -6880,7 +6736,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 450
+        "line": 449
       },
       "contract": {
         "explicit": true,
@@ -6916,7 +6772,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 451
+        "line": 450
       },
       "contract": {
         "explicit": true,
@@ -6952,7 +6808,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 441
+        "line": 440
       },
       "contract": {
         "explicit": true,
@@ -6988,7 +6844,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 448
+        "line": 447
       },
       "contract": {
         "explicit": true,
@@ -7060,7 +6916,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 439
+        "line": 438
       },
       "contract": {
         "explicit": true,
@@ -7276,7 +7132,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 437
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -7348,7 +7204,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 445
+        "line": 444
       },
       "contract": {
         "explicit": true,
@@ -7384,7 +7240,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 444
+        "line": 443
       },
       "contract": {
         "explicit": true,
@@ -7456,7 +7312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 447
+        "line": 446
       },
       "contract": {
         "explicit": true,
@@ -7492,7 +7348,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 446
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -7564,7 +7420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 452
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -7600,7 +7456,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 438
+        "line": 437
       },
       "contract": {
         "explicit": true,
@@ -7636,7 +7492,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 442
+        "line": 441
       },
       "contract": {
         "explicit": true,
@@ -7708,7 +7564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 443
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -7722,42 +7578,6 @@
       "parent_id": "script.enum.EngineInfoMessage",
       "value": "1036",
       "evaluated_value": 1036,
-      "generated": false
-    },
-    {
-      "id": "script.enum-value.EngineInfoMessage.NetPermanentDeath",
-      "family_id": "script.enum-value.EngineInfoMessage.NetPermanentDeath",
-      "kind": "enum-value",
-      "name": "NetPermanentDeath",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "EngineInfoMessage",
-      "signature": "EngineInfoMessage.NetPermanentDeath = 1049",
-      "description": "Identifies a project-defined permanent-death state that prevents continuing with the affected character or account",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 453
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.EngineInfoMessage",
-      "value": "1049",
-      "evaluated_value": 1049,
       "generated": false
     },
     {
@@ -7996,7 +7816,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 449
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -8032,7 +7852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 440
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -8157,42 +7977,6 @@
       "generated": false
     },
     {
-      "id": "script.enum-value.EngineInfoMessage.NetWrongTagSkill",
-      "family_id": "script.enum-value.EngineInfoMessage.NetWrongTagSkill",
-      "kind": "enum-value",
-      "name": "NetWrongTagSkill",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "EngineInfoMessage",
-      "signature": "EngineInfoMessage.NetWrongTagSkill = 1029",
-      "description": "Identifies character creation rejected because the required tagged-skill selection is invalid",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Common.h",
-        "line": 436
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "parent_id": "script.enum.EngineInfoMessage",
-      "value": "1029",
-      "evaluated_value": 1029,
-      "generated": false
-    },
-    {
       "id": "script.enum-value.EngineInfoMessage.None",
       "family_id": "script.enum-value.EngineInfoMessage.None",
       "kind": "enum-value",
@@ -8248,7 +8032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 456
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -8536,7 +8320,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 73
+        "line": 75
       },
       "contract": {
         "explicit": true,
@@ -8572,7 +8356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 72
+        "line": 74
       },
       "contract": {
         "explicit": true,
@@ -8608,7 +8392,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 77
+        "line": 79
       },
       "contract": {
         "explicit": true,
@@ -8644,7 +8428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 70
+        "line": 72
       },
       "contract": {
         "explicit": true,
@@ -8680,7 +8464,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 71
+        "line": 73
       },
       "contract": {
         "explicit": true,
@@ -8716,7 +8500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 76
+        "line": 78
       },
       "contract": {
         "explicit": true,
@@ -8752,7 +8536,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 74
+        "line": 76
       },
       "contract": {
         "explicit": true,
@@ -8788,7 +8572,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 75
+        "line": 77
       },
       "contract": {
         "explicit": true,
@@ -8824,7 +8608,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 68
+        "line": 70
       },
       "contract": {
         "explicit": true,
@@ -8860,7 +8644,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 67
+        "line": 69
       },
       "contract": {
         "explicit": true,
@@ -8896,7 +8680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 69
+        "line": 71
       },
       "contract": {
         "explicit": true,
@@ -8932,7 +8716,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 60
+        "line": 62
       },
       "contract": {
         "explicit": true,
@@ -20446,7 +20230,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1066
+        "line": 1072
       },
       "contract": {
         "explicit": true,
@@ -20482,7 +20266,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1067
+        "line": 1073
       },
       "contract": {
         "explicit": true,
@@ -20518,7 +20302,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1065
+        "line": 1071
       },
       "contract": {
         "explicit": true,
@@ -20554,7 +20338,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1068
+        "line": 1074
       },
       "contract": {
         "explicit": true,
@@ -26311,7 +26095,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 495
+        "line": 496
       },
       "contract": {
         "explicit": true,
@@ -26347,7 +26131,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 498
+        "line": 499
       },
       "contract": {
         "explicit": true,
@@ -26416,7 +26200,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1117
+        "line": 1123
       },
       "contract": {
         "explicit": true,
@@ -26452,7 +26236,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1113
+        "line": 1119
       },
       "contract": {
         "explicit": true,
@@ -26488,7 +26272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1116
+        "line": 1122
       },
       "contract": {
         "explicit": true,
@@ -26524,7 +26308,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1110
+        "line": 1116
       },
       "contract": {
         "explicit": true,
@@ -26560,7 +26344,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1109
+        "line": 1115
       },
       "contract": {
         "explicit": true,
@@ -26596,7 +26380,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1115
+        "line": 1121
       },
       "contract": {
         "explicit": true,
@@ -26632,7 +26416,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1111
+        "line": 1117
       },
       "contract": {
         "explicit": true,
@@ -26668,7 +26452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1114
+        "line": 1120
       },
       "contract": {
         "explicit": true,
@@ -26704,7 +26488,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1112
+        "line": 1118
       },
       "contract": {
         "explicit": true,
@@ -26740,7 +26524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 429
+        "line": 430
       },
       "contract": {
         "explicit": true,
@@ -26848,7 +26632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 466
+        "line": 467
       },
       "contract": {
         "explicit": true,
@@ -26884,7 +26668,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 463
+        "line": 464
       },
       "contract": {
         "explicit": true,
@@ -26956,7 +26740,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 458
+        "line": 459
       },
       "contract": {
         "explicit": true,
@@ -26992,7 +26776,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 472
+        "line": 473
       },
       "contract": {
         "explicit": true,
@@ -27028,7 +26812,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 478
+        "line": 479
       },
       "contract": {
         "explicit": true,
@@ -27064,7 +26848,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 420
+        "line": 421
       },
       "contract": {
         "explicit": true,
@@ -27100,7 +26884,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 432
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -27136,7 +26920,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 423
+        "line": 424
       },
       "contract": {
         "explicit": true,
@@ -27172,7 +26956,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 426
+        "line": 427
       },
       "contract": {
         "explicit": true,
@@ -27208,7 +26992,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 469
+        "line": 470
       },
       "contract": {
         "explicit": true,
@@ -27244,7 +27028,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 475
+        "line": 476
       },
       "contract": {
         "explicit": true,
@@ -27313,7 +27097,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 435
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -27349,7 +27133,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 447
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -27385,7 +27169,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 444
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -27421,7 +27205,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 438
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -27457,7 +27241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 450
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -27493,7 +27277,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 453
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -27529,7 +27313,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 441
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -28429,7 +28213,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1089
+        "line": 1095
       },
       "contract": {
         "explicit": true,
@@ -28465,7 +28249,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1087
+        "line": 1093
       },
       "contract": {
         "explicit": true,
@@ -28501,7 +28285,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1088
+        "line": 1094
       },
       "contract": {
         "explicit": true,
@@ -28966,7 +28750,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1101
+        "line": 1107
       },
       "contract": {
         "explicit": true,
@@ -29002,7 +28786,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1098
+        "line": 1104
       },
       "contract": {
         "explicit": true,
@@ -29038,7 +28822,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1097
+        "line": 1103
       },
       "contract": {
         "explicit": true,
@@ -29074,7 +28858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1099
+        "line": 1105
       },
       "contract": {
         "explicit": true,
@@ -29110,7 +28894,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1100
+        "line": 1106
       },
       "contract": {
         "explicit": true,
@@ -29146,7 +28930,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 65
+        "line": 64
       },
       "contract": {
         "explicit": true,
@@ -29182,7 +28966,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 66
+        "line": 65
       },
       "contract": {
         "explicit": true,
@@ -29218,7 +29002,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 73
+        "line": 72
       },
       "contract": {
         "explicit": true,
@@ -29254,7 +29038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 74
+        "line": 73
       },
       "contract": {
         "explicit": true,
@@ -29290,7 +29074,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1072
+        "line": 1078
       },
       "contract": {
         "explicit": true,
@@ -29324,7 +29108,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 985
+        "line": 983
       },
       "contract": {
         "explicit": true,
@@ -29358,7 +29142,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1010
+        "line": 1007
       },
       "contract": {
         "explicit": true,
@@ -29370,6 +29154,74 @@
         "notes": ""
       },
       "underlying_type": "uint16",
+      "generated": false
+    },
+    {
+      "id": "script.enum.CritterAnimationContext",
+      "family_id": "script.enum.CritterAnimationContext",
+      "kind": "enum",
+      "name": "CritterAnimationContext",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "enum CritterAnimationContext : uint8",
+      "description": "Playback request context; projects choose opaque animation identifiers for each context",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1014
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "underlying_type": "uint8",
+      "generated": false
+    },
+    {
+      "id": "script.enum.CritterAnimationFlags",
+      "family_id": "script.enum.CritterAnimationFlags",
+      "kind": "enum",
+      "name": "CritterAnimationFlags",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "enum CritterAnimationFlags : uint8",
+      "description": "Independent playback controls returned by project animation selection",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Common.h",
+        "line": 1027
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "underlying_type": "uint8",
       "generated": false
     },
     {
@@ -29392,7 +29244,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 975
+        "line": 973
       },
       "contract": {
         "explicit": true,
@@ -29426,7 +29278,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1047
+        "line": 1053
       },
       "contract": {
         "explicit": true,
@@ -29460,7 +29312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 966
+        "line": 964
       },
       "contract": {
         "explicit": true,
@@ -29525,7 +29377,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1030
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -29559,7 +29411,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1002
+        "line": 1000
       },
       "contract": {
         "explicit": true,
@@ -29593,7 +29445,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1039
+        "line": 1045
       },
       "contract": {
         "explicit": true,
@@ -29865,7 +29717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 64
+        "line": 66
       },
       "contract": {
         "explicit": true,
@@ -29899,7 +29751,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 57
+        "line": 59
       },
       "contract": {
         "explicit": true,
@@ -30777,7 +30629,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1062
+        "line": 1068
       },
       "contract": {
         "explicit": true,
@@ -30907,7 +30759,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1106
+        "line": 1112
       },
       "contract": {
         "explicit": true,
@@ -31040,7 +30892,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1084
+        "line": 1090
       },
       "contract": {
         "explicit": true,
@@ -31139,7 +30991,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1094
+        "line": 1100
       },
       "contract": {
         "explicit": true,
@@ -31173,7 +31025,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 62
+        "line": 61
       },
       "contract": {
         "explicit": true,
@@ -31207,7 +31059,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/SpriteManager.h",
-        "line": 70
+        "line": 69
       },
       "contract": {
         "explicit": true,
@@ -31390,186 +31242,6 @@
       ]
     },
     {
-      "id": "script.event.client.Game.OnCritterAnimationFallout",
-      "family_id": "script.event.client.Game.OnCritterAnimationFallout",
-      "kind": "event",
-      "name": "OnCritterAnimationFallout",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "event Game.OnCritterAnimationFallout(hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, int32& fStateAnim, int32& fActionAnim, int32& fStateAnimEx, int32& fActionAnimEx, uint32& flags)",
-      "description": "Resolves legacy Fallout animation numbers and flags; handlers may replace all output values, while `StopChain` reports resolution failure",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Client/Client.h",
-        "line": 337
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "arguments": [
-        {
-          "name": "modelName",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "stateAnim",
-          "type": "CritterStateAnim",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "actionAnim",
-          "type": "CritterActionAnim",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "fStateAnim",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "fActionAnim",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "fStateAnimEx",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "fActionAnimEx",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "flags",
-          "type": "uint32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.client.Game.OnCritterAnimationFrames",
-      "family_id": "script.event.client.Game.OnCritterAnimationFrames",
-      "kind": "event",
-      "name": "OnCritterAnimationFrames",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "event Game.OnCritterAnimationFrames(hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, int32& pass, uint32& flags, int32& ox, int32& oy, string& animName)",
-      "description": "Resolves a 2D animation frame tuple; handlers may replace `pass`, `flags`, offsets, and `animName`, while `StopChain` reports resolution failure",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Client/Client.h",
-        "line": 331
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "arguments": [
-        {
-          "name": "modelName",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "stateAnim",
-          "type": "CritterStateAnim",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "actionAnim",
-          "type": "CritterActionAnim",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "pass",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "flags",
-          "type": "uint32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "ox",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "oy",
-          "type": "int32&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        },
-        {
-          "name": "animName",
-          "type": "string&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.client.Game.OnCritterAnimationInit",
       "family_id": "script.event.client.Game.OnCritterAnimationInit",
       "kind": "event",
@@ -31579,8 +31251,8 @@
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "event Game.OnCritterAnimationInit(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem)",
-      "description": "Runs before critter animation lookup; handlers may replace `stateAnim` and `actionAnim`",
+      "signature": "event Game.OnCritterAnimationInit(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedTime, float32& speed)",
+      "description": "Selects project animation identifiers and playback for a context and effective movement speed; normalizedTime is in [0,1], speed must be finite and positive",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -31627,6 +31299,41 @@
           "type": "AbstractItem?",
           "nullable": true,
           "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "context",
+          "type": "CritterAnimationContext",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "movingSpeed",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "flags",
+          "type": "CritterAnimationFlags&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "normalizedTime",
+          "type": "float32&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "speed",
+          "type": "float32&",
+          "nullable": false,
+          "by_reference": true,
           "default": null
         }
       ]
@@ -31696,6 +31403,68 @@
           "type": "bool",
           "nullable": false,
           "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.event.client.Game.OnCritterAnimationSprite",
+      "family_id": "script.event.client.Game.OnCritterAnimationSprite",
+      "kind": "event",
+      "name": "OnCritterAnimationSprite",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "event Game.OnCritterAnimationSprite(hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim, uint32& sprId)",
+      "description": "Resolves a project-owned 2D animation; a nonzero sprId transfers a loaded sprite handle to the engine, while StopChain reports failure",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/Client.h",
+        "line": 331
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "arguments": [
+        {
+          "name": "modelName",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "stateAnim",
+          "type": "CritterStateAnim",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "actionAnim",
+          "type": "CritterActionAnim",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "sprId",
+          "type": "uint32&",
+          "nullable": false,
+          "by_reference": true,
           "default": null
         }
       ]
@@ -32572,7 +32341,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 343
+        "line": 340
       },
       "contract": {
         "explicit": true,
@@ -33570,7 +33339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 340
+        "line": 337
       },
       "contract": {
         "explicit": true,
@@ -34026,7 +33795,7 @@
       "examples": [],
       "source": {
         "path": "Source/Tools/Mapper.h",
-        "line": 328
+        "line": 330
       },
       "contract": {
         "explicit": true,
@@ -34066,7 +33835,7 @@
       "examples": [],
       "source": {
         "path": "Source/Tools/Mapper.h",
-        "line": 331
+        "line": 333
       },
       "contract": {
         "explicit": true,
@@ -34106,7 +33875,7 @@
       "examples": [],
       "source": {
         "path": "Source/Tools/Mapper.h",
-        "line": 334
+        "line": 336
       },
       "contract": {
         "explicit": true,
@@ -34153,7 +33922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Tools/Mapper.h",
-        "line": 325
+        "line": 327
       },
       "contract": {
         "explicit": true,
@@ -40434,7 +40203,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1622
+        "line": 1743
       },
       "contract": {
         "explicit": true,
@@ -40624,7 +40393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1831
+        "line": 1952
       },
       "contract": {
         "explicit": true,
@@ -40672,7 +40441,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1987
+        "line": 2108
       },
       "contract": {
         "explicit": true,
@@ -40817,7 +40586,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1980
+        "line": 2101
       },
       "contract": {
         "explicit": true,
@@ -40857,7 +40626,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2003
+        "line": 2124
       },
       "contract": {
         "explicit": true,
@@ -40877,6 +40646,89 @@
         "nullable": false
       },
       "arguments": []
+    },
+    {
+      "id": "script.method.client.Game.CreateSpriteSequence",
+      "family_id": "script.method.client.Game.CreateSpriteSequence",
+      "kind": "method",
+      "name": "CreateSpriteSequence",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "uint32 Game.CreateSpriteSequence(uint32[] sources, int32[] frames, ipos[] offsets, ipos[] motions, int32 framesPerDirection, timespan duration)",
+      "description": "Creates a stopped independent 2D sequence from explicit direction-major frame arrays and duration",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1204
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "uint32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sources",
+          "type": "uint32[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "frames",
+          "type": "int32[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offsets",
+          "type": "ipos[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "motions",
+          "type": "ipos[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "framesPerDirection",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "duration",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
     },
     {
       "id": "script.method.client.Game.CreateVideoPlayback",
@@ -41080,7 +40932,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2010
+        "line": 2131
       },
       "contract": {
         "explicit": true,
@@ -41120,7 +40972,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1432
+        "line": 1553
       },
       "contract": {
         "explicit": true,
@@ -41238,7 +41090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1443
+        "line": 1564
       },
       "contract": {
         "explicit": true,
@@ -41404,7 +41256,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1410
+        "line": 1531
       },
       "contract": {
         "explicit": true,
@@ -41459,7 +41311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1271
+        "line": 1392
       },
       "contract": {
         "explicit": true,
@@ -41528,7 +41380,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1313
+        "line": 1434
       },
       "contract": {
         "explicit": true,
@@ -41597,7 +41449,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1296
+        "line": 1417
       },
       "contract": {
         "explicit": true,
@@ -41659,7 +41511,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1330
+        "line": 1451
       },
       "contract": {
         "explicit": true,
@@ -41742,7 +41594,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1348
+        "line": 1469
       },
       "contract": {
         "explicit": true,
@@ -41818,7 +41670,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1365
+        "line": 1486
       },
       "contract": {
         "explicit": true,
@@ -41901,7 +41753,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1382
+        "line": 1503
       },
       "contract": {
         "explicit": true,
@@ -42079,7 +41931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1994
+        "line": 2115
       },
       "contract": {
         "explicit": true,
@@ -42111,7 +41963,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.FreeSprite(uint32 sprId)",
-      "description": "Releases a client-local sprite handle, stopping its animation and retaining the resource in the reuse cache; unknown handles are ignored",
+      "description": "Releases a client-local sprite handle; named resources enter the atlas-specific reuse cache, constructed sequences are released, and unknown handles are ignored",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -42119,7 +41971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1124
+        "line": 1245
       },
       "contract": {
         "explicit": true,
@@ -42167,7 +42019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1904
+        "line": 2025
       },
       "contract": {
         "explicit": true,
@@ -42215,7 +42067,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1918
+        "line": 2039
       },
       "contract": {
         "explicit": true,
@@ -42989,7 +42841,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1551
+        "line": 1672
       },
       "contract": {
         "explicit": true,
@@ -43281,6 +43133,274 @@
       "arguments": []
     },
     {
+      "id": "script.method.client.Game.GetSpriteDirectionCount",
+      "family_id": "script.method.client.Game.GetSpriteDirectionCount",
+      "kind": "method",
+      "name": "GetSpriteDirectionCount",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "int32 Game.GetSpriteDirectionCount(uint32 sprId)",
+      "description": "Returns a checked 2D sprite's direction count; static images have one direction",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1161
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sprId",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.GetSpriteDuration",
+      "family_id": "script.method.client.Game.GetSpriteDuration",
+      "kind": "method",
+      "name": "GetSpriteDuration",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "timespan Game.GetSpriteDuration(uint32 sprId)",
+      "description": "Returns a checked 2D sprite's duration; static images have zero duration",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1171
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "timespan",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sprId",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.GetSpriteFrameCount",
+      "family_id": "script.method.client.Game.GetSpriteFrameCount",
+      "kind": "method",
+      "name": "GetSpriteFrameCount",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "int32 Game.GetSpriteFrameCount(uint32 sprId)",
+      "description": "Returns a checked 2D sprite's frame count; static images have one frame",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1151
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sprId",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.GetSpriteFrameMotion",
+      "family_id": "script.method.client.Game.GetSpriteFrameMotion",
+      "kind": "method",
+      "name": "GetSpriteFrameMotion",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "ipos Game.GetSpriteFrameMotion(uint32 sprId, int32 frame, mdir dir)",
+      "description": "Returns a checked frame's pixel motion delta; static images have zero displacement",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1192
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "ipos",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sprId",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "frame",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "dir",
+          "type": "mdir",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Game.GetSpriteFrameOffset",
+      "family_id": "script.method.client.Game.GetSpriteFrameOffset",
+      "kind": "method",
+      "name": "GetSpriteFrameOffset",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "ipos Game.GetSpriteFrameOffset(uint32 sprId, int32 frame, mdir dir)",
+      "description": "Returns a checked frame's absolute pixel draw offset; one-direction sources serve every direction",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1181
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "ipos",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "sprId",
+          "type": "uint32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "frame",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "dir",
+          "type": "mdir",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Game.GetSpriteSize",
       "family_id": "script.method.client.Game.GetSpriteSize",
       "kind": "method",
@@ -43299,7 +43419,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1131
+        "line": 1252
       },
       "contract": {
         "explicit": true,
@@ -43553,7 +43673,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1255
+        "line": 1376
       },
       "contract": {
         "explicit": true,
@@ -43629,7 +43749,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1264
+        "line": 1385
       },
       "contract": {
         "explicit": true,
@@ -43892,7 +44012,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1925
+        "line": 2046
       },
       "contract": {
         "explicit": true,
@@ -44100,7 +44220,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1144
+        "line": 1265
       },
       "contract": {
         "explicit": true,
@@ -44668,7 +44788,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1216
+        "line": 1337
       },
       "contract": {
         "explicit": true,
@@ -44833,7 +44953,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1203
+        "line": 1324
       },
       "contract": {
         "explicit": true,
@@ -44964,7 +45084,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1596
+        "line": 1717
       },
       "contract": {
         "explicit": true,
@@ -45052,7 +45172,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1720
+        "line": 1841
       },
       "contract": {
         "explicit": true,
@@ -45156,7 +45276,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1675
+        "line": 1796
       },
       "contract": {
         "explicit": true,
@@ -45218,7 +45338,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1692
+        "line": 1813
       },
       "contract": {
         "explicit": true,
@@ -45308,7 +45428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1665
+        "line": 1786
       },
       "contract": {
         "explicit": true,
@@ -45356,7 +45476,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1235
+        "line": 1356
       },
       "contract": {
         "explicit": true,
@@ -45404,7 +45524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1589
+        "line": 1710
       },
       "contract": {
         "explicit": true,
@@ -45459,7 +45579,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1932
+        "line": 2053
       },
       "contract": {
         "explicit": true,
@@ -45631,7 +45751,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1808
+        "line": 1929
       },
       "contract": {
         "explicit": true,
@@ -45679,7 +45799,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1856
+        "line": 1977
       },
       "contract": {
         "explicit": true,
@@ -45824,7 +45944,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1891
+        "line": 2012
       },
       "contract": {
         "explicit": true,
@@ -45886,7 +46006,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1884
+        "line": 2005
       },
       "contract": {
         "explicit": true,
@@ -45941,7 +46061,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1911
+        "line": 2032
       },
       "contract": {
         "explicit": true,
@@ -46210,7 +46330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1972
+        "line": 2093
       },
       "contract": {
         "explicit": true,
@@ -46258,7 +46378,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1965
+        "line": 2086
       },
       "contract": {
         "explicit": true,
@@ -46354,7 +46474,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1183
+        "line": 1304
       },
       "contract": {
         "explicit": true,
@@ -46464,7 +46584,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2017
+        "line": 2138
       },
       "contract": {
         "explicit": true,
@@ -46560,7 +46680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1170
+        "line": 1291
       },
       "contract": {
         "explicit": true,
@@ -46615,7 +46735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1952
+        "line": 2073
       },
       "contract": {
         "explicit": true,
@@ -46663,7 +46783,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1939
+        "line": 2060
       },
       "contract": {
         "explicit": true,
@@ -47451,7 +47571,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1157
+        "line": 1278
       },
       "contract": {
         "explicit": true,
@@ -90034,7 +90154,7 @@
       ],
       "receiver": "Critter",
       "signature": "CritterCondition Critter.Condition",
-      "description": "Current life-state condition used by animation, filtering, and gameplay queries",
+      "description": "Current life-state condition used by filtering and project gameplay queries",
       "flags": [
         "Persistent",
         "CoreProperty"
@@ -90184,48 +90304,6 @@
       "persistent": true
     },
     {
-      "id": "script.property.Critter.DeadDrawNoFlatten",
-      "family_id": "script.property.Critter.DeadDrawNoFlatten",
-      "kind": "property",
-      "name": "DeadDrawNoFlatten",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Critter",
-      "signature": "bool Critter.DeadDrawNoFlatten",
-      "description": "Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order",
-      "flags": [
-        "Mutable",
-        "PublicSync",
-        "Persistent",
-        "CoreProperty"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 388
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "access": "common",
-      "type": "bool",
-      "nullable": false,
-      "mutability": "mutable",
-      "persistent": true
-    },
-    {
       "id": "script.property.Critter.Dir",
       "family_id": "script.property.Critter.Dir",
       "kind": "property",
@@ -90263,6 +90341,48 @@
       "type": "mdir",
       "nullable": false,
       "mutability": "read-only",
+      "persistent": true
+    },
+    {
+      "id": "script.property.Critter.DrawFlatten",
+      "family_id": "script.property.Critter.DrawFlatten",
+      "kind": "property",
+      "name": "DrawFlatten",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Critter",
+      "signature": "bool Critter.DrawFlatten",
+      "description": "Selects flat critter rendering independently of its life condition",
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 383
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "access": "common",
+      "type": "bool",
+      "nullable": false,
+      "mutability": "mutable",
       "persistent": true
     },
     {
@@ -90724,7 +90844,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 403
+        "line": 404
       },
       "contract": {
         "explicit": true,
@@ -90763,7 +90883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 397
+        "line": 398
       },
       "contract": {
         "explicit": true,
@@ -90802,7 +90922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 400
+        "line": 401
       },
       "contract": {
         "explicit": true,
@@ -90841,7 +90961,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 394
+        "line": 395
       },
       "contract": {
         "explicit": true,
@@ -90880,7 +91000,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 391
+        "line": 392
       },
       "contract": {
         "explicit": true,
@@ -90922,7 +91042,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 383
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -91163,7 +91283,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 380
+        "line": 386
       },
       "contract": {
         "explicit": true,
@@ -91176,6 +91296,48 @@
       },
       "access": "common",
       "type": "int16",
+      "nullable": false,
+      "mutability": "mutable",
+      "persistent": true
+    },
+    {
+      "id": "script.property.Critter.PathfindingObstacle",
+      "family_id": "script.property.Critter.PathfindingObstacle",
+      "kind": "property",
+      "name": "PathfindingObstacle",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Critter",
+      "signature": "bool Critter.PathfindingObstacle",
+      "description": "Makes this critter a pathfinding detour independently of its life condition",
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 380
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "access": "common",
+      "type": "bool",
       "nullable": false,
       "mutability": "mutable",
       "persistent": true
@@ -94135,7 +94297,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 495
+        "line": 496
       },
       "contract": {
         "explicit": true,
@@ -94173,7 +94335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 498
+        "line": 499
       },
       "contract": {
         "explicit": true,
@@ -94211,7 +94373,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 429
+        "line": 430
       },
       "contract": {
         "explicit": true,
@@ -94335,7 +94497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 466
+        "line": 467
       },
       "contract": {
         "explicit": true,
@@ -94377,7 +94539,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 463
+        "line": 464
       },
       "contract": {
         "explicit": true,
@@ -94460,7 +94622,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 458
+        "line": 459
       },
       "contract": {
         "explicit": true,
@@ -94498,7 +94660,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 472
+        "line": 473
       },
       "contract": {
         "explicit": true,
@@ -94536,7 +94698,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 478
+        "line": 479
       },
       "contract": {
         "explicit": true,
@@ -94578,7 +94740,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 420
+        "line": 421
       },
       "contract": {
         "explicit": true,
@@ -94616,7 +94778,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 432
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -94654,7 +94816,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 423
+        "line": 424
       },
       "contract": {
         "explicit": true,
@@ -94692,7 +94854,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 426
+        "line": 427
       },
       "contract": {
         "explicit": true,
@@ -94730,7 +94892,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 469
+        "line": 470
       },
       "contract": {
         "explicit": true,
@@ -94768,7 +94930,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 475
+        "line": 476
       },
       "contract": {
         "explicit": true,
@@ -94810,7 +94972,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 435
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -94850,7 +95012,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 447
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -94888,7 +95050,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 444
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -94928,7 +95090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 438
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -94966,7 +95128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 450
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -95004,7 +95166,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 453
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -95044,7 +95206,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 441
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -95859,7 +96021,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -95893,7 +96055,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -95927,7 +96089,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -95961,7 +96123,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -95995,7 +96157,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96029,7 +96191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96063,7 +96225,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96097,7 +96259,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96131,7 +96293,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96165,7 +96327,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96199,7 +96361,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96233,7 +96395,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96267,7 +96429,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96301,7 +96463,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96335,7 +96497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96369,7 +96531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96403,7 +96565,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96437,7 +96599,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -96675,7 +96837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 77
+        "line": 78
       },
       "contract": {
         "explicit": true,
@@ -96746,7 +96908,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -97943,7 +98105,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -98029,7 +98191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 77
+        "line": 78
       },
       "contract": {
         "explicit": true,
@@ -98989,7 +99151,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 83
+        "line": 85
       },
       "contract": {
         "explicit": true,
@@ -99024,7 +99186,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 82
+        "line": 84
       },
       "contract": {
         "explicit": true,
@@ -99059,7 +99221,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 84
+        "line": 86
       },
       "contract": {
         "explicit": true,
@@ -100530,7 +100692,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/FontManager.h",
-        "line": 85
+        "line": 87
       },
       "contract": {
         "explicit": true,
@@ -101577,7 +101739,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101618,7 +101780,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101657,7 +101819,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101696,7 +101858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101737,7 +101899,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101778,7 +101940,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101819,7 +101981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101860,7 +102022,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101901,7 +102063,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101942,7 +102104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -101983,7 +102145,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102024,7 +102186,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102065,7 +102227,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102106,7 +102268,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102147,7 +102309,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102188,7 +102350,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 381
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -102719,7 +102881,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 337
+        "line": 338
       },
       "contract": {
         "explicit": true,
@@ -102760,7 +102922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -102801,7 +102963,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -102842,7 +103004,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -102883,7 +103045,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -102924,7 +103086,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -102965,7 +103127,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 342
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -103006,7 +103168,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 364
+        "line": 365
       },
       "contract": {
         "explicit": true,
@@ -103047,7 +103209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 364
+        "line": 365
       },
       "contract": {
         "explicit": true,
@@ -103088,7 +103250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103129,7 +103291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103170,7 +103332,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103211,7 +103373,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103252,7 +103414,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103293,7 +103455,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103334,7 +103496,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 370
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -103512,102 +103674,6 @@
       "mutability": "read-only",
       "default_values": [
         "1000"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.client.View.GlobalDayColor",
-      "family_id": "setting.client.View.GlobalDayColor",
-      "kind": "setting",
-      "name": "View.GlobalDayColor",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "uint8[] View.GlobalDayColor = 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29",
-      "description": "Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 165
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "group": "View",
-      "type": "uint8[]",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "18",
-        "128",
-        "103",
-        "51",
-        "18",
-        "128",
-        "95",
-        "40",
-        "53",
-        "128",
-        "86",
-        "29"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.client.View.GlobalDayColorTime",
-      "family_id": "setting.client.View.GlobalDayColorTime",
-      "kind": "setting",
-      "name": "View.GlobalDayColorTime",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "int32[] View.GlobalDayColorTime = 300, 600, 1140, 1380",
-      "description": "Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 165
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "group": "View",
-      "type": "int32[]",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "300",
-        "600",
-        "1140",
-        "1380"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -103951,7 +104017,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -103992,7 +104058,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104033,7 +104099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104076,7 +104142,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104117,7 +104183,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104158,7 +104224,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104199,7 +104265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104240,7 +104306,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104281,7 +104347,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104322,7 +104388,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104363,7 +104429,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 261
+        "line": 262
       },
       "contract": {
         "explicit": true,
@@ -104630,6 +104696,90 @@
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
     },
     {
+      "id": "setting.common.Animation.PreviewActionAnim",
+      "family_id": "setting.common.Animation.PreviewActionAnim",
+      "kind": "setting",
+      "name": "Animation.PreviewActionAnim",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "CritterActionAnim Animation.PreviewActionAnim = CritterActionAnim::None",
+      "description": "Project-selected preview action identifier",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 206
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Animation",
+      "type": "CritterActionAnim",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "CritterActionAnim::None"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
+      "id": "setting.common.Animation.PreviewStateAnim",
+      "family_id": "setting.common.Animation.PreviewStateAnim",
+      "kind": "setting",
+      "name": "Animation.PreviewStateAnim",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": null,
+      "signature": "CritterStateAnim Animation.PreviewStateAnim = CritterStateAnim::None",
+      "description": "Project-selected preview state identifier",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/Settings.inc",
+        "line": 206
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "group": "Animation",
+      "type": "CritterStateAnim",
+      "setting_kind": "read-only",
+      "mutability": "read-only",
+      "default_values": [
+        "CritterStateAnim::None"
+      ],
+      "command_line_redacted_by_default": false,
+      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
+    },
+    {
       "id": "setting.common.Baking.AllowRepeatedProtoParents",
       "family_id": "setting.common.Baking.AllowRepeatedProtoParents",
       "kind": "setting",
@@ -104649,7 +104799,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104691,7 +104841,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104733,7 +104883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104775,7 +104925,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104817,7 +104967,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104857,7 +105007,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104899,7 +105049,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104941,7 +105091,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -104983,7 +105133,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105025,7 +105175,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105067,7 +105217,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105107,7 +105257,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105149,7 +105299,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105191,7 +105341,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105233,7 +105383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105275,7 +105425,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105317,7 +105467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105359,7 +105509,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105401,7 +105551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105448,7 +105598,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105490,7 +105640,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105532,7 +105682,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105574,7 +105724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 303
+        "line": 304
       },
       "contract": {
         "explicit": true,
@@ -105907,7 +106057,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -105949,7 +106099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -105991,7 +106141,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106033,7 +106183,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106075,7 +106225,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106117,7 +106267,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106159,7 +106309,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106201,7 +106351,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106243,7 +106393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106285,7 +106435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106327,7 +106477,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106361,7 +106511,7 @@
       ],
       "receiver": null,
       "signature": "int32 Geometry.PathFindCritterDetour = 12",
-      "description": "Hexes of detour a path search trades for walking through one living critter",
+      "description": "Hexes of detour a path search trades for crossing one project-marked critter obstacle",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -106369,7 +106519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -106411,7 +106561,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 183
+        "line": 181
       },
       "contract": {
         "explicit": true,
@@ -108406,7 +108556,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108448,7 +108598,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108490,7 +108640,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108532,7 +108682,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108574,7 +108724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108616,7 +108766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108658,7 +108808,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108700,7 +108850,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108742,7 +108892,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108784,7 +108934,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108826,7 +108976,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108868,7 +109018,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108910,7 +109060,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108952,7 +109102,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -108994,7 +109144,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109036,7 +109186,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109078,7 +109228,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109120,7 +109270,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109162,7 +109312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109204,7 +109354,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109246,7 +109396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109288,7 +109438,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109330,7 +109480,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109372,7 +109522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109414,7 +109564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109454,7 +109604,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109496,7 +109646,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109536,7 +109686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109578,7 +109728,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109620,7 +109770,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109662,7 +109812,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109702,7 +109852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109744,7 +109894,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109786,7 +109936,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109826,7 +109976,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109868,7 +110018,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109910,7 +110060,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109952,7 +110102,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -109994,7 +110144,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110036,7 +110186,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110054,90 +110204,6 @@
       "mutability": "read-only",
       "default_values": [
         "false"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.common.Render.RunAnimBaseSpeed",
-      "family_id": "setting.common.Render.RunAnimBaseSpeed",
-      "kind": "setting",
-      "name": "Render.RunAnimBaseSpeed",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "int32 Render.RunAnimBaseSpeed = 120",
-      "description": "Run animation base speed",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 208
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "group": "Render",
-      "type": "int32",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "120"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.common.Render.RunAnimStartSpeed",
-      "family_id": "setting.common.Render.RunAnimStartSpeed",
-      "kind": "setting",
-      "name": "Render.RunAnimStartSpeed",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "int32 Render.RunAnimStartSpeed = 80",
-      "description": "Run animation start speed",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 208
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "group": "Render",
-      "type": "int32",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "80"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -110162,7 +110228,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110204,7 +110270,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110246,7 +110312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110288,7 +110354,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110306,48 +110372,6 @@
       "mutability": "read-only",
       "default_values": [
         "false"
-      ],
-      "command_line_redacted_by_default": false,
-      "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
-    },
-    {
-      "id": "setting.common.Render.WalkAnimBaseSpeed",
-      "family_id": "setting.common.Render.WalkAnimBaseSpeed",
-      "kind": "setting",
-      "name": "Render.WalkAnimBaseSpeed",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": null,
-      "signature": "int32 Render.WalkAnimBaseSpeed = 60",
-      "description": "Walk animation base speed",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Common/Settings.inc",
-        "line": 208
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "group": "Render",
-      "type": "int32",
-      "setting_kind": "read-only",
-      "mutability": "read-only",
-      "default_values": [
-        "60"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -110372,7 +110396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110414,7 +110438,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 208
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -110456,7 +110480,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 200
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -110498,7 +110522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 200
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -110540,7 +110564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 200
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -110582,7 +110606,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 200
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -110624,7 +110648,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 298
+        "line": 299
       },
       "contract": {
         "explicit": true,
@@ -110664,7 +110688,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110695,8 +110719,8 @@
         "server"
       ],
       "receiver": null,
-      "signature": "string Android.Icon = Engine/Resources/Radiation.png",
-      "description": "Android launcher icon PNG source path for packaging tools",
+      "signature": "string Android.Icon = ",
+      "description": "Optional project PNG launcher icon; empty preserves the platform launcher",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -110704,7 +110728,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110721,7 +110745,7 @@
       "setting_kind": "read-only",
       "mutability": "read-only",
       "default_values": [
-        "Engine/Resources/Radiation.png"
+        ""
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -110744,7 +110768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110784,7 +110808,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110824,7 +110848,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110864,7 +110888,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110904,7 +110928,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110944,7 +110968,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -110984,7 +111008,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -111024,7 +111048,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -111064,7 +111088,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -111104,7 +111128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 330
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -111145,7 +111169,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 330
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -111186,7 +111210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 330
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -111227,7 +111251,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111265,7 +111289,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111305,7 +111329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111345,7 +111369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111385,7 +111409,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111425,7 +111449,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111465,7 +111489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111505,7 +111529,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -111545,7 +111569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 291
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -111585,7 +111609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 291
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -111625,7 +111649,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 291
+        "line": 292
       },
       "contract": {
         "explicit": true,
@@ -111665,7 +111689,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111705,7 +111729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111745,7 +111769,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111785,7 +111809,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111825,7 +111849,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111865,7 +111889,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111905,7 +111929,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111945,7 +111969,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -111985,7 +112009,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112025,7 +112049,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112065,7 +112089,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112105,7 +112129,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112145,7 +112169,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112185,7 +112209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112225,7 +112249,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112265,7 +112289,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112305,7 +112329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112345,7 +112369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112385,7 +112409,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112425,7 +112449,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112465,7 +112489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112505,7 +112529,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112545,7 +112569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -112585,7 +112609,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Settings.inc",
-        "line": 401
+        "line": 402
       },
       "contract": {
         "explicit": true,

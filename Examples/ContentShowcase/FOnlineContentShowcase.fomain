@@ -118,8 +118,6 @@ View.MapDirectDraw = False
 View.MapRenderTargetScale = 1.0f
 View.DisableLighting = False
 View.DisableFog = False
-View.GlobalDayColorTime = 300 600 1140 1380
-View.GlobalDayColor = 18 128 103 51 18 128 95 40 53 128 86 29
 View.DisableIndoorMask = False
 
 # Geometry
@@ -142,6 +140,10 @@ SpriteMesh.Enabled = False
 SpriteMesh.AlphaThreshold = 0
 SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0
+
+# Animation
+Animation.PreviewStateAnim = CritterStateAnim::None
+Animation.PreviewActionAnim = CritterActionAnim::None
 
 # Render
 Render.Animation3dSmoothTime = 150
@@ -171,9 +173,6 @@ Render.FixedFPS = 60
 Render.CritterTurnAngle = 100.0f
 Render.CritterBodyTurnFactor = 0.6f
 Render.CritterHeadTurnFactor = 0.4f
-Render.WalkAnimBaseSpeed = 60
-Render.RunAnimStartSpeed = 80
-Render.RunAnimBaseSpeed = 120
 Render.ModelProjFactor = 40.0f
 Render.ModelSpriteMaxTextureWidth = 2048
 Render.ModelSpriteMaxTextureHeight = 2048
@@ -213,7 +212,7 @@ Android.MinSdk = 23
 Android.TargetSdk = 35
 Android.CompileSdk = 35
 Android.ScreenOrientation = landscape
-Android.Icon = Engine/Resources/Radiation.png
+Android.Icon =
 Android.Keystore =
 Android.KeystorePassword =
 Android.KeyAlias =

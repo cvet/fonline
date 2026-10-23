@@ -152,4 +152,75 @@ TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
     CHECK_FALSE(map->CheckGagItem(mpos {14, 15}, allow_gag));
 }
 
+TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+    string startup_error = WaitForStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    const hstring map_pids[] = {server->Hashes.to_hashed_string("TestMap")};
+    auto loc = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
+    auto map = loc->GetMaps().front();
+    auto cr = server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("TestCritter"), nullptr, map, mpos {20, 20}, mdir {0});
+    auto from_hex = cr->GetHex();
+    auto to_hex = cr->GetHex();
+
+    for (int32_t i = 0; i < 2; i++) {
+        REQUIRE(GeometryHelper::MoveHexByDir(from_hex, mdir {0}.reverse(), map->GetSize()));
+        REQUIRE(GeometryHelper::MoveHexByDir(to_hex, mdir {0}, map->GetSize()));
+    }
+
+    auto crosses_critter = [&](const FindPathOutput& path) {
+        auto hex = from_hex;
+
+        for (auto dir : path.Steps) {
+            REQUIRE(GeometryHelper::MoveHexByDir(hex, dir, map->GetSize()));
+
+            if (hex == cr->GetHex()) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    auto check_paths = [&](bool should_cross) {
+        auto path = server->MapMngr.FindPath(map, nullptr, from_hex, to_hex, 0, 0);
+        REQUIRE(path.Result == FindPathOutput::ResultType::Ok);
+        CHECK(crosses_critter(path) == should_cross);
+
+        const mpos targets[] = {to_hex};
+        auto path_to_any = server->MapMngr.FindPathToAny(map, nullptr, from_hex, targets, 0);
+        REQUIRE(path_to_any.Result == FindPathOutput::ResultType::Ok);
+        CHECK(crosses_critter(path_to_any) == should_cross);
+    };
+
+    cr->SetCondition(CritterCondition::Alive);
+    cr->SetPathfindingObstacle(false);
+    CHECK_FALSE(map->HasPathfindingObstacle(cr->GetHex(), nullptr));
+    check_paths(true);
+
+    cr->SetCondition(CritterCondition::Dead);
+    cr->SetPathfindingObstacle(true);
+    CHECK(map->HasPathfindingObstacle(cr->GetHex(), nullptr));
+    CHECK_FALSE(map->HasPathfindingObstacle(cr->GetHex(), cr));
+    check_paths(false);
+
+    cr->SetPathfindingObstacle(false);
+    CHECK_FALSE(map->HasPathfindingObstacle(cr->GetHex(), nullptr));
+    check_paths(true);
+}
+
 FO_END_NAMESPACE
+

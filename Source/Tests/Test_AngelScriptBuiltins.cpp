@@ -2531,8 +2531,9 @@ namespace ScriptBuiltins
         if (useUdp && !useUdp) return -6;
 
         // Vector settings are exposed as arrays
-        array<int> dayColorTime = Settings.View.GlobalDayColorTime;
-        if (dayColorTime.length() != 4) return -8;
+        array<bool> slots = Settings.Critter.CritterSlotEnabled;
+
+        if (slots.length() != 4 || !slots[0] || slots[3]) return -8;
 
         array<string> secretTokens = Settings.Common.SecretSettingTokens;
         if (secretTokens.isEmpty()) return -9;
@@ -4563,6 +4564,8 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 TEST_CASE("ScriptBuiltinsGlobalBindings")
 {
     auto settings = MakeSettings();
+    BakerTests::OverrideSetting(settings.Critter.CritterSlotEnabled, vector<bool> {true, false, true, false});
+
     auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -4803,3 +4806,4 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 FO_END_NAMESPACE
 
 #endif
+

@@ -175,7 +175,7 @@ private:
 
         _editors.emplace_back(safe_alloc::make_unique<SparkParticleEditor>(asset_path, _mapper->Settings, &_mapper->MapsFileSys, &_mapper->Resources, [this](string_view saved_path) {
             (void)_mapper->Resources.ReindexDataSources();
-            _mapper->SprMngr.InvalidateSpriteResource(strex(saved_path).change_file_extension("spk"));
+            _mapper->ResMngr.InvalidateSpriteResource(strex(saved_path).change_file_extension("spk"));
             _mapper->AddMess(strex("SPARK particle source saved: {}", saved_path));
         }));
     }
@@ -1789,3 +1789,4 @@ void SparkParticleEditor::Impl::DrawSparkNullableField(const char* label, const 
 FO_END_NAMESPACE
 
 #endif
+

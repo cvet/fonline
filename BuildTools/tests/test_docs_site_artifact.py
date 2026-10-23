@@ -33,7 +33,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "<body>\n"
             '<a class="skip-link" href="#main-content">Skip</a>\n'
             '<button type="button" aria-label="Search"></button>\n'
-            '<img src="/Docs/Site/Assets/images/fonline-mark.png" alt="">\n'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.svg" alt="">\n'
             '<main id="main-content"><h1 id="heading">Heading</h1>\n'
             f"{body}</main>\n"
             '<script src="/Docs/Site/Assets/js/docs.js"></script>\n'
@@ -103,7 +103,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "Docs/Site/Assets/docs-search.ru.json": json.dumps(russian_search) + "\n",
             "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
             "Docs/Site/Assets/js/docs.js": "'use strict';\n",
-            "Docs/Site/Assets/images/fonline-mark.png": "image\n",
+            "Docs/Site/Assets/images/fonline-mark.svg": "image\n",
             "Docs/generated/support-matrix.json": json.dumps({"profiles": []}) + "\n",
         }
         for relative_path, content in source_files.items():
@@ -254,7 +254,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         broken = (
             "<html><head><title></title></head><body>"
             '<main id="main-content"><h1 id="same">One</h1><h1 id="same">Two</h1>'
-            '<img src="/Docs/Site/Assets/images/fonline-mark.png"><button></button></main>'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.svg"><button></button></main>'
             "</body></html>"
         )
         (root / "_site/Docs/Guide.html").write_text(broken, encoding="utf-8")

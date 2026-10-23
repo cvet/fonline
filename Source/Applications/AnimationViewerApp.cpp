@@ -108,7 +108,7 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
                 Data->Engine = safe_alloc::make_refcounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
 
                 auto engine = GetEngine();
-                Data->Viewer = safe_alloc::make_unique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->GameTime);
+                Data->Viewer = safe_alloc::make_unique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->CritterFrames, &engine->GameTime);
 
                 // The window is the whole application here: it starts open and
                 // fills the viewport instead of floating inside an empty frame
@@ -211,3 +211,4 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
         return resources;
     }
 }
+

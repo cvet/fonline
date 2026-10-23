@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"d1f65368f9bb0b9bd1b37c478b398ed1cb12c06064df1603325e5c992d208e96"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"555c884574366437d5fe8eb51e72f60bff853eb9a7dd0e5adc54096350615bcd"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -71,6 +71,10 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Common/Settings.inc`
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
+- `Source/Client/ResourceManager.h`
+- `Source/Client/ResourceManager.cpp`
+- `Source/Client/CritterFramesCache.h`
+- `Source/Client/CritterFramesCache.cpp`
 - `Source/Client/SpriteManager.h`
 - `Source/Client/SpriteManager.cpp`
 - `Source/Client/DefaultSprites.h`
@@ -381,7 +385,7 @@ Runtime model sprite тоже может использовать cropped quad, 
 layout вычисляется автоматически. `.fo3d` больше не принимает `DrawSize` и
 `ViewSize`; default render settings также не задают fallback dimensions.
 `ModelAnimationInfo.foinfo` bounds schema v2 содержит aggregate root-space model
-AABB, отдельный idle-priority view AABB и AABB каждой animation. В сборках
+AABB, отдельный project-selected preview view AABB и AABB каждой animation. В сборках
 `FO_ENABLE_3D` общий loader `EngineMetadata` один раз разбирает и проверяет весь
 companion; renderer получает immutable model records из registry вместо второго
 client config parser/cache bounds.
@@ -389,8 +393,8 @@ client config parser/cache bounds.
 Клиент проецирует enabled animation bounds через active base transform и
 вычисляет extrema для любого continuous facing angle. Body и projected shadow
 задают animation-wide `DrawRect` и dimensions active logical scratch frame.
-View bound выбирает `Unarmed + Idle`, затем любую Idle, затем deterministic
-animation/static fallback; проекция по всем направлениям даёт устойчивый
+View bound выбирает пару `Animation.PreviewStateAnim` /
+`Animation.PreviewActionAnim`, затем deterministic animation/static fallback; проекция по всем направлениям даёт устойчивый
 `ViewRect`. Logical frame — tight extent текущей animation, выровненный вверх к
 sprite frame scale, но не к power of two. Ground root находится в точном
 projected pixel `(-DrawRect.x, -DrawRect.y)`, доступном через
@@ -399,10 +403,10 @@ low/center-origin creature не резервирует пустую высоту
 shadow и не зависит от меняющегося atlas crop, чтобы name, coarse picking,
 transparent eggs и flying text не дёргались при turn/animation.
 
-View rectangle начинается с baked idle-priority bound. Live weighted pose не
+View rectangle начинается с baked project-selected preview bound. Live weighted pose не
 участвует: накопление per-frame vertices растянуло бы name rectangle по всему
 root motion clip. Selected child models учитываются через baked link envelopes.
-`SelectModelViewBounds` заменяет idle view полным текущим
+`SelectModelViewBounds` заменяет preview view полным текущим
 animation-plus-link envelope только тогда, когда его projected top ниже, поэтому
 prone/corpse configuration опускает name, а поднятое оружие не поднимает его.
 Presentation policy проекта по-прежнему может задаваться authored `NameOffset`.
@@ -441,7 +445,7 @@ projected shadow, live particles и full frame, принудительно вы�
 `DrawRect` является conservative envelope baked active clip и selected links
 вместе с projected shadow и предназначен для diagnostics renderer layout.
 `ViewRect` является semantic interface bound: обычно он использует
-idle-priority envelope, а при необходимости выбирает полный более низкий
+project-selected preview envelope, а при необходимости выбирает полный более низкий
 prone/active clip. GUI portraits и world overlays используют его вместо более
 крупного draw envelope. Отдельный pose rectangle удалён, поскольку дублировал
 тот же contract active model occupancy, что и `DrawRect`, без собственного
@@ -478,10 +482,10 @@ baked layout budget.
 выделяется и копируется только selected region, а crop origin отражается в
 sprite offset, сохраняя root, hit test и map position.
 
-Active layer/child tree расширяет idle-priority base view и aggregate lighting
+Active layer/child tree расширяет project-selected preview base view и aggregate lighting
 bounds. Animation switch может обновить `DrawRect`/scratch frame, но `ViewRect`
 использует накопленный view envelope model+layers и не заменяется временно
-меньшим root-model idle view. Left/right map-light colors выбираются в
+меньшим root-model preview view. Left/right map-light colors выбираются в
 root-relative crop endpoints configuration envelope, поэтому изменение scratch
 size не меняет light mix, а wide gear не clamp-ится к base-model endpoints.
 
@@ -525,7 +529,7 @@ sprite pixels и UV не меняются.
 Font sheets, model material textures, particle maps и Spine attachment textures
 — rectangular consumers: authored glyph/normalized UV адресуют весь source
 bitmap, а consumer получает только atlas rect без `SourceOffset`. Они загружаются
-через `SpriteManager::LoadSpriteAsQuad`, который использует baked mesh metadata
+через `ResourceManager::LoadSpriteAsQuad`, который использует baked mesh metadata
 только для восстановления исходного logical canvas перед upload. Обычный
 `AtlasSprite` раскрыл бы crop dimensions и сдвинул UV. Runtime-generated model и
 particle sprites уже занимают rectangular allocations и восстановления не
@@ -541,7 +545,7 @@ prune и индексирует keepers по coarse atlas cells, не выпол
 path. Surviving sprites, pixels и UV не двигаются; settings и serialization не
 меняются.
 
-`TextureAtlasManager::CleanupAtlases()` удаляет пустые pages вместе с принадлежащими manager render targets, включая `OneImage`. `SpriteManager` вызывает очистку после вытеснения sprite cache; она выполняется и перед созданием новой page. Page с любой live allocation сохраняется: pixels не перемещаются, UV не меняются. Границу проверяют `ExpiredOneImageAtlasReleasesRenderTarget` и `AtlasCleanupReleasesOnlyEmptyPages`.
+`TextureAtlasManager::CleanupAtlases()` удаляет пустые pages вместе с принадлежащими manager render targets, включая `OneImage`. `ResourceManager` вызывает очистку после вытеснения sprite cache; она выполняется и перед созданием новой page. Page с любой live allocation сохраняется: pixels не перемещаются, UV не меняются. Границу проверяют `ExpiredOneImageAtlasReleasesRenderTarget` и `AtlasCleanupReleasesOnlyEmptyPages`.
 
 `Render.DrawWireframe` включает backend-independent geometry overlay.
 `SpriteManager` копирует реально отправленные triangle edges после position,
@@ -975,7 +979,7 @@ depth attachment (UI, light, final screen flush) state является no-op.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.
-- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Dead critters сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном слое и ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.
+- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Critters с заданным проектом `DrawFlatten` сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном слое и ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.
 - Flat/background layers рисуются до standing sprites с `DepthWrite=False`, `DepthFunc=Always`; им не нужны ground projection или layer bias. Standing sprites получают per-vertex `PosZ` через `ProjectMapYToVerticalDepth`, без draw-order bias.
 - Единственный оставшийся layer-bias применяется direct-draw particles/models в конце sprite pass: один шаг из half-pixel budget `MAP_LAYER_DEPTH_BIAS / (DrawOrderType::Last + 1)`, ниже threshold subpixel snapping.
 - `Core` и `Embedded` `2D_Default.fofx` обязаны проецировать `InPosition.xyz`; flatten Z уничтожит scene depth. `2D_Default` и `2D_WithoutEgg` discard final alpha `<= 1/255`, чтобы transparent texels не писали invisible depth.
@@ -1156,6 +1160,25 @@ Native tests доказывают backend-neutral invariants, но не реал
 Добавляйте visible target-specific route для каждого затронутого backend:
 Null/headless, OpenGL/WebGL, Direct3D, Vulkan, SDL_GPU. У direct Metal нет
 реализованного route и acceptance evidence.
+
+## Владение ресурсами
+
+`ResourceManager` владеет регистрацией фабрик, выбором по расширению, шаблонами
+копируемых спрайтов, кешем неудачных путей, инвалидацией и повторными попытками.
+`SpriteManager` владеет отрисовкой, атласами, батчами и обновлением живых спрайтов.
+`FileSystem` владеет подключёнными источниками и чтением файлов. Фабрики по-прежнему
+удерживают текстуры моделей и частиц для заимствующих их renderer callbacks; общего
+кеша текстур это изменение не вводит и их время жизни не меняет.
+
+Порядок создания: `SpriteManager`, `ResourceManager`, затем `CritterFramesCache`
+и `FontManager`; уничтожение идёт в обратном порядке. Фабрики получают оба manager.
+ResourceManager подписывается на начало сцены в прежней точке обновления фабрик,
+перед обновлением живых спрайтов, и на очистку при нехватке памяти. Обе подписки
+снимаются перед уничтожением кешей и фабрик, а также явно в `ClientEngine::Shutdown`.
+
+`CritterFramesCache` кеширует разрешённые проектом направленные sheet и теги
+анимаций. Изменяемые модели превью принадлежат `MapperEngine`. Имена файлов,
+идентификаторы анимаций и правила склейки остаются у проекта.
 
 ## Чек-лист проверки
 

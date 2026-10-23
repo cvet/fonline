@@ -221,12 +221,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-view-fadingduration-9b4e97428c"></a>
 - [`symbol-setting-client-view-fadingduration-9b4e97428c`](../../en/reference/script-api/settings.md#symbol-setting-client-view-fadingduration-9b4e97428c)
 
-<a id="symbol-setting-client-view-globaldaycolor-8437fc1d32"></a>
-- [`symbol-setting-client-view-globaldaycolor-8437fc1d32`](../../en/reference/script-api/settings.md#symbol-setting-client-view-globaldaycolor-8437fc1d32)
-
-<a id="symbol-setting-client-view-globaldaycolortime-4948bf5166"></a>
-- [`symbol-setting-client-view-globaldaycolortime-4948bf5166`](../../en/reference/script-api/settings.md#symbol-setting-client-view-globaldaycolortime-4948bf5166)
-
 <a id="symbol-setting-client-view-hidenativecursor-fab69a4d52"></a>
 - [`symbol-setting-client-view-hidenativecursor-fab69a4d52`](../../en/reference/script-api/settings.md#symbol-setting-client-view-hidenativecursor-fab69a4d52)
 
@@ -315,6 +309,19 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-angelscript-overrunreporttime-892a0b9f92"></a>
 - [`symbol-setting-common-angelscript-overrunreporttime-892a0b9f92`](../../en/reference/script-api/settings.md#symbol-setting-common-angelscript-overrunreporttime-892a0b9f92)
+
+<a id="group-setting-common-animation-e680022029"></a>
+- [`group-setting-common-animation-e680022029`](../../en/reference/script-api/settings.md#group-setting-common-animation-e680022029)
+
+## <code>Animation</code> (common)
+
+Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-common-animation-previewactionanim-1229f150aa"></a>
+- [`symbol-setting-common-animation-previewactionanim-1229f150aa`](../../en/reference/script-api/settings.md#symbol-setting-common-animation-previewactionanim-1229f150aa)
+
+<a id="symbol-setting-common-animation-previewstateanim-5d16adaac1"></a>
+- [`symbol-setting-common-animation-previewstateanim-5d16adaac1`](../../en/reference/script-api/settings.md#symbol-setting-common-animation-previewstateanim-5d16adaac1)
 
 <a id="group-setting-common-baking-797a51abd4"></a>
 - [`group-setting-common-baking-797a51abd4`](../../en/reference/script-api/settings.md#group-setting-common-baking-797a51abd4)
@@ -748,12 +755,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-render-renderdebug-4ee4a556e1"></a>
 - [`symbol-setting-common-render-renderdebug-4ee4a556e1`](../../en/reference/script-api/settings.md#symbol-setting-common-render-renderdebug-4ee4a556e1)
 
-<a id="symbol-setting-common-render-runanimbasespeed-e1cc63af95"></a>
-- [`symbol-setting-common-render-runanimbasespeed-e1cc63af95`](../../en/reference/script-api/settings.md#symbol-setting-common-render-runanimbasespeed-e1cc63af95)
-
-<a id="symbol-setting-common-render-runanimstartspeed-407761e95f"></a>
-- [`symbol-setting-common-render-runanimstartspeed-407761e95f`](../../en/reference/script-api/settings.md#symbol-setting-common-render-runanimstartspeed-407761e95f)
-
 <a id="symbol-setting-common-render-sdlgpudriver-743c9ec753"></a>
 - [`symbol-setting-common-render-sdlgpudriver-743c9ec753`](../../en/reference/script-api/settings.md#symbol-setting-common-render-sdlgpudriver-743c9ec753)
 
@@ -765,9 +766,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-render-vsync-68110dd115"></a>
 - [`symbol-setting-common-render-vsync-68110dd115`](../../en/reference/script-api/settings.md#symbol-setting-common-render-vsync-68110dd115)
-
-<a id="symbol-setting-common-render-walkanimbasespeed-ca18e967c6"></a>
-- [`symbol-setting-common-render-walkanimbasespeed-ca18e967c6`](../../en/reference/script-api/settings.md#symbol-setting-common-render-walkanimbasespeed-ca18e967c6)
 
 <a id="symbol-setting-common-render-windowcentered-e7a745302a"></a>
 - [`symbol-setting-common-render-windowcentered-e7a745302a`](../../en/reference/script-api/settings.md#symbol-setting-common-render-windowcentered-e7a745302a)

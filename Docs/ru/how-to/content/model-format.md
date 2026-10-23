@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"9746db891412b55ab446286ca92cfdff02f3489082e4df1e6281570fbec1c943"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -361,7 +361,7 @@ Runtime классифицирует cut shape по числу запечённ�
 
 ### Автоматический layout model sprite
 
-`DrawSize` и `ViewSize` удалены. `ModelInfoBaker` пишет aggregate bounds, idle-priority view/name bounds и per-animation bounds в `ModelAnimationInfo.foinfo` версии 2. Клиент проецирует их для каждого направления, расширяет с учётом children и layers и вычисляет offscreen frame, visual anchor, lighting envelope и interaction/view rectangle.
+`DrawSize` и `ViewSize` удалены. `ModelInfoBaker` пишет aggregate bounds, project-selected preview view/name bounds и per-animation bounds в `ModelAnimationInfo.foinfo` версии 2. Клиент проецирует их для каждого направления, расширяет с учётом children и layers и вычисляет offscreen frame, visual anchor, lighting envelope и interaction/view rectangle.
 
 Каждый non-particle child link сериализует проверенный root-space AABB; default
 link и particle links не содержат geometry payload. При расчёте envelope baker

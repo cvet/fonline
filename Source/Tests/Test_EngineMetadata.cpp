@@ -518,9 +518,9 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK(model_info.ViewBounds.Max.y == 0.5f);
         CHECK(model_info.ViewBounds.Max.z == 3.0f);
 
-        auto walk_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Walk);
-        auto run_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Run);
-        auto idle_key = std::make_pair(CritterStateAnim::Unarmed, CritterActionAnim::Idle);
+        auto walk_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3));
+        auto run_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(5));
+        auto idle_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1));
         auto walk_duration = model_info.AnimationDurations.find(walk_key);
         auto run_duration = model_info.AnimationDurations.find(run_key);
         REQUIRE(walk_duration != model_info.AnimationDurations.end());
@@ -642,7 +642,7 @@ BoundsMaxZ = 2 2
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;
         REQUIRE(model_info.AnimationDurations.size() == 1);
-        CHECK(model_info.AnimationDurations.at({CritterStateAnim::Unarmed, CritterActionAnim::Walk}).milliseconds() == 500);
+        CHECK(model_info.AnimationDurations.at({static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3)}).milliseconds() == 500);
         CHECK(model_info.AnimationBounds.empty());
     }
 
@@ -659,7 +659,7 @@ BoundsMaxZ = 2 2
         CHECK(model_info.AnimationDurations.empty());
         REQUIRE(model_info.AnimationBounds.size() == 1);
 
-        const ModelBounds3D& bounds = model_info.AnimationBounds.at({CritterStateAnim::Unarmed, CritterActionAnim::Idle});
+        const ModelBounds3D& bounds = model_info.AnimationBounds.at({static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)});
         CHECK(bounds.Min.x == -1.0f);
         CHECK(bounds.Min.y == -1.0f);
         CHECK(bounds.Min.z == 0.0f);
@@ -881,3 +881,4 @@ TEST_CASE("Const native collection proxies reject writes without changing their 
 }
 
 FO_END_NAMESPACE
+

@@ -438,7 +438,7 @@ Applying any cut disables normal culling for the composed model. Treat cuts as a
 ### Automatic model-sprite layout
 
 `DrawSize` and `ViewSize` are removed legacy directives. `ModelInfoBaker` writes
-aggregate, idle-priority view/name, and per-animation bounds to
+aggregate, project-selected preview view/name, and per-animation bounds to
 `ModelAnimationInfo.foinfo` version 2. At runtime the client projects those bounds for
 each direction, extends them with enabled child models and layers, and derives the
 offscreen frame, visual anchor, lighting envelope, and interaction/view rectangle.
