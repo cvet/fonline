@@ -176,6 +176,8 @@ list handler enforces identity at its narrower boundary.
 
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
+`Net_OnCritterMoveItem()` applies the chosen critter's live inventory slots before refreshing its view and firing `OnCritterAction`. A move into a single-item slot also moves the displaced item to the previous slot; multi-item slots retain their other items. The detached action-context item describes the received destination slot, while the action argument carries the previous slot. Project-owned inventory widgets can rebuild their cached cells from that event without predicting the move locally.
+
 ## 3D model runtime architecture
 
 The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The

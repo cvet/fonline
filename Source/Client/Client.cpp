@@ -1421,16 +1421,27 @@ void ClientEngine::Net_OnCritterMoveItem()
         }
     }
 
+    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
+        if (auto item {cr->GetInvItem(moved_item->GetId())}) {
+            // Apply authoritative slots before animation and script callbacks inspect the inventory
+            size_t slot_index {static_cast<size_t>(cur_slot)};
+            const auto& multi_item_slots {Settings->Critter.CritterSlotMultiItem};
+            if (slot_index >= multi_item_slots.size() || !multi_item_slots[slot_index]) {
+                for (ptr<ItemView> swap_item : cr->GetInvItems()) {
+                    if (swap_item != item && swap_item->GetCritterSlot() == cur_slot) {
+                        swap_item->SetCritterSlot(prev_slot);
+                        break;
+                    }
+                }
+            }
+
+            item->SetCritterSlot(cur_slot);
+        }
+    }
+
     if (auto hex_cr {cr.dyn_cast<CritterHexView>()}) {
         hex_cr->RefreshView();
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
-    }
-
-    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto item {cr->GetInvItem(moved_item->GetId())}) {
-            item->SetCritterSlot(cur_slot);
-            moved_item->SetCritterSlot(prev_slot);
-        }
     }
 
     if (_curMap) {

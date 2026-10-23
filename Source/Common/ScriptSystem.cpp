@@ -324,21 +324,6 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 {
     auto range {_globalFuncMap.equal_range(func_name)};
 
-    auto args_compatible {[](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
-        if (func_arg.Kind != caller_arg.Kind) {
-            return false;
-        }
-        if (func_arg.BaseType != caller_arg.BaseType) {
-            return false;
-        }
-        if (func_arg.KeyType != caller_arg.KeyType) {
-            return false;
-        }
-
-        // Not comparing IsMutable
-        return true;
-    }};
-
     for (auto it {range.first}; it != range.second; ++it) {
         auto func {it->second};
 
