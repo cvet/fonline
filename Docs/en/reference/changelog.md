@@ -12,7 +12,47 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-20
+## Current - 2026-10-23
+
+### Changed
+
+- Isolate sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation in AnimationMovement. CritterHexView retains movement/anchor state; arithmetic, lifecycle, script APIs and resource formats are unchanged.
+
+- Store ordinary sprite offsets in SpriteSheet::_sprOffset and per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns matching fields; native GetSprOffset(frame) reads an ordinary offset, while GetSprMotion() replaces the former delta span GetSprOffset(). CritterHexView derives cumulative displacement, compensation and cycle phase from motion deltas. Generic GetSpriteFrameOffset/GetSpriteFrameMotion and explicit offsets,motions arrays expose the two values to project scripts.
+
+- Store absolute frame draw offsets in SpriteSheet and share original atlas sprites instead of wrapping each offset in another AtlasSprite. Keep frame movement, light position and logical roots independent.
+
+- Move sprite loading, factories, template/missing caches and invalidation into ResourceManager. Keep SpriteManager focused on rendering; split CritterFramesCache and Mapper-owned preview models. Preserve independent playback, retries, cleanup and script APIs.
+
+- Remove `View.GlobalDayColorTime` and `View.GlobalDayColor` from Engine settings; projects own their day curves in code/content and submit evaluated colors with `Map.SetDayColors`.
+
+- Move playback, movement-animation selection, preview poses, path obstacles, flat critter rendering, historical game messages and themed resources/defaults to embedding projects. Keep native animation identifiers opaque and expose explicit context/playback parameters. Android packaging preserves its platform launcher unless the project supplies an icon.
+
+- Move all Fallout filename, anchor, frame-selection and splice rules out of ResourceManager into project scripts. Replace the two specialized events with OnCritterAnimationSprite and generic 2D sprite inspection/construction. Keep loaded-source copies and atlas-specific handle reuse isolated.
+
+### Fixed
+
+- Keep precise_sleep's final short interval on the current thread instead of yielding its scheduling quantum to another ready thread. Preserve the existing sleep-test deadlines; OS preemption can still delay a wait.
+
+- Wait for the winning disconnect call's callback in the WebSocket teardown regression before checking its count. Competing calls may return while the IO thread is still reporting the disconnect; the test still requires exactly one callback before and after endpoint shutdown. Production networking is unchanged.
+
+- Keep the nested synchronization regression bounded by inactivity and an overall deadline, retaining its critters until both worker threads join even after timeout shutdown. Slow progress no longer counts as deadlock; the production synchronization implementation is unchanged.
+
+- Consume a sprite handle before stopping its resource, so a failing Stop cannot leave the handle active. Direct callers retain the stop exception; resolver cleanup reports it while preserving the resolver result or original exception.
+
+- Apply Mapper property edits through native setters and post-setters after validating every affected item. Keep dirty state and undo history with the edited map when a callback switches maps, unloads the map, or deletes another affected item.
+
+- Use the complete model/state/action tuple as the critter frame-cache key, with the shared tuple hasher; keep the original request identity across animation substitutions. Reentrant resolution returns the entry already inserted into the cache, including a cached missing result.
+
+- Keep AngelScript value-return ABI storage intact when a native call throws; only owned handle returns need explicit release.
+
+### Migration
+
+- The runtime marker advances from upstream `0.0.75` to `0.0.76` for the project-owned policy/API update. Rebuild and deploy matching clients, server, metadata and resources together; mixed artifacts must fail compatibility checks. Retain upstream 36–57 migration notes below, including dynamic-item placement validation and current filesystem/persistence contracts.
+
+- Base `aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a` (`2026.1.57-dev`); target `2026.1.58-dev`. Follow the exhaustive [script-owned animation migration](../how-to/migration/script-owned-sprite-animations.md) for both removed event signatures, the native resolver replacement, both script backends, ownership, arrays, offsets, duration units, detection, build/bake order and rollback. Runtime `0.0.76`; sprite container v2 and Managed ABI 9 remain unchanged. No saved-data conversion; enum meanings remain project-owned and unchanged.
+
+## 2026.1.57-dev - 2026-10-20
 
 ### Documentation
 

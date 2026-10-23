@@ -37,7 +37,9 @@
     "tests": [
       "Source/Tests/Test_ImageBaker.cpp",
       "Source/Tests/Test_TextureAtlas.cpp"
-    ]
+    ],
+    "resource_manager": "Source/Client/ResourceManager.cpp",
+    "resource_manager_header": "Source/Client/ResourceManager.h"
   },
   "outputs": {
     "baker_name": "Image",
@@ -952,42 +954,53 @@
         {
           "path": "Source/Tests/Test_SpriteSheet.cpp",
           "anchors": [
-            "TEST_CASE(\"SpriteManagerReturnsIndependentSheetsFromTheFirstLoad\""
+            "TEST_CASE(\"ResourceManagerReturnsIndependentSheetsFromTheFirstLoad\""
           ]
         }
       ]
     },
     {
       "id": "image-format.runtime.frame-offset",
-      "name": "Per-frame sprite offsets",
+      "name": "Sprite offsets and frame motion",
       "stability": "experimental",
-      "requirement": "Concrete/shared frames retain NextX/NextY in _sprOffset, separate from draw placement. ResolveCritterAnimationFrames extraction keeps one sprite and offset per direction; LastFrame sums preceding deltas on both axes. FirstFrame wins when both flags are set.",
-      "rationale": "Visual root-motion displacement must remain separate from sequence placement and authoritative world movement.",
+      "requirement": "Concrete/shared frames retain ordinary sprite offsets to the root in SpriteSheet::_sprOffset and NextX/NextY per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns each input to its matching field. CreateSpriteSequence retains original shared atlas sprites with independent offsets and motions arrays in that order. GetSpriteFrameOffset reads ordinary offsets; GetSpriteFrameMotion reads deltas. CritterHexView derives cumulative displacement, distance-driven frame selection, cycle phase and visual _offsAnim compensation from motion deltas against logical HexOffset and independent extra displacement. These presentation values do not drive entity movement. Projects own first/last selection, cumulative displacement, filename rules and sequence splices.",
+      "rationale": "Per-frame visual displacement must remain separate from image anchors and authoritative world movement.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "dir_anim->_sprOffset[j] = frame.NextOffset",
-            "dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index]"
+            "dir_anim->SetFrame(j, std::move(spr), offset, frame.NextOffset)",
+            "dir_anim->GetSprOffset(index)",
+            "copy->_sprOffset[i] = _sprOffset[i]",
+            "void SpriteSheet::SetFrame"
           ]
         },
         {
           "path": "Source/Client/DefaultSprites.h",
           "anchors": [
-            "auto GetSprOffset() const noexcept -> const_span<ipos32>"
+            "auto GetSprMotion() const noexcept -> const_span<ipos32>",
+            "auto GetSprOffset(int32_t num_frm) const -> ipos32"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_GetSpriteFrameMotion",
+            "Client_Game_CreateSpriteSequence"
           ]
         },
         {
           "path": "Source/Tests/Test_SpriteSheet.cpp",
           "anchors": [
-            "TEST_CASE(\"ResourceManagerTrimsOnlyItsOwnSpriteSheet\""
+            "TEST_CASE(\"CritterFramesCacheCachesProjectOwnedDirectionalSequences\"",
+            "TEST_CASE(\"SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds\"",
+            "TEST_CASE(\"MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot\""
           ]
         },
         {
-          "path": "Source/Client/ResourceManager.cpp",
+          "path": "Source/Tests/Test_AngelScriptClientEngine.cpp",
           "anchors": [
-            "dir_anim->_spr.resize(1)",
-            "dir_anim->_sprOffset.resize(1)"
+            "TEST_CASE(\"AngelScriptResourceManagerResolvesProjectSpriteHandles\""
           ]
         }
       ]
@@ -1025,7 +1038,7 @@
       "rationale": "Independent animation state must not mutate the cached prototype, and different atlas classes cannot share placement blindly.",
       "source": [
         {
-          "path": "Source/Client/SpriteManager.cpp",
+          "path": "Source/Client/ResourceManager.cpp",
           "anchors": [
             "_copyableSpriteCache.find({path, atlas_type})",
             "return it->second->MakeCopy()",
@@ -1036,7 +1049,7 @@
         {
           "path": "Source/Tests/Test_SpriteSheet.cpp",
           "anchors": [
-            "TEST_CASE(\"SpriteManagerReturnsIndependentSheetsFromTheFirstLoad\""
+            "TEST_CASE(\"ResourceManagerReturnsIndependentSheetsFromTheFirstLoad\""
           ]
         }
       ]
@@ -1046,18 +1059,18 @@
       "name": "Missing-path memoization",
       "stability": "experimental",
       "requirement": "Missing paths, absent extensions, unknown factories, and factory load failures are memoized by path in _nonFoundSprites; CleanupSpriteCache does not clear that set.",
-      "rationale": "Adding a previously missing resource during a live session normally requires recreating the manager or restarting the client before retrying the same path.",
+      "rationale": "ResourceManager preserves failures during cleanup; ForgetFailedSprite or InvalidateSpriteResource explicitly enables a retry after mounted sources change.",
       "source": [
         {
-          "path": "Source/Client/SpriteManager.cpp",
+          "path": "Source/Client/ResourceManager.cpp",
           "anchors": [
             "if (_nonFoundSprites.count(path) != 0)",
             "_nonFoundSprites.emplace(path)",
-            "void SpriteManager::CleanupSpriteCache()"
+            "void ResourceManager::CleanupSpriteCache()"
           ]
         },
         {
-          "path": "Source/Client/SpriteManager.h",
+          "path": "Source/Client/ResourceManager.h",
           "anchors": [
             "unordered_set<hstring> _nonFoundSprites {};"
           ]

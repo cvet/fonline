@@ -505,7 +505,7 @@
         "CoreProperty"
       ],
       "stability": "internal",
-      "description": "Current life-state condition used by animation, filtering, and gameplay queries",
+      "description": "Current life-state condition used by filtering and project gameplay queries",
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 377
@@ -594,35 +594,6 @@
       }
     },
     {
-      "id": "prototype-format.property.Critter.DeadDrawNoFlatten",
-      "entity": "Critter",
-      "name": "DeadDrawNoFlatten",
-      "type": "bool",
-      "nullable": false,
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "skipped_sides": [],
-      "authorable": true,
-      "excluded_reason": null,
-      "mutability": "mutable",
-      "persistent": true,
-      "flags": [
-        "Mutable",
-        "PublicSync",
-        "Persistent",
-        "CoreProperty"
-      ],
-      "stability": "internal",
-      "description": "Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order",
-      "source": {
-        "path": "Source/Common/EntityProperties.h",
-        "line": 388
-      }
-    },
-    {
       "id": "prototype-format.property.Critter.Dir",
       "entity": "Critter",
       "name": "Dir",
@@ -647,6 +618,35 @@
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 322
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.DrawFlatten",
+      "entity": "Critter",
+      "name": "DrawFlatten",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Selects flat critter rendering independently of its life condition",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 383
       }
     },
     {
@@ -981,7 +981,7 @@
       "description": "RGBA color emitted by the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 403
+        "line": 404
       }
     },
     {
@@ -1009,7 +1009,7 @@
       "description": "Radius in hexes reached by the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 397
+        "line": 398
       }
     },
     {
@@ -1037,7 +1037,7 @@
       "description": "Bit mask controlling global, inverse, and direction-blocking behavior of the light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 400
+        "line": 401
       }
     },
     {
@@ -1065,7 +1065,7 @@
       "description": "Signed percentage intensity of the critter's client-side light source",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 394
+        "line": 395
       }
     },
     {
@@ -1093,7 +1093,7 @@
       "description": "Enables a client-side map light source centered on this critter",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 391
+        "line": 392
       }
     },
     {
@@ -1122,7 +1122,7 @@
       "description": "Maximum map-view distance in hexes used by server visibility processing",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 383
+        "line": 389
       }
     },
     {
@@ -1288,6 +1288,35 @@
       ],
       "stability": "internal",
       "description": "Vertical pixel adjustment applied to the critter name label",
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 386
+      }
+    },
+    {
+      "id": "prototype-format.property.Critter.PathfindingObstacle",
+      "entity": "Critter",
+      "name": "PathfindingObstacle",
+      "type": "bool",
+      "nullable": false,
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "skipped_sides": [],
+      "authorable": true,
+      "excluded_reason": null,
+      "mutability": "mutable",
+      "persistent": true,
+      "flags": [
+        "Mutable",
+        "PublicSync",
+        "Persistent",
+        "CoreProperty"
+      ],
+      "stability": "internal",
+      "description": "Makes this critter a pathfinding detour independently of its life condition",
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 380
@@ -2966,7 +2995,7 @@
       "description": "Server initialization function called after the location-init event for a newly created or restored location",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 495
+        "line": 496
       }
     },
     {
@@ -2994,7 +3023,7 @@
       "description": "Persistent identifiers of the maps owned by this location, in location-map order",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 498
+        "line": 499
       }
     },
     {
@@ -3022,7 +3051,7 @@
       "description": "Persistent identifiers of the non-player critters owned by this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 429
+        "line": 430
       }
     },
     {
@@ -3107,7 +3136,7 @@
       "description": "Channel-major RGB values for the map's corresponding daylight color keyframes",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 466
+        "line": 467
       }
     },
     {
@@ -3136,7 +3165,7 @@
       "description": "Map-specific daylight color keyframe times expressed in minutes of the day cycle",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 463
+        "line": 464
       }
     },
     {
@@ -3193,7 +3222,7 @@
       "description": "Map-local day-time override value, conventionally expressed in minutes and interpreted by game scripts",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 458
+        "line": 459
       }
     },
     {
@@ -3220,7 +3249,7 @@
       "description": "Current client-side global daylight color supplied through SetDayColors for scripts and effects",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 472
+        "line": 473
       }
     },
     {
@@ -3247,7 +3276,7 @@
       "description": "Current daylight capacity percentage for light sources flagged as global, clamped to 0 through 100",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 478
+        "line": 479
       }
     },
     {
@@ -3279,7 +3308,7 @@
       "description": "Server initialization function called after the map-init event for a newly created or restored map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 420
+        "line": 421
       }
     },
     {
@@ -3307,7 +3336,7 @@
       "description": "Persistent identifiers of the dynamic items placed directly on this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 432
+        "line": 433
       }
     },
     {
@@ -3335,7 +3364,7 @@
       "description": "Identifier of the location that owns this map",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 423
+        "line": 424
       }
     },
     {
@@ -3363,7 +3392,7 @@
       "description": "Zero-based position of this map in its owning location's map list",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 426
+        "line": 427
       }
     },
     {
@@ -3390,7 +3419,7 @@
       "description": "Current client-side map tint supplied through SetDayColors and consumed by map rendering",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 469
+        "line": 470
       }
     },
     {
@@ -3417,7 +3446,7 @@
       "description": "Current daylight capacity percentage for ordinary map light sources, clamped to 0 through 100",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 475
+        "line": 476
       }
     },
     {
@@ -3446,7 +3475,7 @@
       "description": "Identifiers of the baked static items this map instance has dropped; removal is one-way for the life of the instance",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 435
+        "line": 436
       }
     },
     {
@@ -3473,7 +3502,7 @@
       "description": "Axial-coordinate rectangle that bounds map scrolling; a zero rectangle leaves the full map available",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 447
+        "line": 448
       }
     },
     {
@@ -3500,7 +3529,7 @@
       "description": "Rounded client viewport offset in map-space pixels",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 444
+        "line": 445
       }
     },
     {
@@ -3527,7 +3556,7 @@
       "description": "Width and height of the map grid in hexes",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 438
+        "line": 439
       }
     },
     {
@@ -3554,7 +3583,7 @@
       "description": "Current client map-sprite zoom factor",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 450
+        "line": 451
       }
     },
     {
@@ -3581,7 +3610,7 @@
       "description": "Target zoom factor toward which the client map view is interpolating",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 453
+        "line": 454
       }
     },
     {
@@ -3608,7 +3637,7 @@
       "description": "Authoring work hex used as the initial Mapper view center",
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 441
+        "line": 442
       }
     }
   ],
@@ -3617,21 +3646,21 @@
     "directive_count": 2,
     "rule_count": 15,
     "entity_type_count": 4,
-    "property_count": 112,
-    "authorable_property_count": 91,
+    "property_count": 113,
+    "authorable_property_count": 92,
     "excluded_property_count": 21,
     "properties_by_entity": {
-      "Critter": 35,
+      "Critter": 36,
       "Item": 50,
       "Location": 5,
       "Map": 22
     },
     "authorable_properties_by_entity": {
-      "Critter": 21,
+      "Critter": 22,
       "Item": 50,
       "Location": 5,
       "Map": 15
     }
   },
-  "contract_digest": "74bc2b1ab3093dc6d252f634e42dd9c37992f7749701c6932f47a9350b25bec0"
+  "contract_digest": "49d6dc22521678e715611881c052edb080897d822ff81e9db4c2f070b6b16c7f"
 }

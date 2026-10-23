@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2578 InventorySha256=6f315b0fad91210a5948807739a75f525948d57ec4bff3459b1e86cf5d322e74
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2577 InventorySha256=85c713e5ffbad3ca78deaeaa8db5ec9511576cd09ec6ec6d9d08d4fbccb8c047
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 75
+///@ MigrationRule Version 0 0 76
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -433,7 +433,6 @@ enum class EngineInfoMessage : uint16_t
     NetNetMsgErr = 1026, // Identifies a malformed, invalid, or otherwise unacceptable network message
     NetSetProtoErr = 1027, // Identifies an internal server failure while assigning or initializing required prototype state
     NetLoginOk = 1028, // Identifies successful authentication and transition to game-state or map loading
-    NetWrongTagSkill = 1029, // Identifies character creation rejected because the required tagged-skill selection is invalid
     NetDifferentLang = 1030, // Identifies a name rejected for mixing characters from different language alphabets
     NetManySymbols = 1031, // Identifies a name rejected because too much of it consists of non-letter symbols
     NetBeginEndSpaces = 1032, // Identifies a name rejected because it begins or ends with whitespace
@@ -450,7 +449,6 @@ enum class EngineInfoMessage : uint16_t
     NetBan = 1046, // Identifies the primary notification that the player or account has been banned
     NetBanReason = 1047, // Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project
     NetLoginScriptFail = 1048, // Identifies authentication rejected because a project login script failed
-    NetPermanentDeath = 1049, // Identifies a project-defined permanent-death state that prevents continuing with the affected character or account
 
     KickedFromGame = 5000, // Identifies forced removal of the player from the active game session
     ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
@@ -1003,7 +1001,6 @@ enum class CritterAction : uint16_t
 enum class CritterStateAnim : uint16_t
 {
     None = 0, // No persistent critter animation posture is selected
-    Unarmed = 1, // Selects the unarmed persistent animation posture
 };
 
 // Requested critter movement or pose animation passed to model animation resolution
@@ -1011,19 +1008,28 @@ enum class CritterStateAnim : uint16_t
 enum class CritterActionAnim : uint16_t
 {
     None = 0, // No action animation is requested
-    Idle = 1, // Requests the standing idle animation
-    Walk = 3, // Requests forward walking
-    WalkBack = 15, // Requests backward walking
-    Limp = 4, // Requests the limping movement animation
-    Run = 5, // Requests forward running
-    RunBack = 16, // Requests backward running
-    TurnRight = 17, // Requests an in-place right turn
-    TurnLeft = 18, // Requests an in-place left turn
-    PanicRun = 6, // Requests the panic-running animation
-    SneakWalk = 7, // Requests walking in the sneaking posture
-    SneakRun = 8, // Requests running in the sneaking posture
-    IdleProneFront = 86, // Requests the front-facing prone idle animation
-    DeadFront = 102, // Requests the front-facing death animation
+};
+
+// Playback request context; projects choose opaque animation identifiers for each context
+///@ ExportEnum
+enum class CritterAnimationContext : uint8_t
+{
+    Default = 0, // Select the normal presentation
+    Moving = 1, // Select forward locomotion
+    MovingBack = 2, // Select backward locomotion
+    TurnLeft = 3, // Select an in-place left turn
+    TurnRight = 4, // Select an in-place right turn
+    Action = 5, // Select a queued one-shot animation
+    Preview = 6, // Select an editor preview
+};
+
+// Independent playback controls returned by project animation selection
+///@ ExportEnum
+enum class CritterAnimationFlags : uint8_t
+{
+    None = 0, // Advance by elapsed time
+    Freeze = 1, // Hold the selected normalized animation time
+    Movement = 2, // Align sprite frames and visual offsets with movement displacement
 };
 
 // Perspective used by critter visibility queries: either direction or their union
@@ -1117,15 +1123,17 @@ enum class MapLayers : uint8_t
     All = 0x7F, // Draw every map layer
 };
 
+class SpriteSheet;
+
 class AnimationResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& f_state_anim, int32_t& f_action_anim, int32_t& f_state_anim_ex, int32_t& f_action_anim_ex, uint32_t& flags) -> bool = 0;
     virtual ~AnimationResolver() = default;
 };
 
 FO_END_NAMESPACE
 
 #endif // FO_PRECOMPILED_HEADER_GUARD
+

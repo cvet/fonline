@@ -129,6 +129,8 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
         "default_sprites_header",
         "sprite_manager",
         "sprite_manager_header",
+        "resource_manager",
+        "resource_manager_header",
         "texture_atlas",
         "texture_atlas_header",
         "sprite_resource",

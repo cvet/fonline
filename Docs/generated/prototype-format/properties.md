@@ -41,11 +41,11 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-critter-customholderid-d80a9e3b91"></a>
 - [`entry-prototype-format-property-critter-customholderid-d80a9e3b91`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-customholderid-d80a9e3b91)
 
-<a id="entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd"></a>
-- [`entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-deaddrawnoflatten-a922a6c3bd)
-
 <a id="entry-prototype-format-property-critter-dir-dc6dd071ec"></a>
 - [`entry-prototype-format-property-critter-dir-dc6dd071ec`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-dir-dc6dd071ec)
+
+<a id="entry-prototype-format-property-critter-drawflatten-2dfc6e679f"></a>
+- [`entry-prototype-format-property-critter-drawflatten-2dfc6e679f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-drawflatten-2dfc6e679f)
 
 <a id="entry-prototype-format-property-critter-elevation-348f58841f"></a>
 - [`entry-prototype-format-property-critter-elevation-348f58841f`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-elevation-348f58841f)
@@ -115,6 +115,9 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 
 <a id="entry-prototype-format-property-critter-nameoffset-8dede7778e"></a>
 - [`entry-prototype-format-property-critter-nameoffset-8dede7778e`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-nameoffset-8dede7778e)
+
+<a id="entry-prototype-format-property-critter-pathfindingobstacle-f11e82536a"></a>
+- [`entry-prototype-format-property-critter-pathfindingobstacle-f11e82536a`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-pathfindingobstacle-f11e82536a)
 
 <a id="entry-prototype-format-property-critter-scalefactor-71891b8814"></a>
 - [`entry-prototype-format-property-critter-scalefactor-71891b8814`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-scalefactor-71891b8814)

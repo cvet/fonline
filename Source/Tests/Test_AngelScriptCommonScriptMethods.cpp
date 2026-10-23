@@ -163,16 +163,16 @@ namespace CommonMethods
         script_source += R"(
     int TestGetModelAnimDuration()
     {
-        timespan walk = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        timespan walk = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim(1), CritterActionAnim(3));
         if (walk.milliseconds != 500) return -1;
 
-        timespan run = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Run);
+        timespan run = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim(1), CritterActionAnim(5));
         if (run.milliseconds != 250) return -2;
 
-        timespan missingAction = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Idle);
+        timespan missingAction = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim(1), CritterActionAnim(1));
         if (missingAction.milliseconds != 0) return -3;
 
-        timespan missingModel = Game.GetModelAnimDuration("Critters/Missing.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        timespan missingModel = Game.GetModelAnimDuration("Critters/Missing.fo3d".hstr(), CritterStateAnim(1), CritterActionAnim(3));
         if (missingModel.milliseconds != 0) return -4;
 
         return 0;
@@ -2304,3 +2304,4 @@ TEST_CASE("LocationTimeEventOps")
 FO_END_NAMESPACE
 
 #endif
+

@@ -212,7 +212,7 @@ void ItemHexView::RefreshAnim()
     auto pic_name = GetPicMap();
 
     if (pic_name) {
-        _anim = _engine->SprMngr.LoadSprite(pic_name, AtlasType::MapSprites);
+        _anim = _engine->ResMngr.LoadSprite(pic_name, AtlasType::MapSprites);
     }
     else {
         _anim = nullptr;
@@ -292,3 +292,4 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 }
 
 FO_END_NAMESPACE
+

@@ -17,7 +17,7 @@
     <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.data.docs-site.title | default: site.title }}</title>
     <meta name="description" content="{{ site.data.docs-site.description | default: site.description | escape }}">
     <link rel="canonical" href="{{ page.url | absolute_url }}">
-    <link rel="icon" type="image/png" href="{{ '/Docs/Site/Assets/images/fonline-mark.png' | relative_url }}">
+    <link rel="icon" type="image/svg+xml" href="{{ '/Docs/Site/Assets/images/fonline-mark.svg' | relative_url }}">
     <link rel="stylesheet" href="{{ '/Docs/Site/Assets/css/docs.css' | relative_url }}">
     <script>
       (function () {
@@ -38,7 +38,7 @@
       </button>
 
       <a class="docs-brand" href="{{ '/' | relative_url }}" aria-label="FOnline Engine">
-        <img src="{{ '/Docs/Site/Assets/images/fonline-mark.png' | relative_url }}" width="36" height="36" alt="">
+        <img src="{{ '/Docs/Site/Assets/images/fonline-mark.svg' | relative_url }}" width="36" height="36" alt="">
         <span>FOnline Engine</span>
       </a>
 

@@ -1,4 +1,4 @@
-//      __________        ___               ______            _
+﻿//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -68,13 +68,13 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     EffectMngr.LoadDefaultEffects();
 
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr));
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&SprMngr, &ResMngr));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<ParticleSpriteFactory>(&SprMngr, &ResMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, Settings, this, &EffectMngr, &GameTime, this));
+    ResMngr.RegisterSpriteFactory(safe_alloc::make_unique<ModelSpriteFactory>(&SprMngr, &ResMngr, Settings, this, &EffectMngr, &GameTime, this));
 #endif
+    ResMngr.LoadDefaultSprites(*Settings);
 
-    ResMngr.IndexFiles();
     AudioMngr.IndexFiles();
 
     MapScriptTypes(this);
@@ -100,8 +100,8 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _curLang.LoadFromResources(Resources, Settings->Client.Language);
     SetCurLangName(Settings->Client.Language);
 
-    AnimViewer = safe_alloc::make_unique<AnimationViewer>(this, &SprMngr, &ResMngr, &GameTime);
-    PartViewer = safe_alloc::make_unique<ParticleViewer>(this, &SprMngr);
+    AnimViewer = safe_alloc::make_unique<AnimationViewer>(this, &SprMngr, &ResMngr, &CritterFrames, &GameTime);
+    PartViewer = safe_alloc::make_unique<ParticleViewer>(this, &SprMngr, &ResMngr);
 
     SprMngr.BeginScene();
     SprMngr.EndScene();
@@ -247,8 +247,8 @@ void MapperEngine::InitIface()
     InspectorVisible = false;
 
     // Cursor
-    CurPDef = SprMngr.LoadSprite("CurDefault.png", AtlasType::IfaceSprites);
-    CurPHand = SprMngr.LoadSprite("CurHand.png", AtlasType::IfaceSprites);
+    CurPDef = ResMngr.LoadSprite("CurDefault.png", AtlasType::IfaceSprites);
+    CurPHand = ResMngr.LoadSprite("CurHand.png", AtlasType::IfaceSprites);
 
     logging::write("Init interface complete");
 }
@@ -281,7 +281,7 @@ auto MapperEngine::GetPreviewSprite(hstring fname) -> nptr<Sprite>
         return it->second;
     }
 
-    auto spr = SprMngr.LoadSprite(fname, AtlasType::IfaceSprites);
+    auto spr = ResMngr.LoadSprite(fname, AtlasType::IfaceSprites);
 
     if (spr) {
         spr->PlayDefault();
@@ -1108,9 +1108,10 @@ auto MapperEngine::ExecuteUndo() -> bool
         return false;
     }
 
-    auto map = GetCurMap();
+    auto map = _curMap;
     FO_VERIFY_AND_THROW(map, "Map is null");
     auto ctx = GetUndoContext(map, false);
+
     if (!ctx) {
         return false;
     }
@@ -1128,7 +1129,15 @@ auto MapperEngine::ExecuteUndo() -> bool
     bool ok = op.Undo(this, &active_map);
     UndoRedoInProgress = false;
 
+    if (active_map->IsDestroyed()) {
+        return false;
+    }
+
     if (!ok) {
+        if (map->IsDestroyed()) {
+            return false;
+        }
+
         auto rollback_ctx = GetUndoContext(map, true);
         FO_VERIFY_AND_THROW(rollback_ctx, "Rollback context is null");
         rollback_ctx->UndoStack.emplace_back(std::move(op));
@@ -1150,9 +1159,10 @@ auto MapperEngine::ExecuteRedo() -> bool
         return false;
     }
 
-    auto map = GetCurMap();
+    auto map = _curMap;
     FO_VERIFY_AND_THROW(map, "Map is null");
     auto ctx = GetUndoContext(map, false);
+
     if (!ctx) {
         return false;
     }
@@ -1170,7 +1180,15 @@ auto MapperEngine::ExecuteRedo() -> bool
     bool ok = op.Redo(this, &active_map);
     UndoRedoInProgress = false;
 
+    if (active_map->IsDestroyed()) {
+        return false;
+    }
+
     if (!ok) {
+        if (map->IsDestroyed()) {
+            return false;
+        }
+
         auto rollback_ctx = GetUndoContext(map, true);
         FO_VERIFY_AND_THROW(rollback_ctx, "Rollback context is null");
         rollback_ctx->RedoStack.emplace_back(std::move(op));
@@ -1354,7 +1372,8 @@ auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_nam
 
 auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Property> prop, string_view value_text) -> bool
 {
-    vector<pair<ptr<Entity>, Properties>> pending;
+    auto map = _curMap;
+    vector<pair<refcount_ptr<Entity>, Properties>> pending;
 
     try {
         auto prepare = [&](ptr<Entity> target) {
@@ -1365,7 +1384,7 @@ auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Propert
                 MapLoader::ValidateItemProperties(candidate, *item->GetProto()->GetProperties(), item->GetProto()->GetName(), item->GetId());
             }
 
-            pending.emplace_back(target, std::move(candidate));
+            pending.emplace_back(target.hold_ref(), std::move(candidate));
         };
 
         prepare(entity);
@@ -1400,25 +1419,32 @@ auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Propert
     bool changed = false;
 
     for (auto& [target, candidate] : pending) {
-        if (!target->GetProperties()->CompareData(candidate, {}, false)) {
-            target->GetPropertiesForEdit()->CopyFrom(candidate);
+        if (target->IsDestroyed()) {
+            continue;
+        }
+
+        if (std::ranges::equal(target->GetProperties()->GetRawData(prop), candidate.GetRawData(prop))) {
+            continue;
+        }
+
+        if (!changed) {
+            SetMapDirty(map);
             changed = true;
         }
-    }
 
-    if (!changed) {
-        return true;
-    }
+        PropertyRawData prop_data;
+        candidate.CopyRawData(prop, prop_data);
+        target->SetValueFromData(prop, prop_data);
 
-    SetMapDirty(GetCurMap());
-
-    for (auto& [target, candidate] : pending) {
-        ignore_unused(candidate);
+        if (target->IsDestroyed()) {
+            continue;
+        }
 
         if (auto hex_item = target.dyn_cast<ItemHexView>()) {
             if (prop == hex_item->GetPropertyOffset()) {
                 hex_item->RefreshOffs();
             }
+
             if (prop == hex_item->GetPropertyPicMap()) {
                 hex_item->RefreshAnim();
             }
@@ -1923,7 +1949,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                             int32_t i = visible_indices[row];
                             const auto& proto = (*ActiveCritterProtos)[i];
                             string label = string(proto->GetName());
-                            auto preview_sprite = ResMngr.GetCritterPreviewSpr(proto->GetModelName(), CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
+                            auto preview_sprite = GetCritterPreviewSpr(proto->GetModelName(), Settings->Animation.PreviewStateAnim, Settings->Animation.PreviewActionAnim, CritterDir, nullptr);
                             draw_proto_entry(i, label, preview_sprite, [&] {
                                 SetActiveProtoIndex(i);
                                 SetCurMode(CUR_MODE_PLACE_OBJECT);
@@ -1932,6 +1958,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     }
                 }
             }
+
             ImGui::EndChild();
         }
         else {
@@ -3193,28 +3220,35 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
     constexpr int32_t start_line = 3;
 
     if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size())) {
-        const auto& prop = ShowProps[InspectorSelectedLine - start_line];
+        auto prop = ShowProps[InspectorSelectedLine - start_line];
 
         if (prop) {
+            auto map = _curMap;
+            auto target = entity.hold_ref();
             ident_t entity_id = entity->GetId();
             string old_value = InspectorSelectedLineInitialValue;
             string new_value = InspectorSelectedLineValue;
 
             if (!ApplyEntityPropertyText(entity, prop, new_value)) {
-                ApplyEntityPropertyText(entity, prop, old_value);
+                return;
+            }
+
+            if (!map || map->IsDestroyed() || target->IsDestroyed()) {
                 return;
             }
 
             string prop_name = string(prop->GetName());
-            PushUndoOp(GetCurMap(),
+            PushUndoOp(map,
                 UndoOp {strex("Edit {}", prop_name),
                     [entity_id, prop_name, old_value](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                         auto target = mapper->FindEntityById(*active_map, entity_id);
+
                         if (!target) {
                             return false;
                         }
 
                         auto apply_prop = target->GetProperties()->GetRegistrar()->FindProperty(prop_name);
+
                         if (!apply_prop) {
                             return false;
                         }
@@ -3223,11 +3257,13 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                     },
                     [entity_id, prop_name, new_value](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                         auto target = mapper->FindEntityById(*active_map, entity_id);
+
                         if (!target) {
                             return false;
                         }
 
                         auto apply_prop = target->GetProperties()->GetRegistrar()->FindProperty(prop_name);
+
                         if (!apply_prop) {
                             return false;
                         }
@@ -5530,7 +5566,7 @@ void MapperEngine::CurDraw()
 
     if (IsCritMode() && ActiveCritterProtos && !ActiveCritterProtos->empty()) {
         auto model_name = (*ActiveCritterProtos)[GetActiveProtoIndex()]->GetModelName();
-        auto anim = ResMngr.GetCritterPreviewSpr(model_name, CritterStateAnim::Unarmed, CritterActionAnim::Idle, CritterDir, nullptr);
+        auto anim = GetCritterPreviewSpr(model_name, Settings->Animation.PreviewStateAnim, Settings->Animation.PreviewActionAnim, CritterDir, nullptr);
 
         mpos hex;
 
@@ -7157,4 +7193,70 @@ void MapperEngine::UpdateLocalConfigValue(CacheStorage& cache, string_view key, 
     cache.SetString(LOCAL_CONFIG_NAME, cfg_user);
 }
 
+auto MapperEngine::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>
+{
+    string ext = strex(model_name).get_file_extension();
+
+    if (ext != "fo3d") {
+        auto frames = CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
+
+        if (frames) {
+            return frames;
+        }
+
+        return ResMngr.GetCritterDummyFrames();
+    }
+    else {
+#if FO_ENABLE_3D
+        auto model_spr = GetCritterPreviewModelSpr(model_name, state_anim, action_anim, dir, layers3d);
+
+        if (model_spr) {
+            return model_spr;
+        }
+
+        return ResMngr.GetCritterDummyFrames();
+#else
+        ignore_unused(layers3d);
+        throw NotEnabled3DException("3D submodule not enabled");
+#endif
+    }
+}
+
+#if FO_ENABLE_3D
+auto MapperEngine::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>
+{
+    FO_TRACE_ZONE(Render);
+
+    if (auto it = _critterPreviewModels.find(model_name); it != _critterPreviewModels.end()) {
+        auto& model_spr = it->second;
+
+        model_spr->GetModel()->SetDir(dir, false);
+        model_spr->GetModel()->PlayAnim(state_anim, action_anim, layers3d, 0.0f, combine_enum(ModelAnimFlags::Freeze, ModelAnimFlags::NoSmooth));
+
+        model_spr->DrawToAtlas();
+
+        return model_spr;
+    }
+
+    auto loaded_spr = ResMngr.LoadSprite(model_name, AtlasType::MapSprites);
+    auto model_spr = loaded_spr.dyn_cast<ModelSprite>();
+
+    if (!model_spr) {
+        return nullptr;
+    }
+
+    auto model = model_spr->GetModel();
+
+    model->PlayAnim(state_anim, action_anim, layers3d, 0.0f, combine_enum(ModelAnimFlags::Freeze, ModelAnimFlags::NoSmooth));
+    model->SetDir(dir, false);
+    model->PrewarmParticles();
+    model->StartMeshGeneration();
+
+    model_spr->DrawToAtlas();
+
+    return _critterPreviewModels.emplace(model_name, std::move(model_spr)).first->second;
+}
+#endif
+
 FO_END_NAMESPACE
+

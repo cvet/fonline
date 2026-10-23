@@ -175,8 +175,6 @@ SETTING(bool, View, MapDirectDraw); // Draw map directly to main framebuffer (sp
 SETTING(float32_t, View, MapRenderTargetScale, 1.0f); // Fixed map/light/indoor-mask render-target scale relative to the logical screen; clamped to the device texture limit
 SETTING(bool, View, DisableLighting); // Disables lighting for more performance
 SETTING(bool, View, DisableFog); // Disables fog for more performance
-SETTING(vector<int32_t>, View, GlobalDayColorTime, 300, 600, 1140, 1380); // Project-wide default DayColorTime in minutes (4 keys); maps may override per-map via Map.DayColorTime
-SETTING(vector<uint8_t>, View, GlobalDayColor, 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29); // Project-wide default DayColor (12 bytes, channel-major: R0..R3 G0..G3 B0..B3); maps may override per-map via Map.DayColor
 SETTING(bool, View, DisableIndoorMask, false); // If true, MapView skips the _rtIndoorMask render pass (saves a sprite-draw + RT swap per frame). Use for projects without weather, or to debug-see weather through hidden roofs.
 SETTING_GROUP_END(View);
 
@@ -194,7 +192,7 @@ SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for nam
 SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING(int32_t, Geometry, PathFindEnclosureProbe, 1024); // Hexes a path search may flood back from its target to prove it walled off, 0 to disable
-SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for walking through one living critter
+SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for crossing one project-marked critter obstacle
 SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common
@@ -206,7 +204,13 @@ SETTING(float32_t, SpriteMesh, AreaSavingsWeight, 32.0f); // Score awarded for r
 SETTING_GROUP_END(SpriteMesh);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Render, virtual ViewSettings, virtual GeometrySettings)
+SETTING_GROUP(Animation, virtual BaseSettings)
+SETTING(CritterStateAnim, Animation, PreviewStateAnim, CritterStateAnim::None); // Project-selected preview state identifier
+SETTING(CritterActionAnim, Animation, PreviewActionAnim, CritterActionAnim::None); // Project-selected preview action identifier
+SETTING_GROUP_END(Animation);
+
+///@ ExportSettings Common
+SETTING_GROUP(Render, virtual ViewSettings, virtual GeometrySettings, virtual AnimationSettings)
 SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second
 SETTING(string, Render, HeadBone); // Head bone name (Todo: move HeadBone to fo3d settings)
@@ -235,9 +239,6 @@ SETTING(int32_t, Render, FixedFPS, 100); // Frame rate cap, takes precedence ove
 SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
-SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base speed
-SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
-SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed
 SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world unit (1 unit = 1 hex = 1 m); scales 3D models and in-scene particles
 SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
@@ -281,7 +282,7 @@ SETTING(int32_t, Android, MinSdk, 23); // Android minimum supported SDK level fo
 SETTING(int32_t, Android, TargetSdk, 35); // Android target SDK level for packaging tools
 SETTING(int32_t, Android, CompileSdk, 35); // Android compile SDK level for packaging tools
 SETTING(string, Android, ScreenOrientation, "landscape"); // Android activity screen orientation for packaging tools
-SETTING(string, Android, Icon, "Engine/Resources/Radiation.png"); // Android launcher icon PNG source path for packaging tools
+SETTING(string, Android, Icon, ""); // Optional project PNG launcher icon; empty preserves the platform launcher
 SETTING(string, Android, Keystore, ""); // Android release signing keystore path for packaging tools
 SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
 SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
@@ -301,7 +302,7 @@ SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseco
 SETTING_GROUP_END(Timer);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual BaseSettings)
+SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
@@ -429,3 +430,4 @@ SETTING_GROUP_END(Server);
 #undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
+

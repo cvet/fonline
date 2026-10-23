@@ -196,7 +196,7 @@ struct ModelAnimationInfoBakingStats
     uint64_t AnimationBounds {};
     uint64_t BoundsCalculations {};
     uint64_t BoundsCacheHits {};
-    uint64_t ViewBoundsIdle {};
+    uint64_t ViewBoundsPreview {};
     uint64_t ViewBoundsFallback {};
     array<uint64_t, 6> AnimationBoundsMaxExtent {};
 };
@@ -2152,7 +2152,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         stats.AnimationBounds += section.Stats.AnimationBounds;
         stats.BoundsCalculations += section.Stats.BoundsCalculations;
         stats.BoundsCacheHits += section.Stats.BoundsCacheHits;
-        stats.ViewBoundsIdle += section.Stats.ViewBoundsIdle;
+        stats.ViewBoundsPreview += section.Stats.ViewBoundsPreview;
         stats.ViewBoundsFallback += section.Stats.ViewBoundsFallback;
 
         for (size_t i = 0; i < stats.AnimationBoundsMaxExtent.size(); i++) {
@@ -2171,7 +2171,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         report->AddCounter(ctx.PackName, ctx.BakerName, "animationBounds", stats.AnimationBounds);
         report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCalculations", stats.BoundsCalculations);
         report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCacheHits", stats.BoundsCacheHits);
-        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsIdle", stats.ViewBoundsIdle);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsPreview", stats.ViewBoundsPreview);
         report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsFallback", stats.ViewBoundsFallback);
 
         constexpr array<string_view, 6> extent_buckets {"<1", "1-2", "2-3", "3-5", "5-10", "10+"};
@@ -2235,9 +2235,8 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
         bool bounds_included = IncludeModelBounds(model_bounds, *bounds);
         FO_VERIFY_AND_THROW(bounds_included, "Calculated model animation bounds are invalid", file.GetPath(), entry.StateAnim, entry.ActionAnim);
 
-        bool idle = entry.ActionAnim == static_cast<int32_t>(CritterActionAnim::Idle);
-        bool unarmed_idle = idle && entry.StateAnim == static_cast<int32_t>(CritterStateAnim::Unarmed);
-        int32_t view_priority = unarmed_idle ? 2 : idle ? 1 : 0;
+        bool preview = entry.StateAnim == static_cast<int32_t>(ctx.Settings->Animation.PreviewStateAnim) && entry.ActionAnim == static_cast<int32_t>(ctx.Settings->Animation.PreviewActionAnim);
+        int32_t view_priority = preview ? 1 : 0;
 
         if (view_priority > view_bounds_priority) {
             view_bounds = *bounds;
@@ -2321,7 +2320,7 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
     stats.ModelBounds++;
 
     if (view_bounds_priority >= 1) {
-        stats.ViewBoundsIdle++;
+        stats.ViewBoundsPreview++;
     }
     else {
         stats.ViewBoundsFallback++;
@@ -2764,3 +2763,4 @@ static void ApplyModelDescriptionMul(float32_t& value, float32_t operand)
 FO_END_NAMESPACE
 
 #endif
+

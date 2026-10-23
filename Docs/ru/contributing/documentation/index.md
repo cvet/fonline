@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"e7f170fbee13ab6fbe6f6b4cf793b06f58bff870667576df2b225bee0d9f2e86"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"b66368e1b0f2a54f105d254bb5a4af6807c5bd257ea1eb36658b1f67358ba563"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -303,7 +303,7 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Model bakers/loaders/converters, `.fo3d`, FBX/OBJ, layers, links, materials, animations или `FO_MODEL_*` | Обновить [формат моделей](../../how-to/content/model-format.md), [Model Animation](../../how-to/content/model-animation.md), model contract, native tests, force/incremental bake и визуальную проверку. |
 | `.fotxt`, language normalization, prototype `$Text`, text methods или inline colors | Обновить [Текст и локализация](../../how-to/content/text-and-localization.md), model/reference, tests, bake и visible language switch. |
 | `.fofx`, `EffectBaker`, render state/resources, runtime bindings или `FO_EFFECT_*` | Обновить [Формат эффектов](../../how-to/content/effect-format.md), model/reference, tests, bake и каждый affected backend/profile. |
-| Image formats, FOFRM, `ImageBaker`, sprite records/factories, atlas или caches | Обновить [Форматы изображений и спрайтов](../../how-to/content/image-format.md), model/reference, tests, bake и визуальные dimensions/alpha/directions/cadence/hit masks. |
+| Image formats, FOFRM, `ImageBaker`, sprite records/factories, atlas или caches `ResourceManager` | Обновить [Форматы изображений и спрайтов](../../how-to/content/image-format.md), model/reference, tests, bake и визуальные dimensions/alpha/directions/cadence/hit masks. |
 | Particle macros, SPARK/Effekseer sources/baking/rendering, Mapper tools, caches или model links | Обновить [формат и исполнение частиц](../../how-to/content/particle-format.md), model/reference, tests, bake и все enabled backends/integration paths. |
 | `MapperEngine`, штатные меню/окна/controls/hotkeys/history/layout Mapper, mapper-side exports, headless capture карты, TGA/atlas readback или свидетельства видимого окна | Обновить [интерактивное руководство по Mapper](../../how-to/tools/mapper-interactive.md) и [инструменты Mapper](../../how-to/tools/mapper.md), запустить `test_docs_mapper_tools.py` и проверить затронутый интерактивный или headless-путь на fixture движка. При изменении UI, захвата, fixture или recorded trigger заново снять точный screenshot, обновить provenance, собрать Jekyll и проверить desktop/mobile; изменения map format или particles также следуют их owning rows. |
 | `AnimationViewer`, `ParticleViewer`, их hosts/targets/packages, Mapper embedding или settings | Обновить [руководство по просмотру анимации и частиц](../../how-to/tools/animation-particle-viewers.md), focused test, affected binaries и visible workflow; также выполнить model/particle routes. |

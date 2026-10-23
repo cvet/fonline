@@ -40,6 +40,7 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
+#include "ResourceManager.h"
 #include "ResourcePack.h"
 #include "Settings.h"
 #include "SpriteManager.h"
@@ -230,6 +231,7 @@ private:
     EffectManager _effectMngr;
     hash_storage _hashStorage {};
     SpriteManager _sprMngr;
+    ResourceManager _resMngr;
     FontManager _fontMngr;
     nanotime _startTime {};
     shared_ptr<Sprite> _splashPic {};
@@ -237,3 +239,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

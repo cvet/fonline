@@ -1181,13 +1181,11 @@ TEST_CASE("ManagedScriptBaker")
 
     string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
     CHECK(client_settings.find("    public static class View\n    {\n") != string::npos);
-    CHECK(client_settings.find("public static List<int> GlobalDayColorTime") != string::npos);
-    CHECK(client_settings.find("View_GlobalDayColor") == string::npos);
-    CHECK(client_settings.find("global::FOnline.Native.GetSettingIntList(") != string::npos);
-    CHECK(client_settings.find("\"View.GlobalDayColorTime\"") != string::npos);
-    CHECK(client_settings.find("public static List<byte> GlobalDayColor\n") != string::npos);
-    CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
-    CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
+    CHECK(client_settings.find("public static List<string> SecretSettingTokens") != string::npos);
+    CHECK(client_settings.find("global::FOnline.Native.GetSettingStringList(") != string::npos);
+    CHECK(client_settings.find("\"Common.SecretSettingTokens\"") != string::npos);
+    CHECK(client_settings.find("GlobalDayColorTime") == string::npos);
+    CHECK(client_settings.find("GlobalDayColor") == string::npos);
     CHECK(client_settings.find("global::FOnline.Native.GetSettingValue<") != string::npos);
     CHECK(client_settings.find("global::FOnline.Native.SetSettingValue<") == string::npos);
     CHECK(client_settings.find("    public static class Android\n    {\n        public static class GradleDependency\n") != string::npos);
@@ -2016,3 +2014,4 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 FO_END_NAMESPACE
 
 #endif
+

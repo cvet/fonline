@@ -881,7 +881,7 @@ auto Map::IsHexesMovable(mpos hex, int32_t radius) const -> bool
     return true;
 }
 
-auto Map::HasLivingCritter(mpos hex, nptr<const Critter> ignore_cr) const noexcept -> bool
+auto Map::HasPathfindingObstacle(mpos hex, nptr<const Critter> ignore_cr) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
@@ -890,7 +890,7 @@ auto Map::HasLivingCritter(mpos hex, nptr<const Critter> ignore_cr) const noexce
     for (auto cr : field.Critters) {
         auto field_cr = cr;
 
-        if (!field_cr->IsDead() && !(field_cr == ignore_cr)) {
+        if (field_cr->GetPathfindingObstacle() && !(field_cr == ignore_cr)) {
             return true;
         }
     }
@@ -1694,3 +1694,4 @@ auto Map::CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_call
 }
 
 FO_END_NAMESPACE
+

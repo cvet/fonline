@@ -49,6 +49,7 @@
 #include "DefaultSprites.h"
 #include "EffectBaker.h"
 #include "ImGuiStuff.h"
+#include "MapView.h"
 #include "MetadataRegistration.h"
 #include "ModelAnimationData.h"
 #include "ModelInfoBaker.h"
@@ -172,6 +173,7 @@ namespace ClientEngineTest
         Game.OnStart.Subscribe(OnStart);
         Game.OnLoop.Subscribe(OnLoop);
         Game.OnRenderIface.Subscribe(OnRenderIface);
+        Game.OnCritterAnimationSprite.Subscribe(ResolveSprite);
     }
 
     [[Event]]
@@ -1086,6 +1088,88 @@ namespace ClientEngineTest
         return 82;
     }
 
+    uint LastResolvedSprite = 0;
+
+    [[Event]]
+    void ResolveSprite(hstring model, CritterStateAnim state, CritterActionAnim action, uint& sprite)
+    {
+        if (model.str == "ScriptSequence" || model.str == "art/critters/ScriptSequence") {
+            sprite = Game.LoadMapSprite("Sequence.fofrm");
+            LastResolvedSprite = sprite;
+        }
+    }
+
+    int GetLastResolvedSprite()
+    {
+        return LastResolvedSprite;
+    }
+
+    int UnitTestSpriteSequencePrimitives()
+    {
+        uint source = Game.LoadMapSprite("Sequence.fofrm");
+
+        if (source == 0 || Game.GetSpriteFrameCount(source) != 3 || Game.GetSpriteDirectionCount(source) != 1 || Game.GetSpriteDuration(source).milliseconds != 120) return 1;
+
+        uint[] sources = {};
+        int[] frames = {};
+        ipos[] offsets = {}, motions = {};
+
+        for (int d = 0; d < MapDirCount; d++) {
+            for (int frame = 0; frame < 2; frame++) {
+                sources.insertLast(source);
+                frames.insertLast(2 - frame);
+                offsets.insertLast(ipos(d * 11 + frame, -d * 7 - frame));
+                motions.insertLast(ipos(d + frame + 1, -d - frame - 2));
+            }
+        }
+
+        uint sequence = Game.CreateSpriteSequence(sources, frames, offsets, motions, 2, timespan(300, 2));
+        Game.FreeSprite(source);
+
+        if (Game.GetSpriteFrameCount(sequence) != 2 || Game.GetSpriteDirectionCount(sequence) != MapDirCount || Game.GetSpriteDuration(sequence).milliseconds != 300) return 2;
+
+        for (int d = 0; d < MapDirCount; d++) {
+            for (int frame = 0; frame < 2; frame++) {
+                if (Game.GetSpriteFrameOffset(sequence, frame, mdir(hdir(d))) != ipos(d * 11 + frame, -d * 7 - frame)) return 3;
+
+                if (Game.GetSpriteFrameMotion(sequence, frame, mdir(hdir(d))) != ipos(d + frame + 1, -d - frame - 2)) return 4;
+            }
+        }
+
+        uint again = Game.LoadMapSprite("Sequence.fofrm");
+
+        if (Game.GetSpriteFrameCount(again) != 3 || Game.GetSpriteFrameOffset(again, 2, mdir(0)) != ipos() || Game.GetSpriteFrameMotion(again, 2, mdir(0)) != ipos()) return 5;
+
+        bool rejected = false;
+
+        try { Game.GetSpriteFrameOffset(again, 3, mdir(0)); } catch { rejected = true; }
+
+        if (!rejected) return 6;
+
+        rejected = false;
+
+        try { Game.CreateSpriteSequence(sources, frames, offsets, motions, 2, timespan(-1, 0)); } catch { rejected = true; }
+
+        if (!rejected) return 7;
+
+        rejected = false;
+
+        try { Game.CreateSpriteSequence({}, {}, {}, {}, 0, timespan()); } catch { rejected = true; }
+
+        if (!rejected) return 8;
+
+        rejected = false;
+
+        try { Game.GetSpriteFrameCount(0); } catch { rejected = true; }
+
+        if (!rejected) return 9;
+
+        Game.FreeSprite(again);
+        Game.FreeSprite(sequence);
+
+        return 0;
+    }
+
     int UnitTestClientSpriteApi()
     {
         // The fixture injects these baked sprites, so the loaders must resolve them to live ids
@@ -1566,6 +1650,11 @@ namespace ClientEngineTest
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
 #endif
 
+        for (string_view name : {"ImGui_Default", "2D_Default", "2D_NoDepth", "Primitive_Default", "Primitive_Light", "Primitive_Fog", "Flush_RenderTarget", "Flush_Primitive", "Flush_Map", "Flush_Light", "Flush_Fog", "3D_Skinned", "Particles_ColorMulAtlas", "Particles_ColorAddAtlas", "Particles_ColorSubAtlas", "Particles_DistortionAtlas", "Particles_DistortionAddAtlas"}) {
+            runtime_source->AddFile(strex("Effects/{}.fofx", name).str(), "[Effect]\nPasses = 1\n");
+            runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
+        }
+
         for (auto& [resource_path, resource_data] : extra_resources) {
             runtime_source->AddFile(resource_path, std::move(resource_data));
         }
@@ -1839,7 +1928,7 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
+    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr) -> vector<uint8_t>
     {
         BakerTests::TestRig rig;
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
@@ -1889,9 +1978,15 @@ BoundsMaxZ = 1 1 1 1
             rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
         }
 
-        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+        // The synthetic project supplies its numeric animation contract; native enums contain only None.
+        rig.AddBakedFile("Metadata.fometa-client",
+            BakerTests::MakeMetadataBlob({{"Enum",
+                {
+                    {"CritterStateAnim", "", "TestState", "1", "PolicyState", "401"},
+                    {"CritterActionAnim", "", "TestAction", "1", "TestActionA", "3", "TestActionB", "5", "TestActionC", "17", "PolicyAction", "509"},
+                }}}));
 
-        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig](string_view path, const File& file) -> ModelSourceAsset {
+        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig, end_translation](string_view path, const File& file) -> ModelSourceAsset {
             ModelSourceAsset asset;
             asset.FileName = path;
             asset.WriteTime = file.GetWriteTime();
@@ -1912,7 +2007,7 @@ BoundsMaxZ = 1 1 1 1
             joint.OutputName = "Root";
             joint.Hierarchy = {"Root"};
             joint.Translation.Times = {0.0f, 0.5f, 1.0f};
-            joint.Translation.Values = {vec3 {0.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, 0.0f, 0.0f}};
+            joint.Translation.Values = {vec3 {0.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
             joint.Rotation.Times = {0.0f, 1.0f};
             joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
             joint.Scale.Times = {0.0f, 1.0f};
@@ -1925,6 +2020,12 @@ BoundsMaxZ = 1 1 1 1
                 limb_joint.Hierarchy = {"Root", "Limb"};
                 limb_joint.Translation.Times = {0.0f, 1.0f};
                 limb_joint.Translation.Values = {vec3 {}, vec3 {}};
+
+                if (end_translation != 0.0f) {
+                    limb_joint.Translation.Times = {0.0f, 0.5f, 1.0f};
+                    limb_joint.Translation.Values = {vec3 {}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
+                }
+
                 limb_joint.Rotation.Times = {0.0f, 1.0f};
                 limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
                 limb_joint.Scale.Times = {0.0f, 1.0f};
@@ -1941,7 +2042,12 @@ BoundsMaxZ = 1 1 1 1
 
         info_baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
+        if (animation_info) {
+            *animation_info = rig.Outputs.at("ModelAnimationInfo.foinfo");
+        }
+
         REQUIRE(rig.Outputs.count(string {model_path}) == 1);
+
         return rig.Outputs.at(string {model_path});
     }
 
@@ -1949,3 +2055,4 @@ BoundsMaxZ = 1 1 1 1
 }
 
 FO_END_NAMESPACE
+

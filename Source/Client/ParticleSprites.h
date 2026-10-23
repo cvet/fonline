@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "DefaultSprites.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -84,7 +85,7 @@ class ParticleSpriteFactory : public SpriteFactory
     friend class ParticleSprite;
 
 public:
-    ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes);
+    ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<hash_resolver> hashes);
     ParticleSpriteFactory(const ParticleSpriteFactory&) = delete;
     ParticleSpriteFactory(ParticleSpriteFactory&&) noexcept = delete;
     auto operator=(const ParticleSpriteFactory&) = delete;
@@ -102,6 +103,7 @@ private:
     void DrawParticleToAtlas(ptr<ParticleSprite> particle_spr);
 
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     ptr<RenderSettings> _settings;
     ParticleManager _particleMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedParticleTextures {};
@@ -109,3 +111,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

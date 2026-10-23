@@ -37,6 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr isize32 DUMMY_SPRITE_SIZE {1, 1};
+static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
+
 static auto ResolveAtlasSpriteLogicalSize(isize32 frame_size, const optional<SpriteMeshData>& mesh_data) -> isize32
 {
     return mesh_data && !mesh_data->Indices.empty() ? mesh_data->SourceSize : frame_size;
@@ -96,10 +99,6 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     if (_atlasAllocation) {
         _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
     }
-}
-
-AtlasSprite::~AtlasSprite()
-{
 }
 
 auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
@@ -405,6 +404,7 @@ SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ti
 
     _spr.resize(frames);
     _sprOffset.resize(frames);
+    _sprMotion.resize(frames);
     _framesCount = frames;
     _wholeTicks = ticks;
     _dirCount = dirs;
@@ -453,6 +453,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
     for (size_t i = 0; i < _spr.size() && i < copy->_spr.size(); i++) {
         copy->_spr[i] = _spr[i]->MakeCopy();
         copy->_sprOffset[i] = _sprOffset[i];
+        copy->_sprMotion[i] = _sprMotion[i];
     }
 
     copy->_stateAnim = _stateAnim;
@@ -478,6 +479,20 @@ auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     }
 
     return dir_sheet->_spr[_curIndex]->FillData(dbuf, pos, colors);
+}
+
+void SpriteSheet::SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion)
+{
+    FO_VERIFY_AND_THROW(index >= 0 && index < _framesCount, "Sprite frame index is out of range", index, _framesCount);
+    FO_VERIFY_AND_THROW(sprite, "Sprite frame is null");
+
+    _spr[index] = std::move(sprite);
+    _sprOffset[index] = offset;
+    _sprMotion[index] = motion;
+
+    if (index == _curIndex) {
+        RefreshParams();
+    }
 }
 
 void SpriteSheet::Prewarm()
@@ -536,7 +551,7 @@ auto SpriteSheet::Update() -> bool
         nanotime cur_tick = _sprMngr->GetTimer().GetFrameTime();
         int32_t dt = (cur_tick - _startTick).to_ms<int32_t>();
         int32_t frm_count = numeric_cast<int32_t>(_framesCount);
-        int32_t ticks_per_frame = numeric_cast<int32_t>(_wholeTicks) / frm_count;
+        int32_t ticks_per_frame = std::max(numeric_cast<int32_t>(_wholeTicks) / frm_count, 1);
         int32_t frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
@@ -574,10 +589,14 @@ auto SpriteSheet::Update() -> bool
 
 void SpriteSheet::RefreshParams()
 {
-    auto cur_spr = GetCurSpr();
+    ptr<SpriteSheet> dir_sheet = this;
 
-    _size = cur_spr->GetSize();
-    _offset = cur_spr->GetOffset();
+    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
+        dir_sheet = _dirs[_curDir.value() - 1];
+    }
+
+    _size = dir_sheet->_spr[_curIndex]->GetSize();
+    _offset = dir_sheet->_sprOffset[_curIndex];
 }
 
 auto SpriteSheet::GetSpr(int32_t num_frm) const -> ptr<const Sprite>
@@ -588,6 +607,11 @@ auto SpriteSheet::GetSpr(int32_t num_frm) const -> ptr<const Sprite>
 auto SpriteSheet::GetSpr(int32_t num_frm) -> ptr<Sprite>
 {
     return _spr[num_frm % _framesCount];
+}
+
+auto SpriteSheet::GetSprOffset(int32_t num_frm) const -> ipos32
+{
+    return _sprOffset[num_frm % _framesCount];
 }
 
 auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
@@ -610,8 +634,9 @@ auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
     return _dirs[dir_value - 1];
 }
 
-DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) :
-    _sprMngr {spr_mngr}
+DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr) :
+    _sprMngr {spr_mngr},
+    _resMngr {res_mngr}
 {
     _borderBuf.resize(AppRender::MAX_ATLAS_SIZE);
 }
@@ -620,7 +645,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 {
     FO_TRACE_ZONE(Render);
 
-    auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _resMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -647,20 +672,13 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                 SpriteResourceFrameData& frame = direction.Frames[j];
 
                 if (!frame.SharedFrameIndex.has_value()) {
-                    dir_anim->_sprOffset[j] = frame.NextOffset;
                     auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
-
-                    if (j == 0) {
-                        dir_anim->_size = spr->GetSize();
-                        dir_anim->_offset = spr->GetOffset();
-                    }
-
-                    dir_anim->_spr[j] = std::move(spr);
+                    ipos32 offset = spr->GetOffset();
+                    dir_anim->SetFrame(j, std::move(spr), offset, frame.NextOffset);
                 }
                 else {
                     uint16_t index = *frame.SharedFrameIndex;
-                    dir_anim->_spr[j] = dir_anim->GetSpr(index)->MakeCopy();
-                    dir_anim->_sprOffset[j] = dir_anim->_sprOffset[index];
+                    dir_anim->SetFrame(j, dir_anim->GetSpr(index)->MakeCopy(), dir_anim->GetSprOffset(index), dir_anim->GetSprMotion()[index]);
                 }
             }
         }
@@ -681,7 +699,7 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 {
     FO_TRACE_ZONE(Render);
 
-    auto file = _sprMngr->GetResources()->ReadFile(path);
+    auto file = _resMngr->GetResources()->ReadFile(path);
 
     if (!file) {
         return nullptr;
@@ -696,6 +714,30 @@ auto DefaultSpriteFactory::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) 
 
     SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
     return FillAtlas(atlas_type, image.Size, {}, image.Pixels.data(), std::nullopt);
+}
+
+auto DefaultSpriteFactory::CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+{
+    auto [atlas, atlas_allocation, pos] = spr_mngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
+    auto tex = atlas->GetTexture();
+    const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
+
+    tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y + 1}, {1, 1}, dummy_color);
+
+    const ucolor vertical_border[3] = {DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR};
+    tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
+    tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
+
+    frect32 atlas_rect;
+    atlas_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    atlas_rect.width = 1.0f / numeric_cast<float32_t>(atlas->GetSize().width);
+    atlas_rect.height = 1.0f / numeric_cast<float32_t>(atlas->GetSize().height);
+
+    vector<bool> hit_test_data(1, spr_mngr->CheckHitTest(numeric_cast<int32_t>(DUMMY_SPRITE_COLOR.comp.a)));
+    return safe_alloc::make_shared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data));
 }
 
 auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>
@@ -761,3 +803,4 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 }
 
 FO_END_NAMESPACE
+

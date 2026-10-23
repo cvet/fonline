@@ -73,9 +73,10 @@ static auto InputBufferView(const array<char, Size>& buffer) -> string_view
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
-ParticleViewer::ParticleViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr) :
+ParticleViewer::ParticleViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr) :
     _engine {engine},
-    _sprMngr {spr_mngr}
+    _sprMngr {spr_mngr},
+    _resMngr {res_mngr}
 {
     LoadSettings();
 }
@@ -200,7 +201,7 @@ void ParticleViewer::RefreshResourceList()
 
     // The list is built from the extensions the sprite factory advertises, so it reflects exactly the
     // runtimes the loaded content can play
-    auto factory = _sprMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    auto factory = _resMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
 
     if (!factory) {
         return;
@@ -377,7 +378,7 @@ void ParticleViewer::SelectParticle(string_view path)
     shared_ptr<Sprite> sprite;
 
     try {
-        sprite = _sprMngr->LoadSprite(_selectedPath, AtlasType::MapSprites);
+        sprite = _resMngr->LoadSprite(_selectedPath, AtlasType::MapSprites);
     }
     catch (const std::exception& ex) {
         _selectionError = strex("Failed to load: {}", ex.what()).str();
@@ -586,3 +587,4 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
 }
 
 FO_END_NAMESPACE
+

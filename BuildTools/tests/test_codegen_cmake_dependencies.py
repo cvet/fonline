@@ -63,6 +63,9 @@ endmacro()
 macro(IncludeFile name)
     include(${name})
 endmacro()
+macro(StatusMessage)
+    message(STATUS "${ARGV}")
+endmacro()
 macro(RequirePackage)
     find_package(${ARGV})
 endmacro()
@@ -85,6 +88,7 @@ set(FO_EMBEDDED_DATA_CAPACITY 100)
 '''
         cmake += f'''set(FO_CODEGEN_SCRIPT "{fake_generator.as_posix()}")
 set(FO_SOURCE_META_FILES "{self.metadata.as_posix()}")
+include("{(stage.parents[1] / 'helpers/Options.cmake').as_posix()}")
 include("{stage.as_posix()}")
 add_custom_command(OUTPUT "${{CMAKE_CURRENT_BINARY_DIR}}/consumer-receipt"
     COMMAND "${{CMAKE_COMMAND}}" -E copy

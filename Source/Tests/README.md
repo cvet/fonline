@@ -44,6 +44,9 @@ The attachment teardown regressions run with either scripting backend: `CritterA
 checks server links, native reports and delivery to the surviving player; `ClientCritterFinalizationDropsAttachmentIds`
 checks client cache release while keeping the peer alive. They live in the existing server/client entity-lifetime suites.
 
+- `Source/Tests/Test_AudioBakerAcm.cpp` - optional Fallout ACM decoder and invalid-input coverage.
+- `Source/Tests/Test_SpriteSheet.cpp` - independent frame tables, explicit frame offsets, directional resolver caching and bounds.
+
 ## Running tests
 
 Prefer running the generated run target from a configured build directory:

@@ -264,6 +264,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-connect-b08c9badb0"></a>
 - [`symbol-script-method-client-game-connect-b08c9badb0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-connect-b08c9badb0)
 
+<a id="symbol-script-method-client-game-createspritesequence-adaeafb3b6"></a>
+- [`symbol-script-method-client-game-createspritesequence-adaeafb3b6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-createspritesequence-adaeafb3b6)
+
 <a id="symbol-script-method-client-game-createvideoplayback-6ac4d2ee32"></a>
 - [`symbol-script-method-client-game-createvideoplayback-6ac4d2ee32`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-createvideoplayback-6ac4d2ee32)
 
@@ -392,6 +395,21 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-game-getsoundvolume-4387d3e6c6"></a>
 - [`symbol-script-method-client-game-getsoundvolume-4387d3e6c6`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getsoundvolume-4387d3e6c6)
+
+<a id="symbol-script-method-client-game-getspritedirectioncount-6388744345"></a>
+- [`symbol-script-method-client-game-getspritedirectioncount-6388744345`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritedirectioncount-6388744345)
+
+<a id="symbol-script-method-client-game-getspriteduration-c447e01d86"></a>
+- [`symbol-script-method-client-game-getspriteduration-c447e01d86`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteduration-c447e01d86)
+
+<a id="symbol-script-method-client-game-getspriteframecount-6679584838"></a>
+- [`symbol-script-method-client-game-getspriteframecount-6679584838`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframecount-6679584838)
+
+<a id="symbol-script-method-client-game-getspriteframemotion-2a2cf10af9"></a>
+- [`symbol-script-method-client-game-getspriteframemotion-2a2cf10af9`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframemotion-2a2cf10af9)
+
+<a id="symbol-script-method-client-game-getspriteframeoffset-7138f2e256"></a>
+- [`symbol-script-method-client-game-getspriteframeoffset-7138f2e256`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspriteframeoffset-7138f2e256)
 
 <a id="symbol-script-method-client-game-getspritesize-15077f6fce"></a>
 - [`symbol-script-method-client-game-getspritesize-15077f6fce`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getspritesize-15077f6fce)

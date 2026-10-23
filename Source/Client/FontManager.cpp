@@ -33,14 +33,16 @@
 
 #include "FontManager.h"
 #include "DefaultSprites.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
 
-FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
-    _sprMngr {spr_mngr}
+FontManager::FontManager(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr) :
+    _sprMngr {spr_mngr},
+    _resMngr {res_mngr}
 {
 }
 
@@ -382,7 +384,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     }
 
     // Load font data
-    auto file = _sprMngr->_resources->ReadFile(font_path);
+    auto file = _resMngr->GetResources()->ReadFile(font_path);
 
     if (!file) {
         throw FontManagerException("Font file not found", font_path);
@@ -508,7 +510,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     {
         image_name = strex(font_path).extract_dir().combine_path(image_name);
 
-        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
+        font_data.ImageNormal = _resMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -517,7 +519,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     // Create bordered instance
     if (!not_bordered) {
-        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
+        font_data.ImageBordered = _resMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
@@ -538,7 +540,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
     font_data.BakeScale = ResolveFontScale(default_scale);
 
-    auto file = _sprMngr->_resources->ReadFile(font_path);
+    auto file = _resMngr->GetResources()->ReadFile(font_path);
 
     if (!file) {
         throw FontManagerException("Font file not found", font_path);
@@ -619,7 +621,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Load image
     {
-        font_data.ImageNormal = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
+        font_data.ImageNormal = _resMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -628,7 +630,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Create bordered instance
     {
-        font_data.ImageBordered = _sprMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
+        font_data.ImageBordered = _resMngr->LoadSpriteAsQuad(_sprMngr->_hashResolver->to_hashed_string(image_name), atlas_type);
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
@@ -1403,3 +1405,4 @@ auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
 }
 
 FO_END_NAMESPACE
+

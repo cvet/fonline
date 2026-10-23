@@ -175,7 +175,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
     BakerTests::OverrideSetting(settings.Render.ModelSpriteMaxTextureHeight, int32_t {4096});
     auto client = MakeClientLifetimeEngine(settings, MakeScratchModelResources());
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
     REQUIRE(factory);
     auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites).dyn_cast<ModelSprite>();
     REQUIRE(sprite);
@@ -198,7 +198,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
             sprite->DrawToAtlas();
         }
 
-        client->SprMngr.CleanupSpriteCache();
+        client->ResMngr.CleanupSpriteCache();
         CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 1);
         CHECK_FALSE(client->EffectMngr.Effects.FlushRenderTarget->MainTex);
         REQUIRE(sprite->GetAtlas());
@@ -299,7 +299,7 @@ TEST_CASE("MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     ProtoMap proto {client->Hashes.to_hashed_string("LifetimeMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
     proto.SetSize(msize {16, 16});
-    auto sprite = client->SprMngr.LoadSprite("LifetimeSprite.png", AtlasType::IfaceSprites);
+    auto sprite = client->ResMngr.LoadSprite("LifetimeSprite.png", AtlasType::IfaceSprites);
     REQUIRE(sprite);
     auto& targets = client->SprMngr.GetRtMngr();
     size_t baseline = targets.GetRenderTargetCount();
@@ -879,3 +879,4 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
 }
 
 FO_END_NAMESPACE
+

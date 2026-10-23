@@ -63,7 +63,7 @@ enum class DrawOrderType : uint8_t
     Light = 10, // Map light accumulation layer
     AfterLight = 11, // Primitive layer rendered immediately after map light accumulation
     // Flat sprites post-light
-    DeadCritter = 13, // Flat dead-critter layer rendered after lighting
+    FlatCritter = 13, // Flat critter layer rendered after lighting
     FlatItemAfterLight = 16, // Flat item layer rendered after map lighting
     FlatEnd = 18, // Upper ordering boundary for flat post-light sprites
     // Normal sprites
@@ -148,6 +148,7 @@ public:
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
     void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
+    void SetSpriteOffsetOverride(nptr<const optional<ipos32>> spr_offset_override) noexcept;
     void CreateExtraChain(ptr<MapSprite*> mspr);
     void AddToExtraChain(ptr<MapSprite> mspr);
 
@@ -170,6 +171,8 @@ private:
     // Static bottom-center-to-logical-root offset kept separate from the bitmap-positioning _pSprOffset.
     // Null for sprites without a logical-root adjustment
     nptr<const ipos32> _pRootOffset {};
+    // Borrowed HexView-owned frame offset override; absent falls back to the sprite's own offset
+    nptr<const optional<ipos32>> _pSprOffsetOverride {};
     nptr<const uint8_t> _alpha {};
     nptr<const ucolor> _light {};
     nptr<const ucolor> _lightRight {};
@@ -281,3 +284,4 @@ public:
 };
 
 FO_END_NAMESPACE
+

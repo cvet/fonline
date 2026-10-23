@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
+#include "ResourceManager.h"
 #include "SettingsStorage.h"
 #include "SpriteManager.h"
 
@@ -47,7 +48,7 @@ class ParticleViewer final
 {
 public:
     ParticleViewer() = delete;
-    ParticleViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr);
+    ParticleViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr);
     ParticleViewer(const ParticleViewer&) = delete;
     ParticleViewer(ParticleViewer&&) noexcept = delete;
     auto operator=(const ParticleViewer&) = delete;
@@ -84,6 +85,7 @@ private:
 
     ptr<BaseEngine> _engine;
     ptr<SpriteManager> _sprMngr;
+    ptr<ResourceManager> _resMngr;
     SettingsStorage _settings {"ParticleViewer"};
     string _pendingImguiLayout {};
 
@@ -112,3 +114,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

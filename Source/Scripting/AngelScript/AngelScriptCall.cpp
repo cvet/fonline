@@ -376,16 +376,11 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
             bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
-            nptr<void> ret_obj = call.RetData;
 
+            // Value returns live in the generic call's ABI storage; only handle returns own an object here.
             if (is_ref_type) {
-                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
-            }
-
-            if (ret_obj) {
-                as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
-
-                if (is_ref_type) {
+                if (auto ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData)) {
+                    as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
                     NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
                 }
             }
@@ -731,3 +726,4 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 FO_END_NAMESPACE
 
 #endif
+

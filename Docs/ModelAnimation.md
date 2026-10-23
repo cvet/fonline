@@ -14,6 +14,10 @@ Continue with the [canonical English guide](en/how-to/content/model-animation.md
 
 Continue with the [canonical English guide](en/how-to/content/model-animation.md#scope-and-authority).
 
+## Project playback selection
+
+Continue with the [canonical English guide](en/how-to/content/model-animation.md#project-playback-selection).
+
 ## Authoring animation tuples
 
 Continue with the [canonical English guide](en/how-to/content/model-animation.md#authoring-animation-tuples).

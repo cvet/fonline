@@ -70,10 +70,9 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
-SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
+SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
     _settings {settings},
     _window {window},
-    _resources {resources},
     _gameTimer {game_time},
     _rtMngr(window->GetRender(), [this]() FO_DEFERRED { Flush(); }),
     _atlasMngr(settings, &_rtMngr),
@@ -113,7 +112,6 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _rtMain = _rtMngr.CreateRenderTarget(false, screen_size, true);
 #endif
 
-    _eventUnsubscriber += (*_window->GetOnLowMemory()) += [this]() FO_DEFERRED { CleanupSpriteCache(); };
     _eventUnsubscriber += (*_window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED {
         isize32 new_screen_size = _window->GetScreenSize();
 
@@ -230,36 +228,6 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
     _window->AlwaysOnTop(enable);
 }
 
-void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
-{
-    for (const auto& ext : factory->GetExtensions()) {
-        _spriteFactoryMap.insert_or_assign(ext, factory);
-    }
-
-    _spriteFactories.emplace_back(std::move(factory));
-}
-
-auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
-{
-    for (size_t i = 0; i != _spriteFactories.size(); ++i) {
-        auto factory = _spriteFactories[i].as_ptr();
-        SpriteFactory& factory_ref = *factory;
-
-        if (std::type_index(typeid(factory_ref)) == ti) {
-            return factory;
-        }
-    }
-
-    return nullptr;
-}
-
-auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
-{
-    auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
-    FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
-    return factory->LoadSpriteAsQuad(path, atlas_type);
-}
-
 void SpriteManager::BeginScene()
 {
     FO_TRACE_ZONE(Render);
@@ -282,9 +250,7 @@ void SpriteManager::BeginScene()
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
-    for (size_t i = 0; i < _spriteFactories.size(); ++i) {
-        _spriteFactories[i]->Update();
-    }
+    EventDispatcher<> {&_onBeginScene}();
 
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
         if (auto spr = it->second.lock(); spr && spr->Update()) {
@@ -551,119 +517,6 @@ void SpriteManager::DisableScissor()
     if (!_scissorStack.empty()) {
         _render->DisableScissor();
     }
-}
-
-auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
-{
-    return LoadSprite(_hashResolver->to_hashed_string(path), atlas_type, no_warn_if_not_exists);
-}
-
-auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
-{
-    FO_TRACE_ZONE(Render);
-
-    if (!path) {
-        return nullptr;
-    }
-
-    if (auto it = _copyableSpriteCache.find({path, atlas_type}); it != _copyableSpriteCache.end()) {
-        return it->second->MakeCopy();
-    }
-
-    if (_nonFoundSprites.count(path) != 0) {
-        return nullptr;
-    }
-
-    string ext = strex(path).get_file_extension();
-
-    if (ext.empty()) {
-        break_into_debugger();
-        logging::write(logging::type::warning, "Extension not found, file '{}'", path);
-        _nonFoundSprites.emplace(path);
-        return nullptr;
-    }
-
-    auto it = _spriteFactoryMap.find(ext);
-
-    if (it == _spriteFactoryMap.end()) {
-        break_into_debugger();
-        logging::write(logging::type::warning, "Unknown extension, file '{}'", path);
-        _nonFoundSprites.emplace(path);
-        return nullptr;
-    }
-
-    auto spr = it->second->LoadSprite(path, atlas_type);
-
-    if (!spr) {
-        if (!no_warn_if_not_exists) {
-            break_into_debugger();
-            logging::write(logging::type::warning, "Sprite not found: '{}'", path);
-        }
-
-        _nonFoundSprites.emplace(path);
-        return nullptr;
-    }
-
-    if (spr->IsCopyable()) {
-        auto copy = spr->MakeCopy();
-        _copyableSpriteCache.emplace(pair {path, atlas_type}, spr);
-        return copy;
-    }
-
-    return spr;
-}
-
-void SpriteManager::ForgetFailedSprite(string_view path)
-{
-    _nonFoundSprites.erase(_hashResolver->to_hashed_string(path));
-}
-
-void SpriteManager::InvalidateSpriteResource(string_view path)
-{
-    FO_TRACE_ZONE(Render);
-
-    hstring hashed_path = _hashResolver->to_hashed_string(path);
-    _nonFoundSprites.erase(hashed_path);
-
-    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
-        if (it->first.first == hashed_path) {
-            it = _copyableSpriteCache.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-
-    for (auto& sprite_factory : _spriteFactories) {
-        sprite_factory->InvalidateResource(hashed_path);
-    }
-}
-
-void SpriteManager::RetryFailedSpriteLoads()
-{
-    for (auto& sprite_factory : _spriteFactories) {
-        sprite_factory->RetryFailedLoads();
-    }
-}
-
-void SpriteManager::CleanupSpriteCache()
-{
-    FO_TRACE_ZONE(Render);
-
-    for (size_t i = 0; i != _spriteFactories.size(); ++i) {
-        _spriteFactories[i]->ClenupCache();
-    }
-
-    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
-        if (it->second.use_count() == 1) {
-            it = _copyableSpriteCache.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
-
-    _atlasMngr.CleanupAtlases();
 }
 
 void SpriteManager::Flush()
@@ -1500,3 +1353,4 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 }
 
 FO_END_NAMESPACE
+

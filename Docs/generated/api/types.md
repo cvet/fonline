@@ -107,47 +107,52 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
-<a id="symbol-script-enum-value-critteractionanim-deadfront-3ddeb54952"></a>
-- [`symbol-script-enum-value-critteractionanim-deadfront-3ddeb54952`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-deadfront-3ddeb54952)
-
-<a id="symbol-script-enum-value-critteractionanim-idle-e3b819837c"></a>
-- [`symbol-script-enum-value-critteractionanim-idle-e3b819837c`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-idle-e3b819837c)
-
-<a id="symbol-script-enum-value-critteractionanim-idlepronefront-3856fdc6a8"></a>
-- [`symbol-script-enum-value-critteractionanim-idlepronefront-3856fdc6a8`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-idlepronefront-3856fdc6a8)
-
-<a id="symbol-script-enum-value-critteractionanim-limp-8bc32f32d6"></a>
-- [`symbol-script-enum-value-critteractionanim-limp-8bc32f32d6`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-limp-8bc32f32d6)
-
 <a id="symbol-script-enum-value-critteractionanim-none-2f257cb433"></a>
 - [`symbol-script-enum-value-critteractionanim-none-2f257cb433`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-none-2f257cb433)
 
-<a id="symbol-script-enum-value-critteractionanim-panicrun-b987d91a35"></a>
-- [`symbol-script-enum-value-critteractionanim-panicrun-b987d91a35`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-panicrun-b987d91a35)
+<a id="symbol-script-enum-critteranimationcontext-86019b4285"></a>
+- [`symbol-script-enum-critteranimationcontext-86019b4285`](../../en/reference/script-api/types.md#symbol-script-enum-critteranimationcontext-86019b4285)
 
-<a id="symbol-script-enum-value-critteractionanim-run-2c98d7d8ec"></a>
-- [`symbol-script-enum-value-critteractionanim-run-2c98d7d8ec`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-run-2c98d7d8ec)
+### <code>CritterAnimationContext</code>
 
-<a id="symbol-script-enum-value-critteractionanim-runback-d524253ff7"></a>
-- [`symbol-script-enum-value-critteractionanim-runback-d524253ff7`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-runback-d524253ff7)
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
-<a id="symbol-script-enum-value-critteractionanim-sneakrun-9e0694f7bd"></a>
-- [`symbol-script-enum-value-critteractionanim-sneakrun-9e0694f7bd`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-sneakrun-9e0694f7bd)
+<a id="symbol-script-enum-value-critteranimationcontext-action-3848fe172f"></a>
+- [`symbol-script-enum-value-critteranimationcontext-action-3848fe172f`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-action-3848fe172f)
 
-<a id="symbol-script-enum-value-critteractionanim-sneakwalk-0bd6c2732a"></a>
-- [`symbol-script-enum-value-critteractionanim-sneakwalk-0bd6c2732a`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-sneakwalk-0bd6c2732a)
+<a id="symbol-script-enum-value-critteranimationcontext-default-a6e5cff1d1"></a>
+- [`symbol-script-enum-value-critteranimationcontext-default-a6e5cff1d1`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-default-a6e5cff1d1)
 
-<a id="symbol-script-enum-value-critteractionanim-turnleft-015180e701"></a>
-- [`symbol-script-enum-value-critteractionanim-turnleft-015180e701`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-turnleft-015180e701)
+<a id="symbol-script-enum-value-critteranimationcontext-moving-4e70e43717"></a>
+- [`symbol-script-enum-value-critteranimationcontext-moving-4e70e43717`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-moving-4e70e43717)
 
-<a id="symbol-script-enum-value-critteractionanim-turnright-2c7d42713e"></a>
-- [`symbol-script-enum-value-critteractionanim-turnright-2c7d42713e`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-turnright-2c7d42713e)
+<a id="symbol-script-enum-value-critteranimationcontext-movingback-f541d52607"></a>
+- [`symbol-script-enum-value-critteranimationcontext-movingback-f541d52607`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-movingback-f541d52607)
 
-<a id="symbol-script-enum-value-critteractionanim-walk-a17b0fad6a"></a>
-- [`symbol-script-enum-value-critteractionanim-walk-a17b0fad6a`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-walk-a17b0fad6a)
+<a id="symbol-script-enum-value-critteranimationcontext-preview-6497cd6909"></a>
+- [`symbol-script-enum-value-critteranimationcontext-preview-6497cd6909`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-preview-6497cd6909)
 
-<a id="symbol-script-enum-value-critteractionanim-walkback-ed52893994"></a>
-- [`symbol-script-enum-value-critteractionanim-walkback-ed52893994`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteractionanim-walkback-ed52893994)
+<a id="symbol-script-enum-value-critteranimationcontext-turnleft-9d2005b845"></a>
+- [`symbol-script-enum-value-critteranimationcontext-turnleft-9d2005b845`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-turnleft-9d2005b845)
+
+<a id="symbol-script-enum-value-critteranimationcontext-turnright-068c511950"></a>
+- [`symbol-script-enum-value-critteranimationcontext-turnright-068c511950`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationcontext-turnright-068c511950)
+
+<a id="symbol-script-enum-critteranimationflags-4fa8f35829"></a>
+- [`symbol-script-enum-critteranimationflags-4fa8f35829`](../../en/reference/script-api/types.md#symbol-script-enum-critteranimationflags-4fa8f35829)
+
+### <code>CritterAnimationFlags</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-critteranimationflags-freeze-c79628f9f3"></a>
+- [`symbol-script-enum-value-critteranimationflags-freeze-c79628f9f3`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationflags-freeze-c79628f9f3)
+
+<a id="symbol-script-enum-value-critteranimationflags-movement-d5bfc328e1"></a>
+- [`symbol-script-enum-value-critteranimationflags-movement-d5bfc328e1`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationflags-movement-d5bfc328e1)
+
+<a id="symbol-script-enum-value-critteranimationflags-none-542d09221e"></a>
+- [`symbol-script-enum-value-critteranimationflags-none-542d09221e`](../../en/reference/script-api/types.md#symbol-script-enum-value-critteranimationflags-none-542d09221e)
 
 <a id="symbol-script-enum-crittercondition-f3dff81aea"></a>
 - [`symbol-script-enum-crittercondition-f3dff81aea`](../../en/reference/script-api/types.md#symbol-script-enum-crittercondition-f3dff81aea)
@@ -237,11 +242,11 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-critterproperty-customholderid-4fda9b55b8"></a>
 - [`symbol-script-enum-value-critterproperty-customholderid-4fda9b55b8`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-customholderid-4fda9b55b8)
 
-<a id="symbol-script-enum-value-critterproperty-deaddrawnoflatten-4215434298"></a>
-- [`symbol-script-enum-value-critterproperty-deaddrawnoflatten-4215434298`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-deaddrawnoflatten-4215434298)
-
 <a id="symbol-script-enum-value-critterproperty-dir-5ec6529b62"></a>
 - [`symbol-script-enum-value-critterproperty-dir-5ec6529b62`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-dir-5ec6529b62)
+
+<a id="symbol-script-enum-value-critterproperty-drawflatten-f93285c98b"></a>
+- [`symbol-script-enum-value-critterproperty-drawflatten-f93285c98b`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-drawflatten-f93285c98b)
 
 <a id="symbol-script-enum-value-critterproperty-elevation-8b69921e39"></a>
 - [`symbol-script-enum-value-critterproperty-elevation-8b69921e39`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-elevation-8b69921e39)
@@ -315,6 +320,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-critterproperty-none-6c1bb2dd08"></a>
 - [`symbol-script-enum-value-critterproperty-none-6c1bb2dd08`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-none-6c1bb2dd08)
 
+<a id="symbol-script-enum-value-critterproperty-pathfindingobstacle-d229fdcdb8"></a>
+- [`symbol-script-enum-value-critterproperty-pathfindingobstacle-d229fdcdb8`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-pathfindingobstacle-d229fdcdb8)
+
 <a id="symbol-script-enum-value-critterproperty-scalefactor-b13568fd54"></a>
 - [`symbol-script-enum-value-critterproperty-scalefactor-b13568fd54`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-scalefactor-b13568fd54)
 
@@ -355,9 +363,6 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-enum-value-critterstateanim-none-19de5ffb41"></a>
 - [`symbol-script-enum-value-critterstateanim-none-19de5ffb41`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterstateanim-none-19de5ffb41)
-
-<a id="symbol-script-enum-value-critterstateanim-unarmed-3edc820536"></a>
-- [`symbol-script-enum-value-critterstateanim-unarmed-3edc820536`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterstateanim-unarmed-3edc820536)
 
 <a id="symbol-script-enum-crittervisibilitymode-9fd00f2322"></a>
 - [`symbol-script-enum-crittervisibilitymode-9fd00f2322`](../../en/reference/script-api/types.md#symbol-script-enum-crittervisibilitymode-9fd00f2322)
@@ -425,8 +430,8 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-drawordertype-critter-8e93d8426e"></a>
 - [`symbol-script-enum-value-drawordertype-critter-8e93d8426e`](../../en/reference/script-api/types.md#symbol-script-enum-value-drawordertype-critter-8e93d8426e)
 
-<a id="symbol-script-enum-value-drawordertype-deadcritter-15cc5f8cea"></a>
-- [`symbol-script-enum-value-drawordertype-deadcritter-15cc5f8cea`](../../en/reference/script-api/types.md#symbol-script-enum-value-drawordertype-deadcritter-15cc5f8cea)
+<a id="symbol-script-enum-value-drawordertype-flatcritter-2deda56234"></a>
+- [`symbol-script-enum-value-drawordertype-flatcritter-2deda56234`](../../en/reference/script-api/types.md#symbol-script-enum-value-drawordertype-flatcritter-2deda56234)
 
 <a id="symbol-script-enum-value-drawordertype-flatend-3818c1eef3"></a>
 - [`symbol-script-enum-value-drawordertype-flatend-3818c1eef3`](../../en/reference/script-api/types.md#symbol-script-enum-value-drawordertype-flatend-3818c1eef3)
@@ -662,9 +667,6 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-engineinfomessage-netpasswrongchars-6f8a83a8f3"></a>
 - [`symbol-script-enum-value-engineinfomessage-netpasswrongchars-6f8a83a8f3`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-netpasswrongchars-6f8a83a8f3)
 
-<a id="symbol-script-enum-value-engineinfomessage-netpermanentdeath-7e783217fd"></a>
-- [`symbol-script-enum-value-engineinfomessage-netpermanentdeath-7e783217fd`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-netpermanentdeath-7e783217fd)
-
 <a id="symbol-script-enum-value-engineinfomessage-netplayeralready-cece50913b"></a>
 - [`symbol-script-enum-value-engineinfomessage-netplayeralready-cece50913b`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-netplayeralready-cece50913b)
 
@@ -697,9 +699,6 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-enum-value-engineinfomessage-netwrongpass-71a3a7cba8"></a>
 - [`symbol-script-enum-value-engineinfomessage-netwrongpass-71a3a7cba8`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-netwrongpass-71a3a7cba8)
-
-<a id="symbol-script-enum-value-engineinfomessage-netwrongtagskill-fe6472051b"></a>
-- [`symbol-script-enum-value-engineinfomessage-netwrongtagskill-fe6472051b`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-netwrongtagskill-fe6472051b)
 
 <a id="symbol-script-enum-value-engineinfomessage-none-e3a03105e2"></a>
 - [`symbol-script-enum-value-engineinfomessage-none-e3a03105e2`](../../en/reference/script-api/types.md#symbol-script-enum-value-engineinfomessage-none-e3a03105e2)

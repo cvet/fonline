@@ -99,6 +99,7 @@ viewer workflow and is not normative evidence for these tools.
 - `Source/Common/SettingsStorage.h`
 - `Source/Common/SettingsStorage.cpp`
 - `Source/Client/ResourceManager.cpp`
+- `Source/Client/CritterFramesCache.cpp`
 - `Source/Client/ParticleSprites.h`
 - `Source/Client/ParticleSprites.cpp`
 - `BuildTools/cmake/stages/Init.cmake`

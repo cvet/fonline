@@ -100,7 +100,7 @@ public:
     [[nodiscard]] auto GetInformation() const noexcept -> ptr<ModelInformation> { return _modelInfo; }
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _curStateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _curActionAnim; }
-    [[nodiscard]] auto GetMovingAnim() const noexcept -> CritterActionAnim;
+    [[nodiscard]] auto GetMovingContext() const noexcept -> CritterAnimationContext;
     [[nodiscard]] auto ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool;
     [[nodiscard]] auto NeedForceDraw() const noexcept -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
@@ -125,7 +125,7 @@ public:
     void RequestRedraw() noexcept;
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool;
+    auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags, float32_t playback_speed = 1.0f) -> bool;
     void SetDir(mdir dir, bool smooth_rotation);
     void SetLookDir(mdir dir);
     void SetMoveDir(mdir dir, bool smooth_rotation);
@@ -137,8 +137,8 @@ public:
     void DrawSpriteFrame();
     void DrawInScene(const mat44& proj, float32_t scale);
     void AddMoveOffset(ipos32 offset);
-    void SetMovementState(bool staying_pose, bool moving, int32_t moving_speed);
-    void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
+    void SetMovementState(bool movement_enabled, bool moving, int32_t moving_speed);
+    void SetAnimInitCallback(function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
 
     void AddAnimationCallback(ModelAnimationCallback callback);
@@ -263,17 +263,21 @@ private:
     float32_t _animDuration {};
     bool _allowMeshGeneration {};
     vector<ptr<ModelCutData>> _allCuts {};
-    function<void(CritterStateAnim&, CritterActionAnim&)> _animInitCallback {};
-    bool _isStayingPose {};
+    function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> _animInitCallback {};
+    bool _movementEnabled {};
     bool _isMoving {};
     bool _isMovingBack {};
     int32_t _curMovingAnimIndex {-1};
-    CritterActionAnim _curMovingAnim {};
     bool _turnAnimPlaying {};
     bool _playOnceAnimPlaying {};
     int32_t _curMoveTrack {};
-    float32_t _movingSpeedFactor {};
-    bool _isRunning {};
+    int32_t _movingSpeed {};
+    CritterAnimationContext _movingContext {};
+    float32_t _playbackSpeed {1.0f};
+    float32_t _normalizedTime {};
+    ModelAnimFlags _playbackFlags {};
+    CritterAnimationFlags _movementFlags {};
+    float32_t _movementNormalizedTime {};
     bool _noRotate {};
     float32_t _deferredLookDirAngle {};
     vector<ModelParticleSystem> _modelParticles {};
@@ -297,3 +301,4 @@ private:
 FO_END_NAMESPACE
 
 #endif
+

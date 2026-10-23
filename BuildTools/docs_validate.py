@@ -2107,7 +2107,7 @@ def _validate_generated_artifacts(
             "assets": [
                 "Docs/Site/Assets/css/docs.css",
                 "Docs/Site/Assets/js/docs.js",
-                "Docs/Site/Assets/images/fonline-mark.png",
+                "Docs/Site/Assets/images/fonline-mark.svg",
             ],
             "artifact_validator": "BuildTools/docs_site_artifact.py",
             "artifact_report": "Workspace/docs-site-artifact-report.json",

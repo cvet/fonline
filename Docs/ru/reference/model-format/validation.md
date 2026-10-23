@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-validation","locale":"ru","source_path":"Docs/en/reference/model-format/validation.md","source_sha256":"03d91bc90d5bcf05d563da85fda965d552e12371344261ce6a55c040c4bcabbf"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-validation","locale":"ru","source_path":"Docs/en/reference/model-format/validation.md","source_sha256":"2db2a2892f531bba80b0d84c0e22c24f916e279152fe597959c5f330dde46534"} -->
 
 # Валидация формата моделей
 
@@ -42,7 +42,7 @@ generated: true
 | <code>RenderFrame</code> | <code>none</code> | Текущие model descriptions не создают 2D render frames. |
 | <code>RenderFrames</code> | <code>none</code> | Текущие model descriptions не создают sequences 2D render frames. |
 | <code>DrawSize</code> | <code>automatic model-sprite layout from baked animation bounds</code> | ModelInfo записывает aggregate/per-animation bounds; client вычисляет offscreen frame активной composition и pose. |
-| <code>ViewSize</code> | <code>automatic view/name layout from baked idle-priority bounds</code> | Client проецирует baked model bounds и active child layers вместо authored interaction rectangle. |
+| <code>ViewSize</code> | <code>automatic view/name layout from baked project-selected preview bounds</code> | Client проецирует baked model bounds и active child layers вместо authored interaction rectangle. |
 
 Compatibility spelling `Subset` отдельно помечен как deprecated в [токенах](tokens.md): он забирает argument, но не выбирает mesh.
 

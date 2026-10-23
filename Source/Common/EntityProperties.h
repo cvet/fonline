@@ -373,20 +373,21 @@ public:
     FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
     // Maps the legacy Critter property name Cond to Condition during Engine migration lookup
     ///@ MigrationRule Property Critter Rename Cond Condition
-    // Current life-state condition used by animation, filtering, and gameplay queries
+    // Current life-state condition used by filtering and project gameplay queries
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
+    // Makes this critter a pathfinding detour independently of its life condition
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, PathfindingObstacle);
+    // Selects flat critter rendering independently of its life condition
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(bool, DrawFlatten);
     // Vertical pixel adjustment applied to the critter name label
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int16_t, NameOffset);
     // Maximum map-view distance in hexes used by server visibility processing
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
-    // Maps the legacy Critter property name IsNoFlatten to DeadDrawNoFlatten during Engine migration lookup
-    ///@ MigrationRule Property Critter Rename IsNoFlatten DeadDrawNoFlatten
-    // Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
     // Enables a client-side map light source centered on this critter
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(bool, LightSource);
@@ -500,3 +501,4 @@ public:
 };
 
 FO_END_NAMESPACE
+

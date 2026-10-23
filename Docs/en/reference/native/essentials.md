@@ -404,6 +404,12 @@ deliberate sub-millisecond deadlines such as synchronization back-off and frame
 pacing. Both functions are `noexcept`; choose by latency intent rather than
 interchanging them mechanically.
 
+The final interval actively polls the steady clock without yielding the OS time
+slice; yielding could hand the processor to another ready thread for an entire
+scheduling quantum. Active waiting is limited to the final millisecond of the
+requested interval. OS preemption can still delay either wait, so neither
+function provides a hard real-time guarantee.
+
 `work_thread::clear()` is acknowledged by the worker under the state lock: queued jobs are discarded, an already running job finishes before acknowledgement, and `clear()` returns once the worker has observed the request. The acknowledgement must wake `clear` for every queue shape — empty and future-dated queues included, and across pause/resume — because a request dropped without waking `clear` leaves the caller asleep after the worker has moved on.
 
 When a `WorkThread` job throws, a registered exception handler owns the reporting: it knows what the failure means to its owner and when to say so, and it can also update worker-owned policy such as clearing queued jobs. The thread reports through the global non-fatal exception reporter only when no handler is registered — reporting in both places would repeat the exception behind everything the handler already set in motion.

@@ -16,7 +16,6 @@ SetOption(FO_GEOMETRY HEXAGONAL)
 SetOption(FO_MAP_HEX_WIDTH 32)
 SetOption(FO_MAP_HEX_HEIGHT 16)
 SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
-SetOption(FO_APP_ICON "Engine/Resources/Radiation.ico")
 
 SetOption(FO_UNIT_TESTS ON)
 SetOptionValues(

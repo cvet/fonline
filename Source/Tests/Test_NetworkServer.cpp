@@ -875,6 +875,9 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
             accepted_conn->Disconnect();
         }
 
+        // The peer's io thread can win Disconnect() before it has invoked the callback
+        REQUIRE(WaitForCondition([&disconnect_count] { return disconnect_count.load() != 0; }));
+
         CHECK(disconnect_count.load() == 1);
         CHECK(accepted_conn->IsDisconnected());
 
@@ -891,3 +894,4 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
 #endif
 
 FO_END_NAMESPACE
+

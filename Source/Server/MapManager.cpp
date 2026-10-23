@@ -788,7 +788,7 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
             return HexBlockResult::Blocked;
         }
 
-        if (map->HasLivingCritter(hex, from_cr)) {
+        if (map->HasPathfindingObstacle(hex, from_cr)) {
             return HexBlockResult::DeferCritter;
         }
 
@@ -836,7 +836,7 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
             return HexBlockResult::Blocked;
         }
 
-        if (map->HasLivingCritter(hex, from_cr)) {
+        if (map->HasPathfindingObstacle(hex, from_cr)) {
             return HexBlockResult::DeferCritter;
         }
 
@@ -1585,3 +1585,4 @@ void MapManager::ViewMap(ptr<Player> view_player, ptr<Map> map)
 }
 
 FO_END_NAMESPACE
+
