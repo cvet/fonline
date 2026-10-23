@@ -14,6 +14,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-23
 
+### Fixed
+
+- Keep a project-frozen idle/movement selection effective for the 3D locomotion layer while a queued action advances independently. Add a regression for the overlapping selections and retain the existing queued-frozen-action control.
+- Use an explicit mutable observer-slot borrow in the reentrant sprite-cache fixture, preserving the observed copy lifetime without a class reference member.
+
+### Documentation
+
+- Refactor the agent entry guide into concise routing and mandatory cross-cutting rules. Keep detailed native, lifecycle, managed-code, configuration and documentation contracts in their owning guides.
+- Clarify semantic grouping, exception safety, property/lifetime ownership, immutable data representations and verification boundaries in the English guides and their Russian translations.
+
+### Migration
+
+- Base `62102cfedbd165d9ce73c600f78cb4e5750afbdc` (`2026.1.58-dev`) → `2026.1.59-dev`. No new project API/configuration or saved-data conversion: existing numeric identifiers, units and formats are unchanged. A frozen idle/movement selection now continues to disable the visual locomotion layer while an advancing queued action retains its own playback controls; logical movement is unchanged. Rebuild affected clients/Mapper. Runtime `0.0.76`, Managed ABI `9` and sprite container v2 are unchanged. Projects upgrading from earlier versions must still apply the preceding migration below. Regenerate and validate documentation; rollback restores matching preceding binaries, documentation and version together.
+
+## 2026.1.58-dev - 2026-10-23
+
 ### Changed
 
 - Isolate sprite-cycle accumulation, projection, phase transfer, frame selection and visual compensation in AnimationMovement. CritterHexView retains movement/anchor state; arithmetic, lifecycle, script APIs and resource formats are unchanged.

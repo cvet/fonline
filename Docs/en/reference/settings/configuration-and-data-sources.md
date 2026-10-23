@@ -89,6 +89,17 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
+Built-ins use `SETTING(type, Group, Name, default)` and
+`SETTING_GROUP(Group, virtual bases)` in `Settings.inc`; each group is a nested
+aggregate, so native code reads `settings.Network.ServerPort`, while config,
+command-line and runtime lookup use `Network.ServerPort`. A project `///@ Setting`
+also carries its full dotted name. Short names can repeat in different groups;
+a bare name is custom and is reported as `Unknown setting` by the config baker.
+Managed `Settings.Group.Name` properties are get-only. Mutable live values belong
+to the owning API, such as `MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume`
+or `Application::ScreenState`. The native `BakerTests::OverrideSetting` escape in
+`Source/Tests/Test_BakerHelpers.h` is confined to tests, not production mutation.
+
 The secure network channel adds `ServerNetwork.ChannelSecretKey` (the required static server secret) and `ClientNetwork.ChannelServerKeys` (client public-key pins). Both are startup settings, not writable script state. The server setting contains the 64-hex-digit key value, not a file path: `$TARGET_FILE{...}` reads a protected file at target runtime without embedding its contents during baking. An unset or malformed server key blocks server startup, even in an interthread-only profile; an empty or invalid client pin list blocks connection. See [Networking](../../explanation/authority-and-networking/#secure-channel) and [Security and Secrets](../../how-to/release/security-and-secrets.md).
 
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. Every built-in setting is addressed by its full `Group.Name`, is mutable only while `GlobalSettings` constructs the startup snapshot, and is exposed as `const` afterwards. Live state belongs to its runtime owner rather than being written back into settings. `Settings.h` exposes:

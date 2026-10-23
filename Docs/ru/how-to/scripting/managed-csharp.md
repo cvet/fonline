@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"bbe5e488d2f60b2475670251ba3536edb60d23bc26ed6985b2405a2b3c8bdddd"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"596bfc1b30bf05316c757a3fd1aa000f70e2241e11f476dd39c2570b52f3f51d"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -106,7 +106,25 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 
 Используйте пространство имён проекта и импортируйте `FOnline` для сгенерированных типов. CoreScripts используют file-scoped `namespace FOnline;`; игровые domain types принадлежат другому пространству.
 
-Сгенерированные reference/entity API различают nullable значения как часть script/native контракта. Ожидаемое отсутствие обрабатывайте веткой; нарушение инварианта — через `Game.Verify` или `Game.VerifyNotNull`. Managed-ссылки на сущности не владеют их persistence или lifetime.
+Сгенерированные reference/entity API различают nullable значения как часть script/native контракта. Ожидаемое отсутствие обрабатывайте веткой; нарушение инварианта — через `Invariant.Verify` или `Invariant.VerifyNotNull`. Managed-ссылки на сущности не владеют их persistence или lifetime.
+
+Написанные вручную managed-члены используют PascalCase при любом уровне доступа,
+включая private fields (`Continuations`, а не `_continuations`). Подчёркивания
+могут разделять сегменты с заглавной буквы или цифры, но не начинать и не завершать
+имя. Поле, необходимое рядом со свойством, получает самостоятельное осмысленное
+имя, например `RecordedGlobally` за `GlobalCount`, вместо маркера доступа.
+Локальные переменные и параметры сохраняют установленные camelCase conventions.
+
+Две принадлежащие Engine поверхности сохраняют другое написание: видимые скриптам
+value types повторяют native API (`ipos.x`, `hstr()`, `timespan.milliseconds`), а
+`ManagedScriptBaker` генерирует служебные имена с `_` (`_entityPtr`,
+`__event_OnStart`), чтобы избежать коллизий со свойствами embedding project.
+Не применяйте правило написанных вручную членов к этим генерируемым именам.
+
+Методы, которые native backend разрешает через `[CallableByEngine]`, имеют доступ
+`internal`, хотя Mono lookup умеет находить непубличные методы. Это входы
+dispatcher, а не обычные вспомогательные методы для прямого вызова; изменения
+учитывают контракт владельца dispatcher, синхронизации и времени жизни callback.
 
 У каждого backend изолированный load context, но gameplay state требует явного per-engine owner: `Game`, entity, property или ref type. Static constants и immutable type metadata допустимы; mutable caches, registries, timer gates и collections не получают владение от C# static fields.
 

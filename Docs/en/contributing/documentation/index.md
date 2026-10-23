@@ -401,6 +401,15 @@ Planned future docs should be written as plain prose unless the checker intentio
 
 If a future AI agent continues this roadmap, it should re-anchor from git status, the backlog, and the verification report before editing. Context from chat is secondary to the repository state.
 
+Maintain instructions as durable, actionable rules and routes, not incident logs or
+copies of every subsystem procedure. When refactoring `AGENTS.md`, map the former
+sections to surviving owners, preserve incoming heading anchors, and check the
+client's instruction-discovery budget. Read a task's owning contracts explicitly;
+do not assume a nested guide was injected. Contextualized owner corrections may
+motivate a rule, but old transcripts and worker reports never grant new authority.
+Source establishes implemented behavior; owner requirements define intended behavior.
+Keep raw private audit evidence in the task workspace, outside published docs.
+
 ## Validation checklist
 
 1. New docs are classified in `Docs/documentation-manifest.json` and linked from the [documentation index](../../index.md) and, if relevant, [AGENTS.md](../../../../AGENTS.md).

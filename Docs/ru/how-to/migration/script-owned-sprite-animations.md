@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/migration/script-owned-sprite-animations.html
 ---
 
 # Перенос анимаций спрайтов в скрипты
-<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"32b915a498127e0bea5533e0e34fde1ee56e4fd5b0413980fc6d8405d7c0cd8c"} -->
+<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"d3a756c77f410f054014c3bf8f4935e433ba5cf48d380203c49148693e2f488d"} -->
 ### Скриптовые 2D-анимации криттеров
 
 Удалите OnCritterAnimationFrames(modelName,stateAnim,actionAnim,pass,flags,ox,oy,animName) и
@@ -73,6 +73,12 @@ Native `CritterStateAnim` и `CritterActionAnim` содержат только `
 `OnCritterAnimationInit` принимает `(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedTime, float32& speed)`. Контекст сообщает покой, движение вперёд/назад, поворот влево/вправо, действие из очереди или превью. Проект выбирает пару, флаг `Freeze`, нормализованное положение заморозки, скорость воспроизведения и флаг `Movement` для 2D root motion. Движок не выводит эти решения из состояния жизни, оружия или номера действия. None/0 означает отсутствие решения; fallback и подстановки определяет проект.
 
 Прежние `Render.WalkAnimBaseSpeed`, `Render.RunAnimStartSpeed` и `Render.RunAnimBaseSpeed` перенесите в настройки проекта, если сохраняете эту политику. Явно задайте `Animation.PreviewStateAnim` и `Animation.PreviewActionAnim` для Mapper, AnimationViewer и базовых границ модели; defaults движка равны нулю. Baker выбирает указанную пару, а при её отсутствии — доступные границы, без эвристики Unarmed/Idle. После смены пары перепеките модели. Native callback ModelInstance принимает контекст, скорость движения и параметры воспроизведения; `GetMovingContext()` заменяет `GetMovingAnim()`.
+
+Текущий выбор позы/движения и действие в очереди сохраняют независимые параметры
+воспроизведения. `Freeze` в любом из соответствующих выборов отключает слой
+3D-locomotion; проигрываемое действие продолжает использовать собственные флаги,
+нормализованное время и скорость. Отключение этого визуального слоя не останавливает
+логическое перемещение.
 
 ### Обход и порядок отрисовки принадлежат проекту
 

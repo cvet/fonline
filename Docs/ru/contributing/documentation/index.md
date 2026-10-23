@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"b66368e1b0f2a54f105d254bb5a4af6807c5bd257ea1eb36658b1f67358ba563"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"623229148ff8a0660452cf659a4e570b73f03eb69b6e929e1a626f97bb29cecd"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -400,6 +400,17 @@ Jobs `Validate documentation` и `Parse documentation snippets` в `.github/work
 [AGENTS.md](../../../../AGENTS.md) является точкой входа ИИ-maintainer. Он ведёт к human docs и фиксирует repository conventions, включая запрет commit/push без явной просьбы. Сохраняйте его кратким и навигационным, а подробные процедуры помещайте в `Docs/`. Root `llms.txt`, `llms-full.txt` и `docs-manifest.json` являются generated retrieval routes для внешних агентов; `Docs/Site/Data/docs-site.json`, оба locale search indexes и `docs-manifest.json#/routing` образуют соответствующую human navigation/search/routing projection. Все шесть артефактов должны выводиться из одного manifest/corpus.
 
 Будущий ИИ-agent, продолжающий roadmap, должен сначала восстановить контекст по git status, backlog и verification report. Контекст чата вторичен относительно состояния репозитория.
+
+Инструкции содержат устойчивые выполнимые правила и маршруты, а не журнал
+инцидентов или копии процедур всех подсистем. При рефакторинге `AGENTS.md`
+сопоставьте прежние разделы с оставшимися владельцами, сохраните входящие якоря
+и проверьте лимит загрузки инструкций клиента. Явно читайте владельцев контрактов
+задачи; не предполагайте, что вложенное руководство уже попало в контекст.
+Уточнение владельца с проверенным контекстом может обосновывать правило, но
+старые журналы и отчёты работников не предоставляют новых полномочий.
+Исходник устанавливает реализованное поведение, требования владельца — ожидаемое.
+Сырые частные доказательства аудита хранятся в рабочем каталоге задачи вне
+публикуемой документации.
 
 ## Контрольный список проверки
 

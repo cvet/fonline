@@ -307,7 +307,31 @@ resolve entity -> Game.Sync(entity) -> read/mutate -> Yield(...)
 resolve or revalidate entity -> Game.Sync(entity) -> re-read -> decide/mutate
 ```
 
-Native extension code has an additional `EnsureEntitySynced(...)` expansion helper for engine-owned operations that pull a covered descendant or freshly created entity into the current context. It is not a replacement for the script-visible `Game.Sync(...)` contract and must not be exposed as a project workaround for an incorrectly scoped operation.
+### Native retention of covered entities
+
+Before an ordinary server script export, callers cover every existing entity its
+native call graph can access, including map/location, holder, controlled-critter
+and group dependencies. `ValidateEntityAccess` validates that package;
+`EnsureEntitySynced` retains an already-covered entity's own lock idempotently.
+Repeated calls, loops, catch handlers and recursion have no call-count limit.
+
+Retention adds the own lock and required ancestor marks as one address-ordered,
+all-or-nothing state-mutex transaction. It never releases/reacquires the caller's
+cover or parks on an entity lock. A transient acquire/release window retries the
+whole batch through `BackoffBeforeSyncRetry`, retaining no partial batch across
+backoff. The current implementation bounds attempts with `MAX_SYNC_RETRIES`;
+exhaustion throws `EntitySyncException`, leaving the caller's cover intact.
+Neither a single-attempt description nor an unconditional no-failure promise
+describes this implementation.
+
+Ordinary retention cannot discover or acquire an omitted pre-existing dependency.
+Fresh parentless entities use a separate private trusted capture before publication;
+that boundary does not authorize discovery of existing dependencies. Native callees
+must not repair missing cover with `SyncEntity` / `SyncEntities`. The explicit script
+primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock` and `Game.Unlock` are exceptions
+because synchronization is their visible purpose. `Server.SingleThreadedLogic`
+bypasses the cover model on its single logic worker. This is a backend-neutral
+contract, not a project workaround or an AngelScript-only rule.
 
 ## Mutable state ownership
 
