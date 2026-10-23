@@ -742,11 +742,11 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
             try {
                 baker->BakeFiles(bake_context->FilteredFiles);
                 bake_context->BakingTime.pause();
-                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration().milliseconds(), true, {});
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration(), true, {});
             }
             catch (const std::exception& ex) {
                 bake_context->BakingTime.pause();
-                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration().milliseconds(), false, ex.what());
+                bake_context->Report->RecordBakerInvocation(bake_context->PackName, baker->GetName(), baker->GetOrder(), bake_context->FilteredFiles.GetFilesCount(), bake_context->InputBytes, baker_time.get_duration(), false, ex.what());
                 throw;
             }
             catch (...) {
@@ -764,7 +764,7 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
         if (bake_order == max_order) {
             logging::write("Baking of {} complete in {}, baked {} file{}", bake_context->PackName, //
                 bake_context->BakingTime.get_duration(), bake_context->BakedFiles, bake_context->BakedFiles != 1 ? "s" : "");
-            bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.get_duration().milliseconds());
+            bake_context->Report->RecordPackDuration(bake_context->PackName, bake_context->BakingTime.get_duration());
             bake_context->Done = true;
         }
     }

@@ -76,23 +76,29 @@ void BakingReport::RecordBakerRegistration(string_view pack_name, string_view ba
     GetAggregateBaker(baker_name).Order = order;
 }
 
-void BakingReport::RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, int64_t duration_ms, bool success, string_view failure_message)
+void BakingReport::RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, timespan duration, bool success, string_view failure_message)
 {
+    FO_VERIFY_AND_THROW(duration >= timespan {}, "Baking report duration is negative", duration);
+
     scoped_lock lock {_locker};
-    auto update = [&](BakingReportBakerStats& stats, string_view stored_failure_message) {
+    auto& aggregate_stats = GetAggregateBaker(baker_name);
+    timespan aggregate_duration {checked_add<int64_t>(aggregate_stats.Duration.nanoseconds(), duration.nanoseconds())};
+    auto& pack_stats = GetPackBaker(pack_name, baker_name);
+    timespan pack_duration {checked_add<int64_t>(pack_stats.Duration.nanoseconds(), duration.nanoseconds())};
+    auto update = [&](BakingReportBakerStats& stats, timespan next_duration, string_view stored_failure_message) {
         stats.Order = order;
         stats.Invocations++;
         stats.SuccessfulInvocations += success ? 1 : 0;
         stats.FailedInvocations += success ? 0 : 1;
         stats.AvailableInputFiles += numeric_cast<uint64_t>(input_files);
         stats.AvailableInputBytes += input_bytes;
-        stats.DurationMs += duration_ms;
+        stats.Duration = next_duration;
         if (!success && !stored_failure_message.empty()) {
             stats.FailureMessages.emplace_back(stored_failure_message);
         }
     };
-    update(GetPackBaker(pack_name, baker_name), failure_message);
-    update(GetAggregateBaker(baker_name), failure_message.empty() ? string {} : strex("{}: {}", pack_name, failure_message).str());
+    update(pack_stats, pack_duration, failure_message);
+    update(aggregate_stats, aggregate_duration, failure_message.empty() ? string {} : strex("{}: {}", pack_name, failure_message).str());
 }
 
 void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_name, string_view path, bool scheduled)
@@ -140,10 +146,10 @@ void BakingReport::RecordOutputSubmission(string_view pack_name, string_view bak
     }
 }
 
-void BakingReport::RecordPackDuration(string_view pack_name, int64_t duration_ms)
+void BakingReport::RecordPackDuration(string_view pack_name, timespan duration)
 {
     scoped_lock lock {_locker};
-    _packs[string(pack_name)].DurationMs = duration_ms;
+    _packs[string(pack_name)].Duration = duration;
 }
 
 void BakingReport::RecordOutdatedFile(string_view path)
@@ -272,7 +278,7 @@ void BakingReport::Complete(bool success, string_view failure_message)
     scoped_lock lock {_locker};
     _status = success ? "success" : "failed";
     _failureMessage = failure_message;
-    _completedDurationMs = _duration.get_duration().milliseconds();
+    _completedDuration = _duration.get_duration();
 }
 
 auto BakingReport::IsFullRebuild() const -> bool
@@ -787,7 +793,7 @@ static auto MakeBakingReportBakerJson(string_view name, const BakingReportBakerS
         {"successfulInvocations", stats.SuccessfulInvocations},
         {"failedInvocations", stats.FailedInvocations},
         {"failureMessages", stats.FailureMessages},
-        {"durationMs", stats.DurationMs},
+        {"durationMs", stats.Duration.milliseconds()},
         {"availableInputFiles", stats.AvailableInputFiles},
         {"availableInputBytes", stats.AvailableInputBytes},
         {"measurementScope",
@@ -881,7 +887,7 @@ auto BakingReport::Serialize() const -> string
         {"buildHash", FO_BUILD_HASH},
         {"bakingConfigHash", FO_BAKING_CONFIG_HASH},
         {"bakeOutput", _bakeOutput},
-        {"durationMs", _status == "running" ? _duration.get_duration().milliseconds() : _completedDurationMs},
+        {"durationMs", (_status == "running" ? _duration.get_duration() : _completedDuration).milliseconds()},
         {"mode", {{"forceRequested", _forceRequested}, {"fullRebuild", _fullRebuild}, {"rebuildReason", _rebuildReason}, {"singleThread", _singleThread}}},
         {"measurementScope",
             {
@@ -921,7 +927,7 @@ auto BakingReport::Serialize() const -> string
     for (const auto& [name, pack] : _packs) {
         BakingReportJson pack_json {
             {"name", name},
-            {"durationMs", pack.DurationMs},
+            {"durationMs", pack.Duration.milliseconds()},
             {"inputs", MakeBakingReportPathSizeJson(pack.InputPathSizes)},
             {"outputs",
                 {

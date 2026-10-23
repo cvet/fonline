@@ -37,6 +37,7 @@
 #include "AngelScriptBaker.h"
 #endif
 #include "AudioBaker.h"
+#include "BakingReport.h"
 #include "ConfigBaker.h"
 #include "ConfigFile.h"
 #include "EffectBaker.h"
@@ -58,6 +59,35 @@ FO_DISABLE_WARNINGS_PUSH()
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
+
+TEST_CASE("Baking report accumulates duration before converting to JSON milliseconds")
+{
+    BakingSettings settings;
+    BakingReport report {&settings};
+    report.RecordBakerInvocation("pack", "baker", 1, 0, 0, timespan {600000}, true, {});
+    report.RecordBakerInvocation("pack", "baker", 1, 0, 0, timespan {600000}, true, {});
+    report.RecordPackDuration("pack", timespan {1200000});
+
+    const auto json = nlohmann::json::parse(report.Serialize());
+    CHECK(json.at("bakers").at(0).at("durationMs") == 1);
+    CHECK(json.at("packs").at(0).at("bakers").at(0).at("durationMs") == 1);
+    CHECK(json.at("packs").at(0).at("durationMs") == 1);
+}
+
+TEST_CASE("Baking report rejects duration overflow before changing invocation statistics")
+{
+    BakingSettings settings;
+    BakingReport report {&settings};
+    report.RecordBakerInvocation("first", "baker", 1, 0, 0, timespan {std::numeric_limits<int64_t>::max()}, true, {});
+    CHECK_THROWS(report.RecordBakerInvocation("second", "baker", 1, 0, 0, timespan {1}, true, {}));
+    CHECK_THROWS(report.RecordBakerInvocation("second", "other", 1, 0, 0, timespan {-1}, true, {}));
+
+    const auto json = nlohmann::json::parse(report.Serialize());
+    REQUIRE(json.at("bakers").size() == 1);
+    REQUIRE(json.at("packs").size() == 1);
+    CHECK(json.at("bakers").at(0).at("invocations") == 1);
+    CHECK(json.at("bakers").at(0).at("durationMs") == std::numeric_limits<int64_t>::max() / 1000000);
+}
 
 static auto MakeTempBakerSetupDir(string_view name) -> string
 {
