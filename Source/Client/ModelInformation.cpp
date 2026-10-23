@@ -392,7 +392,8 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
             FO_VERIFY_AND_THROW(binding->Reversed == reversed, "Animation reverse flag does not match its baked model-description entry", name, anim_entry.StateAnim, anim_entry.ActionAnim, anim_entry.Name);
 
             unordered_set<hstring> bound_bones = BuildModelAnimationBoundBones(_poseJointCanonicalNames, _poseJointRuntimeNames, runtime_clip.GetJointPresence(), name);
-            int32_t anim_index = _animController->RegisterAnimation(binding->ClipIndex, runtime_clip.GetDuration(), reversed, std::move(bound_bones));
+            timespan duration {iround<int64_t>(numeric_cast<float64_t>(runtime_clip.GetDuration()) * 1e9)};
+            int32_t anim_index = _animController->RegisterAnimation(binding->ClipIndex, duration, reversed, std::move(bound_bones));
             _animIndexes.emplace(anim_pair, anim_index);
         }
 

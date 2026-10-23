@@ -100,7 +100,7 @@ ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager
     _gameTime {game_time}
 {
     if (_settings->Render.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
+        _animUpdateThreshold = std::chrono::milliseconds {iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS))};
     }
 }
 
@@ -175,9 +175,9 @@ auto ParticleSystem::IsActive() const -> bool
     return _runtimeSystem->IsActive();
 }
 
-auto ParticleSystem::GetElapsedTime() const -> float32_t
+auto ParticleSystem::GetElapsedTime() const -> timespan
 {
-    return numeric_cast<float32_t>(_elapsedTime);
+    return _elapsedTime;
 }
 
 auto ParticleSystem::GetDrawInScene() const -> bool
@@ -266,7 +266,7 @@ auto ParticleSystem::GetTime() const -> nanotime
 
 auto ParticleSystem::NeedDraw() const -> bool
 {
-    return _renderPending && (!IsActive() || GetTime() - _lastRenderTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold));
+    return _renderPending && (!IsActive() || GetTime() - _lastRenderTime >= _particleMngr->_animUpdateThreshold);
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj)
@@ -294,9 +294,13 @@ void ParticleSystem::Prewarm()
     }
 
     float32_t elapsed_seconds = _runtimeSystem->Prewarm();
-    FO_VERIFY_AND_THROW(std::isfinite(elapsed_seconds) && elapsed_seconds >= 0.0f, "Particle runtime returned an invalid prewarm duration", elapsed_seconds);
+    float64_t elapsed_nanoseconds = numeric_cast<float64_t>(elapsed_seconds) * 1e9;
+    FO_STRONG_ASSERT(std::isfinite(elapsed_nanoseconds) && elapsed_nanoseconds >= 0.0 && elapsed_nanoseconds < numeric_cast<float64_t>(std::numeric_limits<int64_t>::max()), "Particle runtime returned an invalid prewarm duration", elapsed_seconds);
 
-    _elapsedTime += numeric_cast<float64_t>(elapsed_seconds);
+    timespan elapsed {numeric_cast<int64_t>(std::llround(elapsed_nanoseconds))};
+    FO_STRONG_ASSERT(elapsed.nanoseconds() <= std::numeric_limits<int64_t>::max() - _elapsedTime.nanoseconds(), "Particle prewarm duration exceeds the elapsed-time range");
+
+    _elapsedTime += elapsed;
     _forceDraw = true;
     _renderPending = true;
     _lastUpdateTime = GetTime();
@@ -328,35 +332,34 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 void ParticleSystem::Update()
 {
     nanotime time = GetTime();
-    float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
+    timespan elapsed = time - _lastUpdateTime;
 
-    if (_forceDraw && delta_seconds <= 0.0f) {
-        delta_seconds = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;
+    if (_forceDraw && elapsed <= timespan {}) {
+        elapsed = std::max(_particleMngr->_animUpdateThreshold, timespan {std::chrono::milliseconds {1}});
     }
 
+    Update(elapsed);
     _lastUpdateTime = time;
-    Update(delta_seconds);
 }
 
-void ParticleSystem::Update(float32_t delta_seconds)
+void ParticleSystem::Update(timespan elapsed)
 {
-    FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
+    FO_VERIFY_AND_THROW(elapsed >= timespan {}, "Particle update duration must be non-negative", elapsed);
     bool was_active = _runtimeSystem->IsActive();
 
     if (!was_active) {
         return;
     }
 
-    _runtimeSystem->Update(delta_seconds);
+    timespan elapsed_time {checked_add<int64_t>(_elapsedTime.nanoseconds(), elapsed.nanoseconds())};
+    _runtimeSystem->Update(elapsed.to_sec<float32_t>());
 
     bool is_active = _runtimeSystem->IsActive();
 
-    if (delta_seconds > 0.0f || !is_active) {
+    if (elapsed > timespan {} || !is_active) {
         _renderPending = true;
     }
-    if (delta_seconds > 0.0f) {
-        _elapsedTime += numeric_cast<float64_t>(delta_seconds);
-    }
+    _elapsedTime = elapsed_time;
 }
 
 void ParticleSystem::RefreshRenderTransform()
@@ -398,7 +401,7 @@ void ParticleSystem::ApplyRuntimeSetup()
 
 void ParticleSystem::ResetTiming()
 {
-    _elapsedTime = 0.0;
+    _elapsedTime = {};
     _forceDraw = true;
     _renderPending = true;
     _lastUpdateTime = GetTime();

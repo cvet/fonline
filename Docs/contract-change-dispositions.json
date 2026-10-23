@@ -11460,6 +11460,102 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/model-format.md#textures.",
       "compatibility": "LFMODINF schema 5 and runtime compatibility 0.0.76 reject older descriptions/endpoints. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas remain unchanged.",
       "owner": "Engine model content and runtime"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.595e12680558cb8a",
+      "baseline_contract_sha256": "4bef7bc201e0895ba9a6ba3d6cf200ac542ad61b67cac7f686bc9e9cf660b6aa",
+      "current_contract_sha256": "b3430a772fde6d32b8d22486e452cb3cec233e689e585b7420f810ad92a6f63c",
+      "classification": "breaking",
+      "rationale": "SpriteSheet duration state, constructors and getters use timespan. Elapsed sub-milliseconds are retained, and native uniform timelines partition nanoseconds without intermediate overflow. Imported timelines retain their original millisecond values.",
+      "migration": "Replace GetWholeTicks with GetDuration, pass timespan durations to native constructors and use const_span<timespan> frame durations. Rebuild native consumers. Baked resources do not require migration.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/image-format.md#runtime-loading-atlas-and-caches.",
+      "compatibility": "Native C++ API/state change only; SpriteResource v3, SpriteInfo 2 and existing runtime compatibility 0.0.76 remain unchanged.",
+      "owner": "Engine sprite playback"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.1221c5ad05e2b877",
+      "baseline_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "current_contract_sha256": "d6a84aca37fd68a525f0bd5aabe3bf6c6fb14597e7e63c0bb28c810d3ec09c47",
+      "classification": "breaking",
+      "rationale": "Use typed duration intervals and advance the compatibility gate for the changed native/script ABI.",
+      "migration": "Rebuild native consumers and rebake every script role. Replace numeric MovingContext and FogLayer intervals with timespan in their declared units.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Coordinated runtime 0.0.77 binaries, metadata and script assemblies are required. Movement wire units and persisted property schemas stay unchanged.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.83b0f0d88886b1ee",
+      "baseline_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "current_contract_sha256": "d6a84aca37fd68a525f0bd5aabe3bf6c6fb14597e7e63c0bb28c810d3ec09c47",
+      "classification": "breaking",
+      "rationale": "Use typed duration intervals and advance the compatibility gate for the changed native/script ABI.",
+      "migration": "Rebuild native consumers and rebake every script role. Replace numeric MovingContext and FogLayer intervals with timespan in their declared units.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Coordinated runtime 0.0.77 binaries, metadata and script assemblies are required. Movement wire units and persisted property schemas stay unchanged.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.06423e494a50f308",
+      "baseline_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "current_contract_sha256": "d6a84aca37fd68a525f0bd5aabe3bf6c6fb14597e7e63c0bb28c810d3ec09c47",
+      "classification": "breaking",
+      "rationale": "Use typed duration intervals and advance the compatibility gate for the changed native/script ABI.",
+      "migration": "Rebuild native consumers and rebake every script role. Replace numeric MovingContext and FogLayer intervals with timespan in their declared units.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Coordinated runtime 0.0.77 binaries, metadata and script assemblies are required. Movement wire units and persisted property schemas stay unchanged.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.5bce2c323baad75a",
+      "baseline_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "current_contract_sha256": "d6a84aca37fd68a525f0bd5aabe3bf6c6fb14597e7e63c0bb28c810d3ec09c47",
+      "classification": "breaking",
+      "rationale": "Use typed duration intervals and advance the compatibility gate for the changed native/script ABI.",
+      "migration": "Rebuild native consumers and rebake every script role. Replace numeric MovingContext and FogLayer intervals with timespan in their declared units.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Coordinated runtime 0.0.77 binaries, metadata and script assemblies are required. Movement wire units and persisted property schemas stay unchanged.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.43f3d1dd0841f70a",
+      "baseline_contract_sha256": "a6889bc0840e1b8bdb961fce6250c89fe661531c0ffdd66e8f35967c4105d24d",
+      "current_contract_sha256": "d6a84aca37fd68a525f0bd5aabe3bf6c6fb14597e7e63c0bb28c810d3ec09c47",
+      "classification": "breaking",
+      "rationale": "Use typed duration intervals and advance the compatibility gate for the changed native/script ABI.",
+      "migration": "Rebuild native consumers and rebake every script role. Replace numeric MovingContext and FogLayer intervals with timespan in their declared units.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Coordinated runtime 0.0.77 binaries, metadata and script assemblies are required. Movement wire units and persisted property schemas stay unchanged.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.a2b849095121b281",
+      "baseline_contract_sha256": "4bef7bc201e0895ba9a6ba3d6cf200ac542ad61b67cac7f686bc9e9cf660b6aa",
+      "current_contract_sha256": "465ab7cd04bb3e21665b80f059330c1786581e9bbc2497fd8da6075911312a8e",
+      "classification": "breaking",
+      "rationale": "Use timespan for frame and SpriteSheet timelines without changing the positive whole-millisecond sprite file contract.",
+      "migration": "Replace GetWholeTicks with GetDuration and numeric frame duration APIs with Duration/GetDuration timespan. Writers require exact positive uint32 milliseconds; preserve the current Sprite v3 and FOFRM layouts.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Native API changes require rebuilding; file encoding and legacy whole-ms distribution are preserved. Sub-ms runtime intervals fail explicitly when an exact whole-ms file value is required.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "image-format",
+      "change_id": "image-format-change.modified.595e12680558cb8a",
+      "baseline_contract_sha256": "4bef7bc201e0895ba9a6ba3d6cf200ac542ad61b67cac7f686bc9e9cf660b6aa",
+      "current_contract_sha256": "465ab7cd04bb3e21665b80f059330c1786581e9bbc2497fd8da6075911312a8e",
+      "classification": "breaking",
+      "rationale": "Use timespan for frame and SpriteSheet timelines without changing the positive whole-millisecond sprite file contract.",
+      "migration": "Replace GetWholeTicks with GetDuration and numeric frame duration APIs with Duration/GetDuration timespan. Writers require exact positive uint32 milliseconds; preserve the current Sprite v3 and FOFRM layouts.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased and its Russian mirror; Docs/en/how-to/content/sprite-root-motion.md and image-format.md.",
+      "compatibility": "Native API changes require rebuilding; file encoding and legacy whole-ms distribution are preserved. Sub-ms runtime intervals fail explicitly when an exact whole-ms file value is required.",
+      "owner": "Engine duration, movement, rendering and image import contracts"
     }
   ]
 }

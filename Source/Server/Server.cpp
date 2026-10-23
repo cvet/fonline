@@ -2281,7 +2281,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
         // plan left waiting at its lease would wait there for good and the player would find it still under way on return
-        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > timespan {}) {
             StopCritterMoving(cr);
         }
 
@@ -3613,7 +3613,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
         auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
         plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
-        server_moving->SetLeaseTime(std::max((lease_distance + plan_distance_shift) * 1000.0f / numeric_cast<float32_t>(corrected_speed), 0.001f), GameTime.GetFrameTime());
+        server_moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + plan_distance_shift, numeric_cast<uint16_t>(corrected_speed)), GameTime.GetFrameTime());
     }
 
     nptr<const Player> initiator = player;
@@ -3669,11 +3669,11 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
 
     // An authoritative finite correction has retired this plan's lease, including renewals already in transit
-    if (moving->GetLeaseTime() == 0.0f) {
+    if (moving->GetLeaseTime() == timespan {}) {
         return;
     }
 
-    float32_t server_lease_time = std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+    timespan server_lease_time = EvaluateMovementLeaseDuration(lease_distance + cr->GetPlayerPlanDistanceShift(), moving->GetSpeed());
 
     if (server_lease_time <= moving->GetLeaseTime()) {
         return;
@@ -3689,7 +3689,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime())).strv());
+        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
     }
 
     nptr<const Player> ignore_player = player;
@@ -3913,17 +3913,17 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    float32_t remaining_time = moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime());
+    timespan remaining_time = moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime());
 
     // A client may fast-forward only what transport plausibly cost it: half the measured round trip, capped, plus the
     // movement job period by which the server's own arrival can lag; a larger claim is refused
     int64_t allowed_catch_up_ms = std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs;
 
-    trace_remaining_ms = iround<int64_t>(remaining_time);
+    trace_remaining_ms = iround<int64_t>(remaining_time.to_ms<float64_t>());
     trace_allowed_ms = allowed_catch_up_ms;
 
-    if (remaining_time > numeric_cast<float32_t>(allowed_catch_up_ms)) {
-        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
+    if (remaining_time > timespan {std::chrono::milliseconds {allowed_catch_up_ms}}) {
+        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time.to_ms<float64_t>()), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
         trace_finish("too_early");
         return;
     }
@@ -4590,7 +4590,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
                 FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
                 if (Settings->Network.MoveSyncTrace) {
-                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time))).strv());
+                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
                 }
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
@@ -4966,7 +4966,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         mpos end_hex = moving_context->GetEndHex();
         string_view initiator_name = initiator ? initiator->GetName() : string_view {"none"};
 
-        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), iround<int32_t>(moving_context->GetLeaseTime()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
@@ -5096,8 +5096,8 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
 
     nanotime cur_time = GameTime.GetFrameTime();
     uint16_t old_speed = moving_context->GetSpeed();
-    float32_t old_elapsed = moving_context->GetElapsedTime();
-    float32_t old_runtime = moving_context->GetRuntimeElapsedTime(cur_time);
+    timespan old_elapsed = moving_context->GetElapsedTime();
+    timespan old_runtime = moving_context->GetRuntimeElapsedTime(cur_time);
 
     moving_context->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
@@ -5107,7 +5107,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     if (Settings->Network.MoveSyncTrace) {
         mpos hex = cr->GetHex();
 
-        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(old_runtime), iround<int32_t>(moving_context->GetElapsedTime()), iround<int32_t>(moving_context->GetWholeTime())).strv());
+        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
     }
 
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });

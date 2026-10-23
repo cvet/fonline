@@ -1140,8 +1140,8 @@
           "translation": "Record сохраняет логическое размещение и координаты освещения, устраняя прозрачные texture rows и отправляя indexed silhouettes; повторные кадры переиспользуют исходный payload."
         },
         "/baking_rules/@id=image-format.baking.frame-record/requirement": {
-          "source_sha256": "c9c18064c347a7715838b1e10edf7a4fbf2b6f48c61b6f7ba41c09bf4768a40a",
-          "translation": "Каждый логический слот записывает uint32 DurationMs, int32 размещение X/Y, int16 движение X/Y и uint8 shared-флаг. Shared-слот добавляет обратный uint16 индекс пикселей; конкретный — uint16 ширину/высоту, RGBA8 и mesh. Общими являются только пиксели, размеры и геометрия; размещение, движение и время принадлежат слоту. Native FrameShot использует агрегаты Size, Motion и Offset с компонентами signed32; Size проверяется на неотрицательность и сужается до uint16, Motion — до int16 при сериализации, без переполнения."
+          "source_sha256": "272a018d8636711224086c8cd7f16e760f7fd88c54e7909923432934ccf3e58f",
+          "translation": "Запись слота: положительная длительность uint32 в целых мс, размещение int32 X/Y, движение int16 X/Y, флаг shared uint8. Shared добавляет обратный индекс пикселей uint16; concrete — uint16 W/H, RGBA8 и mesh. Общими остаются только пиксели/размер/геометрия; размещение/движение/время локальны. FrameShot Size/Motion/Offset — пары signed32; на записи проверяются Size >=0 и uint16, Motion int16."
         },
         "/baking_rules/@id=image-format.baking.output-path/name": {
           "source_sha256": "4195209bcc495e5f7502ed5536ce27127d1158c59e9230e8ede16e43558ebe3a",
@@ -1292,8 +1292,8 @@
           "translation": "Обёртка коллекции не теряет тайминг; разворачивание анимированных ссылок сохраняет заданный стандартный темп."
         },
         "/descriptor_fields/@id=image-format.field.timing/requirement": {
-          "source_sha256": "4287cce191043015f745b04e11a42edfd90f07e151d00578a0204151e66e1dcc",
-          "translation": "Каждый логический кадр имеет положительный uint32 DurationMs; сумма последовательности также uint32. Frame/Frames по умолчанию даёт100ms на итоговый кадр; Source наследует время выбранных кадров, включая повторы/grid. Локальный FrameDurations либо Duration заменяет корневые Duration/Fps. Корневой FrameDurations относится только к направлению0. Равномерные границы floor(i*Duration/count) сохраняют сумму без нулевых кадров."
+          "source_sha256": "1928ef140e65d12398068a3d4423e34c96c73a2c552777fb103c2f90ce2e1968",
+          "translation": "Кадры используют положительную timespan Duration. Файлы требуют целые uint32 мс на кадр и направление. Frame/Frames по умолчанию задают 100 мс на итоговый кадр; Source наследует выбранные длительности, включая повторы/grid. Локальные FrameDurations или Duration заменяют корневые Duration/Fps. Корневой FrameDurations относится только к направлению 0. Границы floor(i*Duration/count) сохраняют общую длительность без нулевых кадров."
         },
         "/filename_options/@id=image-format.option.art/rationale": {
           "source_sha256": "fb6d8db8e8ebb0bf44d3d40f33c3c0fec4cd4e045a3efb4888671592619dd198",
@@ -1544,8 +1544,8 @@
           "translation": "Animation state является клиентским presentation state, а каждое направление владеет параллельным frame sheet."
         },
         "/runtime_rules/@id=image-format.runtime.sprite-sheet/requirement": {
-          "source_sha256": "58169ff13514baf1988c7ebec405e53dea29c7a55bd3c72e24d712138f89e9e5",
-          "translation": "SpriteSheet хранит длительности/накопленные границы каждого направления и выбирает кадры по нормализованному времени. SetDirection сохраняет фазу при разных числе кадров/времени; направление0 — независимая последовательность. GetFramesCount/GetWholeTicks/GetSpriteOffset/GetFrameDurations описывают выбранное направление. MakeCopy сохраняет кадры с новым проигрыванием. Update передаёт elapsed в AdvanceTime; деления whole/count нет."
+          "source_sha256": "deed2c7e10f3c94a1e19fd70b902e1f4f746f30e935f82b9a481a795e799aedb",
+          "translation": "Длительности/границы SpriteSheet и GetDuration/GetFrameDurations используют timespan; в файлах остаётся uint32 мс. Направления сохраняют фазу; направление0 независимо. Копии сохраняют тайминг и сбрасывают проигрывание. Равномерные конструкторы делят нс; AdvanceTime сохраняет доли мс и непрерывную прямую/обратную фазу."
         },
         "/runtime_rules/@id=image-format.runtime.static-frame/name": {
           "source_sha256": "1fa5917048511413fe454b412e646441428b6214cd80c08859786156742979af",
@@ -18007,8 +18007,8 @@
           "translation": "Выбирает положительное наложение трассируемой зоны атаки или наблюдения вместо обратного тумана обзора."
         },
         "/symbols/@id=script.ref-field.client.FogLayer.TransitionDuration/description": {
-          "source_sha256": "0bc0ba10a4869be92c7de3bd2e8d448aad2d86bb220299a35312b51693d4c45d",
-          "translation": "Длительность увеличения, перемещения или уменьшения формы в миллисекундах."
+          "source_sha256": "e18bd61f59fc1ad7ec2070b456b428a640e922007ee5f69c12165bfe2b20cab8",
+          "translation": "Длительность увеличения, перемещения или уменьшения формы."
         },
         "/symbols/@id=script.ref-field.client.MapSpriteHolder.Angle/description": {
           "source_sha256": "50bcfa9a0a01fca468657e43876fccd919046ac269acaf899dd997185e1a39bb",
@@ -18131,8 +18131,8 @@
           "translation": "Возвращает гексы маршрута от current_hex до доступного конца пути либо пару текущего и конечного гексов для маршрута без сохранённых шагов."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.EvaluateProjectedHex/description": {
-          "source_sha256": "fa4727c41cf06444958c390a2a7401d2e2c538c359043421acd2748d2013e3e0",
-          "translation": "Вычисляет гекс маршрута для сохранённого прошедшего времени с добавленным неотрицательным интервалом упреждения в миллисекундах."
+          "source_sha256": "aff60b329d941e5b3f5ee336a3d9b18b3a21b0a2225f72c526cf5a2390b626ed",
+          "translation": "Вычисляет гекс маршрута для сохранённого прошедшего времени с добавленным неотрицательным интервалом упреждения."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.GetBlockHex/description": {
           "source_sha256": "02e792a8eb99510f933e5ebc025bc6397c699a01ec05b4dd07b459f175c0d09c",
@@ -18143,8 +18143,8 @@
           "translation": "Возвращает причину, переданную при завершении движения."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.GetElapsedTime/description": {
-          "source_sha256": "f78b682c277c209d21b2c8578abfcb203fa69dee252c1f44fdcc3465bacda22f",
-          "translation": "Возвращает сохранённое прошедшее время движения в миллисекундах."
+          "source_sha256": "b59b680ef7b78c033a63914183c7c7bc911395a10095b7afcedf3e5fa7d0f5bc",
+          "translation": "Возвращает сохранённое прошедшее время движения."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.GetEndHex/description": {
           "source_sha256": "c01e53b92151213f861b45c7f26abeed42e2eb1cd405c7a5bcd79dafe0e1c671",
@@ -18175,8 +18175,8 @@
           "translation": "Возвращает полное расстояние в пикселях проекции карты по всем сегментам между управляющими точками."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.GetWholeTime/description": {
-          "source_sha256": "2bdcb5292d1298ad8c1cc098a47b0b955aae617bf77760837b8820f8857e0817",
-          "translation": "Возвращает полную длительность маршрута в миллисекундах с учётом скорости и смещений конечных точек."
+          "source_sha256": "06b4b07b1a8119cce77378ec4605630b2a6cb1098368a4376c4b428d8a700a2d",
+          "translation": "Возвращает полную длительность маршрута с учётом скорости и смещений конечных точек."
         },
         "/symbols/@id=script.ref-method.common.MovingContext.IsCompleted/description": {
           "source_sha256": "2dafb2ebf6ce168c16f5c1cfa54f202fcde25240ffad6b1b7af249d767694009",

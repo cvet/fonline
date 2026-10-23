@@ -135,9 +135,9 @@ void HexView::EvaluateCurAlpha()
 {
     if (_fading) {
         nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
-        int32_t fading_duration = _map->GetEngine()->Settings->View.FadingDuration;
-        int32_t fading_remaining = time < _fadingTime ? (_fadingTime - time).to_ms<int32_t>() : 0;
-        float32_t t = fading_duration == 0 ? 1.0f : 1.0f - numeric_cast<float32_t>(fading_remaining) / numeric_cast<float32_t>(fading_duration);
+        timespan fading_duration {std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration}};
+        timespan fading_remaining = time < _fadingTime ? _fadingTime - time : timespan {};
+        float32_t t = fading_duration <= timespan {} ? 1.0f : 1.0f - fading_remaining.div<float32_t>(fading_duration);
 
         if (t >= 1.0f) {
             _fading = false;

@@ -226,7 +226,7 @@ TEST_CASE("SpriteManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
     CHECK(third->GetSize() == isize32 {5, 7});
     CHECK(third->GetOffset() == ipos32 {});
     CHECK(third->GetFramesCount() == 3);
-    CHECK(third->GetWholeTicks() == 120);
+    CHECK(third->GetDuration() == std::chrono::milliseconds {120});
     CHECK(fixture.Factory->LoadCount == 1);
 
     auto other_atlas = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>();
@@ -309,19 +309,67 @@ TEST_CASE("ResourceManagerMergesBothMotionAxes", "[sprite]")
         auto merged = resources.GetCritterAnimFrames(model, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), hdir(dir));
         REQUIRE(merged);
         CHECK(merged->GetFramesCount() == 6);
-        CHECK(merged->GetWholeTicks() == 240);
+        CHECK(merged->GetDuration() == std::chrono::milliseconds {240});
         CHECK(merged->GetSpriteOffset()[3] == ipos32 {-5 * (dir + 1), 5 * (dir + 1)});
     }
 }
 
 TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 {
+    SECTION("DistributesNativeNanosecondDurationsExactly")
+    {
+        SpriteSheetFixture fixture;
+        SpriteSheet sheet {&fixture.Sprites, 3, std::chrono::nanoseconds {10}, 1};
+        const_span<timespan> durations = sheet.GetFrameDurations();
+        REQUIRE(durations.size() == 3);
+        CHECK(durations[0] == std::chrono::nanoseconds {3});
+        CHECK(durations[1] == std::chrono::nanoseconds {3});
+        CHECK(durations[2] == std::chrono::nanoseconds {4});
+        CHECK(sheet.GetDuration() == std::chrono::nanoseconds {10});
+    }
+
+    SECTION("DistributesMaximumDurationWithoutIntermediateOverflow")
+    {
+        SpriteSheetFixture fixture;
+        timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+        SpriteSheet sheet {&fixture.Sprites, 65535, maximum, 1};
+        const_span<timespan> durations = sheet.GetFrameDurations();
+        REQUIRE(durations.size() == 65535);
+        CHECK(std::ranges::all_of(durations, [](timespan duration) { return duration == std::chrono::milliseconds {65537}; }));
+        CHECK(std::accumulate(durations.begin(), durations.end(), timespan {}) == maximum);
+        CHECK(sheet.GetDuration() == maximum);
+        CHECK(sheet.GetFrameIndexAtPhase(1.0) == 65534);
+    }
+
+    SECTION("RejectsInvalidNativeDurationsBeforeAccumulation")
+    {
+        SpriteSheetFixture fixture;
+        timespan invalid = GENERATE(timespan {}, timespan {std::chrono::nanoseconds {-1}});
+        CHECK_THROWS(SpriteSheet(&fixture.Sprites, vector<vector<timespan>> {{invalid}}));
+        CHECK_THROWS(SpriteSheet(&fixture.Sprites, 3, std::chrono::nanoseconds {2}, 1));
+        timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+        CHECK_THROWS(SpriteSheet(&fixture.Sprites, vector<vector<timespan>> {{maximum, std::chrono::nanoseconds {1}}}));
+    }
+
+    SECTION("AccumulatesSubMillisecondElapsedTime")
+    {
+        SpriteSheetFixture fixture {vector<vector<uint32_t>> {{1, 1}}};
+        auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(sheet);
+        sheet->Play({}, true, false);
+        CHECK(sheet->AdvanceTime(std::chrono::microseconds {500}));
+        CHECK(sheet->GetTime() == Catch::Approx(0.25f));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
+        CHECK(sheet->AdvanceTime(std::chrono::microseconds {500}));
+        CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
+    }
+
     SECTION("PlaysUnequalFrameDurations")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
         auto sheet = fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
         REQUIRE(sheet);
-        CHECK(sheet->GetWholeTicks() == 500);
+        CHECK(sheet->GetDuration() == std::chrono::milliseconds {500});
         sheet->Play({}, true, false);
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(0));
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {99}));
@@ -364,7 +412,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         sheet->SetDirection(hdir {1});
         CHECK(sheet->GetTime() == 0.9f);
         CHECK(sheet->GetFramesCount() == 2);
-        CHECK(sheet->GetWholeTicks() == 200);
+        CHECK(sheet->GetDuration() == std::chrono::milliseconds {200});
         CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {1})->GetSprite(1));
         CHECK(sheet->GetDirection(hdir {0})->GetFramesCount() == 3);
         sheet->SetDirection(hdir {0});
@@ -406,7 +454,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         SpriteSheetFixture long_fixture {vector<vector<uint32_t>> {{4294967294u, 1u}}};
         auto long_sheet = long_fixture.Sprites.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
         REQUIRE(long_sheet);
-        CHECK(long_sheet->GetWholeTicks() == 4294967295u);
+        CHECK(long_sheet->GetDuration() == std::chrono::milliseconds {4294967295u});
         long_sheet->Play({}, false, false);
         CHECK(long_sheet->AdvanceTime(std::chrono::milliseconds {4294967294LL}));
         CHECK(long_sheet->GetCurrentSprite() == long_sheet->GetSprite(1));

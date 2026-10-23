@@ -208,7 +208,7 @@ namespace ImageBakerFofrm
             FO_VERIFY_AND_THROW(total <= std::numeric_limits<uint32_t>::max(), "FOFRM FrameDurations sum exceeds uint32 milliseconds", fname, section, total);
 
             for (size_t index = 0; index < durations.size(); index++) {
-                sequence.Frames[index].DurationMs = durations[index];
+                sequence.Frames[index].Duration = std::chrono::milliseconds {durations[index]};
             }
         }
         else {
@@ -217,20 +217,20 @@ namespace ImageBakerFofrm
             if (recipe.HasKey(owner, "Duration")) {
                 auto parsed = AnyData::ParseValue(string {recipe.GetAsStr(owner, "Duration")}, false, true, AnyData::ValueType::String);
                 FO_VERIFY_AND_THROW(parsed.AsArray().Size() == 1, "FOFRM Duration requires one positive uint32 token", fname, owner);
-                ImageImport::SetFrameSequenceDuration(sequence, ReadTimelineInteger(parsed.AsArray()[0].AsString(), fname, owner, "Duration"));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {ReadTimelineInteger(parsed.AsArray()[0].AsString(), fname, owner, "Duration")});
             }
             else if (recipe.HasKey(owner, "Fps")) {
                 auto parsed = AnyData::ParseValue(string {recipe.GetAsStr(owner, "Fps")}, false, true, AnyData::ValueType::String);
                 FO_VERIFY_AND_THROW(parsed.AsArray().Size() == 1, "FOFRM Fps requires one positive uint32 token", fname, owner);
                 uint32_t fps = ReadTimelineInteger(parsed.AsArray()[0].AsString(), fname, owner, "Fps");
-                ImageImport::SetFrameSequenceDuration(sequence, numeric_cast<uint32_t>(sequence.Frames.size() * uint64_t {1000} / fps));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {numeric_cast<uint32_t>(sequence.Frames.size() * uint64_t {1000} / fps)});
             }
             else if (!source) {
-                ImageImport::SetFrameSequenceDuration(sequence, numeric_cast<uint32_t>(sequence.Frames.size() * 100));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {numeric_cast<uint32_t>(sequence.Frames.size() * 100)});
             }
         }
 
-        (void)ImageImport::GetDurationMs(sequence);
+        (void)ImageImport::GetDuration(sequence);
     }
 
     static auto LoadSourceCollection(const ImageRecipe& recipe, string_view fname, const ImageImport::Context& context) -> FrameCollection

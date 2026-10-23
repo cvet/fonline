@@ -230,7 +230,7 @@
           "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "auto Load",
-            "anim_ticks = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size())"
+            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size())"
           ]
         },
         {
@@ -291,7 +291,7 @@
           "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
             "auto Load",
-            "anim_ticks = numeric_cast<uint32_t>(1000 / 10 * frames_count)"
+            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * frames_count)"
           ]
         },
         {
@@ -676,7 +676,7 @@
       "name": "FOFRM whole-sequence timing",
       "syntax": "Frame/Frames: AnimTicks = 1000 * final_frame_count / Fps; Source: inherited unless Fps is explicit",
       "stability": "experimental",
-      "requirement": "Every logical frame has positive uint32 DurationMs, with per-sequence uint32 sum. Frame/Frames default to 100 ms per final frame; Source inherits selected frame durations, including repeats/grid. Local FrameDurations or Duration replaces root Duration/Fps defaults. Root FrameDurations belongs only to direction0. Uniform boundaries floor(i*Duration/count) preserve the total without zero-length frames.",
+      "requirement": "Frames use positive timespan Duration. Files require whole uint32 ms per frame and direction. Frame/Frames default to 100 ms per final frame; Source inherits selected frame durations, including repeats/grid. Local FrameDurations or Duration replaces root Duration/Fps defaults. Root FrameDurations belongs only to direction0. Uniform boundaries floor(i*Duration/count) preserve the total without zero-length frames.",
       "rationale": "Wrapping a collection does not lose timing; flattening animated references keeps the requested default cadence.",
       "source": [
         {
@@ -1447,7 +1447,7 @@
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 75"
+            "MigrationRule Version 0 0 77"
           ]
         }
       ]
@@ -1473,13 +1473,13 @@
       "id": "image-format.baking.frame-record",
       "name": "Concrete and shared frame records",
       "stability": "internal",
-      "requirement": "Each logical slot writes uint32 DurationMs, int32 placement X/Y, int16 motion X/Y and uint8 shared flag. Shared slots add a backward uint16 pixel-reference index; concrete slots add uint16 width/height, RGBA8 and mesh data. Sharing inherits pixels, dimensions and geometry only; placement, movement and duration remain slot-owned. Native FrameShot uses signed32 Size, Motion and Offset aggregates; Size is checked nonnegative and narrowed to uint16, Motion to int16 at serialization, without wrapping.",
+      "requirement": "Slots write positive uint32 whole-ms duration, int32 X/Y placement, int16 X/Y motion and uint8 shared flag. Shared: backward uint16 pixel index. Concrete: uint16 W/H, RGBA8, mesh. Sharing keeps only pixels/size/geometry; placement/motion/time stay local. FrameShot Size/Motion/Offset are signed32 pairs; output checks Size >=0 and uint16, Motion int16.",
       "rationale": "The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "writer.write<uint32_t>(shot.DurationMs);",
+            "writer.write<uint32_t>(GetSpriteDurationMilliseconds(shot.Duration));",
             "writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));",
             "frame_info.SharedFrameIndex = shot.SharedIndex;"
           ]
@@ -1487,7 +1487,7 @@
         {
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
-            "frame.DurationMs = reader.GetLEUInt32();",
+            "frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};",
             "frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};"
           ]
         },
@@ -1512,7 +1512,7 @@
           "path": "Source/Common/AnimationInfo.h",
           "anchors": [
             "SPRITE_INFO_VERSION = 2",
-            "uint32_t DurationMs {};"
+            "timespan Duration {};"
           ]
         },
         {
@@ -1520,7 +1520,7 @@
           "anchors": [
             "DirectionFrameCounts",
             "FrameDurationsMs",
-            "auto GetDurationMs(const SpriteDirInfo& direction)"
+            "auto GetDuration(const SpriteDirInfo& direction)"
           ]
         }
       ]
@@ -1719,7 +1719,7 @@
       "id": "image-format.runtime.sprite-sheet",
       "name": "Direction and playback state",
       "stability": "experimental",
-      "requirement": "SpriteSheet stores per-direction durations/cumulative ends and selects frames by normalized time. SetDirection preserves phase across unequal counts/durations; direction0 is an independent sequence. GetFramesCount/GetWholeTicks/GetSpriteOffset/GetFrameDurations describe the selected direction. MakeCopy preserves frame tables and creates fresh playback. Update delegates elapsed time to AdvanceTime; no whole/count division occurs.",
+      "requirement": "SpriteSheet durations/ends and GetDuration/GetFrameDurations use timespan; wire values are uint32 ms. Directions preserve phase; direction0 is independent. Copies retain timing and reset playback. Uniform constructors split ns; AdvanceTime keeps sub-ms time with continuous forward/reverse phase.",
       "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
       "source": [
         {
@@ -1988,7 +1988,7 @@
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
             "auto SpriteSheet::AdvanceTime(",
-            "elapsed / GetWholeTicks()"
+            "elapsed_time.div<float64_t>(GetDuration())"
           ]
         },
         {
@@ -2072,5 +2072,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "9f8577579ea9f82574604245c9c9e040ce0b6ff35f46b849edcd44749f512f80"
+  "contract_digest": "7caab4acaaa1ac2dca90b53a5ed95d33657af902d161184dbdc31d59004a47ac"
 }

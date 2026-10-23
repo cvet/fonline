@@ -44,7 +44,7 @@ namespace
     {
         FogShape::Input input;
         input.FogExtraLength = 0;
-        input.FogTransitionDuration = transition_duration;
+        input.FogTransitionDuration = std::chrono::milliseconds {transition_duration};
         input.MapHexWidth = 10;
         input.MapHexHeight = 8;
         input.MapSize = {100, 100};

@@ -257,12 +257,12 @@ namespace ImageBakerArt
 
         FrameCollection collection;
         uint16_t sequence_size {};
-        uint32_t anim_ticks {};
+        uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = numeric_cast<uint16_t>(frm_count_target);
         // Sprite v3 preserves the complete imported duration in uint32 milliseconds
         int64_t imported_ticks = header.FrameRate > 0 ? numeric_cast<int64_t>(std::max(1, 1000 / header.FrameRate)) * frm_count_target : 0;
-        anim_ticks = numeric_cast<uint32_t>(imported_ticks);
+        duration_ms = numeric_cast<uint32_t>(imported_ticks);
         have_dirs = stored_rotations == art_rotations && forced_rotation < 0;
 
         int32_t dir_count = have_dirs ? GameSettings::MAP_DIR_COUNT : 1;
@@ -426,12 +426,12 @@ namespace ImageBakerArt
         for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
             auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
 
-            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan {}; })) {
                 uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 
-            (void)ImageImport::GetDurationMs(sequence);
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

@@ -118,10 +118,10 @@ static_assert(sizeof(FoPalette) == 1024);
 
         FrameCollection collection;
         uint16_t sequence_size {};
-        uint32_t anim_ticks {};
+        uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = frm_count;
-        anim_ticks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        duration_ms = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
         collection.NewName = strvex(fname).starts_with("art/critters/") ? strex(fname).lower().str() : string(fname);
 
@@ -169,7 +169,7 @@ static_assert(sizeof(FoPalette) == 1024);
             FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", fname, dir, frm_count);
             sequence_size = frm_count;
             sequence.Frames.resize(sequence_size);
-            anim_ticks = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
+            duration_ms = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
             anim_pix_type = 0;
 
             // Make palette
@@ -293,22 +293,22 @@ static_assert(sizeof(FoPalette) == 1024);
                     }
 
                     if ((anim_pix_type & 0x01) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x04) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x10) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x08) != 0) {
-                        anim_ticks = 142;
+                        duration_ms = 142;
                     }
                     if ((anim_pix_type & 0x02) != 0) {
-                        anim_ticks = 100;
+                        duration_ms = 100;
                     }
                     if ((anim_pix_type & 0x20) != 0) {
-                        anim_ticks = 100;
+                        duration_ms = 100;
                     }
 
                     if (anim_pix_type != 0) {
@@ -344,7 +344,7 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        anim_ticks *= frm_count;
+                        duration_ms *= frm_count;
                         sequence_size = frm_count;
                         sequence.Frames.resize(sequence_size);
                     }
@@ -356,7 +356,7 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-            ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
         }
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms
@@ -370,12 +370,12 @@ static_assert(sizeof(FoPalette) == 1024);
         for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
             auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
 
-            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan {}; })) {
                 uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 
-            (void)ImageImport::GetDurationMs(sequence);
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;
@@ -401,10 +401,10 @@ static_assert(sizeof(FoPalette) == 1024);
 
         FrameCollection collection;
         uint16_t sequence_size {};
-        uint32_t anim_ticks {};
+        uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = frm_count;
-        anim_ticks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        duration_ms = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
         if (strvex(fname).starts_with("art/critters/")) {
             collection.NewName = strex("{}.fofrm", strex(fname).erase_file_extension().lower());
@@ -467,7 +467,7 @@ static_assert(sizeof(FoPalette) == 1024);
             FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", fname, dir, frm_count);
             sequence_size = frm_count;
             sequence.Frames.resize(sequence_size);
-            anim_ticks = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
+            duration_ms = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
             anim_pix_type = 0;
 
             // Make palette
@@ -590,22 +590,22 @@ static_assert(sizeof(FoPalette) == 1024);
                     }
 
                     if ((anim_pix_type & 0x01) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x04) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x10) != 0) {
-                        anim_ticks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x08) != 0) {
-                        anim_ticks = 142;
+                        duration_ms = 142;
                     }
                     if ((anim_pix_type & 0x02) != 0) {
-                        anim_ticks = 100;
+                        duration_ms = 100;
                     }
                     if ((anim_pix_type & 0x20) != 0) {
-                        anim_ticks = 100;
+                        duration_ms = 100;
                     }
 
                     if (anim_pix_type != 0) {
@@ -645,7 +645,7 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        anim_ticks *= frm_count;
+                        duration_ms *= frm_count;
                         sequence_size = frm_count;
                         sequence.Frames.resize(sequence_size);
                     }
@@ -657,7 +657,7 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-            ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+            ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
         }
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms
@@ -671,12 +671,12 @@ static_assert(sizeof(FoPalette) == 1024);
         for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
             auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
 
-            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan {}; })) {
                 uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 
-            (void)ImageImport::GetDurationMs(sequence);
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

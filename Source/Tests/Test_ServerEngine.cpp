@@ -1090,7 +1090,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1139,7 +1139,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1202,7 +1202,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);

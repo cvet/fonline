@@ -240,7 +240,7 @@ void CritterHexView::NextAnim()
 
         _curAnim->Frames = frames;
         _curAnim->FrameIndex = 0;
-        _curAnim->FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
+        _curAnim->FramesDuration = frames->GetDuration();
     }
 
     _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem(), false);
@@ -371,7 +371,7 @@ void CritterHexView::RefreshView(bool no_smooth)
 
                 _idle2dAnim.Frames = frames;
                 _idle2dAnim.FrameIndex = 0;
-                _idle2dAnim.FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
+                _idle2dAnim.FramesDuration = frames->GetDuration();
 
                 if (GetCondition() == CritterCondition::Dead) {
                     _idle2dAnim.FrameIndex = _idle2dAnim.Frames->GetFramesCount() - 1;
@@ -598,7 +598,7 @@ void CritterHexView::Process()
             frm_index = EvaluateMovementFrameIndex(cur_anim.Frames);
         }
         else {
-            float64_t phase = std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<float64_t>()) / cur_anim.FramesDuration.to_ms<float64_t>();
+            float64_t phase = std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(cur_anim.FramesDuration));
             phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
             frm_index = cur_anim.Frames->GetFrameIndexAtPhase(phase);
         }
@@ -699,7 +699,7 @@ void CritterHexView::ProcessMoving()
     auto hex_offset = GetHexOffset();
 
     if (moved && _engine->Settings->Network.MoveSyncTrace) {
-        _engine->TraceMoveSync("step", strex("cr={} own={} hex={},{} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, cur_hex.x, cur_hex.y, iround<int32_t>(moving->GetElapsedTime())).strv());
+        _engine->TraceMoveSync("step", strex("cr={} own={} hex={},{} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, cur_hex.x, cur_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
     }
 
     if (moved || hex_offset != progress.HexOffset) {
@@ -743,7 +743,7 @@ void CritterHexView::ProcessMoving()
         RefreshView();
 
         if (_engine->Settings->Network.MoveSyncTrace) {
-            _engine->TraceMoveSync("hold", strex("cr={} own={} on={} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, _movingHeld ? 1 : 0, iround<int32_t>(moving->GetElapsedTime())).strv());
+            _engine->TraceMoveSync("hold", strex("cr={} own={} on={} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, _movingHeld ? 1 : 0, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
         }
     }
 

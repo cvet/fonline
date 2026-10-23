@@ -161,7 +161,8 @@ static auto ReadPackagedBuildName() -> string
 
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
-    _sleep {sleep},
+    _sleep {std::chrono::milliseconds {std::max(sleep, 0)}},
+    _yieldAfterLoop {sleep == 0},
     _fixedFps {fixed_fps}
 {
 }
@@ -207,11 +208,11 @@ void FrameBalancer::EndLoop()
             }
         }
     }
-    else if (_sleep == 0) {
+    else if (_yieldAfterLoop) {
         std::this_thread::yield();
     }
-    else if (_sleep > 0) {
-        coarse_sleep(std::chrono::milliseconds(_sleep));
+    else if (_sleep > timespan {}) {
+        coarse_sleep(_sleep.value());
     }
 }
 

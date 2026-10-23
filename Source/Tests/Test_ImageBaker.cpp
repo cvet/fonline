@@ -816,7 +816,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     const auto& direction = resource.Directions[dir];
     BakedImageSequence result;
     result.SequenceSize = numeric_cast<uint16_t>(direction.Frames.size());
-    result.AnimTicks = GetDurationMs(resource.Animation.Sprite->Directions[dir]);
+    result.AnimTicks = numeric_cast<uint32_t>(GetSpriteDirDuration(resource.Animation.Sprite->Directions[dir]).milliseconds());
 
     for (size_t index = 0; index < direction.Frames.size(); index++) {
         const auto& slot = direction.Frames[index];
@@ -833,7 +833,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
         frame.Height = numeric_cast<uint16_t>(slot.Size.height);
         frame.NextX = numeric_cast<int16_t>(slot.NextOffset.x);
         frame.NextY = numeric_cast<int16_t>(slot.NextOffset.y);
-        frame.DurationMs = slot.DurationMs;
+        frame.DurationMs = numeric_cast<uint32_t>(slot.Duration.milliseconds());
 
         for (ucolor pixel : pixels.Pixels) {
             frame.Data.insert(frame.Data.end(), {pixel.comp.r, pixel.comp.g, pixel.comp.b, pixel.comp.a});
@@ -952,7 +952,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
                     }
                 }
 
-                ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
             }
 
             return collection;
@@ -1152,7 +1152,7 @@ TEST_CASE("ImageBaker")
                         }
                     }
 
-                    ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                 }
 
                 return collection;
@@ -1195,7 +1195,7 @@ TEST_CASE("ImageBaker")
         auto sprite = ReadSpriteResource(rig.Outputs.at("whole.fofrm"));
         REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
         REQUIRE(sprite.Animation.Sprite);
-        CHECK(GetDurationMs(sprite.Animation.Sprite->Directions[0]) == 1000);
+        CHECK(GetSpriteDirDuration(sprite.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {1000});
         CHECK(sprite.Directions.front().Frames.size() == 1);
         CHECK(sprite.Directions.front().Frames.front().Offset == ipos32 {100, 1});
     }
@@ -1259,7 +1259,7 @@ TEST_CASE("ImageBaker")
         standalone_baker.BakeFiles(standalone.GetAllSourceFiles(), "long.art");
         auto sprite = ReadSpriteResource(standalone.Outputs.at("long.art"));
         REQUIRE(sprite.Animation.Sprite);
-        CHECK(GetDurationMs(sprite.Animation.Sprite->Directions[0]) == 10001000);
+        CHECK(GetSpriteDirDuration(sprite.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {10001000});
         CHECK(sprite.Directions.at(0).Frames.size() == 10001);
     }
 #endif
@@ -1972,7 +1972,7 @@ TEST_CASE("ImageBaker")
                         }
                     }
 
-                    ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                 }
 
                 return collection;
@@ -2052,7 +2052,7 @@ TEST_CASE("ImageBaker")
                         }
                     }
 
-                    ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                 }
 
                 return collection;
@@ -2090,7 +2090,7 @@ TEST_CASE("ImageBaker")
                         direction.Frames.clear();
                     }
 
-                    ImageImport::SetFrameSequenceDuration(collection.Main, 100);
+                    ImageImport::SetFrameSequenceDuration(collection.Main, std::chrono::milliseconds {100});
 
                     return collection;
                 },
@@ -3188,7 +3188,7 @@ Frame = dir1.tga
                                 }
                             }
 
-                            ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                            ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                         }
 
                         return collection;
@@ -3201,7 +3201,7 @@ Frame = dir1.tga
                         };
                     }
 
-                    ImageImport::SetFrameSequenceDuration(collection.Main, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(collection.Main, std::chrono::milliseconds {duration_ms});
 
                     return collection;
                 },
@@ -3341,7 +3341,7 @@ Frame = one.toy
                         }
                     }
 
-                    ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                 }
 
                 return collection;
@@ -3465,7 +3465,7 @@ Frame = one.toy
         AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
 
         SpriteInfo info {
-            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}, .DurationMs = 100}}}},
+            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}, .Duration = std::chrono::milliseconds {100}}}}},
         };
 
         rig.AddBakedFile("SpriteInfo/TestPack.foinfo",
@@ -3750,7 +3750,7 @@ TEST_CASE("FofrmResizing")
                         }
                     }
 
-                    ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
                 }
 
                 return collection;
@@ -3958,7 +3958,7 @@ TEST_CASE("FofrmSourceCollection")
                     }
                 }
 
-                ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
             }
 
             return collection;
@@ -3968,7 +3968,7 @@ TEST_CASE("FofrmSourceCollection")
     auto resource = ReadSpriteResource(rig.Outputs.at("gfx/root.fofrm"));
     REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
     REQUIRE(resource.Animation.Sprite.has_value());
-    CHECK(GetDurationMs(resource.Animation.Sprite->Directions[0]) == 200);
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {200});
 
     for (size_t direction = 0; direction < resource.Directions.size(); direction++) {
         REQUIRE(resource.Directions[direction].Frames.size() == 2);
@@ -4028,7 +4028,7 @@ TEST_CASE("FofrmFlattenedDefaultTimingUsesFinalFrames")
                     }
                 }
 
-                ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
             }
 
             return collection;
@@ -4037,7 +4037,7 @@ TEST_CASE("FofrmFlattenedDefaultTimingUsesFinalFrames")
     baker.BakeFiles(rig.GetAllSourceFiles(), "");
     auto resource = ReadSpriteResource(rig.Outputs.at("root.fofrm"));
     REQUIRE(resource.Animation.Sprite.has_value());
-    CHECK(GetDurationMs(resource.Animation.Sprite->Directions[0]) == 200);
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {200});
     CHECK(resource.Directions[0].Frames[0].Offset == ipos32 {3, 4});
 }
 
@@ -4061,11 +4061,11 @@ TEST_CASE("FrmPaletteTimelineIsLocalToItsDirection")
     auto resource = ReadSpriteResource(rig.Outputs.at("Root.fofrm"));
     REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
     CHECK(resource.Directions[0].Frames.size() == 4);
-    CHECK(GetDurationMs(resource.Animation.Sprite->Directions[0]) == 800);
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {800});
 
     for (size_t direction = 1; direction < resource.Directions.size(); direction++) {
         CHECK(resource.Directions[direction].Frames.size() == 1);
-        CHECK(GetDurationMs(resource.Animation.Sprite->Directions[direction]) == 100);
+        CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[direction]) == std::chrono::milliseconds {100});
     }
 }
 #endif
@@ -4182,7 +4182,7 @@ TEST_CASE("FofrmDataSurvivesMeshOptimization")
             ImageImport::FrameCollection collection;
             auto& frame = collection.Main.Frames.emplace_back();
             frame.Size = {64, 64};
-            frame.DurationMs = 100;
+            frame.Duration = std::chrono::milliseconds {100};
 
             for (int32_t y = 0; y < 64; y++) {
                 for (int32_t x = 0; x < 64; x++) {

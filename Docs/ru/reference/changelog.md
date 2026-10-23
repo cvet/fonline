@@ -7,10 +7,21 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"474cca1ff863dda8256e1f09c3fda2186a1813750e7b11cba95a02dabdf7aceb"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7c94f3b8fb4b985678fd930a319efb8d1e682539a55b3407d6152bd7c230a79a"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Интервалы контроллера/инстанса модели и фасада частиц используют timespan; секунды
+  Ozz/backend/GPU остаются на границах. Периоды UDP типизированы; отчёт bake переводит время в ms при записи JSON.
+
+- Интервалы/look-ahead MovingContext и FogLayer.TransitionDuration используют timespan.
+  Пересоберите и выпеките все роли для runtime 0.0.77; сетевые единицы и сохранения прежние.
+
+- Дробные преобразования сохраняют точность, конструкторы AS проверяют переполнение, Delay принимает timespan.
+  DurationMs/GetDurationMs кадров заменены на Duration/GetDuration (timespan); файлы прежние.
+
+- `SpriteSheet`: `GetWholeTicks` → `GetDuration` (`timespan`); пересоберите native-код. Доли мс сохраняются; файлы прежние.
 
 - Удалены `TextureAnimation` и native API проигрывания текстур. Сохраняются `Texture`,
   `Parent`, FOFRM `Size` и UV полного холста; многокадровые текстуры отвергаются.

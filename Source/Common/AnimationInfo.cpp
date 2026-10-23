@@ -69,20 +69,29 @@ static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, s
     return parsed_values.front();
 }
 
-auto GetDurationMs(const SpriteDirInfo& direction) -> uint32_t
+auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan
 {
     FO_VERIFY_AND_THROW(!direction.Frames.empty() && direction.Frames.size() <= 65535, "Sprite direction requires 1..65535 frames", direction.Frames.size());
 
-    uint64_t total = 0;
+    timespan total {};
+    const timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     for (const auto& frame : direction.Frames) {
-        FO_VERIFY_AND_THROW(frame.DurationMs > 0, "Sprite frame duration must be positive");
-        total += frame.DurationMs;
+        FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Sprite frame duration must be positive");
+        FO_VERIFY_AND_THROW(frame.Duration <= maximum - total, "Sprite direction duration exceeds uint32 milliseconds");
+        total += frame.Duration;
     }
 
-    FO_VERIFY_AND_THROW(total <= std::numeric_limits<uint32_t>::max(), "Sprite direction duration exceeds uint32 milliseconds", total);
+    return total;
+}
 
-    return numeric_cast<uint32_t>(total);
+auto GetSpriteDurationMilliseconds(timespan duration) -> uint32_t
+{
+    const int64_t milliseconds = duration.milliseconds();
+    FO_VERIFY_AND_THROW(milliseconds > 0 && milliseconds <= std::numeric_limits<uint32_t>::max(), "Sprite duration must fit positive uint32 milliseconds", duration);
+    FO_VERIFY_AND_THROW(duration == timespan {std::chrono::milliseconds {milliseconds}}, "Sprite duration must contain whole milliseconds", duration);
+
+    return numeric_cast<uint32_t>(milliseconds);
 }
 
 static auto ParseSpriteInfoDurations(const map<string_view, string_view>& values, string_view file_name, string_view section_name) -> vector<uint32_t>
@@ -158,7 +167,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
                 frame.Offset = {xs[index], ys[index]};
                 frame.Size = {widths[index], heights[index]};
                 frame.NextOffset = {next_xs[index], next_ys[index]};
-                frame.DurationMs = durations[index];
+                frame.Duration = std::chrono::milliseconds {durations[index]};
                 FO_VERIFY_AND_THROW(frame.Size.width > 0 && frame.Size.width <= 65535 && frame.Size.height > 0 && frame.Size.height <= 65535, "Sprite info frame dimensions must be positive uint16 values", file_name, section_name, index, frame.Size);
                 FO_VERIFY_AND_THROW(frame.NextOffset.x >= -32768 && frame.NextOffset.x <= 32767 && frame.NextOffset.y >= -32768 && frame.NextOffset.y <= 32767, "Sprite info movement must fit int16", file_name, section_name, index);
 
@@ -172,7 +181,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
                 }
             }
 
-            (void)GetDurationMs(direction);
+            (void)GetSpriteDirDuration(direction);
         }
 
         result.emplace_back(std::move(entry));
@@ -211,7 +220,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
         };
 
         for (const auto& direction : entry.Info.Directions) {
-            (void)GetDurationMs(direction);
+            (void)GetSpriteDirDuration(direction);
             append(counts, direction.Frames.size());
 
             for (size_t index = 0; index < direction.Frames.size(); index++) {
@@ -231,7 +240,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
                 append(heights, frame.Size.height);
                 append(next_xs, frame.NextOffset.x);
                 append(next_ys, frame.NextOffset.y);
-                append(durations, frame.DurationMs);
+                append(durations, GetSpriteDurationMilliseconds(frame.Duration));
             }
         }
 

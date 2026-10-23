@@ -47,10 +47,10 @@ static void ConfigureTrack(ModelAnimationController& controller, int32_t track, 
 {
     controller.SetTrackAnimation(track, animation, allowed_bones);
     controller.SetTrackEnable(track, true);
-    controller.SetTrackPosition(track, position);
+    controller.SetTrackPosition(track, timespan {iround<int64_t>(numeric_cast<float64_t>(position) * 1e9)});
     controller.SetTrackSpeed(track, speed);
-    controller.AddEventWeight(track, weight, 0.0f, 0.0f);
-    controller.AdvanceTimeline(0.0f);
+    controller.AddEventWeight(track, weight, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {0}});
+    controller.AdvanceTimeline(timespan {std::chrono::milliseconds {0}});
 }
 
 #endif
@@ -61,30 +61,82 @@ TEST_CASE("Model animation controller copies share immutable metadata and own ti
     hash_storage hashes;
     hstring bone = hashes.to_hashed_string("Bone");
     ModelAnimationController prototype {1};
-    int32_t first_index = prototype.RegisterAnimation(3, 2.0f, false, {bone});
-    int32_t second_index = prototype.RegisterAnimation(7, 4.0f, true, {bone});
+    int32_t first_index = prototype.RegisterAnimation(3, timespan {std::chrono::seconds {2}}, false, {bone});
+    int32_t second_index = prototype.RegisterAnimation(7, timespan {std::chrono::seconds {4}}, true, {bone});
 
     CHECK(prototype.GetAnimationsCount() == 2);
-    CHECK(prototype.GetAnimDuration(first_index) == Catch::Approx(2.0f));
-    CHECK(prototype.GetAnimDuration(second_index) == Catch::Approx(4.0f));
+    CHECK(prototype.GetAnimDuration(first_index).to_sec<float64_t>() == Catch::Approx(2.0f));
+    CHECK(prototype.GetAnimDuration(second_index).to_sec<float64_t>() == Catch::Approx(4.0f));
 
     ModelAnimationController first_instance = prototype.Copy();
     ModelAnimationController second_instance = prototype.Copy();
     ConfigureTrack(first_instance, 0, first_index, 0.25f, 1.0f, 1.0f);
     ConfigureTrack(second_instance, 0, second_index, 1.0f, 2.0f, 0.5f);
-    first_instance.AdvanceTimeline(0.5f);
-    second_instance.AdvanceTimeline(1.0f);
+    first_instance.AdvanceTimeline(timespan {std::chrono::milliseconds {500}});
+    second_instance.AdvanceTimeline(timespan {std::chrono::milliseconds {1000}});
 
     ModelAnimationController::TrackState first_track = first_instance.GetTrackState(0);
     ModelAnimationController::TrackState second_track = second_instance.GetTrackState(0);
-    CHECK(first_track.Position == Catch::Approx(0.75f));
+    CHECK(first_track.Position.to_sec<float64_t>() == Catch::Approx(0.75f));
     CHECK(first_track.ClipIndex == 3);
     CHECK_FALSE(first_track.Reversed);
-    CHECK(second_track.Position == Catch::Approx(3.0f));
+    CHECK(second_track.Position.to_sec<float64_t>() == Catch::Approx(3.0f));
     CHECK(second_track.ClipIndex == 7);
     CHECK(second_track.Reversed);
     CHECK(first_instance.IsTrackBoneEnabled(0, bone));
     CHECK(second_instance.IsTrackBoneEnabled(0, bone));
+#endif
+}
+
+TEST_CASE("Model animation timelines retain nanoseconds and reject partial advancement")
+{
+#if FO_ENABLE_3D
+    ModelAnimationController controller {2};
+    controller.SetTrackEnable(0, true);
+    controller.SetTrackEnable(1, true);
+    controller.SetTrackSpeed(0, 1.0f);
+    controller.SetTrackSpeed(1, 1.0f);
+    controller.SetTrackPosition(0, timespan {std::chrono::hours {24}});
+    controller.SetTrackPosition(1, timespan {std::numeric_limits<int64_t>::max()});
+    controller.AddEventEnable(0, false, timespan {2});
+
+    CHECK_THROWS(controller.AdvanceTimeline(timespan {1}));
+    CHECK(controller.GetTrackPosition(0) == timespan {std::chrono::hours {24}});
+    CHECK(controller.GetTrackPosition(1) == timespan {std::numeric_limits<int64_t>::max()});
+    CHECK(controller.GetTrackEnable(0));
+
+    controller.SetTrackPosition(1, {});
+    controller.AdvanceTimeline(timespan {1});
+    CHECK(controller.GetTrackEnable(0));
+    CHECK(controller.GetTrackPosition(0) == timespan {std::chrono::hours {24}} + timespan {1});
+    controller.AdvanceTimeline(timespan {1});
+    CHECK_FALSE(controller.GetTrackEnable(0));
+    CHECK(controller.GetTrackPosition(0) == timespan {std::chrono::hours {24}} + timespan {1});
+
+    CHECK(ScaleModelAnimationTime(timespan {std::numeric_limits<int64_t>::max()}, 1.0) == timespan {std::numeric_limits<int64_t>::max()});
+    CHECK_THROWS(ScaleModelAnimationTime(timespan {std::numeric_limits<int64_t>::max()}, 2.0));
+    CHECK_THROWS(controller.RegisterAnimation(0, {}, false, {}));
+#endif
+}
+
+TEST_CASE("Model animation callback phases preserve endpoint-cycle semantics")
+{
+#if FO_ENABLE_3D
+    CHECK(IsModelAnimationCallbackReached(timespan {4}, timespan {5}, timespan {10}, 0.5f));
+    CHECK_FALSE(IsModelAnimationCallbackReached(timespan {5}, timespan {6}, timespan {10}, 0.5f));
+    CHECK_FALSE(IsModelAnimationCallbackReached(timespan {6}, timespan {24}, timespan {10}, 0.5f));
+    CHECK(IsModelAnimationCallbackReached(timespan {4}, timespan {16}, timespan {10}, 0.5f));
+    CHECK(IsModelAnimationCallbackReached(timespan {-6}, timespan {-5}, timespan {10}, 0.5f));
+    CHECK_FALSE(IsModelAnimationCallbackReached(timespan {6}, timespan {4}, timespan {10}, 0.5f));
+    CHECK_FALSE(IsModelAnimationCallbackReached(timespan {5}, timespan {5}, timespan {10}, 0.5f));
+    CHECK(IsModelAnimationCallbackReached(timespan {9}, timespan {10}, timespan {10}, 0.0f));
+    CHECK(IsModelAnimationCallbackReached(timespan {9}, timespan {10}, timespan {10}, 1.0f));
+
+    constexpr int64_t maximum = std::numeric_limits<int64_t>::max();
+    CHECK(IsModelAnimationCallbackReached(timespan {maximum - 1}, timespan {maximum}, timespan {maximum}, 1.0f));
+    CHECK(IsModelAnimationCallbackReached(timespan {-1}, timespan {0}, timespan {maximum}, 0.0f));
+    CHECK_FALSE(IsModelAnimationCallbackReached(timespan {std::numeric_limits<int64_t>::min()}, timespan {maximum}, timespan {maximum}, 0.5f));
+    CHECK(IsModelAnimationCallbackReached(timespan {std::numeric_limits<int64_t>::min()}, timespan {maximum / 2 + 1}, timespan {maximum}, 0.5f));
 #endif
 }
 
@@ -94,33 +146,33 @@ TEST_CASE("Model animation controller timeline resolves events for runtime track
     hash_storage hashes;
     hstring bone = hashes.to_hashed_string("Bone");
     ModelAnimationController controller {1};
-    int32_t animation_index = controller.RegisterAnimation(5, 2.0f, true, {bone});
+    int32_t animation_index = controller.RegisterAnimation(5, timespan {std::chrono::seconds {2}}, true, {bone});
     controller.SetTrackAnimation(0, animation_index, nullptr);
     controller.SetTrackEnable(0, true);
     controller.SetTrackSpeed(0, 1.0f);
-    controller.AddEventSpeed(0, 3.0f, 0.0f, 1.0f);
-    controller.AddEventWeight(0, 1.0f, 0.0f, 1.0f);
+    controller.AddEventSpeed(0, 3.0f, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {1000}});
+    controller.AddEventWeight(0, 1.0f, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {1000}});
 
-    controller.AdvanceTimeline(0.5f);
+    controller.AdvanceTimeline(timespan {std::chrono::milliseconds {500}});
     ModelAnimationController::TrackState track = controller.GetTrackState(0);
     CHECK(track.Enabled);
     CHECK(track.Speed == Catch::Approx(2.0f));
     CHECK(track.Weight == Catch::Approx(0.5f));
-    CHECK(track.Position == Catch::Approx(1.0f));
+    CHECK(track.Position.to_sec<float64_t>() == Catch::Approx(1.0f));
     CHECK(track.ClipIndex == 5);
     CHECK(track.Reversed);
 
-    controller.AdvanceTimeline(0.5f);
+    controller.AdvanceTimeline(timespan {std::chrono::milliseconds {500}});
     track = controller.GetTrackState(0);
     CHECK(track.Speed == Catch::Approx(3.0f));
     CHECK(track.Weight == Catch::Approx(1.0f));
-    CHECK(track.Position == Catch::Approx(2.5f));
+    CHECK(track.Position.to_sec<float64_t>() == Catch::Approx(2.5f));
 
     controller.ResetEvents();
-    controller.AddEventEnable(0, false, 0.25f);
-    controller.AdvanceTimeline(0.25f);
+    controller.AddEventEnable(0, false, timespan {std::chrono::milliseconds {250}});
+    controller.AdvanceTimeline(timespan {std::chrono::milliseconds {250}});
     CHECK_FALSE(controller.GetTrackEnable(0));
-    CHECK(controller.GetTrackPosition(0) == Catch::Approx(2.5f));
+    CHECK(controller.GetTrackPosition(0).to_sec<float64_t>() == Catch::Approx(2.5f));
 #endif
 }
 
@@ -132,27 +184,27 @@ TEST_CASE("Model animation track bindings preserve allowed masks and transition 
     hstring other = hashes.to_hashed_string("Other");
     hstring missing = hashes.to_hashed_string("Missing");
     ModelAnimationController controller {2};
-    int32_t first_index = controller.RegisterAnimation(11, 2.0f, true, {bone, other});
-    int32_t second_index = controller.RegisterAnimation(13, 2.0f, false, {bone, other});
+    int32_t first_index = controller.RegisterAnimation(11, timespan {std::chrono::seconds {2}}, true, {bone, other});
+    int32_t second_index = controller.RegisterAnimation(13, timespan {std::chrono::seconds {2}}, false, {bone, other});
 
     unordered_set<hstring> allowed_bones {bone};
     controller.SetTrackAnimation(0, first_index, &allowed_bones);
     allowed_bones.clear();
     allowed_bones.emplace(other);
     controller.SetTrackEnable(0, true);
-    controller.SetTrackPosition(0, 0.75f);
+    controller.SetTrackPosition(0, timespan {std::chrono::milliseconds {750}});
     controller.SetTrackSpeed(0, 1.5f);
-    controller.AddEventWeight(0, 0.75f, 0.0f, 0.0f);
+    controller.AddEventWeight(0, 0.75f, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {0}});
     controller.SetTrackAnimation(1, second_index, nullptr);
     controller.SetTrackEnable(1, true);
-    controller.AddEventWeight(1, 1.0f, 0.0f, 0.0f);
-    controller.AdvanceTimeline(0.0f);
+    controller.AddEventWeight(1, 1.0f, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {0}});
+    controller.AdvanceTimeline(timespan {std::chrono::milliseconds {0}});
 
     ModelAnimationController::TrackState first_track = controller.GetTrackState(0);
     CHECK(first_track.Enabled);
     CHECK(first_track.Speed == Catch::Approx(1.5f));
     CHECK(first_track.Weight == Catch::Approx(0.75f));
-    CHECK(first_track.Position == Catch::Approx(0.75f));
+    CHECK(first_track.Position.to_sec<float64_t>() == Catch::Approx(0.75f));
     CHECK(first_track.ClipIndex == 11);
     CHECK(first_track.Reversed);
     CHECK(controller.IsTrackBoneEnabled(0, bone));
@@ -199,7 +251,7 @@ TEST_CASE("Model animation bone masks use exact runtime binding names")
     CHECK_FALSE(renamed_root_bindings.contains(absent));
 
     ModelAnimationController renamed_root_controller {1};
-    int32_t renamed_root_animation = renamed_root_controller.RegisterAnimation(17, 2.0f, false, std::move(renamed_root_bindings));
+    int32_t renamed_root_animation = renamed_root_controller.RegisterAnimation(17, timespan {std::chrono::seconds {2}}, false, std::move(renamed_root_bindings));
     renamed_root_controller.SetTrackAnimation(0, renamed_root_animation, nullptr);
     CHECK_FALSE(renamed_root_controller.IsTrackBoneEnabled(0, runtime_root));
     CHECK_FALSE(renamed_root_controller.IsTrackBoneEnabled(0, source_root));
@@ -210,7 +262,7 @@ TEST_CASE("Model animation bone masks use exact runtime binding names")
     vector<hstring> matching_runtime_names {source_root};
     vector<uint8_t> matching_presence {1};
     ModelAnimationController matching_root_controller {1};
-    int32_t matching_root_animation = matching_root_controller.RegisterAnimation(19, 2.0f, false, BuildModelAnimationBoundBones(const_span<hstring> {matching_runtime_names}, const_span<hstring> {matching_runtime_names}, const_span<uint8_t> {matching_presence}, "matching root test"));
+    int32_t matching_root_animation = matching_root_controller.RegisterAnimation(19, timespan {std::chrono::seconds {2}}, false, BuildModelAnimationBoundBones(const_span<hstring> {matching_runtime_names}, const_span<hstring> {matching_runtime_names}, const_span<uint8_t> {matching_presence}, "matching root test"));
     matching_root_controller.SetTrackAnimation(0, matching_root_animation, nullptr);
     CHECK(matching_root_controller.IsTrackBoneEnabled(0, source_root));
     CHECK_FALSE(matching_root_controller.IsTrackBoneEnabled(0, runtime_root));

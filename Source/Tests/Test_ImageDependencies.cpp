@@ -269,7 +269,7 @@ TEST_CASE("ImageDependencySnapshots")
                     }
                 }
 
-                ImageImport::SetFrameSequenceDuration(frames, duration_ms);
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
             }
 
             return collection;

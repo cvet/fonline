@@ -78,10 +78,10 @@ namespace ImageBakerTil
 
         FrameCollection collection;
         uint16_t sequence_size {};
-        uint32_t anim_ticks {};
+        uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = numeric_cast<uint16_t>(frames_count);
-        anim_ticks = numeric_cast<uint32_t>(1000 / 10 * frames_count);
+        duration_ms = numeric_cast<uint32_t>(1000 / 10 * frames_count);
 
         collection.Main.Frames.resize(sequence_size);
 
@@ -100,12 +100,12 @@ namespace ImageBakerTil
         for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
             auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
 
-            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.DurationMs == 0; })) {
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan {}; })) {
                 uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
-                ImageImport::SetFrameSequenceDuration(sequence, anim_ticks == 0 ? count * 100 : std::max(anim_ticks, count));
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 
-            (void)ImageImport::GetDurationMs(sequence);
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

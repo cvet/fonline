@@ -96,10 +96,12 @@ void ModelInstance::StartMeshGeneration()
 {
     if (!_allowMeshGeneration) {
         _allowMeshGeneration = true;
+
         auto restore_generation = scope_fail([this]() noexcept {
             _allowMeshGeneration = false;
             InvalidateCombinedMeshes();
         });
+
         GenerateCombinedMeshes();
     }
 }
@@ -708,9 +710,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->ResetEvents();
 
         bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
-        float32_t smooth_time = no_smooth ? 0.0f : _modelMngr->_moveTransitionTime;
-        float32_t anim_start_time = std::min(_animDuration * ntime, _animDuration - 0.001f);
-        float32_t anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? 0.0f : _animDuration - anim_start_time;
+        timespan smooth_time = no_smooth ? timespan {} : _modelMngr->_moveTransitionTime;
+        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::milliseconds {1}}, timespan {}));
+        timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan {} : _animDuration - anim_start_time;
 
         // Disable current track
         if (no_smooth) {
@@ -718,8 +720,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
         else {
             _bodyAnimController->AddEventEnable(_curTrack, false, smooth_time);
-            _bodyAnimController->AddEventSpeed(_curTrack, 0.0f, 0.0f, smooth_time);
-            _bodyAnimController->AddEventWeight(_curTrack, 0.0f, 0.0f, smooth_time);
+            _bodyAnimController->AddEventSpeed(_curTrack, 0.0f, {}, smooth_time);
+            _bodyAnimController->AddEventWeight(_curTrack, 0.0f, {}, smooth_time);
         }
 
         // Enable the new track
@@ -729,17 +731,17 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
         _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
-        _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, 0.0f);
+        _bodyAnimController->AddEventSpeed(new_track, 1.0f, {}, {});
 
         if (is_enum_set(flags, ModelAnimFlags::PlayOnce) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init)) {
-            _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, 0.0f);
+            _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, {});
         }
 
-        _bodyAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
-        _bodyAnimController->AdvanceTimeline(0.0f);
+        _bodyAnimController->AddEventWeight(new_track, 1.0f, {}, smooth_time);
+        _bodyAnimController->AdvanceTimeline({});
 
         if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
-            _moveAnimController->AdvanceTimeline(0.0f);
+            _moveAnimController->AdvanceTimeline({});
         }
 
         // Force redraw
@@ -891,7 +893,7 @@ void ModelInstance::RefreshMoveAnimation()
     _frameLayoutDirty = true;
     _forceDraw = true;
 
-    constexpr float32_t smooth_time = 0.001f;
+    constexpr timespan smooth_time {std::chrono::milliseconds {1}};
 
     if (anim_index != -1) {
         int32_t new_track = _curMoveTrack == 0 ? 1 : 0;
@@ -899,19 +901,19 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->ResetEvents();
 
         _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
-        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
-        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, {}, smooth_time);
+        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, {}, smooth_time);
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
-        _moveAnimController->SetTrackPosition(new_track, 0.0f);
+        _moveAnimController->SetTrackPosition(new_track, {});
 
-        _moveAnimController->AddEventSpeed(new_track, speed, 0.0f, smooth_time);
-        _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventSpeed(new_track, speed, {}, smooth_time);
+        _moveAnimController->AddEventWeight(new_track, 1.0f, {}, smooth_time);
 
         if (_turnAnimPlaying) {
-            float32_t anim_duration = _moveAnimController->GetAnimDuration(anim_index);
-            _moveAnimController->AddEventEnable(new_track, false, anim_duration / speed);
+            timespan anim_duration = _moveAnimController->GetAnimDuration(anim_index);
+            _moveAnimController->AddEventEnable(new_track, false, ScaleModelAnimationTime(anim_duration, 1.0 / speed));
         }
 
         _curMoveTrack = new_track;
@@ -920,8 +922,8 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->ResetEvents();
 
         _moveAnimController->AddEventEnable(_curMoveTrack, false, smooth_time);
-        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, 0.0f, smooth_time);
-        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventSpeed(_curMoveTrack, 0.0f, {}, smooth_time);
+        _moveAnimController->AddEventWeight(_curMoveTrack, 0.0f, {}, smooth_time);
     }
 }
 
@@ -1431,12 +1433,12 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
         input.ClipIndex = state.ClipIndex;
         input.Enabled = active && state.Enabled;
         input.Reversed = state.Reversed;
-        input.Position = state.Position;
+        input.Position = state.Position.to_sec<float32_t>();
         input.Weight = state.Weight;
     }
 }
 
-void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
+void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale)
 {
     FO_TRACE_ZONE(Model);
 
@@ -1449,20 +1451,20 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     // Rotate body
     if (!is_float_equal(_moveDirAngle, _targetMoveDirAngle)) {
         float32_t diff = GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
-        _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
+        _moveDirAngle += std::clamp(diff * elapsed.to_sec<float32_t>() * 10.0f, -std::abs(diff), std::abs(diff));
     }
 
     // Advance animation time
-    float32_t prev_track_pos = 0.0f;
-    float32_t new_track_pos = 0.0f;
+    timespan prev_track_pos {};
+    timespan new_track_pos {};
 
-    if (_bodyAnimController && elapsed >= 0.0f) {
+    if (_bodyAnimController && elapsed >= timespan {}) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
-        _bodyAnimController->AdvanceTimeline(elapsed * GetSpeed());
+        _bodyAnimController->AdvanceTimeline(ScaleModelAnimationTime(elapsed, GetSpeed()));
 
         if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
-            _moveAnimController->AdvanceTimeline(elapsed * GetMovementSpeed());
+            _moveAnimController->AdvanceTimeline(ScaleModelAnimationTime(elapsed, GetMovementSpeed()));
 
             if (_turnAnimPlaying && !_moveAnimController->GetTrackEnable(_curMoveTrack)) {
                 _turnAnimPlaying = false;
@@ -1472,8 +1474,8 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
         new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
 
-        if (_animDuration > 0.0f) {
-            _animPosProc = new_track_pos / _animDuration;
+        if (_animDuration > timespan {}) {
+            _animPosProc = new_track_pos.div<float32_t>(_animDuration);
 
             if (_animPosProc >= 1.0f) {
                 _animPosProc = std::fmod(_animPosProc, 1.0f);
@@ -1482,7 +1484,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
             _animPosTime = new_track_pos;
 
             if (_animPosTime >= _animDuration) {
-                _animPosTime = std::fmod(_animPosTime, _animDuration);
+                _animPosTime = timespan {_animPosTime.nanoseconds() % _animDuration.nanoseconds()};
             }
         }
     }
@@ -1555,7 +1557,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
         // Model-attached effects have no update loop of their own, so they advance on the pose's logical delta;
         // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(elapsed, 0.0f));
+        model_particle.Particle->Update(std::max(elapsed, timespan {}));
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
@@ -1572,13 +1574,10 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 
     // Animation callbacks
-    if (_bodyAnimController && elapsed >= 0.0f && _animDuration > 0.0f) {
+    if (_bodyAnimController && elapsed >= timespan {} && _animDuration > timespan {}) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                float32_t fire_track_pos1 = floorf(prev_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
-                float32_t fire_track_pos2 = floorf(new_track_pos / _animDuration) * _animDuration + callback.NormalizedTime * _animDuration;
-
-                if ((prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1) || (prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2)) {
+                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime)) {
                     callback.Callback();
                 }
             }
@@ -1623,7 +1622,7 @@ void ModelInstance::BuildRestWorldMatrices()
 
 auto ModelInstance::GetAnimDuration() const -> timespan
 {
-    return std::chrono::milliseconds(iround<int32_t>(_animDuration * 1000.0f));
+    return _animDuration;
 }
 
 auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan
@@ -1639,13 +1638,13 @@ auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAn
         return {};
     }
 
-    float32_t duration = _bodyAnimController->GetAnimDuration(anim_index);
+    timespan duration = _bodyAnimController->GetAnimDuration(anim_index);
 
     if (speed > 0.0f) {
-        duration /= speed;
+        duration = ScaleModelAnimationTime(duration, 1.0 / speed);
     }
 
-    return std::chrono::milliseconds(iround<int32_t>(duration * 1000.0f));
+    return duration;
 }
 
 void ModelInstance::GenerateCombinedMeshes()
@@ -2442,7 +2441,7 @@ auto ModelInstance::MakeRootTransformation(ipos32 pos, float32_t scale, bool dir
 
 auto ModelInstance::NeedDraw() const -> bool
 {
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_modelMngr->_animUpdateThreshold);
+    return GetTime() - _lastDrawTime >= _modelMngr->_animUpdateThreshold;
 }
 
 void ModelInstance::PoseSpriteFrame(bool advance_animation)
@@ -2490,7 +2489,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
 
     // The atlas frame-sizing loop re-poses the model several times to converge, and those re-poses must not step the
     // animation, so time advances once per displayed frame
-    float32_t dt = 0.0f;
+    timespan elapsed {};
 
     if (advance_animation) {
         nanotime time = GetTime();
@@ -2498,7 +2497,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
         // Full-resolution delta, because truncating to whole milliseconds drops sub-millisecond frames and freezes
         // the animation on an uncapped high-frame-rate viewer
         if (!_resetDrawTimeOnNextAnimationAdvance) {
-            dt = numeric_cast<float32_t>((time - _lastDrawTime).nanoseconds()) * 1e-9f;
+            elapsed = time - _lastDrawTime;
         }
 
         _resetDrawTimeOnNextAnimationAdvance = false;
@@ -2508,7 +2507,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     _forceDraw = false;
 
     // Move animation
-    ProcessAnimation(dt, _framePivot, scale);
+    ProcessAnimation(elapsed, _framePivot, scale);
 
     _spriteBoundsPoseReady = !_directSceneDraw;
 }
@@ -2596,7 +2595,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         auto& anim_buf = effect->ModelAnimBuf = RenderEffect::ModelAnimBuffer();
 
         anim_buf->AnimNormalizedTime[0] = _animPosProc;
-        anim_buf->AnimAbsoluteTime[0] = _animPosTime;
+        anim_buf->AnimAbsoluteTime[0] = _animPosTime.to_sec<float32_t>();
     }
 
     effect->CullMode = _disableCulling ? CullModeType::None : CullModeType::Back;

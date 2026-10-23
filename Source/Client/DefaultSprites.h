@@ -83,8 +83,8 @@ class SpriteSheet final : public Sprite
     friend class ResourceManager;
 
 public:
-    SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int64_t ticks, int32_t dirs);
-    SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<uint32_t>>& timelines);
+    SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs);
+    SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;
@@ -103,13 +103,13 @@ public:
     [[nodiscard]] auto GetDirection(mdir dir) -> nptr<SpriteSheet>;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32_t override;
-    [[nodiscard]] auto GetWholeTicks() const noexcept -> uint32_t { return GetCurrentDirection()->_wholeTicks; }
+    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return GetCurrentDirection()->_duration; }
     [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return GetCurrentDirection()->_framesCount; }
     [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
     [[nodiscard]] auto GetActionAnimation() const noexcept -> CritterActionAnim { return _actionAnim; }
     [[nodiscard]] auto GetDirectionCount() const noexcept -> int32_t { return _dirCount; }
     [[nodiscard]] auto GetSpriteOffset() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprOffset; }
-    [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<uint32_t> { return GetCurrentDirection()->_frameDurations; }
+    [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
@@ -123,16 +123,16 @@ public:
 
 private:
     void RefreshParameters();
-    void SetFrameTimeline(vector<uint32_t> durations);
+    void SetFrameTimeline(vector<timespan> durations);
     auto GetCurrentDirection() const noexcept -> ptr<const SpriteSheet>;
     auto GetCurrentDirection() noexcept -> ptr<SpriteSheet>;
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};
     int32_t _framesCount {};
-    uint32_t _wholeTicks {};
-    vector<uint32_t> _frameDurations {};
-    vector<uint32_t> _frameEnds {};
+    timespan _duration {};
+    vector<timespan> _frameDurations {};
+    vector<timespan> _frameEnds {};
     float64_t _phase {};
     CritterStateAnim _stateAnim {};
     CritterActionAnim _actionAnim {};

@@ -25,6 +25,9 @@ loading, atlases and caches. `.fo3d` animation/durations belong to
 
 ## Scope and authority
 
+MovingContext route/elapsed/lease intervals and look-ahead use timespan; wire ms
+and distance units stay unchanged. Speed rebasing retains whole-ms offset rounding.
+
 The owning sources are:
 
 - `Source/Tools/ImageImport.*` for `FrameShot::Motion` and the shared loader context;

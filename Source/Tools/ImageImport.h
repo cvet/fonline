@@ -49,7 +49,7 @@ namespace ImageImport
         isize32 Size {};
         ipos32 Offset {};
         ipos32 Motion {};
-        uint32_t DurationMs {};
+        timespan Duration {};
         vector<uint8_t> Data {};
         bool Shared {};
         uint16_t SharedIndex {};
@@ -95,9 +95,9 @@ namespace ImageImport
     };
 
     void CheckEnabled(string_view fname);
-    void SetFrameSequenceDuration(FrameSequence& sequence, uint32_t duration_ms);
+    void SetFrameSequenceDuration(FrameSequence& sequence, timespan duration);
     auto GetDirectionCount(const FrameCollection& collection) -> uint8_t;
-    auto GetDurationMs(const FrameSequence& sequence) -> uint32_t;
+    auto GetDuration(const FrameSequence& sequence) -> timespan;
 }
 
 FO_END_NAMESPACE

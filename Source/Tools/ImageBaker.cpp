@@ -354,7 +354,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
     for (uint8_t dir = 0; dir < dirs; dir++) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
         SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[dir];
-        uint32_t duration = ImageImport::GetDurationMs(sequence);
+        uint32_t duration = GetSpriteDurationMilliseconds(ImageImport::GetDuration(sequence));
         writer.write<uint16_t>(numeric_cast<uint16_t>(sequence.Frames.size()));
         writer.write<uint32_t>(duration);
         direction_info.Frames.resize(sequence.Frames.size());
@@ -505,7 +505,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                     });
                 }
 
-                writer.write<uint32_t>(shot.DurationMs);
+                writer.write<uint32_t>(GetSpriteDurationMilliseconds(shot.Duration));
                 writer.write<int32_t>(frame_offset.x);
                 writer.write<int32_t>(frame_offset.y);
                 writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));
@@ -516,7 +516,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 frame_info.Offset = frame_offset;
                 frame_info.Size = cropped_size;
                 frame_info.NextOffset = shot.Motion;
-                frame_info.DurationMs = shot.DurationMs;
+                frame_info.Duration = shot.Duration;
 
                 if (!bake_shot->Data.empty()) {
                     writer.write_bytes({bake_shot->Data.data(), bake_shot->Data.size()});
@@ -553,8 +553,8 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 };
 
                 frame_info.NextOffset = shot.Motion;
-                frame_info.DurationMs = shot.DurationMs;
-                writer.write<uint32_t>(frame_info.DurationMs);
+                frame_info.Duration = shot.Duration;
+                writer.write<uint32_t>(GetSpriteDurationMilliseconds(frame_info.Duration));
                 writer.write<int32_t>(frame_info.Offset.x);
                 writer.write<int32_t>(frame_info.Offset.y);
                 writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));
@@ -603,7 +603,7 @@ static auto PadSpriteFrame(const ImageImport::FrameShot& shot, int32_t padding) 
     result.Size = {padded_width, padded_height};
     result.Motion = shot.Motion;
     result.Offset = shot.Offset;
-    result.DurationMs = shot.DurationMs;
+    result.Duration = shot.Duration;
     result.Data.resize(numeric_cast<size_t>(result.Size.width) * result.Size.height * 4);
 
     size_t source_row_size = numeric_cast<size_t>(shot.Size.width) * 4;
@@ -689,7 +689,7 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
     result.Size = cropped_size;
     result.Motion = shot.Motion;
     result.Offset = shot.Offset;
-    result.DurationMs = shot.DurationMs;
+    result.Duration = shot.Duration;
     result.Data.resize(numeric_cast<size_t>(result.Size.width) * result.Size.height * 4);
 
     size_t source_row_size = numeric_cast<size_t>(shot.Size.width) * 4;

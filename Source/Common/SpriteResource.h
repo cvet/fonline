@@ -63,7 +63,7 @@ struct SpriteResourceFrameData
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
-    uint32_t DurationMs {};
+    timespan Duration {};
     vector<ucolor> Pixels {};
     optional<SpriteMeshData> Mesh {};
 };

@@ -45,8 +45,8 @@ namespace
         UdpTransportOptions options;
         options.MaxPayload = max_payload;
         options.MaxPendingBytes = max_pending;
-        options.ResendTimeoutMs = resend_ms;
-        options.ConnectRetryMs = connect_retry_ms;
+        options.ResendTimeout = std::chrono::milliseconds {resend_ms};
+        options.ConnectRetry = std::chrono::milliseconds {connect_retry_ms};
         options.Redundancy = redundancy;
         return options;
     }

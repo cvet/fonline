@@ -49,7 +49,7 @@ static auto TransformFixture() -> ImageImport::FrameCollection
         shot.Size = {3, 2};
         shot.Motion = {6, -7};
         shot.Offset = {4, 5};
-        shot.DurationMs = 100;
+        shot.Duration = std::chrono::milliseconds {100};
 
         for (uint8_t pixel = 1; pixel <= 6; pixel++) {
             shot.Data.insert(shot.Data.end(), {numeric_cast<uint8_t>(pixel + dir * 10), 0, 0, 255});
@@ -99,7 +99,7 @@ TEST_CASE("FofrmSelection")
         CHECK(collection.Main.Frames[1].Data[0] == 1);
         CHECK(collection.Main.Frames[2].Data[0] == 6);
         CHECK(collection.Main.Frames[3].Data[0] == 4);
-        CHECK(ImageImport::GetDurationMs(collection.Main) == 400);
+        CHECK(ImageImport::GetDuration(collection.Main) == std::chrono::milliseconds {400});
     }
 
     SECTION("SourceSelectionAppliesToEveryDirection")
@@ -358,13 +358,17 @@ TEST_CASE("FofrmTimelines")
     {
         auto result = LoadTransformRecipe("Frame = A.toy\nGrid = 1 1\nFrameIndices = 0 1 2\nFrameDurations = 100 300 100\n");
         REQUIRE(result.Main.Frames.size() == 3);
-        CHECK(ImageImport::GetDurationMs(result.Main) == 500);
+        CHECK(ImageImport::GetDuration(result.Main) == std::chrono::milliseconds {500});
     }
 
     SECTION("DistributesShortDurationWithoutZeroFrames")
     {
         auto result = LoadTransformRecipe("Frame = A.toy\nGrid = 1 1\nFrameIndices = 0 1 2\nDuration = 8\n");
-        CHECK(ImageImport::GetDurationMs(result.Main) == 8);
+        CHECK(ImageImport::GetDuration(result.Main) == std::chrono::milliseconds {8});
+        REQUIRE(result.Main.Frames.size() == 3);
+        CHECK(result.Main.Frames[0].Duration == std::chrono::milliseconds {2});
+        CHECK(result.Main.Frames[1].Duration == std::chrono::milliseconds {3});
+        CHECK(result.Main.Frames[2].Duration == std::chrono::milliseconds {3});
     }
 
     SECTION("KeepsSharedPixelMetadataIndependent")
@@ -375,13 +379,13 @@ TEST_CASE("FofrmTimelines")
             direction.Frames.clear();
         }
 
-        source.Main.Frames.emplace_back(ImageImport::FrameShot {.Offset = {10, 20}, .Motion = {1, 2}, .DurationMs = 300, .Shared = true, .SharedIndex = 0});
+        source.Main.Frames.emplace_back(ImageImport::FrameShot {.Offset = {10, 20}, .Motion = {1, 2}, .Duration = std::chrono::milliseconds {300}, .Shared = true, .SharedIndex = 0});
 
         auto result = LoadTransformRecipe("Source = A.toy\n", source);
         REQUIRE(result.Main.Frames.size() == 2);
         CHECK(result.Main.Frames[1].Offset == ipos32 {10, 20});
         CHECK(result.Main.Frames[1].Motion == ipos32 {1, 2});
-        CHECK(ImageImport::GetDurationMs(result.Main) == 400);
+        CHECK(ImageImport::GetDuration(result.Main) == std::chrono::milliseconds {400});
     }
 
     SECTION("AllowsUnequalDirectionCounts")

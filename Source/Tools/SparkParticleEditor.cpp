@@ -468,7 +468,7 @@ void SparkParticleEditor::DrawContent()
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", _impl->Particle->GetElapsedTime().to_sec<float64_t>());
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 

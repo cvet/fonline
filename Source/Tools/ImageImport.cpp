@@ -32,6 +32,7 @@
 //
 
 #include "ImageImport.h"
+#include "AnimationInfo.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -57,24 +58,28 @@ auto ImageImport::GetDirectionCount(const FrameCollection& collection) -> uint8_
     return count;
 }
 
-auto ImageImport::GetDurationMs(const FrameSequence& sequence) -> uint32_t
+auto ImageImport::GetDuration(const FrameSequence& sequence) -> timespan
 {
     FO_VERIFY_AND_THROW(!sequence.Frames.empty() && sequence.Frames.size() <= 65535, "Image sequence requires 1..65535 frames", sequence.Frames.size());
 
-    uint64_t duration = 0;
+    timespan duration {};
+    const timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     for (const auto& frame : sequence.Frames) {
-        FO_VERIFY_AND_THROW(frame.DurationMs > 0, "Image frame duration must be positive");
-        duration += frame.DurationMs;
+        FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Image frame duration must be positive");
+        FO_VERIFY_AND_THROW(frame.Duration <= maximum - duration, "Image sequence duration exceeds uint32 milliseconds");
+        duration += frame.Duration;
     }
 
-    FO_VERIFY_AND_THROW(duration <= std::numeric_limits<uint32_t>::max(), "Image sequence duration exceeds uint32 milliseconds", duration);
-    return numeric_cast<uint32_t>(duration);
+    return duration;
 }
 
-void ImageImport::SetFrameSequenceDuration(FrameSequence& sequence, uint32_t duration_ms)
+void ImageImport::SetFrameSequenceDuration(FrameSequence& sequence, timespan duration)
 {
     FO_VERIFY_AND_THROW(!sequence.Frames.empty() && sequence.Frames.size() <= 65535, "Image sequence requires 1..65535 frames", sequence.Frames.size());
+
+    uint32_t duration_ms = GetSpriteDurationMilliseconds(duration);
+
     FO_VERIFY_AND_THROW(duration_ms >= sequence.Frames.size(), "Image sequence duration must provide at least one millisecond per frame", duration_ms, sequence.Frames.size());
 
     uint64_t count = sequence.Frames.size();
@@ -82,7 +87,7 @@ void ImageImport::SetFrameSequenceDuration(FrameSequence& sequence, uint32_t dur
     for (size_t index = 0; index < sequence.Frames.size(); index++) {
         uint64_t begin = numeric_cast<uint64_t>(index) * duration_ms / count;
         uint64_t end = numeric_cast<uint64_t>(index + 1) * duration_ms / count;
-        sequence.Frames[index].DurationMs = numeric_cast<uint32_t>(end - begin);
+        sequence.Frames[index].Duration = std::chrono::milliseconds {end - begin};
     }
 }
 

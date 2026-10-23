@@ -86,11 +86,10 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _sceneBackgroundProvider {std::move(scene_background_provider)},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
-    _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
-    _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
+    _moveTransitionTime = std::chrono::milliseconds {std::max(_settings->Render.Animation3dSmoothTime, 1)};
 
     if (_settings->Render.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
+        _animUpdateThreshold = std::chrono::milliseconds {iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS))};
     }
 
     _headBone = GetBoneHashedString(settings->Render.HeadBone);

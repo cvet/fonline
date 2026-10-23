@@ -93,7 +93,7 @@ void ResourceManager::IndexFiles()
 
     auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
-    _critterDummyAnimFrames = safe_alloc::make_shared<SpriteSheet>(_sprMngr, 1, 100, 1);
+    _critterDummyAnimFrames = safe_alloc::make_shared<SpriteSheet>(_sprMngr, 1, std::chrono::milliseconds {100}, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
     FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Critter dummy animation frames are null");
 
@@ -200,7 +200,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                                         }
                                     }
 
-                                    uint32_t selected_duration = dir_anim->_frameDurations[first ? 0 : dir_anim->_framesCount - 1];
+                                    timespan selected_duration = dir_anim->_frameDurations[first ? 0 : dir_anim->_framesCount - 1];
                                     // Change size
                                     dir_anim->_spr[0] = first ? dir_anim->GetSprite(0)->MakeCopy() : dir_anim->GetSprite(dir_anim->GetFramesCount() - 1)->MakeCopy();
                                     dir_anim->_sprOffset[0].x = first ? dir_anim->_sprOffset[0].x : dir_anim->_sprOffset[dir_anim->GetFramesCount() - 1].x;
@@ -316,13 +316,13 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             }
 
             int32_t directions = std::max(anim->GetDirectionCount(), animex->GetDirectionCount());
-            vector<vector<uint32_t>> timelines;
+            vector<vector<timespan>> timelines;
 
             for (int32_t dir = 0; dir < directions; dir++) {
                 auto base = anim->GetDirection(hdir(dir));
                 auto extra = animex->GetDirection(hdir(dir));
                 FO_VERIFY_AND_THROW(base && extra, "Missing merged animation direction");
-                vector<uint32_t> timeline = base->_frameDurations;
+                vector<timespan> timeline = base->_frameDurations;
                 timeline.insert(timeline.end(), extra->_frameDurations.begin(), extra->_frameDurations.end());
                 timelines.emplace_back(std::move(timeline));
             }
@@ -367,7 +367,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         // Clone
         auto frame_flag = static_cast<AnimFrameFlag>(flags);
         auto first_or_last_mask = combine_enum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
-        vector<vector<uint32_t>> timelines;
+        vector<vector<timespan>> timelines;
 
         for (int32_t dir = 0; dir < anim->GetDirectionCount(); dir++) {
             auto source = anim->GetDirection(hdir(dir));

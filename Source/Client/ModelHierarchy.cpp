@@ -138,7 +138,6 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<const MeshTexture>
     }
 
     string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
-
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 

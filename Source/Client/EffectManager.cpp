@@ -160,7 +160,7 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
         }
 
         constexpr float64_t shader_time_period = 8192.0;
-        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
+        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_sec<float64_t>();
         float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
 
         time_buf->FrameTime[0] = shader_time;

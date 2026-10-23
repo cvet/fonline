@@ -311,12 +311,12 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     return {0, 0};
 }
 
-auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
+auto Application::GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan
 {
     ignore_unused(start_time);
     ignore_unused(end_time);
 
-    return 0;
+    return {};
 }
 
 auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t

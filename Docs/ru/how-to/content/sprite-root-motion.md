@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"24a773cc16c88905bb2403e3bed32d82a6cd17592a1331729197e74dbe72b569"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"f704e0405ffbc7776090589bf882240450177b25413cd98c5b8c322927288c79"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -25,6 +25,9 @@ Last Frontier/TLA — discovery и compatibility evidence, закреплённ�
 [анимации моделей](model-animation.md).
 
 ## Область и источники истины
+
+Интервалы маршрута, elapsed/lease и look-ahead в MovingContext используют timespan.
+Сетевые мс и расстояния прежние; offset при смене скорости округляется до целой мс.
 
 Контрактом владеют следующие исходники:
 

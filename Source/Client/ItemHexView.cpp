@@ -103,10 +103,10 @@ void ItemHexView::Process()
 
     if (_isMoving) {
         nanotime time = _engine->GameTime.GetFrameTime();
-        float32_t dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
+        timespan elapsed = time - _moveUpdateLastTime;
         _moveUpdateLastTime = time;
 
-        _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
+        _moveCurOffset += _moveStepOffset * _moveSpeed * elapsed.to_ms<float32_t>();
         RefreshOffs();
 
         float32_t dist = (_moveCurOffset - _moveStartOffset).dist();

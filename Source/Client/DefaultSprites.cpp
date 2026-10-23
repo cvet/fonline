@@ -396,26 +396,35 @@ auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 
     return 6;
 }
 
-static auto MakeUniformSpriteTimelines(int32_t frames, int64_t ticks, int32_t dirs) -> vector<vector<uint32_t>>
+static auto MakeUniformSpriteTimelines(int32_t frames, timespan duration, int32_t dirs) -> vector<vector<timespan>>
 {
+    constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+
     FO_VERIFY_AND_THROW(frames > 0 && frames <= 65535, "Sprite sheet requires 1..65535 frames", frames);
-    FO_VERIFY_AND_THROW(ticks >= frames && ticks <= std::numeric_limits<uint32_t>::max(), "Sprite sheet duration requires positive uint32 milliseconds per frame", frames, ticks);
+    FO_VERIFY_AND_THROW(duration.nanoseconds() >= frames && duration <= max_duration, "Sprite sheet duration must provide at least one nanosecond per frame and fit uint32 milliseconds", frames, duration);
     FO_VERIFY_AND_THROW(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", dirs);
-    vector<uint32_t> timeline(numeric_cast<size_t>(frames));
+
+    vector<timespan> timeline(numeric_cast<size_t>(frames));
+    int64_t whole_ns = duration.nanoseconds() / frames;
+    int64_t remainder_ns = duration.nanoseconds() % frames;
+    int64_t previous_end_ns = 0;
 
     for (int32_t index = 0; index < frames; index++) {
-        timeline[index] = numeric_cast<uint32_t>((index + 1) * ticks / frames - index * ticks / frames);
+        // Split before multiplying: the full duration times the frame count can exceed int64
+        int64_t end_ns = (index + 1) * whole_ns + (index + 1) * remainder_ns / frames;
+        timeline[index] = std::chrono::nanoseconds {end_ns - previous_end_ns};
+        previous_end_ns = end_ns;
     }
 
-    return vector<vector<uint32_t>>(numeric_cast<size_t>(dirs), timeline);
+    return vector<vector<timespan>>(numeric_cast<size_t>(dirs), timeline);
 }
 
-SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int64_t ticks, int32_t dirs) :
-    SpriteSheet(spr_mngr, MakeUniformSpriteTimelines(frames, ticks, dirs))
+SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs) :
+    SpriteSheet(spr_mngr, MakeUniformSpriteTimelines(frames, duration, dirs))
 {
 }
 
-SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<uint32_t>>& timelines) :
+SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines) :
     Sprite(spr_mngr, {}, {})
 {
     FO_VERIFY_AND_THROW(timelines.size() == 1 || timelines.size() == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", timelines.size());
@@ -427,29 +436,31 @@ SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<uint32
     }
     else {
         for (int32_t dir = 0; dir < _dirCount; dir++) {
-            _dirs[dir] = safe_alloc::make_shared<SpriteSheet>(_sprMngr, vector<vector<uint32_t>> {timelines[dir]});
+            _dirs[dir] = safe_alloc::make_shared<SpriteSheet>(_sprMngr, vector<vector<timespan>> {timelines[dir]});
         }
     }
 }
 
-void SpriteSheet::SetFrameTimeline(vector<uint32_t> durations)
+void SpriteSheet::SetFrameTimeline(vector<timespan> durations)
 {
     FO_VERIFY_AND_THROW(!durations.empty() && durations.size() <= 65535, "Sprite timeline requires 1..65535 frames", durations.size());
 
-    vector<uint32_t> ends;
-    uint64_t total = 0;
+    constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+    vector<timespan> ends;
+    timespan total {};
 
-    for (uint32_t duration : durations) {
-        FO_VERIFY_AND_THROW(duration > 0, "Sprite frame duration must be positive");
+    for (timespan duration : durations) {
+        FO_VERIFY_AND_THROW(duration > timespan {}, "Sprite frame duration must be positive");
+        FO_VERIFY_AND_THROW(duration <= max_duration - total, "Sprite duration exceeds uint32 milliseconds", total, duration);
+
         total += duration;
-        FO_VERIFY_AND_THROW(total <= std::numeric_limits<uint32_t>::max(), "Sprite duration exceeds uint32 milliseconds", total);
-        ends.emplace_back(numeric_cast<uint32_t>(total));
+        ends.emplace_back(total);
     }
 
     _frameDurations = std::move(durations);
     _frameEnds = std::move(ends);
     _framesCount = numeric_cast<int32_t>(_frameDurations.size());
-    _wholeTicks = numeric_cast<uint32_t>(total);
+    _duration = total;
     _spr.resize(numeric_cast<size_t>(_framesCount));
     _sprOffset.resize(numeric_cast<size_t>(_framesCount));
 
@@ -489,7 +500,7 @@ auto SpriteSheet::GetCurrentSprite() -> ptr<Sprite>
 
 auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
-    vector<vector<uint32_t>> timelines;
+    vector<vector<timespan>> timelines;
 
     for (int32_t dir = 0; dir < _dirCount; dir++) {
         timelines.emplace_back(GetDirection(hdir(dir))->_frameDurations);
@@ -527,8 +538,8 @@ void SpriteSheet::Prewarm()
 {
     auto direction = GetCurrentDirection();
     int32_t frame = _sprMngr->Random(0, direction->_framesCount - 1);
-    uint32_t start = frame == 0 ? 0 : direction->_frameEnds[frame - 1];
-    _phase = numeric_cast<float64_t>(start) / direction->_wholeTicks;
+    timespan start = frame == 0 ? timespan {} : direction->_frameEnds[frame - 1];
+    _phase = start.div<float64_t>(direction->_duration);
     RefreshParameters();
 }
 
@@ -599,9 +610,8 @@ auto SpriteSheet::AdvanceTime(timespan elapsed_time) -> bool
         return false;
     }
 
-    float64_t elapsed = elapsed_time.to_ms<float64_t>();
     _startTick = _sprMngr->GetTimer().GetFrameTime();
-    float64_t next = _phase + (_reversed ? -1.0 : 1.0) * elapsed / GetWholeTicks();
+    float64_t next = _phase + (_reversed ? -1.0 : 1.0) * elapsed_time.div<float64_t>(GetDuration());
 
     if (_looped) {
         _phase = std::fmod(next, 1.0);
@@ -636,8 +646,10 @@ auto SpriteSheet::GetFrameIndexAtPhase(float64_t phase, bool reversed) const -> 
     FO_VERIFY_AND_THROW(std::isfinite(phase) && phase >= 0 && phase <= 1, "Sprite phase must be finite and within 0..1", phase);
 
     auto direction = GetCurrentDirection();
-    float64_t position = phase * direction->_wholeTicks;
-    auto found = reversed ? std::lower_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position) : std::upper_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position);
+    float64_t position = phase * numeric_cast<float64_t>(direction->_duration.nanoseconds());
+    auto frame_before_position = [](timespan end, float64_t value) { return numeric_cast<float64_t>(end.nanoseconds()) < value; };
+    auto position_before_frame = [](float64_t value, timespan end) { return value < numeric_cast<float64_t>(end.nanoseconds()); };
+    auto found = reversed ? std::lower_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position, frame_before_position) : std::upper_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position, position_before_frame);
 
     return std::min(numeric_cast<int32_t>(std::distance(direction->_frameEnds.begin(), found)), direction->_framesCount - 1);
 }
@@ -695,13 +707,13 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     shared_ptr<Sprite> result;
 
     if (sprite_info.Directions.front().Frames.size() > 1 || direction_count > 1) {
-        vector<vector<uint32_t>> timelines;
+        vector<vector<timespan>> timelines;
 
         for (const auto& direction : sprite_info.Directions) {
-            vector<uint32_t> durations;
+            vector<timespan> durations;
 
             for (const auto& frame : direction.Frames) {
-                durations.emplace_back(frame.DurationMs);
+                durations.emplace_back(frame.Duration);
             }
 
             timelines.emplace_back(std::move(durations));

@@ -300,11 +300,11 @@ A single frame/direction becomes `AtlasSprite`: placement uses the baked draw of
 `Motion` is read but ignored. Otherwise `SpriteSheet` stores parallel
 direction sheets and concrete/shared frame displacement in `_sprOffset`.
 
-`SpriteSheet` supports direction selection, randomized `Prewarm`, normalized time,
-looping and reverse playback. `Play` ignores one frame; changing direction
-preserves normalized phase across different counts and durations. Frame durations
-are positive milliseconds; cumulative boundaries select frames without division
-by an integer frame period.
+`SpriteSheet` supports `Prewarm`, loop/reverse and phase-preserving directions;
+`Play` ignores one frame. `GetDuration`/`GetFrameDurations` and frame ends use
+`timespan`, retaining sub-ms time. FrameShot, SpriteFrameInfo and decoded frames use
+timespan Duration/GetDuration. GetSpriteDurationMilliseconds requires whole positive
+uint32 ms at output; legacy millisecond boundaries and file layouts stay unchanged.
 
 Concrete positive-size RGBA frames use the requested `AtlasType`, duplicated
 one-pixel edges for linear filtering and an alpha hit mask from

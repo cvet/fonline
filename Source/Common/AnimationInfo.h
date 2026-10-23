@@ -49,7 +49,7 @@ struct SpriteFrameInfo
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
-    uint32_t DurationMs {};
+    timespan Duration {};
 };
 
 struct SpriteDirInfo
@@ -57,7 +57,8 @@ struct SpriteDirInfo
     vector<SpriteFrameInfo> Frames {};
 };
 
-[[nodiscard]] auto GetDurationMs(const SpriteDirInfo& direction) -> uint32_t;
+auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan;
+auto GetSpriteDurationMilliseconds(timespan duration) -> uint32_t;
 
 struct SpriteInfo
 {

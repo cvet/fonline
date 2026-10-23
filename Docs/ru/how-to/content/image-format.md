@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"6666bef339300a91e403e20cf6451bbb90798413a7b9f4987c3079595b6d49c9"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"b3cfa2f89e77186e47872a23d243a7f3abc52450d28a6ce478ebc47f90100618"} -->
 
 # Форматы изображений и спрайтов
 
@@ -315,11 +315,11 @@ geometry, footer и trailing data. Затем factory проверяет инв�
 параллельным sheet, а каждый concrete/shared кадр сохраняет отдельное смещение в
 `_sprOffset`.
 
-`SpriteSheet` умеет выбирать направление, рандомизировать начальный кадр через
-`Prewarm`, задавать нормализованное время и проигрывать с loop или reverse.
-`Play` ничего не делает при одном кадре. Смена направления сохраняет нормализованную
-фазу при разных числе кадров и длительности. Накопленные границы положительных
-длительностей выбирают кадр без деления на целочисленный период.
+`SpriteSheet` поддерживает `Prewarm`, loop/reverse и смену направлений с сохранением
+фазы; `Play` игнорирует один кадр. `GetDuration`/`GetFrameDurations` и границы кадров
+используют `timespan`, сохраняя доли мс. FrameShot, SpriteFrameInfo и декодированные
+кадры используют timespan Duration/GetDuration. GetSpriteDurationMilliseconds требует
+целые положительные uint32 мс на записи; legacy-границы и layout файлов прежние.
 
 Конкретные RGBA-кадры размещаются в запрошенном `AtlasType`. Factory требует
 положительные размеры, загружает изображение, дублирует однопиксельные края для

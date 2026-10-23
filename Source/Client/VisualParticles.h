@@ -72,7 +72,7 @@ public:
     [[nodiscard]] auto GetRuntimeSystem() -> ptr<ParticleRuntimeSystem>;
     [[nodiscard]] auto GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>;
     [[nodiscard]] auto IsActive() const -> bool;
-    [[nodiscard]] auto GetElapsedTime() const -> float32_t;
+    [[nodiscard]] auto GetElapsedTime() const -> timespan;
     [[nodiscard]] auto GetDrawInScene() const -> bool;
     [[nodiscard]] auto GetBakedBounds() const -> optional<ParticleBounds3D>;
     [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
@@ -86,7 +86,7 @@ public:
     void Respawn();
     auto Respawn(int32_t seed) -> bool;
     void Update();
-    void Update(float32_t delta_seconds);
+    void Update(timespan elapsed);
     void RefreshRenderTransform();
     void Draw();
     void SetScale(float32_t scale);
@@ -102,7 +102,7 @@ private:
     unique_ptr<ParticleRuntimeSystem> _runtimeSystem;
     ptr<ParticleManager> _particleMngr;
     optional<ParticleRuntimeSetup> _runtimeSetup {};
-    float64_t _elapsedTime {};
+    timespan _elapsedTime {};
     float32_t _scale {1.0f};
     bool _forceDraw {};
     bool _renderPending {};
@@ -133,7 +133,7 @@ private:
     unique_ptr<Impl> _impl;
     ptr<RenderSettings> _settings;
     ptr<GameTimer> _gameTime;
-    int32_t _animUpdateThreshold {};
+    timespan _animUpdateThreshold {};
 };
 
 FO_END_NAMESPACE

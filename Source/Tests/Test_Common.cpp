@@ -379,6 +379,24 @@ TEST_CASE("CommonRemoteCallWireSizes")
     }
 }
 
+TEST_CASE("SpriteDurationsRequireExactSerializedMilliseconds")
+{
+    CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {1}) == 1);
+    CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}) == std::numeric_limits<uint32_t>::max());
+    CHECK_THROWS(GetSpriteDurationMilliseconds(timespan {}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::milliseconds {-1}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::microseconds {1500}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::nanoseconds {1}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::milliseconds {uint64_t {1} + std::numeric_limits<uint32_t>::max()}));
+
+    SpriteDirInfo direction {.Frames = {SpriteFrameInfo {.Duration = std::chrono::nanoseconds {1}}}};
+    CHECK(GetSpriteDirDuration(direction) == timespan {1});
+
+    direction.Frames[0].Duration = std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()};
+    direction.Frames.emplace_back(SpriteFrameInfo {.Duration = timespan {1}});
+    CHECK_THROWS(GetSpriteDirDuration(direction));
+}
+
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
 {
     vector<uint8_t> data;
@@ -434,7 +452,7 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     REQUIRE(resource.Animation.Sprite.has_value());
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
     CHECK(sprite_info.Directions[0].Frames.size() == 2);
-    CHECK(GetDurationMs(sprite_info.Directions[0]) == 75);
+    CHECK(GetSpriteDirDuration(sprite_info.Directions[0]) == std::chrono::milliseconds {75});
     REQUIRE(sprite_info.Directions.size() == 1);
     REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
     CHECK(sprite_info.Directions.front().Frames[0].Offset == ipos32 {-3, 4});
@@ -465,7 +483,7 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     const SpriteResourceFrameData& shared_frame = direction.Frames[1];
     REQUIRE(shared_frame.SharedFrameIndex.has_value());
     CHECK(*shared_frame.SharedFrameIndex == 0);
-    CHECK(shared_frame.DurationMs == 38);
+    CHECK(shared_frame.Duration == std::chrono::milliseconds {38});
     CHECK(shared_frame.Offset == ipos32 {17, -12});
     CHECK(shared_frame.NextOffset == ipos32 {2, -3});
     CHECK(shared_frame.Pixels.empty());

@@ -96,9 +96,9 @@ private:
     vector<unique_ptr<ModelBone>> _loadedModels {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
-    float32_t _moveTransitionTime {0.25f};
+    timespan _moveTransitionTime {std::chrono::milliseconds {250}};
     float32_t _globalSpeedAdjust {1.0f};
-    int32_t _animUpdateThreshold {};
+    timespan _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};

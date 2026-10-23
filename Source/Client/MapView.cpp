@@ -544,8 +544,8 @@ void MapView::Process()
         if (_scrollDtAccum >= fixed_dt) {
             _scrollDtAccum = std::min(_scrollDtAccum, timespan(fixed_dt.value() * 10));
             _scrollDtAccum -= fixed_dt;
-            ProcessZoom(fixed_dt.to_ms<float32_t>());
-            ProcessScroll(fixed_dt.to_ms<float32_t>());
+            ProcessZoom(fixed_dt);
+            ProcessScroll(fixed_dt);
         }
     }
 }
@@ -3053,7 +3053,7 @@ void MapView::DrawViewAreaMask(const irect32& draw_area)
     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
 }
 
-void MapView::ProcessScroll(float32_t dt)
+void MapView::ProcessScroll(timespan elapsed)
 {
     bool is_manual_scrolling = IsManualScrolling();
 
@@ -3064,7 +3064,7 @@ void MapView::ProcessScroll(float32_t dt)
     fpos32 scroll;
 
     if (_autoScrollActive) {
-        float32_t scroll_step = numeric_cast<float32_t>(_autoScrollSpeed) / 10000.0f * dt;
+        float32_t scroll_step = numeric_cast<float32_t>(_autoScrollSpeed) / 10.0f * elapsed.to_sec<float32_t>();
         scroll.x = lerp(0.0f, _autoScrollOffset.x, scroll_step);
         scroll.y = lerp(0.0f, _autoScrollOffset.y, scroll_step);
 
@@ -3097,7 +3097,7 @@ void MapView::ProcessScroll(float32_t dt)
         }
 
         float32_t zoom = GetSpritesZoom();
-        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / 1000.f / zoom * dt;
+        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / zoom * elapsed.to_sec<float32_t>();
         scroll.x *= scroll_step;
         scroll.y *= scroll_step;
     }
@@ -3115,7 +3115,7 @@ void MapView::ChangeZoom(float32_t new_zoom, fpos32 anchor)
     SetSpritesZoomTarget(new_zoom);
 }
 
-void MapView::ProcessZoom(float32_t dt)
+void MapView::ProcessZoom(timespan elapsed)
 {
     if (!_engine->Settings->View.MapZoomEnabled) {
         return;
@@ -3144,7 +3144,7 @@ void MapView::ProcessZoom(float32_t dt)
         int32_t zoom_speed = _engine->Settings->Hex.ZoomSpeed;
         constexpr float32_t zoom_stop_bias = 0.001f;
 
-        float32_t new_zoom = lerp(init_zoom, clamped_target_zoom, dt * numeric_cast<float32_t>(zoom_speed) / 10000.0f);
+        float32_t new_zoom = lerp(init_zoom, clamped_target_zoom, elapsed.to_sec<float32_t>() * numeric_cast<float32_t>(zoom_speed) / 10.0f);
 
         if (std::abs(new_zoom - clamped_target_zoom) < zoom_stop_bias) {
             new_zoom = clamped_target_zoom;

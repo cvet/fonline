@@ -12,6 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+- Model controller/instance and particle facade intervals use timespan; Ozz/backend/GPU
+  seconds stay at adapters. UDP retry options are typed; bake reports quantize at JSON output.
+
+- MovingContext intervals/look-ahead and FogLayer.TransitionDuration use timespan.
+  Rebuild and rebake all roles for runtime 0.0.77; wire units and saves stay unchanged.
+
+- Duration: float conversions retain fractions, AS constructors check overflow, Delay accepts timespan.
+  Image DurationMs/GetDurationMs become Duration/GetDuration (timespan); files unchanged.
+
+- `SpriteSheet`: `GetWholeTicks` → `GetDuration` (`timespan`); rebuild. Sub-ms time is retained; files unchanged.
+
 - Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
   FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
   Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF

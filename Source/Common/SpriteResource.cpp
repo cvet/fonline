@@ -67,8 +67,8 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
         for (uint16_t frame_index = 0; frame_index < frames; frame_index++) {
             auto& frame = direction.Frames[frame_index];
             auto& frame_info = direction_info.Frames[frame_index];
-            frame.DurationMs = reader.GetLEUInt32();
-            FO_VERIFY_AND_THROW(frame.DurationMs > 0, "Sprite frame duration must be positive", direction_index, frame_index);
+            frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};
+            FO_VERIFY_AND_THROW(frame.Duration > timespan {}, "Sprite frame duration must be positive", direction_index, frame_index);
             frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};
             frame.NextOffset = {reader.GetLEInt16(), reader.GetLEInt16()};
             uint8_t shared = reader.GetUInt8();
@@ -90,10 +90,10 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
                 frame.Mesh = ReadSpriteFrameMesh(reader, frame.Size);
             }
 
-            frame_info = SpriteFrameInfo {.SharedFrameIndex = frame.SharedFrameIndex, .Offset = frame.Offset, .Size = frame.Size, .NextOffset = frame.NextOffset, .DurationMs = frame.DurationMs};
+            frame_info = SpriteFrameInfo {.SharedFrameIndex = frame.SharedFrameIndex, .Offset = frame.Offset, .Size = frame.Size, .NextOffset = frame.NextOffset, .Duration = frame.Duration};
         }
 
-        FO_VERIFY_AND_THROW(GetDurationMs(direction_info) == total, "Sprite sequence duration differs from its frame durations", direction_index, total);
+        FO_VERIFY_AND_THROW(GetSpriteDirDuration(direction_info) == timespan {std::chrono::milliseconds {total}}, "Sprite sequence duration differs from its frame durations", direction_index, total);
     }
 
     uint8_t footer = reader.GetUInt8();

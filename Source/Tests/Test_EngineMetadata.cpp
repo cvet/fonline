@@ -55,8 +55,8 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
                         SpriteDirInfo {
                             .Frames =
                                 {
-                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .DurationMs = 37},
-                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .DurationMs = 38},
+                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {37}},
+                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {38}},
                                 },
                         },
                     },
@@ -461,7 +461,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
         CHECK(sprite_info.Directions[0].Frames.size() == 2);
-        CHECK(GetDurationMs(sprite_info.Directions[0]) == 75);
+        CHECK(GetSpriteDirDuration(sprite_info.Directions[0]) == std::chrono::milliseconds {75});
         REQUIRE(sprite_info.Directions.size() == 1);
         REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
