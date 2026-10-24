@@ -1800,4 +1800,3 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
 }
 
 FO_END_NAMESPACE
-

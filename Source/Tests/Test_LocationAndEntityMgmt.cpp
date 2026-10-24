@@ -1272,4 +1272,3 @@ TEST_CASE("DestroyingEntityRejectsNewTimeEvents")
 }
 
 FO_END_NAMESPACE
-

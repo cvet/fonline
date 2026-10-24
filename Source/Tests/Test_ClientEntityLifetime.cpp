@@ -879,4 +879,3 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
 }
 
 FO_END_NAMESPACE
-

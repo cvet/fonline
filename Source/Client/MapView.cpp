@@ -4310,4 +4310,3 @@ void MapView::SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor 
 }
 
 FO_END_NAMESPACE
-

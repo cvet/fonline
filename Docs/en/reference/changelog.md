@@ -12,7 +12,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-23
+## Current - 2026-10-24
+
+### Fixed
+
+- Preserve fractional milliseconds when advancing moving item sprites, avoiding cumulative motion loss on high-refresh clients.
+
+### Changed
+
+- Withdraw the client/mapper `Map.BlockHex(mpos hex, bool full)` and `Map.UnblockHex(mpos hex)` proposed in PR #227. Server manual blocks are not replicated to clients, so independent local flags cannot provide consistent pathfinding and lead to repeated authoritative movement corrections. Remove the local flags, native setter and their tests instead of exposing an incomplete mechanism.
+
+### Migration
+
+- Base `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0` (`2026.1.60-dev`) to `2026.1.61-dev`. The published master API is unchanged; the withdrawal affects only users of earlier PR #227 heads `9c8237b0520041e3de78d878829c25c59ed5e030` and `6f31a6404207310332a39703ef784f26b054e644`. Remove client/mapper calls to `Map.BlockHex` and `Map.UnblockHex` in AngelScript/managed sources, and native uses of `MapView::SetHexManualBlock` or its `Field::ManualBlock` / `ManualBlockFull` flags. No replacement client API is provided: a future server-driven mechanism must synchronize initial state and updates before it can be exposed. The existing server methods retain their behavior and are not substitutes for client calls.
+- Detect affected sources with `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` and review each side: client/mapper script calls fail compilation against regenerated bindings; native uses fail compilation because the declarations are absent. Regenerate metadata, rebuild affected binaries and rebake matching client/mapper resources together. Ordinary item/map obstacles and their property synchronization are unchanged. No persisted-data or resource-format conversion is required; the runtime marker remains `0.0.77`, Managed ABI `9` and sprite container v2 are unchanged. Roll back binaries and baked resources together; earlier PR builds reintroduce the unsynchronized API.
+
+## 2026.1.60-dev - 2026-10-23
 
 ### Added
 

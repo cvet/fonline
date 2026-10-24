@@ -1910,4 +1910,3 @@ FO_SCRIPT_API vector<hstring> Server_Game_GetItemRegistryProtoIds(ptr<ServerEngi
 }
 
 FO_END_NAMESPACE
-
