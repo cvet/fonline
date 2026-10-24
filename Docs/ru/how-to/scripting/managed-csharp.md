@@ -360,6 +360,8 @@ Single-threaded browser runtime не имеет пригодных managed threa
 
 Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
 
+Baker запускает SDK compiler со значением `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0` только в дочернем процессе. Именованные локали компилятора, включая `en-US`, требуют данных globalization; наследование invariant-режима встроенного Mono runtime вызывает предупреждение Roslyn `CS2038`. Родительский процесс сохраняет настройку runtime. SDK toolchain должен предоставлять штатную поддержку globalization своей платформы независимо от упакованного игрового runtime.
+
 `.csproj` в `ManagedScript.ExtraReferences` строится как project reference, а package dependencies копируются для этого target. Каждый packed helper assembly объявляется bake output, в том числе если target актуален; freshness проверяется по pack output, не по временному MSBuild output directory, который может удалить outdated sweep.
 
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.

@@ -206,6 +206,7 @@ static auto WriteFakeManagedMsBuildScript(const std::filesystem::path& dir) -> s
     WriteTextFile(script_path, R"(@echo off
 if not defined FO_FAKE_MSBUILD_ROOT exit /b 1
 echo %* | findstr /C:"-verbosity:quiet" >nul || exit /b 2
+if defined FO_FAKE_MSBUILD_REQUIRE_CULTURES if not "%DOTNET_SYSTEM_GLOBALIZATION_INVARIANT%"=="0" exit /b 5
 if defined FO_FAKE_MSBUILD_FAIL (
     echo error CS0000: fake compile failure
     exit /b 3
@@ -230,6 +231,9 @@ case " $* " in
     *" -verbosity:quiet "*) ;;
     *) exit 2 ;;
 esac
+if [ -n "$FO_FAKE_MSBUILD_REQUIRE_CULTURES" ] && [ "$DOTNET_SYSTEM_GLOBALIZATION_INVARIANT" != "0" ]; then
+    exit 5
+fi
 if [ -n "$FO_FAKE_MSBUILD_FAIL" ]; then
     echo "error CS0000: fake compile failure"
     exit 3
@@ -1876,6 +1880,23 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
         for (string_view target : {"Server", "Client", "Mapper"}) {
             INFO(target);
             CHECK(rig.Outputs.contains(strex("{}/{}.dll", MakeManagedAssemblyResourceDir(target), strex("TestPack.{}", target)).str()));
+        }
+    }
+
+    SECTION("CompilerCulturesDoNotChangeTheEmbeddedRuntimeEnvironment")
+    {
+        ScopedEnvVar invariant_runtime {"DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1"};
+        ScopedEnvVar require_cultures {"FO_FAKE_MSBUILD_REQUIRE_CULTURES", "1"};
+
+        ManagedScriptBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        auto parent_invariant = make_nptr(std::getenv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"));
+        REQUIRE(parent_invariant);
+        CHECK(string_view {parent_invariant.get()} == "1");
+
+        for (string_view target : {"server", "client", "mapper"}) {
+            CHECK(rig.Outputs.contains(strex("Assemblies/Assemblies-{}/FOnline.ManagedHost.dll", target).str()));
         }
     }
 
