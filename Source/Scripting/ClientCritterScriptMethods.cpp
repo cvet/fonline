@@ -89,11 +89,11 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterVie
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 {
-    auto hex_cr {RequireHexCritter(self)};
-
 #if FO_ENABLE_3D
+    auto hex_cr {RequireHexCritter(self)};
     return hex_cr->IsModel();
 #else
+    (void)RequireHexCritter(self);
     return false;
 #endif
 }
