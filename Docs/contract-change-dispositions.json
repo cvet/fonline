@@ -15372,6 +15372,66 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md retain the published 55-59 notes. This disposition binds their reviewed adoption to the saved feature baseline and combined current digests.",
       "compatibility": "Saved feature baseline uses marker 0.0.75; published presentation API requires 0.0.76. Managed ABI remains 9 and sprite container remains v2. Preserve authored animation/message values and property names. Rebuild/deploy or roll back binaries, metadata, project scripts and resources together; no mixed sets or reinterpretation of saved values.",
       "owner": "Engine presentation, metadata and content-format contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.546dae5c83e57702",
+      "baseline_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "current_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "classification": "breaking",
+      "rationale": "Review four additive experimental identities on the published 2026.1.60-dev inventory: indirect movement authority, bone-local pixel projection, bone-map depth anchor and holder depth. The original two-argument LoadCritter callable and the new stored-map overload remain present; no published identity is removed or promoted.",
+      "migration": "Docs/en/reference/changelog.md#unreleased, the Current 2026.1.60-dev migration and Russian mirrors. Regenerate bindings/SDK, rebuild native roles and force a complete matching server/client resource bake. Both LoadCritter overloads provide fresh return cover; preserve caller cover for their other dependencies. No old API aliases or saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased. Preserve the published 2026.1.60-dev migration; allocate a new dated minor only during authorized master publication.",
+      "compatibility": "Published 2026.1.60-dev uses runtime marker 0.0.77 and Managed ABI 9. The four local exports change generated compatibility identity and transient holder layout. Rebuild, deploy or roll back matching binaries, metadata, assemblies and resource packs together. The new admission hooks retain their upstream meaning; ordinary client RequireInterthreadTransport remains false. No save or packet-field conversion.",
+      "owner": "Engine particle/model rendering and movement authority contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.5343ce968b02831d",
+      "baseline_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "current_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "classification": "breaking",
+      "rationale": "MapSpriteHolder gains a finite depth-only correction with zero default. Its transient native/ref-type layout requires matching generated metadata and rebuilt consumers. Existing coordinates, zero-depth calls, ownership and persisted properties retain their meanings.",
+      "migration": "Docs/en/reference/changelog.md#unreleased, the Current 2026.1.60-dev migration and Russian mirrors. Regenerate bindings/SDK, rebuild native roles and force a complete matching server/client resource bake. Both LoadCritter overloads provide fresh return cover; preserve caller cover for their other dependencies. No old API aliases or saved-data conversion.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased. Preserve the published 2026.1.60-dev migration; allocate a new dated minor only during authorized master publication.",
+      "compatibility": "Published 2026.1.60-dev uses runtime marker 0.0.77 and Managed ABI 9. The four local exports change generated compatibility identity and transient holder layout. Rebuild, deploy or roll back matching binaries, metadata, assemblies and resource packs together. The new admission hooks retain their upstream meaning; ordinary client RequireInterthreadTransport remains false. No save or packet-field conversion.",
+      "owner": "Engine particle/model rendering and movement authority contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.5c1d6e5efcaf121f",
+      "baseline_contract_sha256": "e05eaec4211161cacf7d11c642899e25d25eb88724d4655325169f1f9299bab7",
+      "current_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "classification": "breaking",
+      "rationale": "The 2026.1.60-dev update adds a stored-map LoadCritter overload and an opt-in transport setting to the preceding feature inventory. The four local VFX/movement identities remain present. The overloads receive signature-specific documentation identities; experimental stability is preserved.",
+      "migration": "Docs/en/reference/changelog.md Current 2026.1.60-dev migration and Russian mirror. Rebuild native roles and regenerate/bake matching server and client resources. Native EntityManager::LoadCritter callers pass an optional stored-map-id output before the error flag. Recompile Managed code, replacing only redundant immediate widening of a fresh result with an IsDestroyed check; retain other-root and renewed cover acquisitions.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026.1.60-dev and Docs/ru/reference/changelog.md Current 2026.1.60-dev; local VFX notes remain under Unreleased.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints. Managed ABI 9, existing wire layouts, persisted values and resource schemas retain their meanings. RequireInterthreadTransport=false preserves ordinary clients. Deploy or roll back complete matching binaries, metadata, assemblies and resources; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.1221c5ad05e2b877",
+      "baseline_contract_sha256": "e05eaec4211161cacf7d11c642899e25d25eb88724d4655325169f1f9299bab7",
+      "current_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "classification": "breaking",
+      "rationale": "Advance the central runtime compatibility boundary from 0.0.76 to 0.0.77 for upstream player-message admission and changed API/settings metadata. Existing serialized entity values and message fields are not reinterpreted.",
+      "migration": "Docs/en/reference/changelog.md Current 2026.1.60-dev migration and Russian mirror. Rebuild native roles and regenerate/bake matching server and client resources. Native EntityManager::LoadCritter callers pass an optional stored-map-id output before the error flag. Recompile Managed code, replacing only redundant immediate widening of a fresh result with an IsDestroyed check; retain other-root and renewed cover acquisitions.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026.1.60-dev and Docs/ru/reference/changelog.md Current 2026.1.60-dev; local VFX notes remain under Unreleased.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints. Managed ABI 9, existing wire layouts, persisted values and resource schemas retain their meanings. RequireInterthreadTransport=false preserves ordinary clients. Deploy or roll back complete matching binaries, metadata, assemblies and resources; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.d271f0d8c0d95389",
+      "baseline_contract_sha256": "e05eaec4211161cacf7d11c642899e25d25eb88724d4655325169f1f9299bab7",
+      "current_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "classification": "breaking",
+      "rationale": "The unsuffixed LoadCritter documentation identity is replaced by signature-specific identities. The existing two-argument callable still loads onto the global map, and the new three-argument callable restores onto a caller-covered stored map. Both declare their existing fresh return-cover guarantee; no callable is removed.",
+      "migration": "Docs/en/reference/changelog.md Current 2026.1.60-dev migration and Russian mirror. Rebuild native roles and regenerate/bake matching server and client resources. Native EntityManager::LoadCritter callers pass an optional stored-map-id output before the error flag. Recompile Managed code, replacing only redundant immediate widening of a fresh result with an IsDestroyed check; retain other-root and renewed cover acquisitions.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026.1.60-dev and Docs/ru/reference/changelog.md Current 2026.1.60-dev; local VFX notes remain under Unreleased.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints. Managed ABI 9, existing wire layouts, persisted values and resource schemas retain their meanings. RequireInterthreadTransport=false preserves ordinary clients. Deploy or roll back complete matching binaries, metadata, assemblies and resources; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts"
     }
   ]
 }
