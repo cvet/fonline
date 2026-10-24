@@ -92,6 +92,9 @@ public:
     [[nodiscard]] virtual auto IsHitTest(ipos32 pos) const -> bool;
     [[nodiscard]] virtual auto GetBatchTexture() const -> nptr<const RenderTexture> { return nullptr; }
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
+
+    // Borrowed optional layer owned by this sprite; drawn with the parent rectangle and no map lighting
+    [[nodiscard]] virtual auto GetUnlitOverlay() const -> nptr<const Sprite> { return nullptr; }
     [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }

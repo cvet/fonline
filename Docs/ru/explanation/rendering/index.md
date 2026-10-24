@@ -1022,6 +1022,28 @@ depth attachment (UI, light, final screen flush) state является no-op.
 - `OnRenderMap_AfterSpritesAndFog` вызывается после sprite/fog pass до flush map target. Script debug markers вычисляют position из `Map.GetHexMapPos`, `entity.GetSpriteOffset`, `entity.Elevation` и draw-area origin, не обращаясь к transient sprite instances.
 - **Contours принадлежат scripts проекта.** Native contour pass отсутствует. Проект может cache-ить entities с ненулевым `Contour` и на `OnRenderMap_AfterSprites` вызывать `Map.DrawEntitySprite(entity, effectSubtype, colour, padding)`. Mapper selection использует тот же property-based путь.
 
+## Дополнительный неосвещаемый слой спрайта
+
+Нативный `Sprite` может вернуть из `GetUnlitOverlay()` один слой, которым
+владеет родитель. `DrawSprite`, `DrawSpriteSize` / `DrawSpriteSizeExt` и
+карточный `DrawSprites` рисуют его сразу после основного изображения с теми же
+логическим прямоугольником и эффектом. Каждый слой предоставляет собственную
+текстуру батча. Заимствование должно оставаться действительным до конца draw;
+вложенные overlay рекурсивно не обходятся.
+
+На карте слой получает нейтральный RGB вместо дневного и локального освещения.
+Явный цвет map sprite остаётся его tint; `Render.Brightness` также применяется.
+Alpha, поворот, проекция на карту, глубина и флаги обеих transparency egg берутся
+у того же map sprite. В GUI сохраняются переданные вызывающим кодом tint и alpha.
+Спрайты без дополнительного слоя сохраняют прежний маршрут; direct-scene
+спрайты остаются в отложенном scene pass. Region, pattern и специализированные
+операции image effects обращаются к основному изображению атласа.
+
+Нативные регрессии буферов в `Test_ClientEngine.cpp` покрывают разные текстуры,
+размеры GUI, свет карты, alpha, преобразованную геометрию, глубину и egg-флаги.
+Они доказывают поведение буферов; композиция на GPU и производитель слоя
+модельных частиц требуют отдельных проверок.
+
 ## Спрайты direct-to-scene
 
 `Sprite` может переопределить `IsDirectDraw()` и рисовать geometry прямо в

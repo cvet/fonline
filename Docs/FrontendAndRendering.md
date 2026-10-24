@@ -150,6 +150,10 @@ Continue with the [canonical English explanation](en/explanation/rendering/#the-
 
 Continue with the [canonical English explanation](en/explanation/rendering/#per-draw-face-culling).
 
+## Optional unlit sprite overlay
+
+Continue with the [canonical English explanation](en/explanation/rendering/#optional-unlit-sprite-overlay).
+
 ## Direct-to-scene sprites
 
 Continue with the [canonical English explanation](en/explanation/rendering/#direct-to-scene-sprites).

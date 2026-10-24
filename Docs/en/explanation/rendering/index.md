@@ -873,6 +873,26 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
 - `OnRenderMap_AfterSpritesAndFog` fires after the sprite/fog map pass and before the map target is flushed. Scripts that need entity debug markers should iterate the relevant visible `Item`/`Critter` objects, combine `Map.GetHexMapPos(entity.Hex)`, `entity.GetSpriteOffset()`, and `entity.Elevation`, then subtract the event draw-area origin; this keeps selection/filtering in scripts without depending on transient sprite instances.
 - **Entity contours/outlines are script-driven, not native.** There is no engine contour pass; an embedding-project script (Last Frontier: `ContourPipeline.fos`, compiled for `CLIENT` and `MAPPER`) keeps a cache of entities whose `Contour` colour property is non-zero and, on `OnRenderMap_AfterSprites`, draws each via `Map.DrawEntitySprite(entity, contourEffectSubtype, colour, padding)` (a dilated silhouette in the contour effect, then the sprite on top so only the rim shows). The mapper's selection outline uses the same path — it sets the selected entity's `Contour` property (the property is registered for the mapper because `Client` entity registration includes the mapper target) rather than any native call.
 
+## Optional unlit sprite overlay
+
+A native `Sprite` may return one parent-owned layer from `GetUnlitOverlay()`.
+`DrawSprite`, `DrawSpriteSize` / `DrawSpriteSizeExt`, and map `DrawSprites`
+draw that layer immediately after the base image, using the same logical draw
+rectangle and effect. Each layer supplies its own batch texture. The borrow
+must remain valid for the draw; overlays are not traversed recursively.
+
+On the map, the overlay receives neutral RGB instead of day and local lighting.
+An explicit map-sprite color remains its tint, and `Render.Brightness` still
+applies. Alpha, rotation, map projection, depth and both transparency-egg flags
+come from the same map sprite. GUI draws retain the caller's tint and alpha.
+Sprites without an overlay keep their existing route; direct-scene sprites
+continue through their deferred scene pass. Region, pattern and specialized
+image-effect operations address the base atlas image.
+
+The native buffer regressions in `Test_ClientEngine.cpp` cover separate textures,
+GUI sizing, map light, alpha, transformed geometry, depth and egg flags. They
+establish buffer behavior, not GPU composition or a model-particle producer.
+
 ## Direct-to-scene sprites
 
 A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight into the current scene render target** (with the shared depth buffer) instead of being batched as an atlas quad. Because such a sprite uses its own shader (not the sprite batch's), drawing it at its interleaved draw-order position would split the sprite batch around every one. Instead `SpriteManager::DrawSprites` **collects** direct-draw sprites during the batch loop and replays them in a single `Sprite::DrawInScene(scene_pos, depth)` pass (a `const` method, like `FillData`) *after* the whole sprite batch is flushed — so the batch stays intact. Opaque sprites write depth (`DepthFunc = Always`, `DepthWrite = True`) and direct-draw transparents only test it (`LessEqual`, `DepthWrite = False`), so scene occlusion comes from the shared depth buffer. Direct-draw anchors use the projected `hex + HexOffset + SpriteOffset/TweakOffset + Elevation` map position, deliberately excluding viewport-only `field.Offset`, and keep only a single computed anchor-bias step instead of inheriting their late draw order; otherwise `DrawOrderType::Particles` would become depth-closer than critters/scenery before the particle geometry itself is even considered.

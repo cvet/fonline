@@ -652,23 +652,37 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
+    frect32 draw_rect {fpos32(pos), fsize32(spr->GetSize())};
+    nptr<const Sprite> overlay_spr = spr->GetUnlitOverlay();
+    array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
 
-    if (ind_count != 0) {
-        if (_drawWireframe) {
-            QueueSpriteWireframe(start_index, ind_count);
+    for (nptr<const Sprite> layer_spr : layers) {
+        if (!layer_spr) {
+            continue;
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-        }
-        else {
-            _dipQueue.back().IndicesCount += ind_count;
-        }
+        size_t start_index = _spritesDrawBuf->IndCount;
+        size_t ind_count = layer_spr->FillData(_spritesDrawBuf, draw_rect, {color, color});
 
-        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-            Flush();
+        if (ind_count != 0) {
+            if (_drawWireframe) {
+                QueueSpriteWireframe(start_index, ind_count);
+            }
+
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {
+                    .MainTexture = layer_spr->GetBatchTexture(),
+                    .SourceEffect = effect,
+                    .IndicesCount = ind_count
+                });
+            }
+            else {
+                _dipQueue.back().IndicesCount += ind_count;
+            }
+
+            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                Flush();
+            }
         }
     }
 }
@@ -715,23 +729,37 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
 
     color = ApplyColorBrightness(color);
 
-    size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
+    frect32 draw_rect {xf, yf, wf, hf};
+    nptr<const Sprite> overlay_spr = spr->GetUnlitOverlay();
+    array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
 
-    if (ind_count != 0) {
-        if (_drawWireframe) {
-            QueueSpriteWireframe(start_index, ind_count);
+    for (nptr<const Sprite> layer_spr : layers) {
+        if (!layer_spr) {
+            continue;
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-        }
-        else {
-            _dipQueue.back().IndicesCount += ind_count;
-        }
+        size_t start_index = _spritesDrawBuf->IndCount;
+        size_t ind_count = layer_spr->FillData(_spritesDrawBuf, draw_rect, {color, color});
 
-        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-            Flush();
+        if (ind_count != 0) {
+            if (_drawWireframe) {
+                QueueSpriteWireframe(start_index, ind_count);
+            }
+
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {
+                    .MainTexture = layer_spr->GetBatchTexture(),
+                    .SourceEffect = effect,
+                    .IndicesCount = ind_count
+                });
+            }
+            else {
+                _dipQueue.back().IndicesCount += ind_count;
+            }
+
+            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                Flush();
+            }
         }
     }
 }
@@ -1020,6 +1048,25 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             color_l = ApplyColorBrightness(color_l);
         }
 
+        // Unlit overlay keeps the authored tint but never receives map light
+        ucolor overlay_color_r;
+        ucolor overlay_color_l;
+
+        if (spr_color != ucolor::clear) {
+            overlay_color_r = overlay_color_l = ucolor(spr_color, 255);
+        }
+        else {
+            overlay_color_r = overlay_color_l = Color::Neutral;
+        }
+
+        overlay_color_r.comp.a = color_r.comp.a;
+        overlay_color_l.comp.a = color_l.comp.a;
+
+        if (apply_brightness) {
+            overlay_color_r = ApplyColorBrightness(overlay_color_r);
+            overlay_color_l = ApplyColorBrightness(overlay_color_l);
+        }
+
         DrawOrderType draw_order = mspr->GetDrawOrder();
 
         // Choose effect
@@ -1029,82 +1076,97 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             effect = spr->GetDrawEffectOr(default_effect);
         }
 
-        // Fill buffer
         float32_t xf = numeric_cast<float32_t>(mspr_rect.x);
         float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
         float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
-        size_t start_vpos = _spritesDrawBuf->VertCount;
-        size_t start_ipos = _spritesDrawBuf->IndCount;
-        size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
-
-        auto& vbuf = _spritesDrawBuf->Vertices;
         bool standing_sprite = is_standing_sprite(draw_order);
         vec3 sprite_proj = mspr->GetMapRootProjection();
         float32_t pos_z = sprite_proj.z;
-
-        for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-            vbuf[j].PosZ = pos_z;
-        }
-
-        // Rotation and map-projected flattening
         int16_t angle_deg = mspr->GetAngle();
         bool use_map_projected = mspr->GetMapProjected();
-
-        if (angle_deg != 0 || use_map_projected) {
-            float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
-            float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
-            float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-            float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
-            float32_t cx = xf + wf * 0.5f;
-            float32_t cy = yf + hf * 0.5f;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t dx = vbuf[j].PosX - cx;
-                float32_t dy = vbuf[j].PosY - cy;
-                vbuf[j].PosX = cx + dx * cs - dy * sn;
-                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
-            }
-        }
-
-        if (standing_sprite) {
-            float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
-            float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-            float32_t sin_a = std::sin(angle_rad);
-            float32_t cos_a = std::cos(angle_rad);
-            float32_t tan_a = sin_a / cos_a;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
-                vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
-            }
-        }
-
-        // Setup eggs
         bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr);
         bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr);
+        nptr<const Sprite> overlay_spr = spr->GetUnlitOverlay();
+        array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
 
-        if (use_first_egg || use_second_egg) {
+        // Fill both layers into the same map rectangle and run them through the same map pipeline
+        for (size_t layer_index = 0; layer_index < layers.size(); layer_index++) {
+            nptr<const Sprite> layer_spr = layers[layer_index];
+
+            if (!layer_spr) {
+                continue;
+            }
+
+            ucolor layer_color_r = layer_index == 0 ? color_r : overlay_color_r;
+            ucolor layer_color_l = layer_index == 0 ? color_l : overlay_color_l;
+            size_t start_vpos = _spritesDrawBuf->VertCount;
+            size_t start_ipos = _spritesDrawBuf->IndCount;
+            size_t ind_count = layer_spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {layer_color_l, layer_color_r});
+
+            auto& vbuf = _spritesDrawBuf->Vertices;
+
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
-                vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
-            }
-        }
-
-        if (ind_count != 0) {
-            if (_drawWireframe) {
-                QueueSpriteWireframe(start_ipos, ind_count);
+                vbuf[j].PosZ = pos_z;
             }
 
-            if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-            }
-            else {
-                _dipQueue.back().IndicesCount += ind_count;
+            // Rotation and map-projected flattening
+            if (angle_deg != 0 || use_map_projected) {
+                float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
+                float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
+                float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
+                float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
+                float32_t cx = xf + wf * 0.5f;
+                float32_t cy = yf + hf * 0.5f;
+
+                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                    float32_t dx = vbuf[j].PosX - cx;
+                    float32_t dy = vbuf[j].PosY - cy;
+                    vbuf[j].PosX = cx + dx * cs - dy * sn;
+                    vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
+                }
             }
 
-            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-                Flush();
+            if (standing_sprite) {
+                float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
+                float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+                float32_t sin_a = std::sin(angle_rad);
+                float32_t cos_a = std::cos(angle_rad);
+                float32_t tan_a = sin_a / cos_a;
+
+                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                    float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
+                    vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
+                }
+            }
+
+            // Setup eggs
+            if (use_first_egg || use_second_egg) {
+                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                    vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
+                    vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
+                }
+            }
+
+            if (ind_count != 0) {
+                if (_drawWireframe) {
+                    QueueSpriteWireframe(start_ipos, ind_count);
+                }
+
+                if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                    _dipQueue.emplace_back(DipData {
+                        .MainTexture = layer_spr->GetBatchTexture(),
+                        .SourceEffect = effect,
+                        .IndicesCount = ind_count
+                    });
+                }
+                else {
+                    _dipQueue.back().IndicesCount += ind_count;
+                }
+
+                if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                    Flush();
+                }
             }
         }
     }
