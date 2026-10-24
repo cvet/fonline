@@ -2639,6 +2639,85 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         CHECK(current == previous);
     }
 
+    SECTION("OneShotLongFrameCallbacksAndFinalPoseHold")
+    {
+        float32_t start_time = 0.0f;
+        int32_t expected_middle_callbacks = 1;
+
+        SECTION("StartAtZeroFiresMiddleAndEnd")
+        {
+            start_time = 0.0f;
+            expected_middle_callbacks = 1;
+        }
+
+        SECTION("StartPastMiddleSkipsEarlierPhase")
+        {
+            start_time = 0.75f;
+            expected_middle_callbacks = 0;
+        }
+
+        // Keep the authored endpoint on a separate instance so the one-shot result cannot define its own expectation
+        auto endpoint_model = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(endpoint_model);
+        endpoint_model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        (void)endpoint_model->PlayAnim(state, action, nullptr, 1.0f, ModelAnimFlags::Freeze);
+        endpoint_model->PoseSpriteFrame(true);
+        auto endpoint = endpoint_model->GetBonePos(root);
+        REQUIRE(endpoint);
+
+        int32_t zero_callbacks = 0;
+        int32_t middle_callbacks = 0;
+        int32_t end_callbacks = 0;
+
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.0f,
+            .Callback = [&zero_callbacks] { zero_callbacks++; },
+        });
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback = [&middle_callbacks] { middle_callbacks++; },
+        });
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 1.0f,
+            .Callback = [&end_callbacks] { end_callbacks++; },
+        });
+
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, start_time, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+
+        // This pose observes the initial position; only the next displayed frame may complete the clip
+        model->PoseSpriteFrame(true);
+        REQUIRE(model->IsAnimationPlaying());
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == 0);
+        CHECK(end_callbacks == 0);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        auto finished = model->GetBonePos(root);
+        REQUIRE(finished);
+        CHECK(*finished == *endpoint);
+        CHECK_FALSE(model->IsAnimationPlaying());
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == expected_middle_callbacks);
+        CHECK(end_callbacks == 1);
+
+        pose();
+        CHECK(model->GetBonePos(root) == finished);
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == expected_middle_callbacks);
+        CHECK(end_callbacks == 1);
+
+        model->ClearAnimationCallbacks();
+    }
+
     SECTION("TurnLifetimeUsesRemainingClipTimeAndCurrentSpeed")
     {
         float32_t start_time = 0.8f;

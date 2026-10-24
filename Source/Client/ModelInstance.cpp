@@ -733,8 +733,14 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->ResetEvents();
 
         bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
+        bool looping = !is_enum_set(flags, ModelAnimFlags::PlayOnce) && !is_enum_set(flags, ModelAnimFlags::Freeze) && !is_enum_set(flags, ModelAnimFlags::Init);
         timespan smooth_time = no_smooth ? timespan::zero : _modelMngr->_moveTransitionTime;
-        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - ANIMATION_END_EXCLUSION, timespan::zero));
+        timespan anim_start_time = ScaleModelAnimationTime(_animDuration, ntime);
+
+        if (looping) {
+            anim_start_time = std::min(anim_start_time, std::max(_animDuration - ANIMATION_END_EXCLUSION, timespan::zero));
+        }
+
         timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan::zero : _animDuration - anim_start_time;
 
         // Disable current track
@@ -753,10 +759,11 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
+        _bodyAnimController->SetTrackLooping(new_track, looping);
         _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, {}, {});
 
-        if (is_enum_set(flags, ModelAnimFlags::PlayOnce) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init)) {
+        if (!looping) {
             _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, {});
         }
 
@@ -939,9 +946,14 @@ void ModelInstance::RefreshMoveAnimation()
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
+        _moveAnimController->SetTrackLooping(new_track, !frozen && !_turnAnimPlaying);
 
         timespan duration = _moveAnimController->GetAnimDuration(anim_index);
-        timespan start_time = std::min(ScaleModelAnimationTime(duration, normalized_time), std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
+        timespan start_time = ScaleModelAnimationTime(duration, normalized_time);
+
+        if (!frozen && !_turnAnimPlaying) {
+            start_time = std::min(start_time, std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
+        }
 
         _moveAnimController->SetTrackPosition(new_track, start_time);
 
@@ -1477,6 +1489,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
         input.Reversed = state.Reversed;
         input.Position = state.Position.to_sec<float64_t>();
         input.Weight = state.Weight;
+        input.Looping = state.Looping;
     }
 }
 
@@ -1503,6 +1516,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Advance animation time
     timespan prev_track_pos {};
     timespan new_track_pos {};
+    bool looping = true;
 
     if (_bodyAnimController && elapsed >= timespan::zero) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
@@ -1518,20 +1532,21 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
             }
         }
 
-        new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
+        ModelAnimationController::TrackState body_track = _bodyAnimController->GetTrackState(_curTrack);
+        new_track_pos = body_track.Position;
+        looping = body_track.Looping;
 
         if (_animDuration > timespan::zero) {
-            _animPosProc = new_track_pos.div<float32_t>(_animDuration);
-
-            if (_animPosProc >= 1.0f) {
-                _animPosProc = std::fmod(_animPosProc, 1.0f);
-            }
-
             _animPosTime = new_track_pos;
 
-            if (_animPosTime >= _animDuration) {
+            if (looping && _animPosTime >= _animDuration) {
                 _animPosTime = timespan {_animPosTime.nanoseconds() % _animDuration.nanoseconds()};
             }
+            else if (!looping) {
+                _animPosTime = std::min(_animPosTime, _animDuration);
+            }
+
+            _animPosProc = _animPosTime.div<float32_t>(_animDuration);
         }
     }
 
@@ -1623,7 +1638,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     if (_bodyAnimController && elapsed >= timespan::zero && _animDuration > timespan::zero) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime)) {
+                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime, looping)) {
                     callback.Callback();
                 }
             }
