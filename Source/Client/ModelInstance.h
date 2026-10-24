@@ -59,6 +59,7 @@ struct ModelParticleSystem
     float32_t Rot {};
     string EffectName {};
     hstring BoneName {};
+    bool Initialized {};
 };
 
 enum class ModelAttachKind : uint8_t
@@ -204,6 +205,8 @@ private:
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
     void ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale);
+    void InitializePendingParticles();
+    void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
     void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
@@ -242,6 +245,7 @@ private:
     optional<ModelAnimationController> _moveAnimController {};
     unique_nptr<ModelAnimationRuntimePose> _animationRuntimePose {};
     vector<mat44> _worldMatrices {};
+    bool _worldPoseReady {};
     array<vector<uint8_t>, 2> _animationBodyJointMasks {};
     array<vector<uint8_t>, 2> _animationMovementJointMasks {};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};

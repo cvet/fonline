@@ -33,6 +33,8 @@
 
 #include "Common.h"
 
+#include "EffekseerCompiler.h"
+#include "EffekseerExtension.h"
 #include "MapView.h"
 #include "Test_ClientEngineHelpers.h"
 
@@ -1061,6 +1063,381 @@ TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
         }
     }
 }
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
+{
+    constexpr string_view mesh_path = "Models/ImmediateParticle.fbx";
+    constexpr string_view model_path = "Models/ImmediateParticle.fo3d";
+    constexpr string_view particle_path = "Particles/Immediate.efk";
+    constexpr string_view particle_project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Instant</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+            <Infinite>False</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Min>5</Min>
+            <Max>5</Max>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Min>0</Min>
+              <Max>0</Max>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>1</AlphaBlend>
+          <ZTest>False</ZTest>
+          <ZWrite>False</ZWrite>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>255</R>
+              <G>255</G>
+              <B>255</B>
+              <A>255</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>5</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFK";
+
+    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()};
+    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/Immediate.efkproj", project_bytes);
+    REQUIRE(particle.Dependencies.empty());
+
+    AppendEffekseerBoundsTrailer(particle.Binary, vec3 {-0.5f}, vec3 {0.5f}, 0.75f);
+
+    vector<uint8_t> mesh = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> animation_info;
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string {mesh_path}, mesh);
+    resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh,
+        {}, {}, nullptr, true, {}, 2.0f, &animation_info,
+        "Model ImmediateParticle.fbx\nAnim 1 1 ModelFile Base\n"));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    resources.emplace_back(string {particle_path}, std::move(particle.Binary));
+
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model = factory->GetModelMngr()->CreateModel(model_path);
+    REQUIRE(model);
+
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+    hstring bone = client->Hashes.to_hashed_string(mesh_path);
+    auto state = static_cast<CritterStateAnim>(1);
+    auto action = static_cast<CritterActionAnim>(1);
+    (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+    model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    model->PoseSpriteFrame(false);
+
+    auto before = model->GetSpriteBounds();
+    REQUIRE(before);
+    REQUIRE(before->Rect.width < 512);
+
+    auto particle_attach_count = [](const auto& instance) -> int32_t {
+        int32_t count = 0;
+
+        for (const ModelAttachPoint& attach : instance->GetAttachPoints()) {
+            if (attach.Kind == ModelAttachKind::Particle) {
+                count++;
+            }
+        }
+
+        return count;
+    };
+
+    SECTION("CallbackBirthIsReadyBeforeTheNextPose")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        int32_t callbacks = 0;
+
+        // Consume the construction interval before arming the callback, so only the explicit 200 ms crosses it
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback = [&model, particle_path, bone, offset, &callbacks] {
+                callbacks++;
+
+                model->RunParticle(particle_path, bone, offset);
+            },
+        });
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+        model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        model->PoseSpriteFrame(true);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        REQUIRE(callbacks == 1);
+
+        // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
+        CHECK(particle_attach_count(model) == 1);
+        auto first = model->GetSpriteBounds();
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
+            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative = model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + model->GetFramePivot();
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
+            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+
+        // A zero-time re-pose is the independent resource control and must reveal the same live particle
+        model->PoseSpriteFrame(false);
+        auto after_repose = model->GetSpriteBounds();
+        REQUIRE(after_repose);
+        CHECK(particle_attach_count(model) == 1);
+
+        auto after_relative = model->GetBonePos(bone, offset);
+        REQUIRE(after_relative);
+
+        ipos32 after_point = *after_relative + model->GetFramePivot();
+        CHECK(after_point.x >= after_repose->Rect.x);
+        CHECK(after_point.x < after_repose->Rect.x + after_repose->Rect.width);
+        CHECK(after_point.y >= after_repose->Rect.y);
+        CHECK(after_point.y < after_repose->Rect.y + after_repose->Rect.height);
+        CHECK(after_repose->RequiredFrameSize.width <= 512);
+        CHECK(after_repose->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthUsesThePosedBoneAndIgnoresPreBirthTime")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+
+        // The unconsumed interval reaches the first pose after the request; birth must not inherit it
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->RunParticle(particle_path, bone, offset);
+        model->PoseSpriteFrame(true);
+
+        CHECK(particle_attach_count(model) == 1);
+        auto first = model->GetSpriteBounds();
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
+            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative = model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + model->GetFramePivot();
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
+            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthKeepsTheRequestedOffset")
+    {
+        vec3 offset {6.0f, 0.0f, 0.0f};
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->RunParticle(particle_path, bone, offset);
+        model->PoseSpriteFrame(true);
+
+        CHECK(particle_attach_count(model) == 1);
+        auto first = model->GetSpriteBounds();
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
+            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative = model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + model->GetFramePivot();
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+
+        // Six authored units need more than 320 pixels; dropping the request offset cannot reach that width
+        CHECK(first->RequiredFrameSize.width > 320);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthAtZeroTimeIsAValidResourceControl")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        CHECK_FALSE(model->NeedForceDraw());
+
+        model->RunParticle(particle_path, bone, offset);
+        CHECK(model->NeedForceDraw());
+
+        model->PoseSpriteFrame(false);
+
+        CHECK(particle_attach_count(model) == 1);
+        auto control = model->GetSpriteBounds();
+        REQUIRE(control);
+        CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height,
+            control->RequiredFrameSize.width, control->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative = model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + model->GetFramePivot();
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
+            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= control->Rect.x);
+        CHECK(point.x < control->Rect.x + control->Rect.width);
+        CHECK(point.y >= control->Rect.y);
+        CHECK(point.y < control->Rect.y + control->Rect.height);
+        CHECK(control->RequiredFrameSize.width <= 512);
+        CHECK(control->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("UnposedRequestWaitsForTheFirstPoseAndThenExpires")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        auto fresh_model = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(fresh_model);
+
+        fresh_model->StartMeshGeneration();
+        fresh_model->PrepareFrameLayout();
+        (void)fresh_model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        fresh_model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+
+        auto mesh_bounds = fresh_model->GetSpriteBounds();
+        REQUIRE(mesh_bounds);
+        REQUIRE(mesh_bounds->Rect.width < 512);
+
+        fresh_model->RunParticle(particle_path, bone, offset);
+
+        // A request without a valid pose must not reserve an identity-origin envelope
+        auto pending_bounds = fresh_model->GetSpriteBounds();
+        REQUIRE(pending_bounds);
+        CHECK(pending_bounds->Rect == mesh_bounds->Rect);
+        CHECK(pending_bounds->RequiredFrameSize == mesh_bounds->RequiredFrameSize);
+
+        fresh_model->PoseSpriteFrame(false);
+        auto placed = fresh_model->GetSpriteBounds();
+        REQUIRE(placed);
+        CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height,
+            placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
+        CHECK(particle_attach_count(fresh_model) == 1);
+        CHECK(fresh_model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative = fresh_model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + fresh_model->GetFramePivot();
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
+            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= placed->Rect.x);
+        CHECK(point.x < placed->Rect.x + placed->Rect.width);
+        CHECK(point.y >= placed->Rect.y);
+        CHECK(point.y < placed->Rect.y + placed->Rect.height);
+
+        // A ghost left at the identity world origin would demand more than the allocated 512-pixel frame
+        CHECK(placed->RequiredFrameSize.width <= 512);
+        CHECK(placed->RequiredFrameSize.height <= 512);
+
+        // A live particle advances with positive time and must disappear from both consumers after its short life
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        fresh_model->PoseSpriteFrame(true);
+
+        auto finished = fresh_model->GetSpriteBounds();
+        REQUIRE(finished);
+
+        int32_t retirement_poses = 0;
+
+        while (particle_attach_count(fresh_model) != 0 && retirement_poses < 3) {
+            fresh_model->PoseSpriteFrame(false);
+            finished = fresh_model->GetSpriteBounds();
+            REQUIRE(finished);
+            retirement_poses++;
+        }
+
+        CHECK(particle_attach_count(fresh_model) == 0);
+        REQUIRE(finished);
+        CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width ||
+            point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
+    }
+
+    SECTION("MissingBoneCreatesNoParticleAndLeavesTheModelUsable")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        CHECK(particle_attach_count(model) == 0);
+
+        model->RunParticle(particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
+
+        auto rejected = model->GetSpriteBounds();
+        REQUIRE(rejected);
+        CHECK(rejected->Rect == before->Rect);
+        CHECK(rejected->RequiredFrameSize == before->RequiredFrameSize);
+        CHECK(particle_attach_count(model) == 0);
+
+        model->RunParticle(particle_path, bone, offset);
+        model->PoseSpriteFrame(false);
+
+        auto accepted = model->GetSpriteBounds();
+        REQUIRE(accepted);
+        CHECK(particle_attach_count(model) == 1);
+
+        auto relative = model->GetBonePos(bone, offset);
+        REQUIRE(relative);
+
+        ipos32 point = *relative + model->GetFramePivot();
+        CHECK(point.x >= accepted->Rect.x);
+        CHECK(point.x < accepted->Rect.x + accepted->Rect.width);
+        CHECK(point.y >= accepted->Rect.y);
+        CHECK(point.y < accepted->Rect.y + accepted->Rect.height);
+        CHECK(accepted->RequiredFrameSize.width <= 512);
+        CHECK(accepted->RequiredFrameSize.height <= 512);
+    }
+}
+#endif
 
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {

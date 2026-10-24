@@ -428,7 +428,18 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 {
     if (auto target_joint = FindPoseJoint(bone_name); target_joint) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
+            _modelParticles.emplace_back(ModelParticleSystem {
+                .Id = 0,
+                .Particle = safe_alloc::make_unique<ParticleSystem>(std::move(*particle)),
+                .Owner = target_joint->Owner,
+                .JointIndex = target_joint->JointIndex,
+                .Move = move,
+                .Rot = _lookDirAngle,
+                .EffectName = string(particle_name),
+                .BoneName = bone_name,
+            });
+
+            RequestRedraw();
         }
     }
 }
@@ -596,7 +607,16 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
-                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY, link.ChildName, link.LinkBone});
+                            _modelParticles.emplace_back(ModelParticleSystem {
+                                .Id = link.Id,
+                                .Particle = safe_alloc::make_unique<ParticleSystem>(std::move(*particle)),
+                                .Owner = target_joint->Owner,
+                                .JointIndex = target_joint->JointIndex,
+                                .Move = vec3 {link.MoveX, link.MoveY, link.MoveZ},
+                                .Rot = link.RotY,
+                                .EffectName = link.ChildName,
+                                .BoneName = link.LinkBone,
+                            });
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -1263,6 +1283,10 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     auto include_particle_bounds = [&](ptr<const ModelInstance> model, const auto& recurse) -> bool {
         for (const auto& model_particle : model->_modelParticles) {
+            if (!model_particle.Initialized) {
+                continue;
+            }
+
             // A dormant system reserves nothing, or every model with an occasional effect would carry an inflated
             // frame; once it emits, the render's frame-expansion pass grows the frame to fit
             optional<ParticleBounds3D> live_bounds = model_particle.Particle->GetLiveBounds();
@@ -1584,6 +1608,8 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
         }
     }
 
+    _worldPoseReady = true;
+
     // Update world matrices for children
     for (size_t i = 0; i != _children.size(); ++i) {
         auto child = _children[i].as_ptr();
@@ -1600,25 +1626,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Placed only after the whole hierarchy is posed: a child-joint effect left one pose behind is a harmless lag
     // while drawing, but makes the frame-sizing loop chase a stale box and never converge
     for (auto& model_particle : _modelParticles) {
-        const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
-        vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
-
-        // The tilt always arrives through the transform inherited from the model, so re-applying it in the view
-        // matrix would double-tilt the effect and leave the frame-sizing loop chasing a growing box
-        bool tilt_in_proj = true;
-        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
-        const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
-
-        if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
-        }
-        else {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
-        }
-
-        // Model-attached effects have no update loop of their own, so they advance on the pose's logical delta;
-        // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(elapsed, timespan::zero));
+        UpdateModelParticle(model_particle, elapsed);
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
@@ -1644,6 +1652,48 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
             }
         }
     }
+
+    // A callback may add particles anywhere in the posed hierarchy, after its ordinary update has finished
+    if (!_parent) {
+        InitializePendingParticles();
+    }
+}
+
+void ModelInstance::InitializePendingParticles()
+{
+    for (auto& model_particle : _modelParticles) {
+        if (!model_particle.Initialized) {
+            UpdateModelParticle(model_particle, timespan::zero);
+        }
+    }
+
+    for (auto& child : _children) {
+        child->InitializePendingParticles();
+    }
+}
+
+void ModelInstance::UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed)
+{
+    FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+    // A callback can replace a child or the atlas layout; its next pose supplies the new attachment transform
+    if (!_worldPoseReady || !model_particle.Owner->_worldPoseReady) {
+        RequestRedraw();
+        return;
+    }
+
+    const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+    const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
+    vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+    float32_t rotation = model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle;
+
+    // The bone transform already includes camera tilt; applying it again makes frame sizing chase a growing box
+    model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, rotation, view_offset, true);
+
+    // A newborn emits without inheriting time before its request; later atlas re-poses also keep a zero delta
+    timespan particle_elapsed = model_particle.Initialized ? std::max(elapsed, timespan::zero) : timespan::zero;
+    model_particle.Particle->Update(particle_elapsed);
+    model_particle.Initialized = true;
 }
 
 void ModelInstance::SnapshotAnimationWorldMatrices()
@@ -2297,6 +2347,7 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
     }
 
     _spriteBoundsPoseReady = false;
+    _worldPoseReady = false;
     _frameSize.width = draw_size.width * FRAME_SCALE;
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
@@ -2669,7 +2720,9 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 void ModelInstance::DrawAllParticles()
 {
     for (auto& model_particle : _modelParticles) {
-        model_particle.Particle->Draw();
+        if (model_particle.Initialized) {
+            model_particle.Particle->Draw();
+        }
     }
 
     for (size_t i = 0; i != _children.size(); ++i) {

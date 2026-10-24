@@ -16897,8 +16897,8 @@
           "translation": "Скриптовый метод требует активный ModelInstance и не является запасным маршрутом для 2D-спрайта криттера."
         },
         "/integration_rules/@id=particle-format.integration.critter-run-particle/requirement": {
-          "source_sha256": "2495b2628b4cd5137127d8f08f0ada001ccb1a661b273f8d6c003f19154f72e1",
-          "translation": "Critter.RunParticle создаёт именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает."
+          "source_sha256": "85958b9f059f641b144b09b4cc1a0fa0976dd29bba40ed7f2dc5271a40038a8d",
+          "translation": "Critter.RunParticle запрашивает перерисовку и откладывает именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает. Полная валидная поза размещает каждую новую систему через Setup и Update(0), включая созданные callback системы до текущей отрисовки. Непозированные владельцы привязок остаются в ожидании без отрисовки и расширения границ; дальнейшие delta позы продвигают эффект обычным образом."
         },
         "/integration_rules/@id=particle-format.integration.model-attachment/name": {
           "source_sha256": "4ff2d5a184d1211d78147f32d3af8e4de4f5c98433ad15c4b98c9944ab7bd13b",

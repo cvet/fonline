@@ -2874,7 +2874,7 @@
       "id": "particle-format.integration.critter-run-particle",
       "name": "Critter model particle",
       "stability": "experimental",
-      "requirement": "Critter.RunParticle creates a named particle on a model bone only in FO_ENABLE_3D builds; the export is a no-op otherwise.",
+      "requirement": "Critter.RunParticle requests a redraw and queues a named model-bone particle only in FO_ENABLE_3D builds; the export is a no-op otherwise. A valid full pose places each new system with Setup and Update(0), including callback-born systems before the current draw. Unposed attachment owners remain pending without drawing or expanding bounds; later pose deltas advance normally.",
       "rationale": "The script method depends on an active ModelInstance and is not a 2D critter-sprite fallback.",
       "source": [
         {
@@ -2883,6 +2883,14 @@
             "Client_Critter_RunParticle",
             "#if FO_ENABLE_3D",
             "model->RunParticle"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunParticle",
+            "void ModelInstance::InitializePendingParticles",
+            "void ModelInstance::UpdateModelParticle"
           ]
         }
       ]

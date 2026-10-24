@@ -214,6 +214,15 @@ scale but remains camera-facing, so callers add it as view-plane padding and do
 not rotate it as another world-space point. Attached model particles expand the
 model frame only while their backend reports live particles or instances.
 
+`ModelInstance::RunParticle` requests a redraw and queues the effect until a
+complete bone pose is available. Its first placement uses `Setup` followed by
+`Update(0)`, so the pose interval before creation does not age the newborn.
+Animation-callback effects receive this initialization before the current draw,
+including requests on already posed children. A newly created child or changed
+atlas layout waits for its next valid pose. Pending effects neither draw nor
+expand the frame at identity transforms. Later positive pose deltas advance
+normally; zero-time frame-sizing re-poses do not age the effect.
+
 Effekseer model placement treats `ParticleRuntimeSetup.World` as the complete
 bone pose. A finite `LookDirectionAngle` is accepted as a legacy hint without
 applying a second yaw; a non-finite hint rejects the effect. Orient the effect

@@ -15432,6 +15432,18 @@
       "release_note": "Docs/en/reference/changelog.md Current 2026.1.60-dev and Docs/ru/reference/changelog.md Current 2026.1.60-dev; local VFX notes remain under Unreleased.",
       "compatibility": "Central marker 76 to 77 refuses mixed endpoints. Managed ABI 9, existing wire layouts, persisted values and resource schemas retain their meanings. RequireInterthreadTransport=false preserves ordinary clients. Deploy or roll back complete matching binaries, metadata, assemblies and resources; no saved-data conversion.",
       "owner": "Engine critter lifecycle, networking and scripting contracts"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.db2d8d8650e53bf7",
+      "baseline_contract_sha256": "036c92af2318c9b53e4d8807b4fb070db485ec0fc67375ea063179b069de6a3d",
+      "current_contract_sha256": "45b71c43d8c4d27636e6bd2183c40434f1f779320a9d8d0fb017bc78e8e7d419",
+      "classification": "breaking",
+      "rationale": "Restore first-draw model-bone particle preparation: an animation callback previously appended the system after the model particle loop, so the first bounds/draw depended on an incidental zero-time atlas re-pose. The comparator classifies the expanded requirement as breaking; the callable, resource routing, bone names and authored offsets retain their meanings.",
+      "migration": "Rebuild native clients, Mapper, viewers, Baker and tests for ModelParticleSystem/ModelInstance layout; repackage matching outputs. See Docs/en/how-to/content/particle-format.md#runtime-contract. Recheck callback flashes, deferred unposed requests, finite lifetime and model links on each supported platform. No caller or persisted-data conversion is required.",
+      "release_note": "Docs/en/reference/changelog.md Unreleased Fixed and Migration entries, with the corresponding Russian mirror.",
+      "compatibility": "No script signature, resource schema, saved-data identity, network manual migration marker (0.0.77) or Managed ABI (9) changes. Native class layout changes require a coordinated rebuild. Keep matching binaries, assemblies and baked metadata; rollback restores the matching previous set. Native tests do not qualify browser or Android rendering.",
+      "owner": "model-particle runtime and rendering"
     }
   ]
 }

@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"381e7f23c5e3c23b97558a5763aedbe8424443a77c2a41167dc9f787cf0b5a36"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"76e8e4bcf5d4fe746da99ba997aab8aee5235ae62ac78d02eb3c5ba73aa669d8"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -218,6 +218,15 @@ Preview поддерживает фильтрацию ресурсов, разм
 но остаётся обращённым к камере, поэтому callers добавляют его как padding плоскости
 вида и не вращают как ещё одну точку world space. Прикреплённые к модели частицы
 расширяют кадр модели только пока backend сообщает о живых частицах или instances.
+
+`ModelInstance::RunParticle` запрашивает перерисовку и откладывает эффект до
+готовой полной позы кости. Первое размещение выполняет `Setup`, затем
+`Update(0)`: интервал позы до создания не старит новую частицу. Эффекты из
+animation callback получают эту инициализацию до текущей отрисовки, в том числе
+при запросе у уже позированных детей. Новый ребёнок или изменённый layout атласа
+ждёт следующей валидной позы. Ожидающие эффекты не рисуются и не расширяют кадр
+в identity-преобразованиях. Дальнейшие положительные delta позы продвигают
+эффект; нулевые re-pose при подборе кадра не старят его.
 
 Для модельного Effekseer `ParticleRuntimeSetup.World` задаёт полную позу кости.
 Конечный `LookDirectionAngle` принимается как прежняя подсказка без второго yaw;
