@@ -55,9 +55,9 @@ TEST_CASE("TimeRelated")
 
     SECTION("FloatingUnitConversionsPreserveFractions")
     {
-        for (const auto sign : {-1, 1}) {
-            const timespan half_ms {std::chrono::microseconds {sign * 500}};
-            const timespan one_and_half_sec {std::chrono::milliseconds {sign * 1500}};
+        for (int32_t sign : {-1, 1}) {
+            timespan half_ms {std::chrono::microseconds {sign * 500}};
+            timespan one_and_half_sec {std::chrono::milliseconds {sign * 1500}};
 
             CHECK(half_ms.to_ms<double>() == sign * 0.5);
             CHECK(half_ms.to_sec<double>() == sign * 0.0005);
@@ -207,3 +207,4 @@ TEST_CASE("TimeRelated")
 }
 
 FO_END_NAMESPACE
+

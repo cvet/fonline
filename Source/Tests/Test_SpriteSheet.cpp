@@ -587,8 +587,8 @@ TEST_CASE("MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot", "[sprite]")
 
     // Without an override the sprite root follows the frame's own offset
     CHECK(mspr->GetSpriteRootOffset() == ipos32 {0, 9});
-    auto draw_root = mspr->GetDrawRootPos();
-    auto map_root = mspr->GetMapRootOffset();
+    ipos32 draw_root = mspr->GetDrawRootPos();
+    ipos32 map_root = mspr->GetMapRootOffset();
 
     draw_offset = ipos32 {42, -17};
     CHECK(mspr->GetSpriteRootOffset() == ipos32 {-40, 24});
@@ -889,3 +889,4 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 }
 
 FO_END_NAMESPACE
+

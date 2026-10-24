@@ -169,7 +169,7 @@ static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector
 
 static auto LoadTestModelSourceFixture(string_view path, const File& file) -> ModelSourceAsset
 {
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
     string marker = reader.read_string();
     FO_VERIFY_AND_THROW(marker == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
 
@@ -276,7 +276,7 @@ static void AddTestModel(BakerTests::TestRig& rig, string_view file_name, string
 static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view child_bone) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     writer.write_string(root_bone);
@@ -333,7 +333,7 @@ static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
 static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_view child_bone, float32_t child_translation_x) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     mat44 root_matrix {1.0f};
@@ -368,7 +368,7 @@ static void AddTestAnimationModelWithChild(BakerTests::TestRig& rig, string_view
 static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, string_view skin_bone) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     writer.write_string(root_bone);
@@ -610,7 +610,7 @@ static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSum
 
 static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModelMeshSummary
 {
-    auto reader = data_reader({data.data(), data.size()});
+    data_reader reader {{data.data(), data.size()}};
     BakedModelMeshSummary summary;
 
     ReadModelMeshHeader(reader, "test baked model mesh");
@@ -898,7 +898,7 @@ TEST_CASE("ModelBakers")
 
     REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
-    auto reader = data_reader({rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()});
+    data_reader reader {{rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()}};
     ReadSavedModelInfoHeader(reader);
     uint32_t model_name_len = reader.read<uint32_t>();
     string model_name;
@@ -1468,7 +1468,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
         (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
@@ -1581,7 +1581,7 @@ ActionAnimEqual 4 6
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
         (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
@@ -2319,7 +2319,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
 
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");

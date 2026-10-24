@@ -98,7 +98,7 @@ namespace ServerEngineTests
     inline auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        data_writer writer {map_data};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.write<uint32_t>(uint32_t {0});
@@ -185,7 +185,7 @@ namespace ServerEngineTests
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -594,3 +594,4 @@ namespace ServerEngineInitGateTest
 }
 
 FO_END_NAMESPACE
+

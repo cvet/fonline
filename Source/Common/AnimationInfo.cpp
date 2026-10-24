@@ -74,7 +74,7 @@ auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan
     FO_VERIFY_AND_THROW(!direction.Frames.empty() && direction.Frames.size() <= 65535, "Sprite direction requires 1..65535 frames", direction.Frames.size());
 
     timespan total {};
-    const timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+    timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
 
     for (const auto& frame : direction.Frames) {
         FO_VERIFY_AND_THROW(frame.Duration > timespan::zero, "Sprite frame duration must be positive");
@@ -87,7 +87,7 @@ auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan
 
 auto GetSpriteDurationMilliseconds(timespan duration) -> uint32_t
 {
-    const int64_t milliseconds = duration.milliseconds();
+    int64_t milliseconds = duration.milliseconds();
     FO_VERIFY_AND_THROW(milliseconds > 0 && milliseconds <= std::numeric_limits<uint32_t>::max(), "Sprite duration must fit positive uint32 milliseconds", duration);
     FO_VERIFY_AND_THROW(duration == timespan {std::chrono::milliseconds {milliseconds}}, "Sprite duration must contain whole milliseconds", duration);
 
@@ -482,3 +482,4 @@ auto ReadAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> un
 }
 
 FO_END_NAMESPACE
+

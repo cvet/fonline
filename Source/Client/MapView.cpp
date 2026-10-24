@@ -346,7 +346,7 @@ void MapView::LoadStaticData()
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
 
     MapLoader::ReadBakedFileHeader(reader, GetProtoId());
 

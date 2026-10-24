@@ -68,7 +68,7 @@ TEST_CASE("Baking report accumulates duration before converting to JSON millisec
     report.RecordBakerInvocation("pack", "baker", 1, 0, 0, timespan {600000}, true, {});
     report.RecordPackDuration("pack", timespan {1200000});
 
-    const auto json = nlohmann::json::parse(report.Serialize());
+    auto json = nlohmann::json::parse(report.Serialize());
     CHECK(json.at("bakers").at(0).at("durationMs") == 1);
     CHECK(json.at("packs").at(0).at("bakers").at(0).at("durationMs") == 1);
     CHECK(json.at("packs").at(0).at("durationMs") == 1);
@@ -82,7 +82,7 @@ TEST_CASE("Baking report rejects duration overflow before changing invocation st
     CHECK_THROWS(report.RecordBakerInvocation("second", "baker", 1, 0, 0, timespan {1}, true, {}));
     CHECK_THROWS(report.RecordBakerInvocation("second", "other", 1, 0, 0, timespan {-1}, true, {}));
 
-    const auto json = nlohmann::json::parse(report.Serialize());
+    auto json = nlohmann::json::parse(report.Serialize());
     REQUIRE(json.at("bakers").size() == 1);
     REQUIRE(json.at("packs").size() == 1);
     CHECK(json.at("bakers").at(0).at("invocations") == 1);
@@ -1653,3 +1653,4 @@ TEST_CASE("ResourceUsageOwnersKeepFontPagesAndOnlyCurrentEffectPasses")
 }
 
 FO_END_NAMESPACE
+

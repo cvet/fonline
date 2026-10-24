@@ -250,7 +250,7 @@ namespace ImageBakerFofrm
             }
         }
 
-        const auto original = collection;
+        auto original = collection;
         string_view prefix = FO_GEOMETRY == 1 ? "HexDir" : "SquareDir";
         int32_t directions = ImageImport::GetDirectionCount(collection);
         ipos32 root_offset = ReadOffset(fofrm, "", {}, fname);
@@ -400,3 +400,4 @@ namespace ImageBakerFofrm
 }
 
 FO_END_NAMESPACE
+

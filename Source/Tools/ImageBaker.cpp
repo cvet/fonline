@@ -327,9 +327,9 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
     FO_TRACE_ZONE(Baking);
 
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
-    auto dirs = ImageImport::GetDirectionCount(collection);
+    uint8_t dirs = ImageImport::GetDirectionCount(collection);
     SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->GetSettings());
     string output_path = collection.NewName.empty() ? string(fname) : collection.NewName;
     SpriteInfoFileEntry sprite_info_entry {
@@ -744,3 +744,4 @@ static auto LoadImage(const ImageImport::Loader& loader, string_view fname, stri
 }
 
 FO_END_NAMESPACE
+

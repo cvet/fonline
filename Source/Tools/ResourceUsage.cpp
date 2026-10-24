@@ -280,23 +280,23 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
 
     nlohmann::ordered_json manifest;
     manifest["Version"] = 1;
-    manifest["BuildHash"] = std::string {build_hash};
-    manifest["BakingConfigHash"] = std::string {config_hash};
+    manifest["BuildHash"] = build_hash;
+    manifest["BakingConfigHash"] = config_hash;
     manifest["Packs"] = nlohmann::ordered_json::object();
     manifest["Reasons"] = nlohmann::ordered_json::object();
 
     for (const string& pack : packs) {
-        manifest["Packs"][std::string {pack}] = nlohmann::ordered_json::array();
+        manifest["Packs"][string_view {pack}] = nlohmann::ordered_json::array();
     }
 
     for (const string& key : selected) {
         const ResourceOutput& output = outputs.at(key);
-        manifest["Packs"][std::string {output.Pack}].push_back(std::string {output.Path});
-        auto& entry = manifest["Reasons"][std::string {key}];
+        manifest["Packs"][string_view {output.Pack}].push_back(string_view {output.Path});
+        auto& entry = manifest["Reasons"][string_view {key}];
         entry = nlohmann::ordered_json::array();
 
         for (const string& reason : reasons.at(key)) {
-            entry.push_back(std::string {reason});
+            entry.push_back(string_view {reason});
         }
     }
 
@@ -304,3 +304,4 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
 }
 
 FO_END_NAMESPACE
+

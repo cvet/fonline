@@ -186,7 +186,7 @@ namespace BakerTests
         // Registration reads the fixed header first, so a test blob has to carry one even when the test only
         // cares about the sections behind it
         vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
-        auto writer = data_writer(metadata);
+        data_writer writer {metadata};
 
         writer.write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
 
@@ -238,7 +238,7 @@ namespace BakerTests
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -262,7 +262,7 @@ namespace BakerTests
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {1});
@@ -296,7 +296,7 @@ namespace BakerTests
     inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint32_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
@@ -337,7 +337,7 @@ namespace BakerTests
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);

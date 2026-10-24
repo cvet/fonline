@@ -483,7 +483,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    const ModelTextureInfoMap texture_infos = [this] {
+    ModelTextureInfoMap texture_infos = [this] {
         ModelTextureInfoMap result;
 
         for (const auto& header : _context->GetBakedFiles()->FilterFiles("foinfo", SPRITE_INFO_DIRECTORY)) {
@@ -1328,7 +1328,7 @@ static auto ReadBakedModelMeshForBounds(const FileSystem& baked_files, const Bak
     }
 
     try {
-        auto model_reader = data_reader(model_file.GetDataSpan());
+        data_reader model_reader {model_file.GetDataSpan()};
         return ReadModelMeshData(model_reader, description.Model);
     }
     catch (const std::exception& ex) {
@@ -2197,7 +2197,7 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
     info.Skeleton.FileName = path;
 
     try {
-        auto reader = data_reader(file.GetDataSpan());
+        data_reader reader {file.GetDataSpan()};
         ModelMeshData mesh_data = ReadModelMeshData(reader, path);
         FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", path);
         CollectBakedModelMeshInfo(*mesh_data.RootBone, info, {});

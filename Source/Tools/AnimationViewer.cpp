@@ -450,7 +450,7 @@ void AnimationViewer::ApplyDir()
         return;
     }
 
-    auto dir = mdir(iround<int32_t>(_dirAngle));
+    mdir dir {iround<int32_t>(_dirAngle)};
     _previewSprite->SetDirection(dir);
 
 #if FO_ENABLE_3D

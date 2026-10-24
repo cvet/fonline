@@ -127,7 +127,7 @@ TEST_CASE("FofrmGeometry")
 {
     SECTION("FlipsAndRotatesAsymmetricPixels")
     {
-        const vector<pair<string, vector<uint8_t>>> cases {
+        vector<pair<string, vector<uint8_t>>> cases {
             {"Flip = X", {3, 2, 1, 6, 5, 4}},
             {"Flip = Y", {4, 5, 6, 1, 2, 3}},
             {"Flip = XY", {6, 5, 4, 3, 2, 1}},
@@ -341,13 +341,13 @@ TEST_CASE("FofrmStrictFieldApplicability")
 
     SECTION("RejectsNamedFpsInsteadOfIgnoringIt")
     {
-        auto text = strex("Source = A.toy\n[{} 1]\nFps = 20\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
+        string text = strex("Source = A.toy\n[{} 1]\nFps = 20\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
         CHECK_THROWS(LoadTransformRecipe(text));
     }
 
     SECTION("RejectsAuthoredDirectionsWithoutFullTable")
     {
-        auto text = strex("Frame = A.toy\n[{} 2]\nFrame = A.toy\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
+        string text = strex("Frame = A.toy\n[{} 2]\nFrame = A.toy\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
         CHECK_THROWS(LoadTransformRecipe(text));
     }
 }
@@ -390,7 +390,7 @@ TEST_CASE("FofrmTimelines")
 
     SECTION("AllowsUnequalDirectionCounts")
     {
-        auto text = strex("Source = A.toy\nGrid = 1 1\nFrameIndices = 0 1 2\n[{} 1]\nFrameIndices = 4 5\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
+        string text = strex("Source = A.toy\nGrid = 1 1\nFrameIndices = 0 1 2\n[{} 1]\nFrameIndices = 4 5\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
         auto result = LoadTransformRecipe(text);
         CHECK(result.Main.Frames.size() == 3);
         CHECK(result.Dirs[0].Frames.size() == 2);
@@ -406,3 +406,4 @@ TEST_CASE("FofrmTimelines")
 }
 
 FO_END_NAMESPACE
+

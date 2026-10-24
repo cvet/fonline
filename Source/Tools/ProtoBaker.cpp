@@ -345,7 +345,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     set<hstring> str_hashes;
 
     {
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         vector<uint8_t> props_data;
 
@@ -383,7 +383,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
     vector<uint8_t> final_data;
 
     {
-        auto final_writer = data_writer(final_data);
+        data_writer final_writer {final_data};
 
         final_writer.write<uint32_t>(numeric_cast<uint32_t>(str_hashes.size()));
 
@@ -401,3 +401,4 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 }
 
 FO_END_NAMESPACE
+

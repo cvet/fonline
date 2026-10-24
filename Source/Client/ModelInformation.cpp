@@ -81,7 +81,7 @@ auto ModelInformation::Load(string_view name) -> bool
             return false;
         }
 
-        auto reader = data_reader(fo3d.GetDataSpan());
+        data_reader reader {fo3d.GetDataSpan()};
 
         try {
             bool loaded = LoadBaked(name, reader);
@@ -906,3 +906,4 @@ auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCu
 FO_END_NAMESPACE
 
 #endif
+

@@ -331,8 +331,8 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     timespan frame_render_duration = nanotime::now() - start_frame_render;
 
     if (_impl->AverageRenderTime > std::chrono::milliseconds(0)) {
-        const int64_t previous = _impl->AverageRenderTime.nanoseconds();
-        const int64_t current = frame_render_duration.nanoseconds();
+        int64_t previous = _impl->AverageRenderTime.nanoseconds();
+        int64_t current = frame_render_duration.nanoseconds();
         _impl->AverageRenderTime = timespan {previous / 2 + current / 2 + (previous % 2 + current % 2) / 2};
     }
     else {
@@ -435,3 +435,4 @@ int32_t VideoClip::DecodePacket()
 }
 
 FO_END_NAMESPACE
+

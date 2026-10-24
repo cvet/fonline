@@ -105,9 +105,12 @@ namespace
         {"Source/Server/Server.cpp", "if (OnStart.Fire() == EventResult::StopChain) {", 1, "startup gate"},
         {"Source/Server/Server.cpp", "OnFinish.Fire();", 1, "server finish"},
         {"Source/Server/Server.cpp", "OnPlayerLogout.Fire(player);", 1, "pre-teardown player logout"},
-        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 2, "post-attach critter create"},
-        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 1, "post-attach critter load"},
-        {"Source/Server/Server.cpp", "OnCritterLoad.Fire(cr);", 1, "post-load guarded"},
+        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 1, "post-attach critter create"},
+        {"Source/Server/Server.cpp", "OnMapCritterIn.Fire(map, cr);", 1, "post-attach stored-map critter load"},
+        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 2, "post-attach critter load"},
+        {"Source/Server/Server.cpp", "OnCritterLoad.Fire(cr);", 1, "shared post-load guarded notification"},
+        {"Source/Server/Server.cpp", "EventResult pre_login_result = OnPlayerPreLogin.Fire(not_logged_in_player);", 1, "pre-registration native admission gate"},
+        {"Source/Server/Server.cpp", "EventResult pre_process_result = OnPlayerPreProcess.Fire(player);", 1, "per-message native admission gate before reading"},
         {"Source/Server/Server.cpp", "OnCritterUnload.Fire(cr);", 1, "pre-unload notification"},
         {"Source/Server/Server.cpp", "OnPlayerCritterSwitched.Fire(player, cr, prev_cr);", 1, "post-switch notification"},
         {"Source/Server/Server.cpp", "OnCritterSendInitialInfo.Fire(cr);", 1, "post-send initial info"},
@@ -326,3 +329,4 @@ TEST_CASE("ServerEventCallContracts")
 }
 
 FO_END_NAMESPACE
+

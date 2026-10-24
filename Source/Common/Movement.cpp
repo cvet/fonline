@@ -39,12 +39,12 @@ static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS = 20;
 
 static auto RescaleMovementTime(timespan time, uint16_t speed, uint16_t new_speed, timespan resolution) -> timespan
 {
-    const int64_t numerator = speed;
-    const int64_t divisor = checked_mul<int64_t>(numeric_cast<int64_t>(new_speed), resolution.nanoseconds());
+    int64_t numerator = speed;
+    int64_t divisor = checked_mul<int64_t>(numeric_cast<int64_t>(new_speed), resolution.nanoseconds());
 
-    const int64_t whole = checked_mul<int64_t>(time.nanoseconds() / divisor, numerator);
-    const int64_t remainder = (time.nanoseconds() % divisor) * numerator;
-    const int64_t units = checked_add<int64_t>(whole, (remainder + divisor / 2) / divisor);
+    int64_t whole = checked_mul<int64_t>(time.nanoseconds() / divisor, numerator);
+    int64_t remainder = (time.nanoseconds() % divisor) * numerator;
+    int64_t units = checked_add<int64_t>(whole, (remainder + divisor / 2) / divisor);
 
     return timespan {checked_mul<int64_t>(units, resolution.nanoseconds())};
 }
@@ -513,3 +513,4 @@ void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time,
 }
 
 FO_END_NAMESPACE
+

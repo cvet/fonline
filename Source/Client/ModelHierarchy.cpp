@@ -129,7 +129,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<const MeshTexture>
 {
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
-    auto name = _modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name);
+    hstring name = _modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name);
 
     for (const auto& texture : _textures) {
         if (texture->Name == name) {
@@ -159,3 +159,4 @@ auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
 FO_END_NAMESPACE
 
 #endif
+

@@ -16838,10 +16838,6 @@
           "source_sha256": "26f6d7d297b25593b56e43b430ecb0e8c24e54c437df8df2452632abf8c87cae",
           "translation": "SyncScope: только читает языковой пакет; покрытие сущности не требуется."
         },
-        "/symbols/@id=script.method.server.Game.LoadCritter/description": {
-          "source_sha256": "f315f110ea3ab2bd4052916cb5c79bcd1cd2c8945ffe5cd41c4834639eb32199",
-          "translation": "SyncScope: только загружает данные из базы данных или реестра; возвращенного криттера необходимо покрыть перед использованием совместно с другими сущностями."
-        },
         "/symbols/@id=script.method.server.Game.Lock/description": {
           "source_sha256": "64a25b440f2591e93a0e417113f5918ad7f7b8637487f4799bcfbb77c2ec1699",
           "translation": "SyncScope: блокирует singleton-секцию Game; пока эта блокировка удерживается, нельзя вызывать Game.Sync."
@@ -20349,6 +20345,18 @@
         "/symbols/@id=setting.common.Animation.PreviewStateAnim/description": {
           "source_sha256": "a6bb9da90858dd2c2855b7ed515a6e7500ad48e95ebcbdae91d0475de1f83830",
           "translation": "Выбранный проектом идентификатор состояния для превью"
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23e4b9bdc5bdeb7919/description": {
+          "source_sha256": "aab4e9891b8975000d2347719aef6e119afb435b8aa372ed23cb9a91da44c1af",
+          "translation": "SyncScope: вновь загруженный криттер захватывается до публикации и остаётся покрытым при возврате"
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
+          "source_sha256": "e8fdf0cf39290e6fc1aaf91f1bff3f7be1ac43ac61f91641ba5e557dc1eb4cc1",
+          "translation": "SyncScope: требуется покрытие целевой карты; вновь восстановленный криттер захватывается до публикации"
+        },
+        "/symbols/@id=setting.client.ClientNetwork.RequireInterthreadTransport/description": {
+          "source_sha256": "d97ac5d8fbe1a7b25c26abab7fdec01a1c9d8f552696362982f7b6a3a388e74c",
+          "translation": "Если true, отсутствие внутрипроцессного listener отклоняет подключение вместо попыток UDP/TCP"
         }
       }
     }

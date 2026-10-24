@@ -2480,15 +2480,15 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
     // and the complete run; the owning critter references outlive both joins, including timeout shutdown.
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
-    auto started = nanotime::now();
-    auto last_progress = started;
+    nanotime started = nanotime::now();
+    nanotime last_progress = started;
     int64_t last_rounds = 0;
     int64_t rounds_at_timeout = 0;
     timespan idle_at_timeout {};
     bool timed_out = false;
 
     while (rounds_done.load(std::memory_order_acquire) < total_rounds && !failed.load(std::memory_order_acquire)) {
-        auto now = nanotime::now();
+        nanotime now = nanotime::now();
         int64_t completed = rounds_done.load(std::memory_order_acquire);
 
         if (completed != last_rounds) {

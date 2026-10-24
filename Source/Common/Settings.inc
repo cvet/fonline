@@ -144,6 +144,7 @@ SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
 SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
+SETTING(bool, ClientNetwork, RequireInterthreadTransport, false); // If true, a missing in-process listener fails connection instead of trying UDP/TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
 SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number

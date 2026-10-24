@@ -1464,7 +1464,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "auto dirs = ImageImport::GetDirectionCount(collection);",
+            "uint8_t dirs = ImageImport::GetDirectionCount(collection);",
             "writer.write<uint32_t>(duration);",
             "writer.write<int32_t>(frame_offset.x);"
           ]
@@ -2012,7 +2012,8 @@
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
             "auto SpriteSheet::AdvanceTime(",
-            "elapsed_time.div<float64_t>(GetDuration())"
+            "elapsed_time.div<float64_t>(duration)",
+            "if (duration == timespan::zero)"
           ]
         },
         {
@@ -2096,5 +2097,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "83766369be4be6c949abb3cdef0e1cc99be4a56648e6e3cfecdf6744f2363cd9"
+  "contract_digest": "27b929b89af42a65879e04a8133f2e6434189c0b75b6a3f0b18b3262d7a1f345"
 }

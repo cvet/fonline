@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"0841785bfd5a778bf9b9c46e931da5cede29143912809aba2f9fa9d40b15cee2"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"fde60ffe1815456bbf93348bbac50e78ce4ec0461d904f54cdfa383e160ddd9a"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -364,6 +364,8 @@ Socket-соединения сервера Asio и WebSockets выполняют
 Сетевое изменение, затрагивающее репликацию свойства, должно рассматриваться вместе с документацией и тестами сущностей и свойств.
 
 ## Выбор транспорта
+
+Клиент может включить `ClientNetwork.RequireInterthreadTransport`: отсутствие внутрипроцессного listener немедленно отклоняет подключение вместо открытия socket transport. По умолчанию настройка false. Это ограничение транспорта embedded-клиента, независимое от серверной аутентификации. Результат подключения описывает [клиентская среда](../runtime/client.md#подключение-к-серверу-и-отправка-сообщений), а отдельные нативные hooks допуска к входу и каждому сообщению — [серверная среда](../runtime/server.md#нативные-hooks-допуска).
 
 Исходное дерево поддерживает несколько семейств соединений:
 

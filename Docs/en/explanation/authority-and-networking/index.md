@@ -433,6 +433,8 @@ A network change that affects property replication should be reviewed together w
 
 ## Transport selection
 
+The client may opt in to `ClientNetwork.RequireInterthreadTransport`: a missing in-process listener immediately fails connection instead of opening any socket transport. The default is false. This is an embedded-client transport constraint, independent of server authentication. [Client runtime](../runtime/client.md#server-connection-and-message-dispatch) describes the connection result; [server runtime](../runtime/server.md#native-admission-hooks) owns the separate native pre-login and per-message admission hooks.
+
 The source tree supports several connection families:
 
 - interthread transports for in-process/test-style communication;

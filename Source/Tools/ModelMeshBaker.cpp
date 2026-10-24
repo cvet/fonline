@@ -259,7 +259,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
     // Write data
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshData(writer, mesh_data, fname);
 
@@ -674,3 +674,4 @@ static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bon
 FO_END_NAMESPACE
 
 #endif
+

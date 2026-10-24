@@ -90,6 +90,9 @@ void ClientConnection::Connect()
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
+        else if (_settings->ClientNetwork.RequireInterthreadTransport) {
+            throw ClientConnectionException("Required interthread listener is unavailable", port);
+        }
         else if (_settings->ClientNetwork.UseUdp && build_condition<!FO_WEB>()) {
             try {
                 CreateNetworkConnection(true);
@@ -543,3 +546,4 @@ auto ClientConnection::RegisterSenderTime(int64_t sender_ms, nanotime receive_ti
 }
 
 FO_END_NAMESPACE
+

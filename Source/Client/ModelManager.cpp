@@ -138,7 +138,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
     auto root_bone = [&]() -> unique_ptr<ModelBone> {
         try {
             ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
@@ -325,3 +325,4 @@ static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
 FO_END_NAMESPACE
 
 #endif
+

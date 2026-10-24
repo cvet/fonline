@@ -102,7 +102,7 @@ TEST_CASE("MovingContext")
     SECTION("SpeedScalingPreservesLargeIntegralDurations")
     {
         auto moving = MakeMovingContext();
-        const timespan lease {std::numeric_limits<int64_t>::max() - 1};
+        timespan lease {std::numeric_limits<int64_t>::max() - 1};
         moving->SetLeaseTime(lease, nanotime {});
         moving->ChangeSpeed(TEST_SPEED, nanotime {});
 
@@ -116,8 +116,8 @@ TEST_CASE("MovingContext")
     SECTION("SpeedScalingOverflowPreservesContext")
     {
         auto moving = MakeMovingContext();
-        const timespan whole = moving->GetWholeTime();
-        const timespan lease {std::numeric_limits<int64_t>::max()};
+        timespan whole = moving->GetWholeTime();
+        timespan lease {std::numeric_limits<int64_t>::max()};
         moving->SetLeaseTime(lease, nanotime {});
 
         CHECK_THROWS(moving->ChangeSpeed(TEST_SPEED / 2, nanotime {}));
@@ -426,3 +426,4 @@ TEST_CASE("MovingContextFastForward")
 }
 
 FO_END_NAMESPACE
+

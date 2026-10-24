@@ -191,7 +191,7 @@ TEST_CASE("ServerLoadCritterReadsInventoryTreeOneRequestPerLevel", "[server][ent
 
     size_t requests_before = server->DbStorage.GetDbRequestsPerMinute();
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     size_t requests_after = server->DbStorage.GetDbRequestsPerMinute();
 
     REQUIRE(loaded);
@@ -251,7 +251,7 @@ TEST_CASE("ServerLoadCritterPrunesMissingNestedItemAndKeepsItsSiblings", "[serve
     server->DbStorage.WaitCommitChanges();
 
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     REQUIRE(loaded);
 
     CHECK(is_error);
@@ -289,7 +289,7 @@ TEST_CASE("ServerLoadCritterReadsCustomInnerEntitiesInOneRequest", "[server][ent
 
     size_t requests_before = server->DbStorage.GetDbRequestsPerMinute();
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     size_t requests_after = server->DbStorage.GetDbRequestsPerMinute();
 
     REQUIRE(loaded);
@@ -333,7 +333,7 @@ TEST_CASE("ServerLoadCritterPrunesMissingCustomInnerEntityAndKeepsItsSiblings", 
     server->DbStorage.WaitCommitChanges();
 
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     REQUIRE(loaded);
 
     CHECK(is_error);
@@ -471,3 +471,4 @@ TEST_CASE("ServerFailedNpcLoadKeepsRecoverableRecords", "[server][entity][databa
 }
 
 FO_END_NAMESPACE
+
