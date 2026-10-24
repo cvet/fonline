@@ -206,6 +206,7 @@ private:
     void ScheduleCommit();
     void CommitNextChange() noexcept;
     void CommitThreadEntry() noexcept;
+    void FinishRecoveryLogCleanup();
     void RegisterDbRequests(size_t request_count) const;
     auto ResolveCollectionName(string_view collection_name) const -> hstring;
     void ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const;
@@ -228,6 +229,7 @@ private:
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};
     bool _opLogEnabled {};
+    bool _recoveryLogCleanupPending {};
     optional<RecoveryLogHandle> _pendingChangesLog {};
     optional<RecoveryLogHandle> _committedChangesLog {};
     size_t _pendingChangesPanicThreshold {};

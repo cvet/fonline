@@ -344,7 +344,7 @@ void DataBaseImpl::InitializeOpLogs()
     open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
     open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
-    if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
+    if (!_pendingChangesLog->GetContent().empty() && _committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
     }
 }
@@ -363,104 +363,122 @@ void DataBaseImpl::RestorePendingChanges()
     const_span<string> pending_changes_content {_pendingChangesLog->GetContent()};
     const_span<string> committed_changes_content {_committedChangesLog->GetContent()};
 
-    if (committed_changes_content.size() > pending_changes_content.size()) {
-        throw DataBaseException("Committed database changes file has more lines than pending database changes file");
-    }
-
-    for (size_t i {0}; i < committed_changes_content.size(); i++) {
-        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
-        size_t line_index {i + 1};
-
-        if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
+    // An empty pending log marks a retired recovery generation; remaining progress belongs to interrupted cleanup
+    if (!pending_changes_content.empty()) {
+        if (committed_changes_content.size() > pending_changes_content.size()) {
+            throw DataBaseException("Committed database changes file has more lines than pending database changes file");
         }
-    }
 
-    size_t pending_commands_to_replay {pending_changes_content.size() - committed_changes_content.size()};
-    size_t replayed_commands {0};
+        for (size_t i {0}; i < committed_changes_content.size(); i++) {
+            FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
+            size_t line_index {i + 1};
 
-    try {
-        for (size_t i {committed_changes_content.size()}; i < pending_changes_content.size(); i++) {
-            const auto& line {pending_changes_content[i]};
-            auto line_view {string_view {line}};
-            auto first_space {line_view.find(' ')};
-            auto second_space {line_view.find(' ', first_space + 1)};
-            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
-            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
-
-            auto command {line_view.substr(0, first_space)};
-            auto collection {line_view.substr(first_space + 1, second_space - first_space - 1)};
-            string_view record_id_str {};
-            string_view other {};
-
-            auto third_space {line_view.find(' ', second_space + 1)};
-
-            if (third_space == string_view::npos) {
-                FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
-                record_id_str = line_view.substr(second_space + 1);
-            }
-            else {
-                FO_VERIFY_AND_THROW(third_space != second_space + 1 && third_space + 1 < line_view.size(), "Pending database oplog command has an empty record id or missing payload", i + 1, command, collection, second_space, third_space, line_view.size());
-                record_id_str = line_view.substr(second_space + 1, third_space - second_space - 1);
-                other = line_view.substr(third_space + 1);
-            }
-
-            hstring collection_name {ResolveCollectionName(collection)};
-            auto key_type {GetCollectionKeyType(collection_name)};
-            auto record_id {DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping())};
-            auto storage_record_id {EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping())};
-            auto current_doc {GetRecord(collection_name, storage_record_id)};
-
-            if (command == "delete") {
-                if (!current_doc.Empty()) {
-                    DeleteRecord(collection_name, storage_record_id);
-                }
-            }
-            else {
-                auto doc {DataBaseSerialization::FromJson(nlohmann::json::parse(other))};
-
-                if (command == "insert") {
-                    if (current_doc.Empty()) {
-                        InsertRecord(collection_name, storage_record_id, doc);
-                    }
-                    else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
-                    }
-                }
-                else if (!DoesDocumentContain(current_doc, doc)) {
-                    UpdateRecord(collection_name, storage_record_id, doc);
-                }
-            }
-
-            if (!_committedChangesLog->Append(strex("{}\n", line).str())) {
-                throw DataBaseException("Committed pending database changes file append failed during restore");
-            }
-
-            if (++replayed_commands % 100 == 0) {
-                logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+            if (pending_changes_content[i] != committed_changes_content[i]) {
+                throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
             }
         }
+
+        size_t pending_commands_to_replay {pending_changes_content.size() - committed_changes_content.size()};
+        size_t replayed_commands {0};
+
+        try {
+            for (size_t i {committed_changes_content.size()}; i < pending_changes_content.size(); i++) {
+                const auto& line {pending_changes_content[i]};
+                auto line_view {string_view {line}};
+                auto first_space {line_view.find(' ')};
+                auto second_space {line_view.find(' ', first_space + 1)};
+                FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
+                FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
+
+                auto command {line_view.substr(0, first_space)};
+                auto collection {line_view.substr(first_space + 1, second_space - first_space - 1)};
+                string_view record_id_str {};
+                string_view other {};
+
+                auto third_space {line_view.find(' ', second_space + 1)};
+
+                if (third_space == string_view::npos) {
+                    FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
+                    record_id_str = line_view.substr(second_space + 1);
+                }
+                else {
+                    FO_VERIFY_AND_THROW(third_space != second_space + 1 && third_space + 1 < line_view.size(), "Pending database oplog command has an empty record id or missing payload", i + 1, command, collection, second_space, third_space, line_view.size());
+                    record_id_str = line_view.substr(second_space + 1, third_space - second_space - 1);
+                    other = line_view.substr(third_space + 1);
+                }
+
+                hstring collection_name {ResolveCollectionName(collection)};
+                auto key_type {GetCollectionKeyType(collection_name)};
+                auto record_id {DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping())};
+                auto storage_record_id {EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping())};
+                auto current_doc {GetRecord(collection_name, storage_record_id)};
+
+                if (command == "delete") {
+                    if (!current_doc.Empty()) {
+                        DeleteRecord(collection_name, storage_record_id);
+                    }
+                }
+                else {
+                    auto doc {DataBaseSerialization::FromJson(nlohmann::json::parse(other))};
+
+                    if (command == "insert") {
+                        if (current_doc.Empty()) {
+                            InsertRecord(collection_name, storage_record_id, doc);
+                        }
+                        else if (!AreDocumentsEqual(current_doc, doc)) {
+                            throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
+                        }
+                    }
+                    else if (!DoesDocumentContain(current_doc, doc)) {
+                        UpdateRecord(collection_name, storage_record_id, doc);
+                    }
+                }
+
+                if (!_committedChangesLog->Append(strex("{}\n", line).str())) {
+                    throw DataBaseException("Committed pending database changes file append failed during restore");
+                }
+
+                if (++replayed_commands % 100 == 0) {
+                    logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+                }
+            }
+        }
+        catch (const DataBaseException&) {
+            throw;
+        }
+        catch (const std::exception& ex) {
+            throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
+        }
+
+        FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
+        FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
+        logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
     }
-    catch (const DataBaseException&) {
-        throw;
-    }
-    catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
+    else if (!committed_changes_content.empty()) {
+        logging::write("Completing interrupted database recovery log cleanup");
     }
 
-    FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
-    FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
-    logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
-
-    if (!_committedChangesLog->Truncate()) {
-        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog").str());
-    }
-    if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBase.OpLogPath);
-    }
+    _recoveryLogCleanupPending = true;
+    FinishRecoveryLogCleanup();
 
     _backendFailed = false;
     OnPendingChangesRestored();
+}
+
+void DataBaseImpl::FinishRecoveryLogCleanup()
+{
+    FO_TRACE_ZONE(Database);
+
+    // Retire and sync pending commands before discarding their durable replay progress.
+    // Re-sync an already empty pending log as well when resuming interrupted cleanup
+    if (!_pendingChangesLog->Truncate()) {
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBase.OpLogPath);
+    }
+    if (!_committedChangesLog->Truncate()) {
+        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog").str());
+    }
+
+    _recoveryLogCleanupPending = false;
 }
 
 auto DataBaseImpl::InValidState() const noexcept -> bool
@@ -1232,6 +1250,11 @@ void DataBaseImpl::CommitNextChange() noexcept
             if (!_opLogEnabled) {
                 StartPanic("Database backend write failed and oplog is disabled, can't recover");
                 return;
+            }
+
+            // Cleanup can fail after retiring pending commands; finish it before reusing that file
+            if (_recoveryLogCleanupPending) {
+                FinishRecoveryLogCleanup();
             }
 
             string log_data {};

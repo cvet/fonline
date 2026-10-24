@@ -1401,9 +1401,10 @@ void ClientEngine::Net_OnCritterMoveItem()
 
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
-    if (items_count != 0) {
-        FO_VERIFY_AND_THROW(!cr->GetIsChosen(), "Critter is already marked as chosen");
-
+    if (cr->GetIsChosen()) {
+        FO_VERIFY_AND_THROW(items_count == 0, "Chosen critter received an inventory snapshot");
+    }
+    else {
         cr->DeleteAllInvItems();
 
         for (uint32_t i {0}; i < items_count; i++) {

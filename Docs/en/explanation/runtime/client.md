@@ -178,6 +178,8 @@ Script GUI `ItemView` widgets cache the item handles bound to their cells. `Reso
 
 `Net_OnCritterMoveItem()` applies the chosen critter's live inventory slots before refreshing its view and firing `OnCritterAction`. A move into a single-item slot also moves the displaced item to the previous slot; multi-item slots retain their other items. The detached action-context item describes the received destination slot, while the action argument carries the previous slot. Project-owned inventory widgets can rebuild their cached cells from that event without predicting the move locally.
 
+For a non-chosen critter, `Player::Send_MoveItem()` supplies a complete public inventory snapshot. `Net_OnCritterMoveItem()` replaces the previous inventory even when the snapshot has zero items, before view refresh and action callbacks; moving or hiding the last public item therefore clears its old equipment view. A chosen critter receives no full snapshot through this message: its count must be zero and its independently synchronized inventory is retained.
+
 ## 3D model runtime architecture
 
 The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The
