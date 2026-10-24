@@ -1058,8 +1058,8 @@ TEST_CASE("SPARK destination copy preserves shared zone aliases inside its graph
     REQUIRE(system);
     const auto& first_zone = system->getGroup(0)->getEmitter(0)->getZone();
     const auto& second_zone = system->getGroup(0)->getEmitter(1)->getZone();
-    CHECK(first_zone.get() == second_zone.get());
-    CHECK(first_zone.get() != zone.get());
+    CHECK(first_zone == second_zone);
+    CHECK(first_zone != zone);
     CHECK(&first_zone->getContext() == &destination);
     CHECK(&zone->getContext() == &source);
 }
@@ -1173,7 +1173,7 @@ TEST_CASE("SPARK old direct copy and isolated copy preserve mixed-step random dy
     REQUIRE(gravity->getValue() == SPK::Vector3D(0.0f, -2.0f, 0.0f));
     REQUIRE(gravity->getCoef() == 1.0f);
     REQUIRE(gravity->getZone());
-    REQUIRE(gravity->getZone().get() != source.getDefaultZone().get());
+    REQUIRE(gravity->getZone() != source.getDefaultZone());
     REQUIRE(&gravity->getContext() == &source);
     REQUIRE(&gravity->getZone()->getContext() == &source);
     source.setRandomSeed(123456U);
@@ -1769,7 +1769,13 @@ static auto MakeMovingChildParticleResources() -> vector<pair<string, vector<uin
         baker.AddSourceFile(strex("Models/Order{}.fo3d", owner), description, 1);
     }
 
-    baker.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+    // The synthetic project declares the animation pair used by both model descriptions
+    baker.AddBakedFile("Metadata.fometa-client",
+        BakerTests::MakeMetadataBlob({{"Enum",
+            {
+                {"CritterStateAnim", "", "TestState", "1"},
+                {"CritterActionAnim", "", "TestAction", "1"},
+            }}}));
     ModelInfoBaker info_baker(baker.MakeContext(), [](string_view path, const File& file) -> ModelSourceAsset {
         ModelSourceAsset asset;
         asset.FileName = path;

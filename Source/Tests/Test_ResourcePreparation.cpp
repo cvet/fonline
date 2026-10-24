@@ -1065,7 +1065,7 @@ TEST_CASE("ResourcePreparationActualStaticMapPreservesPixelsOrderAndFailurePrefi
             REQUIRE(fourth);
             CHECK(ReadPreparationAtlasPixel(fourth.as_ptr()) == ucolor {8, 27, 66, 255});
         }
-    });
+    }, false, ClientEngineTests::MinimalClientEffects::Missing);
 }
 
 FO_END_NAMESPACE

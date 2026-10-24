@@ -68,40 +68,48 @@ FO_BEGIN_NAMESPACE
 
 namespace ClientEngineTests
 {
+    enum class MinimalClientEffects
+    {
+        Supplied,
+        Missing,
+    };
+
     template<typename Run>
-    void CheckMinimalClientDiagnostics(Run&& run, bool has_model_animation_info = false)
+    void CheckMinimalClientDiagnostics(Run&& run, bool has_model_animation_info = false, MinimalClientEffects effects = MinimalClientEffects::Supplied)
     {
         vector<pair<logging::type, string>> expected;
 
-        constexpr string_view effect_names[] = {
-            "ImGui_Default",
-            "2D_Default",
-            "2D_NoDepth",
-            "Primitive_Default",
-            "Primitive_Light",
-            "Primitive_Fog",
-            "Flush_RenderTarget",
-            "Flush_Primitive",
-            "Flush_Map",
-            "Flush_Light",
-            "Flush_Fog",
+        if (effects == MinimalClientEffects::Missing) {
+            constexpr string_view effect_names[] = {
+                "ImGui_Default",
+                "2D_Default",
+                "2D_NoDepth",
+                "Primitive_Default",
+                "Primitive_Light",
+                "Primitive_Fog",
+                "Flush_RenderTarget",
+                "Flush_Primitive",
+                "Flush_Map",
+                "Flush_Light",
+                "Flush_Fog",
 #if FO_ENABLE_3D
-            "3D_Skinned",
+                "3D_Skinned",
 #endif
 #if FO_EFFEKSEER_PARTICLES
-            "Particles_ColorMulAtlas",
-            "Particles_ColorAddAtlas",
-            "Particles_ColorSubAtlas",
+                "Particles_ColorMulAtlas",
+                "Particles_ColorAddAtlas",
+                "Particles_ColorSubAtlas",
 #if FO_ENABLE_3D
-            "Particles_DistortionAtlas",
-            "Particles_DistortionAddAtlas",
+                "Particles_DistortionAtlas",
+                "Particles_DistortionAddAtlas",
 #endif
 #endif
-        };
+            };
 
-        for (string_view name : effect_names) {
-            for (string_view suffix : {".fofx", ".fofx-1-info"}) {
-                expected.emplace_back(logging::type::warning, strex("Effect file 'Effects/{}{}' not found", name, suffix).str());
+            for (string_view name : effect_names) {
+                for (string_view suffix : {".fofx", ".fofx-1-info"}) {
+                    expected.emplace_back(logging::type::warning, strex("Effect file 'Effects/{}{}' not found", name, suffix).str());
+                }
             }
         }
 

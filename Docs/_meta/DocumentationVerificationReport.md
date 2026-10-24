@@ -65,8 +65,10 @@ these documentation results.
 The unpublished integration worktree combines published master
 `268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629` and client-worker tip
 `9cca2c14087471b6c9824ec5449e03e7e3aa6dec`. It prepares
-`2026.1.61-dev` after version 60, preserving published history. The merge and
-the rebase of four later local fixes are not yet complete.
+`2026.1.61-dev` after version 60, preserving published history. Published merge
+`b618dc797265f042024214186b032792e53a9227` retains both published parents.
+The four unpublished fixes were rebased onto it, ending at
+`f8aaf96aaf9e65a974ea5b63ffd2b5518b7f0c33`; no published commit was rewritten.
 
 ResourceManager owns preparation, provider access, sprite factories and cache
 invalidation. SpriteManager retains rendering and CPU batch orchestration.
@@ -76,10 +78,10 @@ ABI 9 remain unchanged; consumers, bindings and resources require a common
 rebuild and bake. Client multithreading remains disabled by default.
 
 The first conflict resolution accidentally removed four geometry definitions.
-Restore the published FillSpriteGeometry, FillSpriteRegionGeometry,
-SubmitSpriteGeometry and CompleteSpriteGeometry implementations, retaining
-their algorithm and publication order. Keep the original failed generator
-observation and source copies. A generic geometry zone does not establish
+The published FillSpriteGeometry, FillSpriteRegionGeometry, SubmitSpriteGeometry
+and CompleteSpriteGeometry implementations were restored, retaining their
+algorithm and publication order. Original failed observations and source copies
+remain preserved. A generic geometry zone does not establish
 nonempty worker execution.
 
 Reviewed authored English/Russian pairs and stable description locators are
@@ -106,12 +108,45 @@ upstream control; the current full codegen suite then passes 15 tests with
 ten Make skips under the default Visual Studio generator. No production
 codegen behavior or fixture assertion is changed for that environment issue.
 
-A fresh Linux/Clang 20/AngelScript/HEX build is running from an independently
-verified 8592-file snapshot with 3D, SPARK and Effekseer enabled. Its current
-RTTI warnings and pending native results are not qualified by the static
-checks above. Original failures, platform skips and subsequent corrections
-remain distinct. No final-commit, ordinary GUI, GPU, performance, Android,
-rendered-site or publication acceptance is claimed here.
+The original Linux/Clang 20/AngelScript/HEX route built successfully with six
+RTTI warnings, then failed the full standard native run: 845 of 864 cases and
+1740938 of 1740974 assertions passed. All 8592 physical source hashes remained
+unchanged after execution. Thirty-two failures came from stale expectations of
+missing effects that the current fixture supplies; three were extra provider
+reads before reservation rejection; one was a synthetic particle project missing
+its animation enums. These original results remain failed.
+
+The reservation correction has a separate causal RED/GREEN check on the new
+ResourceManager owner: the saved RED has exactly three extra-read failures,
+and the production-only correction passes all 56 assertions. The diagnostic
+observer still compares complete severity/message multisets. The particle
+fixture declares its actual animation pair while preserving seeds, timing and
+state oracles. Nine native pointer sites now use the existing owner/borrow
+operations; the normal project pointer audit passes 675 files with zero findings.
+Its source-backed exception-safety baseline covers 7619 functions with zero
+findings, including the changed preparation owner and transitive load guarantee.
+
+The first rebased Windows/MSVC 19.44 full run passes 864 of 865 cases, with 210
+failed assertions in the custom static-map fixture: unlike the generic client
+fixture, its provider intentionally omits default effects. Linux/Clang 20 builds
+without warnings and reproduces exactly those 210 failures in its focused run
+(35 of 36 cases pass); its full standard route is not reached. All 8592 source
+hashes remain unchanged after both failures.
+
+The linked correction selects the supplied/missing effect profile explicitly,
+preserving both resource fixtures and all literal assertions. It retains strict
+severity/message multiset matching and ordinary log publication. The corrected
+Windows/MSVC 19.44 build and complete standard native route pass 865 cases and
+1743118 assertions with no compiler warnings; all 8592 source hashes remain
+unchanged after execution. The focused selector's unmatched ParticleCpu pattern
+is not particle coverage; the complete unfiltered route supplies that layer.
+The linked Linux route remains pending and uses the actual particle tag.
+These AS/HEX fixture builds do not qualify the Managed game or ordinary client.
+The final image/localization/version check passes 30 tests and 60
+subtests; aggregate contract enforcement remains twenty changes in seventeen
+domains with no missing disposition. Original failures, platform skips and
+subsequent corrections remain distinct. No final-commit, ordinary GUI, GPU,
+performance, Android, rendered-site or publication acceptance is claimed here.
 
 ## 2026-10-23 - Rebase player admission and stored-map loading
 

@@ -175,6 +175,9 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 
 - Fix HEX/SQUARE native fixtures, six-to-eight Fallout directions and Clang 24 RTTI warnings. Runtime and formats are unchanged; no migration.
 
+- Reject sprite preparation before the full provider read when its known header cannot fit the remaining reservation. Coalescing, actual-byte admission, cancellation, retry and ordinary loading retain their existing paths; the byte limits and public APIs are unchanged.
+- Align minimal-client diagnostic expectations with supplied effects, declare the moving-child particle fixture's project animation enums, and use explicit owner/borrow operations in native fixtures. Exact diagnostic matching and the literal geometry, pixel, alias, callback and particle-state checks remain in place. Rebuild native tests; no resource-schema or script migration is introduced.
+
 ### Migration
 
 - Baseline: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); next version: `2026.1.62-dev`. The integration preserves both published histories. Apply any skipped master migration records below in order, especially the project-owned animation/resource split in version 58 and admission/restore changes in version 60.

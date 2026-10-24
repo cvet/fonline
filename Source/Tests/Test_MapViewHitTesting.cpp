@@ -413,7 +413,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
         CHECK(after.ParallelBatches == before.ParallelBatches);
     }
 
-    CHECK(map->GetLightData().get()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
     auto source = map->GetField({8, 8}).LightSources.begin()->first;
     MapLightCalculationResult published;
     published.Capacity = source->Capacity;
@@ -441,7 +441,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
         CHECK(source->FanHexes == old_fan);
         CHECK(source->MarkedHexes == old_marks);
         CHECK(source->NeedReapply);
-        CHECK(map->GetLightData().get()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+        CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
         source->Hex = {8, 8};
         REQUIRE_NOTHROW(map->DrawMap());
         CHECK_FALSE(source->NeedReapply);
@@ -491,7 +491,7 @@ TEST_CASE("MapLightCalculationDirtyConsumerSubmitsBatch")
     }
 
     CHECK(map->GetField({8, 8}).LightSources.size() == numeric_cast<size_t>(source_count));
-    CHECK(map->GetLightData().get()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
+    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 100, 50, 0});
 }
 
 TEST_CASE("FogDirtyConsumerSubmitsSectors")
@@ -636,7 +636,7 @@ TEST_CASE("MapLightCalculationOverlapRemovalAndDoorRecovery")
     }
 
     map->DrawMap();
-    CHECK(map->GetLightData().get()[8 * 20 + 8] == ucolor {200, 0, 200, 0});
+    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 0, 200, 0});
     auto blue = map->GetItem(ident_t {2001});
     map->DestroyItem(blue);
 
@@ -648,7 +648,7 @@ TEST_CASE("MapLightCalculationOverlapRemovalAndDoorRecovery")
 
     map->DrawMap();
     CHECK(map->GetField({8, 8}).LightSources.size() == 1);
-    CHECK(map->GetLightData().get()[8 * 20 + 8] == ucolor {200, 0, 0, 0});
+    CHECK(map->GetLightData()[8 * 20 + 8] == ucolor {200, 0, 0, 0});
     auto source = map->GetField({8, 8}).LightSources.begin()->first;
     auto before = source->FanHexes;
     auto door = map->AddReceivedItem(ident_t {3000}, client->Hashes.to_hashed_string("HitTestWall"), {10, 8}, {}, false);

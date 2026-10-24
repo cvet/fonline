@@ -197,8 +197,20 @@ auto ResourceManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type,
     try {
         auto header = _resources->ReadFileHeader(path.as_str());
 
-        if (header && header.GetSize() > ResourcePreparation::Limits {}.EncodedBytes) {
-            return false;
+        if (header) {
+            ResourcePreparation::Limits limits {};
+            size_t advertised_size = header.GetSize();
+
+            if (advertised_size > limits.EncodedBytes) {
+                return false;
+            }
+
+            size_t reserved = _resourcePreparation->GetDiagnostics().ReservedBytes;
+
+            // Admission reserves at least three encoded payloads; division avoids overflowing the advertised size
+            if (reserved > limits.Bytes || advertised_size > (limits.Bytes - reserved) / 3) {
+                return false;
+            }
         }
 
         file = _resources->ReadFile(path);
