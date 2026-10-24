@@ -123,39 +123,39 @@ FO_SCRIPT_API uint32_t Client_Entity_StartTimeEvent(ptr<ClientEntity> self, time
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
 }
 
-// Counts all client time events bound to this entity that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>> func)
+FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all client time events bound to this entity that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t> func)
+FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all client time events bound to this entity that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>> func)
+FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all client time events bound to this entity that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func)
+FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// Returns one when a client time event with this id is bound to the entity, or zero when it is absent
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, uint32_t id)
+FO_SCRIPT_API int32_t Client_Entity_CountTimeEvent(ptr<ClientEntity> self, uint32_t id, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id, excludeExecuting));
 }
 
 // Stops all client time events bound to this entity that use the selected callback; does nothing when none match

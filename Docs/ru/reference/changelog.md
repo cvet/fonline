@@ -7,12 +7,30 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"0967c0ce5503d4bac1df5a378a1de0ae613765d68029f54e6af1270c2e4175ba"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"a40b0c62c47756f5e37a82752ecfaa132894c432de3fb0a92b2a2dc7ed4ec404"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-24
+
+### Исправлено
+
+- Выполняющееся TimeEvent остаётся зарегистрированным и приостановленным во время managed await и AngelScript Yield. Изменения контекста и срок повтора применяются после окончательного завершения скрипта; отмена и очистка владельца исключают восстановление события поздним завершением. Сохраняется прежняя политика ошибок: явный `Repeat` контекста действует после ошибочного вызова, `Stop` имеет приоритет, а ошибка без явного перевзвода удаляет событие.
+
+### Изменено
+
+- Во все overloads `Game`/entity `CountTimeEvent` (callback и ID) Managed и AngelScript добавлен `bool excludeExecuting = false`. По умолчанию считаются все подходящие зарегистрированные записи; `true` исключает выполняющийся или приостановленный в `await`/`Yield` callback до финализации. Изменение и отмена по-прежнему обращаются к зарегистрированной записи.
+
+### Миграция
+
+- Собственные native-dispatcher используют `TimeEventManager::FireAndAdvance(entity, event_id)` вместо удалённого результата `FiredTimeEvent` и раздельной публичной пары `FireTimeEvent` / `PostFireTimeEvent`. Менеджер владеет приостановленным выполнением и финализацией; вызывающая сторона сохраняет блокировку владельца и повторно ставит задание с возвращённой optional-задержкой. Schedule/cancel hooks сохраняются до остановки всех производителей продолжений. Найти в собственных native sources `FiredTimeEvent`, `FireTimeEvent` и `PostFireTimeEvent`; прежние прямые вызовы не компилируются C++.
+
+- Сигнатуры таймеров, ID, единицы, интервалы по умолчанию и форматы сохранений прежние. Исправлено преждевременное завершение: проверить код, который рассчитывал на перекрытие повторов или раннее удаление одноразового события. Пересобрать все затронутые native-роли, managed assemblies и согласованные ресурсы одной запеканкой. Конверсия сохранений не нужна. Runtime меняется с `0.0.77` на `0.0.78` для native/managed completion bridge; Managed ABI остаётся `9`. Смешанные старые/новые binaries или ресурсы не поддерживаются. База: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); этот шаг — `2026.1.62-dev`.
+
+- Проверить все вызовы `CountTimeEvent` (`rg -n "CountTimeEvent" <script-and-native-source-dirs>`). Singleton guards, активный статус и ожидание completion сохраняют включающий выполнение подсчёт по умолчанию. One-shot остаётся зарегистрированным до terminal completion, поэтому коалесцирование снимков явно исключает выполнение: Managed `owner.CountTimeEvent(Callback, excludeExecuting: true)` или `Game.CountTimeEvent(id, excludeExecuting: true)`; AngelScript `owner.CountTimeEvent(Callback, true)` или `Game.CountTimeEvent(id, true)`; native `manager.CountTimeEvent(entity, func_name, id, true)`. Рядом с выполняющимся снимком можно поставить отдельный one-shot. Старый scheduler сохранял повторяющиеся записи, но удалял one-shot после возврата первого вызова; ни одно значение флага не воспроизводит эту смешанную политику времени жизни целиком. Прежние аргументы, ID и единицы сохраняют смысл. Перед bake пересоздать оба backend и скомпилировать Server/Client/Mapper.
+
+## 2026.1.61-dev - 2026-10-24
 
 ### Исправлено
 

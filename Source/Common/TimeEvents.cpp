@@ -103,7 +103,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     return event_id;
 }
 
-auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t
+auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, bool exclude_executing) const -> size_t
 {
     FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), 0, "Destroyed entity used to count time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
@@ -120,7 +120,7 @@ auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_na
 
         for (const auto& te : *time_events) {
             if (te->Id == id) {
-                return 1;
+                return !exclude_executing || !te->Execution ? 1 : 0;
             }
         }
     }
@@ -129,7 +129,7 @@ auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_na
         size_t count = 0;
 
         for (const auto& te : *time_events) {
-            if (te->FuncName == func_name) {
+            if (te->FuncName == func_name && (!exclude_executing || !te->Execution)) {
                 count++;
             }
         }
@@ -191,9 +191,12 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
             }
 
             if (repeat.has_value()) {
-                te->FireTime = fire_time;
                 te->RepeatDuration = repeat.value();
-                to_resubmit.push_back({te->Id, effective_delay});
+
+                if (!te->Execution) {
+                    te->FireTime = fire_time;
+                    to_resubmit.push_back({te->Id, effective_delay});
+                }
             }
             if (data.has_value()) {
                 te->Data = data.value();
@@ -338,7 +341,7 @@ void TimeEventManager::ClearTimeEvents()
 
 void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
-    small_vector<shared_ptr<Entity::TimeEventData>, 8> ready_events;
+    small_vector<uint32_t, 8> ready_ids;
     nanotime time = _engine->GameTime.GetFrameTime();
 
     {
@@ -346,50 +349,19 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 
         auto time_events = entity->GetTimeEvents();
 
-        if (!time_events || time_events->empty()) {
+        if (!time_events) {
             return;
         }
 
-        ready_events.reserve(time_events->size());
-
-        for (auto& te : *time_events) {
-            if (te->FireTime <= time) {
-                ready_events.emplace_back(te);
+        for (const auto& te : *time_events) {
+            if (te->Execution ? te->Execution->Completed && !te->Execution->NativeCallActive : te->FireTime <= time) {
+                ready_ids.emplace_back(te->Id);
             }
         }
     }
 
-    for (auto& te : ready_events) {
-        {
-            std::scoped_lock lock {_timeEventLocker};
-
-            auto time_events = entity->GetTimeEvents();
-
-            if (!time_events || time_events->empty()) {
-                return;
-            }
-
-            if (te->Id == 0) {
-                continue;
-            }
-
-            auto it = std::ranges::find(time_events->begin(), time_events->end(), te);
-
-            if (it == time_events->end()) {
-                continue;
-            }
-            if (te->FireTime > time) {
-                continue;
-            }
-        }
-
-        FiredTimeEvent result = FireTimeEvent(entity, te);
-
-        if (entity->IsDestroyed()) {
-            return;
-        }
-
-        PostFireTimeEvent(entity, te, result);
+    for (uint32_t id : ready_ids) {
+        (void)FireAndAdvance(entity, id);
     }
 }
 
@@ -419,6 +391,14 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
         for (size_t i = 0; i < time_events->size(); i++) {
             auto& te = (*time_events)[i];
 
+            if (te->Execution) {
+                if (te->Execution->Completed && !te->Execution->NativeCallActive) {
+                    ready.emplace_back(ReadyTimeEvent {entity.hold_ref(), te});
+                }
+
+                continue;
+            }
+
             if (te->FireTime <= time) {
                 ready.emplace_back(ReadyTimeEvent {entity.hold_ref(), te});
             }
@@ -436,130 +416,141 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
     return ready;
 }
 
-void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result)
+void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te)
 {
     if (entity->IsDestroyed()) {
         return;
     }
 
     std::scoped_lock lock {_timeEventLocker};
+    auto time_events = entity->GetTimeEvents();
 
-    if (te->Id == 0) {
+    if (!time_events || te->Id == 0 || !te->Execution || !te->Execution->Completed || te->Execution->NativeCallActive) {
         return;
     }
 
-    nanotime time = _engine->GameTime.GetFrameTime();
+    auto it = std::ranges::find(*time_events, te);
 
-    auto remove_event = [entity, &te]() mutable {
-        auto time_events = entity->GetTimeEvents();
+    if (it == time_events->end()) {
+        return;
+    }
 
-        if (time_events) {
-            uint32_t id = te->Id;
-            auto it = std::ranges::find_if(*time_events, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
-
-            if (it != time_events->end()) {
-                time_events->erase(it);
-                te->Id = 0;
-            }
-        }
+    auto execution = te->Execution;
+    auto context = execution->Context;
+    FO_VERIFY_AND_THROW(context, "Time event execution context is missing");
+    auto remove_event = [&] {
+        te->Id = 0;
+        te->Execution.reset();
+        time_events->erase(it);
     };
 
-    if (result.Context) {
-        auto context = result.Context;
-        FO_VERIFY_AND_THROW(context, "Context is null");
-
-        if (context->IsStopped()) {
-            remove_event();
-            return;
-        }
-
-        if (context->IsDataChanged()) {
-            const_span<any_t> data = context->GetRawData();
-            te->Data.assign(data.begin(), data.end());
-        }
-
-        if (context->IsRepeatChanged()) {
-            te->RepeatDuration = context->GetRepeat();
-            te->FireTime = time + std::max(te->RepeatDuration, MIN_REPEAT_TIME);
-            return;
-        }
+    if (context->IsStopped()) {
+        remove_event();
+        return;
     }
 
-    if (te->RepeatDuration && result.CallResult) {
-        auto next_fire_time = std::max(te->FireTime + te->RepeatDuration, time + MIN_REPEAT_TIME);
-        te->FireTime = next_fire_time;
+    if (context->IsDataChanged()) {
+        const_span<any_t> data = context->GetRawData();
+        te->Data.assign(data.begin(), data.end());
+    }
+
+    if (context->IsRepeatChanged()) {
+        te->RepeatDuration = context->GetRepeat();
+    }
+
+    if (context->IsRepeatChanged() || (te->RepeatDuration && execution->CallResult)) {
+        te->FireTime = execution->CompletionTime + std::max(te->RepeatDuration, MIN_REPEAT_TIME);
+        te->Execution.reset();
     }
     else {
+        if (!execution->CallResult && te->RepeatDuration) {
+            logging::write("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
+        }
+
         remove_event();
     }
 }
 
-auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent
+void TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te)
 {
     FO_TRACE_ZONE(Entity);
 
-    FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), {}, "Destroyed entity tried to fire a time event", entity->GetName(), entity->GetTypeName(), entity->GetId(), te->Id);
-
-    uint32_t event_id;
-    timespan repeat_duration;
+    shared_ptr<TimeEventExecution> execution;
     vector<any_t> data;
 
     {
         std::scoped_lock lock {_timeEventLocker};
+        auto time_events = entity->GetTimeEvents();
 
-        event_id = te->Id;
-        repeat_duration = te->RepeatDuration;
+        if (entity->IsDestroyed() || !time_events || te->Id == 0 || te->Execution || std::ranges::find(*time_events, te) == time_events->end()) {
+            return;
+        }
+
+        FO_VERIFY_AND_THROW(entity->IsGlobal() == (te->Func.index() < 4), "Time event callback owner kind does not match");
         data = te->Data;
+        execution = safe_alloc::make_shared<TimeEventExecution>();
+        execution->Context = safe_alloc::make_refcounted<TimeEventContext>(te->Id, te->RepeatDuration, data);
+        execution->NativeCallActive = true;
+        te->Execution = execution;
     }
 
-    if (event_id == 0) {
-        return {};
-    }
+    auto complete = [this, engine = _engine.hold_ref(), entity = entity.hold_ref(), te, execution](bool success) mutable {
+        uint32_t event_id = 0;
 
-    auto context = safe_alloc::make_refcounted<TimeEventContext>(event_id, repeat_duration, data);
-    bool call_result = false;
+        {
+            std::scoped_lock lock {_timeEventLocker};
+
+            execution->CallResult = success;
+            execution->CompletionTime = engine->GameTime.GetFrameTime();
+            execution->Completed = true;
+
+            if (!execution->NativeCallActive && !entity->IsDestroyed()) {
+                event_id = te->Id;
+            }
+        }
+
+        // The dispatcher reacquires the owner before touching its event list after a suspended script
+        if (event_id != 0) {
+            NotifySchedule(entity, event_id, MIN_REPEAT_TIME);
+        }
+    };
+    auto context = execution->Context.as_ptr();
 
     if (auto func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1) {
-        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
-        call_result = func1->Call();
+        (void)func1->CallWithCompletion(std::move(complete));
     }
     else if (auto func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); func2) {
-        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
-        call_result = func2->Call(data.empty() ? _emptyAnyValue : data.front());
+        (void)func2->CallWithCompletion(std::move(complete), data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); func3) {
-        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
-        call_result = func3->Call(data);
+        (void)func3->CallWithCompletion(std::move(complete), data);
     }
     else if (auto func4 = std::get_if<ScriptFunc<void, ptr<TimeEventContext>>>(&te->Func); func4) {
-        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
-        call_result = func4->Call(context);
+        (void)func4->CallWithCompletion(std::move(complete), context);
     }
     else if (auto func5 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>>>(&te->Func); func5) {
-        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func5->Call(entity);
+        (void)func5->CallWithCompletion(std::move(complete), entity);
     }
     else if (auto func6 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, any_t>>(&te->Func); func6) {
-        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func6->Call(entity, data.empty() ? _emptyAnyValue : data.front());
+        (void)func6->CallWithCompletion(std::move(complete), entity, data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto func7 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>>>(&te->Func); func7) {
-        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func7->Call(entity, data);
+        (void)func7->CallWithCompletion(std::move(complete), entity, data);
     }
     else if (auto func8 = std::get_if<ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>>>(&te->Func); func8) {
-        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func8->Call(entity, context);
+        (void)func8->CallWithCompletion(std::move(complete), entity, context);
     }
     else {
         FO_UNREACHABLE_PLACE();
     }
 
-    if (!call_result && repeat_duration) {
-        logging::write("Time event {}{} stopped due to exception", te->FuncName.first, te->FuncName.second != 0 ? " (delegate)" : "");
+    {
+        std::scoped_lock lock {_timeEventLocker};
+
+        execution->NativeCallActive = false;
     }
 
-    return FiredTimeEvent {.CallResult = call_result, .Context = std::move(context)};
+    PostFireTimeEvent(entity, te);
 }
 
 void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks)
@@ -637,64 +628,62 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
     }
 
     shared_ptr<Entity::TimeEventData> te;
+    bool finalize = false;
 
     {
         std::scoped_lock lock {_timeEventLocker};
-
         auto time_events = entity->GetTimeEvents();
 
-        if (!time_events || time_events->empty()) {
+        if (!time_events) {
             return std::nullopt;
         }
 
-        auto it = std::ranges::find_if(*time_events, [event_id](const shared_ptr<Entity::TimeEventData>& candidate) { return candidate->Id == event_id; });
+        auto it = std::ranges::find_if(*time_events, [event_id](const auto& candidate) { return candidate->Id == event_id; });
 
         if (it == time_events->end()) {
             return std::nullopt;
         }
 
         te = *it;
+
+        if (te->Execution) {
+            if (!te->Execution->Completed || te->Execution->NativeCallActive) {
+                return std::nullopt;
+            }
+
+            finalize = true;
+        }
+        else {
+            nanotime dispatch_time = _engine->GameTime.GetFrameTime();
+
+            // The dispatcher clock can wake before engine time reaches the deadline
+            if (te->FireTime > dispatch_time) {
+                return te->FireTime - dispatch_time;
+            }
+        }
     }
 
-    nanotime dispatch_time = _engine->GameTime.GetFrameTime();
-
-    // The dispatcher runs on its own clock, so a debugger pause or DeltaTimeCap can wake this job early:
-    // stay pending and ask it to retry after the remaining engine-time delay
-    if (te->FireTime > dispatch_time) {
-        return te->FireTime - dispatch_time;
+    if (finalize) {
+        PostFireTimeEvent(entity, te);
+    }
+    else {
+        FireTimeEvent(entity, te);
     }
 
-    auto fired = FireTimeEvent(entity, te);
+    std::scoped_lock lock {_timeEventLocker};
 
-    nanotime next_fire_time;
+    if (entity->IsDestroyed()) {
+        return std::nullopt;
+    }
 
-    {
-        std::scoped_lock lock {_timeEventLocker};
+    auto time_events = entity->GetTimeEvents();
 
-        PostFireTimeEvent(entity, te, fired);
-
-        if (entity->IsDestroyed()) {
-            // The handler destroyed its owner; the fired event is done and must not be rescheduled
-            return std::nullopt;
-        }
-
-        if (te->Id == 0) {
-            // PostFire removed the event because it was a one-shot or the script asked to stop
-            return std::nullopt;
-        }
-
-        next_fire_time = te->FireTime;
+    if (!time_events || te->Id == 0 || te->Execution || std::ranges::find(*time_events, te) == time_events->end()) {
+        return std::nullopt;
     }
 
     nanotime now = _engine->GameTime.GetFrameTime();
-
-    if (next_fire_time <= now) {
-        // Edge case: handler took long enough that next FireTime is already in the past. Schedule
-        // an immediate rerun (tiny non-zero delay so the dispatcher doesn't busy-loop)
-        return MIN_REPEAT_TIME;
-    }
-
-    return next_fire_time - now;
+    return te->FireTime > now ? te->FireTime - now : MIN_REPEAT_TIME;
 }
 
 FO_END_NAMESPACE

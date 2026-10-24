@@ -145,39 +145,39 @@ FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, time
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
 }
 
-// SyncScope: requires self; counts events bound to self, no cover change
+// SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// SyncScope: requires self; counts events bound to self, no cover change
+// SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// SyncScope: requires self; counts events bound to self, no cover change
+// SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// SyncScope: requires self; counts events bound to self, no cover change
+// SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}, excludeExecuting));
 }
 
-// SyncScope: requires self; counts events bound to self, no cover change
+// SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, uint32_t id)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, uint32_t id, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id, excludeExecuting));
 }
 
 // SyncScope: requires self; stops events bound to self, no cover change

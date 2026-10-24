@@ -153,7 +153,7 @@ Generated event wrappers reject a handler without `[Event]` before creating the 
 
 Generated event wrappers support handlers returning `void`, `Task`, `EventResult`, or `Task<EventResult>`. Native dispatch awaits result-bearing tasks before deciding whether the subscriber chain continues. Use `Task<EventResult>` when an awaited handler may consume or destroy an argument that later subscribers must not receive.
 
-Time-event APIs accept synchronous delegates and generated async delegates returning `Task`. The delegate identity is part of registration: stopping a time event with a separately constructed delegate does not identify the existing callback. Repetition or cancellation changes future scheduling and does not cancel a task that has already started.
+Time-event APIs accept synchronous delegates and generated async delegates returning `Task`. The delegate identity is part of registration: stopping a time event with a separately constructed delegate does not identify the existing callback. An incomplete callback task keeps that event registered and paused until its final completion, so it cannot overlap its own next firing. The repeat interval starts at completion; changes to the interval or payload remain available during the await. TimeEventContext changes made after the await are applied at completion. Repetition or cancellation changes future scheduling and does not cancel a task that has already started.
 
 Entity-only post-set reactions may return `Task`; value-transforming setters with `ref` arguments and property getters remain synchronous because the native caller needs their result before the call returns.
 

@@ -128,20 +128,20 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 Continue with the [canonical reference](../../en/reference/script-api/methods.md).
 
-<a id="symbol-script-method-client-entity-counttimeevent-08f3341698dc846a-a44790f696"></a>
-- [`symbol-script-method-client-entity-counttimeevent-08f3341698dc846a-a44790f696`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-08f3341698dc846a-a44790f696)
+<a id="symbol-script-method-client-entity-counttimeevent-3032339c32e34b9d-876b157df0"></a>
+- [`symbol-script-method-client-entity-counttimeevent-3032339c32e34b9d-876b157df0`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-3032339c32e34b9d-876b157df0)
 
-<a id="symbol-script-method-client-entity-counttimeevent-5609075e34e56857-9c23bf9b2b"></a>
-- [`symbol-script-method-client-entity-counttimeevent-5609075e34e56857-9c23bf9b2b`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-5609075e34e56857-9c23bf9b2b)
+<a id="symbol-script-method-client-entity-counttimeevent-417e7527b8152349-e003c5c2c9"></a>
+- [`symbol-script-method-client-entity-counttimeevent-417e7527b8152349-e003c5c2c9`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-417e7527b8152349-e003c5c2c9)
 
-<a id="symbol-script-method-client-entity-counttimeevent-9c7dd3ed70f86a7d-168b597baf"></a>
-- [`symbol-script-method-client-entity-counttimeevent-9c7dd3ed70f86a7d-168b597baf`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-9c7dd3ed70f86a7d-168b597baf)
+<a id="symbol-script-method-client-entity-counttimeevent-45d21a68801eb4f0-516ec956f6"></a>
+- [`symbol-script-method-client-entity-counttimeevent-45d21a68801eb4f0-516ec956f6`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-45d21a68801eb4f0-516ec956f6)
 
-<a id="symbol-script-method-client-entity-counttimeevent-ad56856359be786a-cf383377cf"></a>
-- [`symbol-script-method-client-entity-counttimeevent-ad56856359be786a-cf383377cf`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-ad56856359be786a-cf383377cf)
+<a id="symbol-script-method-client-entity-counttimeevent-7ed3553b71048a0d-675084c896"></a>
+- [`symbol-script-method-client-entity-counttimeevent-7ed3553b71048a0d-675084c896`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-7ed3553b71048a0d-675084c896)
 
-<a id="symbol-script-method-client-entity-counttimeevent-e41a67022275199d-0ffbc6e5ce"></a>
-- [`symbol-script-method-client-entity-counttimeevent-e41a67022275199d-0ffbc6e5ce`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-e41a67022275199d-0ffbc6e5ce)
+<a id="symbol-script-method-client-entity-counttimeevent-db3b98741c5df44b-2ab0583314"></a>
+- [`symbol-script-method-client-entity-counttimeevent-db3b98741c5df44b-2ab0583314`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-counttimeevent-db3b98741c5df44b-2ab0583314)
 
 <a id="symbol-script-method-client-entity-repeattimeevent-28154675b58100aa-fba934e498"></a>
 - [`symbol-script-method-client-entity-repeattimeevent-28154675b58100aa-fba934e498`](../../en/reference/script-api/methods.md#symbol-script-method-client-entity-repeattimeevent-28154675b58100aa-fba934e498)
@@ -952,20 +952,20 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-checkprotomap-d5b5b8e23d"></a>
 - [`symbol-script-method-common-game-checkprotomap-d5b5b8e23d`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-checkprotomap-d5b5b8e23d)
 
-<a id="symbol-script-method-common-game-counttimeevent-3f402d7af9d733a8-2c589727a9"></a>
-- [`symbol-script-method-common-game-counttimeevent-3f402d7af9d733a8-2c589727a9`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-3f402d7af9d733a8-2c589727a9)
+<a id="symbol-script-method-common-game-counttimeevent-8ab623cddbdc14b4-3a204544f8"></a>
+- [`symbol-script-method-common-game-counttimeevent-8ab623cddbdc14b4-3a204544f8`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-8ab623cddbdc14b4-3a204544f8)
 
-<a id="symbol-script-method-common-game-counttimeevent-93f88715f57381d8-1872f0d6ca"></a>
-- [`symbol-script-method-common-game-counttimeevent-93f88715f57381d8-1872f0d6ca`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-93f88715f57381d8-1872f0d6ca)
+<a id="symbol-script-method-common-game-counttimeevent-a4ca2eed35c3f8a4-021078ec06"></a>
+- [`symbol-script-method-common-game-counttimeevent-a4ca2eed35c3f8a4-021078ec06`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-a4ca2eed35c3f8a4-021078ec06)
 
-<a id="symbol-script-method-common-game-counttimeevent-a7d6bf3965b779f9-b7373da15c"></a>
-- [`symbol-script-method-common-game-counttimeevent-a7d6bf3965b779f9-b7373da15c`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-a7d6bf3965b779f9-b7373da15c)
+<a id="symbol-script-method-common-game-counttimeevent-c565a82cf065f89e-05f81c3d5c"></a>
+- [`symbol-script-method-common-game-counttimeevent-c565a82cf065f89e-05f81c3d5c`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-c565a82cf065f89e-05f81c3d5c)
 
-<a id="symbol-script-method-common-game-counttimeevent-b5319e6dc3f86b0f-026a1e273f"></a>
-- [`symbol-script-method-common-game-counttimeevent-b5319e6dc3f86b0f-026a1e273f`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-b5319e6dc3f86b0f-026a1e273f)
+<a id="symbol-script-method-common-game-counttimeevent-db3b98741c5df44b-edece7a1ad"></a>
+- [`symbol-script-method-common-game-counttimeevent-db3b98741c5df44b-edece7a1ad`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-db3b98741c5df44b-edece7a1ad)
 
-<a id="symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759"></a>
-- [`symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-e41a67022275199d-1d6389e759)
+<a id="symbol-script-method-common-game-counttimeevent-fcb2bac4ef3be7f7-7f811b1e86"></a>
+- [`symbol-script-method-common-game-counttimeevent-fcb2bac4ef3be7f7-7f811b1e86`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-counttimeevent-fcb2bac4ef3be7f7-7f811b1e86)
 
 <a id="symbol-script-method-common-game-currentlanguage-a1c00a74fa"></a>
 - [`symbol-script-method-common-game-currentlanguage-a1c00a74fa`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-currentlanguage-a1c00a74fa)
@@ -2303,20 +2303,20 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 Continue with the [canonical reference](../../en/reference/script-api/methods.md).
 
-<a id="symbol-script-method-server-entity-counttimeevent-08f3341698dc846a-534195a109"></a>
-- [`symbol-script-method-server-entity-counttimeevent-08f3341698dc846a-534195a109`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-08f3341698dc846a-534195a109)
+<a id="symbol-script-method-server-entity-counttimeevent-3032339c32e34b9d-45259b35d4"></a>
+- [`symbol-script-method-server-entity-counttimeevent-3032339c32e34b9d-45259b35d4`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-3032339c32e34b9d-45259b35d4)
 
-<a id="symbol-script-method-server-entity-counttimeevent-5609075e34e56857-71985394cd"></a>
-- [`symbol-script-method-server-entity-counttimeevent-5609075e34e56857-71985394cd`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-5609075e34e56857-71985394cd)
+<a id="symbol-script-method-server-entity-counttimeevent-417e7527b8152349-0f815d0b0e"></a>
+- [`symbol-script-method-server-entity-counttimeevent-417e7527b8152349-0f815d0b0e`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-417e7527b8152349-0f815d0b0e)
 
-<a id="symbol-script-method-server-entity-counttimeevent-9c7dd3ed70f86a7d-2536e529d0"></a>
-- [`symbol-script-method-server-entity-counttimeevent-9c7dd3ed70f86a7d-2536e529d0`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-9c7dd3ed70f86a7d-2536e529d0)
+<a id="symbol-script-method-server-entity-counttimeevent-45d21a68801eb4f0-c57a2f527f"></a>
+- [`symbol-script-method-server-entity-counttimeevent-45d21a68801eb4f0-c57a2f527f`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-45d21a68801eb4f0-c57a2f527f)
 
-<a id="symbol-script-method-server-entity-counttimeevent-ad56856359be786a-927372b47e"></a>
-- [`symbol-script-method-server-entity-counttimeevent-ad56856359be786a-927372b47e`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-ad56856359be786a-927372b47e)
+<a id="symbol-script-method-server-entity-counttimeevent-7ed3553b71048a0d-fc82daf3ee"></a>
+- [`symbol-script-method-server-entity-counttimeevent-7ed3553b71048a0d-fc82daf3ee`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-7ed3553b71048a0d-fc82daf3ee)
 
-<a id="symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e"></a>
-- [`symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-e41a67022275199d-775719831e)
+<a id="symbol-script-method-server-entity-counttimeevent-db3b98741c5df44b-3a9cc42ac6"></a>
+- [`symbol-script-method-server-entity-counttimeevent-db3b98741c5df44b-3a9cc42ac6`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-counttimeevent-db3b98741c5df44b-3a9cc42ac6)
 
 <a id="symbol-script-method-server-entity-getrefcount-faed3efae7"></a>
 - [`symbol-script-method-server-entity-getrefcount-faed3efae7`](../../en/reference/script-api/methods.md#symbol-script-method-server-entity-getrefcount-faed3efae7)

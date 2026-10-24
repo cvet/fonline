@@ -302,67 +302,78 @@ auto AngelScriptContextManager::GetDiagnostics() const -> Diagnostics
 void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept
 {
     try {
-        scoped_lock lock {_poolLocker};
+        function<void(bool)> completion;
+        bool success = false;
 
-        auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
+        {
+            scoped_lock lock {_poolLocker};
 
-        if (it == _busyContexts.end()) {
-            return;
-        }
+            auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
 
-        auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-        FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
-
-        if (ctx_ext->Generation.load() != expected_generation) {
-            return;
-        }
-
-        if (ctx_ext->ExecutionActive.load()) {
-            return;
-        }
-
-        AngelScript::asEContextState state = ctx->GetState();
-
-        if (state == AngelScript::asEXECUTION_SUSPENDED || state == AngelScript::asEXECUTION_ACTIVE) {
-            return;
-        }
-
-        int32_t as_result = 0;
-        FO_AS_VERIFY(ctx->Unprepare());
-
-        auto ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_addref(ctx.get());
-
-        if (_contextSetupCallback) {
-            _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);
-        }
-
-        ctx_ext->Parent = nullptr;
-        ctx_ext->Root = nullptr;
-        ctx_ext->Exception = {};
-        ctx_ext->ExecutionSuspended.store(false);
-        ctx_ext->BirthNativeFrameCount = 0;
-        ctx_ext->BirthNativeTruncated = false;
-
-        for (auto& other : _busyContexts) {
-            if (IsSameScriptContext(other, ctx)) {
-                continue;
+            if (it == _busyContexts.end()) {
+                return;
             }
 
-            auto other_ptr = other.as_ptr();
-            auto other_ext = AngelScriptContextExtendedData::Get(other_ptr);
-            FO_VERIFY_AND_THROW(other_ext, "Context extended data is null");
+            auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+            FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
-            if (other_ext->Parent == ctx.get()) {
-                other_ext->Parent.reset();
+            if (ctx_ext->Generation.load() != expected_generation) {
+                return;
             }
-            if (other_ext->Root == ctx.get()) {
-                other_ext->Root.reset();
+
+            if (ctx_ext->ExecutionActive.load()) {
+                return;
             }
+
+            AngelScript::asEContextState state = ctx->GetState();
+
+            if (state == AngelScript::asEXECUTION_SUSPENDED || state == AngelScript::asEXECUTION_ACTIVE) {
+                return;
+            }
+
+            int32_t as_result = 0;
+            FO_AS_VERIFY(ctx->Unprepare());
+
+            auto ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_addref(ctx.get());
+
+            if (_contextSetupCallback) {
+                _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);
+            }
+
+            ctx_ext->Parent = nullptr;
+            ctx_ext->Root = nullptr;
+            ctx_ext->Exception = {};
+            ctx_ext->ExecutionSuspended.store(false);
+            ctx_ext->BirthNativeFrameCount = 0;
+            ctx_ext->BirthNativeTruncated = false;
+
+            for (auto& other : _busyContexts) {
+                if (IsSameScriptContext(other, ctx)) {
+                    continue;
+                }
+
+                auto other_ptr = other.as_ptr();
+                auto other_ext = AngelScriptContextExtendedData::Get(other_ptr);
+                FO_VERIFY_AND_THROW(other_ext, "Context extended data is null");
+
+                if (other_ext->Parent == ctx.get()) {
+                    other_ext->Parent.reset();
+                }
+                if (other_ext->Root == ctx.get()) {
+                    other_ext->Root.reset();
+                }
+            }
+
+            // Single atomic busy->free move; reserve first so the add cannot half-complete
+            vec_remove_unique_value(_busyContexts, ctx_holder);
+            vec_add_unique_value(_freeContexts, ctx_holder);
+            success = state == AngelScript::asEXECUTION_FINISHED;
+            completion = std::move(ctx_ext->Completion);
         }
 
-        // Single atomic busy->free move; reserve first so the add cannot half-complete
-        vec_remove_unique_value(_busyContexts, ctx_holder);
-        vec_add_unique_value(_freeContexts, ctx_holder);
+        if (completion) {
+            completion(success);
+        }
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);

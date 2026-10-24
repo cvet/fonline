@@ -1159,16 +1159,16 @@ void ServerEngine::Shutdown()
             logging::write("Shutdown stage: workerPool.WaitIdle (post-abort)");
             _workerPool->WaitIdle();
         }
-
-        logging::write("Shutdown stage: workerPool.reset");
-
-        scoped_lock sync_locker {_syncLocker};
-
-        _workerPool.reset();
     }
 
-    logging::write("Shutdown stage: mainWorker.Clear");
+    logging::write("Shutdown stage: mainWorker.clear");
     _mainWorker.clear();
+
+    if (_workerPool) {
+        logging::write("Shutdown stage: workerPool.reset");
+        scoped_lock sync_locker {_syncLocker};
+        _workerPool.reset();
+    }
 
     // Cleared only once both workers are gone, because the notify paths read these functions lock-free; they
     // are already inert, so this just releases the captured state

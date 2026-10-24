@@ -4646,25 +4646,25 @@
           "source_sha256": "824be16c41c9b423790495891e9f6d306d91b6580db59f79e38189543b39ef44",
           "translation": "Останавливает текущее клиентское перемещение криттера на карте; выбрасывает исключение, если криттер не находится на загруженной карте."
         },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%2308f3341698dc846a/description": {
-          "source_sha256": "f2be030fabc1ba7957e8145eacec566e7d6d4bf16e78d38dd8a41ea6b2b11b7d",
-          "translation": "Подсчитывает все клиентские временные события, привязанные к этой сущности и использующие выбранный callback."
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%233032339c32e34b9d/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%235609075e34e56857/description": {
-          "source_sha256": "f2be030fabc1ba7957e8145eacec566e7d6d4bf16e78d38dd8a41ea6b2b11b7d",
-          "translation": "Подсчитывает все клиентские временные события, привязанные к этой сущности и использующие выбранный callback."
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23417e7527b8152349/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%239c7dd3ed70f86a7d/description": {
-          "source_sha256": "f2be030fabc1ba7957e8145eacec566e7d6d4bf16e78d38dd8a41ea6b2b11b7d",
-          "translation": "Подсчитывает все клиентские временные события, привязанные к этой сущности и использующие выбранный callback."
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23ad56856359be786a/description": {
-          "source_sha256": "f2be030fabc1ba7957e8145eacec566e7d6d4bf16e78d38dd8a41ea6b2b11b7d",
-          "translation": "Подсчитывает все клиентские временные события, привязанные к этой сущности и использующие выбранный callback."
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23e41a67022275199d/description": {
-          "source_sha256": "bfdfdf5ebbfb22cb52059ec691b71b1e098f23e64c8bb1a384ee107005efc5ef",
-          "translation": "Возвращает единицу, если к сущности привязано клиентское временное событие с этим идентификатором, иначе возвращает ноль."
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
         "/symbols/@id=script.method.client.Entity.RepeatTimeEvent%2328154675b58100aa/description": {
           "source_sha256": "e77aa37addb49c72b050667f14e600cc1d1f4465538f18cd6b8cb103cf0390ed",
@@ -5702,25 +5702,25 @@
           "source_sha256": "35c1249228e398b1ab9c790a553f983f27416fa5b4fe5ed1fef9449b1fc737cc",
           "translation": "Возвращает, зарегистрирован ли прототип карты с заданным идентификатором."
         },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%233f402d7af9d733a8/description": {
-          "source_sha256": "cba42b1876c2d34809e377483eb6fd6d637b6943c9778a7481de42c9d5e25573",
-          "translation": "Подсчитывает все события времени этого экземпляра Engine, использующие выбранный callback."
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%238ab623cddbdc14b4/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%2393f88715f57381d8/description": {
-          "source_sha256": "6b1dc6b7dc2aef135804d3ae1c29cbfe8194267ca25e908c5443662684d50549",
-          "translation": "Подсчитывает все события времени этого экземпляра Engine, использующие выбранный контекстный callback."
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23a4ca2eed35c3f8a4/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23a7d6bf3965b779f9/description": {
-          "source_sha256": "cba42b1876c2d34809e377483eb6fd6d637b6943c9778a7481de42c9d5e25573",
-          "translation": "Подсчитывает все события времени этого экземпляра Engine, использующие выбранный callback."
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23c565a82cf065f89e/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23b5319e6dc3f86b0f/description": {
-          "source_sha256": "cba42b1876c2d34809e377483eb6fd6d637b6943c9778a7481de42c9d5e25573",
-          "translation": "Подсчитывает все события времени этого экземпляра Engine, использующие выбранный callback."
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23e41a67022275199d/description": {
-          "source_sha256": "8f21e527dda545f65dd4df71b761a07f6eaeaba1820e8a7332083e7562a92f7e",
-          "translation": "Возвращает единицу, если этот экземпляр Engine владеет событием времени с заданным идентификатором, или ноль, если событие отсутствует."
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23fcb2bac4ef3be7f7/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
         "/symbols/@id=script.method.common.Game.CurrentLanguage/description": {
           "source_sha256": "f18efaaf80322525d0ca917530b0bbe5c132cc7a8e0ba7fb89695dc49c69b6a6",
@@ -7470,25 +7470,25 @@
           "source_sha256": "3068db6838f7662e48b8ee4811a59573ee1fc301496fb10682813ddcb1a7dc50",
           "translation": "SyncScope: требует self, исходную карту при наличии размещения, целевую карту и целевую локацию; скриптам следует использовать Sync::LockForTransferToMap(self, map)."
         },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%2308f3341698dc846a/description": {
-          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
-          "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%233032339c32e34b9d/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
         },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%235609075e34e56857/description": {
-          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
-          "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23417e7527b8152349/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
         },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%239c7dd3ed70f86a7d/description": {
-          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
-          "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
         },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23ad56856359be786a/description": {
-          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
-          "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
         },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23e41a67022275199d/description": {
-          "source_sha256": "df9073c580cf18c14df5f74a4a2f6e4f14892a11b2a51e9f3a63385009e10d41",
-          "translation": "SyncScope: требует self; считает события, привязанные к self, не изменяя покрытие."
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
         },
         "/symbols/@id=script.method.server.Entity.GetRefCount/description": {
           "source_sha256": "27650121b0c576045ec40a6189271d610b143de37a683bee73cb1cc5dafa2923",
@@ -8005,6 +8005,14 @@
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
           "source_sha256": "26f6d7d297b25593b56e43b430ecb0e8c24e54c437df8df2452632abf8c87cae",
           "translation": "SyncScope: только читает языковой пакет; покрытие сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23e4b9bdc5bdeb7919/description": {
+          "source_sha256": "aab4e9891b8975000d2347719aef6e119afb435b8aa372ed23cb9a91da44c1af",
+          "translation": "SyncScope: вновь загруженный криттер захватывается до публикации и остаётся покрытым при возврате"
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
+          "source_sha256": "e8fdf0cf39290e6fc1aaf91f1bff3f7be1ac43ac61f91641ba5e557dc1eb4cc1",
+          "translation": "SyncScope: требуется покрытие целевой карты; вновь восстановленный криттер захватывается до публикации"
         },
         "/symbols/@id=script.method.server.Game.Lock/description": {
           "source_sha256": "64a25b440f2591e93a0e417113f5918ad7f7b8637487f4799bcfbb77c2ec1699",
@@ -9351,16 +9359,16 @@
           "translation": "Заменяет интервал повторения и планирует следующее срабатывание от завершения обработчика, ограничивая интервал снизу минимумом Engine."
         },
         "/symbols/@id=script.ref-method.common.TimeEventContext.SetData/description": {
-          "source_sha256": "eb62139448f33e826bf587fcd3a68bfaf3f11387fbc7bf4030983de1a7fc6b6d",
-          "translation": "Заменяет полезную нагрузку события одним значением после возврата из обработчика."
+          "source_sha256": "a07ef48370a5277f4c897c16cdbe5b4d5eb95f07c63316040bd5cd620a2e4c80",
+          "translation": "Заменяет полезную нагрузку события одним значением после завершения выполнения скрипта"
         },
         "/symbols/@id=script.ref-method.common.TimeEventContext.SetDataArray/description": {
-          "source_sha256": "82b6dd37abede39a2d2b3c1116b86d9bda4bb436d9285ff99e6feb3122ce6f4c",
-          "translation": "Заменяет полную полезную нагрузку события копией переданного массива после возврата из обработчика."
+          "source_sha256": "88dd4af2fe16267131b39839f762391e2e0b5523a0906d4c164ea0fbb7bec1b2",
+          "translation": "Заменяет всю полезную нагрузку события копией переданного массива после завершения выполнения скрипта"
         },
         "/symbols/@id=script.ref-method.common.TimeEventContext.Stop/description": {
-          "source_sha256": "b4678e08685f4e62412b9d50a91f230e306f849046d1d1a3b21a87177346f00c",
-          "translation": "Помечает текущее событие для удаления после возврата из обработчика."
+          "source_sha256": "28fa152e8c224f80cd1c8cd9aeb4129f9d1a2240e2b22409747defde0d5b6ab4",
+          "translation": "Помечает текущее событие для удаления после завершения выполнения скрипта"
         },
         "/symbols/@id=script.ref-type.client.FogLayer/description": {
           "source_sha256": "ba30b49f6329ae33246525aa0d6264e6047b5feaa959a05e439fd14b9ba160f5",
@@ -9383,8 +9391,8 @@
           "translation": "Общее состояние пути движения с геометрией маршрута, временем, смещениями, данными блокировки и текущим ходом завершения."
         },
         "/symbols/@id=script.ref-type.common.TimeEventContext/description": {
-          "source_sha256": "36cc0a91bab40b305c515c7f7de93a7c2698c8003beb6510069a9c2ce851a5f0",
-          "translation": "Временный контекст обратного вызова для чтения и изменения срабатывающего события времени; запрошенные изменения применяются после возврата из обработчика."
+          "source_sha256": "faa217c16707d6effd4e5a46e191fc3c3e79347dfe2157c253d34453940f4dc1",
+          "translation": "Временный контекст обработчика для чтения и изменения выполняющегося time event; запрошенные изменения применяются после завершения выполнения скрипта"
         },
         "/symbols/@id=script.value-field.GamepadState.Available/description": {
           "source_sha256": "391d07af65cada08546e44516de4067a2b86dc03403853898bac920e2374bdcc",
@@ -9841,6 +9849,10 @@
         "/symbols/@id=setting.client.ClientNetwork.ProxyUser/description": {
           "source_sha256": "4d4135dc3ab09b95118997126d03ec157241d2074093ff54250c4c42092c43cf",
           "translation": "Имя пользователя proxy"
+        },
+        "/symbols/@id=setting.client.ClientNetwork.RequireInterthreadTransport/description": {
+          "source_sha256": "d97ac5d8fbe1a7b25c26abab7fdec01a1c9d8f552696362982f7b6a3a388e74c",
+          "translation": "Если true, отсутствие внутрипроцессного listener отклоняет подключение вместо попыток UDP/TCP"
         },
         "/symbols/@id=setting.client.ClientNetwork.ServerHost/description": {
           "source_sha256": "0c6680f7bfb8df70a10762372a852f08622c484ec3ea0b9682942df1efea66a7",
@@ -10881,18 +10893,6 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.server.Game.LoadCritter%23e4b9bdc5bdeb7919/description": {
-          "source_sha256": "aab4e9891b8975000d2347719aef6e119afb435b8aa372ed23cb9a91da44c1af",
-          "translation": "SyncScope: вновь загруженный криттер захватывается до публикации и остаётся покрытым при возврате"
-        },
-        "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
-          "source_sha256": "e8fdf0cf39290e6fc1aaf91f1bff3f7be1ac43ac61f91641ba5e557dc1eb4cc1",
-          "translation": "SyncScope: требуется покрытие целевой карты; вновь восстановленный криттер захватывается до публикации"
-        },
-        "/symbols/@id=setting.client.ClientNetwork.RequireInterthreadTransport/description": {
-          "source_sha256": "d97ac5d8fbe1a7b25c26abab7fdec01a1c9d8f552696362982f7b6a3a388e74c",
-          "translation": "Если true, отсутствие внутрипроцессного listener отклоняет подключение вместо попыток UDP/TCP"
         }
       }
     },
