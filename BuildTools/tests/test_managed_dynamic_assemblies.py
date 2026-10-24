@@ -167,7 +167,7 @@ internal static class Program
 namespace FOnline
 {
     public class Entity { }
-    public readonly struct timespan { public timespan(long value) { } }
+    public readonly struct timespan { public timespan(long value) { } public timespan(long value, int place) { } }
     public static partial class Game
     {
         public static void StartTimeEvent(timespan duration, Action callback) { callback(); }
@@ -252,7 +252,7 @@ def replace_internal_call(source, declaration, replacement):
 
 
 def build(dotnet, project_dir, output_dir=None):
-    command = [dotnet, "build", str(project_dir), "-c", "Release", "--nologo", "-v:minimal"]
+    command = [dotnet, "build", str(project_dir), "-c", "Release", "--nologo", "-v:minimal", "-p:UseSharedCompilation=false"]
     if output_dir is not None:
         command += ["-o", str(output_dir)]
     result = subprocess.run(command, capture_output=True, text=True, timeout=180)
@@ -275,6 +275,7 @@ def dynamic_probe(tmp_path_factory):
         pytest.skip("dotnet SDK is required for dynamic assembly tests")
 
     root = tmp_path_factory.mktemp("managed-dynamic-assemblies")
+    (root / ".editorconfig").write_text("root = true\n", encoding="utf-8")
     probe_dir = root / "probe"
     probe_dir.mkdir()
 

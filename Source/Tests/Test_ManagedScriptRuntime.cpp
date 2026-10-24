@@ -409,7 +409,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
             CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id) == 1);
             CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id, false) == 1);
             REQUIRE(next_delay.has_value());
-            CHECK(next_delay.value() > timespan {});
+            CHECK(next_delay.value() > timespan::zero);
             timespan interval {std::chrono::seconds {mode == 0 ? 7 : 5}};
             CHECK(event->RepeatDuration == interval);
             REQUIRE(finish_frame.Call());
