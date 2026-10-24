@@ -209,8 +209,8 @@ auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     UdpTransportOptions options;
     options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
     options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
-    options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpResendTimeout, 1));
-    options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectRetry, 1));
+    options.ResendTimeout = std::chrono::milliseconds {std::max(_settings->Network.UdpResendTimeout, 1)};
+    options.ConnectRetry = std::chrono::milliseconds {std::max(_settings->Network.UdpConnectRetry, 1)};
     options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->Network.UdpRedundancy, 0));
     return options;
 }
@@ -289,7 +289,7 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
         return;
     }
 
-    if (_lastConnectSend != nanotime::zero && now - _lastConnectSend < std::chrono::milliseconds {MakeOptions().ConnectRetryMs}) {
+    if (_lastConnectSend != nanotime::zero && now - _lastConnectSend < MakeOptions().ConnectRetry) {
         return;
     }
 

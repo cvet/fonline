@@ -143,6 +143,7 @@ def _validate_sources(root: Path, raw: object) -> dict[str, object]:
         "settings",
         "raw_copy_baker",
         "updater",
+        "resource_defaults",
         "file_reader_header",
     )
     result: dict[str, object] = {
@@ -283,7 +284,10 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     atlas_matches = re.findall(
         r"Bind(?:FoFont|BmfFont)\([^;]+AtlasType::([A-Za-z0-9_]+)", script_text
     )
-    updater_match = re.search(r'BindFoFont\([^,]+,\s*"([^"]+)"', updater_text)
+    defaults_text = (root / str(sources["resource_defaults"])).read_text(encoding="utf-8")
+    updater_match = re.search(r'inline constexpr string_view Updater\s*=\s*"([^"]+)"', defaults_text)
+    if not re.search(r'BindFoFont\([^,]+,\s*FontDefaults::Updater\s*,', updater_text):
+        raise ValueError("updater must bind the shared FontDefaults::Updater path")
     inline_match = re.search(r'InlineColorTagPrefix\s*=\s*"([^"]+)"', header_text)
     if None in (
         max_version_match,

@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"9746db891412b55ab446286ca92cfdff02f3489082e4df1e6281570fbec1c943"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"24a6d785a55c0dce7c0f5bebaaca996bd0f2d58e979d8784bf8785331143932f"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -295,18 +295,29 @@ Effect Effects/Armor.fofx
 ### Текстуры
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
 ```
 
-Slot должен лежать в `[0, FO_MODEL_MAX_TEXTURES)`. Для обычного имени выбранный `Mesh` должен существовать и быть drawable, path разрешается относительно target mesh, а ресурс должен быть запечён. Imported diffuse texture является default для slot `0`; остальные slots изначально пусты.
+Слоты находятся в `[0, FO_MODEL_MAX_TEXTURES)`. `Mesh` выбирает отрисовываемые меши,
+пути разрешаются относительно файла меша. Безусловный `Texture` слота 0 заменяет
+импортированную diffuse-текстуру, чей исходник может быть поглощён рецептом.
+Baker проверяет действующие умолчания; runtime загружает их для включённых мешей
+после переопределений и привязки вложенных моделей.
 
-В attached child `Parent` копирует первую совпавшую текущую texture родителя в том же slot, а `Parent_<mesh>` — texture конкретного parent mesh:
+Текстура требует опубликованный выход SpriteInfo с одним направлением и одним
+кадром. FOFRM `Size` позволяет запечь уменьшенный вариант большого источника,
+поставляя только корневой выход. Направление выбирается явно через FOFRM `InputDir`.
+Обрезанный sprite mesh восстанавливает полный логический холст до загрузки,
+сохраняя UV изображения. `TextureAnimation` не поддерживается и вызывает ошибку
+неизвестной директивы; многокадровые ресурсы текстур отвергаются при выпечке и в runtime.
 
-```text
-Texture 0 Parent_Torso
-```
+Во вложенной модели `Parent` или `Parent_<mesh>` наследует текущую статическую
+текстуру родителя в том же слоте. При нескольких мешах родителя задавайте суффикс
+имени меша. В корне `Parent` запрещён.
 
-Не используйте `Parent` в root description; при нескольких parent meshes задавайте suffix явно.
+Пересоберите согласованные бинарники и принудительно перепеките описания моделей
+и метаданные для LFMODINF schema 5/runtime 0.0.76: переопределения больше не хранят
+флаг анимации. Прежние описания отвергаются; остальные схемы моделей и изображений прежние.
 
 ### Эффекты
 
@@ -406,7 +417,7 @@ DisableBackwardAnim
 
 `AllowAnimationGeometry` — узкий migration aid. Он называет один точный внешний файл из `Anim`, разрешается от конечного `.fo3d`, используется только baker validation и не сериализуется. Duplicate paths/targets, невыбранные файлы и оставшиеся после удаления geometry исключения являются ошибками. Исправьте export, сохранив необходимую helper/bone hierarchy, и удалите исключение в той же миграции.
 
-3D skeletal animation отделена от 2D-контракта `NextX` / `NextY` в [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation отделена от 2D-контракта `Motion` в [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime-загрузка и кеширование
 

@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 ///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2579 InventorySha256=e24bb7f4fe64f2e016759642b52e0c8a63fed3492b7e2d8b6c37415ee3e6108c
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 77
+///@ MigrationRule Version 0 0 78
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -942,7 +942,8 @@ public:
 
 private:
     bool _enabled {};
-    int32_t _sleep {};
+    timespan _sleep {};
+    bool _yieldAfterLoop {};
     int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};
@@ -1136,4 +1137,3 @@ public:
 FO_END_NAMESPACE
 
 #endif // FO_PRECOMPILED_HEADER_GUARD
-

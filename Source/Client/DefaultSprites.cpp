@@ -395,90 +395,146 @@ auto AtlasSprite::FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 
     return 6;
 }
 
-SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ticks, int32_t dirs) :
+static auto MakeUniformSpriteTimelines(int32_t frames, timespan duration, int32_t dirs) -> vector<vector<timespan>>
+{
+    constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+
+    FO_VERIFY_AND_THROW(frames > 0 && frames <= 65535, "Sprite sheet requires 1..65535 frames", frames);
+    FO_VERIFY_AND_THROW((duration == timespan::zero || duration.nanoseconds() >= frames) && duration <= max_duration, "Sprite sheet duration must be zero or provide at least one nanosecond per frame and fit uint32 milliseconds", frames, duration);
+    FO_VERIFY_AND_THROW(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", dirs);
+
+    vector<timespan> timeline(numeric_cast<size_t>(frames));
+    int64_t whole_ns = duration.nanoseconds() / frames;
+    int64_t remainder_ns = duration.nanoseconds() % frames;
+    int64_t previous_end_ns = 0;
+
+    for (int32_t index = 0; index < frames; index++) {
+        // Split before multiplying: the full duration times the frame count can exceed int64
+        int64_t end_ns = (index + 1) * whole_ns + (index + 1) * remainder_ns / frames;
+        timeline[index] = std::chrono::nanoseconds {end_ns - previous_end_ns};
+        previous_end_ns = end_ns;
+    }
+
+    return vector<vector<timespan>>(numeric_cast<size_t>(dirs), timeline);
+}
+
+SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, timespan duration, int32_t dirs) :
+    SpriteSheet(spr_mngr, MakeUniformSpriteTimelines(frames, duration, dirs))
+{
+}
+
+SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, const vector<vector<timespan>>& timelines) :
     Sprite(spr_mngr, {}, {})
 {
-    FO_VERIFY_AND_THROW(frames > 0, "Sprite sheet must have at least one frame");
-    FO_VERIFY_AND_THROW(ticks >= 0, "Sprite sheet animation duration must not be negative");
-    FO_VERIFY_AND_THROW(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", dirs, GameSettings::MAP_DIR_COUNT);
+    FO_VERIFY_AND_THROW(timelines.size() == 1 || timelines.size() == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", timelines.size());
 
-    _spr.resize(frames);
-    _sprOffset.resize(frames);
-    _sprMotion.resize(frames);
-    _framesCount = frames;
-    _wholeTicks = ticks;
-    _dirCount = dirs;
+    _dirCount = numeric_cast<int32_t>(timelines.size());
 
-    for (int32_t dir = 0; dir < dirs - 1; dir++) {
-        _dirs[dir] = safe_alloc::make_shared<SpriteSheet>(_sprMngr, frames, ticks, 1);
+    if (_dirCount == 1) {
+        SetFrameTimeline(timelines.front());
     }
+    else {
+        for (int32_t dir = 0; dir < _dirCount; dir++) {
+            _dirs[dir] = safe_alloc::make_shared<SpriteSheet>(_sprMngr, vector<vector<timespan>> {timelines[dir]});
+        }
+    }
+}
+
+void SpriteSheet::SetFrameTimeline(vector<timespan> durations)
+{
+    FO_VERIFY_AND_THROW(!durations.empty() && durations.size() <= 65535, "Sprite timeline requires 1..65535 frames", durations.size());
+
+    constexpr timespan max_duration {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
+    vector<timespan> ends;
+    timespan total {};
+    bool untimed = std::ranges::all_of(durations, [](timespan duration) { return duration == timespan::zero; });
+
+    for (timespan duration : durations) {
+        FO_VERIFY_AND_THROW(untimed || duration > timespan::zero, "Sprite timeline must be entirely untimed or contain only positive frame durations");
+        FO_VERIFY_AND_THROW(duration <= max_duration - total, "Sprite duration exceeds uint32 milliseconds", total, duration);
+
+        total += duration;
+        ends.emplace_back(total);
+    }
+
+    _frameDurations = std::move(durations);
+    _frameEnds = std::move(ends);
+    _framesCount = numeric_cast<int32_t>(_frameDurations.size());
+    _duration = total;
+    _spr.resize(numeric_cast<size_t>(_framesCount));
+    _sprOffset.resize(numeric_cast<size_t>(_framesCount));
+    _sprMotion.resize(numeric_cast<size_t>(_framesCount));
+
+    _phase = 0;
+    _curIndex = 0;
+}
+
+auto SpriteSheet::GetCurrentDirection() const noexcept -> ptr<const SpriteSheet>
+{
+    return _dirCount == 1 ? ptr<const SpriteSheet> {this} : ptr<const SpriteSheet> {_dirs[_curDir.value()]};
+}
+
+auto SpriteSheet::GetCurrentDirection() noexcept -> ptr<SpriteSheet>
+{
+    return _dirCount == 1 ? ptr<SpriteSheet> {this} : ptr<SpriteSheet> {_dirs[_curDir.value()]};
 }
 
 auto SpriteSheet::IsHitTest(ipos32 pos) const -> bool
 {
-    return GetCurSpr()->IsHitTest(pos);
+    return GetCurrentSprite()->IsHitTest(pos);
 }
 
 auto SpriteSheet::GetBatchTexture() const -> nptr<const RenderTexture>
 {
-    return GetCurSpr()->GetBatchTexture();
+    return GetCurrentSprite()->GetBatchTexture();
 }
 
-auto SpriteSheet::GetCurSpr() const -> ptr<const Sprite>
+auto SpriteSheet::GetCurrentSprite() const -> ptr<const Sprite>
 {
-    ptr<const SpriteSheet> dir_sheet = this;
-
-    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1];
-    }
-
-    return dir_sheet->_spr[_curIndex];
+    return GetCurrentDirection()->_spr[_curIndex];
 }
 
-auto SpriteSheet::GetCurSpr() -> ptr<Sprite>
+auto SpriteSheet::GetCurrentSprite() -> ptr<Sprite>
 {
-    ptr<SpriteSheet> dir_sheet = this;
-
-    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1];
-    }
-
-    return dir_sheet->_spr[_curIndex];
+    return GetCurrentDirection()->_spr[_curIndex];
 }
 
 auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
-    auto copy = safe_alloc::make_shared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
+    vector<vector<timespan>> timelines;
+    timelines.reserve(numeric_cast<size_t>(_dirCount));
 
-    for (size_t i = 0; i < _spr.size() && i < copy->_spr.size(); i++) {
-        copy->_spr[i] = _spr[i]->MakeCopy();
-        copy->_sprOffset[i] = _sprOffset[i];
-        copy->_sprMotion[i] = _sprMotion[i];
+    for (int32_t dir = 0; dir < _dirCount; dir++) {
+        timelines.emplace_back(GetDirection(hdir(dir))->_frameDurations);
+    }
+
+    auto copy = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
+
+    for (int32_t dir = 0; dir < _dirCount; dir++) {
+        auto source = GetDirection(hdir(dir));
+        auto target = copy->GetDirection(hdir(dir));
+
+        for (int32_t frame = 0; frame < source->_framesCount; frame++) {
+            target->_spr[frame] = source->_spr[frame]->MakeCopy();
+            target->_sprOffset[frame] = source->_sprOffset[frame];
+            target->_sprMotion[frame] = source->_sprMotion[frame];
+        }
+
+        target->_stateAnim = source->_stateAnim;
+        target->_actionAnim = source->_actionAnim;
+        target->RefreshParameters();
     }
 
     copy->_stateAnim = _stateAnim;
     copy->_actionAnim = _actionAnim;
-
-    for (int32_t i = 0; i < _dirCount - 1; i++) {
-        if (_dirs[i]) {
-            copy->_dirs[i] = _dirs[i]->MakeCopy().dyn_cast<SpriteSheet>();
-        }
-    }
-
-    copy->RefreshParams();
+    copy->RefreshParameters();
 
     return copy;
 }
 
 auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
-    ptr<const SpriteSheet> dir_sheet = this;
-
-    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1];
-    }
-
-    return dir_sheet->_spr[_curIndex]->FillData(dbuf, pos, colors);
+    return GetCurrentSprite()->FillData(dbuf, pos, colors);
 }
 
 void SpriteSheet::SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion)
@@ -491,44 +547,59 @@ void SpriteSheet::SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offs
     _sprMotion[index] = motion;
 
     if (index == _curIndex) {
-        RefreshParams();
+        RefreshParameters();
     }
 }
 
 void SpriteSheet::Prewarm()
 {
-    _curIndex = _sprMngr->Random(0, _framesCount - 1);
-
-    RefreshParams();
+    auto direction = GetCurrentDirection();
+    int32_t frame = _sprMngr->Random(0, direction->_framesCount - 1);
+    timespan start = frame == 0 ? timespan::zero : direction->_frameEnds[frame - 1];
+    if (direction->_duration > timespan::zero) {
+        _phase = start.div<float64_t>(direction->_duration);
+    }
+    else {
+        _phase = direction->_framesCount > 1 ? numeric_cast<float64_t>(frame) / (direction->_framesCount - 1) : 0.0;
+    }
+    RefreshParameters();
 }
 
 auto SpriteSheet::GetTime() const -> float32_t
 {
-    if (_framesCount > 1) {
-        return numeric_cast<float32_t>(_curIndex) / numeric_cast<float32_t>(_framesCount - 1);
-    }
-    else {
-        return 0.0f;
-    }
+    return numeric_cast<float32_t>(_phase);
 }
 
 void SpriteSheet::SetTime(float32_t normalized_time)
 {
-    _curIndex = _framesCount > 1 ? iround<int32_t>(normalized_time * numeric_cast<float32_t>(_framesCount - 1)) : 0;
+    FO_VERIFY_AND_THROW(std::isfinite(normalized_time), "Sprite normalized time must be finite");
 
-    RefreshParams();
+    _phase = std::clamp(numeric_cast<float64_t>(normalized_time), 0.0, 1.0);
+    _startTick = _sprMngr->GetTimer().GetFrameTime();
+    RefreshParameters();
 }
 
-void SpriteSheet::SetDir(mdir dir)
+void SpriteSheet::SetDirection(mdir dir)
 {
-    _curDir = dir.hex();
+    if (_playing) {
+        (void)Update();
+    }
+
+    _curDir = _dirCount == 1 ? hdir::NorthEast : dir.hex();
+    RefreshParameters();
 }
 
 void SpriteSheet::Play(hstring anim_name, bool looped, bool reversed)
 {
     ignore_unused(anim_name);
+    bool animated = false;
 
-    if (_framesCount == 1 || _wholeTicks == 0) {
+    for (int32_t dir = 0; dir < _dirCount; dir++) {
+        auto direction = GetDirection(hdir(dir));
+        animated = animated || (direction->_framesCount > 1 && direction->_duration > timespan::zero);
+    }
+
+    if (!animated) {
         return;
     }
 
@@ -547,91 +618,110 @@ void SpriteSheet::Stop()
 
 auto SpriteSheet::Update() -> bool
 {
-    if (_playing) {
-        nanotime cur_tick = _sprMngr->GetTimer().GetFrameTime();
-        int32_t dt = (cur_tick - _startTick).to_ms<int32_t>();
-        int32_t frm_count = numeric_cast<int32_t>(_framesCount);
-        int32_t ticks_per_frame = std::max(numeric_cast<int32_t>(_wholeTicks) / frm_count, 1);
-        int32_t frames_passed = dt / ticks_per_frame;
+    nanotime current = _sprMngr->GetTimer().GetFrameTime();
+    timespan elapsed = current - _startTick;
+    _startTick = current;
 
-        if (frames_passed > 0) {
-            _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
+    return AdvanceTime(elapsed < timespan::zero ? timespan::zero : elapsed);
+}
 
-            int32_t index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
+auto SpriteSheet::AdvanceTime(timespan elapsed_time) -> bool
+{
+    FO_VERIFY_AND_THROW(elapsed_time >= timespan::zero, "Sprite elapsed time must be nonnegative");
 
-            if (_looped) {
-                if (index < 0 || index >= frm_count) {
-                    index %= frm_count;
-                }
-            }
-            else {
-                if (index < 0) {
-                    index = 0;
-                    _playing = false;
-                }
-                else if (index >= frm_count) {
-                    index = frm_count - 1;
-                    _playing = false;
-                }
-            }
+    if (!_playing) {
+        return false;
+    }
 
-            FO_VERIFY_AND_THROW(index >= 0 && index < frm_count, "Default sprite animation selected a frame outside the frame table", index, frm_count, _curIndex, frames_passed, _looped, _reversed, _playing, dt, _wholeTicks);
-            _curIndex = index;
+    _startTick = _sprMngr->GetTimer().GetFrameTime();
+    timespan duration = GetDuration();
 
-            RefreshParams();
+    if (duration == timespan::zero) {
+        return true;
+    }
+
+    float64_t next = _phase + (_reversed ? -1.0 : 1.0) * elapsed_time.div<float64_t>(duration);
+
+    if (_looped) {
+        _phase = std::fmod(next, 1.0);
+
+        if (_phase < 0) {
+            _phase += 1.0;
         }
+    }
+    else {
+        _phase = std::clamp(next, 0.0, 1.0);
 
-        return _playing;
+        if ((_reversed && next <= 0) || (!_reversed && next >= 1.0)) {
+            _playing = false;
+        }
     }
 
-    return false;
+    RefreshParameters();
+
+    return _playing;
 }
 
-void SpriteSheet::RefreshParams()
+void SpriteSheet::RefreshParameters()
 {
-    ptr<SpriteSheet> dir_sheet = this;
+    auto direction = GetCurrentDirection();
+    _curIndex = GetFrameIndexAtPhase(_phase, _playing && _reversed);
+    _size = direction->_spr[_curIndex]->GetSize();
+    _offset = direction->_sprOffset[_curIndex];
+}
 
-    if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1];
+auto SpriteSheet::GetFrameIndexAtPhase(float64_t phase, bool reversed) const -> int32_t
+{
+    FO_VERIFY_AND_THROW(std::isfinite(phase) && phase >= 0 && phase <= 1, "Sprite phase must be finite and within 0..1", phase);
+
+    auto direction = GetCurrentDirection();
+    if (direction->_duration == timespan::zero) {
+        return iround<int32_t>(phase * (direction->_framesCount - 1));
     }
 
-    _size = dir_sheet->_spr[_curIndex]->GetSize();
-    _offset = dir_sheet->_sprOffset[_curIndex];
+    float64_t position = phase * numeric_cast<float64_t>(direction->_duration.nanoseconds());
+    auto frame_before_position = [](timespan end, float64_t value) { return numeric_cast<float64_t>(end.nanoseconds()) < value; };
+    auto position_before_frame = [](float64_t value, timespan end) { return value < numeric_cast<float64_t>(end.nanoseconds()); };
+    auto found = reversed ? std::lower_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position, frame_before_position) : std::upper_bound(direction->_frameEnds.begin(), direction->_frameEnds.end(), position, position_before_frame);
+
+    return std::min(numeric_cast<int32_t>(std::distance(direction->_frameEnds.begin(), found)), direction->_framesCount - 1);
 }
 
-auto SpriteSheet::GetSpr(int32_t num_frm) const -> ptr<const Sprite>
+auto SpriteSheet::GetSprite(int32_t num_frm) const -> ptr<const Sprite>
 {
-    return _spr[num_frm % _framesCount];
+    FO_VERIFY_AND_THROW(num_frm >= 0, "Sprite frame index must be nonnegative", num_frm);
+
+    auto direction = GetCurrentDirection();
+
+    return direction->_spr[num_frm % direction->_framesCount];
 }
 
-auto SpriteSheet::GetSpr(int32_t num_frm) -> ptr<Sprite>
+auto SpriteSheet::GetSprite(int32_t num_frm) -> ptr<Sprite>
 {
-    return _spr[num_frm % _framesCount];
+    FO_VERIFY_AND_THROW(num_frm >= 0, "Sprite frame index must be nonnegative", num_frm);
+
+    auto direction = GetCurrentDirection();
+
+    return direction->_spr[num_frm % direction->_framesCount];
 }
 
-auto SpriteSheet::GetSprOffset(int32_t num_frm) const -> ipos32
+auto SpriteSheet::GetSpriteOffset(int32_t num_frm) const -> ipos32
 {
-    return _sprOffset[num_frm % _framesCount];
+    FO_VERIFY_AND_THROW(num_frm >= 0, "Sprite frame index must be nonnegative", num_frm);
+
+    auto direction = GetCurrentDirection();
+
+    return direction->_sprOffset[num_frm % direction->_framesCount];
 }
 
-auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
+auto SpriteSheet::GetDirection(mdir dir) const -> nptr<const SpriteSheet>
 {
-    int8_t dir_value = dir.hex().value();
-    if (dir_value == 0 || _dirCount == 1) {
-        return this;
-    }
-
-    return _dirs[dir_value - 1];
+    return _dirCount == 1 ? nptr<const SpriteSheet> {this} : nptr<const SpriteSheet> {_dirs[dir.hex().value()]};
 }
 
-auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
+auto SpriteSheet::GetDirection(mdir dir) -> nptr<SpriteSheet>
 {
-    int8_t dir_value = dir.hex().value();
-    if (dir_value == 0 || _dirCount == 1) {
-        return this;
-    }
-
-    return _dirs[dir_value - 1];
+    return _dirCount == 1 ? nptr<SpriteSheet> {this} : nptr<SpriteSheet> {_dirs[dir.hex().value()]};
 }
 
 DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<ResourceManager> res_mngr) :
@@ -659,30 +749,51 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
     shared_ptr<Sprite> result;
 
-    if (sprite_info.FrameCount > 1 || direction_count > 1) {
-        auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
+    if (sprite_info.Directions.front().Frames.size() > 1 || direction_count > 1) {
+        vector<vector<timespan>> timelines;
+
+        for (const auto& direction : sprite_info.Directions) {
+            vector<timespan> durations;
+
+            for (const auto& frame : direction.Frames) {
+                durations.emplace_back(frame.Duration);
+            }
+
+            timelines.emplace_back(std::move(durations));
+        }
+
+        auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);
 
         for (uint8_t i = 0; i < direction_count; i++) {
             mdir dir = hdir(i);
-            auto dir_anim = anim->GetDir(dir);
+            auto dir_anim = anim->GetDirection(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
             SpriteResourceDirectionData& direction = resource.Directions[i];
 
-            for (uint16_t j = 0; j < sprite_info.FrameCount; j++) {
+            for (size_t j = 0; j < direction.Frames.size(); j++) {
                 SpriteResourceFrameData& frame = direction.Frames[j];
 
                 if (!frame.SharedFrameIndex.has_value()) {
                     auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
                     ipos32 offset = spr->GetOffset();
-                    dir_anim->SetFrame(j, std::move(spr), offset, frame.NextOffset);
+                    dir_anim->SetFrame(numeric_cast<int32_t>(j), std::move(spr), offset, frame.NextOffset);
                 }
                 else {
                     uint16_t index = *frame.SharedFrameIndex;
-                    dir_anim->SetFrame(j, dir_anim->GetSpr(index)->MakeCopy(), dir_anim->GetSprOffset(index), dir_anim->GetSprMotion()[index]);
+                    ipos32 reference_offset = dir_anim->GetSpriteOffset(index);
+                    ipos32 offset {
+                        numeric_cast<int32_t>(numeric_cast<int64_t>(reference_offset.x) + frame.Offset.x - direction.Frames[index].Offset.x),
+                        numeric_cast<int32_t>(numeric_cast<int64_t>(reference_offset.y) + frame.Offset.y - direction.Frames[index].Offset.y),
+                    };
+
+                    dir_anim->SetFrame(numeric_cast<int32_t>(j), dir_anim->GetSprite(index)->MakeCopy(), offset, frame.NextOffset);
                 }
             }
+
+            dir_anim->RefreshParameters();
         }
 
+        anim->RefreshParameters();
         result = std::move(anim);
     }
     else {
@@ -803,4 +914,3 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 }
 
 FO_END_NAMESPACE
-

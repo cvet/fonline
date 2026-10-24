@@ -14,6 +14,115 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-23
 
+### Migration
+
+Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.78. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
+
+- Keep shared cropped sprite anchors in logical canvas coordinates, including chains of shared frames. Preserve explicit zero-duration native/script sequences for manual frame selection; file-backed timelines remain positive. Retain double precision until model cycle wrapping so frozen endpoint poses do not wrap to the first frame.
+
+
+- Model controller/instance and particle facade intervals use timespan; Ozz/backend/GPU
+  seconds stay at adapters. UDP retry options are typed; bake reports quantize at JSON output.
+
+- MovingContext intervals/look-ahead and FogLayer.TransitionDuration use timespan.
+  Rebuild and rebake all roles for runtime 0.0.78; wire units and saves stay unchanged.
+
+- Duration: float conversions retain fractions, AS constructors check overflow, Delay accepts timespan.
+  Image DurationMs/GetDurationMs become Duration/GetDuration (timespan); files unchanged.
+
+- `SpriteSheet`: `GetWholeTicks` → `GetDuration` (`timespan`); rebuild. Sub-ms time is retained; files unchanged.
+
+- Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
+  FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
+  Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF
+  schema 5/runtime 0.0.78. Other model and image schemas are unchanged.
+
+- Native sprite methods use full names: `GetCurSpr` → `GetCurrentSprite`,
+  `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
+  `GetDirectionCount`, `GetStateAnim`/`GetActionAnim` →
+  `GetStateAnimation`/`GetActionAnimation`, `GetSprOffset(frame)` → `GetSpriteOffset(frame)`,
+  and `RefreshParams` → `RefreshParameters`. `Sprite::SetDir` and all its
+  overrides become `SetDirection`; `GetCurrentDirection` keeps its full name.
+- Migration: update native sprite callers and rebuild. Entity/model-instance
+  direction APIs, playback behavior and baked resource layouts are unchanged.
+
+- Image import frames now use `isize32 Size` and `ipos32 Motion`; draw placement remains `Offset`. BAM signed centers and SPR bbox/center anchors are placement, including shared frames. FRM/ART retain animation motion.
+- Migration: native loaders replace Width/Height and NextX/NextY with Size/Motion. Rename FOFRM Move/FrameMoves to Motion/FrameMotions; old keys fail before dependency resolution. Rebuild the baker and rebake affected BAM/SPR roots. SpriteResource v3 layout is unchanged; dimension/motion narrowing remains checked.
+
+- Baking now publishes `Resources.usage.json` after collecting typed Resource roots,
+  required outputs and runtime dependencies. Packaging requires this selection and
+  rejects missing or mismatched manifests; unused art stays in the local cache.
+- Migration: rebuild the baker and bake before packaging. Mark resource-valued
+  properties `Resource`; declare script/GUI/config and opaque-format paths in ordinary
+  FixedType resource arrays. Constructors are not a resource-registration mechanism.
+
+
+### FOFRM and resource migration
+
+### Changes
+
+- FOFRM: PascalCase Frame/Frames/Offset/FrameOffsets, indexed HexDir/SquareDir
+  (root 0), physical Size/FrameSizes. Old names fail before source resolution.
+- ConfigFile terminal continuation has EOF/final-newline parity; empty values
+  remain consumer-validated.
+- Image baking publishes FOFRM roots and suppresses their transitive inputs across
+  filtered packs and overlays. Content fingerprints update dependent outputs and
+  SpriteInfo for same-stat input edits in full and on-demand baking.
+
+### Migration details
+
+- Source now inherits complete binary/FOFRM collections, directions, placement,
+  motion and timing; root transforms default all directions. Frame/Frames defaults
+  to 10 fps from final frames. Use InputDir/FrameInputDirs, Crop/FrameCrops, Grid,
+  FrameIndices, Flip/FrameFlips, Rotate/FrameRotations, Size/FrameSizes,
+  Canvas/FrameCanvases and CanvasOffset/FrameCanvasOffsets for composition.
+  Per-reference lists precede grid/flattening; FrameIndices follows flattening.
+  Motion/FrameMotions explicitly replaces int16 root motion; bitmap transforms keep
+  literal placement/motion. Resample, PixelUsage and ColorSpace select filtering.
+  Existing Color/Encoded/Bilinear bytes stay unchanged. Area cannot upscale;
+  Data/Normal cannot declare ColorSpace. Alias and Effect are refused with dated
+  markers through 2026-12-31; Fps in a named direction fails instead of being ignored.
+
+- `bcabd4d6c192400790f577b9a165c79594aa8ee7` (`2026.1.54-dev`) → `2026.1.61-dev`.
+  Rename `fps` → `Fps`; replace Alias with Source and remove Effect. Replace `offs_x/offs_y` or
+  `OffsetX/OffsetY` with `Offset = X Y`, retaining carry. Replace
+  `frm/Frm/frm_N/Frm_N` with exclusive, nonempty Frame/Frames; remove Count,
+  keep active references/repeats/order. Frame is one full path; quote spaces in Frames.
+- Author order: source/frames, selection/crop/grid, geometry/filter, placement/motion, timing.
+  Use `Key = Value`, one-space continuations, last without slash; runtime accepts other spacing/order.
+- Move direction 0 into root, merging fields/resolving conflicts. Use active-geometry
+  `[HexDir 1]`..`[HexDir 5]` or `[SquareDir 1]`..`[SquareDir 7]`.
+  Map old degree order hex 30/90/150/210/270/330 or square
+  45/90/135/180/225/270/315/0 to 0..N-1. Named zero/old Dir fail before source resolution;
+  no fallback. Legacy refusals: `FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31")`.
+- Replace authored NextX_N/NextY_N with FrameOffsets: local signed-int32 X Y
+  pairs, one per active reference before flattening/continued line. Missing pairs
+  are zero; empty/invalid/out-of-range/wrong-count/reference-free lists fail.
+  Placement adds Offset and child frame offsets without accumulation or imported
+  delta changes; child sequence placement drops, Offset carries, int32 placement overflow fails.
+- Size/FrameSizes sets W H in 1..65535; see [FOFRM](../how-to/content/image-format.md#fofrm-grammar)
+  for defaults and validation.
+- Duration/FrameDurations define positive millisecond timelines, with local timing
+  overriding root defaults. Directions may have different counts and durations;
+  direction switches preserve phase. Fps0 is refused; raw legacy zero clocks
+  normalize to10fps, sub-ms positive periods to1ms. Data/Normal bypass alpha crop.
+- Replace direct game/model/UI/script references to consumed images or intermediate
+  FOFRM with separate root wrappers. Mount inputs explicitly; filters select outputs
+  without hiding dependencies. Loaders with NewName declare matching ResolveOutput.
+  Missing/cyclic input chains and more than 64 FOFRM nodes fail before conversion.
+  Rebuild the baker and rebake: `.baker-cache/Image/` snapshots are private and
+  replace timestamp-only image decisions; they are never shipped. Removing a last
+  reference restores standalone publication and updates SpriteInfo automatically.
+- Migrate sources/tools/tests; rebuild roles/metadata, rebake. Check native/client,
+  EN/RU, contracts/docs/site/AI and compat dates; validation covers Windows only.
+- Sprite v3 and SpriteInfo2 require a full image rebake; runtime compatibility
+  is 0.0.78. Shared pixels retain independent logical timing/offsets/motion.
+  Saves/IDs/DB/network schemas and Managed ABI9 are unchanged.
+  Deploy/rollback matching binaries/packs/sources and regenerate metadata.
+- LFMODINF schema5 requires a full model rebake. Textures remain single-frame, single-direction images; TextureAnimation is rejected. LFMODMSH/LFOZZRIG stay unchanged.
+
+## 2026.1.60-dev - 2026-10-23
+
 ### Added
 
 - Add the `Game.LoadCritter(crId, forPlayer, map)` overload on both scripting backends. Restore a player-controllable critter or NPC directly onto its stored map/hex/direction, preserving preload/init/load ordering, inventory, duplicate rejection and recoverable records on a failed detached load. The existing two-argument overload keeps global-map behavior; both overloads now declare their existing return-cover guarantee with `FO_PROVIDES_COVER`. Preliminary stored-field lookup uses `Game.DbGetRecord`. Local restoration emits `OnMapCritterIn` before init; initial visibility follows init so its subscriptions receive the first appearances. A callback that relocates the restored critter makes the local restore throw while preserving its valid side effects. Item-visibility fan-out stops when its observer is destroyed or leaves the map.
@@ -26,7 +135,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Upgrade from `2026.1.59-dev` to this version by rebuilding native roles and regenerating/baking both server and client script resources with the same Engine revision. The central compatibility marker advances from `76` to `77` for the changed player-message admission boundary and API/settings metadata; clients and servers must use matching rebuilt resources. Do not mix the preceding binaries or baked metadata. Rollback restores the previous matching binaries, assemblies and resources together.
 - No existing script method, event, setting, persisted property, numeric id, timer unit, resource schema or Managed ABI `9` is removed or reinterpreted. `Game.LoadCritter(crId, forPlayer)` keeps its global-map path; no persisted-data conversion is required. Native `EntityManager::LoadCritter` now takes `(cr_id, for_player, nptr<ident_t> stored_map_id, bool& is_error)`: migrate native callers to pass an output borrow for the stored map id, or `nullptr` when it is not needed, before the final error flag. The loader writes the restored map id before clearing the detached critter's `MapId`; an earlier load failure leaves the output unchanged, and destination validation remains with the caller. Native `ServerEngine::LoadCritter(cr_id, for_player, nptr<Map> map = nullptr)` now handles both destinations; ordinary two-argument calls use its default null map and explicit map calls keep stored-map restoration. Both script overloads provide cover for the fresh critter; only the map overload requires the caller's existing target-map cover. Regenerate both backends' bindings so the Managed analyzer sees the return-cover guarantee on either overload. Recompile Managed callers: `FOSYNC015` may now reject a redundant `Sync.Widen` of an already covered result. If that call only checked lifetime, replace it with `IsDestroyed`; retain acquisitions needed for other entities or after cover has been released.
 - Embedded clients may set `ClientNetwork.RequireInterthreadTransport = True`; ordinary clients retain the default false. Native extensions may subscribe to the two admission events directly; these are not `///@ EngineHook` entry points or exported `Game.On*` script events. A pre-login refusal precedes registration, database work, connection replacement and login-success delivery; per-message refusal stops queued input before dispatch. Application authentication, campaign eligibility and automatic roster restoration remain project-owned. Detect optional adoption with `rg -n "RequireInterthreadTransport|OnPlayerPreLogin|OnPlayerPreProcess|LoadCritter" <project-source-paths>`; unused hooks and restore APIs need no script changes. Projects that explicitly initialize every Engine setting must add `ClientNetwork.RequireInterthreadTransport = False` to preserve normal network clients; the config baker rejects an uninitialized setting.
-
 ## 2026.1.59-dev - 2026-10-23
 
 ### Fixed

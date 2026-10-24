@@ -312,7 +312,7 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
 
         CHECK(cr->GetLookDistance() == base_look + 1);
         REQUIRE(next_delay.has_value());
-        CHECK(next_delay.value() > timespan {});
+        CHECK(next_delay.value() > timespan::zero);
 
         // A one-shot event reports no follow-up delay because it is gone after firing
         uint32_t once_id = start_self_event("LocEntity::OnCritterTickTimer", {});

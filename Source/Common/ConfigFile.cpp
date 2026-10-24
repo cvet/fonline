@@ -59,12 +59,12 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
     string accum_line;
     size_t line_begin = 0;
 
-    while (line_begin <= input.length()) {
+    while (line_begin <= input.length() || !accum_line.empty()) {
         size_t line_end = input.find('\n', line_begin);
         size_t view_end = line_end != string::npos ? line_end : input.length();
         string_view line;
 
-        if (view_end != line_begin) {
+        if (view_end > line_begin) {
             auto line_begin_ptr = make_ptr(input.data() + line_begin);
             line = {line_begin_ptr.get(), view_end - line_begin};
         }

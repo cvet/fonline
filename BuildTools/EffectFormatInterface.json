@@ -908,8 +908,8 @@
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
             "fofx-{}-info",
-            "fofx-{}-vert-spv_sdl",
-            "fofx-{}-frag-msl_ios"
+            "vert-spv_sdl",
+            "frag-msl_ios"
           ]
         }
       ]

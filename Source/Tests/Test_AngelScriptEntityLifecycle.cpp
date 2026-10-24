@@ -892,4 +892,3 @@ TEST_CASE("AngelScriptScriptFunctionCalls")
 FO_END_NAMESPACE
 
 #endif
-

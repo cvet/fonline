@@ -55,7 +55,7 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
         auto anim = it->second.as_nptr();
 
         if (anim) {
-            auto dir_anim = anim->GetDir(dir);
+            auto dir_anim = anim->GetDirection(dir);
 
             if (dir_anim) {
                 return dir_anim;
@@ -89,8 +89,8 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
     }
 
     if (anim) {
-        for (int32_t d = 0; d < anim->_dirCount; d++) {
-            auto dir_anim = anim->GetDir(hdir(d));
+        for (int32_t d = 0; d < anim->GetDirectionCount(); d++) {
+            auto dir_anim = anim->GetDirection(hdir(d));
             FO_VERIFY_AND_THROW(dir_anim, "Missing animation direction");
             dir_anim->_stateAnim = state_anim;
             dir_anim->_actionAnim = action_anim;
@@ -101,7 +101,7 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
     auto anim_loaded = it->second.as_nptr();
 
     if (anim_loaded) {
-        auto dir_anim = anim_loaded->GetDir(dir);
+        auto dir_anim = anim_loaded->GetDirection(dir);
 
         if (dir_anim) {
             return dir_anim;
@@ -114,4 +114,3 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
 }
 
 FO_END_NAMESPACE
-

@@ -119,6 +119,7 @@ public:
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
+    [[nodiscard]] auto GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr<const MeshTexture>;
 
     void SetupFrame(isize32 draw_size, ipos32 frame_pivot);
     void PrepareFrameLayout();
@@ -195,12 +196,13 @@ private:
     auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
     void GenerateCombinedMeshes();
     void InvalidateCombinedMeshes() noexcept;
-    void FillCombinedMeshes(ptr<const ModelInstance> cur);
+    void FillCombinedMeshes(ptr<ModelInstance> cur);
+    void ResolveDefaultTexture(ptr<MeshInstance> mesh, size_t slot);
     void CombineMesh(ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
-    void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
+    void ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale);
     void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
@@ -259,8 +261,8 @@ private:
     float32_t _targetMoveDirAngle {};
     vec3 _groundPos {};
     float32_t _animPosProc {};
-    float32_t _animPosTime {};
-    float32_t _animDuration {};
+    timespan _animPosTime {};
+    timespan _animDuration {};
     bool _allowMeshGeneration {};
     vector<ptr<ModelCutData>> _allCuts {};
     function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> _animInitCallback {};
@@ -301,4 +303,3 @@ private:
 FO_END_NAMESPACE
 
 #endif
-

@@ -2349,4 +2349,3 @@ TEST_CASE("PathFinding::TraceDirection")
 }
 
 FO_END_NAMESPACE
-

@@ -62,7 +62,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     auto check_bake_config = [&](string_view sub_config) {
         auto check_bake_config2 = [&](string_view cfg_name1, string_view cfg_name2) {
             string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-            if (!_context->BakeChecker || _context->BakeChecker(cfg_name, std::numeric_limits<uint64_t>::max())) {
+            if (!_context->HasBakeChecker() || _context->CheckOutput(cfg_name, std::numeric_limits<uint64_t>::max())) {
                 configs_to_bake.emplace(sub_config);
             }
         };
@@ -72,18 +72,18 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
     };
 
     check_bake_config("");
-    std::ranges::for_each(_context->Settings->GetSubConfigs(), [&](auto&& sub_config) { check_bake_config(sub_config.Name); });
+    std::ranges::for_each(_context->GetSettings()->GetSubConfigs(), [&](auto&& sub_config) { check_bake_config(sub_config.Name); });
 
     if (!configs_to_bake.empty()) {
-        auto server_engine = BakerServerEngine(*_context->BakedFiles);
-        auto client_engine = BakerClientEngine(*_context->BakedFiles);
+        auto server_engine = BakerServerEngine(*_context->GetBakedFiles());
+        auto client_engine = BakerClientEngine(*_context->GetBakedFiles());
         const auto& server_game_settings = server_engine.GetGameSettings();
         const auto& client_game_settings = client_engine.GetGameSettings();
-        string pack_declarations = _context->Settings->GetResourcePackDeclarations();
+        string pack_declarations = _context->GetSettings()->GetResourcePackDeclarations();
 
         auto resolve_config_settings = [&](string_view sub_config) -> map<string, string> {
-            FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
-            string config_path = _context->Settings->GetAppliedConfigs().front();
+            FO_VERIFY_AND_THROW(_context->GetSettings()->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->GetSettings()->GetAppliedConfigs().size());
+            string config_path = _context->GetSettings()->GetAppliedConfigs().front();
             string_view config_name = strvex(config_path).extract_file_name();
             string config_dir = strex(config_path).extract_dir();
 
@@ -101,7 +101,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         // baseline, so the delta form would leave them unreadable at the moment they are needed
         unordered_set<string> bootstrap_settings;
 
-        for (const auto& name : _context->Settings->Baking.BootstrapGameSettings) {
+        for (const auto& name : _context->GetSettings()->Baking.BootstrapGameSettings) {
             FO_VERIFY_AND_THROW(server_game_settings.contains(name) || client_game_settings.contains(name), "Bootstrap game setting is not a declared game setting", name);
             bootstrap_settings.emplace(name);
         }
@@ -134,7 +134,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
                 if (is_game_only_setting) {
                     // The metadata resource already ships every game setting from this bake's active
                     // configuration, so the binary config has to carry only what that exact baseline cannot express
-                    auto metadata_baseline_value = _context->Settings->FindSettingValue(key);
+                    auto metadata_baseline_value = _context->GetSettings()->FindSettingValue(key);
 
                     // The delta is written whatever it says: an empty or false override still has to beat
                     // a metadata baseline that says otherwise, so skip_write must not apply to it

@@ -40,6 +40,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan MIN_REPEAT_DURATION {std::chrono::milliseconds {1}};
+
 struct AudioManager::Sound
 {
     vector<uint8_t> BaseBuf {};
@@ -191,7 +193,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Repeat
     if (sound->RepeatTime) {
         if (!sound->NextPlayTime) {
-            sound->NextPlayTime = nanotime::now() + (sound->RepeatTime > std::chrono::milliseconds {1} ? sound->RepeatTime : timespan::zero);
+            sound->NextPlayTime = nanotime::now() + (sound->RepeatTime > MIN_REPEAT_DURATION ? sound->RepeatTime : timespan::zero);
         }
 
         if (nanotime::now() >= sound->NextPlayTime) {

@@ -118,7 +118,7 @@ auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
     }
 
     for (const auto& packet : _pendingPackets) {
-        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= _options.ResendTimeout) {
             return true;
         }
     }
@@ -133,7 +133,7 @@ auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vecto
     size_t consumed = 0;
 
     for (auto& packet : _pendingPackets) {
-        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= _options.ResendTimeout) {
             packet.LastSend = now;
             packet.SendCount++;
             EmitPendingPacket(packet, packets);

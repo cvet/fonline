@@ -35,7 +35,22 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan MIN_MOVEMENT_DURATION {std::chrono::nanoseconds {100}};
+static constexpr timespan MOVEMENT_OFFSET_RESCALE_RESOLUTION {std::chrono::milliseconds {1}};
+static constexpr timespan MOVEMENT_DURATION_RESCALE_RESOLUTION {std::chrono::nanoseconds {1}};
 static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS = 20;
+
+static auto RescaleMovementTime(timespan time, uint16_t speed, uint16_t new_speed, timespan resolution) -> timespan
+{
+    int64_t numerator = speed;
+    int64_t divisor = checked_mul<int64_t>(numeric_cast<int64_t>(new_speed), resolution.nanoseconds());
+
+    int64_t whole = checked_mul<int64_t>(time.nanoseconds() / divisor, numerator);
+    int64_t remainder = (time.nanoseconds() % divisor) * numerator;
+    int64_t units = checked_add<int64_t>(whole, (remainder + divisor / 2) / divisor);
+
+    return timespan {checked_mul<int64_t>(units, resolution.nanoseconds())};
+}
 
 MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset) :
     _mapSize {map_size},
@@ -48,14 +63,14 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
     _startHexOffset {start_hex_offset},
     _endHexOffset {end_hex_offset}
 {
-    _elapsedTime = std::max(offset_time.to_ms<float32_t>(), 0.0f);
+    _elapsedTime = std::max(offset_time, timespan::zero);
     RecalculateMetrics();
 }
 
-MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, float32_t whole_time) :
+MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, timespan whole_time) :
     MovingContext(map_size, speed, std::move(steps), std::move(control_steps), start_time, offset_time, start_hex, start_hex_offset, end_hex_offset)
 {
-    _wholeTime = std::max(whole_time, 0.0001f);
+    _wholeTime = std::max(whole_time, MIN_MOVEMENT_DURATION);
 }
 
 void MovingContext::RecalculateMetrics()
@@ -67,11 +82,11 @@ void MovingContext::RecalculateMetrics()
     _wholeDist = metrics.WholeDist;
 }
 
-auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t
+auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept -> timespan
 {
-    float32_t runtime_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+    timespan runtime_elapsed = std::max(current_time - _startTime + _offsetTime, timespan::zero);
 
-    if (_leaseTime > 0.0f && runtime_elapsed > _leaseTime) {
+    if (_leaseTime > timespan::zero && runtime_elapsed > _leaseTime) {
         return _leaseTime;
     }
 
@@ -79,12 +94,12 @@ auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept 
 }
 
 // The time a plan spends waiting at its lease is taken out of its clock, so a longer lease resumes it where it stood
-auto MovingContext::HoldAtLease(nanotime current_time) -> float32_t
+auto MovingContext::HoldAtLease(nanotime current_time) -> timespan
 {
-    float32_t clock_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+    timespan clock_elapsed = std::max(current_time - _startTime + _offsetTime, timespan::zero);
 
-    if (_leaseTime > 0.0f && clock_elapsed > _leaseTime) {
-        _offsetTime -= timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(clock_elapsed - _leaseTime) * 1000000.0)}};
+    if (_leaseTime > timespan::zero && clock_elapsed > _leaseTime) {
+        _offsetTime -= clock_elapsed - _leaseTime;
         return _leaseTime;
     }
 
@@ -119,16 +134,16 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
     dist = std::sqrt(numeric_cast<float32_t>(ox * ox) + proj_oy * proj_oy);
 }
 
-auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> MovingRawProgress
+auto MovingContext::EvaluateRawProgress(timespan elapsed_time) const -> MovingRawProgress
 {
     MovingRawProgress raw_progress;
     raw_progress.Hex = _startHex;
 
-    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= 0.0f || _wholeDist <= 0.0f) {
+    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan::zero || _wholeDist <= 0.0f) {
         return raw_progress;
     }
 
-    float32_t normalized_time = std::clamp(elapsed_time_ms / _wholeTime, 0.0f, 1.0f);
+    float32_t normalized_time = std::clamp(elapsed_time.div<float32_t>(_wholeTime), 0.0f, 1.0f);
     float32_t dist_pos = _wholeDist * normalized_time;
     float32_t cur_dist = 0.0f;
     mpos next_start_hex = _startHex;
@@ -175,25 +190,23 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
 
 void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 {
-    FO_VERIFY_AND_THROW(_speed != 0, "Speed must be non-zero");
+    FO_VERIFY_AND_THROW(_speed != 0 && speed != 0, "Speed must be non-zero");
 
-    float32_t diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
-    float32_t elapsed_time = _elapsedTime;
-
-    timespan new_offset_time = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
-    float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
+    timespan new_offset_time = RescaleMovementTime(_elapsedTime, _speed, speed, MOVEMENT_OFFSET_RESCALE_RESOLUTION);
+    timespan new_whole_time = std::max(RescaleMovementTime(_wholeTime, _speed, speed, MOVEMENT_DURATION_RESCALE_RESOLUTION), MIN_MOVEMENT_DURATION);
+    timespan new_lease_time = _leaseTime > timespan::zero ? RescaleMovementTime(_leaseTime, _speed, speed, MOVEMENT_DURATION_RESCALE_RESOLUTION) : timespan::zero;
 
     _wholeTime = new_whole_time;
-    _leaseTime = _leaseTime > 0.0f ? _leaseTime / diff : 0.0f;
+    _leaseTime = new_lease_time;
     _startTime = current_time;
     _offsetTime = new_offset_time;
-    _elapsedTime = std::max(_offsetTime.to_ms<float32_t>(), 0.0f);
+    _elapsedTime = std::max(_offsetTime, timespan::zero);
     _speed = speed;
 }
 
-void MovingContext::SetLeaseTime(float32_t lease_time, nanotime current_time)
+void MovingContext::SetLeaseTime(timespan lease_time, nanotime current_time)
 {
-    FO_VERIFY_AND_THROW(lease_time >= 0.0f, "Movement lease must not be negative", lease_time);
+    FO_VERIFY_AND_THROW(lease_time >= timespan::zero, "Movement lease must not be negative", lease_time);
 
     // The wait under the old lease is settled first, so a longer lease resumes from where the plan stood
     (void)HoldAtLease(current_time);
@@ -228,7 +241,7 @@ void MovingContext::ValidateRuntimeState() const
 {
     FO_VERIFY_AND_THROW(!_steps.empty(), "Moving context has no movement steps in runtime state", _startHex, _wholeTime, _wholeDist);
     FO_VERIFY_AND_THROW(!_controlSteps.empty(), "Moving context has no control steps in runtime state", _startHex, _steps.size(), _wholeTime, _wholeDist);
-    FO_VERIFY_AND_THROW(_wholeTime > 0.0f, "Whole time must be positive");
+    FO_VERIFY_AND_THROW(_wholeTime > timespan::zero, "Whole time must be positive");
     FO_VERIFY_AND_THROW(_wholeDist > 0.0f, "Whole dist must be positive");
 }
 
@@ -252,7 +265,7 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
         metrics.WholeDist += dist;
 
         if (_speed != 0) {
-            metrics.WholeTime += dist / base_move_speed * 1000.0f;
+            metrics.WholeTime += timespan {iround<int64_t>(numeric_cast<float64_t>(dist) / base_move_speed * 1000000000.0)};
         }
 
         metrics.EndHex = segment_end_hex;
@@ -263,19 +276,22 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
     metrics.WholeDist = std::max(metrics.WholeDist, 0.0001f);
 
     if (_speed != 0) {
-        metrics.WholeTime = std::max(metrics.WholeTime, 0.0001f);
+        metrics.WholeTime = std::max(metrics.WholeTime, MIN_MOVEMENT_DURATION);
     }
 
     return metrics;
 }
 
-auto MovingContext::EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos
+auto MovingContext::EvaluateProjectedHex(timespan look_ahead) const -> mpos
 {
-    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= 0.0f || _wholeDist <= 0.0f) {
+    if (_steps.empty() || _controlSteps.empty() || _wholeTime <= timespan::zero || _wholeDist <= 0.0f) {
         return _endHex;
     }
 
-    return EvaluateRawProgress(_elapsedTime + std::max(look_ahead_ms, 0.0f)).Hex;
+    timespan remaining = std::max(_wholeTime - _elapsedTime, timespan::zero);
+    timespan advance = std::min(std::max(look_ahead, timespan::zero), remaining);
+
+    return EvaluateRawProgress(_elapsedTime + advance).Hex;
 }
 
 auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos fallback_hex) const -> mpos
@@ -411,7 +427,7 @@ void MovingContext::UpdateCurrentTime(nanotime current_time)
 
 void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex)
 {
-    float32_t runtime_elapsed = HoldAtLease(current_time);
+    timespan runtime_elapsed = HoldAtLease(current_time);
 
     if (runtime_elapsed <= _elapsedTime) {
         _elapsedTime = runtime_elapsed;
@@ -428,11 +444,11 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
         return;
     }
 
-    float32_t low = _elapsedTime;
-    float32_t high = runtime_elapsed;
+    timespan low = _elapsedTime;
+    timespan high = std::min(runtime_elapsed, _wholeTime);
 
     for (size_t i = 0; i < NEXT_HEX_TIME_SEARCH_ITERATIONS; i++) {
-        float32_t middle = (low + high) * 0.5f;
+        timespan middle = low + timespan {(high - low).nanoseconds() / 2};
 
         if (EvaluateRawProgress(middle).Hex == current_hex) {
             low = middle;
@@ -483,6 +499,15 @@ void DropPathPrefix(vector<mdir>& steps, vector<uint16_t>& control_steps, size_t
     }
 
     control_steps = std::move(shifted_steps);
+}
+
+auto EvaluateMovementLeaseDuration(float64_t distance, uint16_t speed) -> timespan
+{
+    FO_VERIFY_AND_THROW(std::isfinite(distance) && speed > 0, "Movement lease requires finite distance and positive speed", distance, speed);
+
+    float64_t seconds = std::max(distance / speed, 0.000001);
+
+    return timespan {iround<int64_t>(seconds * 1000000000.0)};
 }
 
 void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time, string_view details)

@@ -53,6 +53,8 @@ namespace osfile = winapi;
 namespace osfile = posix;
 #endif
 
+static constexpr std::chrono::milliseconds FAILED_BACKEND_POLL_INTERVAL {10};
+
 static void ValidateFiniteAnyValue(const AnyData::Value& value);
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
@@ -1201,7 +1203,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                coarse_sleep(std::chrono::milliseconds {10});
+                coarse_sleep(FAILED_BACKEND_POLL_INTERVAL);
             }
         }
         catch (const std::exception& ex) {

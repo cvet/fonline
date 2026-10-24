@@ -489,8 +489,8 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
         result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 8192);
         break;
     case AtlasType::MeshTextures:
-        result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, 1024);
-        result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048);
+        result_size.width = std::min(AppRender::MAX_ATLAS_WIDTH, std::max(1024, request_size.width));
+        result_size.height = std::min(AppRender::MAX_ATLAS_HEIGHT, std::max(2048, request_size.height));
         break;
     case AtlasType::OneImage:
         result_size = request_size;

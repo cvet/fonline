@@ -125,15 +125,23 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
     return nullptr;
 }
 
-auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
+auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<const MeshTexture>
 {
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
+
+    hstring name = _modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name);
+
+    for (const auto& texture : _textures) {
+        if (texture->Name == name) {
+            return texture;
+        }
+    }
 
     string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 
-    auto texture = safe_alloc::make_unique<MeshTexture>(_modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name), tex, tex_data);
+    auto texture = safe_alloc::make_unique<MeshTexture>(name, tex, tex_data);
     _textures.emplace_back(std::move(texture));
 
     return _textures.back();

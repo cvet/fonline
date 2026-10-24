@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"a93d072fc2445f5b2eceaac85c4e58563554154a0df863d82ce9a01a92e4588c"} -->
+<!-- docs-translation: {"document_id":"generated-text-format-index","locale":"ru","source_path":"Docs/en/reference/text-format/index.md","source_sha256":"711487382f0c0198edfa29f3269ee6ffe0b870c5358b270b936cfc966c2aa95e"} -->
 
 # Справочник текста и локализации
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Проекты владеют языковой политикой, каталогами пакетов, процессом перевода, семантическими соглашениями о ключах и любым игровым formatter-ом lexem или аргументов. |
 | Исходный manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Дайджест контракта | <code>6ee167367188a46dce0dbd6115dd9f3dc9a79d217532e01b2f309deb0a012c64</code> |
+| Дайджест контракта | <code>44aac53fcc587155564320a81c23293c42ccd9a3416d468cc79e4e0bdf56d0d8</code> |
 | Имя исходного файла | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Имя запечённого файла | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Исходная запись | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |

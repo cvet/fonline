@@ -769,4 +769,3 @@ TEST_CASE("ApplicationSettings")
 }
 
 FO_END_NAMESPACE
-

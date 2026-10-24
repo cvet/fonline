@@ -33,6 +33,7 @@
 
 #include "EffectManager.h"
 #include "Application.h"
+#include "ResourceDefaults.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -159,7 +160,7 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
         }
 
         constexpr float64_t shader_time_period = 8192.0;
-        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
+        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_sec<float64_t>();
         float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
 
         time_buf->FrameTime[0] = shader_time;
@@ -187,9 +188,9 @@ void EffectManager::LoadMinimalEffects()
     int32_t effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
-    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, EffectDefaults::FlushRenderTarget);
 
     if (effect_errors != 0) {
         throw EffectManagerException("Minimal effects not loaded");
@@ -203,24 +204,24 @@ void EffectManager::LoadDefaultEffects()
     int32_t effect_errors = 0;
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
-    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Roof, EffectUsage::QuadSprite, "Effects/2D_NoDepth.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Primitive, EffectUsage::Primitive, "Effects/Primitive_Default.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Light, EffectUsage::Primitive, "Effects/Primitive_Light.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Fog, EffectUsage::Primitive, "Effects/Primitive_Fog.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::QuadSprite, "Effects/2D_NoDepth.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.Flat, EffectUsage::QuadSprite, "Effects/2D_NoDepth.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::QuadSprite, "Effects/Flush_Primitive.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::QuadSprite, "Effects/Flush_Map.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::QuadSprite, "Effects/Flush_Light.fofx");
-    LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, "Effects/Flush_Fog.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Roof, EffectUsage::QuadSprite, EffectDefaults::NoDepth2D);
+    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, EffectDefaults::Sprite2D);
+    LOAD_DEFAULT_EFFECT(Effects.Primitive, EffectUsage::Primitive, EffectDefaults::Primitive);
+    LOAD_DEFAULT_EFFECT(Effects.Light, EffectUsage::Primitive, EffectDefaults::Light);
+    LOAD_DEFAULT_EFFECT(Effects.Fog, EffectUsage::Primitive, EffectDefaults::Fog);
+    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::QuadSprite, EffectDefaults::NoDepth2D);
+    LOAD_DEFAULT_EFFECT(Effects.Flat, EffectUsage::QuadSprite, EffectDefaults::NoDepth2D);
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, EffectDefaults::FlushRenderTarget);
+    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::QuadSprite, EffectDefaults::FlushPrimitive);
+    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::QuadSprite, EffectDefaults::FlushMap);
+    LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::QuadSprite, EffectDefaults::FlushLight);
+    LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::QuadSprite, EffectDefaults::FlushFog);
 #if FO_ENABLE_3D
-    LOAD_DEFAULT_EFFECT(Effects.SkinnedModel, EffectUsage::Model, "Effects/3D_Skinned.fofx");
+    LOAD_DEFAULT_EFFECT(Effects.SkinnedModel, EffectUsage::Model, EffectDefaults::SkinnedModel);
 #endif
 
     if (effect_errors != 0) {

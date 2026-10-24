@@ -39,6 +39,8 @@
 
 FO_USING_NAMESPACE();
 
+static constexpr std::chrono::milliseconds SERVER_STARTUP_POLL_INTERVAL {10};
+
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
@@ -60,7 +62,7 @@ int main(int argc, char** argv)
             auto server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
-                coarse_sleep(std::chrono::milliseconds {10});
+                coarse_sleep(SERVER_STARTUP_POLL_INTERVAL);
             }
 
             if (server->IsStartingError()) {

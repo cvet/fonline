@@ -278,10 +278,10 @@ TEST_CASE("EffectBaker")
         TestRig local_rig;
         local_rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
 
-        auto context = local_rig.MakeContext();
-        context->BakeChecker = {};
+        auto options = local_rig.MakeContextOptions();
+        options.BakeChecker = {};
 
-        EffectBaker baker {std::move(context)};
+        EffectBaker baker {safe_alloc::make_shared<BakingContext>(std::move(options))};
         CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("Effects/Test.fofx"));
         CHECK(local_rig.Outputs.contains("Effects/Test.fofx-1-info"));

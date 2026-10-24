@@ -1582,7 +1582,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
     init.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
     init.Callback = [&](FuncCallData&) {
         order.emplace_back("init");
-        auto restored = server->EntityMngr.GetCritter(cr_id);
+        refcount_nptr<Critter> restored = server->EntityMngr.GetCritter(cr_id);
         REQUIRE(restored);
         nptr<Map> expected_map = map;
 
@@ -1800,4 +1800,3 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
 }
 
 FO_END_NAMESPACE
-

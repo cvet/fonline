@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"9d4a376f4179a3256c834767349b2b4d879b42e6108f025976005eb7d59da4cc"} -->
+<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"44779feaa9c80a1418f7fd787d9d4f4966bd6c63d8ddf88786dfec39f791c164"} -->
 
 # Сгенерированный интерфейс пакетов
 
@@ -34,7 +34,7 @@ generated: true
 | Support policy | Версионируемая линия поддержки пакетов не объявлена; встраивающие проекты должны фиксировать ревизию движка. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f</code> |
+| Contract digest | <code>eddfe1395ddf308c3626f977b13e24189189dfc3fcc88ea58665ce2676561d54</code> |
 
 ## Покрытие
 
@@ -52,10 +52,11 @@ generated: true
 - DefinePackage declaration clauses and the per-binary POSTFIX modifier
 - package.py targets, platforms, architecture keys, pack tokens, and payload effects
 - implemented, placeholder, and unsupported package boundaries
+- Resources.usage.json prerequisite and selection before target-specific resource packaging
 
 Не входит в этот раздел:
 
 - embedding-project package matrices and release policy
 - project configuration key schema and secret provisioning
-- resource-pack content selection and deployment topology
+- game-specific resource root declarations and deployment topology
 - installer signing credentials and external tool operation

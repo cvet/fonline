@@ -1768,9 +1768,9 @@ void main(void)
 
     // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
     // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
-    inline auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
+    inline auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}, string_view diffuse_texture = {}) -> vector<uint8_t>
     {
-        return MakeRuntimeModelMesh([origin](data_writer& writer) {
+        return MakeRuntimeModelMesh([origin, diffuse_texture](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
             array<Vertex3D, 3> vertices {};
@@ -1790,7 +1790,7 @@ void main(void)
             writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
             writer.write_object_array(const_span<ModelMeshIndexData> {indices});
 
-            writer.write_string({});
+            writer.write_string(diffuse_texture);
             writer.write<uint32_t>(uint32_t {1});
             writer.write_string({});
             writer.write<uint32_t>(uint32_t {1});
@@ -1928,7 +1928,7 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr) -> vector<uint8_t>
+    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr) -> vector<uint8_t>
     {
         BakerTests::TestRig rig;
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
@@ -1971,6 +1971,10 @@ BoundsMaxZ = 1 1 1 1
         // The info baker resolves the mesh through the source loader as well as the baked output
         rig.AddSourceFile(mesh_path, string {"model source fixture"}, 1);
         rig.AddBakedFile(mesh_path, mesh_blob, 1);
+
+        for (const auto& [texture_path, data] : texture_resources) {
+            BakerTests::AddTestBakedImage(rig, texture_path, data);
+        }
 
         if (!attached_mesh_path.empty()) {
             FO_VERIFY_AND_THROW(attached_mesh_blob, "Runtime model description attachment has no mesh blob", attached_mesh_path);
@@ -2055,4 +2059,3 @@ BoundsMaxZ = 1 1 1 1
 }
 
 FO_END_NAMESPACE
-

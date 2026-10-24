@@ -53,6 +53,24 @@ TEST_CASE("TimeRelated")
         CHECK(timespan::zero == timespan {});
     }
 
+    SECTION("FloatingUnitConversionsPreserveFractions")
+    {
+        for (int32_t sign : {-1, 1}) {
+            timespan half_ms {std::chrono::microseconds {sign * 500}};
+            timespan one_and_half_sec {std::chrono::milliseconds {sign * 1500}};
+
+            CHECK(half_ms.to_ms<double>() == sign * 0.5);
+            CHECK(half_ms.to_sec<double>() == sign * 0.0005);
+            CHECK(one_and_half_sec.to_sec<float>() == sign * 1.5f);
+            CHECK(half_ms.to_ms<int64_t>() == 0);
+            CHECK(one_and_half_sec.to_sec<int64_t>() == sign);
+        }
+
+        CHECK(timespan {1}.to_ms<double>() == 0.000001);
+        CHECK(timespan {1}.to_sec<double>() == 0.000000001);
+        CHECK(timespan::zero.to_sec<double>() == 0.0);
+    }
+
     SECTION("NanoAndSyncTime")
     {
         nanotime n1 {timespan {std::chrono::seconds {2}}};
@@ -163,7 +181,7 @@ TEST_CASE("TimeRelated")
 
     SECTION("DurationFormatterMinuteAndDayBoundaries")
     {
-        CHECK(std::format("{}", timespan {}) == "0.000 us");
+        CHECK(std::format("{}", timespan::zero) == "0.000 us");
         CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
         CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
         CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");

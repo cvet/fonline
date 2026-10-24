@@ -42,7 +42,8 @@
     "string_utils_header": "Source/Essentials/StringUtils.h",
     "tests": [
       "Source/Tests/Test_ImageBaker.cpp",
-      "Source/Tests/Test_TextureAtlas.cpp"
+      "Source/Tests/Test_TextureAtlas.cpp",
+      "Source/Tests/Test_ImageDependencies.cpp"
     ]
   },
   "outputs": {
@@ -79,7 +80,7 @@
       "spr"
     ],
     "container_magic": 43,
-    "container_version": 2,
+    "container_version": 3,
     "pixel_format": "RGBA8",
     "direction_counts": [
       "1",
@@ -102,8 +103,13 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "auto Load",
-            "ConfigFile fofrm(reader.GetStr())"
+            "auto Load"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "ImageRecipe recipe {ConfigFile {string {text}}}"
           ]
         }
       ],
@@ -174,7 +180,7 @@
           "path": "Source/Tools/ImageBaker-Rix.cpp",
           "anchors": [
             "auto Load",
-            "collection.SequenceSize = 1;"
+            "sequence_size = 1;"
           ]
         },
         {
@@ -192,7 +198,7 @@
       "extension": "art",
       "availability": "baker and default runtime; importer requires FO_IMAGE_ART=ON",
       "stability": "experimental",
-      "requirement": "ART imports 8-bit raw or bounded RLE frames after all rotation-major tables, uses present palette slots, aligns frame hot spots on a common canvas, preserves frame deltas, and remaps one or eight rotations with category-specific mirroring and placement. Whole duration saturates at 65535 milliseconds; zero fps stays frame-indexed.",
+      "requirement": "ART uses a 132-byte header with bit depth 8. Flag 0x1 stores one rotation, otherwise eight. All rotation-major tables precede pixel streams; raw frames contain width*height bytes and RLE is bounded by declared frame size. Reject truncated/underfilled/overflowing streams, negative dimensions and baked range overflow. Align selected frame hot spots on one transparent canvas per direction; sequence offsets locate the hot spot and Motion retain movement. Square directions map rotations 1,2,3,4,5,6,7,0; hex maps 1,2,3,5,6,7. art/critter/, art/monster/ and art/unique_npc/ mirror rotations 1–3 from 7–5. Walls/portals shift anchors (-40,+20) for 0,1,6,7; horizontal roof mirrors use the left edge. Present palette fallback, options and category-specific placement follow the imported ART contract. Whole duration fits uint32 milliseconds; zero clock normalizes to 10 fps and positive sub-ms periods to 1 ms. DeltaX/DeltaY remain signed32 during import; only serialized Motion narrows to int16, so FOFRM Motion/FrameMotions can replace wide imported deltas.",
       "rationale": "ART direction numbering and frame metadata require format-specific remapping before runtime use.",
       "source": [
         {
@@ -219,14 +225,14 @@
       "extension": "spr",
       "availability": "baker only by default; wrap through FOFRM for the stock runtime; importer requires FO_IMAGE_SPR=ON",
       "stability": "experimental",
-      "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension.",
+      "requirement": "SPR imports named sequences, layered parts, direction remapping, color offsets, repeated-frame sharing, and fixed 10 fps, but the stock DefaultSpriteFactory does not register the .spr extension. BBox/center-derived coordinates are independent frame Offset, including repeated/shared slots; imported Motion is zero.",
       "rationale": "Directly baked .spr output cannot be loaded by the default client; a .fofrm wrapper gives the output a registered extension without changing imported pixels.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "auto Load",
-            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size())"
+            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size())"
           ]
         },
         {
@@ -287,7 +293,7 @@
           "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
             "auto Load",
-            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count)"
+            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * frames_count)"
           ]
         },
         {
@@ -330,7 +336,7 @@
       "extension": "bam",
       "availability": "baker and default runtime; importer requires FO_IMAGE_BAM=ON",
       "stability": "experimental",
-      "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, derives frame deltas, and treats palette blue 255 as transparent.",
+      "requirement": "BAM imports one selected cycle or one selected frame, supports packed BAMC input and RLE, reads signed16 centers into independent frame Offset with zero Motion, and treats palette blue 255 as transparent.",
       "rationale": "Cycle/frame lookup and palette transparency are part of the legacy format rather than generic sprite behavior.",
       "source": [
         {
@@ -395,96 +401,109 @@
   "descriptor_fields": [
     {
       "id": "image-format.field.fps",
-      "name": "fps / Fps",
-      "syntax": "fps = <integer>",
+      "name": "Fps",
+      "syntax": "Fps = <integer>",
       "default": "10",
       "stability": "experimental",
-      "requirement": "FOFRM reads lowercase fps first and then legacy Fps; zero creates a non-playing sheet, while production animation values must also keep whole duration per frame above zero.",
-      "rationale": "The authored count and fps determine whole-sheet AnimTicks, while runtime playback divides that duration by flattened frame count.",
+      "requirement": "Root-only positive uint32 Fps replaces timeline defaults; total milliseconds is floor(1000*final_count/Fps) and must provide at least one millisecond per frame. Frame/Frames default to 10 fps; Source preserves imported per-frame timing when no explicit timeline applies. Fps zero and same-section Duration/FrameDurations conflicts fail.",
+      "rationale": "Positive uniform boundaries are computed after final frame selection; runtime uses the resulting per-frame durations.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_fps = fofrm.GetAsInt(\"\", \"fps\", 10);",
-            "frm_fps = fofrm.GetAsInt(\"\", \"Fps\", frm_fps);"
+            "static void ApplySequenceTimeline(",
+            "FOFRM Fps requires one positive uint32 token"
           ]
         }
       ]
     },
     {
       "id": "image-format.field.count",
-      "name": "count / Count",
-      "syntax": "count = <positive integer>",
-      "default": "1",
+      "name": "Derived reference count",
+      "syntax": "Computed from Frame or Frames; no Count key",
       "stability": "experimental",
-      "requirement": "Count is the number of descriptor references per direction, defaults to one, and must be positive; it is not necessarily the final flattened frame count.",
+      "requirement": "Count is not an authored key. Each direction derives 1..65535 final frames after grid, flattening and FrameIndices; directions may differ. Source counts as one input reference for transform arrays.",
       "rationale": "Each referenced source can itself contain multiple frames.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);",
-            "frm_count = fofrm.GetAsInt(\"\", \"Count\", frm_count);",
-            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
+            "const auto& names = recipe.References.at(section);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "fofrm.GetAsStr(section, \"Frames\")",
+            "bool has_frame = fofrm.HasKey(section, \"Frame\")",
+            "!(has_frame || has_frames) || !references.empty()"
           ]
         }
       ]
     },
     {
       "id": "image-format.field.sequence-offset",
-      "name": "offs_x / offs_y and OffsetX / OffsetY",
-      "syntax": "offs_x = <signed integer>; offs_y = <signed integer>",
+      "name": "Offset",
+      "syntax": "Offset = <signed integer X> <signed integer Y>",
       "default": "0 in the root section; inherited from the previous parsed direction when omitted",
       "stability": "experimental",
-      "requirement": "Sequence offsets are signed and may be authored in the root or each direction section; explicitly set both values in every direction section because omitted values carry forward.",
-      "rationale": "The parser reuses the current ox/oy variables instead of resetting them for each direction.",
+      "requirement": "Offset requires exactly two signed integers; omitted pairs carry forward from root or the previous parsed direction. Invalid pairs and out-of-range values fail.",
+      "rationale": "The parser reuses the current offset pair between directions.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "ox = fofrm.GetAsInt(dir_str, \"offs_x\", ox);",
-            "oy = fofrm.GetAsInt(dir_str, \"offs_y\", oy);"
+            "offset = ReadOffset(fofrm, section, offset, fname);",
+            "FOFRM offset pair requires two signed integers"
           ]
         }
       ]
     },
     {
       "id": "image-format.field.effect",
-      "name": "effect / Effect",
-      "syntax": "effect = <string>",
+      "name": "Effect",
+      "syntax": "Effect = <string>",
       "default": "empty",
       "stability": "deprecated",
-      "requirement": "The parser accepts effect/Effect into FrameCollection.EffectName for compatibility, but ImageBaker does not serialize or apply it and the stock runtime never selects an effect from this field.",
-      "rationale": "Authors must not treat a parsed-but-unused field as a rendering contract.",
+      "requirement": "Effect is removed and rejected before source resolution, even when empty or pointing to an absent effect. Select render effects at the GUI/map/model/script consumer; the baker does not serialize resource effects. Refusal uses FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\").",
+      "rationale": "A recognized key must have observable semantics or fail explicitly; no dormant EffectName remains.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
-            "collection.EffectName = fofrm.GetAsStr(\"\", \"effect\");",
-            "collection.EffectName = fofrm.GetAsStr(\"\", \"Effect\", collection.EffectName);"
+            "FO_TEMPORARY_COMPAT(FofrmRetiredEffect, \"2026-12-31\")",
+            "FOFRM Effect was removed; select the effect at the resource consumer"
           ]
         },
         {
-          "path": "Source/Tools/ImageImport.h",
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
           "anchors": [
-            "string EffectName {};"
+            "SECTION(\"RejectsRetiredFofrmEffectBeforeResolution\")",
+            "CHECK_FALSE(resolved);"
           ]
         }
       ]
     },
     {
       "id": "image-format.field.direction-section",
-      "name": "[dir_N] / [Dir_N]",
-      "syntax": "[dir_0] through [dir_<MAP_DIR_COUNT-1>]",
+      "name": "HexDir / SquareDir",
+      "syntax": "Unnamed root: direction 0; hex: [HexDir 1]..[HexDir 5]; square: [SquareDir 1]..[SquareDir 7]",
       "stability": "experimental",
-      "requirement": "A descriptor is either single-direction or supplies every Engine map direction; partial direction sets and later gaps fail.",
+      "requirement": "The unnamed root always supplies direction 0. Use HexDir 1..5 or SquareDir 1..7 with canonical decimal indexes, never degrees. Named zero and obsolete Dir forms fail before Source. An absent second sequence without an indexed section means one direction; a section without frames fails.",
       "rationale": "SpriteSheet accepts exactly one direction or GameSettings::MAP_DIR_COUNT directions.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "string dir_str = strex(\"dir_{}\", dir);",
+            "string_view direction_prefix = FO_GEOMETRY == 1 ? \"HexDir\" : \"SquareDir\";",
+            "string section = dir == 0 ? string {} : strex(\"{} {}\", direction_prefix, dir).str();",
             "throw ImageBakerException(\"FOFRM file invalid apps\", fname);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "for (int32_t dir = 1; !valid_section && dir < GameSettings::MAP_DIR_COUNT; dir++)"
           ]
         },
         {
@@ -492,45 +511,147 @@
           "anchors": [
             "dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT"
           ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"BakesFofrmIndexedDirectionsWithImplicitZeroAndOffsetCarry\")",
+            "SECTION(\"RejectsFofrmNamedZeroAndInvalidDirectionIndexesBeforeAlias\")"
+          ]
         }
       ]
     },
     {
       "id": "image-format.field.frame-reference",
-      "name": "frm / Frm and frm_N / Frm_N",
-      "syntax": "frm_0 = Relative$Options.ext",
+      "name": "Frame / Frames",
+      "syntax": "Frame = Relative$Options.ext; Frames = <AnyData String array>",
       "stability": "experimental",
-      "requirement": "Every authored descriptor slot resolves one relative image path; only slot zero also accepts the unnumbered frm/Frm alias.",
+      "requirement": "Use only Frame or Frames. Frame is one whole relative path; Frames is a nonempty ordered AnyData String array. Quote paths with spaces; author one reference per continued line and retain repeats.",
       "rationale": "References are joined with the descriptor directory and then dispatched by the referenced extension.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
-            "frm_name = fofrm.GetAsStr(dir_str, \"frm\");"
+            "fofrm.GetAsStr(section, \"Frame\")",
+            "FOFRM Frame and Frames are mutually exclusive",
+            "AnyData::ParseValue(string {fofrm.GetAsStr(section, \"Frames\")}, false, true, AnyData::ValueType::String)"
           ]
         },
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "sub_collection = context.Resolve(strex(frm_dir).combine_path(frm_name).str());"
+            "child = context.Resolve(strex(fname).extract_dir().combine_path(names[ref]).str());"
           ]
         }
       ]
     },
     {
-      "id": "image-format.field.frame-delta",
-      "name": "next_x_N / next_y_N and NextX_N / NextY_N",
-      "syntax": "next_x_0 = <signed integer>; next_y_0 = <signed integer>",
-      "default": "0",
+      "id": "image-format.field.frame-offsets",
+      "name": "FrameOffsets",
+      "syntax": "FrameOffsets = X Y \\ continued pairs; one pair per Frame/Frames reference",
+      "default": "zero pairs when omitted; section-local without inheritance",
       "stability": "experimental",
-      "requirement": "Descriptor frame deltas are added to every flattened child frame's imported NextX/NextY values.",
-      "rationale": "This preserves source-format displacement while allowing authored composition corrections.",
+      "requirement": "Optional FrameOffsets requires exactly one signed int32 X Y pair per Frame/Frames reference before flattening, in the same section. AnyData String-array tokens are parsed as strict integer pairs. Each pair adds draw placement to every flattened child frame, plus Offset and child frame placement, without accumulation or changes to imported Motion root-motion deltas. Present empty, malformed, out-of-range or wrong-count lists and lists without references fail. Source uses one reference, including named overrides.",
+      "rationale": "Draw placement has a distinct authored key and storage from imported root-motion deltas; omitted pairs are zero and do not carry between directions.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "sub_collection.Main.Frames[i].NextX + next_x",
-            "sub_collection.Main.Frames[i].NextY + next_y"
+            "AnyData::ParseValue(string {fofrm.GetAsStr(section, \"FrameOffsets\")}, false, true, AnyData::ValueType::String)",
+            "frame_count != 0 && values.Size() == frame_count * 2",
+            "static auto ReadOffsetInteger(string_view value, string_view fname, string_view section) -> int32_t",
+            "ReadOffsetInteger(values[index * 2].AsString(), fname, section)",
+            "ReadOffsetInteger(values[index * 2 + 1].AsString(), fname, section)",
+            "shot.Offset = {",
+            "transforms[ref].Size = sizes[ref];",
+            "auto transformed = TransformImageFrame(frame, transforms[ref], fname);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageImport.h",
+          "anchors": [
+            "ipos32 Offset {};"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "numeric_cast<int32_t>(numeric_cast<int64_t>(sequence.OffsX) + shot.Offset.x)",
+            "numeric_cast<int32_t>(numeric_cast<int64_t>(sequence.OffsY) + shot.Offset.y)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"BakesFofrmFrameOffsetsAsDrawPlacement\")",
+            "SECTION(\"BakesFofrmFrameOffsetsPerReferenceBeforeFlattening\")",
+            "SECTION(\"PreservesFofrmFrameOffsetsThroughMeshCropping\")",
+            "SECTION(\"RejectsInvalidFofrmFrameOffsets\")",
+            "SECTION(\"RejectsIndexedFofrmFrameDeltasBeforeAlias\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.size",
+      "name": "Size",
+      "syntax": "Size = <width> <height>",
+      "default": "source dimensions; root Size defaults every direction",
+      "stability": "experimental",
+      "requirement": "Size requires exactly two strict AnyData String-array integer tokens in 1..65535 and sets exact pixel canvas dimensions for every reference. The root value defaults all directions; named Size is local with no carry. Size and FrameSizes in one section fail.",
+      "rationale": "Physical resampling is separate from draw placement and runtime scale.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "static auto ReadSizeInteger(",
+            "static auto ReadSizeValue(",
+            "\"FOFRM size requires an integer token within uint16 range\"",
+            "AnyData::ParseValue(string {value}, false, true, AnyData::ValueType::String)",
+            "common_size = ReadSizeValue(fofrm.GetAsStr(\"\", \"Size\"), fname, \"\", \"Size\");",
+            "auto sizes = ReadFrameSizes(fofrm, section, names.size(), common_size, fname);",
+            "\"FOFRM Size and FrameSizes are mutually exclusive in one section\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmResizing\")",
+            "SECTION(\"BakesFofrmSizeAndKeepsPixelOffsets\")",
+            "SECTION(\"InheritsRootSizeWithoutCarryingLocalSizes\")",
+            "SECTION(\"RejectsInvalidFofrmSizes\")",
+            "SECTION(\"AcceptsQuotedIntegerSizeTokens\")",
+            "SECTION(\"RejectsEmbeddedWhitespaceAndEmptySizeTokens\")",
+            "SECTION(\"RejectsUnfinishedSizeContinuationWithoutFinalNewline\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.frame-sizes",
+      "name": "FrameSizes",
+      "syntax": "FrameSizes = W H \\ continued pairs; one per Frame/Frames reference",
+      "default": "absent; section-local, not inherited",
+      "stability": "experimental",
+      "requirement": "FrameSizes is an AnyData String-array of strict integer pairs in 1..65535, one per local Frame/Frames reference before flattening. Each pair sizes every child frame; it is not inherited and overrides inherited root Size. Empty, malformed, wrong-count or reference-free lists fail, including unused sections. Source uses one reference, including named overrides.",
+      "rationale": "List cardinality follows references, not flattened animation frames.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "static auto ReadFrameSizes(",
+            "AnyData::ParseValue(string {fofrm.GetAsStr(section, \"FrameSizes\")}, false, true, AnyData::ValueType::String)",
+            "\"FOFRM FrameSizes requires one pair per Frame or Frames reference\"",
+            "(void)ReadFrameSizes(fofrm, section, count, {}, fname);",
+            "for (size_t ref = 0; ref < names.size(); ref++)",
+            "ReadSizeInteger(values[index * 2 + 1].AsString(), fname, section, \"FrameSizes\")"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"BakesFofrmFrameSizesBeforeFlattening\")",
+            "SECTION(\"RejectsResizeListsWithoutReferencesAndLegacyAlias\")"
           ]
         }
       ]
@@ -539,15 +660,15 @@
       "id": "image-format.field.flattening",
       "name": "Nested sequence flattening",
       "stability": "experimental",
-      "requirement": "FOFRM appends the Main sequence of every referenced child; child direction sheets and child sequence offsets are not composed, and all authored parent directions must flatten to the same final frame count.",
-      "rationale": "The merge loop copies child Main frames only and validates each later direction against collection.SequenceSize.",
+      "requirement": "Frame/Frames append the selected Main sequence by default, or InputDir, preserving child frame placement and motion while discarding child sequence placement and other directions. Crop/grid/transforms run per reference before flattening; FrameIndices selects the final sequence. Source retains complete collections and per-frame durations. Final frame count and duration are independent per direction.",
+      "rationale": "Each final direction owns its frame table and timeline; child sequence anchors are excluded only during Frame/Frames composition.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "frames += sub_collection.SequenceSize;",
-            "frames != collection.SequenceSize",
-            "sub_collection.Main.Frames[i].Data"
+            "MaterializeFrames(SelectImageSequence(child, transforms[ref].InputDir, fname), fname)",
+            "auto transformed = TransformImageFrame(frame, transforms[ref], fname);",
+            "sequence.Frames = SelectImageFrames(std::move(sequence.Frames), fofrm, section, fname, false);"
           ]
         }
       ]
@@ -555,33 +676,597 @@
     {
       "id": "image-format.field.timing",
       "name": "FOFRM whole-sequence timing",
-      "syntax": "AnimTicks = 1000 * count / fps",
+      "syntax": "Frame/Frames: AnimTicks = 1000 * final_frame_count / Fps; Source: inherited unless Fps is explicit",
       "stability": "experimental",
-      "requirement": "FOFRM computes whole-sequence duration from authored descriptor count, not from the flattened child-frame count; fps zero yields zero ticks.",
-      "rationale": "Nested animated references can therefore change effective frame cadence unless the author accounts for flattening.",
+      "requirement": "Frames use positive timespan Duration. Files require whole uint32 ms per frame and direction. Frame/Frames default to 100 ms per final frame; Source inherits selected frame durations, including repeats/grid. Local FrameDurations or Duration replaces root Duration/Fps defaults. Root FrameDurations belongs only to direction0. Uniform boundaries floor(i*Duration/count) preserve the total without zero-length frames.",
+      "rationale": "Wrapping a collection does not lose timing; flattening animated references keeps the requested default cadence.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "1000 * frm_count / frm_fps : 0"
+            "static void ApplySequenceTimeline(",
+            "FOFRM FrameDurations requires one duration per final frame"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageImport.cpp",
+          "anchors": [
+            "void ImageImport::SetFrameSequenceDuration(",
+            "Image sequence duration must provide at least one millisecond per frame"
           ]
         }
       ]
     },
     {
-      "id": "image-format.field.alias",
-      "name": "Whole-source alias",
-      "syntax": "Alias = Relative$Options.ext",
-      "default": "empty; ordinary composition",
+      "id": "image-format.field.source",
+      "name": "Whole collection Source",
+      "syntax": "Source = Relative$Options.ext",
+      "default": "absent; Frame/Frames composition",
       "stability": "experimental",
-      "requirement": "A nonempty root Alias forwards one binary image source, preserving its directions, sequence offsets, timing and frame deltas under the descriptor output path. Other composition fields are ignored; Alias cannot reference another FOFRM.",
-      "rationale": "Ordinary frm references flatten only the child Main frames and discard child sequence offsets.",
+      "requirement": "Root Source forwards the complete binary or FOFRM collection, preserving directions, sequence/frame offsets, movement and timing. Source and Frame/Frames are mutually exclusive. Root transforms default all existing directions; named sections may override transforms without repeating references. Authored Offset adds to the inherited sequence anchor. Explicit root Fps replaces inherited timing. Alias is rejected with a dated refusal.",
+      "rationale": "Whole-collection inheritance and selected Main-sequence composition have explicit, separate placement and timing rules.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "fofrm.GetAsStr(\"\", \"Alias\")",
-            "aliased.NewName = string {fname};"
+            "static auto LoadSourceCollection",
+            "collection.NewName = string {fname};",
+            "Source override requires an existing direction"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "FOFRM Source and Frame/Frames are mutually exclusive",
+            "FO_TEMPORARY_COMPAT(FofrmWholeCollectionSource, \"2026-12-31\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.input-dir",
+      "name": "InputDir",
+      "syntax": "InputDir = N",
+      "default": "Main (0)",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"InputDir\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "Select an existing input direction before pixels are transformed. For Source, an explicit root InputDir selects a single sequence and preserves its anchor.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-input-dirs",
+      "name": "FrameInputDirs",
+      "syntax": "FrameInputDirs = N ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameInputDirs\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "One input-direction index per reference, before flattening. Mutually exclusive with InputDir in the same section.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-indices",
+      "name": "FrameIndices",
+      "syntax": "FrameIndices = N ...",
+      "default": "all final frames",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameIndices\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "Nonempty AnyData integer list after grid and flattening; permits reordering and repeats, rejects out-of-range indices. Source root defaults every direction; a local list overrides it.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.crop",
+      "name": "Crop",
+      "syntax": "Crop = X Y W H",
+      "default": "whole input frame",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Crop\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "Crop every input frame before grid: nonnegative origin, positive size, wholly inside its source.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-crops",
+      "name": "FrameCrops",
+      "syntax": "FrameCrops = X Y W H ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameCrops\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "One crop rectangle per reference before flattening; replaces inherited Crop, mutually exclusive with local Crop.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.grid",
+      "name": "Grid",
+      "syntax": "Grid = W H",
+      "default": "no slicing",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Grid\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmSelection\")"
+          ]
+        }
+      ],
+      "requirement": "Slice every cropped input frame left-to-right then top-to-bottom. Positive cell dimensions must divide the image exactly; no silent remainder clipping.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.flip",
+      "name": "Flip",
+      "syntax": "Flip = None|X|Y|XY",
+      "default": "None",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Flip\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "Reflect each grid cell before rotation; literal placement and movement vectors do not change.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-flips",
+      "name": "FrameFlips",
+      "syntax": "FrameFlips = None|X|Y|XY ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameFlips\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "One flip token per source reference before grid/flattening; mutually exclusive with local Flip.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.rotate",
+      "name": "Rotate",
+      "syntax": "Rotate = 0|90|180|270",
+      "default": "0",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Rotate\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "Rotate clockwise after flip and before resize. Quarter turns exchange image axes, not placement or motion axes.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-rotations",
+      "name": "FrameRotations",
+      "syntax": "FrameRotations = 0|90|180|270 ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameRotations\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "One clockwise rotation per source reference; mutually exclusive with local Rotate.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.canvas",
+      "name": "Canvas",
+      "syntax": "Canvas = W H",
+      "default": "image bounds",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Canvas\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "After resize, place the image onto an exact transparent uint16-sized canvas. The image must fit completely; use Crop to remove pixels.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-canvases",
+      "name": "FrameCanvases",
+      "syntax": "FrameCanvases = W H ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameCanvases\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "One canvas pair per source reference; mutually exclusive with local Canvas.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.canvas-offset",
+      "name": "CanvasOffset",
+      "syntax": "CanvasOffset = X Y",
+      "default": "0 0",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"CanvasOffset\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "Nonnegative top-left position within Canvas. Requires an effective Canvas and rejects any clipping. Does not alter Offset.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-canvas-offsets",
+      "name": "FrameCanvasOffsets",
+      "syntax": "FrameCanvasOffsets = X Y ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameCanvasOffsets\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmGeometry\")"
+          ]
+        }
+      ],
+      "requirement": "One canvas-placement pair per source reference; mutually exclusive with local CanvasOffset.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.move",
+      "name": "Motion",
+      "syntax": "Motion = X Y",
+      "default": "preserve imported motion",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Motion\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmMovement\")"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "FO_TEMPORARY_COMPAT(FofrmLegacyMotionKeys, \"2026-12-31\");"
+          ]
+        }
+      ],
+      "requirement": "Explicit signed int16 pair replaces Motion on every expanded frame; absence preserves imported motion. Independent of Offset/FrameOffsets and bitmap transforms. Legacy Move/FrameMoves keys are refused before Source resolution with FofrmLegacyMotionKeys temporary compatibility marker.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.frame-moves",
+      "name": "FrameMotions",
+      "syntax": "FrameMotions = X Y ...",
+      "default": "absent",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"FrameMotions\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmMovement\")"
+          ]
+        }
+      ],
+      "requirement": "One signed int16 motion pair per reference, before flattening. Mutually exclusive with local Motion; never accumulated as placement.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.resample",
+      "name": "Resample",
+      "syntax": "Resample = Nearest|Bilinear|Area",
+      "default": "Bilinear",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"Resample\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmResampling\")"
+          ]
+        }
+      ],
+      "requirement": "Nearest copies source channel values. Bilinear uses Q16 pixel centers. Area uses exact rational pixel coverage for downsampling or identity only; upsampling fails. Identity preserves bytes.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.pixel-usage",
+      "name": "PixelUsage",
+      "syntax": "PixelUsage = Color|Data|Normal",
+      "default": "Color",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"PixelUsage\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmResampling\")"
+          ]
+        }
+      ],
+      "requirement": "Color filters premultiplied alpha. Data filters four independent channels. Normal filters signed RGB vectors, normalizes using integer square root, falls back to +Z for zero, and filters alpha independently. Nearest and identity preserve bytes. ColorSpace is forbidden for Data/Normal. Data/Normal preserve all channels through baking: alpha mesh/cropping is disabled, including shared pixel owners.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.color-space",
+      "name": "ColorSpace",
+      "syntax": "ColorSpace = Encoded|Linear",
+      "default": "Encoded",
+      "stability": "experimental",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "auto ReadImageTransforms(",
+            "auto TransformImageFrame(",
+            "auto SelectImageFrames(",
+            "\"ColorSpace\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmResampling\")"
+          ]
+        }
+      ],
+      "requirement": "Color-only filtering. Linear decodes through the fixed sRGB linear16 table before premultiplied-alpha interpolation, then encodes to the nearest table entry (ties upward). Encoded retains existing Q16 bytes.",
+      "rationale": "Transform order and source-reference cardinality are explicit."
+    },
+    {
+      "id": "image-format.field.duration",
+      "name": "Duration",
+      "syntax": "Duration = milliseconds",
+      "default": "absent; imported Source or default10fps",
+      "stability": "experimental",
+      "requirement": "Positive uint32 whole-sequence milliseconds; at least one per final frame. Uniform floor boundaries preserve the total. Root Duration defaults directions; local Duration/FrameDurations overrides it. Same-section Fps/FrameDurations conflicts fail.",
+      "rationale": "Timeline cardinality follows the final logical sequence.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "static void ApplySequenceTimeline(",
+            "\"Duration\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmTimelines\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.field.frame-durations",
+      "name": "FrameDurations",
+      "syntax": "FrameDurations = milliseconds ...",
+      "default": "absent; never inherited across directions",
+      "stability": "experimental",
+      "requirement": "AnyData positive uint32 durations, exactly one per final frame after selection; sum fits uint32. Local list only, not per reference and not inherited. Mutually exclusive with same-section Duration/Fps.",
+      "rationale": "Timeline cardinality follows the final logical sequence.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "static void ApplySequenceTimeline(",
+            "\"FrameDurations\""
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageTransforms.cpp",
+          "anchors": [
+            "TEST_CASE(\"FofrmTimelines\")"
           ]
         }
       ]
@@ -650,7 +1335,7 @@
       "syntax": "Name$[0-3]r=<digit 0..7>[T][H][V][Fframe|Ffrom-to].art",
       "stability": "experimental",
       "requirement": "The ART loader interprets r= or R= followed by exactly one digit 0..7 as a clockwise rotation from north and emits one direction. Palette selection precedes r=; mirror, alpha and frame options may follow. Invalid values or trailing characters outside those options fail baking. Single-rotation sources reuse their stored frame with placement for the requested rotation. Without the equals sign, r/R remains ignored and a following 0..3 still selects a palette.",
-      "rationale": "Source filename options work identically through Alias and ordinary frm references; FOFRM and generic dispatch do not interpret ART-specific options or bypass a registered loader.",
+      "rationale": "Source filename options work identically through Source and ordinary frm references; FOFRM and generic dispatch do not interpret ART-specific options or bypass a registered loader.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Art.cpp",
@@ -668,15 +1353,15 @@
       "id": "image-format.baking.discovery",
       "name": "Scan and targeted modes",
       "stability": "experimental",
-      "requirement": "An empty target scans every registered extension; a targeted missing, unsupported, or BakeChecker-skipped path returns without output.",
+      "requirement": "Full scans and targeted requests share the image dependency catalog. Master and on-demand baking retain standalone candidates in the full local cache, including consumed inputs; package export is selected separately by Resources.usage.json. Output discovery and fingerprint cache hits still register actual output names.",
       "rationale": "Incremental project builds and one-file rebakes share one baker without treating a skipped target as failure.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "bool scan_mode = target_path.empty()",
-            "if (!_fileLoaders.contains(ext))",
-            "if (_context->BakeChecker && !_context->BakeChecker"
+            "!std::ranges::any_of(root_outputs",
+            "bool scheduled = CheckOutput("
           ]
         }
       ]
@@ -691,7 +1376,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "strex(target_path).get_file_extension()",
+            "_fileLoaders.at(strex(output.Source.Path).get_file_extension())",
             "strex(fname_with_opt).get_file_extension()"
           ]
         },
@@ -729,7 +1414,7 @@
       "id": "image-format.baking.output-path",
       "name": "Output path and NewName",
       "stability": "experimental",
-      "requirement": "The baked resource normally keeps its source path; loaders may set NewName, which replaces that output path for legacy normalization.",
+      "requirement": "A loader ResolveOutput declaration determines its real published resource path before conversion. A nonempty NewName must agree with that declaration. RawCopy yields an identical output path to Image and cannot republish a consumed source.",
       "rationale": "FRM/FRx critter normalization and split-direction aggregation require deterministic renamed resources.",
       "source": [
         {
@@ -745,22 +1430,26 @@
       "id": "image-format.baking.container-header",
       "name": "Private container header",
       "stability": "internal",
-      "requirement": "The private baked stream starts with SpriteResource magic 43 and version 2, then uint16 frame count, uint16 whole animation ticks, and uint8 direction count, and ends with magic 43.",
+      "requirement": "Sprite resource v3 begins with uint8 magic43, uint8 version3 and uint8 direction count. Each direction then writes uint16 frame count and uint32 total milliseconds; footer magic43 terminates the exact byte span. Runtime rejects older versions; rebuild baker, clients and metadata together and force-rebake all images. MigrationRule Version advances74→75.",
       "rationale": "The shared SpriteResource decoder validates the versioned framing before any client or tool consumes pixels or mesh data.",
       "source": [
         {
           "path": "Source/Common/SpriteResource.h",
           "anchors": [
-            "SPRITE_RESOURCE_MAGIC = 43",
-            "SPRITE_RESOURCE_VERSION = 2"
+            "SPRITE_RESOURCE_VERSION = 3"
           ]
         },
         {
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
-            "header_magic == SPRITE_RESOURCE_MAGIC",
-            "version == SPRITE_RESOURCE_VERSION",
-            "footer_magic == SPRITE_RESOURCE_MAGIC"
+            "magic == SPRITE_RESOURCE_MAGIC",
+            "footer == SPRITE_RESOURCE_MAGIC"
+          ]
+        },
+        {
+          "path": "Source/Common/Common.h",
+          "anchors": [
+            "MigrationRule Version 0 0 78"
           ]
         }
       ]
@@ -769,15 +1458,15 @@
       "id": "image-format.baking.direction-record",
       "name": "Direction records",
       "stability": "internal",
-      "requirement": "Each of one or GameSettings::MAP_DIR_COUNT directions stores exactly the common frame count; the resolved logical root offset is serialized on every concrete frame after mesh padding and cropping.",
+      "requirement": "Each direction owns 1..65535 frames and a positive uint32 total equal to its frame-duration sum. Counts and durations may differ by direction. Sequence anchor plus logical frame offset becomes an int32 X/Y baked placement; root motion stays int16 and independent.",
       "rationale": "Per-frame offsets preserve screen placement when polygon geometry changes the serialized canvas independently for each direction and animation frame.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1",
-            "for (uint8_t dir = 0; dir < dirs; dir++)",
-            "writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
+            "uint8_t dirs = ImageImport::GetDirectionCount(collection);",
+            "writer.write<uint32_t>(duration);",
+            "writer.write<int32_t>(frame_offset.x);"
           ]
         }
       ]
@@ -786,16 +1475,30 @@
       "id": "image-format.baking.frame-record",
       "name": "Concrete and shared frame records",
       "stability": "internal",
-      "requirement": "Each frame starts with a shared flag; a concrete record stores signed int16 draw offset, uint16 cropped dimensions, signed int16 NextX/NextY, exact RGBA8 pixels, a mesh kind, and mesh vertices and indices plus logical source size and origin when the kind is Mesh. A shared record stores one earlier-frame index.",
+      "requirement": "Slots write positive uint32 whole-ms duration, int32 X/Y placement, int16 X/Y motion and uint8 shared flag. Shared: backward uint16 pixel index. Concrete: uint16 W/H, RGBA8, mesh. Sharing keeps only pixels/size/geometry; placement/motion/time stay local. FrameShot Size/Motion/Offset are signed32 pairs; output checks Size >=0 and uint16, Motion int16.",
       "rationale": "The record preserves logical placement and lighting coordinates while avoiding transparent texture rows and submitting indexed silhouettes; repeated frames still reuse the original payload.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "writer.write<bool>(shot.Shared)",
-            "writer.write<int16_t>(bake_shot->NextX)",
-            "writer.write<uint16_t>(shot.SharedIndex)",
-            "bake_shot->Width) * bake_shot->Height * 4"
+            "writer.write<uint32_t>(GetSpriteDurationMilliseconds(shot.Duration));",
+            "writer.write<int16_t>(numeric_cast<int16_t>(shot.Motion.x));",
+            "frame_info.SharedFrameIndex = shot.SharedIndex;"
+          ]
+        },
+        {
+          "path": "Source/Common/SpriteResource.cpp",
+          "anchors": [
+            "frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};",
+            "frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageImport.h",
+          "anchors": [
+            "isize32 Size {};",
+            "ipos32 Motion {};",
+            "ipos32 Offset {};"
           ]
         }
       ]
@@ -804,23 +1507,22 @@
       "id": "image-format.baking.sprite-info-index",
       "name": "Per-pack SpriteInfo index",
       "stability": "internal",
-      "requirement": "Image baking maintains SpriteInfo/<PackName>.foinfo version 1 with duration, direction, frame bounds, offsets, and shared-frame metadata for every current image source in that resource pack.",
-      "rationale": "Common EngineMetadata can answer 2D animation queries on server and client without decoding RGBA payloads; losing or introducing the aggregate index requires a full rebake.",
+      "requirement": "SpriteInfo/<PackName>.foinfo version2 describes published root outputs only. DirectionFrameCounts and flattened FrameDurationsMs replace global frame count/duration. Positive durations and uint32 sum are checked per direction; shared slots require equal pixel dimensions while own placement/motion/timing may differ. Private successful-output snapshots retain complete entries for full/lazy index recovery without decoding current pixels. A pack without roots publishes an empty index before dependent bakers run; stale metadata must not survive removal of its last root.",
+      "rationale": "Common EngineMetadata answers animation queries without decoding pixels; full and on-demand baking maintain the same root metadata.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker.cpp",
+          "path": "Source/Common/AnimationInfo.h",
           "anchors": [
-            "SPRITE_INFO_DIRECTORY",
-            "ReadSpriteInfoFile",
-            "WriteSpriteInfoFile",
-            "Sprite info index is incomplete; perform a full resource rebake"
+            "SPRITE_INFO_VERSION = 2",
+            "timespan Duration {};"
           ]
         },
         {
           "path": "Source/Common/AnimationInfo.cpp",
           "anchors": [
-            "auto ReadSpriteInfoFile",
-            "auto WriteSpriteInfoFile"
+            "DirectionFrameCounts",
+            "FrameDurationsMs",
+            "auto GetSpriteDirDuration(const SpriteDirInfo& direction)"
           ]
         }
       ]
@@ -864,17 +1566,97 @@
       "id": "image-format.baking.error-aggregation",
       "name": "Per-file work and aggregate failure",
       "stability": "experimental",
-      "requirement": "Every registered image importer preserves its source path, filename options, input size and original exception in ImageBakerException, including nested FOFRM sources. Selected files bake asynchronously; failures are logged at the reporting boundary and any error count ends the Image baker with an aggregate exception.",
+      "requirement": "Graph validation fails before conversion with the root and dependency chain. Import failures preserve source path, filename options, input size and original exception. Selected asynchronous conversions are reported individually and any error prevents new dependency snapshots for that batch.",
       "rationale": "A full scan reports all independently failing image resources in one run without silently succeeding.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "run_async(GetAsyncMode(), task_name",
+            "run_async(GetAsyncMode(), strex(\"BakeImage-{}\"",
             "logging::write(\"Image baking error for '{}': {}\"",
-            "files_to_bake[file_index].first.GetPath()",
+            "work[index].Output.Source.Path",
             "throw ImageBakerException(\"Errors during images baking\", errors, first_error)",
             "throw ImageBakerException(\"Image import failed\", fname, opt, input_size, ex.what())"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.fofrm-resampling",
+      "name": "FOFRM physical resampling",
+      "stability": "experimental",
+      "requirement": "Size/FrameSizes resample RGBA by pixel-center bilinear filtering in premultiplied-alpha space before meshing and atlas upload. The identity path preserves every pixel; an empty source yields a transparent target. Offset, FrameOffsets, child frame offsets and imported Motion keep their pixel units. Missing size keys preserve existing bytes, timing and frame order. Transparent resampled pixels have zero RGB; identity keeps hidden RGB.",
+      "rationale": "Transparent RGB must not bleed into visible edges; resizing does not rewrite authored anchors or root motion.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageTransforms.cpp",
+          "anchors": [
+            "static auto ResizeEncodedColorFrame(",
+            "source.Size == size",
+            "source.Size.width == 0 || source.Size.height == 0",
+            "constexpr int64_t pixel_unit = 65536;",
+            "uint64_t alpha_weight = weights[sample] * source.Data[positions[sample] + 3];",
+            "if (alpha != 0)",
+            ".Motion = source.Motion,",
+            ".Offset = source.Offset,"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"ResamplesPremultipliedAlphaWithoutTransparentColorBleed\")",
+            "SECTION(\"PreservesIdentityResizeBytesIncludingTransparentRgb\")",
+            "SECTION(\"ResizesEmptyFramesAndPreservesImportedMotion\")"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.source-graph",
+      "name": "Mounted source dependency graph",
+      "stability": "experimental",
+      "requirement": "Build one graph from explicitly mounted sources before IncludePatterns/ExcludePatterns filter output candidates. Relative Frame/Frames/Source references share the native ImageRecipe parser; filename options belong to an edge. Later mounted pack winners resolve logical paths. Reject missing dependencies, cycles and chains deeper than 64 FOFRM nodes. Track FRM palettes and FRX directions, including absent optional inputs.",
+      "rationale": "Source availability and publication are different decisions; the same immutable graph serves full, discovery and lazy baking.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageDependencyGraph.cpp",
+          "anchors": [
+            "ParseImageRecipe(path, input.GetStr())",
+            "Image dependency cycle",
+            "missing-optional"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.root-outputs",
+      "name": "Only recipe roots are published",
+      "stability": "experimental",
+      "requirement": "FOFRM inputs remain readable for composition. The dependency graph suppresses consumed standalone candidates in its root-only plan; the complete local cache also exposes them for independent Resource references and model textures. Flattened outputs have no runtime export edge to their inputs: unreferenced copies are excluded from Resources.usage.json.",
+      "rationale": "Intermediate assets must not increase shipped size or bypass a declared resize/transformation recipe.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageDependencyGraph.cpp",
+          "anchors": [
+            "graph.Consumed.emplace(reference.Path)",
+            "!graph.Consumed.contains(candidate.Source.Path)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-format.baking.fingerprints",
+      "name": "Transitive content fingerprints",
+      "stability": "experimental",
+      "requirement": "Hash each reachable input once per graph snapshot with BLAKE2b-512. Include mount identity, canonical path, input bytes, child digests, optional-input absence, recipe options, build/baking contract and SpriteMesh settings. Detect byte changes with unchanged size/mtime. Publish a private per-output snapshot and metadata entry only after successful output writes; missing/corrupt snapshots rebuild. Cache hits avoid pixel conversion and remain in the expected-output manifest. Reindex/lazy also validate fingerprints and the declaring output pack.",
+      "rationale": "Editing a source does not require touching its FOFRM descriptor or forcing a full bake.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageDependencyGraph.cpp",
+          "anchors": [
+            "crypto::hash_data({bytes})",
+            "SourceFingerprints",
+            "MakeImageBakingFingerprint"
           ]
         }
       ]
@@ -901,22 +1683,20 @@
       "id": "image-format.runtime.decode",
       "name": "Baked-container decoding",
       "stability": "internal",
-      "requirement": "The stock runtime reads only the baked container through ReadSpriteResource, validates magic, version, frame and direction counts, complete frame/mesh records, footer, and trailing data, then constructs either AtlasSprite or SpriteSheet.",
+      "requirement": "ReadSpriteResource rejects unsupported versions, malformed durations/counts, invalid backward shared references, truncated pixels/mesh and trailing data. DefaultSpriteFactory creates an atlas image for one frame/one direction or a SpriteSheet with per-direction timelines; shared copies override their own placement and movement.",
       "rationale": "Source decoders are baker-only and are not deployed as runtime image parsers.",
       "source": [
         {
-          "path": "Source/Common/SpriteResource.cpp",
+          "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "auto ReadSpriteResource",
-            "Sprite resource version is unsupported",
-            "Sprite resource contains trailing data"
+            "if (sprite_info.Directions.front().Frames.size() > 1 || direction_count > 1)",
+            "auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);"
           ]
         },
         {
-          "path": "Source/Client/DefaultSprites.cpp",
+          "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
-            "SpriteResourceData resource = ReadSpriteResource",
-            "if (sprite_info.FrameCount > 1 || direction_count > 1)"
+            "Sprite resource version is unsupported"
           ]
         }
       ]
@@ -925,8 +1705,8 @@
       "id": "image-format.runtime.static-frame",
       "name": "Single-frame behavior",
       "stability": "experimental",
-      "requirement": "A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized NextX/NextY remains metadata because there is no SpriteSheet frame-displacement surface.",
-      "rationale": "NextX/NextY matter only when a sheet consumer selects and interprets animation frames.",
+      "requirement": "A one-frame one-direction resource becomes AtlasSprite and applies the resolved concrete-frame draw offset; serialized Motion remains metadata because there is no SpriteSheet frame-displacement surface.",
+      "rationale": "Motion matters only when a sheet consumer selects and interprets animation frames.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
@@ -941,24 +1721,22 @@
       "id": "image-format.runtime.sprite-sheet",
       "name": "Direction and playback state",
       "stability": "experimental",
-      "requirement": "SpriteSheet accepts one/full map directions, random prewarm, normalized time and loop/reverse playback; one frame or zero ticks does not play. Copies start at frame/direction zero with valid size/anchor and retain state/action tags.",
+      "requirement": "SpriteSheet durations/ends and GetDuration/GetFrameDurations use timespan; wire values are positive uint32 ms. Directions preserve phase; direction0 is independent. Copies retain timing and reset playback. Uniform constructors split ns; AdvanceTime keeps sub-ms time with continuous forward/reverse phase. Explicit native/script-created zero-duration sequences retain manual normalized frame selection and do not play automatically; each timeline is entirely zero or entirely positive.",
       "rationale": "Animation state is client presentation state and each direction owns a parallel frame sheet.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT",
-            "void SpriteSheet::Prewarm()",
-            "void SpriteSheet::SetDir",
-            "if (_framesCount == 1 || _wholeTicks == 0)",
-            "i < copy->_spr.size()",
-            "copy->RefreshParams()"
+            "void SpriteSheet::SetFrameTimeline(",
+            "void SpriteSheet::SetDirection(",
+            "auto SpriteSheet::AdvanceTime(",
+            "auto SpriteSheet::MakeCopy("
           ]
         },
         {
           "path": "Source/Tests/Test_SpriteSheet.cpp",
           "anchors": [
-            "TEST_CASE(\"ResourceManagerReturnsIndependentSheetsFromTheFirstLoad\""
+            "TEST_CASE(\"SpriteSheetVariableTimelines\", \"[sprite]\")"
           ]
         }
       ]
@@ -967,23 +1745,22 @@
       "id": "image-format.runtime.frame-offset",
       "name": "Sprite offsets and frame motion",
       "stability": "experimental",
-      "requirement": "Concrete/shared frames retain ordinary sprite offsets to the root in SpriteSheet::_sprOffset and NextX/NextY per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns each input to its matching field. CreateSpriteSequence retains original shared atlas sprites with independent offsets and motions arrays in that order. GetSpriteFrameOffset reads ordinary offsets; GetSpriteFrameMotion reads deltas. CritterHexView derives cumulative displacement, distance-driven frame selection, cycle phase and visual _offsAnim compensation from motion deltas against logical HexOffset and independent extra displacement. These presentation values do not drive entity movement. Projects own first/last selection, cumulative displacement, filename rules and sequence splices.",
+      "requirement": "Concrete/shared frames retain ordinary sprite offsets to the root in SpriteSheet::_sprOffset and Motion per-frame visual motion deltas in _sprMotion. SetFrame(offset, motion) assigns each input to its matching field. CreateSpriteSequence retains original shared atlas sprites with independent offsets and motions arrays in that order. GetSpriteFrameOffset reads ordinary offsets; GetSpriteFrameMotion reads deltas. CritterHexView derives cumulative displacement, distance-driven frame selection, cycle phase and visual _offsAnim compensation from motion deltas against logical HexOffset and independent extra displacement. These presentation values do not drive entity movement. Projects own first/last selection, cumulative displacement, filename rules and sequence splices.",
       "rationale": "Per-frame visual displacement must remain separate from image anchors and authoritative world movement.",
       "source": [
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "dir_anim->SetFrame(j, std::move(spr), offset, frame.NextOffset)",
-            "dir_anim->GetSprOffset(index)",
-            "copy->_sprOffset[i] = _sprOffset[i]",
-            "void SpriteSheet::SetFrame"
+            "dir_anim->SetFrame(",
+            "void SpriteSheet::SetFrame",
+            "frame.NextOffset"
           ]
         },
         {
           "path": "Source/Client/DefaultSprites.h",
           "anchors": [
-            "auto GetSprMotion() const noexcept -> const_span<ipos32>",
-            "auto GetSprOffset(int32_t num_frm) const -> ipos32"
+            "auto GetSpriteMotion() const noexcept -> const_span<ipos32>",
+            "auto GetSpriteOffset(int32_t num_frm) const -> ipos32"
           ]
         },
         {
@@ -1085,53 +1862,61 @@
   "validation_rules": [
     {
       "id": "image-format.validation.fofrm-count",
-      "name": "Positive FOFRM count",
+      "name": "Nonempty FOFRM references",
       "stability": "experimental",
-      "requirement": "Reject a descriptor whose count/Count is zero or negative.",
+      "requirement": "A recipe uses exactly one nonempty root Source or nonempty Frame/Frames composition. Source is root-only and excludes Frame/Frames in every section. All modes validate names, offsets and sizes before producing an output.",
       "rationale": "A descriptor must resolve at least one source reference before a runtime frame table can exist.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\"",
-            "frm_count = fofrm.GetAsInt(\"\", \"Count\", frm_count);"
+            "FO_VERIFY_AND_THROW(!names.empty(), \"FOFRM file invalid data\", fname, section);"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "FOFRM Frame and Frames are mutually exclusive",
+            "!(has_frame || has_frames) || !references.empty()"
           ]
         }
       ]
     },
     {
       "id": "image-format.validation.fofrm-directions",
-      "name": "Complete equal-size directions",
+      "name": "Complete direction tables",
       "stability": "experimental",
-      "requirement": "Reject partial direction sets and any later direction whose flattened frame count differs from direction zero.",
+      "requirement": "Frame/Frames composition requires one unnamed sequence or the complete active-geometry indexed direction table; even a later section without direction1 fails before resolution. Source permits overrides of existing directions without repeated references. Final direction counts and durations may differ, but every timeline must be valid.",
       "rationale": "Every direction sheet shares one frame-count and timing header.",
       "source": [
         {
-          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
-            "dir > 0 && frames != collection.SequenceSize",
-            "throw ImageBakerException(\"FOFRM file invalid data\", fname)"
+            "FOFRM composition requires a complete direction table"
           ]
         },
         {
-          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "SECTION(\"FofrmDirectionEdgeCases\")"
+            "FOFRM Source override requires an existing direction",
+            "ApplySequenceTimeline(sequence, fofrm, section, fname, false);"
           ]
         }
       ]
     },
     {
       "id": "image-format.validation.fofrm-nested-shared",
-      "name": "No nested shared frame records",
+      "name": "Safe nested shared-frame materialization",
       "stability": "experimental",
-      "requirement": "Reject a FOFRM reference whose child Main frame is already a shared record.",
-      "rationale": "The flattening implementation copies concrete child pixels and does not rebase child shared indices.",
+      "requirement": "Resolve shared pixel chains before composition, rejecting invalid indices and cycles. Materialization copies pixels/dimensions/pixel-preservation flags while retaining the logical slot placement, motion and duration. Legacy SPR explicitly copies its former aliased metadata when constructing slots.",
+      "rationale": "Shared slots own placement, movement and time; materialization copies concrete pixels without replacing that metadata.",
       "source": [
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "FOFRM file invalid data (shared index)"
+            "static auto MaterializeFrames",
+            "FOFRM shared frame cycle",
+            "FOFRM shared frame index is out of range"
           ]
         }
       ]
@@ -1196,23 +1981,16 @@
       "id": "image-format.validation.runtime-container",
       "name": "Runtime container guards",
       "stability": "internal",
-      "requirement": "Reject invalid header/footer magic, zero frames, zero directions, unsupported direction counts, invalid single-frame shared records, and invalid shared-frame indices.",
+      "requirement": "Require v3 magic/version, positive per-direction counts/times, positive slot durations with checked sum, positive uint16 concrete dimensions, valid backward pixel references, valid mesh/pixel bounds and exact footer/end. SpriteInfo requires schema2 and matching flat array sizes.",
       "rationale": "Corrupt baked bytes must not reach atlas allocation or animation updates.",
       "source": [
         {
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
-            "Sprite resource header magic is invalid",
-            "Sprite resource contains no frames",
-            "Sprite frame reference points outside previously decoded frames",
+            "Sprite resource version is unsupported",
+            "Sprite sequence requires positive frames and durations",
+            "Sprite sequence duration differs from its frame durations",
             "Sprite resource contains trailing data"
-          ]
-        },
-        {
-          "path": "Source/Client/DefaultSprites.cpp",
-          "anchors": [
-            "Sprite file direction count is unsupported",
-            "Single-frame sprite resource cannot contain a shared-frame reference"
           ]
         }
       ]
@@ -1221,15 +1999,27 @@
       "id": "image-format.validation.playback-timing",
       "name": "Nonzero per-frame duration",
       "stability": "experimental",
-      "requirement": "For a playing multi-frame sheet, author timing so whole AnimTicks divided by flattened frame count is at least one millisecond; fps zero intentionally disables playback.",
-      "rationale": "SpriteSheet::Update divides elapsed time by integer ticks_per_frame, while Play only guards one frame or zero whole ticks.",
+      "requirement": "Positive logical-frame durations and checked uint32 totals eliminate division by zero for short animations. Explicit Duration below final frame count fails. Raw legacy zero clocks normalize to 10 fps; positive sub-ms periods normalize to 1 ms. Source preserves imported timelines; normalized phase drives forward/reverse/loop playback and direction switches.",
+      "rationale": "SpriteSheet advances normalized phase by elapsed/whole duration and selects frames using cumulative positive duration boundaries.",
       "source": [
+        {
+          "path": "Source/Tools/ImageImport.cpp",
+          "anchors": [
+            "Image sequence duration must provide at least one millisecond per frame"
+          ]
+        },
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "if (_framesCount == 1 || _wholeTicks == 0)",
-            "int32_t ticks_per_frame",
-            "int32_t frames_passed = dt / ticks_per_frame"
+            "auto SpriteSheet::AdvanceTime(",
+            "elapsed_time.div<float64_t>(duration)",
+            "if (duration == timespan::zero)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_SpriteSheet.cpp",
+          "anchors": [
+            "SECTION(\"ShortAndUint32MaximumDurationsNeverDivideByZero\")"
           ]
         }
       ]
@@ -1255,23 +2045,57 @@
           ]
         }
       ]
+    },
+    {
+      "id": "image-format.validation.fofrm-names",
+      "name": "Canonical FOFRM names",
+      "stability": "experimental",
+      "requirement": "Before source resolution, validate the unnamed root (direction 0), active-geometry nonzero HexDir/SquareDir sections, exact PascalCase keys and field applicability. Source and Fps are root-only. Alias and Effect are refused with dated migration markers. Old Dir forms, named zero, Count, old frame/delta keys and unknown names fail; there is no fallback.",
+      "rationale": "Unmigrated names and misspellings must fail baking instead of silently applying defaults or bypassing checks through Source.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageBaker-Fofrm.cpp",
+          "anchors": [
+            "fofrm.GetOrderedSections()"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageRecipe.cpp",
+          "anchors": [
+            "FOFRM key requires a supported PascalCase name",
+            "Legacy FOFRM section; migrate direction zero to the unnamed section and use HexDir/SquareDir indexes",
+            "FOFRM section requires HexDir/SquareDir and a supported nonzero index; direction zero is unnamed",
+            "FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, \"2026-12-31\");"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ImageBaker.cpp",
+          "anchors": [
+            "SECTION(\"RejectsNonPascalCaseFofrmKeys\")",
+            "SECTION(\"RejectsNonPascalCaseFofrmSectionsBeforeAlias\")",
+            "SECTION(\"RejectsNonPascalCaseFofrmKeysBeforeAlias\")",
+            "SECTION(\"RejectsFofrmDegreeSectionsBeforeAlias\")",
+            "SECTION(\"RejectsFofrmNamedZeroAndInvalidDirectionIndexesBeforeAlias\")"
+          ]
+        }
+      ]
     }
   ],
   "summary": {
-    "entry_count": 53,
+    "entry_count": 81,
     "format_count": 12,
-    "descriptor_field_count": 10,
+    "descriptor_field_count": 33,
     "filename_option_count": 4,
-    "baking_rule_count": 10,
+    "baking_rule_count": 14,
     "runtime_rule_count": 8,
-    "validation_rule_count": 9,
+    "validation_rule_count": 10,
     "baker_extension_count": 12,
     "runtime_extension_count": 11,
     "entries_by_stability": {
       "deprecated": 1,
-      "experimental": 45,
+      "experimental": 73,
       "internal": 7
     }
   },
-  "contract_digest": "fb65783ef0d39447cc103bd340fe2b9b3c8f57f35bb938aecde905fa9abc28bf"
+  "contract_digest": "27b929b89af42a65879e04a8133f2e6434189c0b75b6a3f0b18b3262d7a1f345"
 }

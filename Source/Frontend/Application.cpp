@@ -43,6 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr std::chrono::milliseconds QUIT_WAIT_POLL_INTERVAL {100};
+static constexpr std::chrono::milliseconds SPLASH_CALLBACK_POLL_INTERVAL {16};
+
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
@@ -1208,13 +1211,15 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     return WindowPosToScreenPos(active_renderer, ScreenState.Size, {window_x, window_y});
 }
 
-auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
+auto Application::GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan
 {
     if (end_time <= start_time || _timeFrequency == 0) {
-        return 0;
+        return {};
     }
 
-    return numeric_cast<uint32_t>((end_time - start_time) * 1000 / _timeFrequency);
+    float64_t elapsed_seconds = numeric_cast<float64_t>(end_time - start_time) / numeric_cast<float64_t>(_timeFrequency);
+
+    return timespan {iround<int64_t>(elapsed_seconds * 1e9)};
 }
 
 auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t
@@ -1327,7 +1332,7 @@ void Application::FlushPendingTouchTap()
 
     auto cur_time = SDL_GetPerformanceCounter();
 
-    if (GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time) < TOUCH_DOUBLE_TAP_MAX_TIME_MS) {
+    if (GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time) < TOUCH_DOUBLE_TAP_MAX_TIME) {
         return;
     }
 
@@ -1677,10 +1682,10 @@ void Application::BeginFrame()
                 auto cur_time = SDL_GetPerformanceCounter();
 
                 if (_pendingTouchTap.Active) {
-                    uint32_t tap_elapsed = GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time);
+                    timespan tap_elapsed = GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time);
                     float32_t tap_distance = GetTouchDistance(_pendingTouchTap.Pos, touch_pos);
 
-                    if (tap_elapsed >= TOUCH_DOUBLE_TAP_MAX_TIME_MS || tap_distance > numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                    if (tap_elapsed >= TOUCH_DOUBLE_TAP_MAX_TIME || tap_distance > numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
                         QueueTouchTap(_pendingTouchTap.Pos);
                         _pendingTouchTap = {};
                     }
@@ -1807,8 +1812,8 @@ void Application::BeginFrame()
 
                 auto cur_time = SDL_GetPerformanceCounter();
                 float32_t tap_distance = GetTouchDistance(touch->StartPos, touch->LastPos);
-                uint32_t tap_elapsed = GetTouchElapsedMs(touch->StartTime, cur_time);
-                bool is_tap = !touch->ScrollActive && tap_distance <= numeric_cast<float32_t>(TOUCH_TAP_MAX_DIST) && tap_elapsed <= TOUCH_TAP_MAX_TIME_MS;
+                timespan tap_elapsed = GetTouchElapsedTime(touch->StartTime, cur_time);
+                bool is_tap = !touch->ScrollActive && tap_distance <= numeric_cast<float32_t>(TOUCH_TAP_MAX_DIST) && tap_elapsed <= TOUCH_TAP_MAX_TIME;
 
                 ReleaseTouchPoint(finger_id);
 
@@ -1817,10 +1822,10 @@ void Application::BeginFrame()
                 }
 
                 if (_pendingTouchTap.Active) {
-                    uint32_t previous_tap_elapsed = GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time);
+                    timespan previous_tap_elapsed = GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time);
                     float32_t previous_tap_distance = GetTouchDistance(_pendingTouchTap.Pos, touch_pos);
 
-                    if (previous_tap_elapsed <= TOUCH_DOUBLE_TAP_MAX_TIME_MS && previous_tap_distance <= numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                    if (previous_tap_elapsed <= TOUCH_DOUBLE_TAP_MAX_TIME && previous_tap_distance <= numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
                         if (!imgui_capture_mouse) {
                             QueueTouchDoubleTap(touch_pos);
                         }
@@ -2355,7 +2360,7 @@ void Application::WaitForRequestedQuit()
     while (!_quit) {
         // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
         // waiting thread is the one that converts it into a regular RequestQuit with logging/notification
-        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+        _quitEvent.wait_for(locker, QUIT_WAIT_POLL_INTERVAL);
 
         if (IsQuitSignalReceived()) {
             RequestQuit();
@@ -3178,7 +3183,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
                 SDL_RenderDebugText(renderer.get(), text_x, text_y, window_text_ptr.get());
                 SDL_RenderPresent(renderer.get());
 
-                if (fut.wait_for(std::chrono::milliseconds(16)) == std::future_status::ready) {
+                if (fut.wait_for(SPLASH_CALLBACK_POLL_INTERVAL) == std::future_status::ready) {
                     fut.get();
                     break;
                 }

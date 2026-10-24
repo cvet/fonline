@@ -92,7 +92,7 @@ void ParticleSprite::SetTime(float32_t normalized_time)
     ignore_unused(normalized_time);
 }
 
-void ParticleSprite::SetDir(mdir dir)
+void ParticleSprite::SetDirection(mdir dir)
 {
     _lookDirAngle = numeric_cast<float32_t>(dir.angle());
 
@@ -297,4 +297,3 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr
 }
 
 FO_END_NAMESPACE
-

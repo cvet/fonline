@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"11e1e462e60cc761de6ff39334c130c50dbb80e80e94249c5d40fd8e1e24527b"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"fde60ffe1815456bbf93348bbac50e78ce4ec0461d904f54cdfa383e160ddd9a"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -317,8 +317,8 @@ Socket-соединения сервера Asio и WebSockets выполняют
 - `MaxPayload`
 - `MaxPendingBytes`
 - `MaxReorderAhead`
-- `ResendTimeoutMs`
-- `ConnectRetryMs`
+- `ResendTimeout` (`timespan`)
+- `ConnectRetry` (`timespan`)
 - `Redundancy`
 
 `UdpPacketInfo` содержит разобранные данные пакета:

@@ -169,7 +169,7 @@ struct BakingReportBakerStats
     uint64_t FailedInvocations {};
     uint64_t AvailableInputFiles {};
     uint64_t AvailableInputBytes {};
-    int64_t DurationMs {};
+    timespan Duration {};
     vector<string> FailureMessages {};
     BakingReportOutputStats Outputs {};
     map<string, uint64_t> Counters {};
@@ -184,7 +184,7 @@ struct BakingReportPackStats
     map<string, uint64_t> ChangedPathSizes {};
     map<string, uint64_t> UnchangedPathSizes {};
     uint64_t OutdatedFilesDeleted {};
-    int64_t DurationMs {};
+    timespan Duration {};
 };
 
 class BakingReport final
@@ -202,10 +202,10 @@ public:
     void SetRebuildMode(bool effective, string_view reason);
     void RecordPackInput(string_view pack_name, string_view path, size_t size);
     void RecordBakerRegistration(string_view pack_name, string_view baker_name, int32_t order);
-    void RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, int64_t duration_ms, bool success, string_view failure_message);
+    void RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, timespan duration, bool success, string_view failure_message);
     void RecordOutputCheck(string_view pack_name, string_view baker_name, string_view path, bool scheduled);
     void RecordOutputSubmission(string_view pack_name, string_view baker_name, string_view path, size_t size, BakingWriteResult result);
-    void RecordPackDuration(string_view pack_name, int64_t duration_ms);
+    void RecordPackDuration(string_view pack_name, timespan duration);
     void RecordOutdatedFile(string_view path);
     void AddCounter(string_view pack_name, string_view baker_name, string_view name, uint64_t value);
     void AddHistogramValue(string_view pack_name, string_view baker_name, string_view name, string_view value, uint64_t count);
@@ -228,7 +228,7 @@ private:
     string _status {"running"};
     string _failureMessage {};
     time_meter _duration {};
-    int64_t _completedDurationMs {};
+    timespan _completedDuration {};
     uint64_t _outdatedFilesDeleted {};
     map<string, BakingReportPackStats> _packs {};
     map<string, BakingReportBakerStats> _aggregateBakers {};

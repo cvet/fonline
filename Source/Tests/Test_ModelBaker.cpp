@@ -169,7 +169,7 @@ static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector
 
 static auto LoadTestModelSourceFixture(string_view path, const File& file) -> ModelSourceAsset
 {
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
     string marker = reader.read_string();
     FO_VERIFY_AND_THROW(marker == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
 
@@ -276,7 +276,7 @@ static void AddTestModel(BakerTests::TestRig& rig, string_view file_name, string
 static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view child_bone) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     writer.write_string(root_bone);
@@ -333,7 +333,7 @@ static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
 static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_view child_bone, float32_t child_translation_x) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     mat44 root_matrix {1.0f};
@@ -368,7 +368,7 @@ static void AddTestAnimationModelWithChild(BakerTests::TestRig& rig, string_view
 static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, string_view skin_bone) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    auto writer = data_writer(data);
+    data_writer writer {data};
 
     WriteModelMeshHeader(writer);
     writer.write_string(root_bone);
@@ -504,6 +504,7 @@ static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
     }
 
     link.TextureInfoCount = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < link.TextureInfoCount; i++) {
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
@@ -609,7 +610,7 @@ static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSum
 
 static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModelMeshSummary
 {
-    auto reader = data_reader({data.data(), data.size()});
+    data_reader reader {{data.data(), data.size()}};
     BakedModelMeshSummary summary;
 
     ReadModelMeshHeader(reader, "test baked model mesh");
@@ -886,7 +887,7 @@ TEST_CASE("ModelBakers")
     rig.AddSourceFile("Critters/Test.fo3d", "Include TEMPLATE_Test.fo3d\nLayer 1\nValue 2\nAttach Hat.fbx Link Hand RotX 15 Texture 0 Hat.tga\n", 1);
     AddTestModel(rig, "Critters/Body.fbx", "Hand", true, {"Base"});
     AddTestModel(rig, "Critters/Hat.fbx", "Hat", true);
-    rig.AddBakedFile("Critters/Hat.tga", "stub");
+    AddTestBakedImage(rig, "Critters/Hat.tga", MakeMinimalBakedSprite());
 
     ModelMeshBaker mesh_baker(rig.MakeContext());
     mesh_baker.BakeFiles(rig.GetAllSourceFiles(), "skip.bin");
@@ -897,7 +898,7 @@ TEST_CASE("ModelBakers")
 
     REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
-    auto reader = data_reader({rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()});
+    data_reader reader {{rig.Outputs.at("Critters/Test.fo3d").data(), rig.Outputs.at("Critters/Test.fo3d").size()}};
     ReadSavedModelInfoHeader(reader);
     uint32_t model_name_len = reader.read<uint32_t>();
     string model_name;
@@ -1405,6 +1406,26 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
     }
 
+    SECTION("CollectsDependenciesAfterAnimatedAttachmentBounds")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nLayer 1 Value 2 Attach Equipment.fo3d Link Hand MoveX 3\nLayer 2 Value 3 Attach Equipment.fo3d Link Hand MoveX 4\n", 7);
+        rig.AddSourceFile("Critters/Equipment.fo3d", "Model Equipment.fbx\nMoveX 2\n", 6);
+        AddTestModelSource(rig, MakeTestModelSourceWithChild("Critters/Body.fbx", "Body", "Hand", 3.0f, {"Idle"}));
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModelWithChildBone("Body", "Hand"));
+        AddTestModel(rig, "Critters/Equipment.fbx", "Body", true, {}, {}, {"Body"});
+
+        ModelInfoBaker baker {rig.MakeContext("Art"), LoadTestModelSourceFixture};
+        baker.BakeFiles(rig.GetAllSourceFiles(), {});
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            rig.AddBakedFile(path, bytes);
+        }
+
+        CHECK(baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
+    }
+
     SECTION("PreviewBoundsUseTheConfiguredOpaquePair")
     {
         TestRig rig;
@@ -1447,7 +1468,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
         (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
@@ -1560,7 +1581,7 @@ ActionAnimEqual 4 6
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
         (void)reader.read<uint8_t>(); // DisableAnimationInterpolation
@@ -1618,6 +1639,89 @@ TEST_CASE("ModelInfoBakerValidations")
 #if FO_ENABLE_3D
     using namespace BakerTests;
 
+    SECTION("UnconditionalTextureOverridesConsumedImportedDiffuse")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true, {}, "Body.tga");
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMinimalBakedSprite());
+        CHECK_NOTHROW(BakeModelInfoFiles(rig));
+    }
+
+    SECTION("RejectsAnimatedTextureInStaticSlotAtBake")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true);
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(2, 1, 1, 200));
+        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    }
+
+    SECTION("ValidatesSingleDirectionTextureAtBake")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true);
+        auto sprite = MakeMinimalBakedSprite(1, 1);
+        vector<uint8_t> sequence(sprite.begin() + 3, sprite.end() - 1);
+        sprite.pop_back();
+        sprite[2] = numeric_cast<uint8_t>(GameSettings::MAP_DIR_COUNT);
+
+        for (int32_t dir = 1; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            sprite.insert(sprite.end(), sequence.begin(), sequence.end());
+        }
+
+        sprite.push_back(SPRITE_RESOURCE_MAGIC);
+        AddTestBakedImage(rig, "Critters/Body.fofrm", sprite);
+        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    }
+
+    SECTION("RejectsTextureAnimationDirective")
+    {
+        uint16_t frame_count = GENERATE(uint16_t {1}, uint16_t {2});
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTextureAnimation 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true);
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(frame_count, 1, 1, 200));
+        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Unknown token in file") && Catch::Matchers::ContainsSubstring("TextureAnimation"));
+    }
+
+    SECTION("UsesTheWinningTextureMetadataAcrossPackOverlays")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true);
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(2, 1, 1, 200));
+        auto upper = safe_alloc::make_unique<MemoryDataSource>("Upper");
+        auto pixels = MakeMinimalBakedSprite();
+        auto sprite = ReadSpriteResource(pixels);
+        REQUIRE(sprite.Animation.Sprite);
+        SpriteInfoFileEntry entry {"Critters/Body.fofrm", "Critters/Body.fofrm", *sprite.Animation.Sprite};
+        upper->AddFile("Critters/Body.fofrm", std::move(pixels));
+        upper->AddFile("SpriteInfo/Upper.foinfo", WriteSpriteInfoFile({entry}));
+        rig.BakedFiles.AddCustomSource(std::move(upper));
+        CHECK_NOTHROW(BakeModelInfoFiles(rig, "Critters/Test.fo3d"));
+    }
+
+    SECTION("RevalidatesCachedStaticTextureWhenItsFofrmBecomesAnimated")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nTexture 0 Body.fofrm\n", 1);
+        AddTestModel(rig, "Critters/Body.fbx", "Body", true);
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMinimalBakedSprite());
+        BakeModelInfoFiles(rig, "Critters/Test.fo3d");
+        rig.AddBakedFile("Critters/Test.fo3d", rig.Outputs.at("Critters/Test.fo3d"));
+        AddTestBakedImage(rig, "Critters/Body.fofrm", MakeMultiFrameBakedSprite(2, 1, 1, 200));
+        ModelInfoBaker cached {rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; }), LoadTestModelSourceFixture};
+        CHECK_THROWS_AS(cached.BakeFiles(rig.GetAllSourceFiles(), "Critters/Test.fo3d"), ModelInfoBakerException);
+    }
+
     SECTION("Rejects model meshes without draw bones")
     {
         TestRig rig;
@@ -1654,7 +1758,7 @@ TEST_CASE("ModelInfoBakerValidations")
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nMesh MissingMesh Texture 0 Body.tga\n", 1);
         AddTestModel(rig, "Critters/Body.fbx", "Body", true);
-        rig.AddBakedFile("Critters/Body.tga", "stub");
+        AddTestBakedImage(rig, "Critters/Body.tga", MakeMinimalBakedSprite());
 
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
@@ -2207,7 +2311,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         AddTestModel(rig, "Critters/Anims/Extra.fbx", "Body", false, {"External"});
         AddTestModel(rig, "Critters/Hat.fbx", "Hat", true);
         AddTestModel(rig, "Critters/Cut.fbx", "CutShape", true);
-        rig.AddBakedFile("Critters/Body.tga", "stub");
+        AddTestBakedImage(rig, "Critters/Body.tga", MakeMinimalBakedSprite());
         rig.AddBakedFile("Effects/Test.fofx", "stub");
         rig.AddBakedFile("Particles/Test.fope", "stub");
 
@@ -2215,7 +2319,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         REQUIRE(rig.Outputs.count("Critters/Test.fo3d") == 1);
 
         const vector<uint8_t>& output = rig.Outputs.at("Critters/Test.fo3d");
-        auto reader = data_reader({output.data(), output.size()});
+        data_reader reader {{output.data(), output.size()}};
         ReadSavedModelInfoHeader(reader);
 
         CHECK(ReadSavedModelInfoString(reader) == "Critters/Body.fbx");
@@ -2539,4 +2643,3 @@ TEST_CASE("ModelBoundsMeasurementModes")
 FO_END_NAMESPACE
 
 #endif
-

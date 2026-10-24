@@ -1,4 +1,4 @@
-﻿//      __________        ___               ______            _
+//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -2432,7 +2432,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     REQUIRE(sprite);
 
     for (int32_t index = 0; index < sprite->GetFramesCount(); index++) {
-        sprite->SetFrame(index, sprite->GetSpr(index)->MakeCopy(), ipos32 {40 + index, -17}, sprite->GetSprMotion()[index]);
+        sprite->SetFrame(index, sprite->GetSprite(index)->MakeCopy(), ipos32 {40 + index, -17}, sprite->GetSpriteMotion()[index]);
     }
 
     uint32_t spr_id = mapper->AnimAdd(sprite);
@@ -2466,18 +2466,18 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
         REQUIRE(frames);
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(2));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
         critter->Process();
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(2));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
         normalized_time = 0.75f;
         critter->ChangeLookDir(mdir {1});
         critter->Process();
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(3));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(3));
         critter->SetCondition(CritterCondition::Dead);
         flags = CritterAnimationFlags::None;
         normalized_time = 0.0f;
         critter->RefreshView();
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(0));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
     }
 
     SECTION("DrawOffsetAnchorsSpriteRootWithoutTouchingCumulativeMotion")
@@ -2488,7 +2488,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
         REQUIRE(frames);
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(2));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
         CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-41, 19});
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {6, 0});
     }
@@ -2525,7 +2525,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
 
         for (int32_t index = 0; index < aligned->GetFramesCount(); index++) {
-            aligned->SetFrame(index, aligned->GetSpr(index)->MakeCopy(), aligned->GetSprOffset(index), deltas[index]);
+            aligned->SetFrame(index, aligned->GetSprite(index)->MakeCopy(), aligned->GetSpriteOffset(index), deltas[index]);
         }
 
         spr_id = mapper->AnimAdd(aligned);
@@ -2551,7 +2551,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         for (const auto& [position, frame, offset] : cases) {
             critter->SetHexOffset(position);
             critter->RefreshView();
-            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(frame));
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(frame));
             CHECK(*critter->GetMapSprite()->GetPSprOffset() == offset);
             CHECK(critter->GetHexOffset() == position);
         }
@@ -2578,7 +2578,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(turned);
 
         for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
-            turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
         }
 
         spr_id = mapper->AnimAdd(turned);
@@ -2597,7 +2597,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
 
         for (int32_t index = 0; index < source_frames->GetFramesCount(); index++) {
-            source_frames->SetFrame(index, source_frames->GetSpr(index)->MakeCopy(), source_frames->GetSprOffset(index), deltas[index]);
+            source_frames->SetFrame(index, source_frames->GetSprite(index)->MakeCopy(), source_frames->GetSpriteOffset(index), deltas[index]);
         }
 
         spr_id = mapper->AnimAdd(source_frames);
@@ -2610,7 +2610,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(target_frames);
 
         for (int32_t index = 0; index < target_frames->GetFramesCount(); index++) {
-            target_frames->SetFrame(index, target_frames->GetSpr(index)->MakeCopy(), target_frames->GetSprOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
+            target_frames->SetFrame(index, target_frames->GetSprite(index)->MakeCopy(), target_frames->GetSpriteOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
         }
 
         spr_id = mapper->AnimAdd(target_frames);
@@ -2627,7 +2627,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(long_cycle);
 
         for (int32_t index = 0; index < long_cycle->GetFramesCount(); index++) {
-            long_cycle->SetFrame(index, long_cycle->GetSpr(index)->MakeCopy(), long_cycle->GetSprOffset(index), index == 0 ? ipos32 {1000000000, 0} : ipos32 {});
+            long_cycle->SetFrame(index, long_cycle->GetSprite(index)->MakeCopy(), long_cycle->GetSpriteOffset(index), index == 0 ? ipos32 {1000000000, 0} : ipos32 {});
         }
 
         spr_id = mapper->AnimAdd(long_cycle);
@@ -2640,7 +2640,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(turned);
 
         for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
-            turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), index == 0 ? ipos32 {-2000000001, 2000000001} : ipos32 {});
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), index == 0 ? ipos32 {-2000000001, 2000000001} : ipos32 {});
         }
 
         spr_id = mapper->AnimAdd(turned);
@@ -2661,7 +2661,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(turned);
 
         for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
-            turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), ipos32 {0, 4});
+            turned->SetFrame(index, turned->GetSprite(index)->MakeCopy(), turned->GetSpriteOffset(index), ipos32 {0, 4});
         }
 
         spr_id = mapper->AnimAdd(turned);
@@ -2680,7 +2680,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
         for (int32_t index = 0; index < zero->GetFramesCount(); index++) {
             ipos32 motion = index == 0 ? ipos32 {4, -2} : index == 1 ? ipos32 {-4, 2} : ipos32 {};
-            zero->SetFrame(index, zero->GetSpr(index)->MakeCopy(), zero->GetSprOffset(index), motion);
+            zero->SetFrame(index, zero->GetSprite(index)->MakeCopy(), zero->GetSpriteOffset(index), motion);
         }
 
         spr_id = mapper->AnimAdd(zero);
@@ -2757,7 +2757,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         CHECK_FALSE(critter->IsAnimPlaying());
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
         REQUIRE(frames);
-        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(0));
+        CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
     }
 
     SECTION("InvalidSelectionDoesNotLeaveAnUninitializedQueuedAnimation")
@@ -2939,4 +2939,3 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 }
 
 FO_END_NAMESPACE
-

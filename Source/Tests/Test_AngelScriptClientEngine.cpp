@@ -375,4 +375,3 @@ TEST_CASE("AngelScriptResourceManagerResolvesProjectSpriteHandles")
 FO_END_NAMESPACE
 
 #endif
-

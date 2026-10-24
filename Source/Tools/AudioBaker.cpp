@@ -68,7 +68,7 @@ static auto DecodeWavSample(const_span<uint8_t> bytes, const WavFormat& format) 
 static void AppendOggPage(vector<uint8_t>& output, const ogg_page& page);
 
 AudioBaker::AudioBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 {
     AddLoader(std::bind(&AudioBaker::LoadWav, this, std::placeholders::_1, std::placeholders::_2), {"wav"});
 #if FO_AUDIO_ACM
@@ -87,7 +87,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
 {
     FO_TRACE_ZONE(Baking);
 
-    float32_t quality = _context->Settings->Baking.AudioVorbisQuality;
+    float32_t quality = _context->GetSettings()->Baking.AudioVorbisQuality;
     FO_VERIFY_AND_THROW(quality >= -0.1f && quality <= 1.0f, "Vorbis quality must stay within the encoder range -0.1..1.0", quality);
 
     vector<File> files_to_bake;
@@ -97,7 +97,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
             if (!IsBakeableExtension(file_header.GetPath())) {
                 continue;
             }
-            if (_context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
+            if (_context->HasBakeChecker() && !_context->CheckOutput(file_header.GetPath(), file_header.GetWriteTime())) {
                 continue;
             }
 
@@ -114,7 +114,7 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !_context->BakeChecker(file.GetPath(), file.GetWriteTime())) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(file.GetPath(), file.GetWriteTime())) {
             return;
         }
 
@@ -308,7 +308,7 @@ auto AudioBaker::EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> v
     size_t channels = numeric_cast<size_t>(pcm.Channels);
     FO_VERIFY_AND_THROW(pcm.Samples.size() % channels == 0, "Interleaved sample count is not a whole number of frames", fname, pcm.Samples.size(), pcm.Channels);
 
-    float32_t quality = _context->Settings->Baking.AudioVorbisQuality;
+    float32_t quality = _context->GetSettings()->Baking.AudioVorbisQuality;
 
     vorbis_info info;
     vorbis_info_init(&info);

@@ -103,10 +103,10 @@ void ItemHexView::Process()
 
     if (_isMoving) {
         nanotime time = _engine->GameTime.GetFrameTime();
-        float32_t dt = (time - _moveUpdateLastTime).to_ms<float32_t>();
+        timespan elapsed = time - _moveUpdateLastTime;
         _moveUpdateLastTime = time;
 
-        _moveCurOffset += _moveStepOffset * _moveSpeed * dt;
+        _moveCurOffset += _moveStepOffset * _moveSpeed * elapsed.to_ms<float32_t>();
         RefreshOffs();
 
         float32_t dist = (_moveCurOffset - _moveStartOffset).dist();
@@ -202,7 +202,7 @@ void ItemHexView::SetAnimDir(mdir dir)
     _animDir = dir;
 
     if (_anim) {
-        _anim->SetDir(_animDir);
+        _anim->SetDirection(_animDir);
     }
 }
 
@@ -228,7 +228,7 @@ void ItemHexView::RefreshAnim()
         }
         else {
             _anim->SetTime(_animTime);
-            _anim->SetDir(_animDir);
+            _anim->SetDirection(_animDir);
 
             if (!_animStopped && _animLooped) {
                 _anim->Play(_animName, _animLooped, _animReversed);
@@ -292,4 +292,3 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 }
 
 FO_END_NAMESPACE
-

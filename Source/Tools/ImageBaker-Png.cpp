@@ -61,12 +61,34 @@ namespace ImageBakerPng
         auto data = PngLoad(png_data_ptr, width, height);
 
         FrameCollection collection;
-        collection.SequenceSize = 1;
-        collection.AnimTicks = 100;
-        collection.Main.Frames.resize(collection.SequenceSize);
-        collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
-        collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
+        uint16_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
+        sequence_size = 1;
+        duration_ms = 100;
+
+        collection.Main.Frames.resize(sequence_size);
+        collection.Main.Frames[0].Size = {width, height};
         collection.Main.Frames[0].Data = std::move(data);
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
+        }
 
         return collection;
     }

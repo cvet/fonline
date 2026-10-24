@@ -1967,7 +1967,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
             declared_paths.emplace(path);
             return false;
         });
-        context->OutputDiscovery = true;
+        context->SetOutputDiscovery(true);
         ManagedScriptBaker baker(std::move(context));
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
@@ -2014,4 +2014,3 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 FO_END_NAMESPACE
 
 #endif
-

@@ -650,4 +650,3 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 }
 
 FO_END_NAMESPACE
-

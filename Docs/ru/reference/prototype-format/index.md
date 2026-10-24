@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-prototype-format-index","locale":"ru","source_path":"Docs/en/reference/prototype-format/index.md","source_sha256":"7ffc2e8ad2445ebfc0a8314434de738b4fa1abd1cd9f7ae396ad5e806a408b01"} -->
+<!-- docs-translation: {"document_id":"generated-prototype-format-index","locale":"ru","source_path":"Docs/en/reference/prototype-format/index.md","source_sha256":"15bebd521a7ec679e3b05866e3db374b4b0df6ad75e3de4d85bd1ebdfde5a45a"} -->
 
 # Справочник формата прототипов
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Грамматика документируется для закреплённой ревизии движка. Конкретные типы сущностей, свойства, расширения файлов, ID и игровая семантика принадлежат проекту. |
 | Исходный манифест | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Дайджест контракта | <code>49d6dc22521678e715611881c052edb080897d822ff81e9db4c2f070b6b16c7f</code> |
+| Дайджест контракта | <code>aed1f1d41a8e6262ed62e22bada21f611052c54c1d5b4ccf90965b2fcebb3821</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |

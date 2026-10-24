@@ -546,4 +546,3 @@ auto ClientConnection::RegisterSenderTime(int64_t sender_ms, nanotime receive_ti
 }
 
 FO_END_NAMESPACE
-

@@ -308,7 +308,7 @@ FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, 
 
     const ModelAnimationInfo& model_anim_info = *anim_info->Model;
     auto anim_it = model_anim_info.AnimationDurations.find({stateAnim, actionAnim});
-    return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan {};
+    return anim_it != model_anim_info.AnimationDurations.end() ? anim_it->second : timespan::zero;
 #else
     ignore_unused(engine, modelName, stateAnim, actionAnim);
     return {};

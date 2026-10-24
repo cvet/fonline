@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"2b65c498d72746769344b2148d897437b87a614a1f55115e2a5a829729403654"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"efbe65072dea3f02b4923c876a9c4c90734382229ae825cc23f15137fd526e6a"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -34,6 +34,38 @@ codegen принадлежит `BuildTools/cmake/stages/Codegen.cmake` и
 Mapper. Для этой границы используйте [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md);
 при изменении поведения bake меняйте владельца самого native tool.
 
+<a id="native-module-layout"></a>
+
+## Оформление нативных модулей
+
+Каждый самостоятельный нативный модуль создаётся парой соседних файлов
+`Name.h` + `Name.cpp`. Оба файла регистрируются в соответствующем списке
+исходников в [`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake)
+или [`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake).
+Файл `.cpp` остаётся опорной единицей трансляции модуля, даже если пока лишь
+подключает собственный заголовок, содержащий только данные или константы
+`constexpr`. Пример такого модуля — `ResourceDefaults.h` + `ResourceDefaults.cpp`:
+наличие одних констант не освобождает самостоятельную подсистему от требования пары.
+
+Без `.cpp` допускаются вспомогательные шаблонные заголовки, утилиты вычислений
+времени компиляции и агрегирующие заголовки, не образующие самостоятельного модуля.
+Для опциональных модулей оба файла регистрируются безусловно, а числовые проверки
+флагов возможностей размещаются внутри них.
+
+После добавления или переноса нативных модулей запускайте из корня движка
+`python3 BuildTools/check_native_modules.py`. Проверка учитывает регистр имён,
+наличие пары и регистрацию в двух списках исходников, включая алиас каталога
+AngelScript. Комментарии и диагностические строки не регистрируют исходники.
+Эффективную конфигурацию CMake проверяют сборки соответствующих платформ.
+
+Рассмотренные исключения задаются точным путём и непустой причиной в
+[`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
+в разделах `HeaderOnly` и `ImplementationOnly` (версия схемы `Version = 1`).
+Устаревшие записи, шаблоны путей, повторные JSON-ключи и исключения для полных пар
+считаются ошибками. Файлы `Source/Tests/Test_*.cpp` являются единицами трансляции
+тестов. Новым самостоятельным модулям требуется пара, даже если в их имени есть
+`Helpers` или `App`.
+
 ## `Source/Applications/`
 
 Содержит точки входа приложений и библиотек. Примеры включают client, варианты server, Mapper, editor, baker, AngelScript compiler, Managed script baker и обёртки testing app. Wiring build targets находится в `BuildTools/cmake/stages/Applications.cmake`.
@@ -55,7 +87,7 @@ Mapper. Для этой границы используйте [BuildTools pipeli
 - Карты и движение: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Сетевые примитивы: `NetBuffer.*`, `NetworkUdp.*` и общий для сервера/клиента разбор списка файлов updater в `UpdateDescriptor.*`.
 - Конфигурация и данные: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
-- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
+- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `ResourceDefaults.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 Если изменение переиспользуемо и общее для client и server, оно, вероятно, начинается здесь.

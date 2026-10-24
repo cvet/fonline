@@ -57,6 +57,18 @@ static auto BuildConfigBenchmarkInput(int32_t section_count, int32_t keys_per_se
 
 TEST_CASE("ConfigFile")
 {
+    SECTION("PreservesTerminalContinuationWithOrWithoutFinalNewline")
+    {
+        for (string_view suffix : {"", "\n"}) {
+            ConfigFile empty {strex("Size = \\{}", suffix).str()};
+            CHECK(empty.HasKey("", "Size"));
+            CHECK(empty.GetAsStr("", "Size").empty());
+            ConfigFile value {strex("Name = first \\{}", suffix).str()};
+            CHECK(value.HasKey("", "Name"));
+            CHECK(value.GetAsStr("", "Name") == "first");
+        }
+    }
+
     SECTION("StoresViewsIntoOwnedInput")
     {
         string source = "[ProtoItem]\n$Name = ItemOne\nName = Base\nName += Extra\n";

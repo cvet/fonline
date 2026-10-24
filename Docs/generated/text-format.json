@@ -247,7 +247,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);",
+            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages);",
             "const string& default_lang = bake_languages.Languages.front();"
           ]
         },
@@ -379,7 +379,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "_context->WriteData(strex(\"{}.{}.{}.fotxt-bin\", _context->PackName, pack_name, lang_name)"
+            "_context->WriteData(strex(\"{}.{}.{}.fotxt-bin\", _context->GetPackName(), pack_name, lang_name)"
           ]
         },
         {
@@ -931,5 +931,5 @@
       "internal": 1
     }
   },
-  "contract_digest": "6ee167367188a46dce0dbd6115dd9f3dc9a79d217532e01b2f309deb0a012c64"
+  "contract_digest": "44aac53fcc587155564320a81c23293c42ccd9a3416d468cc79e4e0bdf56d0d8"
 }

@@ -794,6 +794,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalProject",
             root / "Examples" / "MinimalProject",
+            ignore=shutil.ignore_patterns("Build", "Engine", "Workspace"),
         )
         shutil.copytree(
             BUILDTOOLS_DIR.parent / "Examples" / "MinimalMultiplayer",
@@ -1370,6 +1371,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             content = source_path.read_text(encoding="utf-8")
+            content = "\n".join(line for line in content.splitlines() if not line.startswith("///@ ApiContract scope:native-codegen ")) + "\n"
             if relative_path.startswith("Source/Scripting/"):
                 existing = target_path.read_text(encoding="utf-8") if target_path.exists() else ""
                 anchors = {
@@ -1943,8 +1945,21 @@ class DocumentationValidatorTests(unittest.TestCase):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
 
+        # The copied Common.h owns the animation enums; keeping the bootstrap stub duplicates metadata.
+        (root / "Source/Common/CritterAnimationEnums.h").unlink()
         generated_path.write_text(docs_inventory.render_inventory(root), encoding="utf-8")
         api_path.write_text(docs_api.render_api_model(root), encoding="utf-8")
+        (root / docs_map_format.DEFAULT_MODEL).write_text(
+            docs_map_format.render_map_format_model(root), encoding="utf-8"
+        )
+        map_format_model = json.loads(
+            (root / docs_map_format.DEFAULT_MODEL).read_text(encoding="utf-8")
+        )
+        for reference_path, content in docs_map_format.generate_reference_pages(map_format_model).items():
+            output_path = root / reference_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(content, encoding="utf-8")
+
         for reference_path, content in docs_reference.render_reference_pages(root).items():
             output_path = root / reference_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2119,6 +2134,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         }
 
     def test_valid_manifest_links_and_inline_code_heading_pass(self) -> None:
+        self.maxDiff = None
         temporary_directory, root = self._create_tree()
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text(

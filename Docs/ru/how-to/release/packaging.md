@@ -7,12 +7,29 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"b40a35594e5fefbd33d6f810e7807fdb37f1575faf615b910da799f65332acfb"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"67a53cc17f4edfe11a27de77f07628b8ad1b400b0003ef12b3dbc09cbae166e5"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
 называть полученный artifact поддерживаемым, сверяйтесь с
 [Матрицей поддержки](../../reference/platforms/support-matrix.md).
+
+## Отбор ресурсов
+
+`package.py` требует корректный `Resources.usage.json` от успешного полного
+bake. Он проверяет версию 1, точные хеши ревизии и конфигурации по маркерам успеха,
+канонические пути с учётом регистра, повторы ключей и записей, существование каждого
+указанного файла. Отсутствующий или неверный отбор прерывает упаковку; автоматического
+перехода к полному содержимому нет. Точный список пересекается с прежними ограничениями
+суффиксов сторон в общем collection hook, включая Client, клиентские ресурсы сервера
+и Embedded. Подстановка платформенного managed runtime после сбора остаётся
+обязательной. Пакет без выбранных художественных файлов — корректный пустой `.fores`.
+
+Для разработки и Mapper используется полное свободное дерево bake. У tool payloads
+с `NoRes` сохраняется прежнее поведение; нового режима полной поставки этот манифест
+не добавляет. Прямые и вычисляемые пути объявляет проект через Resource-свойства или
+обычные таблицы принудительных включений. Корни, runtime-зависимости, владение выходами
+и публикация описаны в [руководстве bake](../../explanation/content-pipeline/baking.md#отбор-используемых-ресурсов).
 
 ## Решение о пакете
 

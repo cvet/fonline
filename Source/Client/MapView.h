@@ -50,6 +50,8 @@
 
 FO_BEGIN_NAMESPACE
 
+inline constexpr timespan FOG_DEFAULT_TRANSITION_DURATION {std::chrono::milliseconds {150}};
+
 FO_DECLARE_EXCEPTION(MapViewLoadException);
 
 class ClientEngine;
@@ -108,7 +110,7 @@ public:
     int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
     int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
     int32_t ExtraLength {1}; // Extra look length added to the derived radius
-    int32_t TransitionDuration {150}; // Grow/move/shrink morph duration in ms
+    timespan TransitionDuration {FOG_DEFAULT_TRANSITION_DURATION}; // Grow/move/shrink morph duration
     float32_t OvalRoundness {1.0f}; // 0 = raw hexagon, 1 = full smooth oval
     float32_t EdgeNoise {0.15f}; // Drifting-mist rim ripple strength
     float32_t Depth {0.15f}; // Extra darkening with distance past the edge
@@ -344,8 +346,8 @@ private:
         bool Valid {};
     };
 
-    void ProcessScroll(float32_t dt);
-    void ProcessZoom(float32_t dt);
+    void ProcessScroll(timespan elapsed);
+    void ProcessZoom(timespan elapsed);
     void RefreshMinZoom();
 
     auto AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>;

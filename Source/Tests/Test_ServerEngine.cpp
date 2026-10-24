@@ -220,7 +220,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         nanotime paused_frame_time = server->GameTime.GetFrameTime();
         server->FrameAdvance();
         CHECK(server->GameTime.GetFrameTime() == paused_frame_time);
-        CHECK(server->GameTime.GetFrameDeltaTime() == timespan {});
+        CHECK(server->GameTime.GetFrameDeltaTime() == timespan::zero);
     }));
 
     CHECK(callback_invoked);
@@ -303,7 +303,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
             ScriptFunc<void> event_func {&event_desc};
             REQUIRE(event_func);
-            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
+            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan::zero, {}));
         }
 
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
@@ -1090,7 +1090,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1139,7 +1139,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1202,7 +1202,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -2480,15 +2480,15 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
     // and the complete run; the owning critter references outlive both joins, including timeout shutdown.
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
-    auto started = nanotime::now();
-    auto last_progress = started;
+    nanotime started = nanotime::now();
+    nanotime last_progress = started;
     int64_t last_rounds = 0;
     int64_t rounds_at_timeout = 0;
     timespan idle_at_timeout {};
     bool timed_out = false;
 
     while (rounds_done.load(std::memory_order_acquire) < total_rounds && !failed.load(std::memory_order_acquire)) {
-        auto now = nanotime::now();
+        nanotime now = nanotime::now();
         int64_t completed = rounds_done.load(std::memory_order_acquire);
 
         if (completed != last_rounds) {
@@ -2772,4 +2772,3 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
 }
 
 FO_END_NAMESPACE
-

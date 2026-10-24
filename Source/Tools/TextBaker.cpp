@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    if (_context->Settings->Baking.BakeLanguages.empty()) {
+    if (_context->GetSettings()->Baking.BakeLanguages.empty()) {
         throw TextBakerException("No bake languages specified");
     }
 }
@@ -57,7 +57,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         return;
     }
 
-    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages);
 
     // Collect files
     vector<File> filtered_files;
@@ -76,7 +76,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         const auto& text_pack_name = name_pair[0];
         const auto& lang_name = name_pair[1];
 
-        if (_context->BakeChecker && !_context->BakeChecker(strex("{}.{}.{}.fotxt-bin", _context->PackName, text_pack_name, lang_name), file_header.GetWriteTime())) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(strex("{}.{}.{}.fotxt-bin", _context->GetPackName(), text_pack_name, lang_name), file_header.GetWriteTime())) {
             continue;
         }
 
@@ -178,7 +178,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     // Save parsed packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->PackName, pack_name, lang_name), text_pack.GetBinaryData());
+            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->GetPackName(), pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }

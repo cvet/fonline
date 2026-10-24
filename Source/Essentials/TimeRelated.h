@@ -98,12 +98,22 @@ public:
     template<typename T>
     [[nodiscard]] constexpr auto to_ms() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T, std::milli> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto to_sec() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T

@@ -643,7 +643,7 @@ namespace TestOffTargetMetadataStubs
         local_rig.AddSourceFile("Scripts/BrokenAsync.fos", "///@ Unknown Tag");
 
         auto context = local_rig.MakeContext();
-        context->ForceSyncMode = false;
+        context->SetForceSyncMode(false);
 
         MetadataBaker baker(context);
         REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));

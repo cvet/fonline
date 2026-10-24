@@ -1134,15 +1134,16 @@ static auto RequireAnimationFrame(ptr<ClientEngine> client, uint32_t spr_id, int
     auto sprite = RequireAnimationSprite(client, spr_id);
     auto sheet = sprite.dyn_cast<SpriteSheet>();
 
-    int32_t frame_count = sheet ? sheet->GetFramesCount() : 1;
-    FO_VERIFY_AND_THROW(frame >= 0 && frame < frame_count, "Sprite frame index is out of range", spr_id, frame, frame_count);
-
     if (sheet) {
-        auto direction = sheet->GetDir(dir);
+        auto direction = sheet->GetDirection(dir);
         FO_VERIFY_AND_THROW(direction, "Missing sprite direction", spr_id, dir);
+        int32_t frame_count = direction->GetFramesCount();
+        FO_VERIFY_AND_THROW(frame >= 0 && frame < frame_count, "Sprite frame index is out of range", spr_id, frame, frame_count);
 
-        return direction->GetSpr(frame);
+        return direction->GetSprite(frame);
     }
+
+    FO_VERIFY_AND_THROW(frame == 0, "Static sprite frame index must be zero", spr_id, frame);
 
     return sprite;
 }
@@ -1164,7 +1165,7 @@ FO_SCRIPT_API int32_t Client_Game_GetSpriteDirectionCount(ptr<ClientEngine> clie
     auto sprite = RequireAnimationSprite(client, sprId);
     auto sheet = sprite.dyn_cast<SpriteSheet>();
 
-    return sheet ? sheet->GetDirCount() : 1;
+    return sheet ? sheet->GetDirectionCount() : 1;
 }
 
 // Returns a checked 2D sprite's duration; static images have zero duration
@@ -1174,7 +1175,7 @@ FO_SCRIPT_API timespan Client_Game_GetSpriteDuration(ptr<ClientEngine> client, u
     auto sprite = RequireAnimationSprite(client, sprId);
     auto sheet = sprite.dyn_cast<SpriteSheet>();
 
-    return std::chrono::milliseconds {sheet ? sheet->GetWholeTicks() : 0};
+    return sheet ? sheet->GetDuration() : timespan::zero;
 }
 
 // Returns a checked frame's absolute pixel draw offset; one-direction sources serve every direction
@@ -1185,7 +1186,7 @@ FO_SCRIPT_API ipos32 Client_Game_GetSpriteFrameOffset(ptr<ClientEngine> client, 
     auto sprite = RequireAnimationSprite(client, sprId);
     auto sheet = sprite.dyn_cast<SpriteSheet>();
 
-    return sheet ? sheet->GetDir(dir)->GetSprOffset(frame) : frame_sprite->GetOffset();
+    return sheet ? sheet->GetDirection(dir)->GetSpriteOffset(frame) : frame_sprite->GetOffset();
 }
 
 // Returns a checked frame's pixel motion delta; static images have zero displacement
@@ -1197,7 +1198,7 @@ FO_SCRIPT_API ipos32 Client_Game_GetSpriteFrameMotion(ptr<ClientEngine> client, 
     auto sprite = RequireAnimationSprite(client, sprId);
     auto sheet = sprite.dyn_cast<SpriteSheet>();
 
-    return sheet ? sheet->GetDir(dir)->GetSprMotion()[frame] : ipos32 {};
+    return sheet ? sheet->GetDirection(dir)->GetSpriteMotion()[frame] : ipos32 {};
 }
 
 // Creates a stopped independent 2D sequence from explicit direction-major frame arrays and duration
@@ -1211,9 +1212,7 @@ FO_SCRIPT_API uint32_t Client_Game_CreateSpriteSequence(ptr<ClientEngine> client
 
     int32_t directions = numeric_cast<int32_t>(sources.size() / frames_per_direction);
     FO_VERIFY_AND_THROW(directions == 1 || directions == GameSettings::MAP_DIR_COUNT, "Sprite sequence direction count is unsupported", directions);
-    FO_VERIFY_AND_THROW(duration >= timespan {}, "Sprite sequence duration must not be negative");
-
-    int32_t ticks = numeric_cast<int32_t>(duration.milliseconds());
+    FO_VERIFY_AND_THROW(duration >= timespan::zero, "Sprite sequence duration must be nonnegative");
 
     vector<shared_ptr<Sprite>> frame_owners;
     frame_owners.reserve(sources.size());
@@ -1228,11 +1227,11 @@ FO_SCRIPT_API uint32_t Client_Game_CreateSpriteSequence(ptr<ClientEngine> client
         frame_owners.emplace_back(atlas->shared_from_this().cast_no_const());
     }
 
-    auto sequence = safe_alloc::make_shared<SpriteSheet>(&client->SprMngr, framesPerDirection, ticks, directions);
+    auto sequence = safe_alloc::make_shared<SpriteSheet>(&client->SprMngr, framesPerDirection, duration, directions);
 
     for (size_t i = 0; i < sources.size(); i++) {
         mdir dir {hdir {numeric_cast<int32_t>(i / frames_per_direction)}};
-        auto direction = sequence->GetDir(dir);
+        auto direction = sequence->GetDirection(dir);
         FO_VERIFY_AND_THROW(direction, "Missing sprite sequence direction");
 
         direction->SetFrame(numeric_cast<int32_t>(i % frames_per_direction), std::move(frame_owners[i]), offsets[i], motions[i]);
@@ -1556,7 +1555,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring m
     auto frames = client->CritterFrames.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
     if (frames) {
-        client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : Color::Neutral);
+        client->SprMngr.DrawSpriteSize(frames->GetCurrentSprite(), {l, t}, {r - l, b - t}, scratch, center, color != ucolor::clear ? color : Color::Neutral);
     }
 }
 
@@ -2142,4 +2141,3 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
 }
 
 FO_END_NAMESPACE
-

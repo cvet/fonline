@@ -43,79 +43,64 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
     FO_TRACE_ZONE(Render);
 
     FileReader reader {data};
-
-    uint8_t header_magic = reader.GetUInt8();
-    FO_VERIFY_AND_THROW(header_magic == SPRITE_RESOURCE_MAGIC, "Sprite resource header magic is invalid", header_magic, SPRITE_RESOURCE_MAGIC);
-
+    uint8_t magic = reader.GetUInt8();
+    FO_VERIFY_AND_THROW(magic == SPRITE_RESOURCE_MAGIC, "Sprite resource header magic is invalid", magic, SPRITE_RESOURCE_MAGIC);
     uint8_t version = reader.GetUInt8();
     FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite resource version is unsupported", version, SPRITE_RESOURCE_VERSION);
+    uint8_t count = reader.GetUInt8();
+    FO_VERIFY_AND_THROW(count > 0, "Sprite resource contains no directions");
+    SpriteResourceData result;
+    result.Animation.Sprite.emplace();
+    auto& info = *result.Animation.Sprite;
+    result.Directions.resize(count);
+    info.Directions.resize(count);
 
-    SpriteResourceData resource;
-    resource.Animation.Sprite.emplace();
-    SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    sprite_info.FrameCount = reader.GetLEUInt16();
-    FO_VERIFY_AND_THROW(sprite_info.FrameCount != 0, "Sprite resource contains no frames");
-    sprite_info.Duration = std::chrono::milliseconds {reader.GetLEUInt16()};
+    for (uint8_t direction_index = 0; direction_index < count; direction_index++) {
+        auto& direction = result.Directions[direction_index];
+        auto& direction_info = info.Directions[direction_index];
+        uint16_t frames = reader.GetLEUInt16();
+        uint32_t total = reader.GetLEUInt32();
+        FO_VERIFY_AND_THROW(frames > 0 && total >= frames, "Sprite sequence requires positive frames and durations", direction_index, frames, total);
+        direction.Frames.resize(frames);
+        direction_info.Frames.resize(frames);
 
-    uint8_t direction_count = reader.GetUInt8();
-    FO_VERIFY_AND_THROW(direction_count != 0, "Sprite resource contains no directions");
-    resource.Directions.resize(direction_count);
-    sprite_info.Directions.resize(direction_count);
+        for (uint16_t frame_index = 0; frame_index < frames; frame_index++) {
+            auto& frame = direction.Frames[frame_index];
+            auto& frame_info = direction_info.Frames[frame_index];
+            frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};
+            FO_VERIFY_AND_THROW(frame.Duration > timespan::zero, "Sprite frame duration must be positive", direction_index, frame_index);
+            frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};
+            frame.NextOffset = {reader.GetLEInt16(), reader.GetLEInt16()};
+            uint8_t shared = reader.GetUInt8();
+            FO_VERIFY_AND_THROW(shared <= 1, "Sprite frame reference flag is invalid", direction_index, frame_index, shared);
 
-    auto read_sprite_pixels = [&reader](isize32 size) -> vector<ucolor> {
-        FO_VERIFY_AND_THROW(size.width > 0, "Sprite frame width must be positive", size.width);
-        FO_VERIFY_AND_THROW(size.height > 0, "Sprite frame height must be positive", size.height);
-
-        uint64_t pixel_count64 = numeric_cast<uint64_t>(size.width) * numeric_cast<uint64_t>(size.height);
-        uint64_t pixel_data_size64 = pixel_count64 * sizeof(ucolor);
-        size_t remaining_size = reader.GetSize() - reader.GetCurPos();
-        FO_VERIFY_AND_THROW(pixel_data_size64 <= remaining_size, "Sprite frame pixel data is truncated", pixel_data_size64, remaining_size, size);
-
-        vector<ucolor> pixels(numeric_cast<size_t>(pixel_count64));
-        reader.ReadObjectArray(span<ucolor> {pixels});
-        return pixels;
-    };
-
-    for (uint8_t direction_index = 0; direction_index < direction_count; direction_index++) {
-        SpriteResourceDirectionData& direction = resource.Directions[direction_index];
-        SpriteDirInfo& direction_info = sprite_info.Directions[direction_index];
-        direction.Frames.resize(sprite_info.FrameCount);
-        direction_info.Frames.resize(sprite_info.FrameCount);
-
-        for (uint16_t frame_index = 0; frame_index < sprite_info.FrameCount; frame_index++) {
-            SpriteResourceFrameData& frame = direction.Frames[frame_index];
-            SpriteFrameInfo& frame_info = direction_info.Frames[frame_index];
-            uint8_t is_shared = reader.GetUInt8();
-            FO_VERIFY_AND_THROW(is_shared <= 1, "Sprite frame reference flag is invalid", is_shared, direction_index, frame_index);
-
-            if (is_shared != 0) {
-                uint16_t shared_frame_index = reader.GetLEUInt16();
-                FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite frame reference points outside previously decoded frames", shared_frame_index, direction_index, frame_index);
-                frame.SharedFrameIndex = shared_frame_index;
-                frame_info = direction_info.Frames[shared_frame_index];
-                frame_info.SharedFrameIndex = shared_frame_index;
-                continue;
+            if (shared != 0) {
+                uint16_t index = reader.GetLEUInt16();
+                FO_VERIFY_AND_THROW(index < frame_index, "Sprite frame reference points outside previously decoded frames", direction_index, frame_index, index);
+                frame.SharedFrameIndex = index;
+                frame.Size = direction.Frames[index].Size;
+            }
+            else {
+                frame.Size = {reader.GetLEUInt16(), reader.GetLEUInt16()};
+                FO_VERIFY_AND_THROW(frame.Size.width > 0 && frame.Size.height > 0, "Sprite frame dimensions must be positive", direction_index, frame_index, frame.Size);
+                uint64_t pixels = numeric_cast<uint64_t>(frame.Size.width) * frame.Size.height;
+                FO_VERIFY_AND_THROW(pixels * sizeof(ucolor) <= reader.GetSize() - reader.GetCurPos(), "Sprite frame pixel data is truncated", frame.Size);
+                frame.Pixels.resize(numeric_cast<size_t>(pixels));
+                reader.ReadObjectArray(span<ucolor> {frame.Pixels});
+                frame.Mesh = ReadSpriteFrameMesh(reader, frame.Size);
             }
 
-            frame.Offset.x = reader.GetLEInt16();
-            frame.Offset.y = reader.GetLEInt16();
-            frame.Size.width = reader.GetLEUInt16();
-            frame.Size.height = reader.GetLEUInt16();
-            frame.NextOffset.x = reader.GetLEInt16();
-            frame.NextOffset.y = reader.GetLEInt16();
-            frame_info.Offset = frame.Offset;
-            frame_info.Size = frame.Size;
-            frame_info.NextOffset = frame.NextOffset;
-            frame.Pixels = read_sprite_pixels(frame.Size);
-            frame.Mesh = ReadSpriteFrameMesh(reader, frame.Size);
+            frame_info = SpriteFrameInfo {.SharedFrameIndex = frame.SharedFrameIndex, .Offset = frame.Offset, .Size = frame.Size, .NextOffset = frame.NextOffset, .Duration = frame.Duration};
         }
+
+        FO_VERIFY_AND_THROW(GetSpriteDirDuration(direction_info) == timespan {std::chrono::milliseconds {total}}, "Sprite sequence duration differs from its frame durations", direction_index, total);
     }
 
-    uint8_t footer_magic = reader.GetUInt8();
-    FO_VERIFY_AND_THROW(footer_magic == SPRITE_RESOURCE_MAGIC, "Sprite resource footer magic is invalid", footer_magic, SPRITE_RESOURCE_MAGIC);
+    uint8_t footer = reader.GetUInt8();
+    FO_VERIFY_AND_THROW(footer == SPRITE_RESOURCE_MAGIC, "Sprite resource footer magic is invalid", footer, SPRITE_RESOURCE_MAGIC);
     FO_VERIFY_AND_THROW(reader.GetCurPos() == reader.GetSize(), "Sprite resource contains trailing data", reader.GetCurPos(), reader.GetSize());
 
-    return resource;
+    return result;
 }
 
 auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData

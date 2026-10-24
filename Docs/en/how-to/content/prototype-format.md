@@ -206,6 +206,13 @@ Parser applicability is only the first gate. A project should separately classif
 - derived/cache state that must never be authored;
 - project-required fields and valid field combinations.
 
+A `Resource` property is also a packaging root. Each nonempty scalar `hstring`
+or `hstring[]` element in current baked prototypes and placed map properties
+retains that exact baked resource and its runtime dependency closure. The end-of-bake
+collector re-reads cached definitions too. An ordinary FixedType table can declare
+forced inclusions for script-computed paths; it needs no constructor execution.
+See [used-resource selection](../../explanation/content-pipeline/baking.md#resource-usage-manifest).
+
 ## Text values and references
 
 `PropertiesSerializer` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
