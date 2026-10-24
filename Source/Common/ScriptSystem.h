@@ -182,6 +182,8 @@ struct FuncCallData
     const_span<ptr<void>> ArgsData {};
     nptr<void> RetData {};
     ScriptCallReturnValueOwner RetValueOwner {};
+    // A backend takes ownership when script execution outlives the native call
+    function<void(bool)> Completion {};
 };
 
 namespace NativeDataProvider
@@ -464,49 +466,46 @@ public:
         return _ret;
     }
 
-    auto Call(const Args&... args) noexcept -> bool
+    auto Call(const Args&... args) noexcept -> bool { return CallWithCompletion({}, args...); }
+
+    auto CallWithCompletion(function<void(bool)> completion, const Args&... args) noexcept -> bool
     {
         if (!_func) {
+            if (completion) {
+                safe_call([&] { completion(false); });
+            }
+
             return false;
         }
 
-        FO_STRONG_ASSERT(_func, "Script function is null");
+        array<NativeDataProvider::StorageEntryType, sizeof...(Args) + (std::is_same_v<TRet, void> ? 0 : 1)> temp_storage {};
+        size_t storage_index = 0;
+        array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+        auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+        FuncCallData call {.Accessor = accessor};
+        call.ArgsData = args_data;
 
-        if constexpr (std::is_same_v<TRet, void>) {
-            array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
-            size_t storage_index = 0;
-            array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
-            FuncCallData call {.Accessor = accessor};
-            call.ArgsData = args_data;
+        call.Completion = std::move(completion);
+        bool call_result = false;
+        auto complete = scope_exit([&]() noexcept {
+            if (call.Completion) {
+                safe_call([&] { call.Completion(call_result); });
+            }
+        });
 
-            try {
-                _func->Call(call);
-                return true;
-            }
-            catch (const std::exception& ex) {
-                exceptions::report_and_continue(ex);
-            }
-        }
-        else {
-            array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
-            size_t storage_index = 0;
-            array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
-            FuncCallData call {.Accessor = accessor};
-            call.ArgsData = args_data;
+        if constexpr (!std::is_same_v<TRet, void>) {
             call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
-
-            try {
-                _func->Call(call);
-                return true;
-            }
-            catch (const std::exception& ex) {
-                exceptions::report_and_continue(ex);
-            }
         }
 
-        return false;
+        try {
+            _func->Call(call);
+            call_result = true;
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_continue(ex);
+        }
+
+        return call_result;
     }
 
 private:

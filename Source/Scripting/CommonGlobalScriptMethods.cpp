@@ -920,39 +920,39 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, repeat, to_vector(data));
 }
 
-// Counts all time events on this Engine instance that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all time events on this Engine instance that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, any_t> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all time events on this Engine instance that use the selected callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, vector<any_t>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
-// Counts all time events on this Engine instance that use the selected context callback
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, ScriptFunc<void, ptr<TimeEventContext>> func, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, func.GetName(), {}, excludeExecuting));
 }
 
-// Returns one when this Engine instance owns a time event with the supplied id, or zero when it is absent
+// Counts matching registered time events; excludeExecuting omits executing callbacks
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, uint32_t id)
+FO_SCRIPT_API int32_t Common_Game_CountTimeEvent(ptr<BaseEngine> engine, uint32_t id, bool excludeExecuting = false)
 {
-    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id));
+    return numeric_cast<int32_t>(engine->TimeEventMngr.CountTimeEvent(engine, {}, id, excludeExecuting));
 }
 
 // Stops all time events on this Engine instance that use the selected callback; does nothing when none match

@@ -42,7 +42,7 @@ public static class ScriptExceptions
         Record(exception, false);
     }
 
-    internal static void ObserveTask(object? result)
+    internal static void ObserveTask(object? result, bool deferred = false)
     {
         if (result is not Task task) {
             return;
@@ -50,7 +50,12 @@ public static class ScriptExceptions
 
         if (task.IsCompleted) {
             if (task.IsFaulted && task.Exception != null) {
-                Record(task.Exception, true);
+                if (deferred) {
+                    RecordGlobal(task.Exception, true);
+                }
+                else {
+                    Record(task.Exception, true);
+                }
             }
 
             return;

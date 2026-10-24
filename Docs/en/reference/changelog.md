@@ -16,9 +16,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-Base `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`) to `2026.1.62-dev`.
+Base `4588149fa4e4493ed6dddfea0a2fdf65d17c1f3e` (`2026.1.63-dev`) to `2026.1.62-dev`.
 
-Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.78. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
+Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.79. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
 
 - Keep shared cropped sprite anchors in logical canvas coordinates, including chains of shared frames. Preserve explicit zero-duration native/script sequences for manual frame selection; file-backed timelines remain positive. Retain double precision until model cycle wrapping so frozen endpoint poses do not wrap to the first frame.
 
@@ -27,7 +27,7 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
   seconds stay at adapters. UDP retry options are typed; bake reports quantize at JSON output.
 
 - MovingContext intervals/look-ahead and FogLayer.TransitionDuration use timespan.
-  Rebuild and rebake all roles for runtime 0.0.78; wire units and saves stay unchanged.
+  Rebuild and rebake all roles for runtime 0.0.79; wire units and saves stay unchanged.
 
 - Duration: float conversions retain fractions, AS constructors check overflow, Delay accepts timespan.
   Image DurationMs/GetDurationMs become Duration/GetDuration (timespan); files unchanged.
@@ -37,7 +37,7 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
 - Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
   FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
   Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF
-  schema 5/runtime 0.0.78. Other model and image schemas are unchanged.
+  schema 5/runtime 0.0.79. Other model and image schemas are unchanged.
 
 - Native sprite methods use full names: `GetCurSpr` → `GetCurrentSprite`,
   `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
@@ -58,6 +58,8 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
   properties `Resource`; declare script/GUI/config and opaque-format paths in ordinary
   FixedType resource arrays. Constructors are not a resource-registration mechanism.
 
+
+- Typed movement/presentation migration: `FogLayer.TransitionDuration` changes from integer milliseconds to `timespan`; C# uses `new timespan(150, 2)`, AngelScript uses `timespan(150, 2)`. `MovingContext.EvaluateProjectedHex` takes the typed look-ahead (`new timespan(100, 2)` / `timespan(100, 2)` replaces `100.0f` milliseconds). `GetElapsedTime` and `GetWholeTime` return `timespan`; use the duration directly, or `duration.nanoseconds / 1_000_000.0` when a floating millisecond boundary must preserve fractions. Native callers use `to_ms<float64_t>()`. The plain `milliseconds` property truncates sub-millisecond parts. Regenerate bindings and compile every affected role; old numeric assignments/calls fail type checking. These transient fields do not require a saved-data conversion.
 
 ### FOFRM and resource migration
 
@@ -118,12 +120,30 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
 - Migrate sources/tools/tests; rebuild roles/metadata, rebake. Check native/client,
   EN/RU, contracts/docs/site/AI and compat dates; validation covers Windows only.
 - Sprite v3 and SpriteInfo2 require a full image rebake; runtime compatibility
-  is 0.0.78. Shared pixels retain independent logical timing/offsets/motion.
+  is 0.0.79. Shared pixels retain independent logical timing/offsets/motion.
   Saves/IDs/DB/network schemas and Managed ABI9 are unchanged.
   Deploy/rollback matching binaries/packs/sources and regenerate metadata.
 - LFMODINF schema5 requires a full model rebake. Textures remain single-frame, single-direction images; TextureAnimation is rejected. LFMODMSH/LFOZZRIG stay unchanged.
 
 - Preserve fractional moving-item updates through typed elapsed time; floating unit conversions retain sub-millisecond values. Name runtime interval defaults without changing their values or units; place dependency collectors before baker entrypoints.
+
+## 2026.1.62-dev - 2026-10-24
+
+### Fixed
+
+- Keep an executing time event registered but paused across managed await and AngelScript Yield. Apply callback-context changes and calculate the repeat deadline only after final script completion; cancellation and owner cleanup prevent late resurrection. Preserve the existing failure policy: explicit context `Repeat` survives a failed callback, `Stop` wins, and failure without explicit rearming removes the event.
+
+### Changed
+
+- Add `bool excludeExecuting = false` to all `Game`/entity `CountTimeEvent` overloads (callback and ID) on Managed and AngelScript. Default counts include all matching registered records; `true` excludes callbacks executing or suspended in `await`/`Yield`, through finalization. Modification and cancellation still address the registered record.
+
+### Migration
+
+- Native custom dispatchers use `TimeEventManager::FireAndAdvance(entity, event_id)` instead of the removed `FiredTimeEvent` result and the separate public `FireTimeEvent` / `PostFireTimeEvent` pair. The manager owns suspended execution and finalization; callers retain the owner cover and resubmit the returned optional delay. Keep dispatcher schedule/cancel hooks installed until all continuation producers have stopped. Search custom native sources for `FiredTimeEvent`, `FireTimeEvent`, and `PostFireTimeEvent`; old direct calls fail C++ compilation.
+
+- Timer callback signatures, IDs, units, default intervals and saved-data formats are unchanged. This corrects premature completion: review code that depended on overlapping repeats or early removal of one-shot callbacks. Rebuild all affected native roles, regenerate managed assemblies and rebake matching resources together. No saved-data conversion is required. Runtime compatibility advances from `0.0.77` to `0.0.78` for the native/managed completion bridge; Managed ABI remains `9`. Mixed old/new binaries or resources are unsupported. Base: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); this step is `2026.1.62-dev`.
+
+- Audit every `CountTimeEvent` use (`rg -n "CountTimeEvent" <script-and-native-source-dirs>`). Singleton guards, active status queries and completion waits retain the default inclusive count. A one-shot remains registered until terminal completion, so snapshot coalescing must explicitly exclude execution: Managed `owner.CountTimeEvent(Callback, excludeExecuting: true)` or `Game.CountTimeEvent(id, excludeExecuting: true)`; AngelScript `owner.CountTimeEvent(Callback, true)` or `Game.CountTimeEvent(id, true)`; native `manager.CountTimeEvent(entity, func_name, id, true)`. This allows one independently queued one-shot alongside an executing snapshot. The old scheduler retained recurring records but removed one-shots when the initial call returned; neither boolean alone reproduces that mixed lifetime policy. Existing arguments, IDs and units retain their meaning. Regenerate both backends and compile Server/Client/Mapper before baking.
 
 ## 2026.1.61-dev - 2026-10-24
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"334d803a5beccbc41398648033e402c382b7e7151b61473ef2e835af063d42d3"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"3916db027588a33469b12e03190936c1035eda51cc441057d7f3d14cd98f11dd"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -154,7 +154,7 @@ Generated event wrappers отвергают handler без `[Event]` до соз
 
 Generated event wrappers поддерживают handlers, возвращающие `void`, `Task`, `EventResult` или `Task<EventResult>`. Native dispatch ожидает tasks с результатом до решения о продолжении subscriber chain. Используйте `Task<EventResult>`, если handler после await может употребить или уничтожить argument, который не должны получить последующие subscribers.
 
-Time-event API принимают synchronous delegates и generated async delegates, возвращающие `Task`. Identity delegate является частью регистрации: остановка time event отдельно созданным delegate не находит существующий callback. Repeat/cancel меняет будущее расписание и не отменяет уже запущенный task.
+Time-event API принимают synchronous delegates и generated async delegates, возвращающие `Task`. Identity delegate является частью регистрации: остановка time event отдельно созданным delegate не находит существующий callback. Незавершённый callback task сохраняет событие зарегистрированным и приостановленным до окончательного завершения, исключая пересечение с собственным следующим запуском. Интервал повтора начинается после завершения; интервал и payload можно менять во время await. Изменения TimeEventContext после await применяются при завершении. Repeat/cancel меняет будущее расписание и не отменяет уже запущенный task.
 
 Entity-only post-set реакции могут возвращать `Task`; value-transforming setters с `ref` arguments и property getters остаются synchronous, потому что native caller нужен результат до возврата.
 

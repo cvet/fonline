@@ -42,6 +42,7 @@ internal static class Program
         string boundary = args[0];
         string kind = args[1];
         ownerThread = Environment.CurrentManagedThreadId;
+        if (kind.StartsWith("tracked-")) return TrackedCallback(kind);
         if (kind.StartsWith("guard-")) return CheckInitializationGuard(kind == "guard-reject");
         if (kind == "nested-result-yield") return NestedResultYield();
         if (kind == "nested-result-external") return NestedResultExternal();
@@ -113,6 +114,54 @@ internal static class Program
         return 23;
     }
 
+
+    private static int TrackedCallback(string kind)
+    {
+        MethodInfo? invoke = typeof(Native).GetMethod("InvokeTrackedCallback", BindingFlags.NonPublic | BindingFlags.Static);
+        if (invoke == null) { Console.WriteLine("TRACKED_MISSING"); return 50; }
+        using ScriptExceptions.Scope scope = ScriptExceptions.OpenScope();
+        TaskCompletionSource<bool> gate = new(kind == "tracked-async" ? TaskCreationOptions.RunContinuationsAsynchronously : TaskCreationOptions.None);
+        async Task Callback()
+        {
+            stage = 1;
+            await gate.Task;
+            stage = 2;
+            if (kind == "tracked-fault") throw new InvalidOperationException("tracked-deferred-fault");
+        }
+        if (kind == "tracked-shutdown" || kind == "tracked-async") stage = 1;
+        Func<Task> callback = kind switch {
+            "tracked-sync" => () => Task.CompletedTask,
+            "tracked-shutdown" => () => gate.Task,
+            "tracked-async" => () => gate.Task,
+            "tracked-sync-fault" => () => Task.FromException(new InvalidOperationException("tracked-sync-fault")),
+            "tracked-sync-cancel" => () => Task.FromCanceled(new CancellationToken(true)),
+            "tracked-sync-throw" => () => throw new InvalidOperationException("tracked-sync-throw"),
+            _ => Callback,
+        };
+        object? result;
+        try { result = invoke.Invoke(null, new object[] { callback, Array.Empty<object>(), 42UL }); }
+        catch (TargetInvocationException) when (kind.StartsWith("tracked-sync-", StringComparison.Ordinal)) {
+            Console.WriteLine("TRACKED_SYNC_FAILURE global=" + ScriptExceptions.GlobalCount + " scope=" + scope.Count);
+            return ScriptExceptions.GlobalCount == 1 && scope.Count == 1 && TrackedCompletion.Count == 0 ? 0 : 57;
+        }
+        if (result is not int pending) return 51;
+        if (kind == "tracked-sync") return pending == 0 && TrackedCompletion.Count == 0 ? 0 : 52;
+        if (pending != 1 || stage != 1 || TrackedCompletion.Count != 0) return 53;
+        if (kind == "tracked-shutdown") {
+            Native.ShutdownContinuations();
+            gate.SetException(new InvalidOperationException("tracked-shutdown-fault"));
+            Native.PumpContinuations();
+            return PumpUntil(() => ScriptExceptions.GlobalCount == 1) && TrackedCompletion.Count == 0 && scope.Count == 0 ? 0 : 58;
+        }
+        if (kind == "tracked-cancel") gate.SetCanceled(); else gate.SetResult(true);
+        if (!PumpUntil(() => TrackedCompletion.Count == 1)) return 54;
+        bool success = kind == "tracked-success" || kind == "tracked-async";
+        int faults = kind == "tracked-fault" ? 1 : 0;
+        if (!PumpUntil(() => ScriptExceptions.GlobalCount == faults)) return 55;
+        Native.PumpContinuations();
+        Console.WriteLine("TRACKED count=" + TrackedCompletion.Count + " success=" + TrackedCompletion.Success + " global=" + ScriptExceptions.GlobalCount + " scope=" + scope.Count);
+        return TrackedCompletion.Count == 1 && TrackedCompletion.Id == 42UL && TrackedCompletion.Success == success && ScriptExceptions.GlobalCount == faults && scope.Count == 0 ? 0 : 56;
+    }
 
     private static async Task YieldChild()
     {
@@ -493,6 +542,7 @@ def replace_internal_call(source, declaration, replacement):
 
 
 def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
+    (output / ".editorconfig").write_text("root = true\n", encoding="utf-8")
     for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
@@ -503,10 +553,14 @@ def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
                                            'private static void ReportExceptionInternal(string summary, string? nativeError, long[] frames) => Log(summary);')
             source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);",
                                            "private static string? RunScriptContinuationInternal(IntPtr backend, Action continuation) { continuation(); return null; }")
+            if "CompleteScriptCallInternal" in source:
+                source = replace_internal_call(source, "private static extern string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success);",
+                                               "private static string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success) { TrackedCompletion.Count++; TrackedCompletion.Id = id; TrackedCompletion.Success = success; return null; }")
         (output / name).write_text(source, encoding="utf-8")
     (output / "Probe.csproj").write_text(project_source, encoding="utf-8")
     (output / "Program.cs").write_text(probe_source, encoding="utf-8")
-    result = subprocess.run([dotnet, "build", "Probe.csproj", "--nologo", "-v:minimal"], cwd=output, capture_output=True, text=True, timeout=120)
+    (output / "TrackedCompletion.cs").write_text("namespace FOnline; internal static class TrackedCompletion { internal static int Count { get; set; } internal static ulong Id { get; set; } internal static bool Success { get; set; } }", encoding="utf-8")
+    result = subprocess.run([dotnet, "build", "Probe.csproj", "--nologo", "-v:minimal", "-p:ImportDirectoryBuildProps=false", "-p:ImportDirectoryBuildTargets=false", "-p:UseSharedCompilation=false"], cwd=output, capture_output=True, text=True, timeout=120)
     (output / "build.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
     return dotnet, output
@@ -628,3 +682,10 @@ def test_nested_invocation_preserves_synchronous_owner(callback_probe, kind, mar
     result = run_probe(callback_probe, "callback", kind)
     assert result.returncode == 0, result.stdout + result.stderr
     assert marker in result.stdout
+
+
+@pytest.mark.parametrize("kind", ["tracked-sync", "tracked-success", "tracked-async", "tracked-fault", "tracked-cancel", "tracked-sync-fault", "tracked-sync-cancel", "tracked-sync-throw", "tracked-shutdown"])
+def test_tracked_callback_completes_once_without_charging_deferred_fault_to_scope(callback_probe, kind):
+    result = run_probe(callback_probe, "callback", kind)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "UNHANDLED" not in result.stdout

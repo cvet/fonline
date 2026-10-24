@@ -502,6 +502,12 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 
         bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 
+        if (can_suspend) {
+            auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+            FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+            ctx_ext->Completion = std::move(call.Completion);
+        }
+
         if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
@@ -616,6 +622,12 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
         }
 
         bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (can_suspend) {
+            auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+            FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+            ctx_ext->Completion = std::move(call.Completion);
+        }
 
         if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {

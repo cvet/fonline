@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2579,
-      "inventory_sha256": "e24bb7f4fe64f2e016759642b52e0c8a63fed3492b7e2d8b6c37415ee3e6108c",
+      "inventory_sha256": "b11ce3178a723a2ce73e966dde02ac25eae2631fecc486584527e17c606188dc",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -1096,7 +1096,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 78",
+      "signature": "Version 0 0 79",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1118,7 +1118,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "78"
+      "replacement": "79"
     },
     {
       "id": "script.entity.Critter",
@@ -8068,7 +8068,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 161
+        "line": 162
       },
       "contract": {
         "explicit": true,
@@ -8104,7 +8104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 162
+        "line": 163
       },
       "contract": {
         "explicit": true,
@@ -8140,7 +8140,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 159
+        "line": 160
       },
       "contract": {
         "explicit": true,
@@ -8176,7 +8176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 158
+        "line": 159
       },
       "contract": {
         "explicit": true,
@@ -8212,7 +8212,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 160
+        "line": 161
       },
       "contract": {
         "explicit": true,
@@ -8248,7 +8248,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 148
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -8284,7 +8284,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 149
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -29649,7 +29649,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 155
+        "line": 156
       },
       "contract": {
         "explicit": true,
@@ -29683,7 +29683,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 145
+        "line": 146
       },
       "contract": {
         "explicit": true,
@@ -38144,7 +38144,7 @@
       "arguments": []
     },
     {
-      "id": "script.method.client.Entity.CountTimeEvent#08f3341698dc846a",
+      "id": "script.method.client.Entity.CountTimeEvent#3032339c32e34b9d",
       "family_id": "script.method.client.Entity.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -38153,170 +38153,8 @@
         "mapper"
       ],
       "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any) func)",
-      "description": "Counts all client time events bound to this entity that use the selected callback",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
-        "line": 134
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Entity.CountTimeEvent#5609075e34e56857",
-      "family_id": "script.method.client.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity) func)",
-      "description": "Counts all client time events bound to this entity that use the selected callback",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
-        "line": 127
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Entity.CountTimeEvent#9c7dd3ed70f86a7d",
-      "family_id": "script.method.client.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,TimeEventContext) func)",
-      "description": "Counts all client time events bound to this entity that use the selected callback",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
-        "line": 148
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Entity.CountTimeEvent#ad56856359be786a",
-      "family_id": "script.method.client.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any[]) func)",
-      "description": "Counts all client time events bound to this entity that use the selected callback",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any[]) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -38356,11 +38194,18 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
     {
-      "id": "script.method.client.Entity.CountTimeEvent#e41a67022275199d",
+      "id": "script.method.client.Entity.CountTimeEvent#417e7527b8152349",
       "family_id": "script.method.client.Entity.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -38369,8 +38214,191 @@
         "mapper"
       ],
       "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(uint32 id)",
-      "description": "Returns one when a client time event with this id is bound to the entity, or zero when it is absent",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,TimeEventContext) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
+        "line": 148
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Entity.CountTimeEvent#45d21a68801eb4f0",
+      "family_id": "script.method.client.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
+        "line": 134
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Entity.CountTimeEvent#7ed3553b71048a0d",
+      "family_id": "script.method.client.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientEntityScriptMethods.cpp",
+        "line": 127
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Entity.CountTimeEvent#db3b98741c5df44b",
+      "family_id": "script.method.client.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(uint32 id, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -38410,6 +38438,13 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
@@ -52327,7 +52362,7 @@
       ]
     },
     {
-      "id": "script.method.common.Game.CountTimeEvent#3f402d7af9d733a8",
+      "id": "script.method.common.Game.CountTimeEvent#8ab623cddbdc14b4",
       "family_id": "script.method.common.Game.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -52337,106 +52372,8 @@
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "int32 Game.CountTimeEvent(callback(void,any) func)",
-      "description": "Counts all time events on this Engine instance that use the selected callback",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 931
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.CountTimeEvent#93f88715f57381d8",
-      "family_id": "script.method.common.Game.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "int32 Game.CountTimeEvent(callback(void,TimeEventContext) func)",
-      "description": "Counts all time events on this Engine instance that use the selected context callback",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 945
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "common",
-      "receivers": [
-        "Game"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.common.Game.CountTimeEvent#a7d6bf3965b779f9",
-      "family_id": "script.method.common.Game.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "server",
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "int32 Game.CountTimeEvent(callback(void) func)",
-      "description": "Counts all time events on this Engine instance that use the selected callback",
+      "signature": "int32 Game.CountTimeEvent(callback(void) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -52470,11 +52407,18 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
     {
-      "id": "script.method.common.Game.CountTimeEvent#b5319e6dc3f86b0f",
+      "id": "script.method.common.Game.CountTimeEvent#a4ca2eed35c3f8a4",
       "family_id": "script.method.common.Game.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -52484,8 +52428,8 @@
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "int32 Game.CountTimeEvent(callback(void,any[]) func)",
-      "description": "Counts all time events on this Engine instance that use the selected callback",
+      "signature": "int32 Game.CountTimeEvent(callback(void,any[]) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -52519,11 +52463,18 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
     {
-      "id": "script.method.common.Game.CountTimeEvent#e41a67022275199d",
+      "id": "script.method.common.Game.CountTimeEvent#c565a82cf065f89e",
       "family_id": "script.method.common.Game.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -52533,8 +52484,64 @@
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "int32 Game.CountTimeEvent(uint32 id)",
-      "description": "Returns one when this Engine instance owns a time event with the supplied id, or zero when it is absent",
+      "signature": "int32 Game.CountTimeEvent(callback(void,any) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 931
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.CountTimeEvent#db3b98741c5df44b",
+      "family_id": "script.method.common.Game.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "int32 Game.CountTimeEvent(uint32 id, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -52568,6 +52575,69 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.common.Game.CountTimeEvent#fcb2bac4ef3be7f7",
+      "family_id": "script.method.common.Game.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "int32 Game.CountTimeEvent(callback(void,TimeEventContext) func, bool excludeExecuting = false)",
+      "description": "Counts matching registered time events; excludeExecuting omits executing callbacks",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 945
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
@@ -75583,7 +75653,7 @@
       ]
     },
     {
-      "id": "script.method.server.Entity.CountTimeEvent#08f3341698dc846a",
+      "id": "script.method.server.Entity.CountTimeEvent#3032339c32e34b9d",
       "family_id": "script.method.server.Entity.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -75591,167 +75661,8 @@
         "server"
       ],
       "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any) func)",
-      "description": "SyncScope: requires self; counts events bound to self, no cover change",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 156
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity,any)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.CountTimeEvent#5609075e34e56857",
-      "family_id": "script.method.server.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity) func)",
-      "description": "SyncScope: requires self; counts events bound to self, no cover change",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 149
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.CountTimeEvent#9c7dd3ed70f86a7d",
-      "family_id": "script.method.server.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,TimeEventContext) func)",
-      "description": "SyncScope: requires self; counts events bound to self, no cover change",
-      "flags": [
-        "TimeEventRelated"
-      ],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
-        "line": 170
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 47
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Player",
-        "Location",
-        "Map",
-        "Critter",
-        "Item"
-      ],
-      "return": {
-        "type": "int32",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "func",
-          "type": "callback(void,Entity,TimeEventContext)",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Entity.CountTimeEvent#ad56856359be786a",
-      "family_id": "script.method.server.Entity.CountTimeEvent",
-      "kind": "method",
-      "name": "CountTimeEvent",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any[]) func)",
-      "description": "SyncScope: requires self; counts events bound to self, no cover change",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any[]) func, bool excludeExecuting = false)",
+      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75791,11 +75702,18 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
     {
-      "id": "script.method.server.Entity.CountTimeEvent#e41a67022275199d",
+      "id": "script.method.server.Entity.CountTimeEvent#417e7527b8152349",
       "family_id": "script.method.server.Entity.CountTimeEvent",
       "kind": "method",
       "name": "CountTimeEvent",
@@ -75803,8 +75721,188 @@
         "server"
       ],
       "receiver": "Entity",
-      "signature": "int32 Entity.CountTimeEvent(uint32 id)",
-      "description": "SyncScope: requires self; counts events bound to self, no cover change",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,TimeEventContext) func, bool excludeExecuting = false)",
+      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 170
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity,TimeEventContext)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.CountTimeEvent#45d21a68801eb4f0",
+      "family_id": "script.method.server.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any) func, bool excludeExecuting = false)",
+      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 156
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity,any)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.CountTimeEvent#7ed3553b71048a0d",
+      "family_id": "script.method.server.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(callback(void,Entity) func, bool excludeExecuting = false)",
+      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "flags": [
+        "TimeEventRelated"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerEntityScriptMethods.cpp",
+        "line": 149
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player",
+        "Location",
+        "Map",
+        "Critter",
+        "Item"
+      ],
+      "return": {
+        "type": "int32",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "func",
+          "type": "callback(void,Entity)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Entity.CountTimeEvent#db3b98741c5df44b",
+      "family_id": "script.method.server.Entity.CountTimeEvent",
+      "kind": "method",
+      "name": "CountTimeEvent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Entity",
+      "signature": "int32 Entity.CountTimeEvent(uint32 id, bool excludeExecuting = false)",
+      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75844,6 +75942,13 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "excludeExecuting",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": "false"
         }
       ]
     },
@@ -97815,7 +97920,7 @@
       ],
       "receiver": "TimeEventContext",
       "signature": "void TimeEventContext.SetData(any data)",
-      "description": "Replaces the event payload with one value after the callback returns",
+      "description": "Replaces the event payload with one value after script execution completes",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -97861,7 +97966,7 @@
       ],
       "receiver": "TimeEventContext",
       "signature": "void TimeEventContext.SetDataArray(any[] data)",
-      "description": "Replaces the complete event payload with a copy of the supplied array after the callback returns",
+      "description": "Replaces the complete event payload with a copy of the supplied array after script execution completes",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -97907,7 +98012,7 @@
       ],
       "receiver": "TimeEventContext",
       "signature": "void TimeEventContext.Stop()",
-      "description": "Marks the current event for removal after the callback returns",
+      "description": "Marks the current event for removal after script execution completes",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -98240,7 +98345,7 @@
       ],
       "receiver": null,
       "signature": "ref type TimeEventContext",
-      "description": "Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after the callback returns",
+      "description": "Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after script execution completes",
       "flags": [
         "RefCounted",
         "Export",

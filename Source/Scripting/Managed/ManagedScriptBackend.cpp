@@ -490,6 +490,7 @@ static auto NativeGetHashStr(void* value) noexcept -> MonoString*;
 static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value, MonoString** error) noexcept -> MonoString*;
 static auto NativeResolveHash(void* backend_ptr, uint64_t hash, MonoString** error) noexcept -> void*;
 static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) noexcept -> MonoString*;
+static auto NativeCompleteScriptCall(void* backend_ptr, uint64_t id, mono_bool success) noexcept -> MonoString*;
 static void NativeSignalContinuationsReady(void* backend_ptr) noexcept;
 static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) noexcept -> MonoObject*;
 static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) noexcept -> MonoArray*;
@@ -588,7 +589,7 @@ static void SetSettingValueFromString(ptr<ManagedScriptBackend> backend, MonoStr
 // Property getter/setter callback bridge
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*;
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>;
-static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args) -> shared_ptr<ManagedCallbackPlan>;
+static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args, MonoObject* handler) -> shared_ptr<ManagedCallbackPlan>;
 static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view key) -> nptr<MonoMethod>;
 static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
@@ -1041,7 +1042,7 @@ struct ManagedDynamicFieldAccessors
 };
 
 // Native helpers the bridge invokes by name, resolved once when the ABI binds
-static constexpr array<pair<string_view, int32_t>, 19> MANAGED_NATIVE_HELPERS {{
+static constexpr array<pair<string_view, int32_t>, 20> MANAGED_NATIVE_HELPERS {{
     {"IsDelegate", 1},
     {"IsDictionary", 1},
     {"IsList", 1},
@@ -1060,6 +1061,7 @@ static constexpr array<pair<string_view, int32_t>, 19> MANAGED_NATIVE_HELPERS {{
     {"GetListCount", 1},
     {"GetListItem", 2},
     {"InvokeCallback", 2},
+    {"InvokeTrackedCallback", 3},
     {"InvokeEvent", 3},
 }};
 
@@ -1093,6 +1095,7 @@ struct ManagedCallbackPlan
     ManagedAbiCallbackLayout Layout {};
     nptr<MonoMethod> Adapter {};
     nptr<BaseEngine> Engine {};
+    bool IsAsync {};
 };
 
 // Static free-function definitions (same order as the declarations above)
@@ -2054,6 +2057,11 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
     }
+}
+
+static auto NativeCompleteScriptCall(void* backend_ptr, uint64_t id, mono_bool success) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] { ResolveBoundBackend(backend_ptr)->CompleteCall(id, success != 0); });
 }
 
 static void NativeSignalContinuationsReady(void* backend_ptr) noexcept
@@ -4813,7 +4821,7 @@ static void NativeRegisterGlobalScriptFuncImpl(void* backend_ptr, MonoString* fu
         func_desc->Args.emplace_back(ArgDesc {.Name = {}, .Type = arg_type});
     }
 
-    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, args);
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, args, handler);
     func_desc->AttributeChecker = [attr_name_str](string_view attribute) -> bool { return attribute == attr_name_str; };
     func_desc->Call = [backend = backend.as_ptr(), handler_handle, plan](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, *plan, call); };
 
@@ -4915,7 +4923,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
     backend->AdoptPersistentGcHandle(handler_handle);
     release_handler_handle_on_error.release();
 
-    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ComplexTypeDesc {}, args);
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ComplexTypeDesc {}, args, handler);
 
     engine->SetRemoteCallHandler(
         name_hashed,
@@ -5107,6 +5115,7 @@ static auto NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, Mono
 static void RegisterInternalCalls()
 {
     AddInternalCall("FOnline.Native::RunScriptContinuationInternal", NativeRunScriptContinuation);
+    AddInternalCall("FOnline.Native::CompleteScriptCallInternal", NativeCompleteScriptCall);
     AddInternalCall("FOnline.Native::SignalContinuationsReadyInternal", NativeSignalContinuationsReady);
     AddInternalCall("FOnline.Native::LoadDynamicAssemblyInternal", NativeLoadDynamicAssembly);
     AddInternalCall("FOnline.Native::ReadClientScriptsImageInternal", NativeReadClientScriptsImage);
@@ -5281,13 +5290,22 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
     return prop;
 }
 
-static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args) -> shared_ptr<ManagedCallbackPlan>
+static auto MakeManagedCallbackPlan(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& ret, vector<ComplexTypeDesc> args, MonoObject* handler) -> shared_ptr<ManagedCallbackPlan>
 {
     shared_ptr<ManagedCallbackPlan> plan = safe_alloc::make_shared<ManagedCallbackPlan>();
     plan->Ret = ret;
     plan->Args = std::move(args);
     plan->Layout = BuildManagedAbiCallbackLayout(plan->Ret, plan->Args);
     plan->Engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+
+    MonoMethod* invoke = mono_get_delegate_invoke(mono_object_get_class(handler));
+    FO_VERIFY_AND_THROW(invoke != nullptr, "Managed callback delegate has no Invoke method");
+
+    MonoClass* task_class = mono_class_from_name(mono_get_corlib(), "System.Threading.Tasks", "Task");
+    FO_VERIFY_AND_THROW(task_class != nullptr, "Managed Task class is unavailable");
+
+    MonoClass* return_class = mono_class_from_mono_type(mono_signature_get_return_type(mono_method_signature(invoke)));
+    plan->IsAsync = mono_class_is_assignable_from(task_class, return_class) != 0;
 
     if (plan->Layout.Supported) {
         plan->Adapter = FindCallbackAdapter(backend, MakeManagedAbiCallbackKey(plan->Ret, plan->Args));
@@ -5351,7 +5369,7 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
 
-    if (!plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
+    if ((call.Completion && plan.IsAsync && !plan.Ret) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
         DispatchManagedCallbackBoxed(backend, handler_handle, plan, call);
     }
 }
@@ -5425,6 +5443,24 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
     for (size_t i = 0; i < args.size(); i++) {
         MonoObject* arg = BoxNativeCallValue(backend, args[i], ptr<void>(call.ArgsData[i]).get(), call.Accessor.get());
         mono_array_setref(get_args_array(), i, arg);
+    }
+
+    if (call.Completion && plan.IsAsync && !ret) {
+        uint64_t completion_id = backend->RegisterCallCompletion(call.Completion);
+        auto fail_completion = scope_fail([&]() noexcept { safe_call([&] { backend->CompleteCall(completion_id, false); }); });
+        MonoMethod* invoke_tracked = FindNativeMethod(backend, "InvokeTrackedCallback", 3);
+        void* tracked_args[] = {mono_gchandle_get_target(handler_handle), get_args_array(), &completion_id};
+        ManagedObjectRoot pending;
+        pending.SetObject(InvokeManagedScript(backend, invoke_tracked, nullptr, tracked_args, "Managed tracked callback failed"));
+        FO_VERIFY_AND_THROW(pending.GetObject() != nullptr, "Managed tracked callback status is missing");
+        int32_t status = *static_cast<int32_t*>(mono_object_unbox(pending.GetObject()));
+        FO_VERIFY_AND_THROW(status == 0 || status == 1, "Managed tracked callback status is invalid", status);
+
+        if (status == 0) {
+            backend->CompleteCall(completion_id, true);
+        }
+
+        return;
     }
 
     // Delegate types can belong to system assemblies; Native belongs to the backend's loaded scripts
@@ -5587,7 +5623,7 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
     }
 
     ptr<ManagedScriptBackend> backend {callback->Backend.get_no_const()};
-    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, std::move(args));
+    shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ret, std::move(args), handler);
 
     // The delegate stays rooted by the bridge handle while this runs, so its own root is taken last: nothing after
     // it can throw and leave the handle unreleased
@@ -8360,6 +8396,38 @@ auto ManagedScriptBackend::GetCaches() const -> nptr<ManagedBackendCaches>
     return _caches.get_no_const();
 }
 
+auto ManagedScriptBackend::RegisterCallCompletion(function<void(bool)>& completion) -> uint64_t
+{
+    scoped_lock lock {_callCompletionsLocker};
+
+    FO_VERIFY_AND_THROW(_callCompletionCounter != std::numeric_limits<uint64_t>::max(), "Managed call completion identifiers exhausted");
+    uint64_t id = ++_callCompletionCounter;
+    auto [it, inserted] = _callCompletions.try_emplace(id);
+    FO_STRONG_ASSERT(inserted, "Managed call completion identifier already exists");
+    it->second = std::move(completion);
+    return id;
+}
+
+void ManagedScriptBackend::CompleteCall(uint64_t id, bool success)
+{
+    function<void(bool)> completion;
+
+    {
+        scoped_lock lock {_callCompletionsLocker};
+
+        auto it = _callCompletions.find(id);
+
+        if (it == _callCompletions.end()) {
+            return;
+        }
+
+        completion = std::move(it->second);
+        _callCompletions.erase(it);
+    }
+
+    completion(success);
+}
+
 ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_TRACE_ZONE(Script);
@@ -8379,6 +8447,16 @@ ManagedScriptBackend::~ManagedScriptBackend()
                     (void)InvokeManagedScript(this, shutdown.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation shutdown failed");
                 }
             });
+
+            unordered_map<uint64_t, function<void(bool)>> abandoned_completions;
+
+            {
+                scoped_lock lock {_callCompletionsLocker};
+
+                abandoned_completions.swap(_callCompletions);
+            }
+
+            abandoned_completions.clear();
 
             // The engine clears script statics because the script load context is not collectible and they root for the process lifetime;
             // the ones this cannot reach (generic types, thread statics, references inside value-type statics) static analysis forbids

@@ -289,6 +289,50 @@ internal static partial class Native
     }
 
     [CallableByEngine]
+    internal static int InvokeTrackedCallback(Delegate handler, object?[] args, ulong id)
+    {
+        using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter();
+
+        try {
+            object? result = handler.DynamicInvoke(args);
+            Invariant.Verify(result is Task, "Tracked callback must return a Task");
+            Task task = (Task)result;
+
+            if (task.IsCompleted) {
+                task.GetAwaiter().GetResult();
+                return 0;
+            }
+
+            ScriptExceptions.ObserveTask(task, true);
+            ScriptExceptions.ObserveTask(CompleteTrackedCallbackTask(task, id), true);
+            return 1;
+        }
+        catch (Exception ex) {
+            ScriptExceptions.Record(ex, false);
+            throw;
+        }
+    }
+
+    private static async Task CompleteTrackedCallbackTask(Task task, ulong id)
+    {
+        bool success = true;
+
+        try {
+            await task;
+        }
+        catch (Exception) {
+            // ObserveTask owns deferred fault reporting; the timer applies its explicit Stop/Repeat policy
+            success = false;
+        }
+
+        string? error = CompleteScriptCallInternal(BoundBackend, id, success);
+        ThrowNativeError(error);
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success);
+
+    [CallableByEngine]
     internal static void PumpContinuations()
     {
         ScriptSynchronizationContext.Pump();

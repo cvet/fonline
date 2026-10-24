@@ -99,6 +99,7 @@ protected:
 };
 
 class TimeEventContext;
+struct TimeEventExecution;
 
 enum class EntityHolderEntrySync : uint8_t
 {
@@ -183,6 +184,7 @@ public:
         nanotime FireTime {};
         timespan RepeatDuration {};
         vector<any_t> Data {};
+        shared_ptr<TimeEventExecution> Execution {};
     };
 
     using TimeEventList = vector<shared_ptr<TimeEventData>>;

@@ -65,6 +65,8 @@ public:
     void BindRequiredStuff();
     void Process() override;
     void SignalContinuationsReady();
+    auto RegisterCallCompletion(function<void(bool)>& completion) -> uint64_t;
+    void CompleteCall(uint64_t id, bool success);
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
@@ -90,6 +92,9 @@ private:
     vector<nptr<void>> _refTypePumps {};
     vector<nptr<void>> _refTypeShutdowns {};
     std::atomic<bool> _continuationsReady {};
+    mutex _callCompletionsLocker {};
+    unordered_map<uint64_t, function<void(bool)>> _callCompletions FO_TSA_GUARDED_BY(_callCompletionsLocker) {};
+    uint64_t _callCompletionCounter FO_TSA_GUARDED_BY(_callCompletionsLocker) {};
     vector<nptr<void>> _backendUnbinds {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _persistentGcHandles {};

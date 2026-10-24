@@ -43,7 +43,7 @@ FO_DECLARE_EXCEPTION(TimeEventException);
 
 class BaseEngine;
 
-// Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after the callback returns
+// Transient callback context for inspecting and changing the time event that is currently firing; requested changes are applied after script execution completes
 ///@ ExportRefType Common RefCounted Export = GetId, GetData, GetDataArray, HasData, IsStopped, GetRepeat, Stop, Repeat, SetData, SetDataArray
 class TimeEventContext final : public refcounted<TimeEventContext>
 {
@@ -71,13 +71,13 @@ public:
     [[nodiscard]] auto IsDataChanged() const noexcept -> bool { return _dataChanged; }
     [[nodiscard]] auto GetRawData() const noexcept -> const_span<any_t> { return _data; }
 
-    // Marks the current event for removal after the callback returns
+    // Marks the current event for removal after script execution completes
     void Stop() noexcept;
     // Replaces the repeat interval and schedules the next firing from callback completion, clamped to the Engine minimum interval
     void Repeat(timespan repeat) noexcept;
-    // Replaces the event payload with one value after the callback returns
+    // Replaces the event payload with one value after script execution completes
     void SetData(any_t data);
-    // Replaces the complete event payload with a copy of the supplied array after the callback returns
+    // Replaces the complete event payload with a copy of the supplied array after script execution completes
     void SetDataArray(readonly_vector<any_t> data);
 
 private:
@@ -87,6 +87,16 @@ private:
     bool _stopped {};
     bool _repeatChanged {};
     bool _dataChanged {};
+};
+
+// Accessed under the owning manager's mutex; a non-null execution pauses the registered timer
+struct TimeEventExecution
+{
+    refcount_nptr<TimeEventContext> Context {};
+    nanotime CompletionTime {};
+    bool CallResult {};
+    bool Completed {};
+    bool NativeCallActive {};
 };
 
 class TimeEventManager
@@ -106,12 +116,6 @@ public:
         shared_ptr<Entity::TimeEventData> Event {};
     };
 
-    struct FiredTimeEvent
-    {
-        bool CallResult {};
-        refcount_nptr<TimeEventContext> Context {};
-    };
-
     struct DispatcherHooks
     {
         function<void(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay)> Schedule {};
@@ -125,7 +129,7 @@ public:
     auto operator=(TimeEventManager&&) noexcept = delete;
     ~TimeEventManager() = default;
 
-    [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
+    [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, bool exclude_executing = false) const -> size_t;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
 
     void SetDispatcherHooks(DispatcherHooks hooks);
@@ -139,11 +143,11 @@ public:
     void ClearTimeEvents();
     void CancelAllForEntity(ptr<Entity> entity) noexcept;
     auto CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>;
-    auto FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent;
-    void PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result);
     auto FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>;
 
 private:
+    void FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te);
+    void PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te);
     void AddEntityTimeEventPolling(ptr<Entity> entity);
     void RemoveEntityTimeEventPolling(ptr<Entity> entity);
     void ProcessEntityTimeEvents(ptr<Entity> entity);

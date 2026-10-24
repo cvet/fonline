@@ -38,6 +38,9 @@
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING
+#include "AngelScriptBackend.h"
+#include "AngelScriptContext.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "Server.h"
@@ -84,6 +87,51 @@ namespace
 namespace CallTest
 {
     funcdef int64 UnaryOp(int8);
+
+    [[Async]]
+    [[TimeEvent]]
+    void WaitTimer(TimeEventContext context)
+    {
+        int32 waitingById = Game.CountTimeEvent(context.GetId(), true);
+        int32 executingById = Game.CountTimeEvent(context.GetId());
+        int32 waitingByCallback = Game.CountTimeEvent(WaitTimer, true);
+        int32 executingByCallback = Game.CountTimeEvent(WaitTimer, false);
+
+        if (waitingById != 0 || waitingByCallback != 0 || executingById != 1 || executingByCallback != 1) {
+            throw("Running timer count must honor excludeExecuting");
+        }
+
+        Yield(1);
+        context.Repeat(timespan(5, 3));
+    }
+
+    [[Async]]
+    [[TimeEvent]]
+    void WaitFaultTimer(TimeEventContext context)
+    {
+        int32 waitingById = Game.CountTimeEvent(context.GetId(), true);
+        int32 executingById = Game.CountTimeEvent(context.GetId());
+        int32 waitingByCallback = Game.CountTimeEvent(WaitFaultTimer, true);
+        int32 executingByCallback = Game.CountTimeEvent(WaitFaultTimer, false);
+
+        if (waitingById != 0 || waitingByCallback != 0 || executingById != 1 || executingByCallback != 1) {
+            throw("Running timer count must honor excludeExecuting");
+        }
+
+        Yield(1);
+        context.Repeat(timespan(5, 3));
+        throw("Awaited timer probe failure");
+    }
+
+    uint32 StartFaultTimer()
+    {
+        return Game.StartTimeEvent(timespan(1, 3), timespan(1, 3), WaitFaultTimer);
+    }
+
+    uint32 StartTimer()
+    {
+        return Game.StartTimeEvent(timespan(1, 3), timespan(1, 3), WaitTimer);
+    }
 
     CallReturnProbe? MakeManagedReturnProbe()
     {
@@ -416,6 +464,106 @@ TEST_CASE("AngelScriptCallShapes")
         REQUIRE(func.Call());
         CHECK(func.GetResult() >= 0);
     }
+}
+
+TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-events]")
+{
+    auto settings = CallTestRig::MakeSettings();
+    auto server = CallTestRig::MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    string startup_error = CallTestRig::WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
+    auto context_manager = backend->GetContextMngr();
+    function<void()> resume;
+    int32_t scheduled_contexts = 0;
+    // Each invocation reaches one Yield, so scheduler submissions count actual script starts
+    context_manager->SetDelayedScheduler([&](timespan, function<void()> body) {
+        scheduled_contexts++;
+        resume = std::move(body);
+    });
+    server->TimeEventMngr.SetDispatcherHooks({});
+    auto clear_hooks = scope_exit([&]() noexcept {
+        context_manager->SetDelayedScheduler({});
+        server->TimeEventMngr.ClearDispatcherHooks();
+    });
+    bool cancel = false;
+    bool shutdown_pending = false;
+    bool fault = false;
+    SECTION("ShutdownDuringYield")
+    {
+        shutdown_pending = true;
+    }
+    SECTION("RepeatAfterYield")
+    {
+    }
+    SECTION("RepeatSurvivesFailureAfterYield")
+    {
+        fault = true;
+    }
+    SECTION("CancelDuringYield")
+    {
+        cancel = true;
+    }
+
+    auto start = server->FindFunc<uint32_t>(server->Hashes.to_hashed_string(fault ? "CallTest::StartFaultTimer" : "CallTest::StartTimer"));
+    REQUIRE(start);
+    REQUIRE(start.Call());
+    uint32_t id = start.GetResult();
+    auto events = server->GetTimeEvents();
+    REQUIRE(events);
+    REQUIRE(events->size() == 1);
+    auto event = events->front();
+    event->FireTime = server->GameTime.GetFrameTime();
+    CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(server, id).has_value());
+    REQUIRE(resume);
+    CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id, false) == 1);
+    CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id, true) == 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(server, event->FuncName, {}, true) == 0);
+    CHECK(server->TimeEventMngr.CountTimeEvent(server, event->FuncName, {}, false) == 1);
+    event->FireTime = server->GameTime.GetFrameTime();
+    CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(server, id).has_value());
+    server->TimeEventMngr.ProcessTimeEvents();
+    optional<timespan> next;
+    CHECK(server->TimeEventMngr.CollectReadyTimeEvents(next).empty());
+    CHECK(scheduled_contexts == 1);
+
+
+    if (shutdown_pending) {
+        context_manager->SetDelayedScheduler({});
+        server->TimeEventMngr.ClearDispatcherHooks();
+        clear_hooks.release();
+        resume = {};
+        start = {};
+        event.reset();
+        server->Unlock();
+        unlock.release();
+        server->Shutdown();
+        shutdown.release();
+        CHECK(server->GetRefCount() == 1);
+        return;
+    }
+
+    if (cancel) {
+        server->TimeEventMngr.StopTimeEvent(server, {}, id);
+    }
+
+    nanotime completed_at = server->GameTime.GetFrameTime();
+    resume();
+    resume = {};
+    auto delay = server->TimeEventMngr.FireAndAdvance(server, id);
+    CHECK(delay.has_value() == !cancel);
+    CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id, false) == (cancel ? 0 : 1));
+
+    if (!cancel) {
+        CHECK(event->FireTime == completed_at + timespan {std::chrono::seconds {5}});
+        server->TimeEventMngr.StopTimeEvent(server, {}, id);
+    }
+
+    CHECK(scheduled_contexts == 1);
 }
 
 TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
