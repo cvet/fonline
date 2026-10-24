@@ -34,6 +34,25 @@ These are merge-worktree checks, not release artifacts or qualification of other
 platforms. The embedding map validator still reports findings reproduced on the
 published base's map sources; this does not constitute full map-content approval.
 
+## 2026-10-24 - Preserve the late published upstream step
+
+Pin the new published master af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4
+(version 61), retaining published worker tip 9cca2c14087471b6c9824ec5449e03e7e3aa6dec.
+Merge 9996a1999b4a006262ae1c8bd10f13b26bdad6e7 advances the integration to
+2026.1.62-dev. Replay only seven unpublished fixes; their resulting tip is
+97e20ff33d1cd23469f2ecd2324a90d1ad2c9323. Preserve original version 61
+migration notes and both historical verification sections. The only incoming
+native behavior change preserves fractional item-motion time; published EOF
+normalization introduces no other native tokens.
+
+The SDK child globalization fix and its regression travel with that tail.
+Its earlier Windows Managed overlay passed 40 focused assertions and the full
+787-case / 1728189-assertion native route without warnings, with 35565 source
+after hashes checked. Those results keep their exact original source and Git
+metadata; they do not qualify this new master step, a new committed game bake,
+ordinary GUI, GPU, performance or another platform. Rebuild the current pair
+and complete those independent acceptance layers before claiming them.
+
 ## 2026-10-24 - Reconcile the published animation branch with master
 
 Merge published feature tip `0cd8146d6f42c263c869f35c183432cc00755cfa`

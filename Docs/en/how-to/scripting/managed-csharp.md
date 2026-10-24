@@ -356,7 +356,7 @@ The single-threaded browser runtime has neither a usable managed thread pool nor
 
 The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
 
-The baker starts the SDK compiler with child-only `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0`. Named compiler cultures, including `en-US`, need globalization data; inheriting the embedded Mono runtime's invariant mode produces Roslyn warning `CS2038`. The parent process keeps its runtime setting. The SDK toolchain must supply its normal platform globalization support independently of the packaged game runtime.
+SDK compilation uses child-only `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0`; the parent setting stays unchanged. Named cultures such as `en-US` require globalization data: inherited Mono invariant mode causes `CS2038`. The SDK needs normal platform globalization independently of the packaged game runtime.
 
 A `.csproj` in `ManagedScript.ExtraReferences` is built as a project reference and its package dependencies are copied for that target. Every packed helper assembly is claimed as a bake output, including on an up-to-date target; freshness checks use the pack output, not a temporary MSBuild output directory that the outdated sweep may remove.
 
