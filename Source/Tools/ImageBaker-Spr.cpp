@@ -45,6 +45,8 @@ namespace ImageBakerSpr
     using ImageImport::FrameSequence;
     using ImageImport::FrameShot;
 
+    static constexpr timespan SPR_FRAME_DURATION {std::chrono::milliseconds {100}};
+
     auto Load(string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> FrameCollection
     {
         FO_TRACE_ZONE(Baking);
@@ -345,7 +347,7 @@ namespace ImageBakerSpr
             sequence.Frames.resize(anim_frames.size());
 
             for (auto& frame : sequence.Frames) {
-                frame.Duration = std::chrono::milliseconds {100};
+                frame.Duration = SPR_FRAME_DURATION;
             }
 
             for (size_t anim_frame = 0; anim_frame < anim_frames.size(); anim_frame++) {
@@ -539,3 +541,4 @@ namespace ImageBakerSpr
 FO_END_NAMESPACE
 
 #endif
+

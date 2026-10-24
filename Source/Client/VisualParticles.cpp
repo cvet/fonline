@@ -35,6 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan FORCED_PARTICLE_UPDATE_MIN_TIME {std::chrono::milliseconds {1}};
+
 struct ParticleManager::Impl
 {
     explicit Impl(const ParticleRuntimeServices& services);
@@ -335,7 +337,7 @@ void ParticleSystem::Update()
     timespan elapsed = time - _lastUpdateTime;
 
     if (_forceDraw && elapsed <= timespan::zero) {
-        elapsed = std::max(_particleMngr->_animUpdateThreshold, timespan {std::chrono::milliseconds {1}});
+        elapsed = std::max(_particleMngr->_animUpdateThreshold, FORCED_PARTICLE_UPDATE_MIN_TIME);
     }
 
     Update(elapsed);
@@ -409,3 +411,4 @@ void ParticleSystem::ResetTiming()
 }
 
 FO_END_NAMESPACE
+

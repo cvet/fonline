@@ -43,6 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan LOCAL_MAP_PREPARE_REFRESH_INTERVAL {std::chrono::milliseconds {1000}};
+static constexpr timespan FRAME_HEALTH_REPORT_INTERVAL {std::chrono::seconds {1}};
+
 void ClientInitHook(ptr<ClientEngine>);
 
 auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
@@ -2957,7 +2960,7 @@ void ClientEngine::LmapPrepareMap()
         pix_y = 0;
     }
 
-    _lmapPrepareNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {1000};
+    _lmapPrepareNextTime = GameTime.GetFrameTime() + LOCAL_MAP_PREPARE_REFRESH_INTERVAL;
 }
 
 void ClientEngine::CleanupSpriteCache()
@@ -3283,7 +3286,7 @@ void ClientEngine::TraceFrameHealth()
     _frameHealthLast = frame_time;
     _frameHealthFrames++;
 
-    if (frame_time - _frameHealthStart >= std::chrono::seconds {1}) {
+    if (frame_time - _frameHealthStart >= FRAME_HEALTH_REPORT_INTERVAL) {
         TraceMoveSync("frames", strex("n={} ms={} max_ms={}", _frameHealthFrames, (frame_time - _frameHealthStart).milliseconds(), _frameHealthMaxGap.milliseconds()).strv());
 
         _frameHealthStart = frame_time;

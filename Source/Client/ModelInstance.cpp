@@ -50,6 +50,8 @@ static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
+static constexpr timespan ANIMATION_END_EXCLUSION {std::chrono::nanoseconds {1}};
+static constexpr timespan MOVE_TRACK_TRANSITION_TIME {std::chrono::milliseconds {1}};
 
 ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info) :
     _modelMngr {model_mngr},
@@ -736,7 +738,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         bool no_smooth = is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init);
         timespan smooth_time = no_smooth ? timespan::zero : _modelMngr->_moveTransitionTime;
-        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - timespan {std::chrono::nanoseconds {1}}, timespan::zero));
+        timespan anim_start_time = std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - ANIMATION_END_EXCLUSION, timespan::zero));
         timespan anim_duration = is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan::zero : _animDuration - anim_start_time;
 
         // Disable current track
@@ -903,13 +905,12 @@ void ModelInstance::RefreshMoveAnimation()
             // Retiming must not seek, and pending speed/completion events must not restore the previous selection.
             _moveAnimController->ResetEvents();
 
-            constexpr timespan transition_time {std::chrono::milliseconds {1}};
             int32_t previous_track = _curMoveTrack == 0 ? 1 : 0;
 
-            _moveAnimController->AddEventEnable(previous_track, false, transition_time);
-            _moveAnimController->AddEventSpeed(previous_track, 0.0f, {}, transition_time);
-            _moveAnimController->AddEventWeight(previous_track, 0.0f, {}, transition_time);
-            _moveAnimController->AddEventWeight(_curMoveTrack, 1.0f, {}, transition_time);
+            _moveAnimController->AddEventEnable(previous_track, false, MOVE_TRACK_TRANSITION_TIME);
+            _moveAnimController->AddEventSpeed(previous_track, 0.0f, {}, MOVE_TRACK_TRANSITION_TIME);
+            _moveAnimController->AddEventWeight(previous_track, 0.0f, {}, MOVE_TRACK_TRANSITION_TIME);
+            _moveAnimController->AddEventWeight(_curMoveTrack, 1.0f, {}, MOVE_TRACK_TRANSITION_TIME);
             _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
 
             if (_turnAnimPlaying && !frozen) {
@@ -929,7 +930,7 @@ void ModelInstance::RefreshMoveAnimation()
     _frameLayoutDirty = true;
     _forceDraw = true;
 
-    timespan smooth_time = frozen ? timespan::zero : timespan {std::chrono::milliseconds {1}};
+    timespan smooth_time = frozen ? timespan::zero : MOVE_TRACK_TRANSITION_TIME;
 
     if (anim_index != -1) {
         int32_t new_track = _curMoveTrack == 0 ? 1 : 0;
@@ -944,7 +945,7 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
 
         timespan duration = _moveAnimController->GetAnimDuration(anim_index);
-        timespan start_time = std::min(ScaleModelAnimationTime(duration, normalized_time), std::max(duration - timespan {std::chrono::nanoseconds {1}}, timespan::zero));
+        timespan start_time = std::min(ScaleModelAnimationTime(duration, normalized_time), std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
 
         _moveAnimController->SetTrackPosition(new_track, start_time);
 

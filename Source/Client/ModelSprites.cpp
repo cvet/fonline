@@ -43,6 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan HIT_MASK_REFRESH_INTERVAL {std::chrono::milliseconds {100}};
+
 auto ModelSpriteHitMask::IsHitTest(ipos32 pos) const -> bool
 {
     if (!_maskSize.is_valid_pos(pos)) {
@@ -67,7 +69,7 @@ void ModelSpriteHitMask::Refresh(ptr<const RenderTexture> texture, ipos32 pos, i
         _readbackSize = size;
         _stale = false;
         _refreshRequested = false;
-        _nextRefreshTime = now + std::chrono::milliseconds {100};
+        _nextRefreshTime = now + HIT_MASK_REFRESH_INTERVAL;
     }
 
     if (!_readback) {

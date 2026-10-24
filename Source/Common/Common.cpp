@@ -36,6 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan IDLE_TIME_BALANCE_FLOOR {-std::chrono::milliseconds {1000}};
+
 struct InterthreadData
 {
     mutex ListenersLocker {};
@@ -203,8 +205,8 @@ void FrameBalancer::EndLoop()
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < timespan(-std::chrono::milliseconds {1000})) {
-                _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
+            if (_idleTimeBalance < IDLE_TIME_BALANCE_FLOOR) {
+                _idleTimeBalance = IDLE_TIME_BALANCE_FLOOR;
             }
         }
     }
@@ -217,3 +219,4 @@ void FrameBalancer::EndLoop()
 }
 
 FO_END_NAMESPACE
+

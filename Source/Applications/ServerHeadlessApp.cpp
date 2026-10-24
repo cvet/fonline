@@ -40,6 +40,8 @@
 
 FO_USING_NAMESPACE();
 
+static constexpr std::chrono::milliseconds SERVER_STARTUP_POLL_INTERVAL {10};
+
 FO_BEGIN_NAMESPACE
 void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
 FO_END_NAMESPACE
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
             }
             else {
                 while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
-                    coarse_sleep(std::chrono::milliseconds {10});
+                    coarse_sleep(SERVER_STARTUP_POLL_INTERVAL);
                 }
             }
 
@@ -131,3 +133,4 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
         balancer.EndLoop();
     }
 }
+

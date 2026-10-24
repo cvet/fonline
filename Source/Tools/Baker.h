@@ -68,8 +68,8 @@ public:
     [[nodiscard]] virtual auto GetName() const -> string_view = 0;
     [[nodiscard]] virtual auto GetOrder() const -> int32_t = 0;
 
-    virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
     virtual auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers = {}) const -> vector<string>;
+    virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
     void SetImageDependencies(shared_ptr<const ImageDependencyGraph> graph) { _context->SetImageDependencies(std::move(graph)); }
 
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr, shared_ptr<ResourceUsage> usage = nullptr) -> vector<unique_ptr<BaseBaker>>;
@@ -203,3 +203,4 @@ public:
 };
 
 FO_END_NAMESPACE
+

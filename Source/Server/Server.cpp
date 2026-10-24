@@ -48,6 +48,9 @@ FO_BEGIN_NAMESPACE
 
 void ServerInitHook(ptr<ServerEngine>);
 
+static constexpr timespan JOB_STATS_SAMPLE_INTERVAL {std::chrono::seconds {1}};
+static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
+
 // An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
@@ -977,7 +980,7 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
         return;
     }
 
-    if (cur_time - _stats.JobCounterBegin < std::chrono::seconds {1}) {
+    if (cur_time - _stats.JobCounterBegin < JOB_STATS_SAMPLE_INTERVAL) {
         return;
     }
 
@@ -990,7 +993,7 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
 
     _stats.JobTimeStamps.emplace_back(cur_time, completed_jobs);
 
-    while (_stats.JobTimeStamps.size() > 1 && cur_time - _stats.JobTimeStamps.front().first > std::chrono::minutes {1}) {
+    while (_stats.JobTimeStamps.size() > 1 && cur_time - _stats.JobTimeStamps.front().first > JOB_STATS_ROLLING_WINDOW) {
         _stats.JobTimeStamps.pop_front();
     }
 

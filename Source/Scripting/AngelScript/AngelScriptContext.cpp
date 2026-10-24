@@ -50,6 +50,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan ACTIVE_CONTEXT_RESUME_RETRY_DELAY {std::chrono::milliseconds {1}};
+
 static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace::frame>;
 static void CollectScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept;
 
@@ -594,7 +596,7 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
 
         if (ctx_ext->ExecutionActive.exchange(true)) {
             FO_STRONG_ASSERT(_delayedScheduler, "Missing required delayed scheduler");
-            _delayedScheduler(std::chrono::milliseconds(1), [this, ctx]() { ResumeSpecificContext(ctx); });
+            _delayedScheduler(ACTIVE_CONTEXT_RESUME_RETRY_DELAY, [this, ctx]() { ResumeSpecificContext(ctx); });
             return;
         }
 
@@ -831,3 +833,4 @@ static void AngelScriptEndCall(AngelScript::asIScriptContext* raw_ctx) noexcept
 FO_END_NAMESPACE
 
 #endif
+

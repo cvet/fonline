@@ -35,6 +35,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan MIN_MOVEMENT_DURATION {std::chrono::nanoseconds {100}};
+static constexpr timespan MOVEMENT_OFFSET_RESCALE_RESOLUTION {std::chrono::milliseconds {1}};
+static constexpr timespan MOVEMENT_DURATION_RESCALE_RESOLUTION {std::chrono::nanoseconds {1}};
 static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS = 20;
 
 static auto RescaleMovementTime(timespan time, uint16_t speed, uint16_t new_speed, timespan resolution) -> timespan
@@ -67,7 +70,7 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
 MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset, timespan whole_time) :
     MovingContext(map_size, speed, std::move(steps), std::move(control_steps), start_time, offset_time, start_hex, start_hex_offset, end_hex_offset)
 {
-    _wholeTime = std::max(whole_time, timespan {100});
+    _wholeTime = std::max(whole_time, MIN_MOVEMENT_DURATION);
 }
 
 void MovingContext::RecalculateMetrics()
@@ -189,9 +192,9 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 {
     FO_VERIFY_AND_THROW(_speed != 0 && speed != 0, "Speed must be non-zero");
 
-    timespan new_offset_time = RescaleMovementTime(_elapsedTime, _speed, speed, std::chrono::milliseconds {1});
-    timespan new_whole_time = std::max(RescaleMovementTime(_wholeTime, _speed, speed, std::chrono::nanoseconds {1}), timespan {100});
-    timespan new_lease_time = _leaseTime > timespan::zero ? RescaleMovementTime(_leaseTime, _speed, speed, std::chrono::nanoseconds {1}) : timespan::zero;
+    timespan new_offset_time = RescaleMovementTime(_elapsedTime, _speed, speed, MOVEMENT_OFFSET_RESCALE_RESOLUTION);
+    timespan new_whole_time = std::max(RescaleMovementTime(_wholeTime, _speed, speed, MOVEMENT_DURATION_RESCALE_RESOLUTION), MIN_MOVEMENT_DURATION);
+    timespan new_lease_time = _leaseTime > timespan::zero ? RescaleMovementTime(_leaseTime, _speed, speed, MOVEMENT_DURATION_RESCALE_RESOLUTION) : timespan::zero;
 
     _wholeTime = new_whole_time;
     _leaseTime = new_lease_time;
@@ -273,7 +276,7 @@ auto MovingContext::EvaluateMetrics() const -> MovingMetrics
     metrics.WholeDist = std::max(metrics.WholeDist, 0.0001f);
 
     if (_speed != 0) {
-        metrics.WholeTime = std::max(metrics.WholeTime, timespan {100});
+        metrics.WholeTime = std::max(metrics.WholeTime, MIN_MOVEMENT_DURATION);
     }
 
     return metrics;

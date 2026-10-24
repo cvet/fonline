@@ -35,6 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr std::chrono::milliseconds QUIT_WAIT_POLL_INTERVAL {100};
+
 struct Application::Context
 {
     Null_Renderer HeadlessRenderer {};
@@ -443,7 +445,7 @@ void Application::WaitForRequestedQuit()
     unique_lock locker {_quitLocker};
 
     while (!_quit) {
-        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+        _quitEvent.wait_for(locker, QUIT_WAIT_POLL_INTERVAL);
 
         if (IsQuitSignalReceived()) {
             RequestQuit();
@@ -837,3 +839,4 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 }
 
 FO_END_NAMESPACE
+

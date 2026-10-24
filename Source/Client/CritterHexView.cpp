@@ -46,6 +46,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan EXTRA_OFFSET_STEP_INTERVAL {std::chrono::milliseconds {30}};
+
 CritterHexView::CritterHexView(ptr<MapView> map, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) :
     CritterView(map->GetEngine(), id, proto, props),
     HexView(map)
@@ -524,7 +526,7 @@ void CritterHexView::Process()
 
     // Extra offsets
     if (_offsExtNextTime && _engine->GameTime.GetFrameTime() >= _offsExtNextTime) {
-        _offsExtNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {30};
+        _offsExtNextTime = _engine->GameTime.GetFrameTime() + EXTRA_OFFSET_STEP_INTERVAL;
 
         float32_t dist = _offsExt.dist();
         int32_t dist_div = iround<int32_t>(dist) / 10;
@@ -807,7 +809,7 @@ void CritterHexView::AddExtraOffs(ipos32 offset)
     _offsExtSpeed.x = -_offsExtSpeed.x;
     _offsExtSpeed.y = -_offsExtSpeed.y;
 
-    _offsExtNextTime = _engine->GameTime.GetFrameTime() + std::chrono::milliseconds {30};
+    _offsExtNextTime = _engine->GameTime.GetFrameTime() + EXTRA_OFFSET_STEP_INTERVAL;
 
     RefreshOffs();
 }

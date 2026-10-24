@@ -35,6 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr timespan FPS_MEASURE_INTERVAL {std::chrono::seconds {1}};
+
 GameTimer::GameTimer(ptr<TimerSettings> settings) :
     _settings {settings}
 {
@@ -134,7 +136,7 @@ void GameTimer::FrameAdvance(bool clamp_to_cap)
     _frameDeltaTime.store(new_frame_time - prev_frame_time, std::memory_order_relaxed);
 
     // FPS counter (main-worker-only state)
-    if (new_frame_time - _fpsMeasureTime >= std::chrono::seconds {1}) {
+    if (new_frame_time - _fpsMeasureTime >= FPS_MEASURE_INTERVAL) {
         _fps.store(_fpsMeasureCounter, std::memory_order_relaxed);
         _fpsMeasureTime = new_frame_time;
         _fpsMeasureCounter = 0;
@@ -157,3 +159,4 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
 }
 
 FO_END_NAMESPACE
+

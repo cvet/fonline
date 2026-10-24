@@ -43,6 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+static constexpr std::chrono::milliseconds QUIT_WAIT_POLL_INTERVAL {100};
+static constexpr std::chrono::milliseconds SPLASH_CALLBACK_POLL_INTERVAL {16};
+
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
@@ -2357,7 +2360,7 @@ void Application::WaitForRequestedQuit()
     while (!_quit) {
         // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
         // waiting thread is the one that converts it into a regular RequestQuit with logging/notification
-        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+        _quitEvent.wait_for(locker, QUIT_WAIT_POLL_INTERVAL);
 
         if (IsQuitSignalReceived()) {
             RequestQuit();
@@ -3180,7 +3183,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
                 SDL_RenderDebugText(renderer.get(), text_x, text_y, window_text_ptr.get());
                 SDL_RenderPresent(renderer.get());
 
-                if (fut.wait_for(std::chrono::milliseconds(16)) == std::future_status::ready) {
+                if (fut.wait_for(SPLASH_CALLBACK_POLL_INTERVAL) == std::future_status::ready) {
                     fut.get();
                     break;
                 }
@@ -3553,3 +3556,4 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
 }
 
 FO_END_NAMESPACE
+

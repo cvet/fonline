@@ -46,6 +46,7 @@ static constexpr int32_t LIGHT_HEX_COLOR_MAX = 200;
 static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX = 255;
 static constexpr float32_t MAP_DEPTH_RANGE_MARGIN = 1000.0f;
 static constexpr isize32 MAP_RENDER_TARGET_PADDING = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
+static constexpr timespan LIGHT_TRANSITION_DURATION {std::chrono::milliseconds {200}};
 
 // A map flush effect may displace its lookup (a screen shake, a heat warp) by a few percent of the view
 static constexpr int32_t MAP_COMPOSITE_MARGIN_DIVISOR = 8;
@@ -1458,7 +1459,7 @@ void MapView::ProcessLighting()
         int32_t prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
-            float32_t elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(std::chrono::milliseconds {200});
+            float32_t elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(LIGHT_TRANSITION_DURATION);
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
 
