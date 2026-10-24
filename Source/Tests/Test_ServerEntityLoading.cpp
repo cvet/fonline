@@ -177,7 +177,7 @@ TEST_CASE("ServerNonPersistentInventoryItemDoesNotLeaveRestoreDependency", "[ser
 
     server->UnloadCritter(cr);
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     REQUIRE(loaded);
     CHECK_FALSE(is_error);
     CHECK(CollectItemIds(loaded->GetInvItems()) == vector<ident_t> {kept_id});
@@ -212,7 +212,7 @@ TEST_CASE("ServerNonPersistentContainerItemDoesNotLeaveRestoreDependency", "[ser
     server->ItemMngr.DestroyItem(temporary);
     server->UnloadCritter(cr);
     bool is_error = false;
-    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+    auto loaded = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
     REQUIRE(loaded);
     CHECK_FALSE(is_error);
     auto loaded_bag = server->EntityMngr.GetItem(bag_id);
