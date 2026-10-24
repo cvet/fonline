@@ -108,11 +108,21 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_CreateCritter(ptr<Serve
     return cr;
 }
 
-// SyncScope: database/registry load only; returned critter must be covered before cross-entity use
+// SyncScope: the newly loaded critter is captured before publication and remains covered on return
 ///@ ExportMethod
-FO_SCRIPT_API ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)
 {
     auto cr = server->LoadCritter(crId, forPlayer);
+    return cr;
+}
+
+// SyncScope: requires the target map cover; the newly restored critter is captured before publication
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer, FO_REQUIRES_COVER ptr<Map> map)
+{
+    ValidateEntityAccess(map);
+
+    auto cr = server->LoadCritter(crId, forPlayer, map);
     return cr;
 }
 

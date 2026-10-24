@@ -2318,6 +2318,29 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             break;
         }
 
+        in_buf.Unlock();
+        EventResult pre_process_result = OnPlayerPreProcess.Fire(player);
+
+        if (player->IsDestroyed() || player->IsDestroying()) {
+            return;
+        }
+
+        ValidateEntityAccess(player);
+
+        if (player->GetConnection() != connection || connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+            return;
+        }
+        if (pre_process_result == EventResult::StopChain) {
+            connection->GracefulDisconnect();
+            return;
+        }
+
+        in_buf.Lock();
+
+        if (!in_buf->NeedProcess()) {
+            break;
+        }
+
         auto msg = in_buf->ReadMsg();
 
         in_buf.Unlock();
@@ -2471,7 +2494,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
     return cr;
 }
 
-auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
+auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player, nptr<Map> map) -> ptr<Critter>
 {
     FO_TRACE_ZONE(Entity);
 
@@ -2479,19 +2502,35 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     logging::write(logging::type::info, "Load critter {}", cr_id);
 
+    ValidateEntityAccess(map);
+    FO_VERIFY_AND_THROW(!map || (!map->IsDestroyed() && !map->IsDestroying()), "Cannot restore critter onto destroyed map", cr_id, map->GetId());
+
+    auto map_holder = map.try_hold_ref();
+    ignore_unused(map_holder);
+    ident_t target_map_id = map ? map->GetId() : ident_t {};
+
     if (EntityMngr.GetCritter(cr_id)) {
-        throw GenericException("Critter already in game");
+        throw GenericException("Critter already in game", cr_id);
     }
 
     bool is_error = false;
-    auto cr = EntityMngr.LoadCritter(cr_id, for_player, is_error);
+    ident_t stored_map_id {};
+    auto cr = EntityMngr.LoadCritter(cr_id, for_player, map ? &stored_map_id : nullptr, is_error);
+    bool invalid_map = !is_error && cr && map && (stored_map_id != target_map_id || !map->GetSize().is_valid_pos(cr->GetHex()));
 
-    if (is_error) {
+    if (is_error || invalid_map) {
+        mpos loaded_hex = cr ? cr->GetHex() : mpos {};
+        string_view failure_reason = is_error ? "Critter loading or preload failed" : stored_map_id != target_map_id ? "Stored map differs from target" : "Loaded position is outside target map bounds";
+
         if (cr) {
             cr->MarkAsDestroying();
             UnloadCritterInnerEntities(cr);
             cr->MarkAsDestroyed();
             EntityMngr.UnregisterCritter(cr, false);
+        }
+
+        if (map) {
+            throw GenericException("Cannot restore critter on stored map", failure_reason, cr_id, stored_map_id, target_map_id, loaded_hex);
         }
 
         throw GenericException("Critter data base loading error");
@@ -2501,24 +2540,40 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
         throw GenericException("Critter removed during loading", cr_id);
     }
 
+    mpos target_hex = cr->GetHex();
     EntityMngr.MakePersistent(cr, true, true);
-    MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
-    if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
+    if (map) {
+        MapMngr.AddCritterToMap(cr, map, cr->GetHex(), cr->GetDir(), {});
+        OnMapCritterIn.Fire(map, cr);
+    }
+    else {
+        MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
         OnGlobalMapCritterIn.Fire(cr);
     }
+
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, false);
-        MapMngr.ProcessVisibleCritters(cr);
-        MapMngr.ProcessVisibleItems(cr);
     }
+
+    MapMngr.ProcessVisibleCritters(cr);
+    MapMngr.ProcessVisibleItems(cr);
+
     if (!cr->IsDestroyed()) {
         OnCritterLoad.Fire(cr);
     }
 
     if (cr->IsDestroyed()) {
-        throw GenericException("Player critter destroyed during loading");
+        throw GenericException("Critter destroyed during loading", cr_id);
+    }
+
+    if (map) {
+        if (map->IsDestroyed()) {
+            throw GenericException("Critter load event destroyed the target map", cr_id, target_map_id);
+        }
+        if (cr->GetMapId() != target_map_id || cr->GetHex() != target_hex || map->GetCritter(cr_id) != cr) {
+            throw GenericException("Critter load event moved the restored critter", cr_id, target_map_id, target_hex, cr->GetMapId(), cr->GetHex());
+        }
     }
 
     return cr;
@@ -3101,6 +3156,8 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
+    RequirePlayerPreLogin(not_logged_in_player);
+
     auto player_holder = not_logged_in_player.hold_ref();
 
     {
@@ -3170,6 +3227,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
     FO_VERIFY_AND_THROW(player_id, "Missing required player id");
+
+    RequirePlayerPreLogin(not_logged_in_player);
 
     auto player_holder = not_logged_in_player.hold_ref();
 
@@ -3314,6 +3373,8 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
     FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Unlogged player is already marked as logged in");
 
+    RequirePlayerPreLogin(not_logged_in_player);
+
     auto player_holder = not_logged_in_player.hold_ref();
 
     {
@@ -3362,6 +3423,49 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
     OnPlayerLoggedIn(player, not_logged_in_player);
 
     return player;
+}
+
+void ServerEngine::RequirePlayerPreLogin(ptr<Player> not_logged_in_player)
+{
+    ValidateEntityAccess(not_logged_in_player);
+    FO_VERIFY_AND_THROW(!not_logged_in_player->IsDestroyed() && !not_logged_in_player->IsDestroying(), "Cannot admit a destroyed player");
+    auto player_holder = not_logged_in_player.hold_ref();
+    ignore_unused(player_holder);
+
+    auto connection = not_logged_in_player->GetConnection();
+    FO_VERIFY_AND_THROW(!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected(), "Cannot admit a disconnected player");
+    EventResult pre_login_result = OnPlayerPreLogin.Fire(not_logged_in_player);
+
+    if (not_logged_in_player->IsDestroyed()) {
+        scoped_lock locker {_notLoggedInPlayersLocker};
+        auto it = std::ranges::find(_notLoggedInPlayers, player_holder);
+
+        if (it != _notLoggedInPlayers.end()) {
+            _notLoggedInPlayers.erase(it);
+        }
+
+        throw GenericException("Player destroyed during pre-login");
+    }
+
+    if (not_logged_in_player->IsDestroying()) {
+        not_logged_in_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
+        throw GenericException("Player is being destroyed during pre-login");
+    }
+
+    ValidateEntityAccess(not_logged_in_player);
+    FO_VERIFY_AND_THROW(!not_logged_in_player->GetLoggedIn(), "Player logged in during pre-login");
+    connection = not_logged_in_player->GetConnection();
+
+    if (pre_login_result == EventResult::StopChain) {
+        if (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
+            not_logged_in_player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
+            connection->GracefulDisconnect();
+        }
+
+        throw GenericException("Player login rejected by OnPlayerPreLogin");
+    }
+
+    FO_VERIFY_AND_THROW(!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected(), "Player disconnected during pre-login");
 }
 
 void ServerEngine::Process_Move(ptr<Player> player)

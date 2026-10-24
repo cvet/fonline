@@ -1,5 +1,57 @@
 # Documentation Verification Report
 
+## 2026-10-24 - Reconcile the published animation branch with master
+
+Merge published feature tip `0cd8146d6f42c263c869f35c183432cc00755cfa`
+with published master `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0`.
+Review both incoming commits and all 50 changed source/test/documentation paths.
+Retain player-admission gates, stored-map critter loading, callback lifetime
+checks and the optional interthread-only transport setting. The default remains
+false, the existing two-argument script load keeps its global-map destination,
+and storage formats and Managed ABI 9 remain unchanged. Keep the feature's
+fractional item-movement fix and withdrawal of unsynchronized client/mapper
+blocking; no such incomplete API is restored by the merge.
+
+Reconcile the feature version to `2026.1.61-dev` after master's version 60.
+Preserve both published changelog histories, advance the current date and bind
+the reviewed Russian translation to the English source. The runtime contract
+stays at master's marker 77. Normalize twelve incoming extra EOF blank lines
+without changing native tokens.
+
+Documentation preparation passes with 15 generated outputs; validation passes
+413 Markdown entries. Focused version/API/description/validator tests pass
+81 cases and 100 subtests. The version/migration check passes against the exact
+master tip. Aggregate contract comparison against the old feature tip passes
+six API changes across seventeen domains, with three required dispositions and
+none missing. Native, bake and player-path qualification remain separate from
+these documentation results.
+
+## 2026-10-23 - Rebase player admission and stored-map loading
+
+Rebase the unpublished `fc4474a1eba43b75518747bb2dd97e05c5d3dcd6`
+from `6c88391e77d519885d54f8894d0781a7d0a14ee6` onto published
+`ca18bfeededf7777db2fdc2b9dcd77ec4c2ce135` (`2026.1.59-dev`). The
+resulting local step is `2026.1.60-dev`; preserve published versions 57-59
+and advance the manual compatibility marker from 76 to 77. The incoming
+server changes rename the pathfinding obstacle query and clarify shutdown
+ownership; they do not overlap the restored-critter callback sequence.
+Preserve the project-owned presentation/resource APIs and their migration
+owners from the incoming range.
+
+Regenerate the API inventory and paired references from the combined source:
+2579 symbols, including both LoadCritter overloads and the optional transport
+setting. Merge description translations by stable locator and preserve every
+published disposition. Bind three reviewed feature dispositions to the exact
+published/combined model digests: six changes in seventeen domains, none
+missing. API, description and version tests pass 31 cases; the source version
+check passes. Documentation preparation passes 314 normative snippets and
+183 external parser checks, with 4888 current description translations and
+28 retrieval tasks. Delivery remains within the published byte budget.
+
+The embedding project owns integration, native build/runtime checks and its
+exception-safety baseline. Earlier runtime results predate this rebase; they
+are not claimed as validation of the new combined revision here.
+
 ## 2026-10-20 - Reconcile published persistence and WebSocket updates with map authoring work
 
 Update the Engine worktree from `2860bb2755621976d199883e254d66808a659ec1`

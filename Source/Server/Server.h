@@ -183,7 +183,7 @@ public:
     auto LoginPlayerToTempSession(ptr<Player> not_logged_in_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
-    auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player, nptr<Map> map = nullptr) -> ptr<Critter>;
     void UnloadCritter(ptr<Critter> cr);
     void UnloadCritterInnerEntities(ptr<Critter> cr);
     void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr);
@@ -210,6 +210,10 @@ public:
     // Runs during server shutdown before script modules are finalized
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Native admission gate before registration, storage or reconnect replacement; StopChain rejects the candidate
+    FO_ENTITY_EVENT(OnPlayerPreLogin, ptr<Player> /*notLoggedInPlayer*/);
+    // Native gate before each complete logged-in message; StopChain disconnects and stops dispatch
+    FO_ENTITY_EVENT(OnPlayerPreProcess, ptr<Player> /*player*/);
     // Runs after login success is sent and before post-login setup; `notLoggedInPlayer` is present only during reconnect, and `StopChain` rejects the login
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*notLoggedInPlayer*/);
@@ -427,6 +431,7 @@ private:
     auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
     void OnPlayerConnected(ptr<Player> not_logged_in_player);
+    void RequirePlayerPreLogin(ptr<Player> not_logged_in_player);
     auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;
     void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;

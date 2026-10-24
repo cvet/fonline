@@ -117,6 +117,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-clientnetwork-proxyuser-5841370a5a"></a>
 - [`symbol-setting-client-clientnetwork-proxyuser-5841370a5a`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-proxyuser-5841370a5a)
 
+<a id="symbol-setting-client-clientnetwork-requireinterthreadtransport-f45fbcdc95"></a>
+- [`symbol-setting-client-clientnetwork-requireinterthreadtransport-f45fbcdc95`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-requireinterthreadtransport-f45fbcdc95)
+
 <a id="symbol-setting-client-clientnetwork-serverhost-a2daa121d7"></a>
 - [`symbol-setting-client-clientnetwork-serverhost-a2daa121d7`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-serverhost-a2daa121d7)
 

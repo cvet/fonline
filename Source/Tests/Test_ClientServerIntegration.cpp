@@ -669,5 +669,140 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     }());
 }
 
+TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates", "[network][player]")
+{
+    bool dedicated_remote_only = GENERATE(false, true);
+    CAPTURE(dedicated_remote_only);
+
+    int32_t login_calls = 0;
+    int32_t world_steps = 0;
+    int32_t world_sum = 0;
+    map<ident_t, int32_t> steps_by_player;
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    auto first_settings = MakeClientTestSettings(port);
+    auto second_settings = MakeClientTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.Server.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+    BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, dedicated_remote_only);
+    BakerTests::OverrideSetting(server_settings.Network.WebSocketPort, 0);
+    BakerTests::OverrideSetting(first_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
+    BakerTests::OverrideSetting(second_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
+
+    auto server = MakeServerEngine(server_settings);
+    auto first = MakeClientEngine(first_settings);
+    auto second = MakeClientEngine(second_settings);
+    auto shutdown = scope_exit([&]() noexcept {
+        safe_call([&] { second->Shutdown(); });
+        safe_call([&] { first->Shutdown(); });
+        safe_call([&] { server->Shutdown(); });
+    });
+    REQUIRE(WaitForServerStart(server).empty());
+    REQUIRE(server->GetWorkerThreadCount() == 1);
+    CHECK(HasInterthreadListener(port) == !dedicated_remote_only);
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
+
+        // Both scripting backends enter the same validated remote-call boundary. Native handlers keep this
+        // worker/transport regression independent of the backend's fixture compiler and call syntax.
+        server->SetRemoteCallHandler(
+            server->Hashes.to_hashed_string("UnitTestLogin"),
+            [&](hstring, nptr<Entity> caller, span<uint8_t>) {
+                ptr<Player> player = caller.dyn_cast<Player>();
+                login_calls++;
+                auto logged = server->LoginPlayerToTempSession(player);
+                auto cr = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestSharedCritter"), true);
+                auto loc = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestSharedLocation"), vector<hstring> {server->Hashes.to_hashed_string("UnitTestSharedMap")});
+                auto map = loc->GetMapByIndex(0);
+                server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+                server->SwitchPlayerCritter(logged, cr);
+            },
+            true);
+        server->SetRemoteCallHandler(
+            server->Hashes.to_hashed_string("UnitTestWorldStep"),
+            [&](hstring, nptr<Entity> caller, span<uint8_t> data) {
+                ptr<Player> player = caller.dyn_cast<Player>();
+                data_reader reader {data};
+                int32_t step = reader.read<int32_t>();
+                world_steps++;
+                world_sum += step;
+                steps_by_player[player->GetId()]++;
+            },
+            true);
+    }
+
+    auto login = [&](ptr<ClientEngine> client, size_t expected_connections) {
+        client->Connect();
+        REQUIRE(WaitForConnected(client, server, expected_connections));
+        client->SendRemoteCall(client->Hashes.to_hashed_string("UnitTestLogin"), client->GetCurPlayer(), {});
+        nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+
+        while (nanotime::now() < deadline) {
+            first->MainLoop();
+            second->MainLoop();
+
+            if (client->GetChosen()) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    };
+
+    REQUIRE(login(first, 1));
+    REQUIRE(login(second, 2));
+    CHECK(first->GetChosen()->GetId() != second->GetChosen()->GetId());
+    vector<uint8_t> payload;
+    data_writer writer {payload};
+    writer.write<int32_t>(7);
+
+    for (int32_t i = 0; i < 32; i++) {
+        first->SendRemoteCall(first->Hashes.to_hashed_string("UnitTestWorldStep"), first->GetCurPlayer(), payload);
+        second->SendRemoteCall(second->Hashes.to_hashed_string("UnitTestWorldStep"), second->GetCurPlayer(), payload);
+        first->MainLoop();
+        second->MainLoop();
+    }
+
+    bool complete = false;
+    nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+
+    while (nanotime::now() < deadline) {
+        first->MainLoop();
+        second->MainLoop();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
+            complete = world_steps >= 64;
+
+            if (complete) {
+                CHECK(login_calls == 2);
+                CHECK(world_steps == 64);
+                CHECK(world_sum == 448);
+                REQUIRE(steps_by_player.size() == 2);
+
+                for (const auto& [id, steps] : steps_by_player) {
+                    CAPTURE(id);
+                    CHECK(steps == 32);
+                }
+            }
+        }
+
+        if (complete) {
+            break;
+        }
+
+        coarse_sleep(std::chrono::milliseconds {2});
+    }
+
+    REQUIRE(complete);
+    CHECK(GetServerConnectionCount(server) == 2);
+    first->Disconnect();
+    second->Disconnect();
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
 FO_END_NAMESPACE
 

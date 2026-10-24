@@ -83,7 +83,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK_FALSE(server->EntityMngr.GetItem(item_id));
 
         bool is_error = false;
-        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, false, is_error);
+        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error);
         REQUIRE(loaded_holder);
         auto loaded = loaded_holder;
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");

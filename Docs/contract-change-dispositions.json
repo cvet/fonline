@@ -12132,6 +12132,78 @@
       "release_note": "Docs/en/reference/changelog.md Current2026-10-21 (2026.1.58-dev), equivalent Russian notes.",
       "compatibility": "Native naming correction within pending2026.1.58-dev/runtime0.0.76. Public script API and native-codegen inventory remain unchanged, as do NextX/NextY, SpriteResource v2, saved state and authoritative movement. Rebuild native consumers together.",
       "owner": "engine-sprite-frame-offsets"
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "941d7e1bc682ebd178a2d38c97d6e35caf3f258f88cf93ac03ba25104a33dff4",
+      "current_contract_sha256": "1fe6ed09aa2c5d473749f1d00f55d9792905fb7b3d880e705038e3fbb2587771",
+      "classification": "breaking",
+      "migration": "Existing two-argument Game.LoadCritter(crId, forPlayer) calls retain their global-map behavior. Optional map restoration uses Game.LoadCritter(crId, forPlayer, map), with raw Game.DbGetRecord for preliminary MapId lookup and caller-owned target-map cover. Regenerate bindings, rebuild native roles and rebake matching server/client resources. Update signature-specific documentation links when referencing the overloads.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.57-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 75 to 76 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.model-scope.128e94be9dda2f1f",
+      "rationale": "Review the complete native-codegen inventory: add the map-target Game.LoadCritter overload and ClientNetwork.RequireInterthreadTransport setting. The existing two-argument callable remains unchanged; documentation identities for the two overloads gain signature suffixes. Preliminary stored-map lookup uses the existing raw DbGetRecord API rather than a dedicated helper. Native admission events remain native-only."
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "941d7e1bc682ebd178a2d38c97d6e35caf3f258f88cf93ac03ba25104a33dff4",
+      "current_contract_sha256": "1fe6ed09aa2c5d473749f1d00f55d9792905fb7b3d880e705038e3fbb2587771",
+      "classification": "breaking",
+      "migration": "Existing two-argument Game.LoadCritter(crId, forPlayer) calls retain their global-map behavior. Optional map restoration uses Game.LoadCritter(crId, forPlayer, map), with raw Game.DbGetRecord for preliminary MapId lookup and caller-owned target-map cover. Regenerate bindings, rebuild native roles and rebake matching server/client resources. Update signature-specific documentation links when referencing the overloads.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.57-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 75 to 76 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.modified.1609d7b24ba86736",
+      "rationale": "Advance the composed compatibility gate from Version 0 0 75 to Version 0 0 76 for the player-message admission boundary and changed API/settings metadata. This is a coordinated endpoint update, not a saved-property conversion."
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "941d7e1bc682ebd178a2d38c97d6e35caf3f258f88cf93ac03ba25104a33dff4",
+      "current_contract_sha256": "1fe6ed09aa2c5d473749f1d00f55d9792905fb7b3d880e705038e3fbb2587771",
+      "classification": "breaking",
+      "migration": "Existing two-argument Game.LoadCritter(crId, forPlayer) calls retain their global-map behavior. Optional map restoration uses Game.LoadCritter(crId, forPlayer, map), with raw Game.DbGetRecord for preliminary MapId lookup and caller-owned target-map cover. Regenerate bindings, rebuild native roles and rebake matching server/client resources. Update signature-specific documentation links when referencing the overloads.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.57-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 75 to 76 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.removed.d271f0d8c0d95389",
+      "rationale": "The unsuffixed documentation identity script.method.server.Game.LoadCritter is replaced by signature-specific identities because the method now has two overloads. The original two-argument callable, source signature and global-map behavior are retained; no callable is removed."
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "6da1f6d421106cc7379c37e7df4a247d0595ee24d8cfd72866a9a1122348cb41",
+      "current_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "classification": "breaking",
+      "migration": "Existing two-argument Game.LoadCritter(crId, forPlayer) calls retain their global-map behavior. Optional map restoration uses Game.LoadCritter(crId, forPlayer, map), with raw Game.DbGetRecord for preliminary MapId lookup and caller-owned target-map cover. Regenerate bindings, rebuild native roles and rebake matching server/client resources. Update signature-specific documentation links when referencing the overloads.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.60-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.model-scope.70aa934cd10c80fe",
+      "rationale": "The reviewed inventory grows from 2577 to 2579 symbols: LoadCritter is indexed as two overloads and RequireInterthreadTransport is added; published project-owned presentation APIs remain intact."
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "6da1f6d421106cc7379c37e7df4a247d0595ee24d8cfd72866a9a1122348cb41",
+      "current_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "classification": "breaking",
+      "migration": "Rebuild matching native roles, regenerate bindings and bake server/client resources together. Apply preceding 57-59 migration notes before this update; mixed binaries/metadata must fail compatibility checks.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.60-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.modified.1221c5ad05e2b877",
+      "rationale": "Advance the manual compatibility marker from 76 to 77 for the player-message admission boundary and new restore/settings metadata on top of published 2026.1.59-dev."
+    },
+    {
+      "domain": "api",
+      "baseline_contract_sha256": "6da1f6d421106cc7379c37e7df4a247d0595ee24d8cfd72866a9a1122348cb41",
+      "current_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "classification": "breaking",
+      "migration": "Existing two-argument Game.LoadCritter(crId, forPlayer) calls retain their global-map behavior. Optional map restoration uses Game.LoadCritter(crId, forPlayer, map), with raw Game.DbGetRecord for preliminary MapId lookup and caller-owned target-map cover. Regenerate bindings, rebuild native roles and rebake matching server/client resources. Update signature-specific documentation links when referencing the overloads.",
+      "release_note": "Docs/en/reference/changelog.md Current (2026.1.60-dev), migration section and Russian mirror.",
+      "compatibility": "Central marker 76 to 77 refuses mixed endpoints; Managed ABI 9, wire message layouts and persisted/resource schemas remain unchanged. RequireInterthreadTransport=false preserves ordinary transport selection. Deploy or roll back complete matching binaries, metadata, assemblies and resource packs; no saved-data conversion.",
+      "owner": "Engine critter lifecycle, networking and scripting contracts",
+      "change_id": "api-change.removed.d271f0d8c0d95389",
+      "rationale": "The unsuffixed documentation identity script.method.server.Game.LoadCritter is replaced by signature-specific identities because the method now has two overloads. The original two-argument callable, source signature and global-map behavior are retained; no callable is removed."
     }
   ]
 }

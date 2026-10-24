@@ -5,7 +5,8 @@ locale: ru
 document_id: adr-manifest-backed-ai-documentation-delivery
 permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
 ---
-<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"8be9e05a08bb503916c993ce79c7e0b9a929fa5060a03ebabbe6d95f719259b7"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"b8dbfcb159fdcf4f176f6b19e9dc620b28928aacaacfaf18ff8023732ec7ceff"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-ai-documentation-delivery","locale":"ru","source_path":"Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md","source_sha256":"df7540e7b41a630b3ee583014e16283a1841fad427e09ae69d79b8824a53ff34"} -->
 # ADR-0003: доставка документации для ИИ на основе манифеста
 
 - Статус: принято
@@ -46,6 +47,7 @@ permalink: /Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation
    | `e1a3815ff96c7d88f47314984e9d9242e37bc585` | 2 282 913 | +32 KiB для необязательных компонентов, baking-lock и миграций; превышение прежнего лимита на 21 921 байт. Ёмкость уже объявлена опубликованным манифестом. |
    | 2026-10-13, отбор размещений | 2 294 456 до этой строки ADR | +32 KiB для итоговых свойств размещения и обязательной миграции версии 38; превышение прежнего лимита на 696 байт. Состав и исключения не меняются. |
    | 2026-10-21, владение ресурсами и игровая политика анимаций | 2 367 685 до этой строки ADR | +32 KiB до 2 392 064: сохраняются полные руководства владения и миграция версии 58; превышение прежнего лимита на 8 389 байт. Состав и исключения не меняются. |
+   | 2026-10-23, подключения и восстановление игроков | Объединено с опубликованной документацией представления проекта | Контракты допуска/восстановления игрока и миграция версии 60 помещаются в существующий лимит 2 392 064 байт; дополнительное увеличение, изменение состава или исключений не нужны. |
 
    Измерение e1 оставляло 10 847 байт до соответствующей правки документации; перегенерированный результат измеряется заново. Действующие исключения сохраняют своих владельцев-заменителей: `tools` после отдельных руководств Mapper/viewer/particles; `ScriptMethodsMap.md` после сгенерированных `PUBLIC_API.md`, `GeneratedApiAndMetadata.md` и native API index; `BuildTools/README.md` после сгенерированных CLI/helper/package references и `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, `Docs/en/how-to/release/packaging.md`. Специализированная миграция `script-owned-sprite-animations` остаётся полной и двуязычной; на неё ссылаются включённые руководства по обновлению Engine и changelog. Все исключённые страницы остаются в `llms.txt`, поиске и публичном манифесте. При пересмотре лимита полные владеющие руководства и обязательные заметки миграции сохраняются.
 5. Публичный манифест включает каждый публичный документ, в том числе видимые placeholder routes, чтобы клиенты могли отличить актуальный контракт от маршрута миграции. Внутренние планы и отчёты проверки исключаются.

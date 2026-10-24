@@ -528,7 +528,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
-            auto cr = LoadCritter(cr_id, false, is_error);
+            auto cr = LoadCritter(cr_id, false, nullptr, is_error);
 
             if (cr) {
                 cr->SetMapId(map->GetId());
@@ -588,7 +588,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
     return std::move(map);
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>
+auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> stored_map_id, bool& is_error) noexcept -> refcount_nptr<Critter>
 {
     FO_TRACE_ZONE(Entity);
 
@@ -616,6 +616,11 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
 
     try {
         RegisterCritter(cr);
+
+        if (stored_map_id) {
+            *stored_map_id = cr->GetMapId();
+        }
+
         cr->SetMapId({});
         cr->SetPersistent(true);
     }

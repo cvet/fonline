@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/native-extensions.html
 ---
 
 # Нативные расширения
-<!-- docs-translation: {"document_id":"native-extensions-guide","locale":"ru","source_path":"Docs/en/how-to/native-extensions.md","source_sha256":"d47ba2f16bb6246de9ab1a3587eca03692e57105a62cd651af38df7a5f5cdac9"} -->
+<!-- docs-translation: {"document_id":"native-extensions-guide","locale":"ru","source_path":"Docs/en/how-to/native-extensions.md","source_sha256":"a69174022c4a5e249cf2bb632dcac391d03c018c61e26ecbf11795c3b59e38db"} -->
 Нативные расширения позволяют подключающему проекту добавлять код на C++ в FOnline, не перенося игровую логику в репозиторий переиспользуемого движка. Они компилируются из исходного кода в составе общей сборки, проходят через тот же конвейер метаданных и кодогенерации и линкуются с библиотеками выбранных ролей движка.
 
 Это руководство описывает архитектуру, разработку и проверку. Точные актуальные объявления приведены в сгенерированных справочниках [ролей](../reference/native-extension/roles.md), [хуков](../reference/native-extension/hooks.md), [правил биндинга](../reference/native-extension/bindings.md) и в [канонической JSON-модели](../../generated/native-extension.json).
@@ -147,6 +147,8 @@ int32_t FO_NAMESPACE Server_Game_ProjectValue(ptr<ServerEngine> server)
 Удалённые вызовы проекта остаются проектными скриптовыми метаданными и используют запечённый каталог, описанный в разделе [Удалённые вызовы](../reference/scripting/remote-calls.md). Они не являются символами нативного расширения.
 
 ## Хуки движка
+
+Нативные подписки на события сущностей — отдельная поверхность расширений, отличная от закрытого каталога entry points `///@ EngineHook`. В частности, серверное расширение может подписаться на `ServerEngine::OnPlayerPreLogin` и `OnPlayerPreProcess` без декларации генерируемого hook. Эти нативные события не добавляют события скрипта или codegen fallback; порядком, отказами и lifecycle-контрактом владеет [серверная среда](../explanation/runtime/server.md#нативные-hooks-допуска).
 
 Хуки представляют собой необязательные именованные точки входа C++. Объявите хук с `///@ EngineHook` и точной сигнатурой из сгенерированного [справочника хуков](../reference/native-extension/hooks.md) в файле, зарегистрированном в принадлежащей ему роли. Обнаружив объявление, кодогенератор исключает реализацию этого хука по умолчанию из `GenericCode-Common.gen.cpp`.
 

@@ -2712,8 +2712,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-istextpresent-2738a53af5"></a>
 - [`symbol-script-method-server-game-istextpresent-2738a53af5`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-istextpresent-2738a53af5)
 
-<a id="symbol-script-method-server-game-loadcritter-bceaa4bb30"></a>
-- [`symbol-script-method-server-game-loadcritter-bceaa4bb30`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadcritter-bceaa4bb30)
+<a id="symbol-script-method-server-game-loadcritter-e4b9bdc5bdeb7919-0ff34441e3"></a>
+- [`symbol-script-method-server-game-loadcritter-e4b9bdc5bdeb7919-0ff34441e3`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadcritter-e4b9bdc5bdeb7919-0ff34441e3)
+
+<a id="symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef"></a>
+- [`symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef)
 
 <a id="symbol-script-method-server-game-lock-d5ecb3244a"></a>
 - [`symbol-script-method-server-game-lock-d5ecb3244a`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-lock-d5ecb3244a)

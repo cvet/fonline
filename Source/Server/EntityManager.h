@@ -114,7 +114,7 @@ public:
     void LoadEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
-    auto LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> stored_map_id, bool& is_error) noexcept -> refcount_nptr<Critter>;
     auto LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>;
     auto LoadItems(const vector<ident_t>& item_ids, bool& is_error) noexcept -> vector<refcount_nptr<Item>>;
 

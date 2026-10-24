@@ -369,7 +369,7 @@ TEST_CASE("AngelScriptEntityInitEvents")
         REQUIRE(set_mode_func.Call(4));
 
         bool is_error = false;
-        auto dropped_cr = server->EntityMngr.LoadCritter(cr_id, true, is_error);
+        auto dropped_cr = server->EntityMngr.LoadCritter(cr_id, true, nullptr, is_error);
 
         CHECK_FALSE(is_error);
         CHECK_FALSE(static_cast<bool>(dropped_cr));
