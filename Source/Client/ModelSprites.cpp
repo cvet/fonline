@@ -554,7 +554,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
-    model_spr->GetModel()->DrawSpriteFrame();
+    model_spr->GetModel()->DrawSpriteFrameLit();
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_model_rt_on_fail.release();
 
@@ -579,7 +579,53 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();
+
+    shared_ptr<AtlasSprite> unlit_overlay;
+
+    if (model_spr->GetModel()->HasUnlitParticles()) {
+        unlit_overlay = model_spr->_unlitOverlay;
+
+        if (!unlit_overlay || unlit_overlay->GetSize() != prepared_crop.Size) {
+            auto&& [atlas, allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(model_spr->_atlasType, prepared_crop.Size);
+            frect32 atlas_rect {
+                numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width),
+                numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height),
+                numeric_cast<float32_t>(prepared_crop.Size.width) / numeric_cast<float32_t>(atlas->GetSize().width),
+                numeric_cast<float32_t>(prepared_crop.Size.height) / numeric_cast<float32_t>(atlas->GetSize().height),
+            };
+
+            unlit_overlay = safe_alloc::make_shared<AtlasSprite>(_sprMngr, prepared_crop.Size, prepared_crop.Offset, atlas, std::move(allocation), atlas_rect, vector<bool> {});
+        }
+
+        _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
+        auto pop_unlit_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
+
+        // Preserve the model's depth while replacing its color with the explicitly unlit particles
+        _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, false);
+        model_spr->GetModel()->DrawUnlitParticles();
+        _sprMngr->GetRtMngr().PopRenderTarget();
+        pop_unlit_rt_on_fail.release();
+
+        auto atlas = unlit_overlay->GetAtlas();
+        frect32 atlas_rect = unlit_overlay->GetAtlasRect();
+        irect32 overlay_region {
+            iround<int32_t>(atlas_rect.x * numeric_cast<float32_t>(atlas->GetSize().width)),
+            iround<int32_t>(atlas_rect.y * numeric_cast<float32_t>(atlas->GetSize().height)),
+            prepared_crop.Size.width,
+            prepared_crop.Size.height,
+        };
+
+        _sprMngr->GetRtMngr().PushRenderTarget(atlas->GetRenderTarget());
+        auto pop_overlay_atlas_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
+        _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &overlay_region);
+        _sprMngr->GetRtMngr().PopRenderTarget();
+        pop_overlay_atlas_on_fail.release();
+
+        unlit_overlay->SetOffset(prepared_crop.Offset);
+    }
+
     model_spr->CommitFrameCrop(std::move(prepared_crop));
+    model_spr->_unlitOverlay = std::move(unlit_overlay);
     model_spr->_requestedFrameSize.reset();
     request_redraw_on_fail.release();
 }

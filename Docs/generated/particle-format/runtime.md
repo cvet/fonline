@@ -39,6 +39,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-particle-format-runtime-world-rebase-803e3af39b"></a>
 - [`entry-particle-format-runtime-world-rebase-803e3af39b`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-world-rebase-803e3af39b)
 
+<a id="entry-particle-format-runtime-model-unlit-overlay-0f29382051"></a>
+- [`entry-particle-format-runtime-model-unlit-overlay-0f29382051`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-model-unlit-overlay-0f29382051)
+
 <a id="entry-particle-format-runtime-sprite-frame-9c7d88fe11"></a>
 - [`entry-particle-format-runtime-sprite-frame-9c7d88fe11`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-sprite-frame-9c7d88fe11)
 

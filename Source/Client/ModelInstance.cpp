@@ -424,8 +424,37 @@ auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<
     return std::nullopt;
 }
 
+auto ModelInstance::HasUnlitParticles() const -> bool
+{
+    for (const auto& model_particle : _modelParticles) {
+        if (model_particle.Unlit && model_particle.Initialized && model_particle.Particle->IsActive()) {
+            return true;
+        }
+    }
+
+    for (const auto& child : _children) {
+        if (child->HasUnlitParticles()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
+    StartParticle(particle_name, bone_name, move, false);
+}
+
+void ModelInstance::RunUnlitParticle(string_view particle_name, hstring bone_name, vec3 move)
+{
+    StartParticle(particle_name, bone_name, move, true);
+}
+
+void ModelInstance::StartParticle(string_view particle_name, hstring bone_name, vec3 move, bool unlit)
+{
+    FO_TRACE_ZONE(Model);
+
     if (auto target_joint = FindPoseJoint(bone_name); target_joint) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
             _modelParticles.emplace_back(ModelParticleSystem {
@@ -437,6 +466,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
                 .Rot = _lookDirAngle,
                 .EffectName = string(particle_name),
                 .BoneName = bone_name,
+                .Unlit = unlit,
             });
 
             RequestRedraw();
@@ -2571,6 +2601,17 @@ void ModelInstance::DrawSpriteFrame()
     DrawPosed(true);
 }
 
+void ModelInstance::DrawSpriteFrameLit()
+{
+    DrawPosed(false);
+    DrawParticles(false);
+}
+
+void ModelInstance::DrawUnlitParticles()
+{
+    DrawParticles(true);
+}
+
 void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 {
     FO_TRACE_ZONE(Model);
@@ -2719,14 +2760,21 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
 void ModelInstance::DrawAllParticles()
 {
+    DrawParticles(std::nullopt);
+}
+
+void ModelInstance::DrawParticles(optional<bool> unlit)
+{
     for (auto& model_particle : _modelParticles) {
-        if (model_particle.Initialized) {
-            model_particle.Particle->Draw();
+        if (!model_particle.Initialized || (unlit.has_value() && model_particle.Unlit != unlit.value())) {
+            continue;
         }
+
+        model_particle.Particle->Draw();
     }
 
     for (size_t i = 0; i != _children.size(); ++i) {
-        _children[i]->DrawAllParticles();
+        _children[i]->DrawParticles(unlit);
     }
 }
 

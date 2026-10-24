@@ -889,9 +889,27 @@ Sprites without an overlay keep their existing route; direct-scene sprites
 continue through their deferred scene pass. Region, pattern and specialized
 image-effect operations address the base atlas image.
 
+`ModelInstance::RunUnlitParticle` selects this layer for an explicitly named
+model-bone particle. Ordinary `RunParticle` and authored `AttachParticles`
+remain in the lit base image. Both routes share placement, first-pose birth,
+simulation, bounds and retirement. `DrawSpriteFrame` still draws all particles;
+the atlas producer uses `DrawSpriteFrameLit` and then `DrawUnlitParticles`.
+The second pass clears only color in the same intermediate target, retaining
+model depth without another pose or simulation step. Node-authored depth-test
+and depth-write states still apply.
+
+`ModelSprite` owns the overlay allocation, copies the identical settled crop
+and pivot offset, reuses it while the size is stable, and releases it when no
+initialized unlit systems remain active. Its picking mask and specialized
+image-effect draws use the base atlas; the decorative overlay does not enlarge
+the selectable silhouette. Direct map draws replay both particle kinds in the
+scene, while GUI snapshots can use the atlas pair.
+
 The native buffer regressions in `Test_ClientEngine.cpp` cover separate textures,
-GUI sizing, map light, alpha, transformed geometry, depth and egg flags. They
-establish buffer behavior, not GPU composition or a model-particle producer.
+GUI sizing, map light, alpha, transformed geometry, depth and egg flags. A real
+Effekseer/Ozz fixture covers both birth routes, overlay geometry, reuse and
+retirement. These establish buffer and lifecycle behavior; GPU composition and
+visible content acceptance require separate checks.
 
 ## Direct-to-scene sprites
 

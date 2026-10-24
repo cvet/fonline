@@ -59,6 +59,7 @@ struct ModelParticleSystem
     float32_t Rot {};
     string EffectName {};
     hstring BoneName {};
+    bool Unlit {};
     bool Initialized {};
 };
 
@@ -117,6 +118,7 @@ public:
     [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
+    [[nodiscard]] auto HasUnlitParticles() const -> bool;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
@@ -138,11 +140,14 @@ public:
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
     void DrawSpriteFrame();
+    void DrawSpriteFrameLit();
+    void DrawUnlitParticles();
     void DrawInScene(const mat44& proj, float32_t scale);
     void AddMoveOffset(ipos32 offset);
     void SetMovementState(bool movement_enabled, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
+    void RunUnlitParticle(string_view particle_name, hstring bone_name, vec3 move);
 
     void AddAnimationCallback(ModelAnimationCallback callback);
     void SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks);
@@ -207,6 +212,7 @@ private:
     void ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale);
     void InitializePendingParticles();
     void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
+    void StartParticle(string_view particle_name, hstring bone_name, vec3 move, bool unlit);
     void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
@@ -214,6 +220,7 @@ private:
     void BuildRestWorldMatrices();
     void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
+    void DrawParticles(optional<bool> unlit);
     void SetAnimData(ModelAnimationData& data, bool clear);
     void ApplyDisabledMeshes(const vector<hstring>& disabled_meshes);
     void RefreshMoveAnimation();

@@ -1116,6 +1116,8 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     constexpr string_view mesh_path = "Models/ImmediateParticle.fbx";
     constexpr string_view model_path = "Models/ImmediateParticle.fo3d";
     constexpr string_view particle_path = "Particles/Immediate.efk";
+    bool unlit = GENERATE(false, true);
+    CAPTURE(unlit);
     constexpr string_view particle_project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -1185,6 +1187,9 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     resources.emplace_back(string {particle_path}, std::move(particle.Binary));
 
+    constexpr string_view particle_effect = "[Effect]\nPasses = 1\nDepthWrite = False\nDepthFunc = LessEqual\nDepthVariants = True\nCullVariants = True\n";
+    resources.emplace_back("Effects/Particles_ColorMulAtlas.fofx", vector<uint8_t> {particle_effect.begin(), particle_effect.end()});
+
     auto settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
 
@@ -1221,6 +1226,15 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         return count;
     };
 
+    auto run_particle = [unlit](ptr<ModelInstance> instance, string_view path, hstring bone_name, vec3 offset) {
+        if (unlit) {
+            instance->RunUnlitParticle(path, bone_name, offset);
+        }
+        else {
+            instance->RunParticle(path, bone_name, offset);
+        }
+    };
+
     SECTION("CallbackBirthIsReadyBeforeTheNextPose")
     {
         vec3 offset {4.0f, 0.0f, 0.0f};
@@ -1234,10 +1248,10 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
             .StateAnim = state,
             .ActionAnim = action,
             .NormalizedTime = 0.5f,
-            .Callback = [&model, particle_path, bone, offset, &callbacks] {
+            .Callback = [&model, &run_particle, particle_path, bone, offset, &callbacks] {
                 callbacks++;
 
-                model->RunParticle(particle_path, bone, offset);
+                run_particle(model.get(), particle_path, bone, offset);
             },
         });
         model->SetSpeed(10.0f);
@@ -1252,6 +1266,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
@@ -1276,6 +1291,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         auto after_repose = model->GetSpriteBounds();
         REQUIRE(after_repose);
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
 
         auto after_relative = model->GetBonePos(bone, offset);
         REQUIRE(after_relative);
@@ -1296,10 +1312,11 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         // The unconsumed interval reaches the first pose after the request; birth must not inherit it
         coarse_sleep(std::chrono::milliseconds {200});
         client->GameTime.FrameAdvance(false);
-        model->RunParticle(particle_path, bone, offset);
+        run_particle(model.get(), particle_path, bone, offset);
         model->PoseSpriteFrame(true);
 
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
@@ -1326,10 +1343,11 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         coarse_sleep(std::chrono::milliseconds {200});
         client->GameTime.FrameAdvance(false);
-        model->RunParticle(particle_path, bone, offset);
+        run_particle(model.get(), particle_path, bone, offset);
         model->PoseSpriteFrame(true);
 
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
@@ -1356,12 +1374,13 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         vec3 offset {4.0f, 0.0f, 0.0f};
         CHECK_FALSE(model->NeedForceDraw());
 
-        model->RunParticle(particle_path, bone, offset);
+        run_particle(model.get(), particle_path, bone, offset);
         CHECK(model->NeedForceDraw());
 
         model->PoseSpriteFrame(false);
 
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
         auto control = model->GetSpriteBounds();
         REQUIRE(control);
         CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height,
@@ -1397,7 +1416,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         REQUIRE(mesh_bounds);
         REQUIRE(mesh_bounds->Rect.width < 512);
 
-        fresh_model->RunParticle(particle_path, bone, offset);
+        run_particle(fresh_model.get(), particle_path, bone, offset);
 
         // A request without a valid pose must not reserve an identity-origin envelope
         auto pending_bounds = fresh_model->GetSpriteBounds();
@@ -1405,12 +1424,15 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(pending_bounds->Rect == mesh_bounds->Rect);
         CHECK(pending_bounds->RequiredFrameSize == mesh_bounds->RequiredFrameSize);
 
+        CHECK_FALSE(fresh_model->HasUnlitParticles());
+
         fresh_model->PoseSpriteFrame(false);
         auto placed = fresh_model->GetSpriteBounds();
         REQUIRE(placed);
         CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height,
             placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
         CHECK(particle_attach_count(fresh_model) == 1);
+        CHECK(fresh_model->HasUnlitParticles() == unlit);
         CHECK(fresh_model->GetDrawSize() == isize32 {512, 512});
 
         auto relative = fresh_model->GetBonePos(bone, offset);
@@ -1446,6 +1468,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         }
 
         CHECK(particle_attach_count(fresh_model) == 0);
+        CHECK_FALSE(fresh_model->HasUnlitParticles());
         REQUIRE(finished);
         CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width ||
             point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
@@ -1455,21 +1478,24 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     {
         vec3 offset {4.0f, 0.0f, 0.0f};
         CHECK(particle_attach_count(model) == 0);
+        CHECK_FALSE(model->HasUnlitParticles());
 
-        model->RunParticle(particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
+        run_particle(model.get(), particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
 
         auto rejected = model->GetSpriteBounds();
         REQUIRE(rejected);
         CHECK(rejected->Rect == before->Rect);
         CHECK(rejected->RequiredFrameSize == before->RequiredFrameSize);
         CHECK(particle_attach_count(model) == 0);
+        CHECK_FALSE(model->HasUnlitParticles());
 
-        model->RunParticle(particle_path, bone, offset);
+        run_particle(model.get(), particle_path, bone, offset);
         model->PoseSpriteFrame(false);
 
         auto accepted = model->GetSpriteBounds();
         REQUIRE(accepted);
         CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
 
         auto relative = model->GetBonePos(bone, offset);
         REQUIRE(relative);
@@ -1482,6 +1508,58 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(accepted->RequiredFrameSize.width <= 512);
         CHECK(accepted->RequiredFrameSize.height <= 512);
     }
+    SECTION("AtlasOverlayUsesTheBornPoseAndRetires")
+    {
+        auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::OneImage).dyn_cast<ModelSprite>();
+        REQUIRE(sprite);
+
+        auto instance = sprite->GetModel();
+        instance->StartMeshGeneration();
+        instance->PrepareFrameLayout();
+        (void)instance->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        sprite->SetSize(isize32 {512, 512});
+
+        run_particle(instance, particle_path, bone, vec3 {4.0f, 0.0f, 0.0f});
+        CHECK_FALSE(instance->HasUnlitParticles());
+        CHECK(sprite->Update());
+        CHECK(particle_attach_count(instance) == 1);
+        CHECK(instance->HasUnlitParticles() == unlit);
+
+        auto overlay = sprite->GetUnlitOverlay();
+
+        if (unlit) {
+            REQUIRE(overlay);
+            CHECK(overlay->GetSize() == sprite->GetSize());
+            CHECK(overlay->GetOffset() == sprite->GetOffset());
+            CHECK(overlay->GetBatchTexture());
+            CHECK(overlay->GetBatchTexture() != sprite->GetBatchTexture());
+
+            instance->RequestRedraw();
+            CHECK(sprite->Update());
+            CHECK(sprite->GetUnlitOverlay() == overlay);
+        }
+        else {
+            CHECK_FALSE(overlay);
+        }
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        CHECK(sprite->Update());
+
+        int32_t retirement_poses = 0;
+
+        while (particle_attach_count(instance) != 0 && retirement_poses < 3) {
+            instance->RequestRedraw();
+            CHECK(sprite->Update());
+            retirement_poses++;
+        }
+
+        CHECK(particle_attach_count(instance) == 0);
+        CHECK_FALSE(instance->HasUnlitParticles());
+        CHECK_FALSE(sprite->GetUnlitOverlay());
+    }
+
 }
 #endif
 

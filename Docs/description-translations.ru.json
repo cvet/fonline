@@ -17912,6 +17912,18 @@
           "source_sha256": "f3f7c9c6867a435da941dd2c5104122ada17316a292e38ebfda9f0e94c1fce71",
           "translation": "Пока экземпляры живы, сохраняйте преобразованную baked-рамку и расширяйте границы модели Effekseer текущими позициями и радиусами геометрии Sprite/Ribbon/Ring/Track/Model. Кешируйте CPU-измерение до изменения setup или симуляции; не продвигайте время и RNG, не рисуйте GPU-пакеты и не захватывайте фон сцены. Истёкшие экземпляры освобождают свой вклад в рамку."
         },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/name": {
+          "source_sha256": "5a1378d40aae2d63b8c0b9ef544c74a35300780765085d98d871413cfe285f66",
+          "translation": "Явный неосвещаемый слой модельных частиц"
+        },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/rationale": {
+          "source_sha256": "b2b0177ee4806db2ccf81ebca65c88f767c1e82b5a74366a0fbddbdb2ee77249",
+          "translation": "Светящийся эффект на кости модели может обходить освещение карты, сохраняя привязку к авторитетной позе и смысл существующих particle-вызовов."
+        },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/requirement": {
+          "source_sha256": "9f6bc24bc52f44d4ac05968b841341e6922108b2815df8760d9850724173dcd7",
+          "translation": "Нативный ModelInstance.RunUnlitParticle использует общие с RunParticle размещение, инициализацию на первой позе, границы и завершение, но выбирает принадлежащий родителю overlay ModelSprite. Производитель атласа сначала рисует меши и освещаемые частицы, сохраняет их глубину при очистке только цвета и рисует неосвещаемые частицы без новой позы или шага симуляции. Оба изображения используют одинаковые crop и смещение pivot; неизменный размер позволяет повторно использовать allocation слоя, а завершение unlit-систем освобождает его. Смысл RunParticle, AttachParticles и прямого scene-маршрута всех частиц сохраняется. Выбор и специализированные image effects обращаются к основному атласу."
+        },
         "/runtime_rules/@id=particle-format.runtime.prewarm/name": {
           "source_sha256": "aa3007c02fc4b5c35552d56bbdf8a5d4187733dc6d17a86bf36bfcee644039ac",
           "translation": "Prewarm",
