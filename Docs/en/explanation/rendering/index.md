@@ -60,6 +60,8 @@ Read this page together with:
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
 - `Source/Frontend/Rendering-Vulkan.cpp`
+- `Source/Frontend/VulkanColorFormat.h`
+- `Source/Frontend/VulkanColorFormat.cpp`
 - `Source/Frontend/Rendering-SDLGpu.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Common/Settings.inc`
@@ -88,6 +90,7 @@ Read this page together with:
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
+- `Source/Tests/Test_VulkanColorFormat.cpp`
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
@@ -654,9 +657,9 @@ D3D12 drivers.
 
 ### Vulkan renderer
 
-`Source/Frontend/Rendering-Vulkan.cpp` implements the Vulkan path. It is built by default (opt out with `FO_DISABLE_VULKAN`; also skipped for headless-only and web builds) and needs **no external Vulkan SDK** — there is no `find_package(Vulkan)`. The build compiles against the Vulkan headers already vendored with SDL3 (`ThirdParty/SDL/src/video/khronos`, wired as a SYSTEM include when `FO_HAVE_VULKAN`), and the loader is resolved dynamically at runtime. It is selected at runtime by `Render.ForceVulkan` (or as an automatic fallback when no other backend is configured).
+`Source/Frontend/Rendering-Vulkan.cpp` builds by default except with `FO_DISABLE_VULKAN`, headless-only or Web. It uses SDL3's vendored headers (`ThirdParty/SDL/src/video/khronos`, SYSTEM with `FO_HAVE_VULKAN`), requiring no external SDK or `find_package(Vulkan)`. `Render.ForceVulkan` selects it; otherwise only when no earlier backend is configured.
 
-The loader is **not** linked at build time (`vulkan-1.lib` is never referenced). Instead `Rendering-Vulkan.cpp` compiles with `VK_NO_PROTOTYPES` and resolves every entry point dynamically through SDL — `SDL_Vulkan_LoadLibrary` + `SDL_Vulkan_GetVkGetInstanceProcAddr` bootstrap `vkGetInstanceProcAddr`, then a small X-macro table (mirroring the OpenGL backend's `SDL_GL_GetProcAddress` table) loads global functions with a null instance and the rest from the created instance. Consequently a client built with Vulkan support carries **no load-time `vulkan-1.dll` import** and still launches on a machine without the Vulkan runtime; the loader is pulled in only when the Vulkan backend is actually selected (a missing runtime then throws from `SDL_Vulkan_LoadLibrary`, not at process start).
+`Rendering-Vulkan.cpp` uses `VK_NO_PROTOTYPES` without linking `vulkan-1.lib` or importing `vulkan-1.dll`. `SDL_Vulkan_LoadLibrary`/`SDL_Vulkan_GetVkGetInstanceProcAddr` bootstrap `vkGetInstanceProcAddr`. The X-macro table loads globals with null instance and others from the created instance, like OpenGL's `SDL_GL_GetProcAddress`. A missing runtime fails at `SDL_Vulkan_LoadLibrary` only when selecting Vulkan; other backends can start.
 
 Design and important behaviors:
 
@@ -669,7 +672,7 @@ Design and important behaviors:
 - **Two fixed descriptor set layouts.** **Set 0 holds uniform buffers** and **set 1 holds combined image samplers** (each layout declares a fixed number of bindings). Per draw, the backend allocates one descriptor set per layout from a per-frame descriptor pool (reset every `BeginFrame()`), and writes uniform data into a single host-visible **bump-allocated** uniform buffer. The binding index used within each set is the effect's reflected binding from the baked `EffectInfo`.
 - **Authored `.fofx` descriptor-set contract.** Because of the two-set layout, every effect's shader **must** declare uniform blocks with `layout(set = 0, binding = N, std140)` and samplers with `layout(set = 1, binding = N)`. An effect that omits the `set` qualifier defaults every resource to set 0, which collides samplers with uniform buffers and produces `VkDescriptorType` mismatch (`VUID-…-layout-07990`) and "descriptor never updated" (`VUID-vkCmdDrawIndexed-None-08114`) validation errors, leading to device loss. Engine core/embedded effects follow this convention; embedding-project effects must follow it too. (OpenGL/Direct3D ignore the `set` qualifier because they bind UBOs and samplers in separate namespaces, so this only surfaces on Vulkan.)
 - **Uniform completeness.** Unlike OpenGL/D3D, where an unbound UBO retains its last value, a per-draw descriptor set must write every uniform block the shader uses. The backend default-initializes any required-but-unset standard buffer (egg, sprite-border, time, random, script, camera, …) to zero before upload so no shader reads an unwritten descriptor.
-- **Surface format.** The swapchain uses `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, verified against `vkGetPhysicalDeviceSurfaceFormatsKHR`. The single render pass is shared by the swapchain framebuffers and all texture render targets, so texture render targets use the same color format for render-pass compatibility. CPU pixel upload/readback swizzles R↔B to match this format.
+- **Surface format.** Prefer `VK_FORMAT_B8G8R8A8_UNORM`, then `VK_FORMAT_R8G8B8A8_UNORM`, with `SRGB_NONLINEAR`, among pairs advertised by `vkGetPhysicalDeviceSurfaceFormatsKHR`. A lone `VK_FORMAT_UNDEFINED` permits either format only in that color space; `_SRGB` images are not UNORM substitutes. The context keeps its format through recreation, rejecting incompatible surfaces before deleting old swapchain objects. Texture images/views and the shared render pass use that format. CPU upload and both readbacks preserve RGBA, alpha and row pitch, swapping R/B only for BGRA.
 - **Present mode honors `Render.VSync`.** `VSync = true` (or a surface with no better mode) uses `VK_PRESENT_MODE_FIFO_KHR`; with VSync off the swapchain prefers `IMMEDIATE` (uncapped, possible tearing), then `MAILBOX` (uncapped, no tearing), matching how the other backends honor the setting in their present paths. The chosen mode is logged at swapchain (re)creation (`Vulkan swapchain present mode: …`). A hardcoded FIFO would silently vsync-lock the backend and make cross-renderer frame-rate comparisons meaningless.
 - **Orientation.** Render-target textures are reported as not flipped (`IsRenderTargetFlipped() == false`, like Direct3D). The projection matrices are **identical to the other backends** (Y-up ortho); Vulkan's Y-down clip space is compensated by a **negative-height viewport** (core since Vulkan 1.1 — the instance requests `VK_API_VERSION_1_1`). Keeping the matrices identical matters beyond the GPU: `GetProjMatrix()` feeds engine-side 3D model camera math (`ModelSprites`/`ModelInstance`), and a backend-specific Y-negated matrix breaks that CPU-side placement (3D models render clipped). The negative viewport flips screen-space winding exactly like the old Y-negated matrix did, so pipeline front-face settings are unaffected.
 - **Point primitives.** Effect shaders are cross-compiled to HLSL/MSL via spirv-cross, which cannot express `gl_PointSize`, so a `POINT_LIST` topology (which Vulkan requires `PointSize` for) is mapped to `TRIANGLE_LIST`. Point primitives are not used by current content; revisit if real point rendering is needed.

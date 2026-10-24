@@ -17,10 +17,13 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/ApplicationStub.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Null.cpp"
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
-        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
+        "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
+        "${FO_ENGINE_ROOT}/Source/Frontend/VulkanColorFormat.cpp"
+        "${FO_ENGINE_ROOT}/Source/Frontend/VulkanColorFormat.h")
     AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
     TargetCompileDefinitions(AppHeadless PRIVATE "FO_HEADLESS_APP=1")
+    TargetIncludeDirectories(AppHeadless SYSTEM PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${CMAKE_SOURCE_DIR}/${FO_SDL_DIR}/src/video/khronos>)
 
     if(NOT FO_HEADLESS_ONLY)
         SetValue(FO_APP_FRONTEND_SOURCE
@@ -34,7 +37,9 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Vulkan.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-SDLGpu.cpp")
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-SDLGpu.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/VulkanColorFormat.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/VulkanColorFormat.h")
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})

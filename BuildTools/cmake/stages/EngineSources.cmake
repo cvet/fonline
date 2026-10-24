@@ -584,6 +584,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLightCalculation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FogOfWar.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_VulkanColorFormat.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StackTrace.cpp"

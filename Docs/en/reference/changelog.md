@@ -179,6 +179,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 ### Fixed
 
 - SDK compiler children use normal globalization for named cultures; embedded Mono keeps its setting. Rebuild the baker; compile/bake again.
+- Vulkan accepts RGBA8 UNORM surfaces, retaining one format for textures, upload and both readbacks. Rebuild clients/mapper; check colors, alpha, resize and readback per platform. No script/resource/wire/saved-data migration.
 
 ### Migration
 

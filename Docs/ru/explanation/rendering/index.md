@@ -66,6 +66,8 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
 - `Source/Frontend/Rendering-Vulkan.cpp`
+- `Source/Frontend/VulkanColorFormat.h`
+- `Source/Frontend/VulkanColorFormat.cpp`
 - `Source/Frontend/Rendering-SDLGpu.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Common/Settings.inc`
@@ -94,6 +96,7 @@ backend. Клиентский runtime использует этот слой ч�
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
+- `Source/Tests/Test_VulkanColorFormat.cpp`
 - `Source/Tests/Test_Geometry.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
@@ -680,18 +683,18 @@ visible/shader/interaction/performance gates, что к Vulkan и D3D12 drivers.
 
 ### Vulkan renderer
 
-`Source/Frontend/Rendering-Vulkan.cpp` реализует Vulkan. Он включён по умолчанию
-(кроме `FO_DISABLE_VULKAN`, headless-only и Web) и не требует внешнего Vulkan
-SDK: headers приходят из vendored SDL3
-(`ThirdParty/SDL/src/video/khronos`), loader разрешается динамически.
-`Render.ForceVulkan` выбирает его явно; иначе он может стать automatic choice,
-если более ранний backend не настроен.
+`Source/Frontend/Rendering-Vulkan.cpp` собирается по умолчанию, кроме
+`FO_DISABLE_VULKAN`, headless-only и Web. Используются vendored headers SDL3
+(`ThirdParty/SDL/src/video/khronos`, SYSTEM при `FO_HAVE_VULKAN`), без внешнего
+SDK и `find_package(Vulkan)`. `Render.ForceVulkan` выбирает backend явно;
+иначе он используется только когда более ранний backend не настроен.
 
-`vulkan-1.lib` не линкуется. Файл компилируется с `VK_NO_PROTOTYPES`, а
-`SDL_Vulkan_LoadLibrary` и `SDL_Vulkan_GetVkGetInstanceProcAddr` загружают
-entry points через X-macro table. Поэтому binary не имеет load-time import
-`vulkan-1.dll` и запускается без Vulkan runtime, пока backend не выбран; при
-выборе отсутствие runtime даёт ошибку `SDL_Vulkan_LoadLibrary`.
+`Rendering-Vulkan.cpp` использует `VK_NO_PROTOTYPES`, без линковки `vulkan-1.lib`
+и импорта `vulkan-1.dll`. `SDL_Vulkan_LoadLibrary`/`SDL_Vulkan_GetVkGetInstanceProcAddr`
+получают `vkGetInstanceProcAddr`. X-macro table загружает globals с null instance,
+а остальные — из созданного instance, как OpenGL `SDL_GL_GetProcAddress`.
+Отсутствующий runtime даёт ошибку `SDL_Vulkan_LoadLibrary` только при выборе
+Vulkan; другие backends могут запускаться.
 
 Основные свойства:
 
@@ -704,7 +707,7 @@ entry points через X-macro table. Поэтому binary не имеет loa
 - **Два fixed descriptor set layouts.** Set 0 — uniform buffers, set 1 — combined image samplers. На draw backend выделяет sets из per-frame pool и пишет uniforms в один host-visible bump buffer; binding берётся из reflected `EffectInfo`.
 - **Контракт `.fofx`.** Uniform blocks объявляются как `layout(set = 0, binding = N, std140)`, samplers — `layout(set = 1, binding = N)`. Пропущенный `set` помещает всё в set 0, создаёт descriptor mismatch/never-updated validation errors и может привести к device loss. OpenGL/Direct3D имеют отдельные namespaces и такой дефект там не проявляют.
 - **Полнота uniforms.** Descriptor set обязан записать каждый используемый block, поэтому required-but-unset standard buffers zero-initialized перед upload.
-- **Surface format.** Swapchain использует `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, проверенный через surface formats. Texture render targets используют тот же color format для совместимости render pass; CPU upload/readback меняет R/B.
+- **Surface format.** Среди пар, объявленных `vkGetPhysicalDeviceSurfaceFormatsKHR`, предпочтителен `VK_FORMAT_B8G8R8A8_UNORM`, затем `VK_FORMAT_R8G8B8A8_UNORM`, с `SRGB_NONLINEAR`. Единственный `VK_FORMAT_UNDEFINED` допускает любой из этих форматов только в том же color space; изображения `_SRGB` не заменяют UNORM. Context сохраняет формат при recreation и отклоняет несовместимую поверхность до удаления старых объектов swapchain. Изображения/views текстур и общий render pass используют этот формат. CPU upload и оба readback сохраняют RGBA, alpha и row pitch, меняя R/B только для BGRA.
 - **Present mode следует `Render.VSync`.** VSync использует FIFO; при выключенном VSync предпочтительны IMMEDIATE, затем MAILBOX. Выбор логируется при creation/recreation.
 - **Orientation.** `IsRenderTargetFlipped() == false`, ortho использует Y-up как другие backends; Vulkan Y-down компенсируется negative-height viewport Vulkan 1.1. Матрицы остаются одинаковыми, что важно для CPU-side model camera math и front-face winding.
 - **Point primitives.** Из-за ограничений SPIRV-Cross `POINT_LIST` отображается в `TRIANGLE_LIST`; текущий content point rendering не использует.

@@ -47,6 +47,8 @@
 #include "SDL3/SDL_vulkan.h"
 #include <vulkan/vulkan.h>
 
+#include "VulkanColorFormat.h"
+
 FO_BEGIN_NAMESPACE
 
 static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
@@ -798,13 +800,13 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
 
     VkResult vk_result = VK_SUCCESS;
 
-    AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
+    AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), _ctx->SwapchainFormat, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
 
     VkImageViewCreateInfo image_view_ci {};
     image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     image_view_ci.image = TextureImage;
     image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    image_view_ci.format = VK_FORMAT_B8G8R8A8_UNORM;
+    image_view_ci.format = _ctx->SwapchainFormat;
     image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     image_view_ci.subresourceRange.baseMipLevel = 0;
     image_view_ci.subresourceRange.levelCount = 1;
@@ -910,14 +912,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
-    // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
-    {
-        auto pixels = make_nptr(tex_region.data()).reinterpret_as<uint8_t>();
-        FO_VERIFY_AND_THROW(pixels, "Texture region pixel data is null");
-        for (size_t i = 0; i < tex_region.size(); i++) {
-            std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
-        }
-    }
+    VulkanColorFormat::DecodePixels(_ctx->SwapchainFormat, tex_region);
 
     // Cleanup
     vkDestroyBuffer(_ctx->Device, staging_buf, nullptr);
@@ -1032,13 +1027,7 @@ auto Vulkan_TextureReadback::TakePixels() -> optional<vector<ucolor>>
     memory::copy(pixels.data(), map_data, data_size);
     vkUnmapMemory(_ctx->Device, _memory);
 
-    // Swizzle B<->R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
-    auto pixel_bytes = make_nptr(pixels.data()).reinterpret_as<uint8_t>();
-    FO_VERIFY_AND_THROW(pixel_bytes, "Texture readback pixel data is null");
-
-    for (size_t i = 0; i < pixels.size(); i++) {
-        std::swap(pixel_bytes[i * 4 + 0], pixel_bytes[i * 4 + 2]);
-    }
+    VulkanColorFormat::DecodePixels(_ctx->SwapchainFormat, pixels);
 
     DestroyBufferSafe(_ctx, _buffer);
     DestroyMemorySafe(_ctx, _memory);
@@ -1051,43 +1040,27 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
+    FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "Vulkan texture update size must be positive", size);
     FO_VERIFY_AND_THROW(pos.x >= 0, "Texture region is out of bounds");
     FO_VERIFY_AND_THROW(pos.y >= 0, "Texture region is out of bounds");
-    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Texture region is out of bounds");
-    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Texture region is out of bounds");
-
-    // Determine data pitch:
-    // - use_dest_pitch=false: data is tightly packed for the region (size.width stride)
-    // - use_dest_pitch=true: data has the full destination texture pitch (Size.width stride)
-    size_t row_bytes = numeric_cast<size_t>(size.width) * sizeof(ucolor);
-    size_t data_stride = use_dest_pitch ? (numeric_cast<size_t>(Size.width) * sizeof(ucolor)) : row_bytes;
-    VkDeviceSize total_data_size = numeric_cast<VkDeviceSize>(size.height) * data_stride;
+    FO_VERIFY_AND_THROW(pos.x <= Size.width && size.width <= Size.width - pos.x, "Texture region is out of bounds");
+    FO_VERIFY_AND_THROW(pos.y <= Size.height && size.height <= Size.height - pos.y, "Texture region is out of bounds");
 
     size_t src_pitch_size = numeric_cast<size_t>(use_dest_pitch ? Size.width : size.width);
-    size_t required_size = size.height != 0 ? (numeric_cast<size_t>(size.height - 1) * src_pitch_size + numeric_cast<size_t>(size.width)) : 0;
+    FO_VERIFY_AND_THROW(src_pitch_size <= std::numeric_limits<size_t>::max() / sizeof(ucolor), "Vulkan texture update row size overflows");
+
+    size_t data_stride = src_pitch_size * sizeof(ucolor);
+    size_t height = numeric_cast<size_t>(size.height);
+    FO_VERIFY_AND_THROW(height <= std::numeric_limits<size_t>::max() / data_stride, "Vulkan texture update staging size overflows");
+
+    size_t total_data_size = height * data_stride;
+    size_t required_size = (height - 1) * src_pitch_size + numeric_cast<size_t>(size.width);
     FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size", data.size(), required_size, size, use_dest_pitch);
 
-    auto source_data = make_nptr(data.data());
-    FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
-    auto source_bytes = source_data.reinterpret_as<uint8_t>();
-
-    // Swizzles R<->B for VK_FORMAT_B8G8R8A8_UNORM while composing from the source, because reading back
-    // write-combined staging memory for an in-place swap costs milliseconds per large region
+    // Encode into write-combined staging memory without reading it back for an in-place swizzle
     auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
-        size_t pixels_per_row = numeric_cast<size_t>(size.width);
-
-        for (int32_t y = 0; y < size.height; y++) {
-            size_t row_offset = numeric_cast<size_t>(y) * data_stride;
-            auto src_row = source_bytes.offset(row_offset);
-            auto dst_row = mapped_bytes.offset(row_offset);
-
-            for (size_t i = 0; i < pixels_per_row; i++) {
-                dst_row[i * 4 + 0] = src_row[i * 4 + 2];
-                dst_row[i * 4 + 1] = src_row[i * 4 + 1];
-                dst_row[i * 4 + 2] = src_row[i * 4 + 0];
-                dst_row[i * 4 + 3] = src_row[i * 4 + 3];
-            }
-        }
+        span<uint8_t> target {mapped_bytes.get(), total_data_size};
+        VulkanColorFormat::EncodePixels(_ctx->SwapchainFormat, target, data, size, src_pitch_size);
     };
 
     VkResult vk_result = VK_SUCCESS;
@@ -1098,14 +1071,14 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind
         VkImage tex_image {};
         VkDeviceMemory tex_image_memory {};
-        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
+        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), _ctx->SwapchainFormat, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
 
         // Create image view
         VkImageViewCreateInfo image_view_ci {};
         image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         image_view_ci.image = tex_image;
         image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        image_view_ci.format = VK_FORMAT_B8G8R8A8_UNORM;
+        image_view_ci.format = _ctx->SwapchainFormat;
         image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         image_view_ci.subresourceRange.baseMipLevel = 0;
         image_view_ci.subresourceRange.levelCount = 1;
@@ -2689,6 +2662,26 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     VkResult vk_result = VK_SUCCESS;
 
+    uint32_t format_count = 0;
+    vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
+    VerifyVkResult(vk_result);
+    FO_VERIFY_AND_THROW(format_count != 0, "Vulkan surface has no supported formats");
+
+    vector<VkSurfaceFormatKHR> surface_formats(format_count);
+    vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
+    VerifyVkResult(vk_result);
+    surface_formats.resize(format_count);
+
+    optional<VkSurfaceFormatKHR> selected_format = VulkanColorFormat::SelectSurfaceFormat(surface_formats, ctx->SwapchainFormat);
+
+    if (!selected_format.has_value()) {
+        for (const VkSurfaceFormatKHR& format : surface_formats) {
+            logging::write("Vulkan surface format: format={}, colorSpace={}", static_cast<int32_t>(format.format), static_cast<int32_t>(format.colorSpace));
+        }
+    }
+
+    FO_VERIFY_AND_THROW(selected_format.has_value(), "Vulkan surface has no compatible BGRA8/RGBA8 UNORM format with SRGB_NONLINEAR", ctx->SwapchainFormat);
+
     // Destroy old framebuffers and image views
     for (VkFramebuffer fb : ctx->Framebuffers) {
         DestroyFramebufferSafe(ctx, fb);
@@ -2737,30 +2730,6 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         image_count = caps.maxImageCount;
     }
 
-    // The backend assumes VK_FORMAT_B8G8R8A8_UNORM everywhere (one render pass shared by all
-    // framebuffers), so require it rather than silently substituting an incompatible format
-    {
-        uint32_t format_count = 0;
-        vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
-        VerifyVkResult(vk_result);
-        FO_VERIFY_AND_THROW(format_count != 0, "Vulkan surface has no supported formats");
-        vector<VkSurfaceFormatKHR> surface_formats(format_count);
-        vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
-        VerifyVkResult(vk_result);
-
-        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction
-        bool format_supported = surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED;
-
-        for (const auto& sf : surface_formats) {
-            if (sf.format == VK_FORMAT_B8G8R8A8_UNORM && sf.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
-                format_supported = true;
-                break;
-            }
-        }
-
-        FO_VERIFY_AND_THROW(format_supported, "Surface does not support required VK_FORMAT_B8G8R8A8_UNORM / SRGB_NONLINEAR");
-    }
-
     // FIFO is vsync-locked and the only guaranteed mode; with VSync off prefer IMMEDIATE, then MAILBOX
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -2794,8 +2763,8 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     sci.surface = ctx->Surface;
     sci.minImageCount = image_count;
-    sci.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    sci.imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    sci.imageFormat = selected_format->format;
+    sci.imageColorSpace = selected_format->colorSpace;
     sci.imageExtent = swapchain_extent;
     sci.imageArrayLayers = 1;
     sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -2835,6 +2804,8 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 
     ctx->SwapchainFormat = sci.imageFormat;
+
+    logging::write("Vulkan swapchain color format: {}", ctx->SwapchainFormat == VK_FORMAT_B8G8R8A8_UNORM ? "BGRA8 UNORM" : "RGBA8 UNORM");
 
     if (ctx->RenderPass == VK_NULL_HANDLE) {
         VkAttachmentDescription color_attachment {};
@@ -3706,3 +3677,4 @@ static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
 FO_END_NAMESPACE
 
 #endif // FO_HAVE_VULKAN
+
