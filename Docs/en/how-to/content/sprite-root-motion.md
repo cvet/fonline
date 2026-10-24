@@ -102,8 +102,10 @@ int32 placement and positive uint32 duration into SpriteResource v3. Shared slot
 reference earlier pixels/geometry, retaining their own movement, placement and time.
 `ReadSpriteResource` decodes movement into `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` assigns each record's `Offset` and `NextOffset`
-to independent placement and motion arrays, including shared pixel records. Each
+`DefaultSpriteFactory::LoadSprite` converts placement to logical canvas coordinates
+and stores it independently from each record's `NextOffset` motion. A shared record
+uses the referenced sprite's logical placement plus the difference between its own
+and the referenced record's baked `Offset`; chains preserve that anchor. Each
 direction owns its count and timeline.
 
 `SpriteSheet::GetSpriteOffset(frame)` reads the ordinary sprite offset to the root

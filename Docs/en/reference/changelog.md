@@ -12,9 +12,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-23
+## Current - 2026-10-24
 
 ### Migration
+
+Base `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`) to `2026.1.62-dev`.
 
 Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.78. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
 
@@ -121,6 +123,23 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
   Deploy/rollback matching binaries/packs/sources and regenerate metadata.
 - LFMODINF schema5 requires a full model rebake. Textures remain single-frame, single-direction images; TextureAnimation is rejected. LFMODMSH/LFOZZRIG stay unchanged.
 
+- Preserve fractional moving-item updates through typed elapsed time; floating unit conversions retain sub-millisecond values. Name runtime interval defaults without changing their values or units; place dependency collectors before baker entrypoints.
+
+## 2026.1.61-dev - 2026-10-24
+
+### Fixed
+
+- Preserve fractional milliseconds when advancing moving item sprites, avoiding cumulative motion loss on high-refresh clients.
+
+### Changed
+
+- Withdraw the client/mapper `Map.BlockHex(mpos hex, bool full)` and `Map.UnblockHex(mpos hex)` proposed in PR #227. Server manual blocks are not replicated to clients, so independent local flags cannot provide consistent pathfinding and lead to repeated authoritative movement corrections. Remove the local flags, native setter and their tests instead of exposing an incomplete mechanism.
+
+### Migration
+
+- Base `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0` (`2026.1.60-dev`) to `2026.1.61-dev`. The published master API is unchanged; the withdrawal affects only users of earlier PR #227 heads `9c8237b0520041e3de78d878829c25c59ed5e030` and `6f31a6404207310332a39703ef784f26b054e644`. Remove client/mapper calls to `Map.BlockHex` and `Map.UnblockHex` in AngelScript/managed sources, and native uses of `MapView::SetHexManualBlock` or its `Field::ManualBlock` / `ManualBlockFull` flags. No replacement client API is provided: a future server-driven mechanism must synchronize initial state and updates before it can be exposed. The existing server methods retain their behavior and are not substitutes for client calls.
+- Detect affected sources with `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` and review each side: client/mapper script calls fail compilation against regenerated bindings; native uses fail compilation because the declarations are absent. Regenerate metadata, rebuild affected binaries and rebake matching client/mapper resources together. Ordinary item/map obstacles and their property synchronization are unchanged. No persisted-data or resource-format conversion is required; the runtime marker remains `0.0.77`, Managed ABI `9` and sprite container v2 are unchanged. Roll back binaries and baked resources together; earlier PR builds reintroduce the unsynchronized API.
+
 ## 2026.1.60-dev - 2026-10-23
 
 ### Added
@@ -135,6 +154,7 @@ Integrate FOFRM recipes, packaged resource usage selection and typed animation/r
 - Upgrade from `2026.1.59-dev` to this version by rebuilding native roles and regenerating/baking both server and client script resources with the same Engine revision. The central compatibility marker advances from `76` to `77` for the changed player-message admission boundary and API/settings metadata; clients and servers must use matching rebuilt resources. Do not mix the preceding binaries or baked metadata. Rollback restores the previous matching binaries, assemblies and resources together.
 - No existing script method, event, setting, persisted property, numeric id, timer unit, resource schema or Managed ABI `9` is removed or reinterpreted. `Game.LoadCritter(crId, forPlayer)` keeps its global-map path; no persisted-data conversion is required. Native `EntityManager::LoadCritter` now takes `(cr_id, for_player, nptr<ident_t> stored_map_id, bool& is_error)`: migrate native callers to pass an output borrow for the stored map id, or `nullptr` when it is not needed, before the final error flag. The loader writes the restored map id before clearing the detached critter's `MapId`; an earlier load failure leaves the output unchanged, and destination validation remains with the caller. Native `ServerEngine::LoadCritter(cr_id, for_player, nptr<Map> map = nullptr)` now handles both destinations; ordinary two-argument calls use its default null map and explicit map calls keep stored-map restoration. Both script overloads provide cover for the fresh critter; only the map overload requires the caller's existing target-map cover. Regenerate both backends' bindings so the Managed analyzer sees the return-cover guarantee on either overload. Recompile Managed callers: `FOSYNC015` may now reject a redundant `Sync.Widen` of an already covered result. If that call only checked lifetime, replace it with `IsDestroyed`; retain acquisitions needed for other entities or after cover has been released.
 - Embedded clients may set `ClientNetwork.RequireInterthreadTransport = True`; ordinary clients retain the default false. Native extensions may subscribe to the two admission events directly; these are not `///@ EngineHook` entry points or exported `Game.On*` script events. A pre-login refusal precedes registration, database work, connection replacement and login-success delivery; per-message refusal stops queued input before dispatch. Application authentication, campaign eligibility and automatic roster restoration remain project-owned. Detect optional adoption with `rg -n "RequireInterthreadTransport|OnPlayerPreLogin|OnPlayerPreProcess|LoadCritter" <project-source-paths>`; unused hooks and restore APIs need no script changes. Projects that explicitly initialize every Engine setting must add `ClientNetwork.RequireInterthreadTransport = False` to preserve normal network clients; the config baker rejects an uninitialized setting.
+
 ## 2026.1.59-dev - 2026-10-23
 
 ### Fixed

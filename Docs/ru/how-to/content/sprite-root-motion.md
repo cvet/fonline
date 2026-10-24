@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"8e78188e1413934cec23eb5d7bb40f4a731a2d05dfbe1f6357b677529bd30bc1"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"8ad3d93337f7794dbe36cb2735a9e317972abd811e931e09de4e7e72e5420f2a"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -101,9 +101,11 @@ int32 и положительную uint32 длительность каждог
 Shared-слот ссылается на прежние пиксели/геометрию, сохраняя собственные движение,
 размещение и время. `ReadSpriteResource` декодирует движение в `SpriteResourceFrameData::NextOffset`.
 
-`DefaultSpriteFactory::LoadSprite` записывает `Offset` и `NextOffset` каждой записи
-в отдельные массивы размещения и движения, включая записи с общими пикселями.
-У направлений собственные числа кадров и таймлайны.
+`DefaultSpriteFactory::LoadSprite` переводит размещение в координаты логического
+холста и хранит его независимо от движения `NextOffset` каждой записи. Shared-запись
+использует логическое размещение спрайта-источника плюс разность собственного
+и исходного запечённых `Offset`; цепочки сохраняют эту привязку. У направлений
+собственные числа кадров и таймлайны.
 
 `SpriteSheet::GetSpriteOffset(frame)` читает обычное смещение спрайта до рута из
 `_sprOffset`. `GetSpriteMotion()[frame]` читает покадровую дельту визуального переноса

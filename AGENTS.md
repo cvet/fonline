@@ -189,7 +189,7 @@ and [Engine testing](Docs/en/contributing/testing/) for the actual configuration
 | --- | --- |
 | Native implementation/binding | Build/run affected generated `<ProjectDevName>_UnitTests` / `RunUnitTests`; cover changed behavior and negative controls. Run applicable pointer/allocator/exception/local-variable audits supplied by the integration. |
 | Build/CLI/package/formats/bakers/extensions | Update the owning `BuildTools/*Interface.json` and guide, regenerate/check model/reference, run focused tests and [aggregate contract diff](Docs/en/contributing/contract-change-management.md), then exercise the affected real project/preset/bake/package. |
-| Scripts/runtime/lifetime/analyzers | Run affected backend/native tests and compile every changed backend/role; keep project-only policy outside Engine. |
+| Scripts/runtime/lifetime/analyzers | Follow the [AngelScript style and refactoring guide](Docs/en/how-to/scripting/style-and-refactoring.md) for authored `.fos` changes. Run affected backend/native tests and compile every changed backend/role; keep project-only policy outside Engine. |
 | Presentation | Visible/audible interaction on every claimed backend/platform after native tests and bake. High-level GUI libraries/layouts/generators remain project-owned. |
 | Documentation/instructions | `python BuildTools/docs_prepare.py`, focused owning doc tests, `python BuildTools/tests/test_docs_validate.py`, `python BuildTools/docs_validate.py`, `git diff --check`. Public route/site changes also follow the [site publication gates](Docs/en/contributing/documentation/site-publication.md). |
 

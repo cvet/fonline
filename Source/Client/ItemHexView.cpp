@@ -292,3 +292,4 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 }
 
 FO_END_NAMESPACE
+

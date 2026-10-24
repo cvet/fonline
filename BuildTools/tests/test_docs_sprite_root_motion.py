@@ -85,7 +85,10 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
         animation = self._read("Source/Client/AnimationMovement.cpp")
 
         self.assertIn("dir_anim->SetFrame(numeric_cast<int32_t>(j), std::move(spr), offset, frame.NextOffset);", sprites)
-        self.assertIn("frame.Offset, frame.NextOffset", sprites)
+        self.assertIn("ipos32 offset = spr->GetOffset();", sprites)
+        self.assertIn("reference_offset.x) + frame.Offset.x - direction.Frames[index].Offset.x", sprites)
+        self.assertIn("reference_offset.y) + frame.Offset.y - direction.Frames[index].Offset.y", sprites)
+        self.assertIn("dir_anim->SetFrame(numeric_cast<int32_t>(j), dir_anim->GetSprite(index)->MakeCopy(), offset, frame.NextOffset);", sprites)
         self.assertIn("_sprMotion[index] = motion;", sprites)
         self.assertIn("_sprOffset[index] = offset;", sprites)
         self.assertIn("Do not clamp HexOffset: prediction can leave current_hex a full step behind", movement)
