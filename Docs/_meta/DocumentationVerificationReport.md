@@ -60,6 +60,31 @@ six API changes across seventeen domains, with three required dispositions and
 none missing. Native, bake and player-path qualification remain separate from
 these documentation results.
 
+## 2026-10-24 - Preserve the final instruction-only upstream refresh
+
+The next upstream step moves master from
+`268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629` to
+`57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0`. Its only changed path is
+AGENTS.md, adding the existing AngelScript style guide to validation routing.
+The complete current instructions were reread; this integration changes no
+authored AngelScript source. Version 60 and all contract models are unchanged.
+
+Merge `356f9bbc8f70ac45146835af42a4eec12946c738` retains the refreshed published
+master and published worker tip `9cca2c14087471b6c9824ec5449e03e7e3aa6dec`.
+Five unpublished fixes were rebased, ending at
+`6c1f385fb2baaf9a258036785724b725a62952fb`; the previous qualified head
+`5c3f6e93809a5c3a2596e1a207525efe1efa202c` remains under a safety ref.
+Their complete Source tree is identical:
+`2d7d12d4ffb3a25816513a1c71a65a27bce3e334`. Published history was not rewritten.
+
+The corrected Linux/Clang 20 standard native route has now completed:
+865 cases and 1742821 assertions pass, without warnings or source-after drift
+across 8592 inputs. Its focused route uses the actual particle tag. The separate
+Windows result remains 865 cases and 1743118 assertions. These results retain
+their original overlay/Git-metadata provenance; unchanged Source objects do not
+turn them into executions of the refreshed Git identity. A fresh coupled Managed
+game build, force bake and ordinary client remain the next acceptance layer.
+
 ## 2026-10-24 - Reconcile client workers with resource ownership
 
 The unpublished integration worktree combines published master
