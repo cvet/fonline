@@ -520,6 +520,11 @@ frame index, so the top lists remain deterministic under parallel baking.
 
 During output discovery it visits resource packs in configured order so a later baker can read outputs declared by an earlier dependency (for example, model baking can load client metadata). When packs declare the same logical output path, the later registration replaces the earlier one; file resolution also searches packs from last to first, preserving the normal resource-overlay rule that later packs shadow earlier packs.
 
+Model-info discovery registers output paths without validating cached model payloads:
+linked descriptions from the same baker may not have entered the index yet. Normal
+incremental and lazy baking still validate cached texture dependencies and reject
+missing linked descriptions or animated model textures.
+
 ## Embedding-project pack design
 
 `Source/Common/Settings.h` and `Settings.cpp` define the reusable `[ResourcePack]` state: authored `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, and `Bakers`, plus the derived `ConfigDir` of the declaring file. A name is mandatory, at most one side-only flag may be true, relative inputs resolve from `ConfigDir`, and the configured section order is preserved.

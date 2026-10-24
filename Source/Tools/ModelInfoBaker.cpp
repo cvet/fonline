@@ -506,7 +506,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
         uint64_t max_write_time = GetModelDescriptionMaxWriteTime(files, dependency_engine, file_.GetPath());
 
         if (_context->HasBakeChecker() && !_context->CheckOutput(file_.GetPath(), max_write_time)) {
-            if (_context->GetBakedFiles()->IsFileExists(file_.GetPath())) {
+            if (!_context->IsOutputDiscovery() && _context->GetBakedFiles()->IsFileExists(file_.GetPath())) {
                 try {
                     ValidateCachedModelTextures(texture_infos, *_context->GetBakedFiles(), file_.GetPath(), texture_mesh_cache, validated_texture_models);
                 }

@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"984f63616f0ab1c0edd8480585a80ac37731aeaf1ab72b7e72674bac933fb2e3"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"93959aa341723c2666f8ee35108a86b8182d6d75a9db476c102699e960ee90c8"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -389,6 +389,11 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 Строки списков содержат source/output path, direction, frame index, form, origin/reason, geometry, components, padding, tolerance/dilation, source/baked/visible areas, transparent potential, overhead, savings и score. Tie-breaking включает оба пути, direction и frame index, поэтому отчёт детерминирован при параллельном bake.
 
 Во время output discovery resource packs обходятся в порядке конфигурации. Более поздний baker может читать объявленные output предыдущей зависимости. При совпадении logical output path поздняя регистрация заменяет раннюю; lookup также идёт от последнего pack к первому, реализуя overlay rule.
+
+Discovery model-info регистрирует пути выходов без проверки содержимого кеша:
+связанные описания того же baker-а могут ещё отсутствовать в индексе. Обычная
+инкрементальная и отложенная выпечка сохраняет проверку зависимостей текстур
+и отклоняет отсутствующие связанные описания и анимированные текстуры моделей.
 
 ## Проектирование resource pack в игре
 

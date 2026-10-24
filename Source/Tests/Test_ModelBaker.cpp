@@ -37,6 +37,7 @@
 
 #if FO_ENABLE_3D
 
+#include "BakingContext.h"
 #include "ConfigFile.h"
 #include "ModelAnimation.h"
 #include "ModelAnimationData.h"
@@ -397,6 +398,32 @@ static void AddModelInfoMetadata(BakerTests::TestRig& rig)
                 {"CritterStateAnim", "", "TestState", "1", "PreviewState", "401"},
                 {"CritterActionAnim", "", "TestAction", "1", "TestActionA", "3", "TestActionB", "4", "TestActionC", "5", "TestActionD", "6", "PreviewAction", "509", "MissingPreview", "600"},
             }}}));
+}
+
+static void AddTestLinkedModelInfoFixture(BakerTests::TestRig& rig)
+{
+    AddModelInfoMetadata(rig);
+
+    rig.AddSourceFile("Critters/Parent.fo3d", "Model ParentBody.fbx\nAnim 0 1 ModelFile Idle\nLayer 1 Value 2 Attach Child.fo3d Link Hand\n", 7);
+    rig.AddSourceFile("Critters/Child.fo3d", "Model ChildBody.fbx\n", 6);
+
+    AddTestModelSource(rig, MakeTestModelSourceWithChild("Critters/ParentBody.fbx", "Body", "Hand", 3.0f, {"Idle"}));
+    rig.AddBakedFile("Critters/ParentBody.fbx", MakeTestBakedModelWithChildBone("Body", "Hand"));
+    AddTestModel(rig, "Critters/ChildBody.fbx", "Child", true);
+}
+
+static auto BakeTestLinkedModelInfoParent() -> vector<uint8_t>
+{
+    BakerTests::TestRig rig;
+    AddTestLinkedModelInfoFixture(rig);
+
+    ModelInfoBaker baker(rig.MakeContext(), LoadTestModelSourceFixture);
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    REQUIRE(rig.Outputs.count("Critters/Parent.fo3d") == 1);
+    REQUIRE_FALSE(rig.Outputs.at("Critters/Parent.fo3d").empty());
+    REQUIRE(rig.Outputs.count("Critters/Child.fo3d") == 1);
+    return rig.Outputs.at("Critters/Parent.fo3d");
 }
 
 static void BakeModelInfoFiles(BakerTests::TestRig& rig, string_view target_path = {})
@@ -1424,6 +1451,73 @@ TEST_CASE("ModelInfoBakerOrchestration")
         }
 
         CHECK(baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
+    }
+
+    SECTION("Discovers linked cached model outputs when output discovery is enabled")
+    {
+        vector<uint8_t> cached_parent_description = BakeTestLinkedModelInfoParent();
+
+        TestRig rig;
+        AddTestLinkedModelInfoFixture(rig);
+        rig.AddBakedFile("Critters/Parent.fo3d", cached_parent_description);
+
+        REQUIRE(rig.SourceFiles.IsFileExists("Critters/Parent.fo3d"));
+        REQUIRE(rig.SourceFiles.IsFileExists("Critters/Child.fo3d"));
+        REQUIRE(rig.BakedFiles.IsFileExists("Critters/Parent.fo3d"));
+        REQUIRE_FALSE(rig.BakedFiles.IsFileExists("Critters/Child.fo3d"));
+
+        vector<pair<string, uint64_t>> checks;
+        BakingContextOptions context_options = rig.MakeContextOptions("TestPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+
+            return false;
+        });
+        context_options.OutputDiscovery = true;
+
+        shared_ptr<BakingContext> context = safe_alloc::make_shared<BakingContext>(std::move(context_options));
+        ModelInfoBaker baker(std::move(context), LoadTestModelSourceFixture);
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        CHECK(std::ranges::any_of(checks, [](const pair<string, uint64_t>& check) { return check.first == "Critters/Parent.fo3d"; }));
+        CHECK(std::ranges::any_of(checks, [](const pair<string, uint64_t>& check) { return check.first == "Critters/Child.fo3d"; }));
+        CHECK(std::ranges::any_of(checks, [](const pair<string, uint64_t>& check) { return check.first == "ModelAnimationInfo.foinfo"; }));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("Keeps cached linked model validation strict when output discovery is disabled")
+    {
+        vector<uint8_t> cached_parent_description = BakeTestLinkedModelInfoParent();
+
+        TestRig rig;
+        AddTestLinkedModelInfoFixture(rig);
+        rig.AddBakedFile("Critters/Parent.fo3d", cached_parent_description);
+
+        REQUIRE(rig.SourceFiles.IsFileExists("Critters/Parent.fo3d"));
+        REQUIRE(rig.SourceFiles.IsFileExists("Critters/Child.fo3d"));
+        REQUIRE(rig.BakedFiles.IsFileExists("Critters/Parent.fo3d"));
+        REQUIRE_FALSE(rig.BakedFiles.IsFileExists("Critters/Child.fo3d"));
+
+        BakingContextOptions context_options = rig.MakeContextOptions("TestPack", [](string_view, uint64_t) { return false; });
+        context_options.OutputDiscovery = false;
+
+        shared_ptr<BakingContext> context = safe_alloc::make_shared<BakingContext>(std::move(context_options));
+        ModelInfoBaker baker(std::move(context), LoadTestModelSourceFixture);
+
+        bool cached_validation_threw = false;
+        string cached_validation_error;
+
+        try {
+            baker.BakeFiles(rig.GetAllSourceFiles(), "");
+        }
+        catch (const ModelInfoBakerException& ex) {
+            cached_validation_threw = true;
+            cached_validation_error = ex.what();
+        }
+
+        CHECK(cached_validation_threw);
+        CHECK(cached_validation_error.find("Cached model texture validation failed") != string::npos);
+        CHECK(cached_validation_error.find("Critters/Child.fo3d") != string::npos);
+        CHECK(rig.Outputs.empty());
     }
 
     SECTION("PreviewBoundsUseTheConfiguredOpaquePair")
@@ -2643,3 +2737,4 @@ TEST_CASE("ModelBoundsMeasurementModes")
 FO_END_NAMESPACE
 
 #endif
+
