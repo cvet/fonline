@@ -471,4 +471,3 @@ TEST_CASE("ServerFailedNpcLoadKeepsRecoverableRecords", "[server][entity][databa
 }
 
 FO_END_NAMESPACE
-

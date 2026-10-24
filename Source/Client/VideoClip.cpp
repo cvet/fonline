@@ -435,4 +435,3 @@ int32_t VideoClip::DecodePacket()
 }
 
 FO_END_NAMESPACE
-

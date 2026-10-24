@@ -409,4 +409,3 @@ void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
 }
 
 FO_END_NAMESPACE
-

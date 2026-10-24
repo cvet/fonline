@@ -1037,4 +1037,3 @@ auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterAct
 }
 
 FO_END_NAMESPACE
-

@@ -223,4 +223,3 @@ TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
 }
 
 FO_END_NAMESPACE
-

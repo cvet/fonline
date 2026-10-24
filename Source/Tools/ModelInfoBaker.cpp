@@ -2969,4 +2969,3 @@ static void ApplyModelDescriptionMul(float32_t& value, float32_t operand)
 FO_END_NAMESPACE
 
 #endif
-

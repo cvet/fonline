@@ -329,4 +329,3 @@ TEST_CASE("ServerEventCallContracts")
 }
 
 FO_END_NAMESPACE
-

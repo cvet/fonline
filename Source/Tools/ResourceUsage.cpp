@@ -304,4 +304,3 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
 }
 
 FO_END_NAMESPACE
-

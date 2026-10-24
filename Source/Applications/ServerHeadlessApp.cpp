@@ -133,4 +133,3 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
         balancer.EndLoop();
     }
 }
-

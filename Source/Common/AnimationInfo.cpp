@@ -482,4 +482,3 @@ auto ReadAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> un
 }
 
 FO_END_NAMESPACE
-

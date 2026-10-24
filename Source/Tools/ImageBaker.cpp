@@ -744,4 +744,3 @@ static auto LoadImage(const ImageImport::Loader& loader, string_view fname, stri
 }
 
 FO_END_NAMESPACE
-

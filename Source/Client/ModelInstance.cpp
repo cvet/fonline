@@ -2879,4 +2879,3 @@ auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ip
 FO_END_NAMESPACE
 
 #endif
-

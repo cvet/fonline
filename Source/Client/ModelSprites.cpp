@@ -587,4 +587,3 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 FO_END_NAMESPACE
 
 #endif
-

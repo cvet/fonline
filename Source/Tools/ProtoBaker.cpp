@@ -401,4 +401,3 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 }
 
 FO_END_NAMESPACE
-

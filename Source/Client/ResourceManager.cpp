@@ -240,4 +240,3 @@ void ResourceManager::CleanupSpriteCache()
 }
 
 FO_END_NAMESPACE
-

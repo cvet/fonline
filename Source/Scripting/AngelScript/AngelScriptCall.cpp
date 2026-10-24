@@ -726,4 +726,3 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 FO_END_NAMESPACE
 
 #endif
-

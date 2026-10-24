@@ -426,4 +426,3 @@ TEST_CASE("MovingContextFastForward")
 }
 
 FO_END_NAMESPACE
-

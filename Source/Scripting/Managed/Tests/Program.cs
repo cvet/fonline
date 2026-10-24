@@ -404,9 +404,10 @@ internal static class Program
                  Check(Game.LastTimerDuration.nanoseconds == 17_000_000, "The integer overload lost millisecond units");
                  Game.LastTimerCallback!();
                  Check(millisecondDelay.IsCompletedSuccessfully, "The millisecond adapter lost completion");
-                 using (ScriptSynchronizationContext.Enter(synchronous: true)) {
+                 using (ScriptSynchronizationContext.Enter(synchronous: true))
+                 {
                      ExpectThrows<InvalidOperationException>(() => _ = ScriptTask.Delay(new timespan(1)),
-                                                            "A synchronous callback yielded a typed timer");
+                                                             "A synchronous callback yielded a typed timer");
                  }
              }),
             ("time constructors reject overflow at unit boundaries",
@@ -418,11 +419,16 @@ internal static class Program
                        "A valid millisecond clock value was scaled again");
                  Check(new synctime(long.MinValue, 0).milliseconds == long.MinValue / 1_000_000,
                        "Sub-millisecond clock conversion did not truncate toward zero");
-                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 1), "Microsecond overflow was accepted");
-                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MinValue, 2), "Millisecond underflow was accepted");
-                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 3), "Second overflow was accepted");
-                 ExpectThrows<OverflowException>(() => _ = new synctime(long.MaxValue, 3), "Clock second overflow was accepted");
-                 ExpectThrows<ArgumentException>(() => _ = new timespan(1, 99), "An invalid duration unit was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 1),
+                                                 "Microsecond overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MinValue, 2),
+                                                 "Millisecond underflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 3),
+                                                 "Second overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new synctime(long.MaxValue, 3),
+                                                 "Clock second overflow was accepted");
+                 ExpectThrows<ArgumentException>(() => _ = new timespan(1, 99),
+                                                 "An invalid duration unit was accepted");
              }),
             ("duration formatting across signs and extremes",
              () =>

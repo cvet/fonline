@@ -210,4 +210,3 @@ TEST_CASE("MapSpriteListDrawOrder")
 }
 
 FO_END_NAMESPACE
-

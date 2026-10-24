@@ -82,4 +82,3 @@ int main(int argc, char** argv)
         FO_UNKNOWN_EXCEPTION();
     }
 }
-

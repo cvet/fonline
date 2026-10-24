@@ -325,4 +325,3 @@ static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
 FO_END_NAMESPACE
 
 #endif
-

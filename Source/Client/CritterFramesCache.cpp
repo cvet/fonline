@@ -114,4 +114,3 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
 }
 
 FO_END_NAMESPACE
-

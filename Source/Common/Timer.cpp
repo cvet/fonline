@@ -159,4 +159,3 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
 }
 
 FO_END_NAMESPACE
-

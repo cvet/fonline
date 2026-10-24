@@ -159,4 +159,3 @@ auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
 FO_END_NAMESPACE
 
 #endif
-

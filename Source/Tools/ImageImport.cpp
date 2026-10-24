@@ -139,4 +139,3 @@ void ImageImport::CheckEnabled(string_view fname)
 }
 
 FO_END_NAMESPACE
-

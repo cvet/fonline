@@ -541,4 +541,3 @@ namespace ImageBakerSpr
 FO_END_NAMESPACE
 
 #endif
-

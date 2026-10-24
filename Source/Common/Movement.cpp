@@ -516,4 +516,3 @@ void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time,
 }
 
 FO_END_NAMESPACE
-

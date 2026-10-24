@@ -338,4 +338,3 @@ static void SetFOServiceStatus(uint32_t state)
     ::SetServiceStatus(Data->FOServiceStatusHandle, &status);
 }
 #endif
-

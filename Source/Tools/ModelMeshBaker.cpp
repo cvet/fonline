@@ -674,4 +674,3 @@ static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bon
 FO_END_NAMESPACE
 
 #endif
-

@@ -1956,4 +1956,3 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 }
 
 FO_END_NAMESPACE
-

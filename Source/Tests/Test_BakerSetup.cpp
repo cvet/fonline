@@ -1653,4 +1653,3 @@ TEST_CASE("ResourceUsageOwnersKeepFontPagesAndOnlyCurrentEffectPasses")
 }
 
 FO_END_NAMESPACE
-

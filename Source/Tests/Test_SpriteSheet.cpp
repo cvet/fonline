@@ -889,4 +889,3 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 }
 
 FO_END_NAMESPACE
-

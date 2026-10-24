@@ -906,4 +906,3 @@ auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCu
 FO_END_NAMESPACE
 
 #endif
-
