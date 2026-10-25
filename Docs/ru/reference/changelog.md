@@ -187,6 +187,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Упаковщик Android Client читает метаданные из парного `.fomain-server`, встраивая `.fomain-client`. Сохраняйте оба файла одного bake и пересоберите APK: Activity больше не передаёт `--ApplySubConfig` уже разрешённому packaged config. Native ABI и форматы ресурсов не меняются.
 
 - Кадр модели на ARM64 сохраняет точную аффинность. Пересоберите клиент/Mapper; миграций нет.
+- Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
 
 ### Миграция
 

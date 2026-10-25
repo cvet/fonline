@@ -53,7 +53,7 @@ void exit_app(bool success) noexcept
 {
     int32_t code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+#if !FO_WEB && !FO_MAC && !FO_IOS
     std::quick_exit(code);
 #else
     std::exit(code);

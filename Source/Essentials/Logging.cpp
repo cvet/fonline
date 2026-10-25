@@ -53,7 +53,7 @@ struct logging_data
 {
     logging_data()
     {
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+#if !FO_WEB && !FO_MAC && !FO_IOS
         (void)std::at_quick_exit(flush_log_at_exit);
 #else
         ignore_unused(flush_log_at_exit);

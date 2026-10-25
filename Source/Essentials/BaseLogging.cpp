@@ -55,7 +55,7 @@ struct base_logging_data
 {
     base_logging_data()
     {
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+#if !FO_WEB && !FO_MAC && !FO_IOS
         int32_t result = std::at_quick_exit(flush_log_at_exit);
         ignore_unused(result);
 #else

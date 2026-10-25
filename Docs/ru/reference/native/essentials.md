@@ -220,7 +220,7 @@ CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/c
 
 `logging::write` / `logging::write_base` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
 
-`FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `exit_app(false)` только механическое завершение. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `exit_app(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
+`FatalError.*` — ранний native-only fatal layer после `StackTrace`/`BaseLogging`. Он останавливает async writes, пишет синхронное сообщение/native trace и передаёт механическое завершение status-only `exit_app(false)`, общему для controlled command failures и fatal invariants. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`, без exception objects и позднего `ExceptionHandling`. На Android `exit_app` использует `quick_exit` с обоими logging flushes, пропуская TLS/global destructors; обычный shutdown сначала явно завершает runtime cleanup.
 
 `StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 
