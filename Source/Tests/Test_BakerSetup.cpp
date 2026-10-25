@@ -1642,14 +1642,18 @@ TEST_CASE("ResourceUsageOwnersKeepFontPagesAndOnlyCurrentEffectPasses")
     BakerTests::TestRig rig;
     rig.AddBakedFile("Fonts/Default.fofnt", "Image Default.png*\n");
     RawCopyBaker fonts {rig.MakeContext("Fonts")};
-    CHECK(fonts.CollectResourceDependencies(rig.GetAllSourceFiles(), "Fonts/Default.fofnt") == vector<string> {"Fonts/Default.png"});
+
+    const BaseBaker& font_dependencies = fonts;
+    CHECK(font_dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "Fonts/Default.fofnt") == vector<string> {"Fonts/Default.png"});
 
     rig.AddSourceFile("Effects/Test.fofx", "[Effect]\nPasses = 1\n");
     rig.AddBakedFile("Effects/Test.fofx-1-info", "current");
     rig.AddBakedFile("Effects/Test.fofx-1-vert-glsl", "current");
     rig.AddBakedFile("Effects/Test.fofx-2-info", "stale");
     EffectBaker effects {rig.MakeContext("Effects")};
-    CHECK(effects.CollectResourceDependencies(rig.GetAllSourceFiles(), "Effects/Test.fofx") == vector<string> {"Effects/Test.fofx-1-info", "Effects/Test.fofx-1-vert-glsl"});
+
+    const BaseBaker& effect_dependencies = effects;
+    CHECK(effect_dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "Effects/Test.fofx") == vector<string> {"Effects/Test.fofx-1-info", "Effects/Test.fofx-1-vert-glsl"});
 }
 
 FO_END_NAMESPACE

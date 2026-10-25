@@ -1450,7 +1450,8 @@ TEST_CASE("ModelInfoBakerOrchestration")
             rig.AddBakedFile(path, bytes);
         }
 
-        CHECK(baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
+        const BaseBaker& dependency_baker = baker;
+        CHECK(dependency_baker.CollectResourceDependencies(rig.GetAllSourceFiles(), "Critters/Test.fo3d") == vector<string> {"Critters/Body.fbx", "Critters/Equipment.fo3d", "Critters/Equipment.fo3d"});
     }
 
     SECTION("Discovers linked cached model outputs when output discovery is enabled")
