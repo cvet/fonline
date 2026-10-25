@@ -181,6 +181,8 @@ Use empty JSON/SQLite storage: old EJSON/BSON has no reader/converter. Preserve 
 
 Persistence stores documents; entity state reaches those documents through property serialization and server entity-management code.
 
+A failed critter restoration reports the error but does not save persistent server-entity holder ID lists pruned to its partial runtime graph. Missing child documents therefore remain retryable without losing durable references. Successful pre-load handlers and explicit migrations still persist their changes normally.
+
 Relevant entity/property concepts from [Entity Model](../entity-and-property-model/):
 
 - persistent property flags;

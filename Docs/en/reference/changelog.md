@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-25
+## Current - 2026-10-26
+
+### Fixed
+
+- Keep persistent server-entity holder ID lists unchanged in storage when critter restoration fails. Runtime pruning of the partial graph still occurs, but retrying the load retains the original durable references and error; restoring a missing child document recovers the complete graph. Successful pre-load changes and explicit migrations continue to persist normally.
+
+### Migration
+
+- Base `17b4dab02495de2f2877e552d7811dd48951fc41` (`2026.1.63-dev`) → `2026.1.64-dev`. No project data migration is required: public APIs, persisted schemas, resource formats, runtime compatibility `0.0.78` and Managed ABI `9` are unchanged. Existing low-level runtime pruning semantics are preserved; only failed top-level restoration stops saving the partial lists. Rebuild affected server roles and native tests, and deploy server/client resources from one matching bake. Rollback restores the preceding matching binaries and resources together.
+
+## 2026.1.63-dev - 2026-10-25
 
 ### Fixed
 
