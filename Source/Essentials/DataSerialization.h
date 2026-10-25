@@ -47,7 +47,8 @@ inline void span_align_pos(size_t& pos, size_t alignment)
     FO_VERIFY_AND_THROW(alignment != 0, "Span alignment is zero");
     FO_VERIFY_AND_THROW((alignment & (alignment - 1)) == 0, "Span alignment is not power of two");
 
-    pos = align_up(pos, alignment);
+    size_t aligned_pos = checked_add<size_t>(pos, alignment - 1);
+    pos = aligned_pos & ~(alignment - 1);
 }
 
 [[nodiscard]] inline auto span_read_bytes(const_span<uint8_t> buffer, size_t& pos, size_t size) -> const_span<uint8_t>
@@ -383,7 +384,8 @@ public:
 
             auto target = mutable_objects_ptr(out);
             ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
-            read_bytes({bytes.get(), out.size() * sizeof(T)});
+            size_t byte_count = checked_mul<size_t>(out.size(), sizeof(T));
+            read_bytes({bytes.get(), byte_count});
         }
     }
 
@@ -516,7 +518,8 @@ public:
         if (!data.empty()) {
             auto source = source_objects_ptr(data);
             ptr<const uint8_t> bytes = source.template reinterpret_as<const uint8_t>();
-            write_bytes({bytes.get(), data.size() * sizeof(T)});
+            size_t byte_count = checked_mul<size_t>(data.size(), sizeof(T));
+            write_bytes({bytes.get(), byte_count});
         }
     }
 
@@ -589,11 +592,18 @@ private:
 
     void grow_buf(size_t size)
     {
-        while (size > _data_buf->capacity() - _data_buf->size()) {
-            _data_buf->reserve(_data_buf->capacity() * 2);
+        size_t required_size = checked_add<size_t>(_data_buf->size(), size);
+        size_t new_capacity = std::max<size_t>(_data_buf->capacity(), size_t {1});
+
+        while (new_capacity < required_size) {
+            new_capacity = checked_mul<size_t>(new_capacity, size_t {2});
         }
 
-        _data_buf->resize(_data_buf->size() + size);
+        if (new_capacity > _data_buf->capacity()) {
+            _data_buf->reserve(new_capacity);
+        }
+
+        _data_buf->resize(required_size);
     }
 
     ptr<vector<uint8_t>> _data_buf;

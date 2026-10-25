@@ -106,6 +106,8 @@ Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of 
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
+`NetBuffer::GrowBuf` checks the requested final byte length and each capacity doubling with `checked_*` before resizing. A zero-sized initial buffer grows normally; arithmetic overflow raises `OverflowException` while preserving buffered bytes and positions. Peer-length and current-frame validation below still applies before allocation or decoding.
+
 <a id="inbound-hardening-untrusted-client-server"></a>
 
 ## Inbound hardening (untrusted client → server)

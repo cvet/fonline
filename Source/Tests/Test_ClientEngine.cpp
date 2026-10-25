@@ -39,6 +39,68 @@ FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
 
+void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format);
+void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client, bool forceClear);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size, float32_t scriptValue0, float32_t scriptValue1, float32_t scriptValue2, float32_t scriptValue3);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, int32_t fromX, int32_t fromY, int32_t fromW, int32_t fromH, int32_t toX, int32_t toY, int32_t toW, int32_t toH);
+void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath);
+
+TEST_CASE("ClientScriptTextRejectsArithmeticOverflow")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()));
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
+    client->CanDrawInScripts = true;
+
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {std::numeric_limits<int32_t>::min(), 1}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {1, std::numeric_limits<int32_t>::min()}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {std::numeric_limits<int32_t>::min(), 0}, {-1, 1}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {0, std::numeric_limits<int32_t>::min()}, {1, -1}, {}, {}), OverflowException);
+    CHECK_NOTHROW(Client_Game_DrawText(client, "x", {10, 10}, {-1, -1}, {}, {}));
+}
+
+TEST_CASE("ClientScriptOffscreenOverflowPreservesActiveSurface")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(MakeBakedEffectResources("Effects/UnitTestOffscreen.fofx")));
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    client->CanDrawInScripts = true;
+    Client_Game_SetEffect(client, EffectType::Offscreen, 0, "Effects/UnitTestOffscreen.fofx");
+    client->SprMngr.BeginScene();
+
+    auto abort_scene = scope_exit([&client]() noexcept { client->SprMngr.AbortScene(); });
+    Client_Game_ActivateOffscreenSurface(client, true);
+    REQUIRE(client->ActiveOffscreenSurfaces.size() == 1);
+    auto surface = client->ActiveOffscreenSurfaces.back();
+
+    SECTION("Rectangle")
+    {
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, {std::numeric_limits<int32_t>::max(), 0}, {1, 1}), OverflowException);
+    }
+
+    SECTION("RectangleWithScriptValues")
+    {
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, {0, std::numeric_limits<int32_t>::max()}, {1, 1}, 0.0f, 0.0f, 0.0f, 0.0f), OverflowException);
+    }
+
+    SECTION("IndependentRectangles")
+    {
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, std::numeric_limits<int32_t>::min(), 0, 1, 1, 0, 0, 1, 1), OverflowException);
+    }
+
+    REQUIRE(client->ActiveOffscreenSurfaces.size() == 1);
+    CHECK(client->ActiveOffscreenSurfaces.back() == surface);
+    CHECK(client->SprMngr.GetRtMngr().GetCurrentRenderTarget() == surface);
+
+    Client_Game_PresentOffscreenSurface(client, 0, {0, 0}, {1, 1});
+    CHECK(client->ActiveOffscreenSurfaces.empty());
+    client->SprMngr.EndScene();
+}
+
 TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
     string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();

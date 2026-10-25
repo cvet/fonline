@@ -51,6 +51,40 @@ static_assert(!IsZeroCopyReadPtrAvailable<float32_t>());
 
 TEST_CASE("DataSerialization")
 {
+    SECTION("AlignmentOverflowPreservesPosition")
+    {
+        size_t pos = std::numeric_limits<size_t>::max();
+        CHECK_THROWS_AS(span_align_pos(pos, 8), OverflowException);
+        CHECK(pos == std::numeric_limits<size_t>::max());
+
+        pos = std::numeric_limits<size_t>::max() - 7;
+        CHECK_NOTHROW(span_align_pos(pos, 8));
+        CHECK(pos == std::numeric_limits<size_t>::max() - 7);
+    }
+
+    SECTION("AlignmentRoundsUp")
+    {
+        size_t pos = 9;
+        CHECK_NOTHROW(span_align_pos(pos, 8));
+        CHECK(pos == 16);
+
+        pos = 16;
+        CHECK_NOTHROW(span_align_pos(pos, 8));
+        CHECK(pos == 16);
+
+        pos = 3;
+        CHECK_NOTHROW(span_align_pos(pos, 1));
+        CHECK(pos == 3);
+
+        pos = 5;
+        CHECK_THROWS_AS(span_align_pos(pos, 0), VerificationException);
+        CHECK(pos == 5);
+
+        pos = 5;
+        CHECK_THROWS_AS(span_align_pos(pos, 3), VerificationException);
+        CHECK(pos == 5);
+    }
+
     SECTION("SpanHelpers")
     {
         array<uint8_t, 16> buf {};
@@ -332,6 +366,60 @@ TEST_CASE("DataSerialization")
         CHECK(raw[source.size() - 1] == 2);
         CHECK(raw[source.size() / 2] == static_cast<uint8_t>(0x5A));
         CHECK_NOTHROW(reader.verify_end());
+    }
+
+    SECTION("ZeroCapacityWriterGrowsFromZero")
+    {
+        vector<uint8_t> buf;
+        data_writer writer {buf};
+
+        buf.clear();
+        buf.shrink_to_fit();
+        REQUIRE(buf.capacity() == 0);
+
+        array<uint8_t, 5> payload = {11, 22, 33, 44, 55};
+        writer.write<uint8_t>(static_cast<uint8_t>(0x77));
+        writer.write<uint32_t>(0x01020304u);
+        writer.write_bytes({payload.data(), payload.size()});
+
+        CHECK(buf.size() == sizeof(uint8_t) + sizeof(uint32_t) + payload.size());
+
+        data_reader reader {span {buf}};
+        CHECK(reader.read<uint8_t>() == static_cast<uint8_t>(0x77));
+        CHECK(reader.read<uint32_t>() == 0x01020304u);
+
+        auto read_back = reader.read_ptr<uint8_t>(payload.size());
+        REQUIRE(static_cast<bool>(read_back));
+        CHECK(read_back[0] == payload[0]);
+        CHECK(read_back[payload.size() - 1] == payload[payload.size() - 1]);
+        CHECK_NOTHROW(reader.verify_end());
+    }
+
+    SECTION("ObjectArrayCheckedByteCountRoundtrip")
+    {
+        vector<uint32_t> values = {1u, 2u, 3u, 0xAABBCCDDu};
+
+        vector<uint8_t> buf;
+        data_writer writer {buf};
+        writer.write_sized_object_vector(values);
+
+        CHECK(buf.size() == sizeof(uint32_t) + values.size() * sizeof(uint32_t));
+
+        data_reader reader {span {buf}};
+        vector<uint32_t> read_back = reader.read_sized_object_vector<uint32_t>();
+        CHECK(read_back == values);
+        CHECK_NOTHROW(reader.verify_end());
+
+        array<uint16_t, 3> direct_values = {10, 20, 30};
+        vector<uint8_t> direct_buf;
+        data_writer direct_writer {direct_buf};
+        direct_writer.write_object_array(const_span<uint16_t> {direct_values.data(), direct_values.size()});
+
+        data_reader direct_reader {span {direct_buf}};
+        array<uint16_t, 3> direct_read = {};
+        direct_reader.read_object_array(make_span(direct_read));
+        CHECK(direct_read == direct_values);
+        CHECK_NOTHROW(direct_reader.verify_end());
     }
 }
 

@@ -39,6 +39,30 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("NetBuffer")
 {
+    SECTION("GrowthOverflowPreservesBufferedBytes")
+    {
+        NetOutBuffer out_buf {8};
+        out_buf.Write<uint32_t>(0x12345678u);
+
+        CHECK_THROWS_AS(out_buf.GrowBuf(std::numeric_limits<size_t>::max()), OverflowException);
+        CHECK(out_buf.GetDataSize() == sizeof(uint32_t));
+
+        NetOutBuffer empty_buf {0};
+        CHECK_THROWS_AS(empty_buf.GrowBuf(std::numeric_limits<size_t>::max()), OverflowException);
+        CHECK(empty_buf.GetDataSize() == 0);
+
+        NetInBuffer in_buf {8};
+        in_buf.AddData(out_buf.GetData());
+        CHECK(in_buf.Read<uint32_t>() == 0x12345678u);
+
+        NetInBuffer in_overflow_buf {8};
+        in_overflow_buf.AddData(out_buf.GetData());
+
+        CHECK_THROWS_AS(in_overflow_buf.GrowBuf(std::numeric_limits<size_t>::max()), OverflowException);
+        CHECK(in_overflow_buf.GetBufferedUnreadSize() == sizeof(uint32_t));
+        CHECK(in_overflow_buf.Read<uint32_t>() == 0x12345678u);
+    }
+
     SECTION("PrimitiveAndStringRoundtrip")
     {
         NetOutBuffer out_buf {8};
@@ -261,6 +285,55 @@ TEST_CASE("NetBuffer")
         CHECK(in_buf.GetBufferedUnreadSize() == first.size());
         CHECK_THROWS_AS(in_buf.AddData(second), NetBufferException);
         CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("ZeroInitialBufferRoundtrip")
+    {
+        string payload {"zero-capacity"};
+
+        NetOutBuffer out_buf {0};
+        out_buf.Write<uint8_t>(static_cast<uint8_t>(0x5A));
+        out_buf.Write<uint32_t>(0x0BADF00Du);
+        out_buf.Write<float32_t>(1.25f);
+        out_buf.Write<string>(payload);
+        CHECK(out_buf.GetDataSize() == sizeof(uint8_t) + sizeof(uint32_t) + sizeof(float32_t) + sizeof(uint32_t) + payload.length());
+
+        NetInBuffer in_buf {0};
+        in_buf.AddData(out_buf.GetData());
+        CHECK(in_buf.GetBufferedUnreadSize() == out_buf.GetDataSize());
+        CHECK(in_buf.Read<uint8_t>() == static_cast<uint8_t>(0x5A));
+        CHECK(in_buf.Read<uint32_t>() == 0x0BADF00Du);
+        CHECK(in_buf.Read<float32_t>() == 1.25f);
+        CHECK(in_buf.Read<string>() == payload);
+        CHECK(in_buf.GetUnreadSize() == 0);
+    }
+
+    SECTION("GrowthAcrossMultipleCapacities")
+    {
+        uint32_t value_count = 128;
+        uint32_t initial_value = 0x10203040u;
+
+        NetOutBuffer out_buf {0};
+
+        for (uint32_t i = 0; i < value_count; i++) {
+            out_buf.Write<uint32_t>(initial_value + i);
+        }
+
+        CHECK(out_buf.GetDataSize() == value_count * sizeof(uint32_t));
+
+        NetInBuffer in_buf {0};
+
+        for (uint32_t i = 0; i < value_count; i++) {
+            in_buf.AddData(out_buf.GetData().subspan(numeric_cast<size_t>(i) * sizeof(uint32_t), sizeof(uint32_t)));
+        }
+
+        CHECK(in_buf.GetBufferedUnreadSize() == value_count * sizeof(uint32_t));
+
+        for (uint32_t i = 0; i < value_count; i++) {
+            CHECK(in_buf.Read<uint32_t>() == initial_value + i);
+        }
+
+        CHECK(in_buf.GetUnreadSize() == 0);
     }
 }
 

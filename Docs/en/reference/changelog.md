@@ -12,7 +12,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-24
+## Current - 2026-10-25
+
+### Fixed
+
+- Check integer division overflow and non-finite floating-point arithmetic in `checked_*`. Check buffer growth, serialized alignment and object-array byte counts before changing storage or positions, including growth from zero capacity.
+- Check script-supplied integer drawing coordinates, mouse deltas and offscreen bounds before use; preserve the active offscreen surface on arithmetic failure. Normalize the full signed 16-bit rotation-step range without narrowing the intermediate angle.
+
+### Migration
+
+- Rebuild affected native roles. Public signatures, units, serialized layouts, protocol and ABI identities are unchanged; no saved-data conversion is required. `Game.DivRem` now rejects `min / -1` with native `OverflowException` before writing the remainder, and a zero divisor raises native `DivisionByZeroException` instead of `VerificationException`. Review native exception-type-specific handlers; scripting backends retain their existing native-error reporting path. Finite valid arithmetic keeps its result; checked float operations reject NaN/infinity and overflowing results while allowing finite underflow to zero.
+
+## 2026.1.62-dev - 2026-10-24
 
 ### Fixed
 

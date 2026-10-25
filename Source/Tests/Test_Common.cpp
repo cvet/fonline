@@ -43,6 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+auto Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder) -> int32_t;
+auto Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, bool clockwise, int16_t step) -> mdir;
+
 class FramePumpTestBackend final : public ScriptSystemBackend
 {
 public:
@@ -226,6 +229,43 @@ TEST_CASE("CommonUtilities")
     {
         // An unpackaged test build reports no runtime name; a packaged one must name it
         CHECK(IsPackaged() == !GetPackagedRuntimeName().empty());
+    }
+}
+
+TEST_CASE("CommonScriptArithmetic")
+{
+    GlobalSettings settings {false};
+    settings.ApplyDefaultSettings();
+    FramePumpTestEngine engine {&settings, EngineSideKind::ClientSide};
+
+    SECTION("DivisionByZeroPreservesRemainder")
+    {
+        int32_t remainder = 123;
+        CHECK_THROWS_AS(Common_Game_DivRem(&engine, 7, 0, remainder), DivisionByZeroException);
+        CHECK(remainder == 123);
+    }
+
+    SECTION("SignedDivisionOverflowPreservesRemainder")
+    {
+        int32_t remainder = 123;
+        CHECK_THROWS_AS(Common_Game_DivRem(&engine, std::numeric_limits<int32_t>::min(), -1, remainder), OverflowException);
+        CHECK(remainder == 123);
+    }
+
+    SECTION("SignedDivisionRetainsTruncationAndRemainder")
+    {
+        int32_t remainder = 0;
+        CHECK(Common_Game_DivRem(&engine, -7, 3, remainder) == -2);
+        CHECK(remainder == -1);
+        CHECK(Common_Game_DivRem(&engine, 7, -3, remainder) == -2);
+        CHECK(remainder == 1);
+    }
+
+    SECTION("RotationAcceptsEntireStepRange")
+    {
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {350}, true, std::numeric_limits<int16_t>::max()) == mdir {357});
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {350}, false, std::numeric_limits<int16_t>::min()) == mdir {358});
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {10}, true, -60) == mdir {310});
     }
 }
 

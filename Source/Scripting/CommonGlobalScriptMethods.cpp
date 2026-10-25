@@ -397,13 +397,13 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, 
 {
     ignore_unused(engine);
 
-    int16_t rotated = dir.angle();
+    int32_t rotated = dir.angle();
 
     if (clockwise) {
-        rotated += step;
+        rotated = checked_add<int32_t>(rotated, numeric_cast<int32_t>(step));
     }
     else {
-        rotated -= step;
+        rotated = checked_sub<int32_t>(rotated, numeric_cast<int32_t>(step));
     }
 
     while (rotated < 0) {
@@ -823,10 +823,10 @@ FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividen
 {
     ignore_unused(engine);
 
-    FO_VERIFY_AND_THROW(divisor != 0, "Division by zero");
+    int32_t quotient = checked_div<int32_t>(dividend, divisor);
 
     remainder = dividend % divisor;
-    return dividend / divisor;
+    return quotient;
 }
 
 // Schedules a one-shot time event on this Engine instance after the requested delay and returns its event id

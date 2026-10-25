@@ -286,8 +286,21 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point addition received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 + value2);
+    T result = numeric_cast<T>(value1 + value2);
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point addition overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
 template<typename T, typename U>
@@ -309,8 +322,21 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point subtraction received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 - value2);
+    T result = numeric_cast<T>(value1 - value2);
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point subtraction overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
 template<typename T, typename U>
@@ -346,8 +372,21 @@ template<typename T, typename U>
             }
         }
     }
+    else {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point multiplication received non-finite value", typeid(T).name(), value1, value2);
+        }
+    }
 
-    return numeric_cast<T>(value1 * value2);
+    T result = numeric_cast<T>(value1 * value2);
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point multiplication overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
 template<typename T, typename U>
@@ -355,6 +394,10 @@ template<typename T, typename U>
 [[nodiscard]] constexpr auto checked_div(const U& value1, const U& value2) -> U
 {
     if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(value1) || !std::isfinite(value2)) {
+            throw OverflowException("Floating point division received non-finite value", typeid(T).name(), value1, value2);
+        }
+
         if (std::fabs(value2) < std::numeric_limits<T>::epsilon()) {
             throw DivisionByZeroException("Float division by zero", typeid(T).name(), value1, value2);
         }
@@ -363,9 +406,23 @@ template<typename T, typename U>
         if (value2 == 0) {
             throw DivisionByZeroException("Integer division by zero", typeid(T).name(), value1, value2);
         }
+
+        if constexpr (std::is_signed_v<T>) {
+            if (value1 == std::numeric_limits<T>::min() && value2 == static_cast<T>(-1)) {
+                throw OverflowException("Integer division overflow", typeid(T).name(), value1, value2);
+            }
+        }
     }
 
-    return numeric_cast<T>(value1 / value2);
+    T result = numeric_cast<T>(value1 / value2);
+
+    if constexpr (std::floating_point<T>) {
+        if (!std::isfinite(result)) {
+            throw OverflowException("Floating point division overflow", typeid(T).name(), value1, value2);
+        }
+    }
+
+    return result;
 }
 
 // Lerp

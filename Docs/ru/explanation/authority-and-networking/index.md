@@ -7,7 +7,9 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"11e1e462e60cc761de6ff39334c130c50dbb80e80e94249c5d40fd8e1e24527b"} -->
+
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"bbdb584db57676b219362024085d7e2971f1d02a0dc2cfc1ac79ccb282e6598c"} -->
+
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -105,6 +107,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - сжатие и сброс прочитанных буферов после обработки.
 
 Синхронизация свойств и передача состояния сущностей должны использовать эти помощники, а не самодельные бинарные раскладки.
+
+`NetBuffer::GrowBuf` проверяет запрошенную итоговую длину в байтах и каждое удвоение ёмкости через `checked_*` до изменения размера. Буфер с нулевым начальным размером растёт обычным образом; арифметическое переполнение даёт `OverflowException`, сохраняя накопленные байты и позиции. Описанные ниже проверки длины от другой стороны и границ текущего frame по-прежнему выполняются до выделения памяти или декодирования.
 
 <a id="inbound-hardening-untrusted-client-server"></a>
 

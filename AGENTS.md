@@ -102,6 +102,9 @@ in versioned docs; sanitize evidence.
   pointee/referent constness and `constexpr` remain. Use `numeric_cast` for numeric
   conversions. See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
   for justified suppression and use-after-move checks.
+- **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
+  affects sizes, offsets or other important calculations. Check before mutation;
+  `numeric_cast` cannot detect an overflow that already happened in its argument.
 - **Pointers:** Engine `ptr`/`nptr` borrows, `unique_*`/`refcount_*` owners and own
   `shared_ptr`/`weak_ptr`; no `std::` owners. Entities use pointers, not references.
   Informal “raw pointer” means a borrow; literal `T*` needs an explicit documented
