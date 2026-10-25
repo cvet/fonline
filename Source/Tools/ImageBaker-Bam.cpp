@@ -117,13 +117,13 @@ namespace ImageBakerBam
         int32_t cycle_frames = reader.GetLEUInt16();
         int32_t table_index = reader.GetLEUInt16();
 
-        if (specific_frame != -1 && specific_frame >= numeric_cast<int32_t>(cycle_frames)) {
+        if (specific_frame != -1 && specific_frame >= cycle_frames) {
             specific_frame = 0;
         }
 
         // Create animation
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(specific_frame == -1 ? cycle_frames : 1);
+        collection.SequenceSize = specific_frame == -1 ? cycle_frames : 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(collection.SequenceSize);
 
@@ -138,7 +138,7 @@ namespace ImageBakerBam
             table_index++;
             int32_t frame_index = reader.GetLEUInt16();
 
-            if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
+            if (specific_frame != -1 && specific_frame != i) {
                 continue;
             }
 
@@ -153,14 +153,17 @@ namespace ImageBakerBam
             data_offset &= 0x7FFFFFFF;
 
             // Allocate data
-            vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
+            FO_VERIFY_AND_THROW(width > 0 && height > 0, "Invalid BAM frame dimensions", fname, width, height);
+            int64_t pixel_count = width;
+            pixel_count *= height;
+            vector<uint8_t> data(numeric_cast<size_t>(pixel_count * 4));
             span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
             size_t pixel_pos = 0;
 
             // Fill it
             reader.SetCurPos(data_offset);
 
-            for (int32_t k = 0, l = width * height; k < l;) {
+            for (int64_t k = 0; k < pixel_count;) {
                 uint8_t index = reader.GetUInt8();
                 ucolor color = palette[index];
 
@@ -175,6 +178,7 @@ namespace ImageBakerBam
 
                 if (rle && index == compr_color) {
                     int32_t copies = reader.GetUInt8();
+                    FO_VERIFY_AND_THROW(std::cmp_less(copies, pixels.size() - pixel_pos), "BAM RLE run overflows its frame", fname);
 
                     for (int32_t m = 0; m <= copies; m++, k++) {
                         pixels[pixel_pos] = color;
@@ -182,6 +186,7 @@ namespace ImageBakerBam
                     }
                 }
                 else {
+                    FO_VERIFY_AND_THROW(pixel_pos < pixels.size(), "BAM frame data overflows its frame", fname);
                     pixels[pixel_pos] = color;
                     pixel_pos++;
                     k++;
@@ -190,8 +195,8 @@ namespace ImageBakerBam
 
             // Set in animation sequence
             auto& shot = collection.Main.Frames[specific_frame != -1 ? 0 : i];
-            shot.Width = numeric_cast<uint16_t>(width);
-            shot.Height = numeric_cast<uint16_t>(height);
+            shot.Width = width;
+            shot.Height = height;
             shot.NextX = numeric_cast<int16_t>(-ox + width / 2);
             shot.NextY = numeric_cast<int16_t>(-oy + height);
             shot.Data = std::move(data);

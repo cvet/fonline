@@ -62,6 +62,15 @@ with filename options. Move former `ImageBaker` types `FrameShot`, `FrameSequenc
 `FrameCollection`, `MAX_DIRS_MINUS_ONE` to `ImageImport` and replace `FileCollection`
 loader parameters with this context. Frame/container meanings stay unchanged.
 
+Imported frame counts, dimensions, whole animation milliseconds and shared-frame
+indices use `int32_t`; `SpriteInfo` keeps its typed duration. A collection must have
+1–65535 frames, 0–65535 whole milliseconds, matching frame arrays in each active
+direction, and positive 16-bit dimensions with exactly width × height × 4 RGBA
+bytes for each concrete frame. Shared indices must name an earlier frame. The
+loader boundary validates these values before meshing or writing output. Buffer
+sizes use `size_t` after signed validation; checked arithmetic receives matching
+operand types. The v2 stream retains checked 16-bit fields and unchanged valid bytes.
+
 Projects own asset catalogs/licenses, pack precedence, source policy, visual
 style, animation substitutions, hit expectations, movement tuning and visual baselines.
 
@@ -353,6 +362,12 @@ Indexed, grayscale, and other bit depths fail. The loader does not honor the
 descriptor origin bit or skip an image ID, so exporting top-origin or ID-bearing
 files can produce incorrect or rejected output. Prefer PNG unless an existing
 toolchain has a tested TGA preset.
+
+Wire dimensions are unsigned 16-bit values widened to `int32_t`, including values
+above 32767. Byte counts and available payload are checked before allocation.
+Truncated packets and run packets exceeding the remaining image are rejected.
+The established final raw-packet behavior is preserved: consume the complete
+encoded packet and keep only the pixels remaining in the image.
 
 ### Fallout FRM and FR0
 

@@ -59,7 +59,7 @@ struct SpriteMeshData
 
 struct SpriteResourceFrameData
 {
-    optional<uint16_t> SharedFrameIndex {};
+    optional<int32_t> SharedFrameIndex {};
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};

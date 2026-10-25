@@ -75,10 +75,13 @@ namespace ImageBakerTil
 
         reader.GoForward(10 + 3); // Signature
         int32_t frames_count = reader.GetLEInt32();
+        FO_VERIFY_AND_THROW(frames_count > 0 && frames_count <= std::numeric_limits<uint16_t>::max(), "TIL frame count is outside the serialized range", fname, frames_count);
 
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(frames_count);
-        collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count);
+        collection.SequenceSize = frames_count;
+        int32_t anim_ticks = checked_mul<int32_t>(int32_t {100}, frames_count);
+        FO_VERIFY_AND_THROW(anim_ticks <= std::numeric_limits<uint16_t>::max(), "TIL animation duration is outside the serialized range", fname, anim_ticks);
+        collection.AnimTicks = anim_ticks;
         collection.Main.Frames.resize(collection.SequenceSize);
 
         for (int32_t frm = 0; frm < frames_count; frm++) {

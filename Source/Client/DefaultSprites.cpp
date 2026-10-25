@@ -550,14 +550,14 @@ auto SpriteSheet::Update() -> bool
     if (_playing) {
         nanotime cur_tick = _sprMngr->GetTimer().GetFrameTime();
         int32_t dt = (cur_tick - _startTick).to_ms<int32_t>();
-        int32_t frm_count = numeric_cast<int32_t>(_framesCount);
-        int32_t ticks_per_frame = std::max(numeric_cast<int32_t>(_wholeTicks) / frm_count, 1);
+        int32_t frm_count = _framesCount;
+        int32_t ticks_per_frame = std::max(_wholeTicks / frm_count, 1);
         int32_t frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
             _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
 
-            int32_t index = numeric_cast<int32_t>(_curIndex) + (_reversed ? -frames_passed : frames_passed);
+            int32_t index = _curIndex + (_reversed ? -frames_passed : frames_passed);
 
             if (_looped) {
                 if (index < 0 || index >= frm_count) {
@@ -654,7 +654,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
     FO_VERIFY_AND_THROW(resource.Animation.Sprite.has_value(), "Sprite resource has no sprite animation info", path);
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
+    int32_t direction_count = numeric_cast<int32_t>(resource.Directions.size());
     FO_VERIFY_AND_THROW(direction_count == 1 || direction_count == GameSettings::MAP_DIR_COUNT, "Sprite file direction count is unsupported", direction_count, GameSettings::MAP_DIR_COUNT);
 
     shared_ptr<Sprite> result;
@@ -662,13 +662,13 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     if (sprite_info.FrameCount > 1 || direction_count > 1) {
         auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
 
-        for (uint8_t i = 0; i < direction_count; i++) {
+        for (int32_t i = 0; i < direction_count; i++) {
             mdir dir = hdir(i);
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
             SpriteResourceDirectionData& direction = resource.Directions[i];
 
-            for (uint16_t j = 0; j < sprite_info.FrameCount; j++) {
+            for (int32_t j = 0; j < sprite_info.FrameCount; j++) {
                 SpriteResourceFrameData& frame = direction.Frames[j];
 
                 if (!frame.SharedFrameIndex.has_value()) {
@@ -677,7 +677,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     dir_anim->SetFrame(j, std::move(spr), offset, frame.NextOffset);
                 }
                 else {
-                    uint16_t index = *frame.SharedFrameIndex;
+                    int32_t index = *frame.SharedFrameIndex;
                     dir_anim->SetFrame(j, dir_anim->GetSpr(index)->MakeCopy(), dir_anim->GetSprOffset(index), dir_anim->GetSprMotion()[index]);
                 }
             }

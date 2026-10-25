@@ -45,7 +45,7 @@ constexpr int32_t SPRITE_INFO_VERSION = 1;
 
 struct SpriteFrameInfo
 {
-    optional<uint16_t> SharedFrameIndex {};
+    optional<int32_t> SharedFrameIndex {};
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
@@ -58,7 +58,7 @@ struct SpriteDirInfo
 
 struct SpriteInfo
 {
-    uint16_t FrameCount {};
+    int32_t FrameCount {};
     timespan Duration {};
     vector<SpriteDirInfo> Directions {};
 };

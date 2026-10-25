@@ -64,8 +64,8 @@ namespace ImageBakerPng
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(collection.SequenceSize);
-        collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
-        collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
+        collection.Main.Frames[0].Width = width;
+        collection.Main.Frames[0].Height = height;
         collection.Main.Frames[0].Data = std::move(data);
 
         return collection;
@@ -139,6 +139,7 @@ namespace ImageBakerPng
             int32_t bit_depth = 0;
             int32_t color_type = 0;
             png_get_IHDR(png_ptr.get(), info_ptr.get(), &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
+            FO_VERIFY_AND_THROW(width > 0 && height > 0 && width <= png_uint_32 {std::numeric_limits<uint16_t>::max()} && height <= png_uint_32 {std::numeric_limits<uint16_t>::max()}, "PNG dimensions are outside the serialized range", width, height);
 
             // Settings
             png_set_strip_16(png_ptr.get());
@@ -158,14 +159,18 @@ namespace ImageBakerPng
             png_read_update_info(png_ptr.get(), info_ptr.get());
 
             // Read
+            size_t pixel_width = width;
+            size_t pixel_height = height;
+            size_t row_size = checked_mul<size_t>(pixel_width, size_t {4});
+            size_t data_size = checked_mul<size_t>(row_size, pixel_height);
             vector<png_bytep> row_pointers;
             row_pointers.resize(height);
 
             vector<uint8_t> result;
-            result.resize(numeric_cast<size_t>(width) * height * 4);
+            result.resize(data_size);
 
             for (png_uint_32 i = 0; i < height; i++) {
-                auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
+                auto row = make_ptr(result.data() + i * row_size);
                 row_pointers[i] = row.get();
             }
 

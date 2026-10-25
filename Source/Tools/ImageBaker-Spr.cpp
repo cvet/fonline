@@ -220,8 +220,13 @@ namespace ImageBakerSpr
             reader.GoForward(reader.GetLEInt32()); // Collection name
             int32_t frame_cnt = reader.GetLEInt32();
             int32_t dir_cnt = reader.GetLEInt32();
+            FO_VERIFY_AND_THROW(frame_cnt > 0 && dir_cnt > 0, "Invalid SPR frame or direction count", fname, frame_cnt, dir_cnt);
+            size_t frame_count_storage = frame_cnt;
+            size_t direction_count_storage = dir_cnt;
+            size_t frame_slot_count = checked_mul<size_t>(checked_mul<size_t>(frame_count_storage, direction_count_storage), size_t {4});
+            FO_VERIFY_AND_THROW(checked_mul<size_t>(frame_slot_count, sizeof(int32_t)) <= reader.GetSize() - reader.GetCurPos(), "Truncated SPR bounding box table", fname, frame_slot_count);
             vector<int32_t> bboxes;
-            bboxes.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
+            bboxes.resize(frame_slot_count);
             if (!bboxes.empty()) {
                 reader.ReadObjectArray(span<int32_t> {bboxes.data(), bboxes.size()});
             }
@@ -230,7 +235,7 @@ namespace ImageBakerSpr
             if (dir_cnt != 8) {
                 dir_spr = dir_spr * (dir_cnt * 100 / 8) / 100;
             }
-            if (numeric_cast<int32_t>(dir_spr) >= dir_cnt) {
+            if (dir_spr >= dir_cnt) {
                 dir_spr = 0;
             }
 
@@ -303,9 +308,10 @@ namespace ImageBakerSpr
 
             // Index data offsets
             vector<size_t> image_indices;
-            image_indices.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
+            image_indices.resize(frame_slot_count);
 
             for (size_t cur = 0; fm_images.GetCurPos() != fm_images.GetSize();) {
+                FO_VERIFY_AND_THROW(cur < image_indices.size(), "SPR frame index table exceeds its slot count", fname);
                 uint8_t tag = fm_images.GetUInt8();
 
                 if (tag == 1) {
@@ -328,10 +334,13 @@ namespace ImageBakerSpr
             if (anim_frames.empty()) {
                 anim_frames.push_back(0);
             }
+            FO_VERIFY_AND_THROW(anim_frames.size() <= size_t {std::numeric_limits<uint16_t>::max()}, "SPR animation frame count exceeds the serialized range", fname, anim_frames.size());
 
             if (dir == 0) {
-                collection.SequenceSize = numeric_cast<uint16_t>(anim_frames.size());
-                collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size());
+                collection.SequenceSize = numeric_cast<int32_t>(anim_frames.size());
+                int32_t anim_ticks = checked_mul<int32_t>(int32_t {100}, collection.SequenceSize);
+                FO_VERIFY_AND_THROW(anim_ticks <= std::numeric_limits<uint16_t>::max(), "SPR animation duration is outside the serialized range", fname, anim_ticks);
+                collection.AnimTicks = anim_ticks;
             }
 
             if (dir == 1) {
@@ -351,7 +360,7 @@ namespace ImageBakerSpr
                 for (size_t i = 0, j = anim_frame; i < j; i++) {
                     if (anim_frames[i] == frm) {
                         shot.Shared = true;
-                        shot.SharedIndex = numeric_cast<uint16_t>(i);
+                        shot.SharedIndex = numeric_cast<int32_t>(i);
                         founded = true;
                         break;
                     }
@@ -391,7 +400,11 @@ namespace ImageBakerSpr
                 }
 
                 // Allocate data
-                vector<uint8_t> whole_data(numeric_cast<size_t>(whole_width) * whole_height * 4);
+                FO_VERIFY_AND_THROW(whole_width > 0 && whole_height > 0 && whole_width <= std::numeric_limits<uint16_t>::max() && whole_height <= std::numeric_limits<uint16_t>::max(), "SPR frame dimensions are outside the serialized range", fname, whole_width, whole_height);
+                size_t pixel_width = whole_width;
+                size_t pixel_height = whole_height;
+                size_t pixel_count = checked_mul<size_t>(pixel_width, pixel_height);
+                vector<uint8_t> whole_data(checked_mul<size_t>(pixel_count, size_t {4}));
                 span<ucolor> whole_pixels = bytes_to_objects<ucolor>(span {whole_data});
 
                 for (int32_t part = 0; part < 4; part++) {
@@ -491,8 +504,8 @@ namespace ImageBakerSpr
                     }
                 }
 
-                shot.Width = numeric_cast<uint16_t>(whole_width);
-                shot.Height = numeric_cast<uint16_t>(whole_height);
+                shot.Width = whole_width;
+                shot.Height = whole_height;
                 shot.NextX = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_width / 2);
                 shot.NextY = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_height);
                 shot.Data = std::move(whole_data);

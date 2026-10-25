@@ -80,10 +80,12 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
     const_span<uint8_t> rle_data = reader.GetCurDataSpan(numeric_cast<size_t>(rle_size));
     reader.GoForward(rle_size);
 
-    FO_VERIFY_AND_THROW(width >= 0 && height >= 0 && width <= std::numeric_limits<uint16_t>::max() && height <= std::numeric_limits<uint16_t>::max(), "Invalid ZAR dimensions", fname, width, height);
+    FO_VERIFY_AND_THROW(width > 0 && height > 0 && width <= std::numeric_limits<uint16_t>::max() && height <= std::numeric_limits<uint16_t>::max(), "Invalid ZAR dimensions", fname, width, height);
 
     // Allocate data
-    vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
+    int64_t pixel_count = width;
+    pixel_count *= height;
+    vector<uint8_t> data(numeric_cast<size_t>(pixel_count * 4));
     span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
     size_t pixel_pos = 0;
     size_t rle_pos = 0;
@@ -139,8 +141,8 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
     }
 
     FrameShot shot;
-    shot.Width = numeric_cast<uint16_t>(width);
-    shot.Height = numeric_cast<uint16_t>(height);
+    shot.Width = width;
+    shot.Height = height;
     shot.Data = std::move(data);
     return shot;
 }

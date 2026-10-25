@@ -53,11 +53,12 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
     SpriteResourceData resource;
     resource.Animation.Sprite.emplace();
     SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    sprite_info.FrameCount = reader.GetLEUInt16();
-    FO_VERIFY_AND_THROW(sprite_info.FrameCount != 0, "Sprite resource contains no frames");
+    int32_t frame_count = reader.GetLEUInt16();
+    FO_VERIFY_AND_THROW(frame_count != 0, "Sprite resource contains no frames");
+    sprite_info.FrameCount = frame_count;
     sprite_info.Duration = std::chrono::milliseconds {reader.GetLEUInt16()};
 
-    uint8_t direction_count = reader.GetUInt8();
+    int32_t direction_count = reader.GetUInt8();
     FO_VERIFY_AND_THROW(direction_count != 0, "Sprite resource contains no directions");
     resource.Directions.resize(direction_count);
     sprite_info.Directions.resize(direction_count);
@@ -76,20 +77,20 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
         return pixels;
     };
 
-    for (uint8_t direction_index = 0; direction_index < direction_count; direction_index++) {
+    for (int32_t direction_index = 0; direction_index < direction_count; direction_index++) {
         SpriteResourceDirectionData& direction = resource.Directions[direction_index];
         SpriteDirInfo& direction_info = sprite_info.Directions[direction_index];
-        direction.Frames.resize(sprite_info.FrameCount);
-        direction_info.Frames.resize(sprite_info.FrameCount);
+        direction.Frames.resize(frame_count);
+        direction_info.Frames.resize(frame_count);
 
-        for (uint16_t frame_index = 0; frame_index < sprite_info.FrameCount; frame_index++) {
+        for (int32_t frame_index = 0; frame_index < frame_count; frame_index++) {
             SpriteResourceFrameData& frame = direction.Frames[frame_index];
             SpriteFrameInfo& frame_info = direction_info.Frames[frame_index];
             uint8_t is_shared = reader.GetUInt8();
             FO_VERIFY_AND_THROW(is_shared <= 1, "Sprite frame reference flag is invalid", is_shared, direction_index, frame_index);
 
             if (is_shared != 0) {
-                uint16_t shared_frame_index = reader.GetLEUInt16();
+                int32_t shared_frame_index = reader.GetLEUInt16();
                 FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite frame reference points outside previously decoded frames", shared_frame_index, direction_index, frame_index);
                 frame.SharedFrameIndex = shared_frame_index;
                 frame_info = direction_info.Frames[shared_frame_index];
@@ -164,13 +165,17 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
 
     FO_VERIFY_AND_THROW(raw_kind == static_cast<uint8_t>(SpriteMeshKind::Mesh), "Sprite mesh kind is invalid", raw_kind);
 
-    uint16_t vertex_count = reader.GetLEUInt16();
-    uint32_t index_count = reader.GetLEUInt32();
+    int32_t vertex_count = reader.GetLEUInt16();
+    int64_t serialized_index_count = reader.GetLEUInt32();
     FO_VERIFY_AND_THROW(vertex_count >= 3, "Sprite mesh must contain at least three vertices", vertex_count);
-    FO_VERIFY_AND_THROW(index_count >= 3 && index_count % 3 == 0, "Sprite mesh index count must contain complete triangles", index_count);
-    FO_VERIFY_AND_THROW(index_count <= numeric_cast<uint32_t>(vertex_count) * 6u, "Sprite mesh contains implausibly many indices", vertex_count, index_count);
+    FO_VERIFY_AND_THROW(serialized_index_count >= 3 && serialized_index_count % 3 == 0, "Sprite mesh index count must contain complete triangles", serialized_index_count);
+    FO_VERIFY_AND_THROW(serialized_index_count <= vertex_count * 6, "Sprite mesh contains implausibly many indices", vertex_count, serialized_index_count);
+    int32_t index_count = numeric_cast<int32_t>(serialized_index_count);
 
-    uint64_t payload_size = sizeof(uint16_t) * 2 + sizeof(int32_t) * 2 + numeric_cast<uint64_t>(vertex_count) * sizeof(uint16_t) * 2 + numeric_cast<uint64_t>(index_count) * sizeof(uint16_t);
+    constexpr int64_t mesh_header_size = sizeof(uint16_t) * 2 + sizeof(int32_t) * 2;
+    constexpr int64_t vertex_size = sizeof(uint16_t) * 2;
+    constexpr int64_t index_size = sizeof(uint16_t);
+    size_t payload_size = numeric_cast<size_t>(mesh_header_size + vertex_count * vertex_size + index_count * index_size);
     size_t remaining_size = reader.GetSize() - reader.GetCurPos();
     FO_VERIFY_AND_THROW(payload_size <= remaining_size, "Sprite mesh payload is truncated", payload_size, remaining_size, vertex_count, index_count);
 
@@ -189,24 +194,24 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
     ipos32 minimum_vertex {size.width, size.height};
     ipos32 maximum_vertex {};
 
-    for (uint16_t i = 0; i < vertex_count; i++) {
-        uint16_t x = reader.GetLEUInt16();
-        uint16_t y = reader.GetLEUInt16();
+    for (int32_t i = 0; i < vertex_count; i++) {
+        int32_t x = reader.GetLEUInt16();
+        int32_t y = reader.GetLEUInt16();
         FO_VERIFY_AND_THROW(x <= size.width && y <= size.height, "Sprite mesh vertex is outside the sprite frame", i, x, y, size);
-        mesh.Vertices.emplace_back(numeric_cast<int32_t>(x), numeric_cast<int32_t>(y));
-        minimum_vertex.x = std::min(minimum_vertex.x, numeric_cast<int32_t>(x));
-        minimum_vertex.y = std::min(minimum_vertex.y, numeric_cast<int32_t>(y));
-        maximum_vertex.x = std::max(maximum_vertex.x, numeric_cast<int32_t>(x));
-        maximum_vertex.y = std::max(maximum_vertex.y, numeric_cast<int32_t>(y));
+        mesh.Vertices.emplace_back(x, y);
+        minimum_vertex.x = std::min(minimum_vertex.x, x);
+        minimum_vertex.y = std::min(minimum_vertex.y, y);
+        maximum_vertex.x = std::max(maximum_vertex.x, x);
+        maximum_vertex.y = std::max(maximum_vertex.y, y);
     }
 
     ipos32 expected_minimum_vertex {};
     ipos32 expected_maximum_vertex {size.width, size.height};
     FO_VERIFY_AND_THROW(minimum_vertex == expected_minimum_vertex && maximum_vertex == expected_maximum_vertex, "Sprite mesh vertices must occupy the complete cropped frame bounds", minimum_vertex, maximum_vertex, size);
 
-    mesh.Indices.resize(numeric_cast<size_t>(index_count));
+    mesh.Indices.resize(index_count);
 
-    for (uint32_t i = 0; i < index_count; i++) {
+    for (int32_t i = 0; i < index_count; i++) {
         uint16_t index = reader.GetLEUInt16();
         FO_VERIFY_AND_THROW(index < vertex_count, "Sprite mesh index is outside the vertex array", i, index, vertex_count);
         mesh.Indices[i] = index;

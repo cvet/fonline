@@ -110,15 +110,18 @@ static_assert(sizeof(FoPalette) == 1024);
         ignore_unused(opt);
 
         reader.SetCurPos(0x4);
-        uint16_t frm_fps = reader.GetBEUInt16();
+        int32_t frm_fps = reader.GetBEUInt16();
 
         reader.SetCurPos(0x8);
-        uint16_t frm_count = reader.GetBEUInt16();
+        int32_t frm_count = reader.GetBEUInt16();
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
         collection.SequenceSize = frm_count;
-        collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        int32_t frame_ms = frm_fps != 0 ? 1000 / frm_fps : 0;
+        int32_t anim_ticks = checked_mul<int32_t>(frame_ms, frm_count);
+        FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= std::numeric_limits<uint16_t>::max(), "FRM animation duration is outside the serialized range", fname, anim_ticks);
+        collection.AnimTicks = anim_ticks;
 
         collection.NewName = strvex(fname).starts_with("art/critters/") ? strex(fname).lower().str() : string(fname);
 
@@ -147,7 +150,8 @@ static_assert(sizeof(FoPalette) == 1024);
             sequence.OffsY = reader.GetBEInt16();
 
             reader.SetCurPos(0x22 + dir_frm * 4);
-            uint32_t offset = 0x3E + reader.GetBEUInt32();
+            size_t offset = reader.GetBEUInt32();
+            offset = checked_add<size_t>(size_t {0x3E}, offset);
 
             if (offset == 0x3E && dir_frm != 0) {
                 if (dir > 1) {
@@ -180,12 +184,12 @@ static_assert(sizeof(FoPalette) == 1024);
                 palette = const_span<ucolor> {custom_palette};
             }
 
-            for (uint16_t frm = 0; frm < frm_count; frm++) {
+            for (int32_t frm = 0; frm < frm_count; frm++) {
                 auto& shot = sequence.Frames[frm];
 
                 reader.SetCurPos(offset);
-                uint16_t w = reader.GetBEUInt16();
-                uint16_t h = reader.GetBEUInt16();
+                int32_t w = reader.GetBEUInt16();
+                int32_t h = reader.GetBEUInt16();
                 shot.Width = w;
                 shot.Height = h;
                 reader.GoForward(4); // Frame size
@@ -193,17 +197,20 @@ static_assert(sizeof(FoPalette) == 1024);
                 shot.NextY = reader.GetBEInt16();
 
                 // Allocate data
-                shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
+                size_t pixel_width = w;
+                size_t pixel_height = h;
+                size_t pixel_count = checked_mul<size_t>(pixel_width, pixel_height);
+                shot.Data.resize(checked_mul<size_t>(pixel_count, size_t {4}));
                 span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
-                reader.SetCurPos(offset + 12);
+                reader.SetCurPos(checked_add<size_t>(offset, size_t {12}));
 
                 if (anim_pix_type == 0) {
-                    for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         pixels[i] = palette[reader.GetUInt8()];
                     }
                 }
                 else {
-                    for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         uint8_t index = reader.GetUInt8();
 
                         if (index >= 229 && index < 255) {
@@ -254,9 +261,9 @@ static_assert(sizeof(FoPalette) == 1024);
 
                 // Check for animate pixels
                 if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
-                    reader.SetCurPos(offset + 12);
+                    reader.SetCurPos(checked_add<size_t>(offset, size_t {12}));
 
-                    for (int32_t i = 0; i < w * h; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         uint8_t index = reader.GetUInt8();
 
                         if (index < 229 || index == 255) {
@@ -335,14 +342,17 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        collection.AnimTicks *= frm_count;
+                        int32_t scaled_anim_ticks = checked_mul<int32_t>(collection.AnimTicks, frm_count);
+                        FO_VERIFY_AND_THROW(scaled_anim_ticks >= 0 && scaled_anim_ticks <= std::numeric_limits<uint16_t>::max(), "Animation duration is outside the serialized range", fname, scaled_anim_ticks);
+                        collection.AnimTicks = scaled_anim_ticks;
                         collection.SequenceSize = frm_count;
                         sequence.Frames.resize(collection.SequenceSize);
                     }
                 }
 
                 if (anim_pix_type == 0) {
-                    offset += w * h + 12;
+                    size_t frame_payload = checked_add<size_t>(pixel_count, size_t {12});
+                    offset = checked_add<size_t>(offset, frame_payload);
                 }
             }
         }
@@ -362,15 +372,18 @@ static_assert(sizeof(FoPalette) == 1024);
 
         // Load from frm
         reader.SetCurPos(0x4);
-        uint16_t frm_fps = reader.GetBEUInt16();
+        int32_t frm_fps = reader.GetBEUInt16();
 
         reader.SetCurPos(0x8);
-        uint16_t frm_count = reader.GetBEUInt16();
+        int32_t frm_count = reader.GetBEUInt16();
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
         collection.SequenceSize = frm_count;
-        collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        int32_t frame_ms = frm_fps != 0 ? 1000 / frm_fps : 0;
+        int32_t anim_ticks = checked_mul<int32_t>(frame_ms, frm_count);
+        FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= std::numeric_limits<uint16_t>::max(), "FRX animation duration is outside the serialized range", fname, anim_ticks);
+        collection.AnimTicks = anim_ticks;
 
         if (strvex(fname).starts_with("art/critters/")) {
             collection.NewName = strex("{}.fofrm", strex(fname).erase_file_extension().lower());
@@ -422,7 +435,8 @@ static_assert(sizeof(FoPalette) == 1024);
             sequence.OffsY = reader.GetBEInt16();
 
             reader.SetCurPos(0x22 + dir_frm * 4);
-            uint32_t offset = 0x3E + reader.GetBEUInt32();
+            size_t offset = reader.GetBEUInt32();
+            offset = checked_add<size_t>(size_t {0x3E}, offset);
 
             if (dir == 1) {
                 collection.HaveDirs = true;
@@ -447,12 +461,12 @@ static_assert(sizeof(FoPalette) == 1024);
                 palette = const_span<ucolor> {custom_palette};
             }
 
-            for (uint16_t frm = 0; frm < frm_count; frm++) {
+            for (int32_t frm = 0; frm < frm_count; frm++) {
                 auto& shot = sequence.Frames[frm];
 
                 reader.SetCurPos(offset);
-                uint16_t w = reader.GetBEUInt16();
-                uint16_t h = reader.GetBEUInt16();
+                int32_t w = reader.GetBEUInt16();
+                int32_t h = reader.GetBEUInt16();
 
                 shot.Width = w;
                 shot.Height = h;
@@ -463,17 +477,20 @@ static_assert(sizeof(FoPalette) == 1024);
                 shot.NextY = reader.GetBEInt16();
 
                 // Allocate data
-                shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
+                size_t pixel_width = w;
+                size_t pixel_height = h;
+                size_t pixel_count = checked_mul<size_t>(pixel_width, pixel_height);
+                shot.Data.resize(checked_mul<size_t>(pixel_count, size_t {4}));
                 span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
-                reader.SetCurPos(offset + 12);
+                reader.SetCurPos(checked_add<size_t>(offset, size_t {12}));
 
                 if (anim_pix_type == 0) {
-                    for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         pixels[i] = palette[reader.GetUInt8()];
                     }
                 }
                 else {
-                    for (size_t i = 0, j = numeric_cast<size_t>(w * h); i < j; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         uint8_t index = reader.GetUInt8();
 
                         if (index >= 229 && index < 255) {
@@ -523,9 +540,9 @@ static_assert(sizeof(FoPalette) == 1024);
 
                 // Check for animate pixels
                 if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
-                    reader.SetCurPos(offset + 12);
+                    reader.SetCurPos(checked_add<size_t>(offset, size_t {12}));
 
-                    for (int32_t i = 0; i < w * h; i++) {
+                    for (size_t i = 0; i < pixel_count; i++) {
                         uint8_t index = reader.GetUInt8();
 
                         if (index < 229 || index == 255) {
@@ -608,14 +625,17 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        collection.AnimTicks *= frm_count;
+                        int32_t scaled_anim_ticks = checked_mul<int32_t>(collection.AnimTicks, frm_count);
+                        FO_VERIFY_AND_THROW(scaled_anim_ticks >= 0 && scaled_anim_ticks <= std::numeric_limits<uint16_t>::max(), "Animation duration is outside the serialized range", fname, scaled_anim_ticks);
+                        collection.AnimTicks = scaled_anim_ticks;
                         collection.SequenceSize = frm_count;
                         sequence.Frames.resize(collection.SequenceSize);
                     }
                 }
 
                 if (anim_pix_type == 0) {
-                    offset += w * h + 12;
+                    size_t frame_payload = checked_add<size_t>(pixel_count, size_t {12});
+                    offset = checked_add<size_t>(offset, frame_payload);
                 }
             }
         }

@@ -12,6 +12,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Changed
+
+- Use signed `int32_t` quantities throughout sprite metadata, image import and baking: frame counts, shared-frame indices, dimensions and animation duration. Align internal types before converting; keep checked arithmetic and checked narrowing at serialized or external boundaries.
+
+### Fixed
+
+- Decode unsigned 16-bit TGA dimensions into signed 32-bit values without interpreting the high bit as a negative size. Check image byte counts and truncated packets before allocation/copying. Reject invalid signed quantities and overflowing animation durations before writing a resource.
+
+### Migration
+
+- Rebuild native consumers of `SpriteInfo`, `SpriteFrameInfo`, `SpriteResourceFrameData`, `ImageImport::FrameShot` and `FrameCollection`; their formerly unsigned 16-bit count/dimension/index/duration members now use `int32_t`. `SpriteInfo::Duration` retains its typed duration. Keep native quantities and loop indices signed, and retain checked conversion when writing the existing 16-bit fields. Native metadata frame-count range errors use `VerificationException`; audit handlers that previously distinguished the narrowing `OverflowException` for an oversized text count.
+- Valid sprite v2 bytes, metadata text, pixel ordering, timing units, frame offsets and shared references remain unchanged; no saved-data, resource-format or script-binding migration is required. FRM/FRx duration overflow is rejected instead of wrapping a 16-bit field; existing explicit ART duration saturation is preserved. TGA dimensions with the high bit set are supported with complete payloads. Rebuild and rebake matching native consumers/resources together; runtime and Managed ABI markers are unchanged.
+
 ## Current - 2026-10-25
 
 ### Fixed

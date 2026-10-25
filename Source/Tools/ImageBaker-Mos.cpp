@@ -97,7 +97,11 @@ namespace ImageBakerMos
         uint32_t data_offset = tiles_offset + col * row * 4;
 
         // Allocate data
-        vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
+        FO_VERIFY_AND_THROW(width > 0 && height > 0, "Invalid MOS dimensions", fname, width, height);
+        size_t pixel_width = width;
+        size_t pixel_height = height;
+        size_t pixel_count = checked_mul<size_t>(pixel_width, pixel_height);
+        vector<uint8_t> data(checked_mul<size_t>(pixel_count, size_t {4}));
         span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
         // Read image data
@@ -126,7 +130,7 @@ namespace ImageBakerMos
                 }
 
                 // Read data
-                int32_t pos = y * 64 * width + x * 64;
+                size_t pos = numeric_cast<size_t>(numeric_cast<int64_t>(y) * 64 * width + x * 64);
                 for (int32_t yy = 0; yy < block_h; yy++) {
                     for (int32_t xx = 0; xx < block_w; xx++) {
                         uint32_t color = palette[reader.GetUInt8()];
@@ -142,7 +146,7 @@ namespace ImageBakerMos
                         pos++;
                     }
 
-                    pos += width - block_w;
+                    pos += numeric_cast<size_t>(width - block_w);
                 }
 
                 // Go to next block
@@ -154,8 +158,8 @@ namespace ImageBakerMos
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(collection.SequenceSize);
-        collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
-        collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
+        collection.Main.Frames[0].Width = width;
+        collection.Main.Frames[0].Height = height;
         collection.Main.Frames[0].Data = std::move(data);
         return collection;
     }

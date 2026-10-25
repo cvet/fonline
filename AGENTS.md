@@ -99,8 +99,12 @@ in versioned docs; sanitize evidence.
   metadata follow [metadata ownership](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
 - **Locals:** fixed-width numeric aliases and `size_t`; explicit types for primitives,
   `string`, `hstring` and other simple values. No redundant top-level local `const`;
-  pointee/referent constness and `constexpr` remain. Use `numeric_cast` for numeric
-  conversions. See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
+  pointee/referent constness and `constexpr` remain. Align numeric types first:
+  counts, lengths, dimensions and their arithmetic use signed integers, normally
+  `int32_t`, with wider signed intermediates when required. Keep `size_t` at container
+  boundaries and unsigned types for bit patterns, identities and external formats.
+  Use `numeric_cast` where a real range/sign boundary needs checking; never replace
+  it with an unchecked narrowing cast. See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
   for justified suppression and use-after-move checks.
 - **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
   affects sizes, offsets or other important calculations. Check before mutation;

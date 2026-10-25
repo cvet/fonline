@@ -464,7 +464,29 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     containing_data.insert(containing_data.end(), data.begin(), data.end());
     containing_data.insert(containing_data.end(), {0xDD, 0xEE});
     const_span<uint8_t> resource_data = const_span<uint8_t> {containing_data}.subspan(3, data.size());
+    vector<uint8_t> original_containing_data = containing_data;
     SpriteResourceData resource = ReadSpriteResource(resource_data);
+    CHECK(containing_data == original_containing_data);
+
+    vector<uint8_t> invalid_data = data;
+    invalid_data[2] = 0;
+    invalid_data[3] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_data), VerificationException);
+
+    vector<uint8_t> invalid_direction_data = data;
+    invalid_direction_data[6] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_direction_data), VerificationException);
+
+    vector<uint8_t> invalid_forward_reference = data;
+    invalid_forward_reference[data.size() - 3] = 1;
+    invalid_forward_reference[data.size() - 2] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_forward_reference), VerificationException);
+
+    vector<uint8_t> truncated_pixel_payload(data.begin(), data.begin() + 20);
+    CHECK_THROWS_AS(ReadSpriteResource(truncated_pixel_payload), VerificationException);
+
+    vector<uint8_t> truncated_mesh_payload(data.begin(), data.begin() + 40);
+    CHECK_THROWS_AS(ReadSpriteResource(truncated_mesh_payload), VerificationException);
 
     REQUIRE(resource.Animation.Sprite.has_value());
     const SpriteInfo& sprite_info = *resource.Animation.Sprite;
@@ -539,6 +561,207 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
             ucolor {},
             ucolor {},
         });
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideFrameCountsPositive")
+{
+    constexpr int32_t frame_count = 65535;
+
+    vector<uint8_t> data;
+    data_writer writer {data};
+    vector<ucolor> pixels {ucolor {1, 2, 3, 4}};
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_count));
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<uint8_t>(uint8_t {1});
+
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<int16_t>(std::numeric_limits<int16_t>::min());
+    writer.write<int16_t>(std::numeric_limits<int16_t>::max());
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int16_t>(int16_t {-1});
+    writer.write<int16_t>(int16_t {-1});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+
+    for (int32_t frame_index = 1; frame_index < frame_count; frame_index++) {
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(frame_index - 1));
+    }
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data = data;
+    SpriteResourceData resource = ReadSpriteResource(data);
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    CHECK(sprite_info.FrameCount == frame_count);
+    CHECK(sprite_info.Duration == std::chrono::milliseconds {65535});
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+    CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max()});
+    CHECK(sprite_info.Directions.front().Frames.front().NextOffset == ipos32 {-1, -1});
+
+    REQUIRE(sprite_info.Directions.front().Frames[40000].SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames[40000].SharedFrameIndex == 39999);
+    REQUIRE(sprite_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames.back().SharedFrameIndex == 65533);
+    CHECK(sprite_info.Directions.front().Frames.back().Offset == ipos32 {std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max()});
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+    REQUIRE(resource.Directions.front().Frames.back().SharedFrameIndex.has_value());
+    CHECK(*resource.Directions.front().Frames.back().SharedFrameIndex == 65533);
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideFrameDimensionsPositive")
+{
+    constexpr int32_t frame_width = 65535;
+
+    vector<uint8_t> data;
+    data_writer writer {data};
+    vector<ucolor> pixels(numeric_cast<size_t>(frame_width), ucolor {9, 8, 7, 6});
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint8_t>(uint8_t {1});
+
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_width));
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data = data;
+    SpriteResourceData resource = ReadSpriteResource(data);
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == 1);
+    CHECK(sprite_info.Directions.front().Frames.front().Size == isize32 {frame_width, 1});
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == 1);
+    const SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();
+    CHECK(frame.Size == isize32 {frame_width, 1});
+    CHECK(frame.Pixels.size() == numeric_cast<size_t>(frame_width));
+    CHECK(frame.Pixels.front() == ucolor {9, 8, 7, 6});
+    CHECK(frame.Pixels.back() == ucolor {9, 8, 7, 6});
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideMeshCountsAndCoordinatesPositive")
+{
+    constexpr int32_t frame_width = 65535;
+    constexpr int32_t vertex_count = 65535;
+
+    vector<uint8_t> data;
+    data_writer writer {data};
+    vector<ucolor> pixels(numeric_cast<size_t>(frame_width), ucolor {1, 1, 1, 1});
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint8_t>(uint8_t {1});
+
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_width));
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(vertex_count));
+    writer.write<uint32_t>(uint32_t {3});
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+    for (int32_t vertex = 0; vertex < vertex_count; vertex++) {
+        writer.write<uint16_t>(vertex == 1 ? uint16_t {65535} : uint16_t {0});
+        writer.write<uint16_t>(vertex == vertex_count - 1 ? uint16_t {1} : uint16_t {0});
+    }
+
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {65534});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data = data;
+    SpriteResourceData resource = ReadSpriteResource(data);
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == 1);
+    const SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();
+    CHECK(frame.Size == isize32 {frame_width, 1});
+    REQUIRE(frame.Mesh.has_value());
+    CHECK(frame.Mesh->SourceSize == isize32 {65535, 65535});
+    CHECK(frame.Mesh->SourceOffset == ipos32 {});
+    REQUIRE(frame.Mesh->Vertices.size() == vertex_count);
+    CHECK(frame.Mesh->Vertices.front() == ipos32 {0, 0});
+    CHECK(frame.Mesh->Vertices[1] == ipos32 {frame_width, 0});
+    CHECK(frame.Mesh->Vertices.back() == ipos32 {0, 1});
+    CHECK(frame.Mesh->Indices == vector<uint16_t> {0, 1, 65534});
+}
+
+TEST_CASE("SpriteResourceDecoderRejectsMalformedMeshCounts")
+{
+    auto make_mesh_resource = [](uint16_t vertex_count, uint32_t index_count) {
+        vector<uint8_t> data;
+        data_writer writer {data};
+
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint16_t>(uint16_t {0});
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write_object_vector(vector<ucolor> {ucolor {1, 2, 3, 4}});
+        writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+        writer.write<uint16_t>(vertex_count);
+        writer.write<uint32_t>(index_count);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+        return data;
+    };
+
+    SECTION("UnboundedIndexCount")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(3, std::numeric_limits<uint32_t>::max())), VerificationException);
+    }
+
+    SECTION("ZeroMeshCounts")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(0, 0)), VerificationException);
+    }
+
+    SECTION("IncompleteTriangleIndexCount")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(3, 4)), VerificationException);
+    }
 }
 
 FO_END_NAMESPACE

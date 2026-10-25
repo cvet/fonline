@@ -47,24 +47,28 @@ namespace ImageBakerRix
     {
         FO_TRACE_ZONE(Baking);
 
-        ignore_unused(fname);
         ignore_unused(opt);
         ignore_unused(context);
 
         reader.SetCurPos(0x4);
-        uint16_t w = 0;
-        reader.ReadObject(w);
-        uint16_t h = 0;
-        reader.ReadObject(h);
+        uint16_t width_wire = 0;
+        reader.ReadObject(width_wire);
+        int32_t w = width_wire;
+        uint16_t height_wire = 0;
+        reader.ReadObject(height_wire);
+        int32_t h = height_wire;
 
         reader.SetCurPos(0xA);
         const_span<uint8_t> palette = reader.GetCurDataSpan(256 * 3);
 
-        vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
+        FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid RIX dimensions", fname, w, h);
+        int64_t pixel_count = w;
+        pixel_count *= h;
+        vector<uint8_t> data(numeric_cast<size_t>(pixel_count * 4));
         span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
         reader.SetCurPos(0xA + 256 * 3);
 
-        for (int32_t i = 0; i < w * h; i++) {
+        for (int64_t i = 0; i < pixel_count; i++) {
             int32_t index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
             auto r = numeric_cast<uint8_t>(palette[index + 2] * 4);
             auto g = numeric_cast<uint8_t>(palette[index + 1] * 4);

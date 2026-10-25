@@ -30,6 +30,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-image-format-validation-playback-timing-f10375614b"></a>
 - [`entry-image-format-validation-playback-timing-f10375614b`](../../en/reference/image-format/validation.md#entry-image-format-validation-playback-timing-f10375614b)
 
+<a id="entry-image-format-validation-numeric-boundaries-aa417346b2"></a>
+- [`entry-image-format-validation-numeric-boundaries-aa417346b2`](../../en/reference/image-format/validation.md#entry-image-format-validation-numeric-boundaries-aa417346b2)
+
 <a id="entry-image-format-validation-project-visible-c586865990"></a>
 - [`entry-image-format-validation-project-visible-c586865990`](../../en/reference/image-format/validation.md#entry-image-format-validation-project-visible-c586865990)
 

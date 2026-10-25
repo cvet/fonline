@@ -141,7 +141,8 @@ namespace ImageBakerFofrm
                     throw ImageBakerException("FOFRM nested image loading failed", fname, frm_name, ex.what());
                 }
 
-                frames += sub_collection.SequenceSize;
+                frames = checked_add<int32_t>(frames, sub_collection.SequenceSize);
+                FO_VERIFY_AND_THROW(frames <= std::numeric_limits<uint16_t>::max(), "FOFRM flattened frame count exceeds the serialized range", fname, frames);
 
                 int32_t next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
                 next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
@@ -162,8 +163,12 @@ namespace ImageBakerFofrm
 
             // Allocate animation storage
             if (dir == 0) {
-                collection.SequenceSize = numeric_cast<uint16_t>(frames);
-                collection.AnimTicks = numeric_cast<uint16_t>(frm_fps != 0 ? 1000 * frm_count / frm_fps : 0);
+                collection.SequenceSize = frames;
+                int64_t frame_count_wide = frm_count;
+                int64_t fps_wide = frm_fps;
+                int64_t anim_ticks = frm_fps != 0 ? checked_div<int64_t>(checked_mul<int64_t>(int64_t {1000}, frame_count_wide), fps_wide) : 0;
+                FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= std::numeric_limits<uint16_t>::max(), "FOFRM animation duration is outside the serialized range", fname, anim_ticks);
+                collection.AnimTicks = numeric_cast<int32_t>(anim_ticks);
             }
             else {
                 collection.HaveDirs = true;

@@ -14386,6 +14386,18 @@
           "source_sha256": "be3068e4a6a4b9c107cda8a74430b255d13ef3fc856031f68d64ab7f792fb62b",
           "translation": "Сохраняйте focused failure coverage для повреждённых PNG, TGA, FRM/FRx/RIX/ART/ZAR/TIL/MOS/BAM, SPR и вложенных FOFRM."
         },
+        "/validation_rules/@id=image-format.validation.numeric-boundaries/name": {
+          "source_sha256": "1aea6295a6f640e7d759451ef66d098d24d93dcbb89287d73fa97730d656716e",
+          "translation": "Знаковые величины и проверяемые границы формата"
+        },
+        "/validation_rules/@id=image-format.validation.numeric-boundaries/rationale": {
+          "source_sha256": "c17920f3e102a17348f2bfeb9b4c7bc290e61ee805cbb4169717b2d094d5e598",
+          "translation": "Согласованные знаковые типы устраняют промежуточные сужения и не дают отрицательным размерам, переполненной длительности и размерам со старшим битом в исходном формате ошибочно попасть в выделение памяти или индексирование."
+        },
+        "/validation_rules/@id=image-format.validation.numeric-boundaries/requirement": {
+          "source_sha256": "907165ba35dd9d06b9f7dc7a1bbe94bbf7ae58bee160143436bca574e3eabffe",
+          "translation": "Используйте int32_t для импортированных количеств кадров, размеров, длительности в целых миллисекундах и индексов общих кадров; SpriteInfo сохраняет типизированную длительность. Проверяйте знаковые диапазоны и число байтов RGBA до использования; сохраняйте проверяемую сериализацию uint16/uint8 и все допустимые байты v2. Декодируйте размеры TGA uint16 в знаковые int32_t; отвергайте обрезанные данные и чрезмерные run-пакеты, сохраняя обрезку полного последнего raw-пакета."
+        },
         "/validation_rules/@id=image-format.validation.playback-timing/name": {
           "source_sha256": "cca9878dbe64744b05d93b1a17af314ec12ddbd667f2124655bd7e5dc19cb402",
           "translation": "Ненулевая длительность кадра"

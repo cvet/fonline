@@ -169,6 +169,17 @@ namespace ImageBakerArt
         int32_t stored_rotations = (header.Flags & 0x1) != 0 ? 1 : art_rotations;
         int32_t frm_count = header.FrameCount;
 
+        if (frm_from >= frm_count) {
+            frm_from = frm_count - 1;
+        }
+        if (frm_to >= frm_count) {
+            frm_to = frm_count - 1;
+        }
+
+        int64_t frm_count_target_wide = numeric_cast<int64_t>(std::max(frm_from, frm_to)) - std::min(frm_from, frm_to) + 1;
+        FO_VERIFY_AND_THROW(frm_count_target_wide > 0 && frm_count_target_wide <= std::numeric_limits<uint16_t>::max(), "ART target frame count is outside the serialized range", fname, frm_count_target_wide);
+        int32_t frm_count_target = numeric_cast<int32_t>(frm_count_target_wide);
+
         // Palettes are stored only for present slots, in slot order
         using ArtPalette = array<uint32_t, 256>;
         array<ArtPalette, 4> palettes {};
@@ -246,20 +257,11 @@ namespace ImageBakerArt
         bool wall_like = lower_name.starts_with("art/wall/") || lower_name.starts_with("art/portal/");
         bool roof = lower_name.starts_with("art/roof/");
 
-        if (frm_from >= frm_count) {
-            frm_from = frm_count - 1;
-        }
-        if (frm_to >= frm_count) {
-            frm_to = frm_count - 1;
-        }
-
-        int32_t frm_count_target = std::max(frm_from, frm_to) - std::min(frm_from, frm_to) + 1;
-
         FrameCollection collection;
-        collection.SequenceSize = numeric_cast<uint16_t>(frm_count_target);
+        collection.SequenceSize = frm_count_target;
         // Frame-indexed ART can exceed the baked 16-bit duration
         int64_t anim_ticks = header.FrameRate > 0 ? numeric_cast<int64_t>(1000 / header.FrameRate) * frm_count_target : 0;
-        collection.AnimTicks = numeric_cast<uint16_t>(std::min(anim_ticks, numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())));
+        collection.AnimTicks = numeric_cast<int32_t>(std::min(anim_ticks, numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())));
         collection.HaveDirs = stored_rotations == art_rotations && forced_rotation < 0;
 
         int32_t dir_count = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
@@ -304,7 +306,7 @@ namespace ImageBakerArt
             };
 
             vector<PlacedFrame> placed;
-            placed.reserve(numeric_cast<size_t>(frm_count_target));
+            placed.reserve(frm_count_target);
 
             for (int32_t frm_read = frm_from;; frm_read += frm_to >= frm_from ? 1 : -1) {
                 size_t index = numeric_cast<size_t>(rotation) * numeric_cast<size_t>(frm_count) + numeric_cast<size_t>(frm_read);
@@ -358,8 +360,11 @@ namespace ImageBakerArt
                 bottom = std::max(bottom, info.Height - frame.HotY);
             }
 
-            uint16_t canvas_w = numeric_cast<uint16_t>(std::max(left + right, int64_t {1}));
-            uint16_t canvas_h = numeric_cast<uint16_t>(std::max(top + bottom, int64_t {1}));
+            int64_t canvas_width = std::max(left + right, int64_t {1});
+            int64_t canvas_height = std::max(top + bottom, int64_t {1});
+            FO_VERIFY_AND_THROW(canvas_width <= std::numeric_limits<uint16_t>::max() && canvas_height <= std::numeric_limits<uint16_t>::max(), "ART canvas dimensions are outside the serialized range", fname, canvas_width, canvas_height);
+            int32_t canvas_w = numeric_cast<int32_t>(canvas_width);
+            int32_t canvas_h = numeric_cast<int32_t>(canvas_height);
 
             sequence.OffsX = numeric_cast<int16_t>(canvas_w / 2 - left);
             sequence.OffsY = numeric_cast<int16_t>(canvas_h - top);
@@ -372,12 +377,15 @@ namespace ImageBakerArt
                 const vector<uint8_t>& indices = frame_indices[frame.Index];
 
                 FrameShot& shot = sequence.Frames[frm_write];
-                shot.Width = numeric_cast<uint16_t>(canvas_w);
-                shot.Height = numeric_cast<uint16_t>(canvas_h);
+                shot.Width = canvas_w;
+                shot.Height = canvas_h;
                 shot.NextX = numeric_cast<int16_t>(frame.DeltaX);
                 shot.NextY = numeric_cast<int16_t>(frame.DeltaY);
 
-                vector<uint8_t> data(numeric_cast<size_t>(numeric_cast<uint64_t>(canvas_w) * canvas_h * 4));
+                size_t pixel_width = canvas_w;
+                size_t pixel_height = canvas_h;
+                size_t pixel_count = checked_mul<size_t>(pixel_width, pixel_height);
+                vector<uint8_t> data(checked_mul<size_t>(pixel_count, size_t {4}));
                 span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
                 int64_t origin_x = left - frame.HotX;

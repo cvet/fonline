@@ -46,13 +46,13 @@ namespace ImageImport
 
     struct FrameShot
     {
-        uint16_t Width {};
-        uint16_t Height {};
+        int32_t Width {};
+        int32_t Height {};
         int16_t NextX {};
         int16_t NextY {};
         vector<uint8_t> Data {};
         bool Shared {};
-        uint16_t SharedIndex {};
+        int32_t SharedIndex {};
     };
 
     struct FrameSequence
@@ -64,8 +64,8 @@ namespace ImageImport
 
     struct FrameCollection
     {
-        uint16_t SequenceSize {};
-        uint16_t AnimTicks {};
+        int32_t SequenceSize {};
+        int32_t AnimTicks {};
         FrameSequence Main {};
         bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};

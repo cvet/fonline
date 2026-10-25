@@ -60,8 +60,8 @@ namespace ImageBakerTga
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(collection.SequenceSize);
-        collection.Main.Frames[0].Width = numeric_cast<uint16_t>(width);
-        collection.Main.Frames[0].Height = numeric_cast<uint16_t>(height);
+        collection.Main.Frames[0].Width = width;
+        collection.Main.Frames[0].Height = height;
         collection.Main.Frames[0].Data = std::move(data);
 
         return collection;
@@ -72,26 +72,27 @@ namespace ImageBakerTga
         size_t cur_pos = 0;
 
         auto read_tga = [&](ptr<void> out, size_t len) {
-            if (cur_pos + len <= data.size()) {
-                if (len != 0) {
-                    auto source = make_ptr(data.data() + cur_pos);
-                    memory::copy(out, source, len);
-                }
+            FO_VERIFY_AND_THROW(cur_pos <= data.size(), "TGA read position is outside the file");
 
-                cur_pos += (len);
-            }
-            else {
+            if (len > data.size() - cur_pos) {
                 throw ImageBakerException("TGA reading error");
             }
+
+            if (len != 0) {
+                auto source = make_ptr(data.data() + cur_pos);
+                memory::copy(out, source, len);
+            }
+
+            cur_pos += len;
         };
 
         // Load header
         uint8_t type = 0;
         uint8_t pixel_depth = 0;
-        int16_t width = 0;
-        int16_t height = 0;
+        uint16_t width_wire = 0;
+        uint16_t height_wire = 0;
         uint8_t unused_char = 0;
-        int16_t unused_short = 0;
+        uint16_t unused_short = 0;
         read_tga(&unused_char, 1);
         read_tga(&unused_char, 1);
         read_tga(&type, 1);
@@ -100,10 +101,13 @@ namespace ImageBakerTga
         read_tga(&unused_char, 1);
         read_tga(&unused_short, 2);
         read_tga(&unused_short, 2);
-        read_tga(&width, 2);
-        read_tga(&height, 2);
+        read_tga(&width_wire, 2);
+        read_tga(&height_wire, 2);
         read_tga(&pixel_depth, 1);
         read_tga(&unused_char, 1);
+
+        int32_t width = width_wire;
+        int32_t height = height_wire;
 
         // Check if the image is color indexed
         if (type == 1) {
@@ -120,75 +124,80 @@ namespace ImageBakerTga
             throw ImageBakerException("TGA support only 24 and 32 bpp");
         }
 
+        FO_VERIFY_AND_THROW(width > 0 && height > 0, "TGA dimensions must be positive", width, height);
+
         // Read
         int32_t bpp = pixel_depth / 8;
-        int32_t read_size = height * width * bpp;
+        size_t bpp_size = bpp;
+        size_t width_size = width;
+        size_t height_size = height;
+        size_t pixel_count = checked_mul<size_t>(width_size, height_size);
+        size_t read_size = checked_mul<size_t>(pixel_count, bpp_size);
+        size_t result_size = checked_mul<size_t>(pixel_count, size_t {4});
         vector<uint8_t> read_data;
-        read_data.resize(read_size);
 
         if (type == 2) {
+            FO_VERIFY_AND_THROW(read_size <= data.size() - cur_pos, "Truncated TGA pixel payload", read_size, data.size() - cur_pos);
+            read_data.resize(read_size);
+
             if (read_size != 0) {
                 auto read_data_begin = make_ptr(read_data.data());
-                read_tga(make_nptr(read_data_begin.get()).void_cast(), numeric_cast<size_t>(read_size));
+                read_tga(make_nptr(read_data_begin.get()).void_cast(), read_size);
             }
         }
         else {
-            int32_t bytes_read = 0;
-            uint8_t header = 0;
-            uint8_t color[4];
+            size_t minimum_packet_count = (pixel_count - 1) / 128 + 1;
+            size_t minimum_packet_bytes = checked_mul<size_t>(minimum_packet_count, 1 + bpp_size);
+            FO_VERIFY_AND_THROW(minimum_packet_bytes <= data.size() - cur_pos, "Truncated TGA RLE payload", minimum_packet_bytes, data.size() - cur_pos);
+            read_data.resize(read_size);
+
+            size_t bytes_read = 0;
 
             while (bytes_read < read_size) {
-                read_tga(&header, 1);
+                uint8_t packet_header = 0;
+                read_tga(&packet_header, 1);
 
-                if ((header & 0x00000080) != 0) {
-                    header &= ~0x00000080;
-                    read_tga(color, bpp);
-                    int32_t run_len = (header + 1) * bpp;
+                size_t run_length = (packet_header & 0x7Fu) + 1u;
+                size_t run_bytes = checked_mul<size_t>(run_length, bpp_size);
 
-                    for (int32_t i = 0; i < run_len; i += bpp) {
-                        for (int32_t c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
-                            read_data[bytes_read + i + c] = color[c];
+                if ((packet_header & 0x80) != 0) {
+                    FO_VERIFY_AND_THROW(run_bytes <= read_size - bytes_read, "TGA RLE run packet exceeds image data", run_bytes, read_size - bytes_read);
+
+                    uint8_t color[4] = {};
+                    read_tga(color, bpp_size);
+
+                    for (size_t offset = 0; offset < run_bytes; offset += bpp_size) {
+                        for (int32_t c = 0; c < bpp; c++) {
+                            read_data[bytes_read + offset + c] = color[c];
                         }
                     }
 
-                    bytes_read += run_len;
+                    bytes_read += run_bytes;
                 }
                 else {
-                    int32_t run_len = (header + 1) * bpp;
-                    int32_t to_read;
-
-                    if (bytes_read + run_len > read_size) {
-                        to_read = read_size - bytes_read;
-                    }
-                    else {
-                        to_read = run_len;
-                    }
-
-                    if (to_read != 0) {
-                        auto read_data_pos = make_ptr(read_data.data() + numeric_cast<size_t>(bytes_read));
-                        read_tga(make_nptr(read_data_pos.get()).void_cast(), numeric_cast<size_t>(to_read));
-                    }
-                    bytes_read += run_len;
-
-                    if (bytes_read + run_len > read_size) {
-                        cur_pos += run_len - to_read;
-                    }
+                    size_t to_copy = std::min(run_bytes, read_size - bytes_read);
+                    FO_VERIFY_AND_THROW(run_bytes <= data.size() - cur_pos, "Truncated TGA RLE raw packet", run_bytes, data.size() - cur_pos);
+                    read_tga(read_data.data() + bytes_read, to_copy);
+                    cur_pos += run_bytes - to_copy;
+                    bytes_read += run_bytes;
                 }
             }
         }
 
         // Copy data
-        vector<uint8_t> result;
-        result.resize(numeric_cast<size_t>(width) * height * 4);
+        vector<uint8_t> result(result_size);
 
-        for (int16_t y = 0; y < height; y++) {
-            for (int16_t x = 0; x < width; x++) {
-                int32_t i = (height - y - 1) * width + x;
-                int32_t j = y * width + x;
-                result[i * 4 + 0] = read_data[j * bpp + 2];
-                result[i * 4 + 1] = read_data[j * bpp + 1];
-                result[i * 4 + 2] = read_data[j * bpp + 0];
-                result[i * 4 + 3] = bpp == 4 ? read_data[j * bpp + 3] : 0xFF;
+        for (int32_t y = 0; y < height; y++) {
+            size_t source_row = y * width_size * bpp_size;
+            size_t result_row = (height - y - 1) * width_size * 4;
+
+            for (int32_t x = 0; x < width; x++) {
+                size_t source_pos = source_row + x * bpp_size;
+                size_t result_pos = result_row + x * 4;
+                result[result_pos + 0] = read_data[source_pos + 2];
+                result[result_pos + 1] = read_data[source_pos + 1];
+                result[result_pos + 2] = read_data[source_pos + 0];
+                result[result_pos + 3] = bpp == 4 ? read_data[source_pos + 3] : 0xFF;
             }
         }
 

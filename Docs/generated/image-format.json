@@ -226,7 +226,7 @@
           "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "auto Load",
-            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size())"
+            "checked_mul<int32_t>(int32_t {100}, collection.SequenceSize)"
           ]
         },
         {
@@ -287,7 +287,7 @@
           "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
             "auto Load",
-            "collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * frames_count)"
+            "checked_mul<int32_t>(int32_t {100}, frames_count)"
           ]
         },
         {
@@ -385,7 +385,7 @@
             "static auto TgaLoad",
             "if (type != 2 && type != 10)",
             "if (pixel_depth != 24 && pixel_depth != 32)",
-            "int32_t i = (height - y - 1) * width + x;"
+            "size_t result_row = (height - y - 1) * width_size * 4;"
           ]
         }
       ],
@@ -545,7 +545,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "frames += sub_collection.SequenceSize;",
+            "frames = checked_add<int32_t>(frames, sub_collection.SequenceSize);",
             "frames != collection.SequenceSize",
             "sub_collection.Main.Frames[i].Data"
           ]
@@ -563,7 +563,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "1000 * frm_count / frm_fps : 0"
+            "checked_div<int64_t>(checked_mul<int64_t>(int64_t {1000}, frame_count_wide), fps_wide)"
           ]
         }
       ]
@@ -603,7 +603,7 @@
             "case 'H':",
             "case 'V':",
             "case 'F':",
-            "frm_count_target = std::max(frm_from, frm_to)"
+            "frm_count_target_wide = numeric_cast<int64_t>(std::max(frm_from, frm_to))"
           ]
         }
       ]
@@ -776,7 +776,7 @@
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1",
-            "for (uint8_t dir = 0; dir < dirs; dir++)",
+            "for (int32_t dir = 0; dir < dirs; dir++)",
             "writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
           ]
         }
@@ -794,8 +794,8 @@
           "anchors": [
             "writer.write<bool>(shot.Shared)",
             "writer.write<int16_t>(bake_shot->NextX)",
-            "writer.write<uint16_t>(shot.SharedIndex)",
-            "bake_shot->Width) * bake_shot->Height * 4"
+            "writer.write<uint16_t>(numeric_cast<uint16_t>(shot.SharedIndex))",
+            "bake_shot->Data.size() == expected_data_size"
           ]
         }
       ]
@@ -1235,6 +1235,35 @@
       ]
     },
     {
+      "id": "image-format.validation.numeric-boundaries",
+      "name": "Signed quantities and checked format boundaries",
+      "stability": "internal",
+      "requirement": "Use int32_t for imported frame counts, dimensions, whole animation milliseconds and shared-frame indices; SpriteInfo retains its typed duration. Validate signed ranges and RGBA byte counts before use; retain checked uint16/uint8 serialization and preserve all valid v2 bytes. Decode TGA uint16 dimensions into signed int32_t; reject truncated payloads and oversized run packets while preserving complete final raw-packet clipping.",
+      "rationale": "Consistent signed types remove intermediate narrowing while preventing negative sizes, duration wrapping and high-bit wire dimensions from reaching allocation or indexing incorrectly.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageImport.h",
+          "anchors": [
+            "int32_t Width",
+            "int32_t SequenceSize"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "ValidateFrameCollection",
+            "writer.write<uint16_t>"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Tga.cpp",
+          "anchors": [
+            "TgaLoad"
+          ]
+        }
+      ]
+    },
+    {
       "id": "image-format.validation.project-visible",
       "name": "Embedding-project visual gate",
       "stability": "experimental",
@@ -1258,20 +1287,20 @@
     }
   ],
   "summary": {
-    "entry_count": 53,
+    "entry_count": 54,
     "format_count": 12,
     "descriptor_field_count": 10,
     "filename_option_count": 4,
     "baking_rule_count": 10,
     "runtime_rule_count": 8,
-    "validation_rule_count": 9,
+    "validation_rule_count": 10,
     "baker_extension_count": 12,
     "runtime_extension_count": 11,
     "entries_by_stability": {
       "deprecated": 1,
       "experimental": 45,
-      "internal": 7
+      "internal": 8
     }
   },
-  "contract_digest": "fb65783ef0d39447cc103bd340fe2b9b3c8f57f35bb938aecde905fa9abc28bf"
+  "contract_digest": "9612666792243875ebcc08ae7d253464a722c63b5bc7f865d9be0bae7454e6eb"
 }

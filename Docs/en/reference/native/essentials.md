@@ -392,6 +392,8 @@ storage.
 
 Use `checked_add`, `checked_sub`, `checked_mul` and `checked_div` for important arithmetic influenced by scripts or decoded data, before allocation, indexing or observable mutation. Casting an already-overflowed expression with `numeric_cast` is too late. The checked helpers reject integer overflow, signed `min / -1`, non-finite floating-point operands and non-finite results with `OverflowException`. `checked_div` raises `DivisionByZeroException` for an integer zero divisor or a floating-point divisor whose magnitude is below the type's epsilon. Finite floating-point underflow to zero remains allowed.
 
+Align numeric types before adding conversions. Counts, lengths, dimensions and their indices normally use `int32_t`; widen to a signed type that holds the complete intermediate range before arithmetic. Keep `size_t` at standard-container and byte-buffer boundaries, and retain unsigned types for identities, bit patterns and serialized/external fields. Safe implicit widening needs no `numeric_cast`; genuine narrowing or sign boundaries still require range checks. Validate negative quantities before allocation/indexing and preserve checked arithmetic when aligning the types.
+
 `span_align_pos` checks alignment arithmetic before changing the position. `data_writer` checks final byte length and computes its complete geometric growth target before reserving storage, including recovery from zero capacity; object-array byte counts use checked multiplication. These checks preserve serialized layouts and ordinary byte counts.
 
 ### Filesystem, compression, sockets, and work threads

@@ -101,10 +101,11 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         FO_VERIFY_AND_THROW(frame_count > 0, "Sprite info frame count must be positive", file_name, section_name, frame_count);
         FO_VERIFY_AND_THROW(duration_ms >= 0, "Sprite info duration must not be negative", file_name, section_name, duration_ms);
         FO_VERIFY_AND_THROW(direction_count > 0, "Sprite info direction count must be positive", file_name, section_name, direction_count);
+        FO_VERIFY_AND_THROW(frame_count <= std::numeric_limits<uint16_t>::max(), "Sprite info frame count is outside the supported range", file_name, section_name, frame_count);
 
-        entry.Info.FrameCount = numeric_cast<uint16_t>(frame_count);
-        entry.Info.Duration = std::chrono::milliseconds {duration_ms};
-        entry.Info.Directions.resize(numeric_cast<size_t>(direction_count));
+        size_t frame_storage_count = frame_count;
+        size_t direction_storage_count = direction_count;
+        size_t value_count = checked_mul<size_t>(frame_storage_count, direction_storage_count);
 
         vector<int32_t> shared_frame_indices = ParseSpriteInfoIntValues(values, file_name, section_name, "SharedFrameIndices");
         vector<int32_t> offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "OffsetsX");
@@ -113,15 +114,18 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         vector<int32_t> heights = ParseSpriteInfoIntValues(values, file_name, section_name, "Heights");
         vector<int32_t> next_offsets_x = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsX");
         vector<int32_t> next_offsets_y = ParseSpriteInfoIntValues(values, file_name, section_name, "NextOffsetsY");
-        size_t value_count = numeric_cast<size_t>(frame_count) * numeric_cast<size_t>(direction_count);
         FO_VERIFY_AND_THROW(shared_frame_indices.size() == value_count && offsets_x.size() == value_count && offsets_y.size() == value_count && widths.size() == value_count && heights.size() == value_count && next_offsets_x.size() == value_count && next_offsets_y.size() == value_count, "Sprite info frame arrays have different sizes", file_name, section_name, value_count, shared_frame_indices.size(), offsets_x.size(), offsets_y.size(), widths.size(), heights.size(), next_offsets_x.size(), next_offsets_y.size());
+
+        entry.Info.FrameCount = frame_count;
+        entry.Info.Duration = std::chrono::milliseconds {duration_ms};
+        entry.Info.Directions.resize(direction_storage_count);
 
         size_t value_index = 0;
 
         for (SpriteDirInfo& direction : entry.Info.Directions) {
-            direction.Frames.resize(entry.Info.FrameCount);
+            direction.Frames.resize(frame_storage_count);
 
-            for (uint16_t frame_index = 0; frame_index < entry.Info.FrameCount; frame_index++, value_index++) {
+            for (int32_t frame_index = 0; frame_index < entry.Info.FrameCount; frame_index++, value_index++) {
                 SpriteFrameInfo& frame = direction.Frames[frame_index];
                 frame.Offset = {offsets_x[value_index], offsets_y[value_index]};
                 frame.Size = {widths[value_index], heights[value_index]};
@@ -132,9 +136,9 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
 
                 if (shared_frame_index >= 0) {
                     FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite info shared frame points outside previously decoded frames", file_name, section_name, value_index, shared_frame_index, frame_index);
-                    const SpriteFrameInfo& shared_frame = direction.Frames[numeric_cast<size_t>(shared_frame_index)];
+                    const SpriteFrameInfo& shared_frame = direction.Frames[shared_frame_index];
                     FO_VERIFY_AND_THROW(frame.Offset == shared_frame.Offset && frame.Size == shared_frame.Size && frame.NextOffset == shared_frame.NextOffset, "Sprite info shared frame data differs from its source frame", file_name, section_name, value_index, shared_frame_index);
-                    frame.SharedFrameIndex = numeric_cast<uint16_t>(shared_frame_index);
+                    frame.SharedFrameIndex = shared_frame_index;
                 }
                 else {
                     FO_VERIFY_AND_THROW(shared_frame_index == -1, "Sprite info shared frame index is invalid", file_name, section_name, value_index, shared_frame_index);
@@ -170,6 +174,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
         FO_VERIFY_AND_THROW(first_resource, "Sprite info file contains a duplicate resource path", entry.ResourcePath);
         FO_VERIFY_AND_THROW(entry.Info.FrameCount != 0, "Sprite info file entry contains no frames", entry.ResourcePath);
         FO_VERIFY_AND_THROW(!entry.Info.Directions.empty(), "Sprite info file entry contains no directions", entry.ResourcePath);
+        FO_VERIFY_AND_THROW(entry.Info.FrameCount >= 1 && entry.Info.FrameCount <= std::numeric_limits<uint16_t>::max(), "Sprite info file entry frame count is outside the supported range", entry.ResourcePath, entry.Info.FrameCount);
 
         string shared_frame_indices;
         string offsets_x;
@@ -188,16 +193,17 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
         };
 
         for (const SpriteDirInfo& direction : entry.Info.Directions) {
-            FO_VERIFY_AND_THROW(direction.Frames.size() == entry.Info.FrameCount, "Sprite info direction frame count differs from the animation frame count", entry.ResourcePath, direction.Frames.size(), entry.Info.FrameCount);
+            FO_VERIFY_AND_THROW(std::cmp_equal(direction.Frames.size(), entry.Info.FrameCount), "Sprite info direction frame count differs from the animation frame count", entry.ResourcePath, direction.Frames.size(), entry.Info.FrameCount);
 
-            for (uint16_t frame_index = 0; frame_index < entry.Info.FrameCount; frame_index++) {
+            for (int32_t frame_index = 0; frame_index < entry.Info.FrameCount; frame_index++) {
                 const SpriteFrameInfo& frame = direction.Frames[frame_index];
                 FO_VERIFY_AND_THROW(frame.Size.width > 0 && frame.Size.height > 0, "Sprite info frame dimensions must be positive", entry.ResourcePath, frame_index, frame.Size);
 
                 if (frame.SharedFrameIndex.has_value()) {
-                    FO_VERIFY_AND_THROW(*frame.SharedFrameIndex < frame_index, "Sprite info shared frame points outside a previously decoded frame", entry.ResourcePath, frame_index, *frame.SharedFrameIndex);
-                    const SpriteFrameInfo& shared_frame = direction.Frames[*frame.SharedFrameIndex];
-                    FO_VERIFY_AND_THROW(frame.Offset == shared_frame.Offset && frame.Size == shared_frame.Size && frame.NextOffset == shared_frame.NextOffset, "Sprite info shared frame data differs from its source frame", entry.ResourcePath, frame_index, *frame.SharedFrameIndex);
+                    int32_t shared_frame_index = *frame.SharedFrameIndex;
+                    FO_VERIFY_AND_THROW(shared_frame_index >= 0 && shared_frame_index < frame_index, "Sprite info shared frame points outside a previously decoded frame", entry.ResourcePath, frame_index, shared_frame_index);
+                    const SpriteFrameInfo& shared_frame = direction.Frames[shared_frame_index];
+                    FO_VERIFY_AND_THROW(frame.Offset == shared_frame.Offset && frame.Size == shared_frame.Size && frame.NextOffset == shared_frame.NextOffset, "Sprite info shared frame data differs from its source frame", entry.ResourcePath, frame_index, shared_frame_index);
                 }
 
                 append_value(shared_frame_indices, frame.SharedFrameIndex.has_value() ? *frame.SharedFrameIndex : -1);

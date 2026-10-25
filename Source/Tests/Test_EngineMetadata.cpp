@@ -73,6 +73,18 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
     return resources;
 }
 
+static void CheckSpriteAnimationInfoRejected(string_view content)
+{
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
+    source->AddFile("SpriteInfo/TestPack.foinfo", content);
+
+    FileSystem resources;
+    resources.AddCustomSource(std::move(source));
+
+    EngineMetadata meta {[] { }};
+    CHECK_THROWS_AS(meta.RegisterAnimationInfo(resources), VerificationException);
+}
+
 #if FO_ENABLE_3D
 
 static constexpr string_view VALID_ANIMATION_DURATIONS = R"(StateAnimations = 1
@@ -479,13 +491,152 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         string invalid_info = info_file.GetStr();
         invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
 
-        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
-        source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);
-        FileSystem invalid_resources;
-        invalid_resources.AddCustomSource(std::move(source));
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
 
-        EngineMetadata meta {[] { }};
-        CHECK_THROWS_AS(meta.RegisterAnimationInfo(invalid_resources), VerificationException);
+    SECTION("RejectsNegativeFrameCount")
+    {
+        FileSystem resources = MakeSpriteAnimationInfoResources();
+        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
+        string invalid_info = info_file.GetStr();
+        invalid_info = strex(invalid_info).replace("FrameCount = 2", "FrameCount = -1").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("RejectsOversizedFrameCount")
+    {
+        FileSystem resources = MakeSpriteAnimationInfoResources();
+        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
+        string invalid_info = info_file.GetStr();
+        invalid_info = strex(invalid_info).replace("FrameCount = 2", "FrameCount = 65536").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("RejectsNegativeSharedFrameIndex")
+    {
+        FileSystem resources = MakeSpriteAnimationInfoResources();
+        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
+        string invalid_info = info_file.GetStr();
+        invalid_info = strex(invalid_info).replace("SharedFrameIndices = -1 0", "SharedFrameIndices = -1 -2").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("AcceptsMaximumFrameCountAndSharedFrameIndexes")
+    {
+        constexpr int32_t frame_count = 65535;
+        SpriteFrameInfo first_frame {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}};
+        SpriteDirInfo direction;
+        direction.Frames.resize(numeric_cast<size_t>(frame_count));
+        direction.Frames.front() = first_frame;
+
+        for (int32_t frame_index = 1; frame_index < frame_count; frame_index++) {
+            SpriteFrameInfo& frame = direction.Frames[numeric_cast<size_t>(frame_index)];
+            frame = first_frame;
+            frame.SharedFrameIndex = frame_index - 1;
+        }
+
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Max.png",
+            .ResourcePath = "Art/Max.png",
+            .Info =
+                {
+                    .FrameCount = frame_count,
+                    .Duration = std::chrono::milliseconds {75},
+                },
+        };
+        entry.Info.Directions.emplace_back(std::move(direction));
+
+        vector<SpriteInfoFileEntry> entries;
+        entries.emplace_back(std::move(entry));
+        string content = WriteSpriteInfoFile(entries);
+        vector<SpriteInfoFileEntry> parsed_entries = ReadSpriteInfoFile("SpriteInfo/Max.foinfo", content);
+
+        REQUIRE(parsed_entries.size() == 1);
+        const SpriteInfo& parsed_info = parsed_entries.front().Info;
+        CHECK(parsed_info.FrameCount == frame_count);
+        REQUIRE(parsed_info.Directions.size() == 1);
+        REQUIRE(parsed_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+        CHECK(parsed_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
+        REQUIRE(parsed_info.Directions.front().Frames[40000].SharedFrameIndex.has_value());
+        CHECK(*parsed_info.Directions.front().Frames[40000].SharedFrameIndex == 39999);
+        REQUIRE(parsed_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
+        CHECK(*parsed_info.Directions.front().Frames.back().SharedFrameIndex == 65533);
+    }
+
+    SECTION("WriterRejectsNegativeFrameCount")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Negative.png",
+            .ResourcePath = "Art/Negative.png",
+            .Info =
+                {
+                    .FrameCount = -1,
+                    .Duration = std::chrono::milliseconds {75},
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
+    }
+
+    SECTION("WriterRejectsOversizedFrameCount")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Oversized.png",
+            .ResourcePath = "Art/Oversized.png",
+            .Info =
+                {
+                    .FrameCount = 65536,
+                    .Duration = std::chrono::milliseconds {75},
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
+    }
+
+    SECTION("WriterRejectsNegativeSharedFrameIndex")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Shared.png",
+            .ResourcePath = "Art/Shared.png",
+            .Info =
+                {
+                    .FrameCount = 2,
+                    .Duration = std::chrono::milliseconds {75},
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                        SpriteFrameInfo {.SharedFrameIndex = -2, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
     }
 }
 
