@@ -110,6 +110,27 @@ public:
         size_t EventCount {};
     };
 
+    struct SerializableTimeEvent
+    {
+        string EntityTypeName {};
+        ident_t EntityId {}; // Zero identifies the global engine entity
+        uint32_t EventId {};
+        string FuncName {};
+        size_t FuncAlternative {};
+        timespan FireDelay {};
+        timespan RepeatDuration {};
+        vector<any_t> Data {};
+    };
+
+    struct TimeEventCapture
+    {
+        vector<SerializableTimeEvent> Events {};
+        size_t DelegateBoundCount {}; // Delegate object addresses cannot cross a process boundary
+        size_t UnresolvedFunctionCount {};
+        size_t ExecutingCount {};
+        uint32_t LastEventId {};
+    };
+
     struct ReadyTimeEvent
     {
         refcount_ptr<Entity> OwnerEntity;
@@ -131,12 +152,15 @@ public:
 
     [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, bool exclude_executing = false) const -> size_t;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
+    [[nodiscard]] static auto GetTimeEventFuncAlternativeCount() noexcept -> size_t;
 
     void SetDispatcherHooks(DispatcherHooks hooks);
     void PauseDispatcherHooks();
     void ClearDispatcherHooks();
 
     auto StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
+    auto RestartTimeEvent(ptr<Entity> entity, hstring func_name, size_t func_alternative, uint32_t event_id, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
+    void ReserveTimeEventIds(uint32_t last_event_id);
     void ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
     void StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id);
     void ProcessTimeEvents();
@@ -144,15 +168,19 @@ public:
     void CancelAllForEntity(ptr<Entity> entity) noexcept;
     auto CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>;
     auto FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>;
+    auto CaptureSerializableTimeEvents() const -> TimeEventCapture;
 
 private:
     void FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te);
     void PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te);
+    auto StartTimeEventWithId(ptr<Entity> entity, Entity::TimeEventData::FuncType func, optional<uint32_t> restored_id, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
     void AddEntityTimeEventPolling(ptr<Entity> entity);
     void RemoveEntityTimeEventPolling(ptr<Entity> entity);
     void ProcessEntityTimeEvents(ptr<Entity> entity);
     void NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay);
     void NotifyCancel(uint32_t event_id);
+    auto ResolveTimeEventFunc(ptr<const Entity> entity, hstring func_name, size_t alternative) const -> optional<Entity::TimeEventData::FuncType>;
+    static auto TimeEventDeadline(nanotime now, timespan delay) -> nanotime;
 
     ptr<BaseEngine> _engine;
     mutable std::recursive_mutex _timeEventLocker {}; // Recursive: not modelable by TSA

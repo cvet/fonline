@@ -209,7 +209,7 @@ public:
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    void FrameAdvance();
+    void FrameAdvance(bool process_backends = true);
 
     virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);

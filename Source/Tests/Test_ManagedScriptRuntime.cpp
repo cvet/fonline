@@ -35,6 +35,7 @@
 
 #if FO_MANAGED_SCRIPTING
 
+#include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
 #include "Test_ClientEngineHelpers.h"
 #include "Test_MapperHelpers.h"
@@ -226,6 +227,90 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(critter_init_calls == 1);
     server->Unlock();
     unlock_first_again.release();
+
+    // An externally completed Task must remain blocked while its script continuation is paused
+    server->PauseSimulation();
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("WaitForSnapshotGate")));
+    }
+    auto pending = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+    REQUIRE(pending.ReachedQuiescence);
+    REQUIRE(std::ranges::any_of(pending.Blockers, [](const ServerSnapshotBlocker& blocker) { return blocker.Kind == ServerSnapshotBlockerKind::ManagedScriptWork && blocker.Count > 0; }));
+    CHECK_FALSE(pending.State.has_value());
+    CHECK(pending.Payload.empty());
+    // The counter belongs to the first backend, not the other live engine's assembly statics
+    CHECK_THROWS_AS(second->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("ReleaseSnapshotGate")));
+    }
+    coarse_sleep(std::chrono::milliseconds {50});
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t resumed = -1;
+        REQUIRE(server->CallFunc(name("GetSnapshotResumed"), resumed));
+        CHECK(resumed == 0);
+    }
+    pending = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+    REQUIRE(std::ranges::any_of(pending.Blockers, [](const ServerSnapshotBlocker& blocker) { return blocker.Kind == ServerSnapshotBlockerKind::ManagedScriptWork && blocker.Count > 0; }));
+    server->ResumeSimulation();
+    bool finished = false;
+    for (uint32_t attempt = 0; attempt < 200 && !finished; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t resumed = -1;
+        REQUIRE(server->CallFunc(name("GetSnapshotResumed"), resumed));
+        finished = resumed == 1;
+    }
+    REQUIRE(finished);
+    CHECK_THROWS_AS(server->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
+
+    // A cancelled external Task must release its accounting once the real Mono continuation runs
+    server->PauseSimulation();
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("WaitForSnapshotGate")));
+        REQUIRE(server->CallFunc(name("CancelSnapshotGate")));
+    }
+    auto backend = server->GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX);
+    REQUIRE(backend);
+    CHECK(backend->GetSnapshotWorkCount() > 0);
+    server->ResumeSimulation();
+    for (uint32_t attempt = 0; attempt < 200 && backend->GetSnapshotWorkCount() != 0; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+    }
+    CHECK(backend->GetSnapshotWorkCount() == 0);
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_timer = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        hstring timer_name = name("OnSnapshotTimer");
+        auto callback = server->FindFunc<void>(timer_name);
+        REQUIRE(callback);
+        uint32_t timer_id = server->TimeEventMngr.StartTimeEvent(server.get(), std::move(callback), timespan {std::chrono::hours {1}}, {}, {});
+        auto captured = server->TimeEventMngr.CaptureSerializableTimeEvents();
+        REQUIRE(captured.Events.size() == 1);
+        CHECK(captured.UnresolvedFunctionCount == 0);
+        CHECK(captured.Events[0].EventId == timer_id);
+        server->TimeEventMngr.StopTimeEvent(server.get(), {}, timer_id);
+        CHECK(server->TimeEventMngr.RestartTimeEvent(server.get(), timer_name, captured.Events[0].FuncAlternative, timer_id, timespan {std::chrono::milliseconds {20}}, {}, {}) == timer_id);
+    }
+    finished = false;
+    for (uint32_t attempt = 0; attempt < 200 && !finished; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock_timer = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t calls = 0;
+        REQUIRE(server->CallFunc(name("GetSnapshotTimerCalls"), calls));
+        finished = calls == 1;
+    }
+    REQUIRE(finished);
 
     auto client_settings = ClientEngineTests::MakeClientTestSettings();
     auto client_resources = ClientEngineTests::MakeClientTestResources();
@@ -591,6 +676,82 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     client->TimeEventMngr.StopTimeEvent(client, {}, client_id);
     client_event.reset();
 }
+
+#if FO_DATABASE_SQLITE
+TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][scripting][snapshot]")
+{
+    ManagedRuntimeTestResources assemblies;
+    string storage_root = ServerEngineTests::MakeTempServerResourceDir("managed_session_restore");
+    auto cleanup = scope_exit([&storage_root]() noexcept { (void)fs::remove_dir_tree(storage_root); });
+    ServerSnapshotState state;
+    vector<uint8_t> payload;
+    ident_t critter_id;
+    mpos expected_end;
+
+    {
+        auto settings = ServerEngineTests::MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
+        auto resources = ServerEngineTests::MakeServerTestResources();
+        assemblies.AddTo(resources);
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
+        auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+        REQUIRE(ServerEngineTests::WaitForServerStart(server).empty());
+        server->PauseSimulation();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            hstring map_pids[] = {server->Hashes.to_hashed_string("UnitTestMap")};
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids);
+            server->EntityMngr.MakePersistent(location, true, true);
+            auto map = location->GetMapByIndex(0);
+            REQUIRE(map);
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
+            server->MapMngr.AddCritterToMap(critter, map.get(), ServerEngineTests::SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+            auto moving = ServerEngineTests::MakeServerMovementContext(map->GetSize(), critter->GetHex(), server->GameTime.GetFrameTime());
+            expected_end = moving->GetEndHex();
+            server->StartCritterMoving(critter, std::move(moving), nullptr);
+            auto global = server->FindFunc<void>(server->Hashes.to_hashed_string("ManagedRuntimeProbe::OnSnapshotTimer"));
+            REQUIRE(global);
+            (void)server->TimeEventMngr.StartTimeEvent(server.get(), std::move(global), timespan {std::chrono::milliseconds {100}}, {}, {});
+            array args {ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = server->GetBaseType("Critter")}};
+            nptr<ScriptFuncDesc> desc = server->FindFunc(server->Hashes.to_hashed_string("ManagedRuntimeProbe::OnSnapshotCritterTimer"), const_span<ComplexTypeDesc> {args});
+            REQUIRE(desc);
+            (void)server->TimeEventMngr.StartTimeEvent(critter, ScriptFunc<void, ptr<ScriptSelfEntity>> {desc}, timespan {std::chrono::milliseconds {100}}, {}, {});
+        }
+        auto captured = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+        REQUIRE(captured.Blockers.empty());
+        REQUIRE(captured.State.has_value());
+        state = std::move(*captured.State);
+        payload = std::move(captured.Payload);
+        REQUIRE(state.TimeEvents.size() == 2);
+        REQUIRE(state.CritterMovements.size() == 1);
+    }
+
+    auto settings = ServerEngineTests::MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
+    auto resources = ServerEngineTests::MakeServerTestResources();
+    assemblies.AddTo(resources);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources), ServerSnapshotRestore {state, payload});
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(ServerEngineTests::WaitForServerStart(server).empty());
+    bool complete = false;
+    nanotime deadline = nanotime::now() + std::chrono::seconds {5};
+    while (!complete && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        auto critter = server->EntityMngr.GetCritter(critter_id);
+        REQUIRE(critter);
+        server->RequireCurrentSyncContext()->SyncEntity(critter);
+        int32_t calls = 0;
+        REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ManagedRuntimeProbe::GetSnapshotTimerCalls"), calls));
+        complete = calls == 2 && !critter->IsMoving() && critter->GetHex() == expected_end;
+    }
+    CHECK(complete);
+}
+#endif
 
 FO_END_NAMESPACE
 

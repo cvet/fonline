@@ -55,6 +55,376 @@ static auto WaitFor(function<bool()> predicate, std::chrono::milliseconds max_wa
 // WorkerPool — anonymous submission
 // ============================================================================
 
+template<typename Pool>
+static void CheckWorkerPoolTypedHolds()
+{
+    if constexpr (requires(Pool& pool, const_span<WorkerJobType> types) {
+                      pool.HoldJobTypes(types);
+                      pool.ReleaseHeldJobTypes();
+                      pool.IsJobTypeHeld(WorkerJobType::TimeEvent);
+                  }) {
+        SECTION("UnrepresentableDeadlinesDoNotPublishJobs")
+        {
+            std::atomic<bool> shutdown {};
+            Pool pool {"deadline-range", 1, &shutdown, true};
+            auto body = []() -> optional<timespan> { return std::nullopt; };
+            timespan maximum {std::numeric_limits<int64_t>::max()};
+            CHECK_THROWS(pool.Submit(maximum, body));
+            CHECK_THROWS(pool.Submit(WorkerJobKey {WorkerJobType::TimeEvent, 1}, maximum, body));
+            CHECK(pool.GetDiagnostics().ScheduledJobs == 0);
+            CHECK(pool.GetDiagnostics().QueuedKeys == 0);
+        }
+
+        SECTION("UnrepresentableRerunsFinishWithoutLosingTheirKey")
+        {
+            for (bool keyed : {false, true}) {
+                CAPTURE(keyed);
+                std::atomic<bool> shutdown {};
+                std::atomic_uint32_t runs {};
+                std::atomic_uint32_t reports {};
+                std::atomic_bool report_has_context {};
+                auto previous_callback = exceptions::get_callback();
+                exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) {
+                    report_has_context.store(static_cast<bool>(SyncContext::GetCurrentOnThisThread()));
+                    reports.fetch_add(1);
+                });
+                auto restore_callback = scope_exit([previous = std::move(previous_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+                Pool pool {"rerun-range", 1, &shutdown};
+                WorkerJobKey key {WorkerJobType::TimeEvent, 1};
+                auto body = [&]() -> optional<timespan> { return runs.fetch_add(1) == 0 ? optional {timespan {std::numeric_limits<int64_t>::max()}} : std::nullopt; };
+                if (keyed) {
+                    pool.Submit(key, body);
+                }
+                else {
+                    pool.Submit(body);
+                }
+                REQUIRE(pool.WaitIdle(timespan {std::chrono::seconds {2}}));
+                CHECK(runs.load() == 1);
+                CHECK(reports.load() == 1);
+                CHECK(report_has_context.load());
+                CHECK(pool.GetDiagnostics().QueuedKeys == 0);
+                CHECK(pool.GetDiagnostics().ScheduledJobs == 0);
+                pool.Submit(key, [&]() -> optional<timespan> {
+                    runs.fetch_add(1);
+                    return std::nullopt;
+                });
+                REQUIRE(pool.WaitIdle(timespan {std::chrono::seconds {2}}));
+                CHECK(runs.load() == 2);
+            }
+        }
+
+        SECTION("OnlySelectedTypesStop")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_uint32_t held_runs {};
+            std::atomic_uint32_t service_runs {};
+            Pool pool {"typed-hold", 2, &shutdown};
+            array types {WorkerJobType::TimeEvent, WorkerJobType::None};
+            pool.HoldJobTypes(types);
+            CHECK(pool.IsJobTypeHeld(WorkerJobType::TimeEvent));
+            CHECK_FALSE(pool.IsJobTypeHeld(WorkerJobType::None));
+
+            pool.Submit(WorkerJobKey {WorkerJobType::TimeEvent, 1}, [&]() -> optional<timespan> {
+                held_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            pool.Submit(WorkerJobKey {WorkerJobType::Player, 1}, [&]() -> optional<timespan> {
+                service_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            pool.Submit([&]() -> optional<timespan> {
+                service_runs.fetch_add(1);
+                return std::nullopt;
+            });
+
+            REQUIRE(WaitFor([&] { return service_runs.load() == 2; }));
+            CHECK(held_runs.load() == 0);
+            CHECK(pool.WaitIdle(std::chrono::milliseconds {500}));
+            CHECK(pool.GetDiagnostics().JobTypesHeld);
+            CHECK(pool.GetDiagnostics().HeldJobs == 1);
+
+            pool.ReleaseHeldJobTypes();
+            REQUIRE(WaitFor([&] { return held_runs.load() == 1; }));
+            CHECK_FALSE(pool.GetDiagnostics().JobTypesHeld);
+        }
+
+        SECTION("ReleasePreservesEqualDeadlineOrder")
+        {
+            std::atomic_bool shutdown {};
+            vector<int32_t> order;
+            Pool pool {"HoldOrderTest", 1, &shutdown};
+            WorkerJobType types[] = {WorkerJobType::TimeEvent};
+            pool.HoldJobTypes(types);
+
+            for (int32_t i = 0; i < 3; i++) {
+                pool.Submit({WorkerJobType::TimeEvent, numeric_cast<size_t>(i + 1)}, [&order, i]() -> optional<timespan> {
+                    order.push_back(i);
+                    return std::nullopt;
+                });
+            }
+
+            pool.ReleaseHeldJobTypes();
+            REQUIRE(pool.WaitIdle(std::chrono::seconds {2}));
+            CHECK(order == vector<int32_t> {0, 1, 2});
+        }
+
+        SECTION("InvalidRequestLeavesNoHeldTypes")
+        {
+            std::atomic<bool> shutdown {};
+            Pool pool {"typed-hold", 1, &shutdown};
+            array invalid {WorkerJobType::TimeEvent, WorkerJobType {255}};
+            CHECK_THROWS_AS(pool.HoldJobTypes(invalid), VerificationException);
+            CHECK_FALSE(pool.GetDiagnostics().JobTypesHeld);
+            CHECK_FALSE(pool.IsJobTypeHeld(WorkerJobType::TimeEvent));
+
+            array none {WorkerJobType::None};
+            CHECK_THROWS_AS(pool.HoldJobTypes(none), VerificationException);
+
+            array valid {WorkerJobType::Player};
+            pool.HoldJobTypes(valid);
+            CHECK_FALSE(pool.IsJobTypeHeld(WorkerJobType::TimeEvent));
+            CHECK_THROWS_AS(pool.HoldJobTypes(valid), VerificationException);
+            CHECK(pool.IsJobTypeHeld(WorkerJobType::Player));
+            pool.ReleaseHeldJobTypes();
+            CHECK_THROWS_AS(pool.ReleaseHeldJobTypes(), VerificationException);
+        }
+
+        SECTION("MidHoldSubmissionKeepsOnlyItsRequestedDelay")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_bool fired {};
+            std::atomic_int64_t elapsed_ms {};
+            std::chrono::steady_clock::time_point released_at;
+            Pool pool {"typed-hold", 1, &shutdown};
+            array types {WorkerJobType::TimeEvent};
+            pool.HoldJobTypes(types);
+            coarse_sleep(std::chrono::milliseconds {500});
+            pool.Submit(WorkerJobKey {WorkerJobType::TimeEvent, 1}, std::chrono::milliseconds {70}, [&]() -> optional<timespan> {
+                elapsed_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - released_at).count());
+                fired.store(true);
+                return std::nullopt;
+            });
+            coarse_sleep(std::chrono::milliseconds {100});
+            CHECK_FALSE(fired.load());
+            released_at = std::chrono::steady_clock::now();
+            pool.ReleaseHeldJobTypes();
+            REQUIRE(WaitFor([&] { return fired.load(); }, std::chrono::milliseconds {2000}));
+            CHECK(elapsed_ms.load() >= 40);
+            CHECK(elapsed_ms.load() < 350);
+        }
+
+        SECTION("WakingAHeldJobMakesItDueAtRelease")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_bool fired {};
+            Pool pool {"typed-hold", 1, &shutdown};
+            array types {WorkerJobType::TimeEvent};
+            pool.HoldJobTypes(types);
+            pool.Submit(WorkerJobKey {WorkerJobType::TimeEvent, 1}, std::chrono::seconds {5}, [&]() -> optional<timespan> {
+                fired.store(true);
+                return std::nullopt;
+            });
+            coarse_sleep(std::chrono::milliseconds {500});
+            REQUIRE(pool.Wake(WorkerJobKey {WorkerJobType::TimeEvent, 1}));
+            CHECK_FALSE(fired.load());
+            pool.ReleaseHeldJobTypes();
+            REQUIRE(WaitFor([&] { return fired.load(); }, std::chrono::milliseconds {350}));
+        }
+
+        SECTION("HeldPendingRerunKeepsItsMidHoldDelay")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_bool first_started {};
+            std::atomic_bool first_finished {};
+            std::atomic_int32_t first_gate {};
+            std::atomic_uint32_t replacement_runs {};
+            std::atomic_int64_t replacement_after_release_ms {-1};
+            std::atomic_int64_t released_at_ms {};
+            WorkerJobKey key {WorkerJobType::TimeEvent, 1};
+            array types {WorkerJobType::TimeEvent};
+            Pool pool {"typed-hold", 1, &shutdown};
+            auto gate_guard = scope_exit([&]() noexcept { first_gate.store(1); });
+
+            pool.Submit(key, [&]() -> optional<timespan> {
+                first_started.store(true);
+
+                while (first_gate.load() == 0) {
+                    coarse_sleep(std::chrono::milliseconds {1});
+                }
+
+                first_finished.store(true);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return first_started.load(); }, std::chrono::milliseconds {1000}));
+
+            pool.HoldJobTypes(types);
+            coarse_sleep(std::chrono::milliseconds {500});
+
+            // The replacement lands in the running key's pending slot halfway through the hold
+            pool.Submit(key, std::chrono::milliseconds {70}, [&]() -> optional<timespan> {
+                replacement_after_release_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() - released_at_ms.load());
+                replacement_runs.fetch_add(1);
+                return std::nullopt;
+            });
+
+            first_gate.store(1);
+            REQUIRE(WaitFor([&] { return first_finished.load(); }, std::chrono::milliseconds {1000}));
+            REQUIRE(WaitFor(
+                [&] {
+                    auto diagnostics = pool.GetDiagnostics();
+                    return diagnostics.RunningJobs == 0 && diagnostics.PendingReruns == 0;
+                },
+                std::chrono::milliseconds {1000}));
+
+            // Completing the in-flight run must not dispatch its held replacement
+            CHECK(replacement_runs.load() == 0);
+            coarse_sleep(std::chrono::milliseconds {100});
+
+            CHECK(replacement_runs.load() == 0);
+
+            released_at_ms.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+            pool.ReleaseHeldJobTypes();
+
+            REQUIRE(WaitFor([&] { return replacement_runs.load() == 1; }, std::chrono::milliseconds {2000}));
+            CHECK(replacement_after_release_ms.load() >= 40);
+            CHECK(replacement_after_release_ms.load() < 350);
+            CHECK(pool.WaitIdle(std::chrono::milliseconds {1000}));
+        }
+
+        SECTION("GlobalFreezeKeepsTypedHoldIndependent")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_uint32_t held_runs {};
+            std::atomic_uint32_t player_runs {};
+            std::atomic_uint32_t anonymous_runs {};
+            std::atomic_uint32_t frozen_service_runs {};
+            std::atomic_uint32_t barrier_runs {};
+            WorkerJobKey held_key {WorkerJobType::TimeEvent, 1};
+            WorkerJobKey player_key {WorkerJobType::Player, 1};
+            array types {WorkerJobType::TimeEvent};
+            Pool pool {"typed-hold", 1, &shutdown};
+
+            pool.HoldJobTypes(types);
+            pool.Submit(held_key, [&]() -> optional<timespan> {
+                held_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            pool.Submit(player_key, [&]() -> optional<timespan> {
+                player_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            pool.Submit([&]() -> optional<timespan> {
+                anonymous_runs.fetch_add(1);
+                return std::nullopt;
+            });
+
+            // Unheld keyed and anonymous work must keep flowing while TimeEvent is held
+            REQUIRE(WaitFor([&] { return player_runs.load() == 1 && anonymous_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+            CHECK(held_runs.load() == 0);
+
+            pool.Pause();
+            pool.FreezeSchedulingTime();
+
+            pool.Submit([&]() -> optional<timespan> {
+                frozen_service_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            coarse_sleep(std::chrono::milliseconds {250});
+
+            CHECK(held_runs.load() == 0);
+            CHECK(frozen_service_runs.load() == 0);
+
+            pool.ResumeSchedulingTime();
+            pool.Resume();
+
+            REQUIRE(WaitFor([&] { return frozen_service_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+            CHECK(pool.IsJobTypeHeld(WorkerJobType::TimeEvent));
+            CHECK(held_runs.load() == 0);
+
+            pool.ReleaseHeldJobTypes();
+            REQUIRE(WaitFor([&] { return held_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+
+            // A later service barrier proves the held run completed exactly once
+            pool.Submit([&]() -> optional<timespan> {
+                barrier_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return barrier_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+            CHECK(pool.WaitIdle(std::chrono::milliseconds {1000}));
+
+            CHECK(held_runs.load() == 1);
+            CHECK_FALSE(pool.IsKeyActive(held_key));
+        }
+
+        SECTION("CancelledHeldJobLeavesKeyReusable")
+        {
+            std::atomic<bool> shutdown {};
+            std::atomic_uint32_t cancelled_runs {};
+            std::atomic_uint32_t reused_runs {};
+            std::atomic_uint32_t barrier_runs {};
+            WorkerJobKey key {WorkerJobType::TimeEvent, 1};
+            array types {WorkerJobType::TimeEvent};
+            Pool pool {"typed-hold", 1, &shutdown};
+
+            pool.HoldJobTypes(types);
+            pool.Submit(key, [&]() -> optional<timespan> {
+                cancelled_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            CHECK(pool.IsKeyActive(key));
+
+            // A service barrier orders the observation that the held closure did not run
+            pool.Submit([&]() -> optional<timespan> {
+                barrier_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return barrier_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+            CHECK(cancelled_runs.load() == 0);
+
+            CHECK(pool.Cancel(key));
+            CHECK_FALSE(pool.IsKeyActive(key));
+            pool.ReleaseHeldJobTypes();
+
+            // Another service barrier proves the cancelled closure stayed gone after release
+            pool.Submit([&]() -> optional<timespan> {
+                barrier_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return barrier_runs.load() == 2; }, std::chrono::milliseconds {1000}));
+            CHECK(cancelled_runs.load() == 0);
+
+            pool.Submit(key, [&]() -> optional<timespan> {
+                reused_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return reused_runs.load() == 1; }, std::chrono::milliseconds {1000}));
+
+            pool.Submit([&]() -> optional<timespan> {
+                barrier_runs.fetch_add(1);
+                return std::nullopt;
+            });
+            REQUIRE(WaitFor([&] { return barrier_runs.load() == 3; }, std::chrono::milliseconds {1000}));
+            CHECK(pool.WaitIdle(std::chrono::milliseconds {1000}));
+            CHECK(reused_runs.load() == 1);
+            CHECK(cancelled_runs.load() == 0);
+
+            auto diagnostics = pool.GetDiagnostics();
+            CHECK_FALSE(pool.IsKeyActive(key));
+            CHECK(diagnostics.ScheduledJobs == 0);
+            CHECK(diagnostics.QueuedKeys == 0);
+            CHECK(diagnostics.PendingReruns == 0);
+        }
+    }
+    else {
+        FAIL("WorkerPool does not support selective job holds");
+    }
+}
+
+TEST_CASE("WorkerPoolTypedHolds")
+{
+    CheckWorkerPoolTypedHolds<WorkerPool>();
+}
+
 TEST_CASE("WorkerPoolAnonymous")
 {
     SECTION("SubmitFireAndForget")

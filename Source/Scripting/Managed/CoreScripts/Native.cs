@@ -339,6 +339,12 @@ internal static partial class Native
     }
 
     [CallableByEngine]
+    internal static long GetSnapshotWorkCount()
+    {
+        return ScriptExceptions.PendingTaskCount + ScriptSynchronizationContext.PendingWorkCount;
+    }
+
+    [CallableByEngine]
     internal static void ShutdownContinuations()
     {
         ScriptSynchronizationContext.Shutdown();

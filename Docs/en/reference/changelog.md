@@ -14,6 +14,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Added
+
+- Add native simulation pause with independent manual, named and startup ownership. Gameplay timer/movement jobs and frame-driven script processing stop while connection/player/service jobs remain responsive. Full quiescence preserves an existing pause and rejects reentrant control before taking its mutex. Expose authoritative session lifecycle state in native queries and health output.
+- Capture named time events and persistent-world movement in snapshot format `4`, including issued timer ids, concrete callback signatures, remaining delays, map identity, progress and movement leases. Restore their execution on the new process clock without replaying movement-start events. Reject unsupported owners, delegate callbacks and unfinished Managed work; allow native projects to report additional counted eligibility issues.
+- Preserve typed worker deadlines for submission, wake and pending reruns during a hold; validate a complete hold request before changing scheduler state. Reserve issued timer ids before startup callbacks and refuse id exhaustion instead of wrapping to zero.
+
+### Migration
+
+- Upgrade from `2026.1.64-dev` by rebuilding native roles and regenerating/baking matching server/client resources and Managed assemblies. The compatibility marker advances from `78` to `79`; the Managed ABI remains `9`. Keep matching binaries, assemblies and resources together on upgrade and rollback.
+- Native snapshot consumers must parse and populate format `4`, including `LastTimeEventId`, named `TimeEvents` and leased `CritterMovements`. Format `1` and donor formats `2`/`3` are rejected: explicitly convert their project containers with matching world data, or recapture using matching resources. The Engine provides state/bytes rather than a container parser. Failed restore sessions must be destroyed.
+- Snapshot owners must be reachable by ordinary persistent-world restore; detached/transient owners and attached movement block capture. Projects must avoid recreating captured timers in initialization callbacks and register eligibility checks for their own runtime-only state. Pause is a native embedding facility and is not enabled as a gameplay policy. Startup time is frozen through init/restore/start callbacks; durable named holds must be reapplied explicitly by the embedding controller. Existing settings, script method/event ids and persisted property values retain their meaning.
+
+## 2026.1.64-dev - 2026-10-26
+
 ### Fixed
 
 - Keep persistent server-entity holder ID lists unchanged in storage when critter restoration fails. Runtime pruning of the partial graph still occurs, but retrying the load retains the original durable references and error; restoring a missing child document recovers the complete graph. Successful pre-load changes and explicit migrations continue to persist normally.

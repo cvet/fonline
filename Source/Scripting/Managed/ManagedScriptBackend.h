@@ -57,6 +57,7 @@ public:
     [[nodiscard]] auto GetAbi() const -> nptr<const ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetAbi() -> nptr<ManagedAbiRuntimeState>;
     [[nodiscard]] auto GetCaches() const -> nptr<ManagedBackendCaches>;
+    [[nodiscard]] auto GetSnapshotWorkCount() const -> uint64_t;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
@@ -89,6 +90,7 @@ private:
     vector<nptr<void>> _images {};
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
+    vector<nptr<void>> _snapshotWorkCounters {};
     vector<nptr<void>> _refTypePumps {};
     vector<nptr<void>> _refTypeShutdowns {};
     std::atomic<bool> _continuationsReady {};

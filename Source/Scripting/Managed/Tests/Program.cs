@@ -261,6 +261,43 @@ internal static class Program
                        "A lambda holding a callback beside its own state was renamed after that callback: " +
                            capturingName);
              }),
+            ("snapshot work accounting follows task completion and cancellation",
+             () =>
+             {
+                 PropertyInfo? pending = typeof(ScriptExceptions).GetProperty("PendingTaskCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 Check(pending != null, "Snapshot eligibility cannot observe unfinished managed tasks");
+                 int ReadPending() => (int)pending!.GetValue(null)!;
+                 int before = ReadPending();
+                 TaskCompletionSource completion = new TaskCompletionSource();
+                 ScriptExceptions.ObserveTask(completion.Task);
+                 Check(ReadPending() == before + 1, "An unfinished managed task did not block snapshot capture");
+                 completion.SetResult();
+                 Check(ReadPending() == before, "A completed managed task left a snapshot blocker");
+                 TaskCompletionSource cancelled = new TaskCompletionSource();
+                 ScriptExceptions.ObserveTask(cancelled.Task);
+                 Check(ReadPending() == before + 1, "A second unfinished task was not observed");
+                 cancelled.SetCanceled();
+                 Check(ReadPending() == before, "Cancellation left a permanent snapshot blocker");
+             }),
+            ("snapshot work accounting sees queued continuations",
+             () =>
+             {
+                 PropertyInfo? pending = typeof(ScriptSynchronizationContext).GetProperty("PendingWorkCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 Check(pending != null, "Snapshot eligibility cannot observe queued managed continuations");
+                 long ReadPending() => (long)pending!.GetValue(null)!;
+                 long before = ReadPending();
+                 bool invoked = false;
+
+                 using (ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter())
+                 {
+                     context.Post(_ => invoked = true, null);
+                 }
+
+                 Check(ReadPending() == before + 1, "A queued continuation did not block snapshot capture");
+                 ScriptSynchronizationContext.Pump();
+                 Check(invoked, "The queued callback was not executed");
+                 Check(ReadPending() == before, "A completed continuation left a snapshot blocker");
+             }),
             ("a resumed await is named after its async method",
              () =>
              {

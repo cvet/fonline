@@ -37,6 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto WorkerJobDeadline(nanotime now, timespan delay) -> nanotime;
+
 WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::atomic<bool>> shutdown_flag, bool start_paused) :
     _name {name},
     _shutdownFlag {shutdown_flag},
@@ -101,7 +103,9 @@ void WorkerPool::Submit(timespan delay, Job job)
             throw EntitySyncException("Cannot submit job to a stopped WorkerPool");
         }
 
-        EnqueueJob(GetSchedulingTime() + delay, ANONYMOUS_JOB, std::move(job));
+        nanotime scheduling_time = GetSchedulingTime();
+        auto fire_time = WorkerJobDeadline(std::move(scheduling_time), delay);
+        EnqueueJob(std::move(fire_time), ANONYMOUS_JOB, std::move(job));
     }
 
     _workSignal.notify_one();
@@ -129,11 +133,15 @@ void WorkerPool::Submit(JobKey key, timespan delay, Job job)
         }
 
         if (_runningKeys.contains(key)) {
-            _pendingRerun[key] = ScheduledJob {GetSchedulingTime() + delay, key, std::move(job)};
+            nanotime scheduling_time = GetJobSchedulingTime(key);
+            auto fire_time = WorkerJobDeadline(std::move(scheduling_time), delay);
+            _pendingRerun[key] = ScheduledJob {std::move(fire_time), key, std::move(job)};
             _cancelOnFinish.erase(key);
         }
         else if (!_queuedKeys.contains(key)) {
-            EnqueueJob(GetSchedulingTime() + delay, key, std::move(job));
+            nanotime scheduling_time = GetJobSchedulingTime(key);
+            auto fire_time = WorkerJobDeadline(std::move(scheduling_time), delay);
+            EnqueueJob(std::move(fire_time), key, std::move(job));
             _queuedKeys.insert(key);
             needs_notify = true;
         }
@@ -168,7 +176,7 @@ auto WorkerPool::Wake(JobKey key) -> bool
                     }
 
                     _jobs.erase(it);
-                    entry.FireTime = GetSchedulingTime();
+                    entry.FireTime = GetJobSchedulingTime(entry.Key);
                     EnqueueJob(entry.FireTime, entry.Key, std::move(entry.Body));
                     break;
                 }
@@ -339,6 +347,111 @@ void WorkerPool::ResumeSchedulingTime()
     _schedulingTimeFrozen = false;
 }
 
+void WorkerPool::HoldJobTypes(const_span<WorkerJobType> types)
+{
+    FO_TRACE_ZONE(Threading);
+
+    scoped_lock locker {_mutex};
+
+    FO_VERIFY_AND_THROW(!_jobTypesHeld, "WorkerPool job types are already held");
+
+    decltype(_heldJobTypes) held_types {};
+    bool any = false;
+
+    for (WorkerJobType type : types) {
+        // Anonymous engine jobs carry the None type and must keep running: they are what keeps the
+        // pool's own accounting and diagnostics alive while gameplay is held
+        if (type == WorkerJobType::None) {
+            continue;
+        }
+
+        size_t index = static_cast<size_t>(type);
+        FO_VERIFY_AND_THROW(index < held_types.size(), "Unknown worker job type", index);
+        held_types[index] = true;
+        any = true;
+    }
+
+    FO_VERIFY_AND_THROW(any, "WorkerPool job type hold requested without any holdable type");
+
+    _heldJobTypes = held_types;
+    _jobTypeHoldStartedAt = GetSchedulingTime();
+    _jobTypesHeld = true;
+    _workSignal.notify_all();
+    _idleSignal.notify_all();
+}
+
+void WorkerPool::ReleaseHeldJobTypes()
+{
+    FO_TRACE_ZONE(Threading);
+
+    scoped_lock locker {_mutex};
+
+    FO_VERIFY_AND_THROW(_jobTypesHeld, "WorkerPool job types are not held");
+
+    // Give every held job back the time it spent waiting, so a long hold does not turn into a burst
+    // of overdue work the moment it ends
+    timespan held_for = GetSchedulingTime() - _jobTypeHoldStartedAt;
+
+    struct ResumedJob
+    {
+        size_t Index {};
+        nanotime FireTime {};
+    };
+
+    // Sort local records first. Publication only moves jobs and swaps Engine-allocated storage;
+    // original queue positions break equal-deadline ties
+    static_assert(std::is_nothrow_move_constructible_v<ScheduledJob>);
+    vector<ResumedJob> order;
+    order.reserve(_jobs.size());
+
+    for (size_t i = 0; i < _jobs.size(); i++) {
+        const auto& job = _jobs[i];
+        timespan delay = IsJobHeld(job.Key) ? held_for : timespan::zero;
+        nanotime fire_time = WorkerJobDeadline(job.FireTime, std::move(delay));
+        order.push_back({i, std::move(fire_time)});
+    }
+
+    for (const auto& [key, job] : _pendingRerun) {
+        if (IsJobHeld(key)) {
+            (void)WorkerJobDeadline(job.FireTime, held_for);
+        }
+    }
+
+    std::sort(order.begin(), order.end(), [](const ResumedJob& lhs, const ResumedJob& rhs) { return lhs.FireTime != rhs.FireTime ? lhs.FireTime < rhs.FireTime : lhs.Index < rhs.Index; });
+
+    vector<ScheduledJob> jobs;
+    jobs.reserve(_jobs.size());
+
+    for (const auto& entry : order) {
+        auto job = std::move(_jobs[entry.Index]);
+        job.FireTime = entry.FireTime;
+        jobs.emplace_back(std::move(job));
+    }
+
+    _jobs.swap(jobs);
+
+    for (auto& [key, job] : _pendingRerun) {
+        if (IsJobHeld(key)) {
+            job.FireTime += held_for;
+        }
+    }
+
+    _heldJobTypes.fill(false);
+    _jobTypesHeld = false;
+    _jobTypeHoldStartedAt = {};
+
+    _workSignal.notify_all();
+}
+
+auto WorkerPool::IsJobTypeHeld(WorkerJobType type) const -> bool
+{
+    scoped_lock locker {_mutex};
+
+    size_t index = static_cast<size_t>(type);
+
+    return index < _heldJobTypes.size() && _heldJobTypes[index];
+}
+
 auto WorkerPool::GetPendingJobCount() const -> size_t
 {
     scoped_lock locker {_mutex};
@@ -350,6 +463,14 @@ auto WorkerPool::GetDiagnostics() const -> Diagnostics
 {
     scoped_lock locker {_mutex};
 
+    size_t held_jobs = 0;
+
+    for (const auto& job : _jobs) {
+        if (IsJobHeld(job.Key)) {
+            held_jobs++;
+        }
+    }
+
     return Diagnostics {
         .ThreadCount = numeric_cast<int32_t>(_workers.size()),
         .ScheduledJobs = _jobs.size(),
@@ -360,6 +481,8 @@ auto WorkerPool::GetDiagnostics() const -> Diagnostics
         .ActiveWorkers = _activeWorkers,
         .Paused = _paused,
         .SchedulingTimeFrozen = _schedulingTimeFrozen,
+        .JobTypesHeld = _jobTypesHeld,
+        .HeldJobs = held_jobs,
         .CompletedJobs = _completedJobs,
     };
 }
@@ -400,7 +523,8 @@ void WorkerPool::EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept
 
 auto WorkerPool::IsAnyJobReadyNow() const noexcept -> bool
 {
-    return !_jobs.empty() && _jobs.front().FireTime <= GetSchedulingTime();
+    size_t index = FindNextRunnableJob();
+    return index < _jobs.size() && _jobs[index].FireTime <= GetSchedulingTime();
 }
 
 auto WorkerPool::IsBarrierIdle() const noexcept -> bool
@@ -411,6 +535,30 @@ auto WorkerPool::IsBarrierIdle() const noexcept -> bool
 auto WorkerPool::GetSchedulingTime() const noexcept -> nanotime
 {
     return _schedulingTimeFrozen ? _schedulingTimeFrozenAt : nanotime::now() - _schedulingTimeOffset;
+}
+
+auto WorkerPool::IsJobHeld(JobKey key) const noexcept -> bool
+{
+    size_t index = static_cast<size_t>(key.Type);
+    return _jobTypesHeld && index < _heldJobTypes.size() && _heldJobTypes[index];
+}
+
+auto WorkerPool::FindNextRunnableJob() const noexcept -> size_t
+{
+    size_t index = 0;
+
+    while (index < _jobs.size() && IsJobHeld(_jobs[index].Key)) {
+        index++;
+    }
+
+    return index;
+}
+
+auto WorkerPool::GetJobSchedulingTime(JobKey key) const noexcept -> nanotime
+{
+    // A job submitted or rearmed during a hold starts its delay on the frozen type clock.
+    // Release shifts every held deadline by the same amount, including pending reruns
+    return IsJobHeld(key) ? _jobTypeHoldStartedAt : GetSchedulingTime();
 }
 
 void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
@@ -430,12 +578,14 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     continue;
                 }
 
-                if (_jobs.empty()) {
+                size_t runnable_index = FindNextRunnableJob();
+
+                if (runnable_index == _jobs.size()) {
                     _workSignal.wait(locker);
                     continue;
                 }
 
-                nanotime front_fire = _jobs.front().FireTime;
+                nanotime front_fire = _jobs[runnable_index].FireTime;
                 nanotime now = GetSchedulingTime();
 
                 if (front_fire > now) {
@@ -444,8 +594,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     continue;
                 }
 
-                job = std::move(_jobs.front());
-                _jobs.erase(_jobs.begin());
+                job = std::move(_jobs[runnable_index]);
+                _jobs.erase(_jobs.begin() + numeric_cast<ptrdiff_t>(runnable_index));
 
                 if (job.Key == ANONYMOUS_JOB) {
                     _anonymousScheduledJobs--;
@@ -493,6 +643,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
 
         bool need_wake = false;
         bool body_rescheduled = false;
+        std::exception_ptr scheduling_error;
 
         {
             scoped_lock locker {_mutex};
@@ -508,7 +659,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     _pendingRerun.erase(it);
 
                     if (wake_requested) {
-                        entry.FireTime = GetSchedulingTime();
+                        entry.FireTime = GetJobSchedulingTime(entry.Key);
                     }
 
                     EnqueueJob(entry.FireTime, entry.Key, std::move(entry.Body));
@@ -517,23 +668,51 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 }
                 else if (next_delay.has_value() && !cancelled) {
                     timespan reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
-                    EnqueueJob(GetSchedulingTime() + reschedule_delay, job.Key, std::move(job.Body));
-                    body_rescheduled = true;
-                    _queuedKeys.insert(job.Key);
-                    need_wake = true;
+                    try {
+                        nanotime scheduling_time = GetJobSchedulingTime(job.Key);
+                        auto fire_time = WorkerJobDeadline(std::move(scheduling_time), reschedule_delay);
+                        EnqueueJob(std::move(fire_time), job.Key, std::move(job.Body));
+                        body_rescheduled = true;
+                        _queuedKeys.insert(job.Key);
+                        need_wake = true;
+                    }
+                    catch (const EntitySyncException&) {
+                        scheduling_error = std::current_exception();
+                    }
                 }
             }
             else if (next_delay.has_value()) {
-                EnqueueJob(GetSchedulingTime() + next_delay.value(), ANONYMOUS_JOB, std::move(job.Body));
-                body_rescheduled = true;
-                need_wake = true;
+                try {
+                    nanotime scheduling_time = GetSchedulingTime();
+                    auto fire_time = WorkerJobDeadline(std::move(scheduling_time), next_delay.value());
+                    EnqueueJob(std::move(fire_time), ANONYMOUS_JOB, std::move(job.Body));
+                    body_rescheduled = true;
+                    need_wake = true;
+                }
+                catch (const EntitySyncException&) {
+                    scheduling_error = std::current_exception();
+                }
             }
 
             if (job_executed) {
                 _completedJobs++;
             }
 
-            _activeWorkers--;
+            if (!scheduling_error) {
+                _activeWorkers--;
+            }
+        }
+
+        // Report after releasing the scheduler mutex: the exception observer can submit service work
+        if (scheduling_error && !_shutdownFlag->load(std::memory_order_acquire)) {
+            ScopedSyncContext sync_ctx;
+
+            try {
+                std::rethrow_exception(scheduling_error);
+            }
+            catch (const std::exception& ex) {
+                exceptions::report_and_continue(ex);
+            }
         }
 
         // A non-rescheduled body may own the last entity reference after its execution context closes.
@@ -544,12 +723,29 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             job.Body = {};
         }
 
+        if (scheduling_error) {
+            scoped_lock locker {_mutex};
+            _activeWorkers--;
+        }
+
         if (need_wake) {
             _workSignal.notify_one();
         }
 
         _idleSignal.notify_all();
     }
+}
+
+static auto WorkerJobDeadline(nanotime now, timespan delay) -> nanotime
+{
+    int64_t value = now.nanoseconds();
+    int64_t offset = delay.nanoseconds();
+
+    if ((offset > 0 && value > std::numeric_limits<int64_t>::max() - offset) || (offset < 0 && value < std::numeric_limits<int64_t>::min() - offset)) {
+        throw EntitySyncException("Worker job deadline is outside the clock range", now, delay);
+    }
+
+    return now + delay;
 }
 
 FO_END_NAMESPACE

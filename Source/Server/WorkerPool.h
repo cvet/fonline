@@ -76,6 +76,8 @@ public:
         int32_t ActiveWorkers {};
         bool Paused {};
         bool SchedulingTimeFrozen {};
+        bool JobTypesHeld {};
+        size_t HeldJobs {};
         uint64_t CompletedJobs {};
     };
 
@@ -92,11 +94,14 @@ public:
     [[nodiscard]] auto GetPendingJobCount() const -> size_t;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
+    [[nodiscard]] auto IsJobTypeHeld(WorkerJobType type) const -> bool;
 
     void Resume();
     void Pause();
     void FreezeSchedulingTime();
     void ResumeSchedulingTime();
+    void HoldJobTypes(const_span<WorkerJobType> types);
+    void ReleaseHeldJobTypes();
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);
@@ -115,9 +120,12 @@ private:
         Job Body {};
     };
 
-    [[nodiscard]] bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
-    [[nodiscard]] bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
-    [[nodiscard]] nanotime GetSchedulingTime() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
+    nanotime GetSchedulingTime() const noexcept FO_TSA_REQUIRES(_mutex);
+    bool IsJobHeld(JobKey key) const noexcept FO_TSA_REQUIRES(_mutex);
+    size_t FindNextRunnableJob() const noexcept FO_TSA_REQUIRES(_mutex);
+    nanotime GetJobSchedulingTime(JobKey key) const noexcept FO_TSA_REQUIRES(_mutex);
 
     void EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept FO_TSA_REQUIRES(_mutex);
     void WorkerEntry(int32_t worker_index) noexcept;
@@ -143,6 +151,9 @@ private:
     timespan _schedulingTimeOffset FO_TSA_GUARDED_BY(_mutex) {};
     nanotime _schedulingTimeFrozenAt FO_TSA_GUARDED_BY(_mutex) {};
     bool _schedulingTimeFrozen FO_TSA_GUARDED_BY(_mutex) {};
+    array<bool, static_cast<size_t>(WorkerJobType::TimeEvent) + 1> _heldJobTypes FO_TSA_GUARDED_BY(_mutex) {};
+    bool _jobTypesHeld FO_TSA_GUARDED_BY(_mutex) {};
+    nanotime _jobTypeHoldStartedAt FO_TSA_GUARDED_BY(_mutex) {};
 };
 
 FO_END_NAMESPACE

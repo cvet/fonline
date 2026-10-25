@@ -148,6 +148,9 @@ public static class ManagedRuntimeProbe
 #if SERVER
     private static int CritterInitCalls;
     private static long LastCritterId;
+    private static TaskCompletionSource? SnapshotGate;
+    private static int SnapshotResumed;
+    private static int SnapshotTimerCalls;
 #endif
 
     [ModuleInit]
@@ -160,6 +163,46 @@ public static class ManagedRuntimeProbe
     }
 
 #if SERVER
+    [CallableFromNative]
+    internal static async Task WaitForSnapshotGate()
+    {
+        SnapshotGate = new TaskCompletionSource();
+        await SnapshotGate.Task;
+        SnapshotResumed++;
+    }
+
+    [CallableFromNative]
+    internal static void ReleaseSnapshotGate()
+    {
+        TaskCompletionSource completion = SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
+        completion.SetResult();
+    }
+
+    [CallableFromNative]
+    internal static void CancelSnapshotGate()
+    {
+        TaskCompletionSource completion = SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
+        completion.SetCanceled();
+    }
+
+    [CallableFromNative]
+    internal static int GetSnapshotResumed() => SnapshotResumed;
+
+    [TimeEvent]
+    internal static void OnSnapshotTimer() => SnapshotTimerCalls++;
+
+    [TimeEvent]
+    internal static void OnSnapshotCritterTimer(Critter critter)
+    {
+        if (critter.IsDestroyed) {
+            throw new InvalidOperationException("Restored timer owner is destroyed");
+        }
+        SnapshotTimerCalls++;
+    }
+
+    [CallableFromNative]
+    internal static int GetSnapshotTimerCalls() => SnapshotTimerCalls;
+
     [Event]
     internal static void OnCritterInit(Critter critter, bool firstTime)
     {

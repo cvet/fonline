@@ -40,7 +40,7 @@ The Engine owns the database facade, JSON/SQLite/Mongo/Memory backends, asynchro
 - recovery point objective (RPO), recovery time objective (RTO), service dependencies, traffic drain, and restore authority;
 - production credentials, personal-data handling, incident decisions, and destructive-action approval.
 
-The Engine has no database snapshot command, online-backup API, point-in-time recovery controller, migration transaction, traffic-drain endpoint, or restore orchestrator. A project must supply and test those operations without presenting them as built-in Engine behavior.
+The Engine provides backend-consistent database byte snapshots and a native server composition with runtime eligibility checks; see [persistence snapshots](../../explanation/persistence/#backend-consistent-snapshots) and [server snapshots](../../explanation/runtime/server.md). These primitives do not supply an operational backup command, provider backup policy, point-in-time recovery controller, migration transaction, traffic-drain endpoint or restore orchestrator. A project must supply and test those operations.
 
 Treat one recoverable release as a compatible unit: immutable server package, effective configuration and sub-config identity, Engine and game revisions, baked resources, persistent data, recovery oplogs, migration state, and the secrets or key identifiers needed to read them. Never restore data into an arbitrary binary merely because both start.
 

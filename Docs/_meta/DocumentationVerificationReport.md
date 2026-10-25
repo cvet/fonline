@@ -12852,3 +12852,47 @@ Earlier full/GUI evidence is retained separately from these fresh checks. No new
 ordinary GUI, rendered-site, Managed runtime, other-platform or performance
 qualification is claimed. Ruby/Bundler remains unavailable. No index entries,
 commits or remote publication were changed by the agent.
+
+## 2026-10-25 - Simulation pause and restorable session snapshots
+
+The update preserves the published ancestry from 268cc3df8c to 4588149fa4
+(three commits, 56 paths) and prepares 2026.1.63-dev/runtime 0.0.79. Incoming
+terminal AS/Managed completion and inclusive CountTimeEvent semantics remain
+intact. Snapshot format 4 captures named timer IDs and remaining delays plus
+persistent-world movement and leases; active or completed-but-unfinalized timer
+executions block capture. Checked completion deadlines remove a failed record
+without retaining an unscheduled event. EN/RU runtime, persistence, scripting,
+backup and migration guides describe the same boundary.
+
+- Three semantic red controls reproduced serializing an executing record,
+  wrongly accepting its SQLite snapshot, and retaining a record after repeat
+  overflow. The final Windows AS binary passed all three: 49 assertions.
+- The complete Windows AS Release suite passed 826 cases/749428 assertions.
+  The separate complete Managed Release repeat passed 723 cases with one
+  expected AS-only skip, 738182 assertions; actual async completion, runtime
+  invocation and fresh-session snapshot tests all passed. Native ServerHeadless,
+  Client and Mapper targets built with Managed enabled; both backend unit targets
+  built warning-free.
+- API/reference/public indexes are current; aggregate diff against 4588149fa4
+  reports one compatibility change across 17 domains with no missing disposition.
+  Documentation preparation and validation passed (413 Markdown entries);
+  focused documentation and async-callback tests passed 105 tests +20 subtests.
+- Clang TSA/syntax checks cover both server backend configurations and the
+  remaining changed production owners. Clang const/use-after-move checks cover
+  five production and six test units with zero diagnostics/suppressions.
+  Reviewed explicit-type fixes preserve expressions and moves; final changed
+  units have zero eligible replacements. Pointer/allocator/sync and exception
+  safety checks are recorded separately in the embedding task evidence.
+- The optional broad embedding comment gate still reports older offenders
+  outside this feature, including unchanged banners and Ops/tool sources. New
+  concluding periods in this feature were corrected without changing a baseline.
+
+The first Managed full run ended with STATUS_DEBUGGER_INACTIVE after an LLDB
+attach/detach used to inspect a quiet fixture build. Its unsuccessful receipt and
+stacks are retained separately; the successful repeat used the same sources and
+binaries without a debugger and does not relabel the earlier attempt.
+
+Evidence is retained under the embedding checkout Workspace task
+engine-donor-integration/group5-update-2026-10-25. No other-platform, workload,
+performance, rendered-site, publication or ordinary gameplay-UI qualification
+is claimed by these native checks.

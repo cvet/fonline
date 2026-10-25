@@ -84,10 +84,13 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 {
     using namespace TestClientServerIntegration;
 
+    bool simulation_paused = GENERATE(false, true);
+    bool inactivity_timeout = GENERATE(false, true);
+    CAPTURE(simulation_paused, inactivity_timeout);
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, 0);
-    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, 25);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, inactivity_timeout ? 100 : 0);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, inactivity_timeout ? 0 : 100);
     auto server = MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -103,6 +106,10 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
+    if (simulation_paused) {
+        server->PauseSimulation();
+    }
+    synctime simulation_time = server->GameTime.GetSynchronizedTime();
     RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
@@ -112,6 +119,9 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 
     CHECK(client.IsDisconnected());
     CHECK(WaitForServerConnectionCount(server, 0));
+    if (simulation_paused) {
+        CHECK(server->GameTime.GetSynchronizedTime() == simulation_time);
+    }
 }
 
 TEST_CASE("ServerReportsMetadataMismatchInHandshake")
@@ -672,7 +682,8 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates", "[network][player]")
 {
     bool dedicated_remote_only = GENERATE(false, true);
-    CAPTURE(dedicated_remote_only);
+    bool simulation_paused = GENERATE(false, true);
+    CAPTURE(dedicated_remote_only, simulation_paused);
 
     int32_t login_calls = 0;
     int32_t world_steps = 0;
@@ -755,6 +766,10 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
     REQUIRE(login(first, 1));
     REQUIRE(login(second, 2));
     CHECK(first->GetChosen()->GetId() != second->GetChosen()->GetId());
+    if (simulation_paused) {
+        server->PauseSimulation();
+    }
+    synctime simulation_time = server->GameTime.GetSynchronizedTime();
     vector<uint8_t> payload;
     data_writer writer {payload};
     writer.write<int32_t>(7);
@@ -799,10 +814,14 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
 
     REQUIRE(complete);
     CHECK(GetServerConnectionCount(server) == 2);
+    if (simulation_paused) {
+        CHECK(server->IsSimulationPaused());
+        CHECK(server->GameTime.GetSynchronizedTime() == simulation_time);
+        server->ResumeSimulation();
+    }
     first->Disconnect();
     second->Disconnect();
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
 FO_END_NAMESPACE
-

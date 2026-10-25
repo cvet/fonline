@@ -1261,7 +1261,7 @@ void BaseEngine::FinishStartingUp()
     _startingUp = false;
 }
 
-void BaseEngine::FrameAdvance()
+void BaseEngine::FrameAdvance(bool process_backends)
 {
     GameTime.FrameAdvance(is_run_in_debugger() || Settings->ServerNetwork.DisableNetworking);
 
@@ -1278,7 +1278,9 @@ void BaseEngine::FrameAdvance()
         }
     }
 
-    ProcessBackends();
+    if (process_backends) {
+        ProcessBackends();
+    }
 }
 
 void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait)

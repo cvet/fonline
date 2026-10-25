@@ -161,7 +161,7 @@ Inbound remote-call handlers may return `void`, `Task`, or `Task<T>`. Remote cal
 
 Callback and remote-call arguments keep their metadata shape: native `any[]` arrives as `List<any>` and `string=>any` as `Dictionary<string, any>`. The bridge does not adapt these into `List<object>` or string dictionaries; declare the exact generated types.
 
-`[CallableFromNative]` methods register under `TypeName::MethodName`. `List<T>` and `Dictionary<K,V>` parameters and results use Engine array and dictionary descriptors when their element/key/value types are supported simple Engine types. The native registration resolves `K=>V` before array syntax; dictionaries with collection values remain outside this callback bridge. By-reference registration currently supports the built-in `(Critter, Critter, ref string)` delegates. `Test_ManagedScriptRuntime.cpp` checks these calls through real compiled assemblies, including dictionary arguments and returned values.
+`[CallableFromNative]` methods register under `TypeName::MethodName`. `[TimeEvent]` handlers register under the same name for native named-timer lookup and snapshot restore. `List<T>` and `Dictionary<K,V>` parameters and results use Engine array and dictionary descriptors when their element/key/value types are supported simple Engine types. The native registration resolves `K=>V` before array syntax; dictionaries with collection values remain outside this callback bridge. By-reference registration currently supports the built-in `(Critter, Critter, ref string)` delegates. `Test_ManagedScriptRuntime.cpp` checks these calls through real compiled assemblies, including dictionary arguments and returned values.
 
 ## Async and continuation scheduling
 
@@ -401,6 +401,10 @@ First diagnosis routes:
 | Package starts with missing framework type | `ManagedRuntime/runtime.manifest` and target-specific pack replacement. |
 | ABI bind fails before module initialization | Stale generated `*Abi.gen.cs`, native manifest/hash mismatch, or a skipped managed rebuild. |
 | A wrapper unsubscribe leaves the callback active | Subscription ownership on the native entity and delegate equality; do not keep wrapper-local event state. |
+
+## Session snapshots
+
+A native server snapshot blocks while engine-dispatched Managed `Task` work or script continuations remain pending. Completion, fault and cancellation release task accounting; queued continuations remain blockers until processed. A simulation pause keeps frame-driven continuations queued while publishing frozen frame/synchronized time. It does not serialize C# statics, object graphs or detached background work: the embedding controller must persist or reject that state through its own eligibility checks. See [server pause and snapshots](../../explanation/runtime/server.md).
 
 ## Validation matrix
 

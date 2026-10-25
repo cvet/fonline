@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"7f78139dcdba2013604e2e4e2018912f0aa9fa86eafdee49bd049dc7fa8d2ac5"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4dc21aed6529533229f50bf377c46ddf90174b283dfd200a9142e5e034f13059"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -162,7 +162,7 @@ Inbound remote-call handlers могут возвращать `void`, `Task` ил
 
 Аргументы callback и remote call сохраняют форму metadata: native `any[]` поступает как `List<any>`, а `string=>any` — как `Dictionary<string, any>`. Bridge не превращает их в `List<object>` или строковый словарь; указывайте точные generated types.
 
-Методы `[CallableFromNative]` регистрируются под именем `TypeName::MethodName`. Аргументы и результаты `List<T>` и `Dictionary<K,V>` используют Engine descriptors массивов и словарей, когда типы элементов, ключей и значений относятся к поддерживаемым простым типам Engine. Native-регистрация разрешает `K=>V` до синтаксиса массива; словари со значениями-коллекциями остаются за пределами этого callback bridge. Регистрация аргументов по ссылке сейчас поддерживает встроенные delegates `(Critter, Critter, ref string)`. `Test_ManagedScriptRuntime.cpp` проверяет эти вызовы через настоящие скомпилированные assemblies, включая аргументы и возвращаемые значения словарей.
+Методы `[CallableFromNative]` регистрируются под именем `TypeName::MethodName`. Обработчики `[TimeEvent]` регистрируются под тем же именем для native-поиска именованных таймеров и восстановления снимков. Аргументы и результаты `List<T>` и `Dictionary<K,V>` используют Engine descriptors массивов и словарей, когда типы элементов, ключей и значений относятся к поддерживаемым простым типам Engine. Native-регистрация разрешает `K=>V` до синтаксиса массива; словари со значениями-коллекциями остаются за пределами этого callback bridge. Регистрация аргументов по ссылке сейчас поддерживает встроенные delegates `(Critter, Critter, ref string)`. `Test_ManagedScriptRuntime.cpp` проверяет эти вызовы через настоящие скомпилированные assemblies, включая аргументы и возвращаемые значения словарей.
 
 ## Async и планирование continuations
 
@@ -405,6 +405,10 @@ Managed backend передаёт фиксированный native context, mana
 | Package не находит framework type | `ManagedRuntime/runtime.manifest` и target-specific замена pack. |
 | ABI bind падает до module initialization | Stale generated `*Abi.gen.cs`, несовпадение native manifest/hash или пропущенная managed rebuild. |
 | Unsubscribe через wrapper оставляет callback активным | Ownership subscription на native entity и delegate equality; wrapper-local event state запрещён. |
+
+## Снимки сессии
+
+Native-снимок сервера блокируется, пока остаются незавершённые Managed `Task`, переданные через диспетчер движка, или скриптовые продолжения. Завершение, ошибка и отмена снимают учёт Task; продолжения блокируют снимок до обработки очереди. Пауза симуляции удерживает кадровые продолжения, продолжая публиковать замороженное кадровое/синхронизированное время. Статические поля C#, графы объектов и самостоятельная фоновая работа не сериализуются: контроллер проекта должен сохранить это состояние либо отвергнуть его собственной проверкой допустимости. См. [паузу и снимки сервера](../../explanation/runtime/server.md).
 
 ## Матрица проверки
 

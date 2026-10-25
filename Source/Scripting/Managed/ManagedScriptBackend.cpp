@@ -8492,6 +8492,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 
     _continuationPumps.clear();
     _continuationShutdowns.clear();
+    _snapshotWorkCounters.clear();
     _refTypePumps.clear();
     _refTypeShutdowns.clear();
     _persistentGcHandles.clear();
@@ -8501,6 +8502,31 @@ ManagedScriptBackend::~ManagedScriptBackend()
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
     // in one process, so shutdown is left to process teardown
     _domain = nullptr;
+}
+
+auto ManagedScriptBackend::GetSnapshotWorkCount() const -> uint64_t
+{
+    FO_TRACE_ZONE(Script);
+
+    if (_snapshotWorkCounters.empty()) {
+        return 0;
+    }
+
+    MonoDomain* domain = GetDomainOrThrow(GetDomain());
+    ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::CacheForThread};
+    uint64_t count = 0;
+
+    for (nptr<void> counter : _snapshotWorkCounters) {
+        MonoObject* result = InvokeManagedScript(this, counter.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed snapshot work count failed");
+        FO_VERIFY_AND_THROW(result != nullptr, "Managed snapshot work count returned no value");
+        int64_t pending = *static_cast<int64_t*>(mono_object_unbox(result));
+        FO_VERIFY_AND_THROW(pending >= 0, "Managed snapshot work count is negative", pending);
+        uint64_t pending_count = numeric_cast<uint64_t>(pending);
+        FO_VERIFY_AND_THROW(pending_count <= std::numeric_limits<uint64_t>::max() - count, "Managed snapshot work count overflow");
+        count += pending_count;
+    }
+
+    return count;
 }
 
 void ManagedScriptBackend::Process()
@@ -8838,6 +8864,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             MonoMethod* pump = mono_class_get_method_from_name(native_class, "PumpContinuations", 0);
             MonoMethod* shutdown = mono_class_get_method_from_name(native_class, "ShutdownContinuations", 0);
             FO_VERIFY_AND_THROW(pump != nullptr && shutdown != nullptr, "Managed continuation scheduler methods not found");
+            MonoMethod* snapshot_counter = mono_class_get_method_from_name(native_class, "GetSnapshotWorkCount", 0);
+            FO_VERIFY_AND_THROW(snapshot_counter != nullptr, "Managed snapshot work counter not found");
             MonoMethod* bind = mono_class_get_method_from_name(native_class, "BindBackend", 1);
             MonoMethod* unbind = mono_class_get_method_from_name(native_class, "UnbindBackend", 0);
             FO_VERIFY_AND_THROW(bind != nullptr && unbind != nullptr, "Managed backend binding methods not found");
@@ -8850,6 +8878,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
             _continuationPumps.emplace_back(pump);
             _continuationShutdowns.emplace_back(shutdown);
+            _snapshotWorkCounters.emplace_back(snapshot_counter);
             _refTypePumps.emplace_back(ref_pump);
             _refTypeShutdowns.emplace_back(ref_shutdown);
             _backendUnbinds.emplace_back(unbind);

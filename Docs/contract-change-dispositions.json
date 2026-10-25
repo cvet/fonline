@@ -12420,6 +12420,18 @@
       "release_note": "Docs/en/reference/changelog.md and its Russian mirror record the optional application icon and the empty resource behavior.",
       "compatibility": "Configuration-only expansion with no runtime, network, persisted-data, sprite-format or ABI change. Existing nonempty icons produce the same resource. Runtime 0.0.78 and Managed ABI 9 are unchanged.",
       "owner": "cmake-project-interface"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.ebd64f106a6e8ef3",
+      "baseline_contract_sha256": "9800368d42edb2ce58b6d48e3760efa7edbe96e92a06446ab664e6c37f8d7f08",
+      "current_contract_sha256": "650de2bb7f3225bd9a5cb8c541a6184129419a9c03ea3b28aafd87a7ffa77338",
+      "classification": "breaking",
+      "rationale": "Native simulation pause and snapshot format 4 require one coordinated Engine and script compatibility generation.",
+      "migration": "Docs/en/explanation/runtime/server.md; rebuild native modules and all Managed assemblies, reject older snapshot formats instead of guessing omitted state.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-10-26",
+      "compatibility": "Increment compatibility 78 to 79 for Engine 2026.1.65-dev. Snapshot formats 1, 2 and 3 are not accepted; Managed ABI remains 9.",
+      "owner": "Engine runtime and persistence maintainers"
     }
   ]
 }
