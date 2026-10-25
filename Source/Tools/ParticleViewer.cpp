@@ -587,4 +587,3 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
 }
 
 FO_END_NAMESPACE
-

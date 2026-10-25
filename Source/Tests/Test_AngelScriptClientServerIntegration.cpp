@@ -688,4 +688,3 @@ TEST_CASE("AngelScriptClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect"
 FO_END_NAMESPACE
 
 #endif
-

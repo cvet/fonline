@@ -530,4 +530,3 @@ TEST_CASE("ResourceManagerDetachesCallbacksAtShutdownAndDestruction", "[sprite]"
 }
 
 FO_END_NAMESPACE
-

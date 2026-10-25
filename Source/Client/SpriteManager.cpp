@@ -1353,4 +1353,3 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 }
 
 FO_END_NAMESPACE
-

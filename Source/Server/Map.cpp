@@ -1694,4 +1694,3 @@ auto Map::CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_call
 }
 
 FO_END_NAMESPACE
-

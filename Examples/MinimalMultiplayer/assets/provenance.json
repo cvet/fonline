@@ -7,6 +7,13 @@
       "license": "MIT",
       "source": "https://github.com/cvet/fonline/blob/cd5c1168f8f4bdab63a2909ceacb049ba87e070a/Resources/Core/ItemStub.png",
       "sha256": "3f2596c004a4faa2efdba4941f314a43ef0d82a22e593fd05dc7b3803bbb09ca"
+    },
+    {
+      "id": "scaffold-app-icon",
+      "path": "App.ico",
+      "license": "MIT",
+      "source": "project-original",
+      "sha256": "999d18eee84e230d67e732f1e8da17e62259e3458b4b712180a0f3006ee12469"
     }
   ]
 }

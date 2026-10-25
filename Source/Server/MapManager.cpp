@@ -1594,4 +1594,3 @@ void MapManager::ViewMap(ptr<Player> view_player, ptr<Map> map)
 }
 
 FO_END_NAMESPACE
-

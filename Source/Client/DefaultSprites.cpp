@@ -803,4 +803,3 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 }
 
 FO_END_NAMESPACE
-

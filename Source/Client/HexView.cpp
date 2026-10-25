@@ -246,4 +246,3 @@ void HexView::SetSpriteVisiblity(bool enabled)
 }
 
 FO_END_NAMESPACE
-

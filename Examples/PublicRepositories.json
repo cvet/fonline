@@ -115,13 +115,15 @@
       "source_required_files": [
         ".gitignore",
         "CMakeLists.txt",
+        "App.ico",
         "CMakePresets.json",
         "FOnlineStarter.fomain",
         "README.md",
         "Scripts/Starter.fos",
         "StarterServerExtension.cpp",
         "run_starter_smoke.py",
-        "validate.py"
+        "validate.py",
+        "assets/provenance.json"
       ],
       "depends_on": [],
       "purpose": "Canonical GitHub template and source for the first successful headless-project quickstart.",
@@ -145,7 +147,7 @@
         "smoke-log",
         "compatibility-report"
       ],
-      "asset_policy": "none",
+      "asset_policy": "project-original-or-permissive",
       "exit_gate": "A clean Windows or Linux host reaches the documented successful server state in under 30 minutes from a tagged exact Engine revision."
     },
     {
@@ -183,6 +185,7 @@
       "source_required_files": [
         ".gitignore",
         "CMakeLists.txt",
+        "App.ico",
         "CMakePresets.json",
         "FOnlineMinimalMultiplayer.fomain",
         "generate_config.py",
@@ -271,6 +274,7 @@
       "source_required_files": [
         ".gitignore",
         "CMakeLists.txt",
+        "App.ico",
         "CMakePresets.json",
         "FOnlineContentShowcase.fomain",
         "README.md",
@@ -383,6 +387,7 @@
       "source_required_files": [
         ".gitignore",
         "CMakeLists.txt",
+        "App.ico",
         "CMakePresets.json",
         "FOnlineNativeExtensionSample.fomain",
         "README.md",
@@ -419,7 +424,7 @@
         "headless-server",
         "compatibility-report"
       ],
-      "asset_policy": "none",
+      "asset_policy": "project-original-or-permissive",
       "exit_gate": "The tagged sample demonstrates one complete native extension path without game-specific services and passes the generated extension contract checks."
     }
   ]

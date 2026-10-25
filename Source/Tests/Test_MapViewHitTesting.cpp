@@ -314,4 +314,3 @@ TEST_CASE("MapViewPathfindingUsesProjectObstacleProperty")
 }
 
 FO_END_NAMESPACE
-

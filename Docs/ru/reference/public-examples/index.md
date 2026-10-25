@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-public-examples-index","locale":"ru","source_path":"Docs/en/reference/public-examples/index.md","source_sha256":"0a939c4cab0d9aa503b6b844df3a87521cda024272d3750b31d9ee0ba2109ea4"} -->
+<!-- docs-translation: {"document_id":"generated-public-examples-index","locale":"ru","source_path":"Docs/en/reference/public-examples/index.md","source_sha256":"e3ae34e2ddc66975901817e42623cdc0b59adbea209c3b7d2f3fb61f3af33bba"} -->
 
 # Сгенерированный реестр публичных репозиториев-примеров
 
@@ -24,7 +24,7 @@ generated: true
 | Ревизия Engine для релиза | `exact-commit` |
 | Ревизия для разработки | `master` (weekly) |
 | Доставка обновлений | `reviewed-pull-request` |
-| Digest контракта | `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d` |
+| Digest контракта | `9ec7181be1935f33ad3b99bf6c94d6c087fa72b988a585f2832df3ecec2f97db` |
 
 ## Свидетельства публикации
 
@@ -35,7 +35,7 @@ generated: true
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Наблюдённые состояния required checks: `not-observed`.
 - Наблюдённые Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Значения программы, обязательные в том же отчёте: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d`.
+- Значения программы, обязательные в том же отчёте: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `9ec7181be1935f33ad3b99bf6c94d6c087fa72b988a585f2832df3ecec2f97db`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
@@ -58,7 +58,7 @@ generated: true
 - Наблюдение remote: `2026-08-03`, branch `main`, head `9946ca42c332a294f8fedd2732e7850a01c1ec27`, required checks `not-observed`
 - Зафиксированная ревизия Engine: `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`
 - Зависимости: Нет
-- Политика ресурсов: `none`
+- Политика ресурсов: `project-original-or-permissive`
 
 Возможности:
 
@@ -154,7 +154,7 @@ generated: true
 - Remote: `private` / `reserved` (created `2026-07-20`)
 - Наблюдение remote: `2026-08-03`, branch `main`, head `97823816ab333a62aced43edd4daafa19c5fee22`, required checks `not-observed`
 - Зависимости: `project-template`
-- Политика ресурсов: `none`
+- Политика ресурсов: `project-original-or-permissive`
 
 Возможности:
 
