@@ -188,6 +188,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 - Кадр модели на ARM64 сохраняет точную аффинность. Пересоберите клиент/Mapper; миграций нет.
 - Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
+- Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
 
 ### Миграция
 

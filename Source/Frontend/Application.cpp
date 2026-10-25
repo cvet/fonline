@@ -52,6 +52,10 @@ static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
 static void LogSystemEnvironment(nptr<SDL_Window> sdl_window, const AppScreenState& screen_state);
 
+#if FO_ANDROID
+static bool SDLCALL HandleAndroidTermination(void* userdata, SDL_Event* event);
+#endif
+
 struct Application::Context
 {
     unique_nptr<Renderer> ActiveRenderer {};
@@ -387,6 +391,12 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
+#if FO_ANDROID
+    if (!SDL_AddEventWatch(&HandleAndroidTermination, this)) {
+        throw AppInitException("SDL_AddEventWatch failed", SDL_GetError());
+    }
+#endif
+
     if (!Settings.Input.DisableGamepad && SDL_WasInit(SDL_INIT_GAMEPAD) == 0 && !SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
         logging::write(logging::type::warning, "SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
     }
@@ -696,6 +706,10 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
 Application::~Application()
 {
+#if FO_ANDROID
+    SDL_RemoveEventWatch(&HandleAndroidTermination, this);
+#endif
+
     _imguiTextures.clear();
     _imguiEffect.reset();
     _imguiDrawBuf.reset();
@@ -742,6 +756,18 @@ Application::~Application()
     // video on their own. Joins SDL's device threads and withdraws its OS notifications while they can stop
     SDL_Quit();
 }
+
+#if FO_ANDROID
+// A renderer may pump lifecycle events while waiting for a replacement native window
+static bool SDLCALL HandleAndroidTermination([[maybe_unused]] void* userdata, SDL_Event* event)
+{
+    if (event->type == SDL_EVENT_TERMINATING) {
+        exit_app(true);
+    }
+
+    return true;
+}
+#endif
 
 void Application::OpenLink(string_view link)
 {

@@ -270,6 +270,7 @@ struct Vulkan_Renderer::Context
     bool ScissorEnabled {};
     uint32_t CurrentSwapchainImageIndex {};
     optional<isize32> PendingSwapchainRecreateSize {};
+    bool PendingSurfaceRecreate {};
 
     VkDebugUtilsMessengerEXT DebugMessenger {};
 
@@ -294,6 +295,7 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
+static void DestroySwapchainResources(ptr<Vulkan_Renderer::Context> ctx);
 static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
@@ -2662,6 +2664,19 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     VkResult vk_result = VK_SUCCESS;
 
+    if (ctx->PendingSurfaceRecreate) {
+        DestroySwapchainResources(ctx);
+
+        vkDestroySurfaceKHR(ctx->Instance, ctx->Surface, nullptr);
+        ctx->Surface = VK_NULL_HANDLE;
+
+        if (!SDL_Vulkan_CreateSurface(ctx->SdlWindow.get(), ctx->Instance, nullptr, &ctx->Surface)) {
+            throw RenderingException("SDL_Vulkan_CreateSurface failed", SDL_GetError());
+        }
+
+        ctx->PendingSurfaceRecreate = false;
+    }
+
     uint32_t format_count = 0;
     vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
     VerifyVkResult(vk_result);
@@ -2682,30 +2697,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     FO_VERIFY_AND_THROW(selected_format.has_value(), "Vulkan surface has no compatible BGRA8/RGBA8 UNORM format with SRGB_NONLINEAR", ctx->SwapchainFormat);
 
-    // Destroy old framebuffers and image views
-    for (VkFramebuffer fb : ctx->Framebuffers) {
-        DestroyFramebufferSafe(ctx, fb);
-    }
-
-    ctx->Framebuffers.clear();
-
-    for (VkImageView iv : ctx->SwapchainImageViews) {
-        DestroyImageViewSafe(ctx, iv);
-    }
-
-    ctx->SwapchainImageViews.clear();
-
-    if (ctx->Swapchain != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(ctx->Device);
-        vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
-        ctx->Swapchain = VK_NULL_HANDLE;
-        ctx->SwapchainImages.clear();
-        ctx->SwapchainImageLayouts.clear();
-    }
-
-    DestroyImageViewSafe(ctx, ctx->SwapchainDepthImageView);
-    DestroyImageSafe(ctx, ctx->SwapchainDepthImage);
-    DestroyMemorySafe(ctx, ctx->SwapchainDepthImageMemory);
+    DestroySwapchainResources(ctx);
 
     // Create swapchain
     VkSurfaceCapabilitiesKHR caps {};
@@ -2769,7 +2761,14 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     sci.imageArrayLayers = 1;
     sci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+#if FO_ANDROID
+    // The Android compositor owns orientation; the engine frame is not pre-rotated
+    sci.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+#else
     sci.preTransform = caps.currentTransform;
+#endif
+
     sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     sci.presentMode = present_mode;
     sci.clipped = VK_TRUE;
@@ -2928,6 +2927,43 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 }
 
+// The caller has settled the device before releasing swapchain attachments
+static void DestroySwapchainResources(ptr<Vulkan_Renderer::Context> ctx)
+{
+    for (VkFramebuffer framebuffer : ctx->Framebuffers) {
+        vkDestroyFramebuffer(ctx->Device, framebuffer, nullptr);
+    }
+
+    ctx->Framebuffers.clear();
+
+    for (VkImageView image_view : ctx->SwapchainImageViews) {
+        vkDestroyImageView(ctx->Device, image_view, nullptr);
+    }
+
+    ctx->SwapchainImageViews.clear();
+
+    if (ctx->SwapchainDepthImageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(ctx->Device, ctx->SwapchainDepthImageView, nullptr);
+        ctx->SwapchainDepthImageView = VK_NULL_HANDLE;
+    }
+    if (ctx->SwapchainDepthImage != VK_NULL_HANDLE) {
+        vkDestroyImage(ctx->Device, ctx->SwapchainDepthImage, nullptr);
+        ctx->SwapchainDepthImage = VK_NULL_HANDLE;
+    }
+    if (ctx->SwapchainDepthImageMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(ctx->Device, ctx->SwapchainDepthImageMemory, nullptr);
+        ctx->SwapchainDepthImageMemory = VK_NULL_HANDLE;
+    }
+
+    if (ctx->Swapchain != VK_NULL_HANDLE) {
+        vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
+        ctx->Swapchain = VK_NULL_HANDLE;
+    }
+
+    ctx->SwapchainImages.clear();
+    ctx->SwapchainImageLayouts.clear();
+}
+
 static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
 {
     // Requires an idle device. Recreating semaphores clears stale signals left by a failed
@@ -2983,8 +3019,6 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     vk_result = vkWaitForFences(ctx->Device, 1, &frame_slot.InFlightFence, VK_TRUE, UINT64_MAX);
     VerifyVkResult(vk_result);
-    vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-    VerifyVkResult(vk_result);
 
     if (ctx->FrameIndex > VULKAN_FRAMES_IN_FLIGHT) {
         ctx->CompletedFrameIndex = std::max(ctx->CompletedFrameIndex, ctx->FrameIndex - VULKAN_FRAMES_IN_FLIGHT);
@@ -2993,70 +3027,78 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     // The fence wait made everything this slot owns GPU-free
     FlushDeferredDestroyQueue(ctx, frame_slot.DestroyQueue);
 
-    if (ctx->PendingSwapchainRecreateSize.has_value()) {
-        auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
-        ctx->PendingSwapchainRecreateSize.reset();
-        // Settle the device, drop pending destroys and rebuild sync objects so nothing stale
-        // survives the recreate
-        vk_result = vkDeviceWaitIdle(ctx->Device);
-        VerifyVkResult(vk_result);
-        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
-        FlushAllDeferredDestroyQueues(ctx);
-        RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
-        RecreateFrameSyncObjects(ctx);
+    while (true) {
+        if (ctx->PendingSwapchainRecreateSize.has_value()) {
+#if FO_ANDROID
+            // Application keeps SDL nonblocking in the background; wait for the real native window
+            while (true) {
+                SDL_PumpEvents();
 
-        // Fences were recreated signaled; this frame submits with the current slot's fence
-        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-        VerifyVkResult(vk_result);
+                SDL_PropertiesID properties = SDL_GetWindowProperties(ctx->SdlWindow.get());
 
-        if (!ctx->CurrentRenderTarget) {
-            ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
+                if (SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr) != nullptr) {
+                    break;
+                }
+
+                coarse_sleep(std::chrono::milliseconds {10});
+            }
+#endif
+
+            auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
+
+            vk_result = vkDeviceWaitIdle(ctx->Device);
+            VerifyVkResult(vk_result);
+
+            ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
+            FlushAllDeferredDestroyQueues(ctx);
+            RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
+            RecreateFrameSyncObjects(ctx);
+            ctx->PendingSwapchainRecreateSize.reset();
+
+            if (!ctx->CurrentRenderTarget) {
+                ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
+            }
         }
+
+        vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, frame_slot.ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
+
+        if (vk_result == VK_SUCCESS || vk_result == VK_SUBOPTIMAL_KHR) {
+            break;
+        }
+
+        if (vk_result != VK_ERROR_OUT_OF_DATE_KHR && vk_result != VK_ERROR_SURFACE_LOST_KHR) {
+            VerifyVkResult(vk_result);
+        }
+
+        int width;
+        int height;
+        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
+        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+        ctx->PendingSurfaceRecreate |= vk_result == VK_ERROR_SURFACE_LOST_KHR;
     }
+
+#if !FO_ANDROID
+    if (vk_result == VK_SUBOPTIMAL_KHR) {
+        int width;
+        int height;
+        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
+        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+    }
+#endif
+
+    // Only an acquired image will submit this fence; failed acquisitions leave it signaled
+    vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
+    VerifyVkResult(vk_result);
 
     vk_result = vkResetDescriptorPool(ctx->Device, frame_slot.DescriptorPool, 0);
     VerifyVkResult(vk_result);
 
-    // Point the current-slot aliases at this frame's resources
     ctx->CommandBuffer = frame_slot.CommandBuffer;
     ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
     ctx->FrameDescriptorPool = frame_slot.DescriptorPool;
     ctx->FrameUniformBuffer = frame_slot.UniformBuffer;
     ctx->FrameUniformBufferMapped = frame_slot.UniformBufferMapped;
     ctx->FrameUniformOffset = 0;
-
-    vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
-
-    if (vk_result == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Acquire failed with the semaphore unsignaled: rebuild everything and re-acquire
-        int width;
-        int height;
-        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
-        vk_result = vkDeviceWaitIdle(ctx->Device);
-        VerifyVkResult(vk_result);
-        ctx->CompletedFrameIndex = ctx->FrameIndex - 1;
-        FlushAllDeferredDestroyQueues(ctx);
-        RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
-        RecreateFrameSyncObjects(ctx);
-        ctx->CommandBuffer = frame_slot.CommandBuffer;
-        ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
-        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
-        VerifyVkResult(vk_result);
-
-        vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
-        VerifyVkResult(vk_result);
-    }
-    else if (vk_result == VK_SUBOPTIMAL_KHR) {
-        // SUBOPTIMAL is a success: the image was acquired and the semaphore signaled, so render
-        // this frame as-is and defer the recreate (re-acquiring on a signaled semaphore is illegal)
-        int width;
-        int height;
-        SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
-        ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
-    }
-    else {
-        VerifyVkResult(vk_result);
-    }
 
     ctx->ImageAvailableWaited = false;
 
@@ -3141,15 +3183,22 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     vk_result = vkQueuePresentKHR(ctx->GraphicsQueue, &info);
 
-    if (vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_SUBOPTIMAL_KHR) {
+    bool recreate_swapchain = vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_ERROR_SURFACE_LOST_KHR;
+
+#if !FO_ANDROID
+    recreate_swapchain |= vk_result == VK_SUBOPTIMAL_KHR;
+#endif
+
+    if (recreate_swapchain) {
         // Defer the recreate to the next BeginFrame: a failed present can leave the semaphore in
         // an ambiguous state, and BeginFrame rebuilds all sync objects on an idle device
         int width;
         int height;
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
         ctx->PendingSwapchainRecreateSize = isize32 {std::max(width, 1), std::max(height, 1)};
+        ctx->PendingSurfaceRecreate |= vk_result == VK_ERROR_SURFACE_LOST_KHR;
     }
-    else {
+    else if (vk_result != VK_SUBOPTIMAL_KHR) {
         VerifyVkResult(vk_result);
     }
 

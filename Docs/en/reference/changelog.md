@@ -183,6 +183,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 - Android Client packaging reads metadata from the matching `.fomain-server` while embedding `.fomain-client`. Keep both files from one bake and regenerate APKs: Activity no longer passes `--ApplySubConfig` to a resolved packaged config. Native ABI and resource formats are unchanged.
 - Preserve exact affine model framing on ARM64; rebuild clients/mapper, no migrations.
 - Android quick exit flushes logs without TLS teardown; rebuild native consumers.
+- Preserve Android Vulkan orientation and recover lost presentation surfaces; rebuild clients/mapper.
 
 ### Migration
 
