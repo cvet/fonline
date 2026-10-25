@@ -59,7 +59,7 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
         self.assertEqual(model["summary"]["option_count"], 58)
-        self.assertEqual(model["summary"]["required_option_count"], 9)
+        self.assertEqual(model["summary"]["required_option_count"], 8)
         self.assertEqual(model["summary"]["stage_count"], 10)
         self.assertEqual(model["summary"]["helper_count"], 7)
         self.assertEqual(model["stages"][0]["id"], "cmake.stage.Init")

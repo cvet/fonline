@@ -75,3 +75,20 @@ def test_actual_scaffold_defaults_remain_overridable_without_changing_other_vali
     assert (build / "backends.txt").read_text() == ("ON|OFF" if managed else "OFF|ON")
     for name in ("mac-client", "ios-client", "unit-tests"):
         assert "cmake_args" not in buildtools.VALIDATION_TARGETS[name]
+
+
+@pytest.mark.skipif(shutil.which("cmake") is None, reason="CMake is required")
+def test_actual_scaffold_configures_without_app_icon(tmp_path: Path) -> None:
+    source = buildtools.prepare_validation_project({
+        "FO_WORKSPACE": str(tmp_path / "workspace"),
+        "FO_ENGINE_ROOT": str(BUILDTOOLS_DIR.parent),
+    })
+    build = tmp_path / "build"
+
+    result = subprocess.run(
+        ["cmake", "-S", str(source), "-B", str(build)],
+        capture_output=True, text=True, timeout=240,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (build / "FOTEST.rc").read_text(encoding="utf-8").strip() == ""

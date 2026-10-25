@@ -102,8 +102,8 @@
       "name": "FO_APP_ICON",
       "cache_type": "STRING",
       "value_kind": "path",
-      "required": true,
-      "default": null,
+      "required": false,
+      "default": "",
       "category": "project-identity",
       "description": "Application icon source used by generated platform targets.",
       "affects_baking": false

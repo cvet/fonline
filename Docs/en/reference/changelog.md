@@ -12,7 +12,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-24
+## Current - 2026-10-25
+
+### Fixed
+
+- Allow CMake projects to omit `FO_APP_ICON`. An empty value now produces no icon resource instead of failing configuration with `FO_APP_ICON not specified`; explicit icon paths retain their existing generated resource.
+
+### Migration
+
+- Base `4588149fa4e4493ed6dddfea0a2fdf65d17c1f3e` (`2026.1.62-dev`) to `2026.1.63-dev`. This is a configuration-only expansion, not a runtime, network, persisted-data or ABI change. Runtime compatibility remains `0.0.78`, Managed ABI `9`, and the sprite container version is unchanged. No saved-data conversion is required. Rollback restores the preceding CMake sources and generated references together.
+- Projects that already set `FO_APP_ICON` need no source or content migration: reconfigure and rebuild normally, preserving the same absolute icon path and `101 ICON` resource. Icon-free example and validation projects now configure successfully and receive an empty `.rc` file rather than `101 ICON ""`. Search declarations with `rg -n "FO_APP_ICON" <project-cmake-and-interface-paths>`; the previous failure was the configure-time diagnostic `FO_APP_ICON not specified`. Do not substitute another project's icon or restore a deleted asset merely to satisfy the old requirement.
+- Regenerate the CMake model and reference pages with `python BuildTools/docs_cmake.py --write`, then run the focused configuration and documentation tests and the aggregate contract diff. `test_actual_scaffold_configures_without_app_icon` exercises the real validation-project configure and checks that no icon resource is emitted. Existing nonempty icon configurations require the same build/package checks as before. No runtime compatibility marker, network protocol, persisted property, resource schema or updater identity changes.
+
+## 2026.1.62-dev - 2026-10-24
 
 ### Fixed
 

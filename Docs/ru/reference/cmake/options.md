@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"dce71e3693208b355c30650b5d245010d18391fd11c1370d5cca3da2726cef55"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"7925b3e42ec464bf495ff7ec2f98fa887e552923f521eafc7948fcd6aceb05cc"} -->
 
 # Параметры проекта CMake
 
@@ -26,7 +26,7 @@ generated: true
 | <a id="entry-cmake-option-fo-map-hex-width-6d86c2ea6f"></a><code>cmake.option.FO_MAP_HEX_WIDTH</code> | <code>FO_MAP_HEX_WIDTH</code> | <code>STRING</code> / <code>integer</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Ширина ячейки карты в пикселях. |
 | <a id="entry-cmake-option-fo-map-hex-height-6d10ec9f1a"></a><code>cmake.option.FO_MAP_HEX_HEIGHT</code> | <code>FO_MAP_HEX_HEIGHT</code> | <code>STRING</code> / <code>integer</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Высота ячейки карты в пикселях. |
 | <a id="entry-cmake-option-fo-map-camera-angle-822f761d0e"></a><code>cmake.option.FO_MAP_CAMERA_ANGLE</code> | <code>FO_MAP_CAMERA_ANGLE</code> | <code>STRING</code> / <code>number</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Угол камеры карты в градусах. |
-| <a id="entry-cmake-option-fo-app-icon-f09af9b961"></a><code>cmake.option.FO_APP_ICON</code> | <code>FO_APP_ICON</code> | <code>STRING</code> / <code>path</code> | Да | Нет | Обязателен | - | <code>project-identity</code> | Исходник значка приложения для сгенерированных платформенных целей. |
+| <a id="entry-cmake-option-fo-app-icon-f09af9b961"></a><code>cmake.option.FO_APP_ICON</code> | <code>FO_APP_ICON</code> | <code>STRING</code> / <code>path</code> | Нет | No | <code></code> | - | <code>project-identity</code> | Исходник значка приложения для сгенерированных платформенных целей. |
 | <a id="entry-cmake-option-fo-output-path-12be24b53f"></a><code>cmake.option.FO_OUTPUT_PATH</code> | <code>FO_OUTPUT_PATH</code> | <code>STRING</code> / <code>path</code> | Да | Нет | Обязателен | - | <code>output</code> | Общий корень для сгенерированных бинарных файлов, пакетов, данных запекания и результатов проверки. |
 | <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a><code>cmake.option.FO_CXX_STANDARD</code> | <code>FO_CXX_STANDARD</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>20</code> | - | <code>toolchain</code> | Стандарт языка C++ для компиляции проекта; значения ниже 20 не поддерживаются. |
 | <a id="entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9"></a><code>cmake.option.FO_BINARY_OUTPUT_POSTFIX</code> | <code>FO_BINARY_OUTPUT_POSTFIX</code> | <code>STRING</code> / <code>string</code> | Нет | No | <code></code> | - | <code>output</code> | Необязательный суффикс имён каталогов сгенерированных бинарных файлов. |

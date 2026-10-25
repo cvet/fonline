@@ -12408,6 +12408,18 @@
       "release_note": "Docs/en/reference/changelog.md and its Russian mirror document completion-based repeat deadlines, default registered counts and explicit exclusion of execution.",
       "compatibility": "Runtime0.0.78; Managed ABI9, saved formats, timer IDs and units unchanged. Deploy matching binaries/bindings/assemblies/metadata together; rollback restores the preceding matching set. No saved-data conversion.",
       "owner": "scripting-runtime"
+    },
+    {
+      "domain": "cmake",
+      "change_id": "cmake-change.modified.8c2d3fbe62fca0c2",
+      "baseline_contract_sha256": "a8ac59a5f9ad34a7bac4467dba9500070b6d65dc4fbb4289208dedc5e05b447f",
+      "current_contract_sha256": "83094b71f281a2ef47003bd1c752c463e9b18c9763111d4760174bce0abfcf50",
+      "classification": "compatible",
+      "rationale": "Make FO_APP_ICON optional to match icon-free example and validation projects. Explicit icon paths preserve their generated resource; an empty value emits no icon resource instead of rejecting the project during configuration.",
+      "migration": "Projects that already set FO_APP_ICON need no migration; reconfigure and rebuild normally. Icon-free projects now configure successfully and receive an empty resource file. See the 2026.1.63-dev migration in Docs/en/reference/changelog.md and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md and its Russian mirror record the optional application icon and the empty resource behavior.",
+      "compatibility": "Configuration-only expansion with no runtime, network, persisted-data, sprite-format or ABI change. Existing nonempty icons produce the same resource. Runtime 0.0.78 and Managed ABI 9 are unchanged.",
+      "owner": "cmake-project-interface"
     }
   ]
 }

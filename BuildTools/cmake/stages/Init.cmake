@@ -26,7 +26,6 @@ DeclareRequiredValueOptions(BAKING
 	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees")
 
 DeclareRequiredValueOptions(
-	FO_APP_ICON "Executable file icon"
 	FO_OUTPUT_PATH "Common output path")
 
 DeclareValueOptions(BAKING
@@ -38,6 +37,7 @@ DeclareValueOptions(BAKING
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4)
 
 DeclareValueOptions(
+	FO_APP_ICON "Executable file icon" ""
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
@@ -112,7 +112,6 @@ RequireNonEmptyVariables(
 	FO_MAP_HEX_WIDTH
 	FO_MAP_HEX_HEIGHT
 	FO_MAP_CAMERA_ANGLE
-	FO_APP_ICON
 	FO_OUTPUT_PATH)
 
 # Evaluate build hash
