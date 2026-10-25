@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "05034f7c628fb5c164cab832ed8c5daea3981c83cdd0f436c1e02f3721eca096",
+  "source_sha256": "e8bfc2afcb3f0b1848ae3573816f41f9b547ca69d331c5003aab8cac1f40814d",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -26,6 +26,13 @@
       "revision": "d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
+    },
+    "last-frontier-map-acceptance": {
+      "repository": "lastfrontierdev/lf",
+      "url": "git@github.com:lastfrontierdev/lf.git",
+      "revision": "b9c18d6582378d7172efffaad49ad8edc7d2e65d",
+      "availability": "private-local-checkout",
+      "role": "Pinned linked-model output-discovery regression evidence"
     },
     "fonline-tla": {
       "repository": "cvet/fonline-tla",
@@ -194,6 +201,31 @@
     }
   },
   "records": [
+    {
+      "id": "linked-model-output-discovery",
+      "title": "Linked model discovery with a partial output cache",
+      "sources": [
+        {
+          "snapshot": "last-frontier-map-acceptance",
+          "path": "Docs/Plans/2026-10-24-map-acceptance.md"
+        }
+      ],
+      "reusable_claim": "Output discovery enumerates linked model descriptions without reading a partially populated baked model graph; ordinary cached baking retains strict linked-texture validation.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/explanation/content-pipeline/baking.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "content-data",
+        "quality"
+      ],
+      "promotion_gate": "Engine-owned linked parent/child fixtures enumerate both outputs with no payload during discovery and reject the missing child during normal cached validation.",
+      "decision": "ModelInfoBaker owns the discovery boundary and Test_ModelBaker covers both modes; game maps and acceptance policy remain project-owned."
+    },
     {
       "id": "project-bootstrap-and-build",
       "title": "Project bootstrap, staged build, and first launch",
@@ -1738,24 +1770,24 @@
     }
   ],
   "summary": {
-    "snapshot_count": 2,
-    "record_count": 30,
-    "source_reference_count": 193,
+    "snapshot_count": 3,
+    "record_count": 31,
+    "source_reference_count": 194,
     "records_by_disposition": {
       "boundary-owned": 2,
       "project-owned": 3,
-      "promoted": 24,
+      "promoted": 25,
       "promotion-candidate": 1
     },
     "records_by_priority": {
       "P0": 19,
-      "P1": 4,
+      "P1": 5,
       "P2": 3,
       "P3": 4
     },
     "records_by_owner": {
       "build-release": 4,
-      "content-data": 5,
+      "content-data": 6,
       "documentation": 1,
       "frontend": 5,
       "localization": 1,

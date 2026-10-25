@@ -27,8 +27,8 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
             self.model,
             docs_external_evidence.generate_model(ENGINE_ROOT),
         )
-        self.assertEqual(self.model["summary"]["snapshot_count"], 2)
-        self.assertEqual(self.model["summary"]["record_count"], 30)
+        self.assertEqual(self.model["summary"]["snapshot_count"], 3)
+        self.assertEqual(self.model["summary"]["record_count"], 31)
         self.assertEqual(
             set(self.model["summary"]["records_by_disposition"]),
             docs_external_evidence.VALID_DISPOSITIONS,
