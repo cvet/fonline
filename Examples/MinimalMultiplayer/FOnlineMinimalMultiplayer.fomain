@@ -93,6 +93,7 @@ ClientNetwork.WebSocketHost = localhost
 ClientNetwork.PingPeriod = 2000
 ClientNetwork.PingTimeout = 30000
 ClientNetwork.UseUdp = False
+ClientNetwork.RequireInterthreadTransport = False
 ClientNetwork.ProxyType = 0
 ClientNetwork.ProxyHost =
 ClientNetwork.ProxyPort = 8080
