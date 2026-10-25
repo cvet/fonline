@@ -4634,6 +4634,10 @@
           "source_sha256": "f4c3c7c151a7c5a26e6e1b25b281988aa0d971d169ca8241483998e256e6a747",
           "translation": "Запускает именованную частицу на кости загруженной 3D-модели криттера с заданным смещением; ничего не делает для 2D или сборок без 3D и выбрасывает исключение вне карты."
         },
+        "/symbols/@id=script.method.client.Critter.RunUnlitParticle/description": {
+          "source_sha256": "79f5960ae8ae242fd63fb7775d36f46f5176d8153cebe2265947cfb25feb95ea",
+          "translation": "Запускает неосвещаемую частицу на кости загруженной 3D-модели со смещениями и сроком жизни RunParticle; её слой атласа обходит освещение карты. Ничего не делает без модели или поддержки 3D и выбрасывает исключение вне карты"
+        },
         "/symbols/@id=script.method.client.Critter.SetAlpha/description": {
           "source_sha256": "895c54b5a3ba7fd3ddf6ff7595442294bbc39e0e8d21c57fd474e44b39563359",
           "translation": "Плавно изменяет прозрачность спрайта криттера на карте к заданному целевому значению; ничего не делает, если криттер находится вне представления карты."
@@ -16900,6 +16904,18 @@
           "source_sha256": "85958b9f059f641b144b09b4cc1a0fa0976dd29bba40ed7f2dc5271a40038a8d",
           "translation": "Critter.RunParticle запрашивает перерисовку и откладывает именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает. Полная валидная поза размещает каждую новую систему через Setup и Update(0), включая созданные callback системы до текущей отрисовки. Непозированные владельцы привязок остаются в ожидании без отрисовки и расширения границ; дальнейшие delta позы продвигают эффект обычным образом."
         },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/name": {
+          "source_sha256": "2e4e822e050b1fa93bfc426f8feef8bb801529f143c9ef125e9fc3d00d67984a",
+          "translation": "Неосвещаемая частица модели криттера"
+        },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/rationale": {
+          "source_sha256": "8f91200bd390877f95aae153877da7acaefe6ca5b908e8cc60c54f21c361510d",
+          "translation": "Скрипты могут явно выбирать светящиеся частицы на кости модели без переноса эффекта в независимый мировой спрайт или изменения существующего particle API."
+        },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/requirement": {
+          "source_sha256": "54c02732aac526a0c10a22d5b350155b14a54eb7ba7d4e05eb66644d135ca335",
+          "translation": "Critter.RunUnlitParticle использует те же имя кости, смещение в единицах модели, размещение на первой позе и срок жизни, что RunParticle, выбирая неосвещаемый слой атласа ModelSprite. Экспорт для клиента и Mapper ничего не делает без загруженной модели или поддержки FO_ENABLE_3D и выбрасывает исключение вне карты. Смысл существующего RunParticle и прямого scene-воспроизведения сохраняется."
+        },
         "/integration_rules/@id=particle-format.integration.model-attachment/name": {
           "source_sha256": "4ff2d5a184d1211d78147f32d3af8e4de4f5c98433ad15c4b98c9944ab7bd13b",
           "translation": "AttachParticles в .fo3d"
@@ -17921,8 +17937,8 @@
           "translation": "Светящийся эффект на кости модели может обходить освещение карты, сохраняя привязку к авторитетной позе и смысл существующих particle-вызовов."
         },
         "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/requirement": {
-          "source_sha256": "9f6bc24bc52f44d4ac05968b841341e6922108b2815df8760d9850724173dcd7",
-          "translation": "Нативный ModelInstance.RunUnlitParticle использует общие с RunParticle размещение, инициализацию на первой позе, границы и завершение, но выбирает принадлежащий родителю overlay ModelSprite. Производитель атласа сначала рисует меши и освещаемые частицы, сохраняет их глубину при очистке только цвета и рисует неосвещаемые частицы без новой позы или шага симуляции. Оба изображения используют одинаковые crop и смещение pivot; неизменный размер позволяет повторно использовать allocation слоя, а завершение unlit-систем освобождает его. Смысл RunParticle, AttachParticles и прямого scene-маршрута всех частиц сохраняется. Выбор и специализированные image effects обращаются к основному атласу."
+          "source_sha256": "84a33866ca5e6648e9fe1891bf1b5e821b0a7da08f7a4a4acba69e59baf50ec6",
+          "translation": "Нативный ModelInstance.RunUnlitParticle использует общие с RunParticle размещение, инициализацию на первой позе, границы и завершение, но выбирает принадлежащий родителю overlay ModelSprite. Производитель атласа сначала рисует меши и освещаемые частицы, сохраняет их глубину при очистке только цвета и рисует неосвещаемые частицы без новой позы или шага симуляции. Оба изображения используют одинаковые crop и смещение pivot; неизменный размер позволяет повторно использовать allocation слоя. Обновление спрайта освобождает его, когда активных инициализированных unlit-систем больше нет, в том числе после завершения в прямой сцене без перерисовки атласа preview. Смысл RunParticle, AttachParticles и прямого scene-маршрута всех частиц сохраняется. Выбор и специализированные image effects обращаются к основному атласу."
         },
         "/runtime_rules/@id=particle-format.runtime.prewarm/name": {
           "source_sha256": "aa3007c02fc4b5c35552d56bbdf8a5d4187733dc6d17a86bf36bfcee644039ac",

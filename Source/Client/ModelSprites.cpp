@@ -221,6 +221,10 @@ auto ModelSprite::Update() -> bool
         DrawToAtlas();
     }
 
+    if (_unlitOverlay && !_model->HasUnlitParticles()) {
+        _unlitOverlay.reset();
+    }
+
     RefreshHitMask();
 
     return true;

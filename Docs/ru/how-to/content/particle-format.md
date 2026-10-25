@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"76e8e4bcf5d4fe746da99ba997aab8aee5235ae62ac78d02eb3c5ba73aa669d8"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"672ac090c9dd7bbf423511d3e922ecb7538c17495b779ca206725a2ab76072d5"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -287,6 +287,14 @@ Non-finite callback geometry по-прежнему отклоняется runtim
 
 Клиентские script exports предоставляют seeded playback, prewarm и управление scale.
 `Critter.RunParticle` запускает живую частицу на кости модели в сборках с 3D.
+
+`Critter.RunUnlitParticle` использует те же кость, смещение в единицах модели,
+размещение на первой позе и срок жизни, выбирая неосвещаемый слой атласа модели.
+Модель и обычные частицы сохраняют освещение карты; дополнительный слой сохраняет
+те же crop, alpha и глубину модели с авторскими depth-настройками узлов.
+Оба экспорта ничего не делают без загруженной модели или поддержки 3D и выбрасывают
+исключение вне карты. Прямой scene-рендеринг сохраняет прежний путь всех частиц.
+См. [слои спрайта](../../explanation/rendering/index.md#дополнительный-неосвещаемый-слой-спрайта).
 
 `MapSpriteHolder.DepthOffset` — конечная поправка глубины вида в логических
 пикселях: по умолчанию ноль, положительная приближает, экранные XY сохраняются

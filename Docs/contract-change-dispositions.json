@@ -15444,6 +15444,30 @@
       "release_note": "Docs/en/reference/changelog.md Unreleased Fixed and Migration entries, with the corresponding Russian mirror.",
       "compatibility": "No script signature, resource schema, saved-data identity, network manual migration marker (0.0.77) or Managed ABI (9) changes. Native class layout changes require a coordinated rebuild. Keep matching binaries, assemblies and baked metadata; rollback restores the matching previous set. Native tests do not qualify browser or Android rendering.",
       "owner": "model-particle runtime and rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.d51a7dfa60d6db50",
+      "baseline_contract_sha256": "e1e3bc7b7056a03281c11cf6d44f1e9b843777ac693e7772abeb87f872bc7deb",
+      "current_contract_sha256": "e9891e4ec26e4e5de8ce25427d7c2563fac690944d6b1ed05f0a56f366116f2a",
+      "classification": "breaking",
+      "rationale": "Review the complete native-codegen inventory from 2583 to 2584 symbols: the only addition is client/mapper Critter.RunUnlitParticle. No existing stable ID, signature, valid input, unit or default is replaced; the strict scope fingerprint changes intentionally.",
+      "migration": "Regenerate native and Managed/AngelScript bindings and metadata, rebuild the enabled client/server/Mapper/Baker roles, and rebake one coherent resource set. Existing callers can keep RunParticle; opt into RunUnlitParticle only for an explicitly unlit model-bone effect. No saved-data conversion is needed.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror; Docs/en/how-to/content/particle-format.md#integration documents the new export and unchanged old route.",
+      "compatibility": "The exported signature is an input to codegen compatibility_hasher, so the generated client/server compatibility fingerprint and Managed method manifest change. The central MigrationRule Version marker and C host/Managed ABI layouts are unchanged; no separate wire or persisted-format change is introduced. Deploy and roll back matching binaries, generated APIs, metadata, assemblies and baked resources together; mixed sets remain rejected.",
+      "owner": "scripting-rendering"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.0f7d22ebda25b4a4",
+      "baseline_contract_sha256": "2ce7b3718608ad944727122b50c2328ccc42fdf2b957bd8bd0427ebea9b3a972",
+      "current_contract_sha256": "a45f38a6579c484de15c2a6c9456115153c295ba1b3ac9d0a704220b6f495991",
+      "classification": "breaking",
+      "rationale": "Clarify and enforce the parent-owned overlay retirement contract for direct-scene models: the next ModelSprite update releases an inactive preview layer even when the auxiliary atlas is not redrawn. A real Effekseer/Ozz control failed only for unlit plus direct drawing before the fix; all 366 focused assertions pass afterwards.",
+      "migration": "No resource format, authored parameter, API replacement or saved-data migration is required. Rebuild native model-sprite consumers. Existing RunParticle, AttachParticles and direct-scene particle playback retain their meanings; the corrected release only removes a stale completed preview layer.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror; Docs/en/explanation/rendering/index.md#optional-unlit-sprite-overlay specifies release at the next sprite update.",
+      "compatibility": "No binary resource or persisted schema changes. This is a native ownership correction; consumers rebuild with the matching Engine. The separately added script export changes the generated compatibility fingerprint, so its full binary/metadata/bake set must stay coordinated. Buffer/lifecycle tests do not substitute for GPU or platform acceptance.",
+      "owner": "rendering-particles"
     }
   ]
 }

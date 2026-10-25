@@ -1510,8 +1510,13 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     }
     SECTION("AtlasOverlayUsesTheBornPoseAndRetires")
     {
+        bool direct_draw = GENERATE(false, true);
+        CAPTURE(direct_draw);
+        BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, direct_draw);
+
         auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::OneImage).dyn_cast<ModelSprite>();
         REQUIRE(sprite);
+        REQUIRE(sprite->IsDirectDraw() == direct_draw);
 
         auto instance = sprite->GetModel();
         instance->StartMeshGeneration();
@@ -1545,12 +1550,25 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         coarse_sleep(std::chrono::milliseconds {200});
         client->GameTime.FrameAdvance(false);
+
+        if (direct_draw) {
+            instance->DrawInScene(mat44 {1.0f}, 1.0f);
+            CHECK_FALSE(instance->NeedForceDraw());
+        }
+
         CHECK(sprite->Update());
 
         int32_t retirement_poses = 0;
 
         while (particle_attach_count(instance) != 0 && retirement_poses < 3) {
-            instance->RequestRedraw();
+            if (direct_draw) {
+                instance->DrawInScene(mat44 {1.0f}, 1.0f);
+                CHECK_FALSE(instance->NeedForceDraw());
+            }
+            else {
+                instance->RequestRedraw();
+            }
+
             CHECK(sprite->Update());
             retirement_poses++;
         }

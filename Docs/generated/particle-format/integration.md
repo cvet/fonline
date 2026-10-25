@@ -24,5 +24,8 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-particle-format-integration-critter-run-particle-b803c79a33"></a>
 - [`entry-particle-format-integration-critter-run-particle-b803c79a33`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-critter-run-particle-b803c79a33)
 
+<a id="entry-particle-format-integration-critter-run-unlit-particle-369102bcdf"></a>
+- [`entry-particle-format-integration-critter-run-unlit-particle-369102bcdf`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-critter-run-unlit-particle-369102bcdf)
+
 <a id="entry-particle-format-integration-model-attachment-6fac6386d9"></a>
 - [`entry-particle-format-integration-model-attachment-6fac6386d9`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-model-attachment-6fac6386d9)

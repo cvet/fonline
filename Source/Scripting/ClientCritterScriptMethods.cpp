@@ -358,6 +358,29 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
     }
 }
 
+// Starts an unlit particle on a loaded 3D model bone with RunParticle offsets and lifetime; its atlas layer bypasses
+// map lighting. Does nothing without a model or 3D support and throws off-map
+///@ ExportMethod
+FO_SCRIPT_API void Client_Critter_RunUnlitParticle(ptr<CritterView> self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
+{
+    auto hex_cr = RequireHexCritter(self);
+
+#if FO_ENABLE_3D
+    if (auto model = hex_cr->GetModel(); model) {
+        model->RunUnlitParticle(particleName, boneName, vec3 {moveX, moveY, moveZ});
+    }
+    else
+#endif
+    {
+        ignore_unused(hex_cr);
+        ignore_unused(particleName);
+        ignore_unused(boneName);
+        ignore_unused(moveX);
+        ignore_unused(moveY);
+        ignore_unused(moveZ);
+    }
+}
+
 // Registers a deferred callback at the clamped normalized time of the selected 3D animation tuple; does nothing without a model, skips destroyed critters, and throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, ptr<CritterView>> animCallback)

@@ -281,6 +281,14 @@ Client script exports provide seeded playback, prewarm, and scale controls.
 `Critter.RunParticle` starts a live particle on a model bone in 3D-enabled
 builds.
 
+`Critter.RunUnlitParticle` uses the same bone, model-unit offset, first-pose
+placement and lifetime, selecting the model's unlit atlas layer instead.
+The model and ordinary particles retain map lighting; the extra layer keeps
+the same crop, alpha and model depth with its authored node depth settings.
+Both exports do nothing without a loaded model or 3D support, and throw off-map.
+Direct scene rendering retains its existing all-particle route. See
+[sprite overlays](../../explanation/rendering/index.md#optional-unlit-sprite-overlay).
+
 `MapSpriteHolder.DepthOffset` is a finite logical-pixel view-depth correction:
 zero default, positive nearer, unchanged screen XY in both render paths.
 `Map.DrawMapSprite` copies it on attachment; field changes/rebuilds require

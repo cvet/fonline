@@ -2606,7 +2606,7 @@
       "id": "particle-format.runtime.model-unlit-overlay",
       "name": "Explicit unlit model particle layer",
       "stability": "experimental",
-      "requirement": "Native ModelInstance.RunUnlitParticle shares RunParticle placement, first-pose initialization, bounds and retirement, but selects the parent-owned ModelSprite overlay. The atlas producer draws meshes and lit particles first, retains their depth while clearing only color, and draws unlit particles without posing or advancing simulation again. Both images use the same crop and pivot offset; stable sizes reuse the overlay allocation, and terminal unlit systems release it. RunParticle, AttachParticles and the direct-scene all-particle route retain their meanings. Picking and specialized image effects address the base atlas.",
+      "requirement": "Native ModelInstance.RunUnlitParticle shares RunParticle placement, first-pose initialization, bounds and retirement, but selects the parent-owned ModelSprite overlay. The atlas producer draws meshes and lit particles first, retains their depth while clearing only color, and draws unlit particles without posing or advancing simulation again. Both images use the same crop and pivot offset; stable sizes reuse the overlay allocation. Sprite update releases it when no initialized unlit systems remain active, including after direct-scene retirement without a preview atlas redraw. RunParticle, AttachParticles and the direct-scene all-particle route retain their meanings. Picking and specialized image effects address the base atlas.",
       "rationale": "An emissive model-bone effect can bypass map lighting without detaching from the authoritative pose or changing existing particle callers.",
       "source": [
         {
@@ -2924,6 +2924,29 @@
             "void ModelInstance::RunParticle",
             "void ModelInstance::InitializePendingParticles",
             "void ModelInstance::UpdateModelParticle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.critter-run-unlit-particle",
+      "name": "Unlit critter model particle",
+      "stability": "experimental",
+      "requirement": "Critter.RunUnlitParticle uses the same bone name, model-unit offset, first-pose placement and lifetime as RunParticle, selecting the ModelSprite unlit atlas overlay. The client and mapper export does nothing without a loaded model or FO_ENABLE_3D support, and throws off-map. Existing RunParticle and direct-scene playback retain their meanings.",
+      "rationale": "Scripts can explicitly choose emissive model-bone playback without moving the effect to an independent world sprite or changing the existing particle API.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_RunUnlitParticle",
+            "model->RunUnlitParticle"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunUnlitParticle",
+            "StartParticle(particle_name, bone_name, move, true)"
           ]
         }
       ]

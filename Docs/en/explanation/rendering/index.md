@@ -899,8 +899,10 @@ model depth without another pose or simulation step. Node-authored depth-test
 and depth-write states still apply.
 
 `ModelSprite` owns the overlay allocation, copies the identical settled crop
-and pivot offset, reuses it while the size is stable, and releases it when no
-initialized unlit systems remain active. Its picking mask and specialized
+and pivot offset, reuses it while the size is stable, and releases it at the
+next sprite update when no initialized unlit systems remain active. This also
+applies after direct-scene retirement while the preview atlas is idle.
+Its picking mask and specialized
 image-effect draws use the base atlas; the decorative overlay does not enlarge
 the selectable silhouette. Direct map draws replay both particle kinds in the
 scene, while GUI snapshots can use the atlas pair.

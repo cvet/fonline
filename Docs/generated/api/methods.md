@@ -115,6 +115,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-runparticle-85de689b2a"></a>
 - [`symbol-script-method-client-critter-runparticle-85de689b2a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-runparticle-85de689b2a)
 
+<a id="symbol-script-method-client-critter-rununlitparticle-88b38c90de"></a>
+- [`symbol-script-method-client-critter-rununlitparticle-88b38c90de`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-rununlitparticle-88b38c90de)
+
 <a id="symbol-script-method-client-critter-setalpha-26dae4c519"></a>
 - [`symbol-script-method-client-critter-setalpha-26dae4c519`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-setalpha-26dae4c519)
 
