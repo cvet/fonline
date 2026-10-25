@@ -44,6 +44,8 @@
 #include "Settings.h"
 #include "WorkScheduler.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
@@ -1189,7 +1191,10 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // The sprite frame must stay fixed while the model turns. The bake has already reduced both the root mesh and
     // every selectable model link to conservative 3D envelopes, so only their corners need the facing sweep here
     mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
-    mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
+    FO_STRONG_ASSERT(is_affine_clip_matrix(facing_prefix), "Model sprite facing prefix matrix is not affine", _modelInfo->_fileName);
+
+    // Preserve the exact homogeneous row required by the division-free orthographic projection
+    mat44 facing_prefix_inverse = glm::affineInverse(facing_prefix);
     auto facing_delta_matrix = [&](float32_t degrees) -> mat44 { //
         return facing_prefix * glm::rotate(mat44 {1.0f}, degrees * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f}) * facing_prefix_inverse;
     };

@@ -396,24 +396,20 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame uses a reusable 2x scratch render target. The model
-sprite factory reuses matching sizes in a least-recently-used cache with a soft
-budget of 8 x 1024 x 1024 colour pixels (32 MiB of RGBA storage, plus backend depth
-storage). A frame exceeding that budget occupies the cache alone. Sprite-cache
-cleanup releases every scratch target and clears the blit effect's borrowed
-texture before retiring its owner; live sprite atlas allocations and shared model
-materials remain valid. This budget limits retained intermediate colour pixels,
-not total renderer memory or a fixed number of targets. The
-client unions baked active-animation bounds with the per-animation AABBs of
-selected direct non-particle child links whose parent clips are active. If no
-matching clip is active, or a link is nested under another child rig, the baked
-aggregate link envelope is used. It then projects the eight selected corners
-across the facing sweep. This keeps layer/equipment geometry in a
-facing-independent fixed frame without reserving a rigid attachment's entire
-all-animation travel or performing a per-frame weighted-vertex walk. Only
-currently-emitting particle systems extend this envelope; a dormant effect
-reserves no frame and is absorbed by the bounded expansion pass if it starts
-emitting.
+The logical frame reuses a 2x scratch target. Its model sprite factory caches
+matching sizes by LRU with a soft 8 x 1024 x 1024 colour-pixel budget (32 MiB RGBA
+plus backend depth). An oversized frame occupies it alone. Cleanup releases all
+scratch targets and clears the blit texture borrow before its owner; live atlas
+allocations and shared model materials survive. This bounds retained intermediate
+colour pixels, not total renderer memory or target count. Framing unions baked active-animation bounds with per-animation
+AABBs of selected direct non-particle child links whose parent clips are active.
+Without a matching active clip, or for links nested under another child rig, it
+uses the baked aggregate link envelope. Eight selected corners span the facing
+sweep; an affine inverse preserves the exact homogeneous row for division-free
+orthographic projection. The fixed frame covers layer/equipment geometry without
+reserving rigid attachments' entire all-animation travel or walking weighted
+vertices each frame. Only emitting particles extend it; dormant effects reserve
+nothing and use bounded expansion when emission starts.
 
 The dynamic draw envelope is `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles, and any effect-forced full frame. It remains

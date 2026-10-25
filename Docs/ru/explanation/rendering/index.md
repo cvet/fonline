@@ -448,23 +448,22 @@ name на standing height; при этом более широкий lying pose 
 Повышенный weapon/overhead swing игнорируется, поэтому name не поднимается во
 время удара. Оба input baked per clip, и результат не дрейфует внутри animation.
 
-Автоматический логический кадр использует переиспользуемый scratch render target 2x.
-Фабрика спрайтов моделей хранит совпадающие размеры в LRU-кэше с мягким бюджетом
-8 x 1024 x 1024 цветовых пикселей (32 MiB RGBA плюс память глубины конкретного backend).
-Кадр, превышающий этот бюджет, занимает кэш один. Очистка sprite cache освобождает
-все scratch targets и сбрасывает заимствованную текстуру blit effect до удаления
-её владельца; atlas allocations живых спрайтов и общие материалы моделей остаются
-валидными. Бюджет ограничивает удерживаемые промежуточные цветовые пиксели, а не
-всю память рендерера и не фиксированное число targets.
-Клиент объединяет baked active-animation bounds с per-animation AABB выбранных
-direct non-particle child links, parent clips которых активны. Если matching
-clip не активен либо link вложен под другой child rig, используется baked
-aggregate link envelope. Затем восемь выбранных corners проецируются по facing
-sweep. Это удерживает layer/equipment geometry в facing-independent fixed frame,
-не резервируя полный all-animation travel rigid attachment и не выполняя
-per-frame weighted-vertex walk. Envelope расширяют только emitting particle
-systems; dormant effect ничего не резервирует и попадает в bounded expansion
-pass, если начинает emission.
+Автоматический логический кадр использует переиспользуемый scratch target 2x.
+Фабрика спрайтов моделей хранит совпадающие размеры по LRU с мягким бюджетом
+8 x 1024 x 1024 цветовых пикселей (32 MiB RGBA плюс backend depth). Превышающий
+бюджет кадр занимает кэш один. Очистка освобождает все scratch targets и сбрасывает
+заимствованную текстуру blit effect до удаления владельца; atlas allocations живых
+спрайтов и общие материалы моделей сохраняются. Лимит касается удерживаемых
+промежуточных цветовых пикселей, а не всей памяти рендерера или числа targets.
+Framing объединяет baked active-animation bounds с per-animation AABB выбранных
+direct non-particle child links с активными parent clips. Без matching active clip
+либо для links внутри другого child rig используется baked aggregate link envelope.
+Восемь выбранных corners охватывают facing sweep; аффинная обратная матрица сохраняет
+точную однородную строку для ортографической проекции без деления. Фиксированный кадр
+покрывает layer/equipment geometry без резервирования полного all-animation travel
+rigid attachments и per-frame обхода weighted vertices. Его расширяют только emitting
+particles; dormant effects ничего не резервируют и используют bounded expansion
+после начала emission.
 
 Dynamic draw envelope задаётся `ModelSpriteBounds::Rect`: baked geometry,
 projected shadow, live particles и full frame, принудительно выбранный effect.

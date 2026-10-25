@@ -614,6 +614,106 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ModelSpriteBoundsStayValidAcrossFinitePreviewRotations")
+{
+    // A finite preview rotation must leave GetSpriteBounds with a nonempty, repeatable frame. The strong roll
+    // additionally has to move that frame, otherwise dropping SetRotation would still pass
+    constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    // model_path is a constexpr string_view, but passing it by value and by reference odr-uses it, so it
+    // has to be captured rather than relied on as a constant expression
+    auto make_model = [&model_mngr, model_path](float32_t rx, float32_t ry, float32_t rz) {
+        auto model = model_mngr->CreateModel(model_path);
+        FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
+
+        auto owned = model.take_not_null();
+
+        owned->StartMeshGeneration();
+        owned->SetRotation(rx, ry, rz);
+        owned->PrepareFrameLayout();
+        owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
+
+        return owned;
+    };
+
+    auto measure = [](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+        model->PoseSpriteFrame(false);
+
+        return model->GetSpriteBounds();
+    };
+
+    auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
+        return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
+    };
+
+    auto check_nonempty = [](const ModelSpriteBounds& bounds) {
+        CHECK(bounds.Rect.width > 0);
+        CHECK(bounds.Rect.height > 0);
+        CHECK(bounds.RequiredFrameSize.width > 0);
+        CHECK(bounds.RequiredFrameSize.height > 0);
+    };
+
+    auto control_model = make_model(0.0f, 0.0f, 0.0f);
+    optional<ModelSpriteBounds> control_first = measure(control_model.as_ptr());
+    optional<ModelSpriteBounds> control_repeated = measure(control_model.as_ptr());
+
+    REQUIRE(control_first);
+    REQUIRE(control_repeated);
+    CHECK(same_bounds(*control_first, *control_repeated));
+    check_nonempty(*control_first);
+
+    struct RotationCase
+    {
+        string_view Name {};
+        float32_t Rx {};
+        float32_t Ry {};
+        float32_t Rz {};
+    };
+
+    vector<RotationCase> rotations {
+        {"pitch and yaw", 0.4f, 15.0f * DEG_TO_RAD_FLOAT, 0.0f},
+        {"preview pitch and yaw", 25.6589f * DEG_TO_RAD_FLOAT, 180.0f * DEG_TO_RAD_FLOAT, 0.0f},
+        {"strong roll", 0.0f, 0.0f, 90.0f * DEG_TO_RAD_FLOAT},
+    };
+
+    optional<ModelSpriteBounds> strong_roll_bounds;
+
+    for (size_t rotation_index = 0; rotation_index < rotations.size(); rotation_index++) {
+        const RotationCase& rotation = rotations[rotation_index];
+        INFO(rotation.Name);
+
+        auto rotated_model = make_model(rotation.Rx, rotation.Ry, rotation.Rz);
+        optional<ModelSpriteBounds> first_bounds = measure(rotated_model.as_ptr());
+        optional<ModelSpriteBounds> repeated_bounds = measure(rotated_model.as_ptr());
+
+        REQUIRE(first_bounds);
+        REQUIRE(repeated_bounds);
+        CHECK(same_bounds(*first_bounds, *repeated_bounds));
+        check_nonempty(*first_bounds);
+
+        if (rotation_index + 1 == rotations.size()) {
+            strong_roll_bounds = first_bounds;
+        }
+    }
+
+    // Guard the guard: if the strong roll leaves the envelope and frame size where the unrotated control put them,
+    // a dropped SetRotation would still turn this regression green
+    REQUIRE(strong_roll_bounds);
+    bool roll_matches_control_frame = strong_roll_bounds->Rect == control_first->Rect && strong_roll_bounds->RequiredFrameSize == control_first->RequiredFrameSize;
+    CHECK_FALSE(roll_matches_control_frame);
+}
+#endif
+
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
     // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
