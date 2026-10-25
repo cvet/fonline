@@ -32,6 +32,7 @@
 //
 
 #include "TextureAtlas.h"
+
 #include "Application.h"
 #include "ImageWriter.h"
 

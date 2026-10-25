@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING

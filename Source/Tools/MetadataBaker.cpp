@@ -32,6 +32,7 @@
 //
 
 #include "MetadataBaker.h"
+
 #include "MetadataRegistration.h"
 
 FO_BEGIN_NAMESPACE

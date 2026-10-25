@@ -32,6 +32,7 @@
 //
 
 #include "ImageBaker.h"
+
 #include "Application.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"

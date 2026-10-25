@@ -32,6 +32,7 @@
 //
 
 #include "ImageBaker-Zar.h"
+
 #include "ImageBaker-ZarDecoder.h"
 
 #if FO_IMAGE_ZAR

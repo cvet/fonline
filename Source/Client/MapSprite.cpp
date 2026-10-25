@@ -32,6 +32,7 @@
 //
 
 #include "MapSprite.h"
+
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE

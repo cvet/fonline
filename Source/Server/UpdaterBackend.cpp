@@ -32,6 +32,7 @@
 //
 
 #include "UpdaterBackend.h"
+
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"

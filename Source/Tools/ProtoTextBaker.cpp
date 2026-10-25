@@ -32,6 +32,7 @@
 //
 
 #include "ProtoTextBaker.h"
+
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"

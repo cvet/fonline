@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #if FO_WINDOWS
 #include "WinApi.h"
 #endif

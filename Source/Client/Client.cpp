@@ -32,6 +32,7 @@
 //
 
 #include "Client.h"
+
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "ManagedScripting.h"

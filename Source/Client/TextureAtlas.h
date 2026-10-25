@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "RenderTarget.h"
 #include "Rendering.h"
 #include "SpriteResource.h"

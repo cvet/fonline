@@ -32,6 +32,7 @@
 //
 
 #include "SpriteResource.h"
+
 #include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE

@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE

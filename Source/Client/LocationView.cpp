@@ -32,6 +32,7 @@
 //
 
 #include "LocationView.h"
+
 #include "Client.h"
 
 FO_BEGIN_NAMESPACE

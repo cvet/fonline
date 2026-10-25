@@ -32,6 +32,7 @@
 //
 
 #include "ImageImport.h"
+
 #include "AnimationInfo.h"
 #include "Settings.h"
 

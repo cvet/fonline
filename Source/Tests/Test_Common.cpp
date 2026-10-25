@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
 #include "FileSystem.h"

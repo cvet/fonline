@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #include "NetworkUdp.h"
 
 FO_BEGIN_NAMESPACE

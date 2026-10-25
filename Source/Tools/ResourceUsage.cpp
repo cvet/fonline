@@ -32,6 +32,7 @@
 //
 
 #include "ResourceUsage.h"
+
 #include "Baker.h"
 #include "ConfigFile.h"
 #include "MapLoader.h"

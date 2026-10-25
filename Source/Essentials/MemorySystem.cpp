@@ -32,6 +32,7 @@
 //
 
 #include "MemorySystem.h"
+
 #include "BaseLogging.h"
 #include "GlobalData.h"
 #include "StackTrace.h"

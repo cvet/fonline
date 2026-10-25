@@ -32,6 +32,7 @@
 //
 
 #include "AnimationInfo.h"
+
 #include "ConfigFile.h"
 #include "FileSystem.h"
 

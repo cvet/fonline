@@ -32,6 +32,7 @@
 //
 
 #include "EntityManager.h"
+
 #include "CritterManager.h"
 #include "EntitySync.h"
 #include "ItemManager.h"

@@ -32,6 +32,7 @@
 //
 
 #include "BakingContext.h"
+
 #include "DataSource.h"
 #include "ImageDependencyGraph.h"
 #include "Settings.h"

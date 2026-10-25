@@ -53,6 +53,8 @@ jobs:
         BuildTools/tests/test_package_resource_pack.py
         BuildTools/tests/test_is_packaged_usage.py
         BuildTools/tests/test_native_modules.py
+        BuildTools/tests/test_native_source_layout.py
+        BuildTools/tests/test_native_formatting.py
         BuildTools/tests/test_resource_usage_pipeline_wiring.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
@@ -92,6 +94,9 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 BuildTools/check_native_modules.py
+    - run: python3 BuildTools/check_native_source_layout.py
+    - run: python3 BuildTools/check_native_source_layout.py --source-dir Examples
+    - run: python3 BuildTools/check_native_source_layout.py --source-dir BuildTools/validation-project
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   temporary-compat:

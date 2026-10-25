@@ -32,6 +32,7 @@
 //
 
 #include "RawCopyBaker.h"
+
 #include "Application.h"
 #include "ImageDependencyGraph.h"
 

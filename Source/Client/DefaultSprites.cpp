@@ -32,6 +32,7 @@
 //
 
 #include "DefaultSprites.h"
+
 #include "Application.h"
 #include "Geometry.h"
 

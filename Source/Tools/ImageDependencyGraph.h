@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "FileSystem.h"
 #include "ImageImport.h"
 #include "Settings.h"

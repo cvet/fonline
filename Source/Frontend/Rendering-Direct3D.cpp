@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 #if FO_HAVE_DIRECT_3D

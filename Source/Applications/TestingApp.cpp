@@ -39,9 +39,9 @@
 #error FO_TESTING_APP is not enabled
 #endif
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 #include "Application.h"
 

@@ -32,6 +32,7 @@
 //
 
 #include "EffekseerExtension.h"
+
 #include "ResourceDefaults.h"
 
 #if FO_EFFEKSEER_PARTICLES

@@ -32,6 +32,7 @@
 //
 
 #include "TextBaker.h"
+
 #include "ConfigFile.h"
 #include "TextPack.h"
 

@@ -32,6 +32,7 @@
 //
 
 #include "AudioBaker.h"
+
 #include "AudioBaker-Acm.h"
 #include "FileSystem.h"
 #include "Settings.h"

@@ -32,6 +32,7 @@
 //
 
 #include "Logging.h"
+
 #include "BaseLogging.h"
 #include "GlobalData.h"
 #include "Platform.h"

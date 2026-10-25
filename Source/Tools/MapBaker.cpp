@@ -32,6 +32,7 @@
 //
 
 #include "MapBaker.h"
+
 #include "AngelScriptScripting.h"
 #include "ConfigFile.h"
 #include "ManagedScripting.h"

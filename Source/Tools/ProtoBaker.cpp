@@ -32,6 +32,7 @@
 //
 
 #include "ProtoBaker.h"
+
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"

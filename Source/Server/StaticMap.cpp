@@ -32,6 +32,7 @@
 //
 
 #include "StaticMap.h"
+
 #include "Critter.h"
 #include "Item.h"
 #include "Settings.h"

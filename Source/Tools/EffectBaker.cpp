@@ -32,6 +32,7 @@
 //
 
 #include "EffectBaker.h"
+
 #include "Application.h"
 #include "ConfigFile.h"
 #include "Direct3DLevel9.h"

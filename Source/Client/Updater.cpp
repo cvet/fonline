@@ -32,6 +32,7 @@
 //
 
 #include "Updater.h"
+
 #include "Application.h"
 #include "Client.h"
 #include "DefaultSprites.h"

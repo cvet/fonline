@@ -32,6 +32,7 @@
 //
 
 #include "ServerConnection.h"
+
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE

@@ -32,6 +32,7 @@
 //
 
 #include "Settings.h"
+
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"

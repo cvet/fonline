@@ -32,6 +32,7 @@
 //
 
 #include "Player.h"
+
 #include "Critter.h"
 #include "CritterManager.h"
 #include "Item.h"

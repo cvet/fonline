@@ -32,6 +32,7 @@
 //
 
 #include "StringUtils.h"
+
 #include "GlobalData.h"
 #include "StackTrace.h"
 #include "UcsTables.inc"

@@ -32,6 +32,7 @@
 //
 
 #include "CritterHexView.h"
+
 #include "AnimationMovement.h"
 #include "Client.h"
 #include "EffectManager.h"

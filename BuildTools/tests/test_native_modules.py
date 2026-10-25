@@ -40,15 +40,75 @@ def test_complete_registered_pair_is_valid(tmp_path: Path) -> None:
     assert modules.check_modules(root) == []
 
 
+def test_application_library_pair_is_registered_at_its_target(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Applications/ClientLib.h": "",
+                              "Source/Applications/ClientLib.cpp": ""}, [])
+    owner = root / "BuildTools/cmake/stages/Applications.cmake"
+    owner.write_text('AddSharedApplication(Client "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.cpp"\n'
+                     '    LINK_LIBS CommonLib)\n'
+                     'target_sources(Client PRIVATE "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.h")\n',
+                     encoding="utf-8")
+    assert modules.check_modules(root) == []
+
+
+def test_cpp_only_application_unit_is_registered_at_its_target(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Applications/Tool.cpp": ""}, [])
+    owner = root / "BuildTools/cmake/stages/Applications.cmake"
+    owner.write_text(
+        'target_sources(Tool PRIVATE "${FO_ENGINE_ROOT}/Source/Applications/Tool.cpp")\n',
+        encoding="utf-8")
+    assert modules.check_modules(root) == []
+
+
+def test_application_diagnostic_does_not_register_sources(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Applications/ClientLib.h": "",
+                              "Source/Applications/ClientLib.cpp": ""}, [])
+    owner = root / "BuildTools/cmake/stages/Applications.cmake"
+    owner.write_text('StatusMessage("${FO_ENGINE_ROOT}/Source/Applications/ClientLib.cpp")\n'
+                     '# target_sources(Client PRIVATE "${FO_ENGINE_ROOT}/Source/Applications/ClientLib.h")\n',
+                     encoding="utf-8")
+    assert len(modules.check_modules(root)) == 2
+
+
 @pytest.mark.parametrize("path,text", [
     ("Source/Common/ResourceDefaults.h", "#pragma once\ninline constexpr int Value = 1;\n"),
     ("Source/Common/NewHelpers.h", "#pragma once\n"),
-    ("Source/Tools/NewApp.cpp", "void Run() {}\n"),
-    ("Source/Tests/Test_Container/Module.cpp", "void Run() {}\n"),
 ])
-def test_new_unpaired_module_is_rejected(tmp_path: Path, path: str, text: str) -> None:
+def test_new_unpaired_header_is_rejected(tmp_path: Path, path: str, text: str) -> None:
     root = project(tmp_path, {path: text})
-    assert any(path in issue for issue in modules.check_modules(root))
+    issues = modules.check_modules(root)
+    assert any(path in issue and "unpaired" in issue for issue in issues), issues
+
+
+@pytest.mark.parametrize("path", [
+    "Source/Tools/NewApp.cpp",
+    "Source/Tests/Test_Container/Module.cpp",
+])
+def test_registered_cpp_only_unit_is_valid(tmp_path: Path, path: str) -> None:
+    root = project(tmp_path, {path: "void Run() {}\n"})
+    assert modules.check_modules(root) == []
+
+
+@pytest.mark.parametrize("path", [
+    "Source/Tools/NewApp.cpp",
+    "Source/Tests/Test_Container/Module.cpp",
+])
+def test_unregistered_cpp_only_unit_is_rejected(tmp_path: Path, path: str) -> None:
+    root = project(tmp_path, {path: "void Run() {}\n"}, [])
+    issues = modules.check_modules(root)
+    assert any(path in issue and "not registered" in issue for issue in issues), issues
+
+
+def test_unpaired_cpp_cannot_escape_registration_by_having_no_header(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Common/Orphan.cpp": "void Run() {}\n"}, [])
+    issues = modules.check_modules(root)
+    assert any("Source/Common/Orphan.cpp" in issue and "not registered" in issue
+               for issue in issues), issues
+
+
+def test_test_entry_points_stay_exempt_from_registration(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Tests/Test_Example.cpp": "void Run() {}\n"}, [])
+    assert modules.check_modules(root) == []
 
 
 @pytest.mark.parametrize("missing", ["Source/Common/Example.h", "Source/Common/Example.cpp"])
@@ -68,15 +128,42 @@ def test_comments_do_not_register_a_module(tmp_path: Path) -> None:
 
 def test_case_mismatch_does_not_form_a_pair(tmp_path: Path) -> None:
     root = project(tmp_path, {"Source/Common/Example.h": "", "Source/Common/example.cpp": ""})
-    assert modules.check_modules(root)
+    issues = modules.check_modules(root)
+    assert any("Source/Common/Example.h" in issue and "unpaired" in issue
+               for issue in issues), issues
+    assert not any("Source/Common/example.cpp" in issue for issue in issues), issues
+
+
+def test_cpp_only_registration_is_case_exact(tmp_path: Path) -> None:
+    root = project(tmp_path, {"Source/Common/Example.cpp": "void Run() {}\n"},
+                   ["Source/Common/example.cpp"])
+    issues = modules.check_modules(root)
+    assert any("Source/Common/Example.cpp" in issue and "not registered" in issue
+               for issue in issues), issues
 
 
 def test_reviewed_header_and_implementation_exceptions_are_valid(tmp_path: Path) -> None:
     root = project(tmp_path, {"Source/Common/Templates.h": "", "Source/Applications/Boot.cpp": "",
-                              "Source/Tests/Test_Example.cpp": ""}, exceptions={
+                              "Source/Tests/Test_Example.cpp": ""}, [], exceptions={
         "Version": 1,
         "HeaderOnly": {"Source/Common/Templates.h": "Template utility, no independent subsystem."},
         "ImplementationOnly": {"Source/Applications/Boot.cpp": "Application entry point."},
+    })
+    assert modules.check_modules(root) == []
+
+
+def test_generator_and_application_implementation_exceptions_remain_valid(tmp_path: Path) -> None:
+    root = project(tmp_path, {
+        "Source/Common/GenericCode.template.cpp": "",
+        "Source/Applications/BootApp.cpp": "",
+    }, [], exceptions={
+        "Version": 1,
+        "HeaderOnly": {},
+        "ImplementationOnly": {
+            "Source/Common/GenericCode.template.cpp":
+                "Code-generation input template, not a standalone compiled module.",
+            "Source/Applications/BootApp.cpp": "Application entry point.",
+        },
     })
     assert modules.check_modules(root) == []
 

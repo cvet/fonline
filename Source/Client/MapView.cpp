@@ -32,6 +32,7 @@
 //
 
 #include "MapView.h"
+
 #include "Client.h"
 #include "LineTracer.h"
 #include "MapLoader.h"

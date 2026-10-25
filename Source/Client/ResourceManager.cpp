@@ -32,6 +32,7 @@
 //
 
 #include "ResourceManager.h"
+
 #include "Application.h"
 #include "DefaultSprites.h"
 

@@ -33,8 +33,9 @@
 
 #pragma once
 
-#include "AnimationInfo.h"
 #include "Common.h"
+
+#include "AnimationInfo.h"
 #include "ImageDependencyGraph.h"
 
 FO_BEGIN_NAMESPACE

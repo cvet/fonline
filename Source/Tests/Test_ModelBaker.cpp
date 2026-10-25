@@ -31,9 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 #if FO_ENABLE_3D
 
@@ -2738,4 +2738,3 @@ TEST_CASE("ModelBoundsMeasurementModes")
 FO_END_NAMESPACE
 
 #endif
-

@@ -32,6 +32,7 @@
 //
 
 #include "CritterFramesCache.h"
+
 #include "ModelAnimation.h"
 
 FO_BEGIN_NAMESPACE

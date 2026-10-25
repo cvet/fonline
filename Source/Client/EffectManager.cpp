@@ -32,6 +32,7 @@
 //
 
 #include "EffectManager.h"
+
 #include "Application.h"
 #include "ResourceDefaults.h"
 

@@ -32,6 +32,7 @@
 //
 
 #include "ItemHexView.h"
+
 #include "Client.h"
 #include "EffectManager.h"
 #include "MapSprite.h"
@@ -292,4 +293,3 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 }
 
 FO_END_NAMESPACE
-

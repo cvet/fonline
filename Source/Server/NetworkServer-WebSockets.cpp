@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetworkServer.h"
 
 #if FO_HAVE_WEB_SOCKETS

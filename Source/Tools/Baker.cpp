@@ -32,6 +32,7 @@
 //
 
 #include "Baker.h"
+
 #include "AngelScriptBaker.h"
 #include "Application.h"
 #include "AudioBaker.h"

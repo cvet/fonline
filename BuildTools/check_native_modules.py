@@ -1,10 +1,13 @@
 """Check the layout of standalone engine-owned native modules.
 
-Every native module under ``Source/`` must be a ``Name.h`` + ``Name.cpp`` pair
-with both members registered in the owning CMake source list. Test units
-(``Source/Tests/Test_*.cpp``) are not standalone modules, and every other
-unpaired path needs an exact reviewed entry in
-``BuildTools/NativeModuleExceptions.json``.
+A header module under ``Source/`` must be one half of a ``Name.h`` +
+``Name.cpp`` pair with both members registered in the owning CMake source
+list, or carry an exact reviewed header-only entry in
+``BuildTools/NativeModuleExceptions.json``.  A ``.cpp`` without a matching
+header is a valid cpp-only unit when it is registered in an owning CMake source
+list; the absence of a header never excuses registration.  Test units
+(``Source/Tests/Test_*.cpp``) are not standalone modules, and reviewed
+implementation exceptions remain exact.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import re
 _OWNER_FILES = (
     "BuildTools/cmake/stages/EngineSources.cmake",
     "BuildTools/cmake/stages/CoreLibs.cmake",
+    "BuildTools/cmake/stages/Applications.cmake",
 )
 _EXCEPTIONS_FILE = "BuildTools/NativeModuleExceptions.json"
 _ENGINE_ROOT_TOKEN = "${FO_ENGINE_ROOT}"
@@ -30,6 +34,12 @@ _SET_VALUE_RE = re.compile(
 _VARIABLE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 _SOURCE_LIST_RE = re.compile(
     r"\b(?:AppendList|SetValue)\(\s*(?:[A-Z0-9_]*_SOURCE|SOURCES|FO_SOURCE_META_FILES)\s+(.*?)\)",
+    re.DOTALL,
+)
+_APPLICATION_SOURCE_RE = re.compile(
+    r'\bAddSharedApplication\(\s*\S+\s+"((?:[^"\\]|\\.)*)"')
+_TARGET_SOURCES_RE = re.compile(
+    r"\btarget_sources\(\s*\S+\s+(?:PRIVATE|PUBLIC|INTERFACE)\s+(.*?)\)",
     re.DOTALL,
 )
 
@@ -59,12 +69,20 @@ def check_modules(root: Path) -> list[str]:
         if _counterpart(path) in files:
             if path not in registered:
                 issues.append(
-                    f"{path}: pair member is not registered in "
-                    f"{_OWNER_FILES[0]} or {_OWNER_FILES[1]}")
-        else:
-            issues.append(
-                f"{path}: standalone native module is unpaired; add the matching "
-                f"pair member or record a reviewed exception in {_EXCEPTIONS_FILE}")
+                    f"{path}: pair member is not registered in the owning CMake source lists "
+                    f"({', '.join(_OWNER_FILES)})")
+            continue
+
+        if path.endswith(".cpp"):
+            if path not in registered:
+                issues.append(
+                    f"{path}: cpp-only unit is not registered in the owning CMake "
+                    f"source lists ({', '.join(_OWNER_FILES)})")
+            continue
+
+        issues.append(
+            f"{path}: standalone native module is unpaired; add the matching "
+            f"pair member or record a reviewed exception in {_EXCEPTIONS_FILE}")
 
     return sorted(set(issues))
 
@@ -111,6 +129,9 @@ def _collect_registrations(root: Path) -> set[str]:
         for match in _SET_VALUE_RE.finditer(text):
             definitions.setdefault(match.group(1), match.group(2))
         for source_list in _SOURCE_LIST_RE.finditer(text):
+            literals.extend(_QUOTED_RE.findall(source_list.group(1)))
+        literals.extend(_APPLICATION_SOURCE_RE.findall(text))
+        for source_list in _TARGET_SOURCES_RE.finditer(text):
             literals.extend(_QUOTED_RE.findall(source_list.group(1)))
 
     registered: set[str] = set()

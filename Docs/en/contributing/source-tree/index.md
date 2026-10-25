@@ -35,31 +35,61 @@ for that boundary; change the native tool owner when its baked behavior changes.
 
 ## Native module layout
 
-Create every standalone native module as an adjacent `Name.h` + `Name.cpp` pair
-and register both files in the owning source lists in
-[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake) or
-[`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake).
-Keep the `.cpp` as the module anchor even when it only includes its own header
-because all current declarations are passive data or `constexpr` constants.
-`ResourceDefaults.h` + `ResourceDefaults.cpp` is such a module; constants alone
-do not make an independent subsystem exempt from the pair requirement.
+Use an adjacent `Name.h` + `Name.cpp` pair for a public native module whose header
+is consumed by other units. Register both in the owning source lists in
+[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake),
+[`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake), or the actual
+application target in [`Applications.cmake`](../../../../BuildTools/cmake/stages/Applications.cmake).
+Shared passive data and constants still have a `.cpp` anchor, as in
+`ResourceDefaults.h` + `ResourceDefaults.cpp`. Supporting template/constexpr and
+umbrella headers may use reviewed header-only exceptions.
 
-Header-only exceptions are supporting template/compile-time utility headers and
-umbrella headers that do not define an independent module. For optional modules,
-register both files unconditionally and put numeric feature guards inside them.
+Implementation-only units need no header. Remove headers included only by their
+own `.cpp`; do not create empty anchors, shared-header wrappers or duplicated
+generated script declarations solely to form a pair. Renderer, transport,
+script-binding and entry-point implementations may therefore be `.cpp` only.
+Keep source inventories unconditional within their owning target and use numeric
+feature guards inside optional modules.
 
-Run `python3 BuildTools/check_native_modules.py` from the engine root after adding
-or moving native modules. It checks case-sensitive pairs and registrations in
-the two source-inventory owners, including the AngelScript directory alias;
-comments and diagnostic strings do not register source files. Platform builds
-validate the effective CMake configuration.
-
-Reviewed unpaired files are recorded by exact path and a nonempty reason in
+Run `python3 BuildTools/check_native_modules.py` after adding or moving modules.
+It checks case-sensitive header pairs and registration in the source-inventory
+owners, including the AngelScript directory alias and application library targets.
+A `.cpp` without a header must still be registered. Comments and diagnostic strings
+do not register sources. Reviewed header-only and special entry-point/generator
+exceptions use exact paths and nonempty reasons in
 [`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
-under `HeaderOnly` or `ImplementationOnly` (schema `Version = 1`). Stale entries,
-wildcards, duplicate JSON keys and exceptions for complete pairs fail the check.
-`Source/Tests/Test_*.cpp` files are test translation units. New standalone modules
-require a pair even when their names contain `Helpers` or `App`.
+schema `Version = 1`. Stale entries, wildcards, duplicate keys and complete-pair
+exceptions fail. The two `Source/Common/*.template.cpp` files are generator inputs,
+not compiled modules. Platform builds validate the effective CMake configuration.
+
+The first include in a header is `#include "Common.h"`. A `.cpp` starts with its
+case-exact same-directory same-stem header if present, otherwise `Common.h`.
+Separate this include from following content by a blank line. If it is the sole
+include at EOF, no extra empty line is added. License comments and `#pragma once`
+may precede it; conditions do not change lexical include order.
+Bootstrap headers cannot include `Common.h`: `Source/Common/Common.h` itself,
+headers directly in `Source/Essentials/` and `Source/Common/ImGuiExt/ImGuiConfig.h`
+preserve their dependency order. ImGui consumes its config through
+`IMGUI_USER_CONFIG`; absence of a literal local include does not make it unused.
+
+Native files end with exactly one newline: `text\n` or `text\r\n`. Missing EOL,
+trailing spaces and additional empty lines at EOF are rejected. The formatter,
+layout validator and ordinary Git whitespace checks agree on this convention.
+
+Run `python3 BuildTools/check_native_source_layout.py` alongside the module check.
+It checks owned `.h/.cpp` recursively in `Source/`, excluding the two generator
+templates, and ignores fake directives in comments and string literals. Invalid
+or empty scopes return nonzero. Embedding-project extensions use
+`--root <project> --source-dir SourceExt --shallow` to avoid imported nested
+libraries. Generated build output and `ThirdParty/` are outside authored scope.
+Both validators and their regressions are required in CI. Also check
+`--source-dir Examples` and `--source-dir BuildTools/validation-project`.
+
+The sample `Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h` belongs
+to a standalone C++ library built without Engine includes; it keeps its standard
+library dependency and must not include `Common.h`. Its independent
+`Tests/NativeExtensionCoreTest.cpp` starts with `NativeExtensionCore.h`. These exact
+boundaries are validated; its server extension follows the regular cpp-only rule.
 
 ## `Source/Applications/`
 
