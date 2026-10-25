@@ -173,10 +173,12 @@ private:
         size_t ItemCount {};
         size_t ChunkCount {};
         size_t ItemsPerChunk {};
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+        string_view Name {};
+#endif
     };
 
     void RunClaimedChunks(const Batch& batch) noexcept;
-    void RunChunkItems(const Batch& batch, size_t chunk_index);
     void WorkerEntry(int32_t worker_index) noexcept;
     void RunBackgroundWork(BackgroundWork work) noexcept;
     static void RetireCancelledWork(vector<BackgroundWork> work) noexcept;

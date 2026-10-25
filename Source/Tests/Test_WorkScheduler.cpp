@@ -771,5 +771,202 @@ TEST_CASE("WorkSchedulerBackgroundSerialModeCreatesNoGroup", "[resource-preparat
     CHECK_FALSE(scheduler.TrySubmitBackground(group, [] { FAIL("Serial background work must not run"); }));
 }
 
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+static void BeginWorkSchedulerTraceFixture();
+static void FinishWorkSchedulerTraceFixture();
+
+TEST_CASE("WorkSchedulerTraceAsymmetric", "[.][scheduler-trace]")
+{
+    BeginWorkSchedulerTraceFixture();
+
+    WorkScheduler scheduler {"trace-fixture", 3};
+    std::thread::id owner = std::this_thread::get_id();
+    mutex gate;
+    std::condition_variable_any changed;
+    vector<pair<std::thread::id, size_t>> thread_counts;
+    vector<std::atomic<int32_t>> output(7);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+
+    scheduler.RunBatch("trace-proof-asymmetric", 7, 1, [&](size_t index) {
+        unique_lock locker {gate};
+
+        {
+            std::thread::id current = std::this_thread::get_id();
+            auto entry = std::find_if(thread_counts.begin(), thread_counts.end(), [current](const auto& value) { return value.first == current; });
+
+            if (entry == thread_counts.end()) {
+                thread_counts.emplace_back(current, 1);
+            }
+            else {
+                entry->second++;
+            }
+        }
+
+        changed.notify_all();
+        bool ready = changed.wait_until(locker, deadline, [&thread_counts]() { return thread_counts.size() == 4; });
+
+        if (!ready) {
+            throw GenericException("Trace fixture participants did not arrive");
+        }
+
+        locker.unlock();
+
+        output[index].store(numeric_cast<int32_t>(index) + 11, std::memory_order_relaxed);
+    });
+
+    vector<size_t> distribution;
+    size_t owner_items = 0;
+
+    for (const auto& entry : thread_counts) {
+        distribution.emplace_back(entry.second);
+
+        if (entry.first == owner) {
+            owner_items = entry.second;
+        }
+    }
+
+    std::sort(distribution.begin(), distribution.end());
+    vector<size_t> expected_distribution {1, 2, 2, 2};
+    REQUIRE(distribution == expected_distribution);
+    REQUIRE(thread_counts.size() == 4);
+
+    vector<int32_t> expected_output {11, 12, 13, 14, 15, 16, 17};
+
+    for (size_t index = 0; index < output.size(); index++) {
+        REQUIRE(output[index].load(std::memory_order_relaxed) == expected_output[index]);
+    }
+
+    logging::write("Trace fixture oracle: scenario=asymmetric;items=7;participants=4;ownerItems={};workerItems={}", owner_items, 7 - owner_items);
+
+    FinishWorkSchedulerTraceFixture();
+}
+
+TEST_CASE("WorkSchedulerTraceSingleItems", "[.][scheduler-trace]")
+{
+    BeginWorkSchedulerTraceFixture();
+
+    WorkScheduler scheduler {"trace-fixture", 3};
+    std::thread::id owner = std::this_thread::get_id();
+    std::atomic<size_t> owner_items {0};
+    std::atomic<size_t> worker_items {0};
+
+    for (size_t round = 0; round < 32; round++) {
+        scheduler.RunBatch("trace-proof-single", 1, 1, [&](size_t index) {
+            if (index != 0) {
+                throw GenericException("Trace fixture received an unexpected item");
+            }
+
+            auto& count = std::this_thread::get_id() == owner ? owner_items : worker_items;
+            count.fetch_add(1, std::memory_order_relaxed);
+
+            // Keep the sole claim open long enough to observe participants that receive no item
+            coarse_sleep(std::chrono::milliseconds {1});
+        });
+    }
+
+    size_t observed_owner = owner_items.load(std::memory_order_relaxed);
+    size_t observed_workers = worker_items.load(std::memory_order_relaxed);
+    REQUIRE(observed_owner + observed_workers == 32);
+    logging::write("Trace fixture oracle: scenario=single;items=32;batches=32;ownerItems={};workerItems={}", observed_owner, observed_workers);
+
+    FinishWorkSchedulerTraceFixture();
+}
+
+TEST_CASE("WorkSchedulerTracePartialFailure", "[.][scheduler-trace]")
+{
+    BeginWorkSchedulerTraceFixture();
+
+    WorkScheduler scheduler {"trace-fixture", 3};
+    std::atomic<size_t> completed {0};
+
+    CHECK_THROWS_AS(scheduler.RunBatch("trace-proof-fault", 8, 8, [&](size_t index) {
+        if (index == 2) {
+            throw GenericException("Trace fixture intentional item failure");
+        }
+
+        completed.fetch_add(1, std::memory_order_relaxed);
+    }), GenericException);
+
+    REQUIRE(completed.load(std::memory_order_relaxed) == 2);
+    logging::write("Trace fixture oracle: scenario=fault;plannedItems=8;completedItems=2");
+
+    FinishWorkSchedulerTraceFixture();
+}
+
+TEST_CASE("WorkSchedulerTraceEmptyTail", "[.][scheduler-trace]")
+{
+    BeginWorkSchedulerTraceFixture();
+
+    WorkScheduler scheduler {"trace-fixture", 3};
+    vector<std::atomic<int32_t>> output(5);
+    std::atomic<size_t> completed {0};
+
+    scheduler.RunBatch("trace-proof-empty-tail", 5, 1, [&](size_t index) {
+        output[index].store(numeric_cast<int32_t>(index) + 21, std::memory_order_relaxed);
+        completed.fetch_add(1, std::memory_order_relaxed);
+        coarse_sleep(std::chrono::milliseconds {1});
+    });
+
+    vector<int32_t> expected_output {21, 22, 23, 24, 25};
+
+    for (size_t index = 0; index < output.size(); index++) {
+        REQUIRE(output[index].load(std::memory_order_relaxed) == expected_output[index]);
+    }
+
+    REQUIRE(completed.load(std::memory_order_relaxed) == 5);
+    logging::write("Trace fixture oracle: scenario=empty-tail;items=5;chunks=4;completedItems=5");
+
+    FinishWorkSchedulerTraceFixture();
+}
+
+TEST_CASE("WorkSchedulerTraceMutableName", "[.][scheduler-trace]")
+{
+    BeginWorkSchedulerTraceFixture();
+
+    WorkScheduler scheduler {"trace-fixture", 3};
+    string batch_name {"trace-proof-name-before"};
+
+    scheduler.RunBatch(batch_name, 1, 1, [&](size_t index) {
+        ignore_unused(index);
+
+        batch_name = string(1024, 'x');
+        coarse_sleep(std::chrono::milliseconds {1});
+    });
+
+    REQUIRE(batch_name == string(1024, 'x'));
+    logging::write("Trace fixture oracle: scenario=mutable-name;items=1;originalName=trace-proof-name-before");
+
+    FinishWorkSchedulerTraceFixture();
+}
+
+static void BeginWorkSchedulerTraceFixture()
+{
+    bool written = fs::write_file("trace-fixture.ready", "ready");
+    REQUIRE(written);
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
+    while (!TracyIsConnected && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(TracyIsConnected);
+}
+
+static void FinishWorkSchedulerTraceFixture()
+{
+    bool written = fs::write_file("trace-fixture.done", "done");
+    REQUIRE(written);
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
+    while (!fs::exists("trace-fixture.release") && std::chrono::steady_clock::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(fs::exists("trace-fixture.release"));
+}
+#endif
+
 FO_END_NAMESPACE
 

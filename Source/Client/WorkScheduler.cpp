@@ -276,11 +276,19 @@ void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t m
     size_t chunk_limit = std::max<size_t>(item_count / std::max<size_t>(min_items_per_chunk, 1), 1);
     size_t chunk_count = std::min(numeric_cast<size_t>(_workerCount) + 1, chunk_limit);
     size_t items_per_chunk = (item_count + chunk_count - 1) / chunk_count;
+
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+    string trace_batch_name {batch_name};
+#endif
+
     Batch batch {
         .ItemWork = &item_work,
         .ItemCount = item_count,
         .ChunkCount = chunk_count,
         .ItemsPerChunk = items_per_chunk,
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+        .Name = trace_batch_name,
+#endif
     };
 
 #if FO_TRACE_CATEGORY_ENABLED(Threading)
@@ -352,21 +360,34 @@ void WorkScheduler::RunClaimedChunks(const Batch& batch) noexcept
 {
     FO_TRACE_ZONE(Threading);
 
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+    size_t completed_items = 0;
+#endif
+
     while (true) {
         size_t chunk_index = _nextChunk.fetch_add(1, std::memory_order_acq_rel);
 
         if (chunk_index >= batch.ChunkCount) {
-            return;
+            break;
         }
 
         // A failed item ends the batch for everyone: the remaining chunks would only run against state the owner is
         // about to unwind anyway
         if (_batchFailed.load(std::memory_order_acquire)) {
-            return;
+            break;
         }
 
         try {
-            RunChunkItems(batch, chunk_index);
+            size_t first_item = chunk_index * batch.ItemsPerChunk;
+            size_t last_item = std::min(first_item + batch.ItemsPerChunk, batch.ItemCount);
+
+            for (size_t item_index = first_item; item_index < last_item; item_index++) {
+                (*batch.ItemWork)(item_index);
+
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+                completed_items++;
+#endif
+            }
         }
         catch (const std::exception& ex) {
             ignore_unused(ex);
@@ -382,16 +403,13 @@ void WorkScheduler::RunClaimedChunks(const Batch& batch) noexcept
             FO_UNKNOWN_EXCEPTION();
         }
     }
-}
 
-void WorkScheduler::RunChunkItems(const Batch& batch, size_t chunk_index)
-{
-    size_t first_item = chunk_index * batch.ItemsPerChunk;
-    size_t last_item = std::min(first_item + batch.ItemsPerChunk, batch.ItemCount);
-
-    for (size_t item_index = first_item; item_index < last_item; item_index++) {
-        (*batch.ItemWork)(item_index);
+#if FO_TRACE_CATEGORY_ENABLED(Threading)
+    if (ZoneIsActive) {
+        string participant_metadata = strex("batch={};completedItems={}", batch.Name, completed_items);
+        ZoneText(participant_metadata.c_str(), participant_metadata.length());
     }
+#endif
 }
 
 void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept

@@ -71,6 +71,10 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 
 It alternates direct/batch order over identical clip times, checks every resulting matrix bit-for-bit on the owner, and writes `samples.csv` plus `result.json` with rig signatures and scheduling counts. Zero workers uses a direct loop; with workers it bypasses `ShouldRunParallel`, so a single item still measures dispatch of one chunk. Warmup, loading, output checking and file I/O are outside timing; scheduler dispatch/join is inside. Keep the host quiet, retain raw pairs and repeat. These kernel-only samples establish neither frame-time gain nor visual/platform acceptance.
 
+## Opt-in scheduler trace
+
+With `Threading` and native threads, `Profiling_OnDemand` hidden `[scheduler-trace]` cases `WorkSchedulerTrace*` cover asymmetric/single-item/empty-tail work, faults and mutable names. Run one case per fresh directory: `trace-fixture.ready` → matching Tracy capture → `trace-fixture.done` → finish capture → `trace-fixture.release`; waits allow 30 seconds. Callback counts are logged independently. Fault expects two of eight items: native success leaves an incomplete batch. Counters only, not performance.
+
 ## Running code coverage
 
 Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Docs/en/contributing/testing/). The generated targets are:

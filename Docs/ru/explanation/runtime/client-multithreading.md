@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"0fd246763cc927658bdcd734e7c7d7fbfa3356048da209149850dff52b895f1b"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"e4acca90aecea6748709c4f0b393b95de958151a42f3dcc4e90c82b2fa2739e7"} -->
 
 # Необязательная многопоточность клиента
 
@@ -224,14 +224,15 @@ SDL требует основной поток для [SDL_PollEvent](https://wi
 содержит его вычисления. Остаток вне `RunClaimedChunks` владельца включает также отправку и закрытие пакета,
 поэтому не является отдельным измерением ожидания join.
 
-`ClientWorkBatchJoin` охватывает получение mutex пакета, завершение участников и закрытие пакета.
-Вложенная `ClientWorkBatchWait` начинается после первоначального получения mutex и включает цикл проверки
-участников, ожидания condition variable и повторное получение mutex при пробуждении. Уже завершённый пакет
-также имеет короткую wait-зону: это длительность зоны, а не счётчик времени сна или доказательство конкуренции
-за блокировку. Каждый непустой пакет с воркерами записывает в текст RunBatch
-`items=N;chunks=N;workers=N;minItemsPerChunk=N`. Форматирование выполняется только при включённой категории
-`Threading`, после выхода однопоточной дорожки. Длительности зон участников могут перекрываться;
-их сумма не является критическим путём владельца.
+`ClientWorkBatchJoin` охватывает получение mutex пакета, drain и закрытие. Вложенная `ClientWorkBatchWait`
+начинается после получения mutex: predicate loop, ожидания condition variable и повторное получение mutex,
+даже если участники уже завершились. Длительность зоны не доказывает сон или contention.
+Текст RunBatch `items=N;chunks=N;workers=N;minItemsPerChunk=N` описывает плановую работу. Текст участника
+`batch=<name>;completedItems=N` считает нормальные возвраты callbacks, включая часть chunk до исключения;
+поздний участник может получить zero. Завершённый пакет требует вложенности, совпадения имён и суммы completed,
+равной плановым items. Положительное completedItems на worker доказывает выполнение; входа в зону недостаточно.
+Snapshot имени живёт до join. Только сборки с `Threading` создают метаданные после выхода однопоточной дорожки.
+Длительности участников перекрываются; их сумма не является критическим путём владельца.
 
 Категория `Engine` также даёт `ClientFrameCallbacks` (отложенные callbacks и time events), `ClientFrameOnLoop`
 и `ClientFrameOnRenderIface`. Эти границы доступны с `-Script`, без установки Mono hooks на каждый метод.
@@ -247,7 +248,7 @@ SDL требует основной поток для [SDL_PollEvent](https://wi
 
 Скрытый эксперимент `ClientPoseBatchCost` сравнивает одинаковые запечённые анимационные входы, чередуя порядок прямого и пакетного расчёта и точно проверяя матрицы. Его [контракт native-входов](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз) отделяет стоимость ядра от изменчивости сцены; проверки кадра и картинки остаются необходимыми.
 
-- [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) проверяет все правила выбора workers, нулевые и мобильные пределы, отказ на неверном диапазоне, sweep `0..256` ядер с монотонным числом workers и сохранением ядра владельца, платформенные входы, последовательный путь, однократное выполнение элементов и разделение повторных пакетов. Проверены пустой и одиночный пакеты, minimum chunk, parallel threshold, передача ошибок и дальнейшая пригодность scheduler, запрет nesting, shutdown, два независимых scheduler и равенство результатов. `ClientMultithreadingFollowsTheSetting` создаёт реальный client engine, проверяет оба режима, выбранное на этой машине число workers, пониженный предел и выполнение кадров. `ClientSpriteUpdatePhasesFollowTheClientMode` записывает порядок: последовательный клиент вызывает только `Update()`, параллельный готовит всё до evaluate и завершает после drain. Удаление serial guard ломало этот тест при проверке его чувствительности.
+- [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) покрывает правила выше с собственными пределами: нулевые/мобильные caps (mobile не поднимает общий cap), неверные пределы, платформенные входы и sweep 0..256 ядер с монотонностью/ядром владельца. Также покрыты serial/exact-once работа, repeated/empty/single batches, minimum chunk/threshold, передача ошибок и повторное использование, запрет nesting, shutdown, два scheduler и равенство serial/parallel. `ClientMultithreadingFollowsTheSetting` проверяет кадры клиента: off не запускает workers; on использует выбор для хоста и пониженный `Client.MultithreadingMaxWorkers`. `ClientSpriteUpdatePhasesFollowTheClientMode` проверяет только serial `Update()`, всю подготовку до evaluate и finish после drain; удаление serial guard ломает тест. Скрытые `[scheduler-trace]` counters используют протокол README native tests.
 - [Test_ModelAnimationPoseProcedural.cpp](../../../../Source/Tests/Test_ModelAnimationPoseProcedural.cpp): `ModelAnimationRuntimePosesEvaluateIdenticallyOnClientWorkers` повторно вычисляет отдельные позы общего rig реальными workers и сравнивает world matrices побитно с последовательным результатом. Эта проверка доступна во всех конфигурациях.
 - [Test_ClientEngine.cpp](../../../../Source/Tests/Test_ClientEngine.cpp): `ModelPosePhasesMatchTheSinglePassPose` сравнивает фазы `ModelInstance`, чередуемые как пакет и выполняемые scheduler, с однопроходной позой. Нативная проверка и общие model fixtures работают с любым scripting backend; предыдущий тест также не зависит от backend.
 

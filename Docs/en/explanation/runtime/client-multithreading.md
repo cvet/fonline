@@ -338,13 +338,15 @@ thread. `SpriteCpuUpdatePrepare` isolates preparation of the eligible sprite set
 `WorkScheduler::RunClaimedChunks` zone containing its kernel work. Time outside the owner's `RunClaimedChunks`
 also includes submission and closing overhead, so that residual is not a measurement of join wait.
 
-`ClientWorkBatchJoin` spans acquisition of the batch mutex, participant drain and closing the batch.
-Its nested `ClientWorkBatchWait` starts after the initial mutex acquisition and covers the participant predicate
-loop, condition-variable waits and their mutex reacquisition. A batch already drained still has a short wait
-zone; this is elapsed zone time, not a count of sleeping time or proof of lock contention. Every nonempty worker
-batch attaches `items=N;chunks=N;workers=N;minItemsPerChunk=N` as RunBatch zone text. It is formatted only when
-the `Threading` category is compiled in, after the zero-worker direct return. Per-participant wall-clock durations
-may overlap and cannot be summed into the owner's critical path.
+`ClientWorkBatchJoin` spans batch-mutex acquisition, drain and closing. Nested `ClientWorkBatchWait` starts
+after acquisition: predicate loop, condition-variable waits and mutex reacquisition, even if already drained.
+Elapsed zone time proves neither sleep time nor contention.
+RunBatch text `items=N;chunks=N;workers=N;minItemsPerChunk=N` describes planned work. Participant text
+`batch=<name>;completedItems=N` counts successful callback returns, including partial chunks before an exception;
+late participants may report zero. Complete batches require containment, matching names and completed totals
+equal to planned items. Positive completedItems on a worker proves execution; zone entry does not.
+Name snapshots live through join. Only `Threading` builds create metadata, after the zero-worker direct return.
+Participant durations overlap; their sum is not the owner's critical path.
 
 The `Engine` category also provides `ClientFrameCallbacks` (scheduled callbacks and time events),
 `ClientFrameOnLoop` and `ClientFrameOnRenderIface`. These boundaries remain available with `-Script`, without
@@ -365,19 +367,15 @@ worker access to owner-only state, bounded pending work, and no task left at tea
 
 The hidden `ClientPoseBatchCost` experiment compares identical baked animation inputs with alternating direct/batch order and exact matrix checks. Its [native input contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost) separates kernel cost from scene variability; frame and visual validation remain necessary.
 
-- [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) — the worker-count rule against limits of
-  the test's own (every row of the table above, a zero cap, the mobile cap never lifting the general one, a limit
-  out of range refused, and a sweep over 0..256 cores proving more cores never mean fewer workers and the owner
-  always keeps a core), the machine inputs matching the platform, the serial path, every item running exactly once, repeated batches never crossing over, empty and single-item
-  batches, the chunk minimum, the parallel threshold, item exceptions reaching the owner with the scheduler still
-  usable, nested submission refused, shutdown with workers, two schedulers side by side, serial/parallel producing
-  the same result, `ClientMultithreadingFollowsTheSetting` — a real client engine starting no workers when the
-  switch is off and exactly the count the rule gives this host when it is on, a lowered `Client.MultithreadingMaxWorkers` reaching
-  that count, and running frames in both modes —
-  and `ClientSpriteUpdatePhasesFollowTheClientMode`, which
-  drives a real frame over recording sprites: a serial client calls only `Update()`, and a parallel one prepares
-  every sprite before any evaluation and finishes none until the whole batch has drained. That last one was
-  checked against its own falsification (dropping the serial guard fails it).
+- [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) covers the rules above with own limits:
+  zero/mobile caps (mobile never raises the general cap), invalid limits, platform inputs and a 0..256
+  monotonicity/headroom sweep. Also covered: serial/exact-once work, repeated/empty/single batches, chunk
+  minimum/threshold, exception forwarding/reuse, nesting refusal, shutdown, two schedulers and serial/parallel equality.
+  `ClientMultithreadingFollowsTheSetting` checks client frames: off starts none; on uses the host choice and a
+  lowered `Client.MultithreadingMaxWorkers`.
+  `ClientSpriteUpdatePhasesFollowTheClientMode` checks serial `Update()` only, all preparation before evaluation
+  and finish after drain; deleting the serial guard fails it. Hidden `[scheduler-trace]` counters use the native
+  test README protocol.
 - [Test_ModelAnimationPoseProcedural.cpp](../../../../Source/Tests/Test_ModelAnimationPoseProcedural.cpp) —
   `ModelAnimationRuntimePosesEvaluateIdenticallyOnClientWorkers`: separate poses over one shared rig, evaluated
   across real worker threads and repeated, give world matrices bit-identical to the serial evaluation. This is the

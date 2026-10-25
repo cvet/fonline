@@ -70,6 +70,10 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 Тест чередует порядок прямого и пакетного расчёта при одинаковых временах clip, побайтово сравнивает все матрицы на владельце и сохраняет `samples.csv` и `result.json` с сигнатурами rig и счётчиками пакетов. Ноль workers означает прямую петлю; с workers тест обходит `ShouldRunParallel`, поэтому даже один элемент измеряет dispatch одного chunk. Прогрев, загрузка, сравнение результатов и файловый I/O не измеряются; dispatch/join scheduler измеряются. Нужны тихий хост, сырые пары и повторы. Замеры ядра не подтверждают ускорение кадра, визуальную или платформенную приёмку.
 
+## Отдельная проверка scheduler trace
+
+При `Threading` и native threads в `Profiling_OnDemand` скрытые `[scheduler-trace]` cases `WorkSchedulerTrace*` проверяют asymmetric/single-item/empty-tail работу, отказы и изменяемые имена. Запускайте один case из нового каталога: `trace-fixture.ready` → совместимый Tracy capture → `trace-fixture.done` → завершение capture → `trace-fixture.release`; ожидания ограничены 30 секундами. Callback counts пишутся независимо. Fault ожидает два из восьми items: успешный native test оставляет batch незавершённым. Это проверка счётчиков, а не производительности.
+
 ## Запуск покрытия кода
 
 Сборки с покрытием используют путь `FO_CODE_COVERAGE`, описанный в разделе [Тестирование](../../Docs/ru/contributing/testing/). Генерируются следующие цели:

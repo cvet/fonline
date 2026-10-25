@@ -189,6 +189,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Кадр модели на ARM64 сохраняет точную аффинность. Пересоберите клиент/Mapper; миграций нет.
 - Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
 - Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
+- Трассы Threading считают завершённые callbacks каждого участника пакета, различая пустых workers и частичный отказ. Пересоберите profiled consumers; миграций API и ресурсов нет.
 
 ### Миграция
 

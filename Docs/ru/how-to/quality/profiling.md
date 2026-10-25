@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"7de43ebeb8b860bda3be6e178bff1d839874d137e093bc3ceb6013cc0d2baae3"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"deea0968898bacabec4d835d4ac7c3077262a5f75dc00ae4aced85b959819c4b"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -119,14 +119,12 @@ wrappers. Поэтому CPU capture нельзя представлять ка�
 или lock contention. Для таких вопросов используйте профильные инструменты
 renderer-а либо добавляйте узкую scoped-инструментацию.
 
-Диагностика клиентских пакетов доступна без категории `Script`. `Threading` записывает размер пакета и
-отдельные зоны join/ожидания участников; `Render` выделяет подготовку допустимых спрайтов; `Engine` отмечает
-границы отложенных callbacks и обработчиков OnLoop/OnRenderIface. Точные границы и ограничения определены
-в [клиентской многопоточности](../../explanation/runtime/client-multithreading.md).
-Для сохранения начала, длительности, потока и текста RunBatch используйте inclusive unwrap-экспорт;
-self-time исключает дочерние зоны и не подходит для проверки вложенности интервалов. Именованное ожидание —
-длительность CPU-зоны, а не событие профайлера блокировок. Форматирование текста пакета добавляет работу
-только в сборках профилирования со включённой категорией `Threading`.
+Без `Script`: `Threading` с текстом пакетов и join/predicate-wait, `Render` с подготовкой спрайтов, `Engine` с
+отложенными callbacks, OnLoop и OnRenderIface. См.
+[границы и ограничения](../../explanation/runtime/client-multithreading.md).
+Inclusive unwrap сохраняет начало, длительность, поток и текст RunBatch. Self-time исключает дочерние зоны,
+поэтому не доказывает вложенность. Именованное ожидание измеряет длительность CPU-зоны, а не lock events.
+Форматирование текста требует `Threading`.
 
 Обычные выделения памяти C-библиотеки вне allocator wrappers движка не
 атрибутируются heap движка автоматически. Перед трактовкой allocation capture
