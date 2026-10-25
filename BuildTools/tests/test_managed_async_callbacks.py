@@ -571,7 +571,7 @@ def replace_internal_call(source, declaration, replacement):
 
 def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
     (output / ".editorconfig").write_text("root = true\n", encoding="utf-8")
-    for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
+    for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "TimePlace.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
             # External reporting and native continuation entry are the only substituted boundaries

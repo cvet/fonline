@@ -8,7 +8,7 @@ public static class ScriptTask
     // continuation to the owning engine's script pump, and a synchronous callback is refused instead of deadlocking
     public static Task Delay(int ms)
     {
-        return Delay(new timespan(ms, 2));
+        return Delay(new timespan(ms, TimePlace.Milliseconds));
     }
 
     public static Task Delay(timespan duration)

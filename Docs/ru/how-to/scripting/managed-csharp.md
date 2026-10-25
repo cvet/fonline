@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"3916db027588a33469b12e03190936c1035eda51cc441057d7f3d14cd98f11dd"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"ec8cc857e09b1570248a155b0267e9312227e43c3ea82560600e52aca5744505"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -120,6 +120,12 @@ value types повторяют native API (`ipos.x`, `hstr()`, `timespan.millise
 `ManagedScriptBaker` генерирует служебные имена с `_` (`_entityPtr`,
 `__event_OnStart`), чтобы избежать коллизий со свойствами embedding project.
 Не применяйте правило написанных вручную членов к этим генерируемым именам.
+
+Для аргумента `place` конструкторов `timespan` и `synctime` используйте
+`TimePlace.Nanoseconds`, `TimePlace.Microseconds`, `TimePlace.Milliseconds`
+или `TimePlace.Seconds`, например `new timespan(100, TimePlace.Milliseconds)`.
+Константы сохраняют native-коды единиц `0`, `1`, `2` и `3`; конструкторы с одним
+аргументом по-прежнему принимают наносекунды для `timespan` и миллисекунды для `synctime`.
 
 Методы, которые native backend разрешает через `[CallableByEngine]`, имеют доступ
 `internal`, хотя Mono lookup умеет находить непубличные методы. Это входы

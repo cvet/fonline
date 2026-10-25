@@ -74,22 +74,20 @@ public partial struct mdir
 // arithmetic must convert timespan deltas to and from milliseconds to match the native ABI
 public partial struct timespan
 {
-    // Unit-tagged constructor mirroring AngelScriptTypes.cpp Time_ConstructWithPlace: `place` selects the
-    // unit of `value` (0 ns, 1 us, 2 ms, 3 s) and the stored `value` is normalized to nanoseconds. Used by
-    // the Time core script (Time.Milliseconds/Seconds/…).
+    // TimePlace selects the input unit; storage remains nanoseconds, matching Time_ConstructWithPlace
     public timespan(long value, int place)
     {
         switch (place) {
-        case 0:
+        case TimePlace.Nanoseconds:
             this.value = value;
             break;
-        case 1:
+        case TimePlace.Microseconds:
             this.value = value * 1_000L;
             break;
-        case 2:
+        case TimePlace.Milliseconds:
             this.value = value * 1_000_000L;
             break;
-        case 3:
+        case TimePlace.Seconds:
             this.value = value * 1_000_000_000L;
             break;
         default:
@@ -163,21 +161,20 @@ public partial struct timespan
 
 public partial struct synctime
 {
-    // Place-based constructor mirroring native synctime: `place` (0 ns, 1 us, 2 ms, 3 s) normalizes `value`
-    // to the stored millisecond count. Sub-millisecond inputs truncate just like duration_cast<milliseconds>.
+    // TimePlace selects the input unit; storage remains milliseconds, truncating sub-millisecond inputs
     public synctime(long value, int place)
     {
         switch (place) {
-        case 0:
+        case TimePlace.Nanoseconds:
             this.value = value / 1_000_000L;
             break;
-        case 1:
+        case TimePlace.Microseconds:
             this.value = value / 1_000L;
             break;
-        case 2:
+        case TimePlace.Milliseconds:
             this.value = value;
             break;
-        case 3:
+        case TimePlace.Seconds:
             this.value = value * 1_000L;
             break;
         default:
@@ -191,11 +188,11 @@ public partial struct synctime
     public static bool operator >=(synctime a, synctime b) => a.value >= b.value;
     public static synctime operator +(synctime a, timespan b) => new synctime(a.value + b.milliseconds);
     public static synctime operator -(synctime a, timespan b) => new synctime(a.value - b.milliseconds);
-    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value, 2);
+    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value, TimePlace.Milliseconds);
 
     public long milliseconds => value;
     public long seconds => value / 1_000L;
-    public timespan timeSinceEpoch => new timespan(value, 2);
+    public timespan timeSinceEpoch => new timespan(value, TimePlace.Milliseconds);
 
     // The native formatter renders a synctime through its duration value, and synctime stores milliseconds
     public override string ToString() => timespan.FormatNanoseconds(value * 1_000_000L);

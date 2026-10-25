@@ -120,6 +120,12 @@ mirror the native API (`ipos.x`, `hstr()`, `timespan.milliseconds`), and
 `__event_OnStart`) to avoid collisions with properties declared by an embedding
 project. Do not apply the handwritten member rule to those generated names.
 
+Use `TimePlace.Nanoseconds`, `TimePlace.Microseconds`, `TimePlace.Milliseconds`
+or `TimePlace.Seconds` for the `place` constructor argument of `timespan` and
+`synctime`, for example `new timespan(100, TimePlace.Milliseconds)`. The constants
+retain the native unit codes `0`, `1`, `2` and `3`; raw one-argument constructors
+continue to accept nanoseconds for `timespan` and milliseconds for `synctime`.
+
 Methods resolved by the native backend through `[CallableByEngine]` are
 `internal`, even though Mono lookup can find non-public methods. They are dispatch
 entry points, not ordinary direct-call helpers; a change must respect the owning
