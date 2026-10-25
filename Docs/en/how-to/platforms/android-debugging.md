@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/platforms/android-debugging.html
 
 # Android Build, Packaging, and Device Debugging
 
-This guide is the Engine-owned procedure for building an Android client, generating or assembling an APK, installing it over Wi-Fi ADB, connecting it to a development server, and separating build failures from package, device, and runtime failures. It follows the current BuildTools implementation, Android project template, support model, package grammar, settings, and updater boundary. An embedding project owns its application identity, release policy, device fleet, server profile, store delivery, and acceptance evidence.
+This guide covers the Engine-owned Android client build, Gradle/APK packaging, Wi-Fi ADB, development-server connection and failure isolation. BuildTools, templates, support models, package grammar, settings and updater define the contract. Projects own app identity, release policy, devices, server profiles, store delivery and acceptance evidence.
 
 ## Contract status
 
@@ -188,7 +188,7 @@ The current manifest template has no generic config family for extra permissions
 
 ### Config precedence and secrets
 
-`package.py` reads Android settings from the baked effective target config. It does not overlay authored `Android.*` keys or resolve `$TARGET_ENV{...}` / `$TARGET_FILE{...}` on the packaging host. A concrete signing password therefore enters baked config, while a retained target directive remains a literal string and cannot supply signing credentials.
+`package.py` reads Android client metadata from the matching baked server config and keeps the embedded client config unchanged. It does not overlay authored `Android.*` keys or resolve `$TARGET_ENV{...}` / `$TARGET_FILE{...}` on the packaging host. Signing values enter baked config; target directives remain literal strings and cannot supply package credentials.
 
 The following runtime-directive syntax is intentionally **not** a working package-secret handoff:
 
@@ -203,11 +203,10 @@ Never put real signing values in authored or baked config, documentation, fixtur
 
 ## Runtime bootstrap and resource staging
 
-The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, passes APK resources directly to the engine before SDL startup, and constructs the native argument vector itself. It always adds:
+Generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so` and supplies these runtime paths before SDL startup. The selected config is already embedded; `--ApplySubConfig` is not passed:
 
-- `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Common.UserWritablePath <files-dir>`;
+- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Baking.CacheResources <files-dir>/Cache`.
 
 If the launch Intent contains a non-empty string extra named `server_host`, the activity also adds `--ClientNetwork.ServerHost <value>`. It does not accept a generic command-line extra. Add a reviewed typed bridge before claiming other runtime overrides.
@@ -336,7 +335,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | `System.loadLibrary` aborts with `NoSuchMethodError` for `SDLActivity.nativeSetupJNI` | SDL Java/native glue mismatch; resync the template from the vendored SDL tree and run `test_android_sdl_java_glue.py` |
 | Startup says `Executable path could not be resolved` | the bundled-runtime path was resolved on a mobile target; it must remain behind `CanSelfUpdateNativeModules` |
 | Engine log is absent from logcat | read the app-private `files/<project>.log` from a debug APK with `adb shell run-as <package> cat ...` |
-| Emulator renderer dies before a non-visual probe | emulator Vulkan may lack BGRA8 and GLES may reject the updater path; use `Render.NullRenderer=True` for `ManagedScript.InteropProbeOnStart`, but keep real-device rendering qualification |
+| Emulator renderer dies before a non-visual probe | For `ManagedScript.InteropProbeOnStart`, use `Render.NullRenderer=True`; validate rendering on a real device and inspect advertised surface formats when startup fails |
 | Content is missing or stale | installed APK hash/path and uncompressed `.fores` entries, chosen writable replacement/patch, retained `.foindex` cache, and server descriptor |
 | Client cannot reach host | typed `server_host` extra, selected LAN address, server bind address, firewall, ports, and compatibility version |
 | Client asks for native update | Android native self-update is unsupported; install a compatible APK instead of retrying the resource updater |

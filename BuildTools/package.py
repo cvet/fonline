@@ -1768,6 +1768,11 @@ class Packager:
 		log('Embedded config length', len(self.config_data))
 
 	def get_effective_config_section(self) -> foconfig.ConfigSection:
+		if self.target_config and self.args.platform == 'Android' and self.args.target == 'Client':
+			# Android package settings are server exports; keep that metadata out of the embedded client config
+			_, metadata = self.read_config_data('Server')
+			return load_config_from_data(metadata).mainSection()
+
 		return self.target_config.mainSection() if self.target_config else self.fomain.mainSection()
 
 	def prepare_resources(self) -> None:
@@ -2039,7 +2044,6 @@ class Packager:
 		activity_path = os.path.join(output_java_dir, ANDROID_ACTIVITY_CLASS + '.java')
 		shutil.copy(template_activity_path, activity_path)
 		patch_file(activity_path, '$PACKAGE$', package_name)
-		patch_file(activity_path, '$CONFIG$', self.args.config)
 		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.client_res_dir.replace('\\', '/')))
 
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)

@@ -130,7 +130,6 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
 
         for contract in (
             'return new String[]{\n            "main"',
-            'args.add("--ApplySubConfig")',
             'args.add("--Baking.ClientResources")',
             'args.add("--Baking.CacheResources")',
             'getApplicationInfo().sourceDir + "!/assets/" + $RESOURCE_DIRECTORY$',

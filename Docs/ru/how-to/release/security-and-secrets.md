@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 ---
 
 # Безопасность и секреты
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"c4858ed05219baff94348576dff827a6acb90ea388489c22fe08c317100deb87"} -->
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
 Используйте [Project Configuration](../build/project-configuration.md) для общего precedence `.fomain`, [Packaging and Release](packaging.md) для производства артефактов и [Client Updater](../../explanation/runtime/client-updater.md) для границы загружаемого native runtime.
@@ -24,7 +24,7 @@ directives, generated files, process state или произвольные logs.
 Не помещайте signing material в staged artifacts. Передавайте native signing
 через `Packaging.CodeSigningHook`, project-owned процесс которого читает credentials
 из своей защищённой среды. Текущий Android packager не имеет host-only secret
-input: он читает пароли из baked target config, а затем копирует их в
+input: он читает пароли из парного baked server config, а затем копирует их в
 `FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD` для
 Gradle. Не помещайте production passwords в этот config; до появления отдельного
 handoff используйте project-owned защищённую стадию signing. После утечки ограничьте доступ, отзовите затронутый credential,
@@ -63,7 +63,7 @@ Engine предоставляет механику подстановки, од�
 
 Для runtime credentials предпочитайте `$TARGET_ENV{...}`. Используйте `$TARGET_FILE{...}` только когда deployment владеет путём и правами файла; относительный target-file path во встроенном config разрешается из контекста целевого процесса, а не исходного repository.
 
-Не предполагайте, что packager разрешает target directives. Android packaging читает уже запечённый effective target config; сохранённое значение `$TARGET_ENV{...}` остаётся строкой directive, а не package-host lookup секрета. Windows signing читает `Packaging.CodeSigningHook` как путь из project config и также не имеет resolver target directives. Не помещайте package credentials ни в authored, ни в baked config.
+Не предполагайте, что packager разрешает target directives. Android packaging читает парный baked server config; сохранённое значение `$TARGET_ENV{...}` остаётся строкой directive, а не package-host lookup секрета. Windows signing читает `Packaging.CodeSigningHook` как путь из project config и также не имеет resolver target directives. Не помещайте package credentials ни в authored, ни в baked config.
 
 ```ini
 # Values, paths, and aliases below are examples of variable names, not credentials.
@@ -109,7 +109,7 @@ Engine **не** определяет тип credential, не шифрует sett
 
 ### Android
 
-Android release packaging читает `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword` из baked effective target config. Если задан любой member, требуется полный tuple. Затем `package.py` передаёт две строки password в Gradle через `FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD`; generated `build.gradle` читает эти environment variables и не содержит passwords.
+Android release packaging читает `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias` и `Android.KeyPassword` из парного baked server config. Если задан любой member, требуется полный tuple. Затем `package.py` передаёт две строки password в Gradle через `FO_ANDROID_RELEASE_STORE_PASSWORD` и `FO_ANDROID_RELEASE_KEY_PASSWORD`; generated `build.gradle` читает эти environment variables и не содержит passwords.
 
 Этот Gradle handoff предотвращает подстановку password в `build.gradle`, но не делает input host-only: конкретный пароль уже прошёл через baked config, а directive `$TARGET_ENV{...}` не разрешается. Поэтому текущий Engine не предоставляет безопасную для production границу Android signing secrets. Оставляйте tuple пустым для development output либо используйте защищённую project-owned стадию Android signing, credentials которой никогда не попадают в authored или baked Engine config.
 

@@ -5,10 +5,10 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"32c375efae4314c0f0a5f89d246724d8f9729436946ab7345a686c499b24c37f"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"83818a52db541f39bef519c930ef27064961f0ae6268cc994fb5e9671f113f73"} -->
 # Сборка, упаковка и отладка FOnline на Android
 
-Это принадлежащая Engine инструкция по сборке Android-клиента, созданию и сборке APK, установке через Wi-Fi ADB, подключению к серверу разработки и разделению ошибок сборки, пакета, устройства и runtime. Она опирается на текущую реализацию BuildTools, шаблон Android-проекта, модель поддержки, грамматику пакетов, settings и границу updater. Встраивающий проект отвечает за идентичность приложения, release-политику, парк устройств, серверный профиль, доставку через магазин и evidence приёмки.
+Руководство описывает сборку клиента Android, упаковку Gradle/APK, Wi-Fi ADB, подключение к серверу разработки и разбор отказов на стороне Engine. Общий контракт задают BuildTools, шаблоны, модели поддержки, грамматика пакетов, настройки и updater. Проект отвечает за идентичность приложения, политику релизов, парк устройств, профили серверов, доставку через магазины и доказательства приёмки.
 
 ## Статус контракта
 
@@ -188,7 +188,7 @@ Keys обрабатываются в sorted order. Basenames Java sources дол
 
 ### Приоритет конфигурации и секреты
 
-`package.py` читает Android settings из baked effective target config. Он не накладывает authored keys `Android.*` и не разрешает `$TARGET_ENV{...}` / `$TARGET_FILE{...}` на packaging host. Поэтому конкретный signing password попадает в baked config, а сохранённая target directive остаётся literal string и не может предоставить signing credentials.
+`package.py` читает метаданные клиента Android из парного запечённого серверного конфига, не меняя встроенный клиентский конфиг. Он не накладывает исходные ключи `Android.*` и не разрешает `$TARGET_ENV{...}` / `$TARGET_FILE{...}` на машине упаковки. Значения подписи попадают в запечённый конфиг; целевые директивы остаются буквальными строками и не предоставляют учётные данные упаковщику.
 
 Следующий синтаксис runtime directives намеренно **не** является рабочим package-secret handoff:
 
@@ -203,11 +203,10 @@ Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
 ## Runtime bootstrap и staging ресурсов
 
-Generated `FOnlineActivity` наследует SDL `SDLActivity`, загружает только `libmain.so`, передаёт ресурсы APK движку до старта SDL и самостоятельно строит native argument vector. Он всегда добавляет:
+`FOnlineActivity` наследует SDL `SDLActivity`, загружает только `libmain.so` и передаёт пути runtime до старта SDL. Выбранный конфиг уже встроен; `--ApplySubConfig` не передаётся:
 
-- `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Common.UserWritablePath <files-dir>`;
+- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
 - `--Baking.CacheResources <files-dir>/Cache`.
 
 Если launch Intent содержит непустой string extra `server_host`, activity также добавляет `--ClientNetwork.ServerHost <value>`. Произвольный command-line extra не поддерживается. Прежде чем заявлять другие runtime overrides, добавьте проверяемый typed bridge.
@@ -336,7 +335,7 @@ CI-матрица Engine намеренно не предоставляет эт
 | `System.loadLibrary` падает с `NoSuchMethodError` для `SDLActivity.nativeSetupJNI` | несовпадение SDL Java/native glue; синхронизируйте template с vendored SDL tree и запустите `test_android_sdl_java_glue.py` |
 | Startup сообщает `Executable path could not be resolved` | bundled-runtime path вычислялся на mobile target; он должен оставаться под guard `CanSelfUpdateNativeModules` |
 | Engine log отсутствует в logcat | прочитайте app-private `files/<project>.log` из debug APK через `adb shell run-as <package> cat ...` |
-| Renderer эмулятора падает до non-visual probe | Vulkan эмулятора может не иметь BGRA8, а GLES — отвергать updater path; для `ManagedScript.InteropProbeOnStart` используйте `Render.NullRenderer=True`, но rendering квалифицируйте на реальном устройстве |
+| Renderer эмулятора падает до non-visual probe | Для `ManagedScript.InteropProbeOnStart` используйте `Render.NullRenderer=True`; рендеринг проверяйте на реальном устройстве, а при отказе запуска проверьте объявленные форматы поверхности |
 | Content отсутствует или устарел | hash/path установленного APK и несжатые `.fores`, выбранная writable замена/patch, сохранённый `.foindex` cache и server descriptor |
 | Client не достигает host | typed extra `server_host`, выбранный LAN address, server bind address, firewall, ports и compatibility version |
 | Client запрашивает native update | Android native self-update не поддержан; установите совместимый APK вместо повторов resource updater |

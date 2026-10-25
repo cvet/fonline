@@ -24,8 +24,6 @@ public class FOnlineActivity extends SDLActivity {
             throw new IllegalStateException("Unable to create cache directory " + cacheDir);
         }
 
-        args.add("--ApplySubConfig");
-        args.add("$CONFIG$");
         // Android is handed its writable directory by the platform rather than choosing one from an
         // INSTALLED marker, so it arrives through the option every other platform uses
         args.add("--Common.UserWritablePath");
