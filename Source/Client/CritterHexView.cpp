@@ -828,4 +828,3 @@ auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 }
 
 FO_END_NAMESPACE
-

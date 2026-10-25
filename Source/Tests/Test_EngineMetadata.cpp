@@ -881,4 +881,3 @@ TEST_CASE("Const native collection proxies reject writes without changing their 
 }
 
 FO_END_NAMESPACE
-

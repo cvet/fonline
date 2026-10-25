@@ -2142,4 +2142,3 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
 }
 
 FO_END_NAMESPACE
-

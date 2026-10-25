@@ -22,7 +22,7 @@ This registry describes illustrative embedding-project repositories. Engine beha
 | Release Engine ref | `exact-commit` |
 | Development ref | `master` (weekly) |
 | Update delivery | `reviewed-pull-request` |
-| Contract digest | `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d` |
+| Contract digest | `9ec7181be1935f33ad3b99bf6c94d6c087fa72b988a585f2832df3ecec2f97db` |
 
 ## Publication evidence
 
@@ -33,7 +33,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Source/remote: `4` source-ready, `4` private, and `0` published repositories.
 - Observed required-check states: `not-observed`.
 - Observed Engine pins: `project-template`=`9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`, `minimal-multiplayer`=not observed, `content-showcase`=not observed, `native-extension-sample`=not observed.
-- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `e8623467586bebf8c0e4c02370c42fe99aa722d23f7d6cf1f252a163e3eee16d`.
+- Program values required in the same report: release Engine ref `exact-commit`, update delivery `reviewed-pull-request`, Contract digest `9ec7181be1935f33ad3b99bf6c94d6c087fa72b988a585f2832df3ecec2f97db`.
 - `project-template`: source `source-ready`; remote `private` / `source-staged`; Engine pin `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`; required checks `not-observed`.
 - `minimal-multiplayer`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
 - `content-showcase`: source `source-ready`; remote `private` / `reserved`; Engine pin not observed; required checks `not-observed`.
@@ -56,7 +56,7 @@ Read each repository's source status, remote visibility/state, observed required
 - Remote observation: `2026-08-03`, branch `main`, head `9946ca42c332a294f8fedd2732e7850a01c1ec27`, required checks `not-observed`
 - Observed Engine pin: `9d74c751f5684f80aef3b35a0eb16a8fabf9fa42`
 - Dependencies: None
-- Asset policy: `none`
+- Asset policy: `project-original-or-permissive`
 
 Capabilities:
 
@@ -152,7 +152,7 @@ Exit gate: A tagged build produces the public showcase and reproducible captures
 - Remote: `private` / `reserved` (created `2026-07-20`)
 - Remote observation: `2026-08-03`, branch `main`, head `97823816ab333a62aced43edd4daafa19c5fee22`, required checks `not-observed`
 - Dependencies: `project-template`
-- Asset policy: `none`
+- Asset policy: `project-original-or-permissive`
 
 Capabilities:
 

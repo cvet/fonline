@@ -54,6 +54,8 @@ extraction, directional/shared offsets and copying trimmed sheets.
 
 ## Running tests
 
+`engine-update` runs `test_scaffold_application_icons.py` for the six scaffold initialization paths through real CMake. It checks readable default ICOs, caller overrides and explicit-empty rejection without relaxing required options. These compiler-free Init fixtures complement full platform builds.
+
 The `engine-update` CI job also runs
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` with
 `python3-pytest`. These source-only regressions check generated configuration,

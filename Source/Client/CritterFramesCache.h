@@ -60,4 +60,3 @@ private:
 };
 
 FO_END_NAMESPACE
-

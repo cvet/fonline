@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"464ef466c169f7b574030d0288682dabb7d9cf1ff6e9867fd953f3de1c438a30"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bc0279dbfc7d3c6453ea9594e768e45a8b8b11c12ee464f30ee848868ec616fa"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -100,6 +100,8 @@ extraction, directional/shared offsets и копирование усечённ�
 `Test_ManagedScriptRuntime.cpp` компилирует принадлежащий движку `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` настоящим `ManagedScriptBaker` и .NET SDK, затем загружает сборки сервера, клиента и Mapper. Он проверяет инициализацию модулей, события персонажей, вызовы из native-кода в C#, массивы в аргументах и результатах, словари, строки UTF-8 и строки по ссылке, хеши, допускающие null ссылки на сущности, отчёт об исключении и изоляцию двух одновременно работающих серверов. Требуются SDK для `ManagedScript.TargetFramework` и настроенные файлы среды выполнения; маркеры пробного запуска не доказывают выполнение скриптов. Это целевое покрытие связки native/Managed, а не полное соответствие каждому сценарию AS-привязок.
 
 ## Запуск тестов
+
+`engine-update` запускает `test_scaffold_application_icons.py` для инициализации шести заготовок через настоящий CMake. Проверяются читаемые ICO по умолчанию, переопределения вызывающей стороны и отказ при явно пустом значении без ослабления обязательных параметров. Эти проверки Init без компилятора дополняют полные платформенные сборки.
 
 Задача CI `engine-update` также выполняет
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с

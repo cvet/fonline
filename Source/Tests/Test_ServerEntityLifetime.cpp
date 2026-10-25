@@ -1347,4 +1347,3 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
 }
 
 FO_END_NAMESPACE
-

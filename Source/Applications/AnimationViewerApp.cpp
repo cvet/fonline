@@ -211,4 +211,3 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
         return resources;
     }
 }
-

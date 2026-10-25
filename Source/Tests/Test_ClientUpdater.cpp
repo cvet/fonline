@@ -391,4 +391,3 @@ TEST_CASE("ClientRuntimeBootstrapPublicationFailurePreservesThePreviousSelector"
 #endif
 
 FO_END_NAMESPACE
-

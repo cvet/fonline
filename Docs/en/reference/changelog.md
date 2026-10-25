@@ -12,7 +12,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-24
+## Current - 2026-10-25
+
+### Fixed
+
+- Supply an overridable application icon in the validation project and five runnable example scaffolds, allowing the existing required-option check and Windows resource compiler to admit clean builds. Add real CMake regressions for defaults, caller overrides and explicit-empty refusal; retain the strict project contract.
+- Reconcile native/managed source formatting, restore Mapper and viewer instruction routes, and refresh generated example defaults. Preserve placeholder validation when staged examples contain binary assets.
+
+### Migration
+
+- No game or saved-data migration is required. Existing application-icon overrides and runtime settings retain their meaning; the examples explicitly include the existing `ClientNetwork.RequireInterthreadTransport = False` default. Runtime compatibility remains `0.0.78` and Managed ABI remains `9`. Rerun the normal BuildTools validation preparation to copy the updated scaffold; no production project may omit its required icon.
+
+## 2026.1.62-dev - 2026-10-24
 
 ### Fixed
 

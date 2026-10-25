@@ -167,12 +167,12 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertEqual(metadata["engine"]["revision"], revision)
         self.assertEqual(metadata["primary_check"], "python validate.py")
         self.assertNotRegex(
-            "\n".join(
-                path.read_text(encoding="utf-8")
+            b"\n".join(
+                path.read_bytes()
                 for path in output_root.rglob("*")
                 if path.is_file()
             ),
-            docs_examples.PLACEHOLDER_PATTERN,
+            docs_examples.PLACEHOLDER_PATTERN.pattern.encode("ascii"),
         )
 
         asset_path = output_root / "Engine" / "Resources" / "Core" / "ItemStub.png"
@@ -226,10 +226,11 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertFalse((output_root / "Build").exists())
         self.assertFalse((output_root / "Workspace").exists())
         provenance = json.loads((output_root / "assets/provenance.json").read_text(encoding="utf-8"))
-        self.assertEqual(len(provenance["assets"]), 13)
+        self.assertEqual(len(provenance["assets"]), 14)
+        self.assertIn("App.ico", {asset["path"] for asset in provenance["assets"]})
         self.assertTrue(all(asset["source"] == "project-original" for asset in provenance["assets"]))
 
-    def test_stage_native_extension_repository_keeps_source_and_empty_provenance(self) -> None:
+    def test_stage_native_extension_repository_keeps_source_and_icon_provenance(self) -> None:
         root = self.make_fixture()
         output_root = root / "native-candidate"
 
@@ -247,7 +248,14 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         self.assertTrue((output_root / "TUTORIAL.md").is_file())
         self.assertFalse((output_root / "Engine").exists())
         provenance = json.loads((output_root / "assets" / "provenance.json").read_text(encoding="utf-8"))
-        self.assertEqual(provenance["assets"], [])
+        self.assertEqual(len(provenance["assets"]), 1)
+        icon = provenance["assets"][0]
+        self.assertEqual((icon["path"], icon["license"], icon["source"]), ("App.ico", "MIT", "project-original"))
+        self.assertEqual(hashlib.sha256((output_root / "App.ico").read_bytes()).hexdigest(), icon["sha256"])
+
+        (output_root / "App.ico").write_bytes(b"corrupted icon")
+        with self.assertRaisesRegex(ValueError, "digest does not match"):
+            docs_examples.verify_repository(root, output_root, "pinned", check_git=False)
 
     def test_stage_repository_requires_current_clean_remote_engine_revision(self) -> None:
         root = self.make_fixture()
@@ -585,7 +593,8 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         provenance = json.loads(
             (ENGINE_ROOT / "Examples/ContentShowcase/assets/provenance.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(len(provenance["assets"]), 13)
+        self.assertEqual(len(provenance["assets"]), 14)
+        self.assertIn("App.ico", {asset["path"] for asset in provenance["assets"]})
         self.assertTrue(all(asset["source"] == "project-original" for asset in provenance["assets"]))
         attributes = (ENGINE_ROOT / ".gitattributes").read_text(encoding="utf-8")
         for source_path in (

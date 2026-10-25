@@ -1917,4 +1917,3 @@ static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeade
 }
 
 FO_END_NAMESPACE
-

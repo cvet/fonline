@@ -28,7 +28,8 @@ public static class ManagedRuntimeProbe
         TimerSecondStartFrame = 0;
         TimerErrorsBefore = ScriptExceptions.GlobalCount;
         return Game.StartTimeEvent(new timespan(1_000_000L),
-                                   new timespan(mode == 3 ? 0L : 1_000_000_000L), AwaitedTimer);
+                                   new timespan(mode == 3 ? 0L : 1_000_000_000L),
+                                   AwaitedTimer);
     }
 
     [CallableFromNative]

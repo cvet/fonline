@@ -82,4 +82,3 @@ TEST_CASE("AngelScriptMapperScriptApiCoverage")
 FO_END_NAMESPACE
 
 #endif
-

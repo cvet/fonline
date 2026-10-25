@@ -38,6 +38,8 @@ jobs:
         sudo apt-get install -y python3-pytest
     - name: Check generated configuration and default arguments
       run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
+    - name: Check validation and example application icons
+      run: python3 -m pytest -q BuildTools/tests/test_scaffold_application_icons.py
     - name: Check managed runtime preparation and recovery
       run: >-
         python3 -m pytest -q
