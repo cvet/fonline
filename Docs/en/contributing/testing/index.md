@@ -52,6 +52,31 @@ extraction, directional/shared offsets and copying trimmed sheets.
 
 `Test_ManagedScriptRuntime.cpp` compiles the engine-owned `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` with the real `ManagedScriptBaker` and .NET SDK, then loads its server/client/mapper assemblies. It checks module initialization, critter events, native-to-managed calls, array arguments/results, dictionaries, UTF-8 and by-reference strings, hashes, nullable entity handles, exception reporting and isolation of two simultaneously live servers. It requires the SDK for `ManagedScript.TargetFramework` and the configured managed runtime payload; dry-run markers are not runtime evidence. This is focused bridge coverage, not exhaustive parity with every AngelScript export scenario.
 
+`Test_RpcRuntimeTracker.cpp` covers warning/disconnect boundaries, independent
+zero settings, warning cooldown/episode reset, invocation IDs and completion,
+the pending ceiling, bounded arrival history, last-byte readiness and full
+64-bit queued call hashes. `Test_NetBuffer.cpp` checks passive framing across
+fragments, unread current payloads, shrink and malformed input. Select these
+with `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` uses `[rpc-runtime-transport]` for real secure
+interthread connections: warning-only survival, watchdog disconnection while the
+only script worker is blocked, deferred completion and all-disabled behavior.
+The Managed core harness additionally checks actual adapter completion on success,
+fault, cancellation, nesting, foreign-thread completion and teardown races.
+Native deferred-handler probes do not by themselves prove either script backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` keeps send/receive callbacks
+blocked while requesting closure, then checks full cleanup and single notification;
+its nested-close section protects synchronous transport re-entry.
+`ManagedScriptRuntime` also dispatches a real Managed RPC through the native
+completion bridge and checks off-thread success, fault and cancellation while the
+script pump is stopped, completed cancellation, ownerless nested `Task<T>` calls,
+two-backend isolation and completion racing the teardown entry gate. Its string
+property getter/ref-setter fixture exercises the boxed property callback bridge.
+The Python callback suite also blocks inside its substituted native completion
+to prove teardown waits for an entered callback and suppresses a late one; a
+gate-removal control must fail semantically.
+
 ## Running tests
 
 The `engine-update` CI job also runs

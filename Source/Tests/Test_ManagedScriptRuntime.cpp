@@ -46,6 +46,25 @@ FO_BEGIN_NAMESPACE
 class ManagedRuntimeTestResources final
 {
 public:
+    static auto MakeProbeMetadata(string_view target) -> vector<uint8_t>
+    {
+        return target == "server" ? BakerTests::MakeMetadataBlob({
+                                        {"Property",
+                                            {
+                                                {"Critter", "Server", "string", "RuntimeStoredText", "Mutable"},
+                                                {"Critter", "Server", "string", "RuntimeVirtualText", "Virtual"},
+                                            }},
+                                        {"RemoteCall",
+                                            {
+                                                {"UnitTestRuntimeRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeGenericRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeImmediateCanceledRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeImmediateSuccessRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                            }},
+                                    }) :
+                                    BakerTests::MakeEmptyMetadataBlob();
+    }
+
     ManagedRuntimeTestResources() :
         Root {std::filesystem::temp_directory_path() / fs::make_path(strex("FOnlineManagedRuntimeTest_{}_{}", platform::get_current_process_id_str(), nanotime::now().milliseconds()).str())}
     {
@@ -70,7 +89,7 @@ public:
             });
 
         for (string_view target : {"server", "client", "mapper"}) {
-            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), BakerTests::MakeEmptyMetadataBlob());
+            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), MakeProbeMetadata(target));
         }
 
         ManagedScriptBaker baker {Rig.MakeContext("RuntimeProbe")};
@@ -88,6 +107,8 @@ public:
     void AddTo(FileSystem& resources) const
     {
         auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ManagedRuntimeAssemblies");
+
+        source->AddFile("Metadata.fometa-server", MakeProbeMetadata("server"));
 
         for (const auto& [path, bytes] : Rig.Outputs) {
             source->AddFile(path, bytes);
@@ -107,7 +128,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
     BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -122,6 +143,61 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
     CHECK_FALSE(server->FindFunc<void>(name("MissingFunction")));
+
+    auto transport = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto rpc_player = server->CreateNotLoggedInPlayer(std::move(transport));
+    hstring rpc_name = server->Hashes.to_hashed_string("UnitTestRuntimeRpc");
+    auto finish_rpc = server->FindFunc<void, int32_t>(name("FinishRuntimeRpc"));
+    REQUIRE(finish_rpc);
+
+    auto finish_off_thread = server->FindFunc<void, int32_t>(name("FinishRuntimeRpcOffThread"));
+    auto script_errors = server->FindFunc<int32_t>(name("GetRuntimeScriptErrors"));
+    REQUIRE(finish_off_thread);
+    REQUIRE(script_errors);
+    REQUIRE(script_errors.Call());
+    int32_t errors_before = script_errors.GetResult();
+
+    for (int32_t outcome : {0, 1, 2}) {
+        auto invocation = rpc_player->GetConnection()->BeginRemoteCall(rpc_name, rpc_player->GetId());
+        REQUIRE(invocation.Accepted);
+        REQUIRE(invocation.Completion);
+        server->HandleInboundRemoteCall(rpc_name, rpc_player, span<uint8_t> {}, std::move(invocation.Completion));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 1);
+        // The world is stopped and no script pump runs while this foreign thread completes the Task
+        REQUIRE(finish_off_thread.Call(outcome));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 0);
+    }
+    REQUIRE(script_errors.Call());
+    CHECK(script_errors.GetResult() == errors_before + 1); // only the fault, neither cancellation
+
+    for (string_view method : {"UnitTestRuntimeImmediateSuccessRpc", "UnitTestRuntimeImmediateCanceledRpc"}) {
+        auto immediate_name = server->Hashes.to_hashed_string(method);
+        auto invocation = rpc_player->GetConnection()->BeginRemoteCall(immediate_name, rpc_player->GetId());
+        REQUIRE(invocation.Accepted);
+        REQUIRE(invocation.Completion);
+        server->HandleInboundRemoteCall(immediate_name, rpc_player, span<uint8_t> {}, std::move(invocation.Completion));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 0);
+    }
+    REQUIRE(script_errors.Call());
+    CHECK(script_errors.GetResult() == errors_before + 1);
+
+    // Flush only the nested, ownerless generic calls; their completion never owns a tracked RPC
+    server->ProcessBackends();
+    auto generic_finishes = server->FindFunc<int32_t>(name("GetGenericRpcFinishes"));
+    REQUIRE(generic_finishes);
+    REQUIRE(generic_finishes.Call());
+    int32_t generic_before = generic_finishes.GetResult();
+    hstring generic_name = server->Hashes.to_hashed_string("UnitTestRuntimeGenericRpc");
+    server->HandleInboundRemoteCall(generic_name, rpc_player, span<uint8_t> {});
+    REQUIRE(generic_finishes.Call());
+    CHECK(generic_finishes.GetResult() == generic_before); // Task<T> must not synchronously return its wire result
+    server->ProcessBackends();
+    REQUIRE(generic_finishes.Call());
+    CHECK(generic_finishes.GetResult() == generic_before + 1);
+
+    int64_t rpc_metadata_lookups = -1;
+    REQUIRE(server->CallFunc(name("MeasureRuntimeRpcMetadataLookups"), rpc_metadata_lookups));
+    CHECK(rpc_metadata_lookups == 0);
 
     int32_t database_result = -1;
     REQUIRE(server->CallFunc(name("TestConditionalDatabaseRecords"), database_result));
@@ -168,6 +244,11 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(critter_init_calls == 1);
     CHECK(last_critter_id == critter->GetId().underlying_value());
 
+    auto property_bridge = server->FindFunc<string, ptr<Critter>>(name("ProbePropertyBridge"));
+    REQUIRE(property_bridge);
+    REQUIRE(property_bridge.Call(critter));
+    CHECK(property_bridge.GetResult() == "set:probe|get:set:probe|1|1");
+
     auto critter_id = server->FindFunc<int64_t, ptr<Critter>>(name("GetCritterId"));
     REQUIRE(critter_id);
     REQUIRE(critter_id.Call(critter));
@@ -197,13 +278,17 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(exception_message.find("Managed runtime probe failure") != string::npos);
     exceptions::set_callback(std::move(previous_exception_callback));
     restore_exception_callback.release();
+    auto first_pending = rpc_player->GetConnection()->BeginRemoteCall(rpc_name, rpc_player->GetId());
+    REQUIRE(first_pending.Accepted);
+    server->HandleInboundRemoteCall(rpc_name, rpc_player, span<uint8_t> {}, std::move(first_pending.Completion));
+    auto first_runtime = rpc_player->GetConnection()->GetRuntimeState();
     server->Unlock();
     unlock.release();
 
     // A second live engine must initialize its own assembly statics and event subscriptions
     auto second_settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(second_settings.Network.DisableInterthreadCommunication, true);
-    auto second_resources = ServerEngineTests::MakeServerTestResources();
+    auto second_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(second_resources);
     auto second = safe_alloc::make_refcounted<ServerEngine>(&second_settings, std::move(second_resources));
     auto shutdown_second = scope_exit([&second]() noexcept { safe_call([&second] { second->Shutdown(); }); });
@@ -216,11 +301,26 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(init_calls == 1);
     REQUIRE(second->CallFunc(second->Hashes.to_hashed_string("ManagedRuntimeProbe::GetCritterInitCalls"), critter_init_calls));
     CHECK(critter_init_calls == 0);
+    auto second_transport = NetworkServer::CreateDummyConnection(second->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto second_player = second->CreateNotLoggedInPlayer(std::move(second_transport));
+    hstring second_rpc_name = second->Hashes.to_hashed_string("UnitTestRuntimeRpc");
+    auto second_pending = second_player->GetConnection()->BeginRemoteCall(second_rpc_name, second_player->GetId());
+    REQUIRE(second_pending.Accepted);
+    second->HandleInboundRemoteCall(second_rpc_name, second_player, span<uint8_t> {}, std::move(second_pending.Completion));
+    auto second_runtime = second_player->GetConnection()->GetRuntimeState();
+    auto race = second->FindFunc<void>(second->Hashes.to_hashed_string("ManagedRuntimeProbe::RaceRuntimeRpcCompletionWithTeardown"));
+    REQUIRE(race);
+    REQUIRE(race.Call());
     second->Unlock();
     unlock_second.release();
+    second->Shutdown();
+    CHECK(ServerConnection::GetRuntimeDiagnostics(second_runtime).PendingRemoteCalls == 0);
+    CHECK(ServerConnection::GetRuntimeDiagnostics(first_runtime).PendingRemoteCalls == 1);
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock_first_again = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    REQUIRE(finish_off_thread.Call(0));
+    CHECK(ServerConnection::GetRuntimeDiagnostics(first_runtime).PendingRemoteCalls == 0);
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
     REQUIRE(server->CallFunc(name("GetCritterInitCalls"), critter_init_calls));
@@ -335,7 +435,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     ManagedRuntimeTestResources assemblies;
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -542,7 +642,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     CHECK(server->GetRefCount() == 1);
 
     {
-        auto live_resources = ServerEngineTests::MakeServerTestResources();
+        auto live_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
         assemblies.AddTo(live_resources);
         auto live_server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(live_resources));
         auto shutdown_live = scope_exit([&live_server]() noexcept { safe_call([&live_server] { live_server->Shutdown(); }); });
@@ -756,3 +856,4 @@ TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][
 FO_END_NAMESPACE
 
 #endif
+

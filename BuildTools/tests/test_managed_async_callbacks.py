@@ -139,7 +139,13 @@ internal static class Program
             _ => Callback,
         };
         object? result;
-        try { result = invoke.Invoke(null, new object[] { callback, Array.Empty<object>(), 42UL }); }
+        bool detached = kind.StartsWith("tracked-detached-", StringComparison.Ordinal);
+        if (detached) {
+            Native.BindBackend(new IntPtr(1)); // Only the substituted native completion boundary uses this token.
+            stage = 1;
+            callback = () => gate.Task;
+        }
+        try { result = invoke.Invoke(null, new object[] { callback, Array.Empty<object>(), 42UL, detached, detached }); }
         catch (TargetInvocationException) when (kind.StartsWith("tracked-sync-", StringComparison.Ordinal)) {
             Console.WriteLine("TRACKED_SYNC_FAILURE global=" + ScriptExceptions.GlobalCount + " scope=" + scope.Count);
             return ScriptExceptions.GlobalCount == 1 && scope.Count == 1 && TrackedCompletion.Count == 0 ? 0 : 57;
@@ -152,6 +158,51 @@ internal static class Program
             gate.SetException(new InvalidOperationException("tracked-shutdown-fault"));
             Native.PumpContinuations();
             return PumpUntil(() => ScriptExceptions.GlobalCount == 1) && TrackedCompletion.Count == 0 && scope.Count == 0 ? 0 : 58;
+        }
+        if (detached) {
+            if (kind == "tracked-detached-quiescence") {
+                TaskCompletionSource<bool> late = new();
+                Native.InvokeTrackedCallback(() => late.Task, Array.Empty<object>(), 43UL, true, true);
+                TrackedCompletion.Block = true;
+                Thread blockedFinisher = new(() => gate.SetResult(true));
+                using ManualResetEventSlim closing = new();
+                using ManualResetEventSlim closed = new();
+                Thread closer = new(() => { closing.Set(); Native.BeginBackendTeardown(); closed.Set(); });
+                blockedFinisher.Start();
+                bool entered = TrackedCompletion.Entered.Wait(5000);
+                bool blocked = false;
+                try {
+                    closer.Start();
+                    if (entered && closing.Wait(5000)) {
+                        // Inspect actual monitor blocking, not a timing window before the closer was scheduled.
+                        bool settled = SpinWait.SpinUntil(() => closed.IsSet ||
+                            (closer.ThreadState & ThreadState.WaitSleepJoin) != 0, 5000);
+                        blocked = settled && !closed.IsSet;
+                    }
+                }
+                finally {
+                    TrackedCompletion.Release.Set();
+                    blockedFinisher.Join();
+                    closer.Join();
+                }
+                late.SetResult(true);
+                Console.WriteLine("QUIESCENCE entered=" + entered + " blocked=" + blocked + " closed=" + closed.IsSet + " count=" + TrackedCompletion.Count);
+                return entered && blocked && closed.IsSet && TrackedCompletion.Count == 1 ? 0 : 60;
+            }
+            bool shutdown = kind == "tracked-detached-shutdown";
+            if (shutdown) Native.BeginBackendTeardown();
+            Thread finisher = new(() => {
+                if (kind == "tracked-detached-cancel") gate.SetCanceled();
+                else if (kind == "tracked-detached-fault") gate.SetException(new InvalidOperationException("detached-fault"));
+                else gate.SetResult(true);
+            });
+            finisher.Start(); finisher.Join();
+            // No PumpContinuations: a terminal detached task must release accounting independently.
+            int expected = shutdown ? 0 : 1;
+            int errors = kind == "tracked-detached-fault" ? 1 : 0;
+            bool ok = TrackedCompletion.Count == expected && ScriptExceptions.GlobalCount == errors;
+            Console.WriteLine("DETACHED count=" + TrackedCompletion.Count + " success=" + TrackedCompletion.Success);
+            return ok && (shutdown || TrackedCompletion.Success == (kind == "tracked-detached-success")) ? 0 : 59;
         }
         if (kind == "tracked-cancel") gate.SetCanceled(); else gate.SetResult(true);
         if (!PumpUntil(() => TrackedCompletion.Count == 1)) return 54;
@@ -553,13 +604,15 @@ def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
                                            'private static void ReportExceptionInternal(string summary, string? nativeError, long[] frames) => Log(summary);')
             source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);",
                                            "private static string? RunScriptContinuationInternal(IntPtr backend, Action continuation) { continuation(); return null; }")
+            source = replace_internal_call(source, "private static extern void SignalContinuationsReadyInternal(IntPtr backend);",
+                                           "private static void SignalContinuationsReadyInternal(IntPtr backend) { }")
             if "CompleteScriptCallInternal" in source:
                 source = replace_internal_call(source, "private static extern string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success);",
-                                               "private static string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success) { TrackedCompletion.Count++; TrackedCompletion.Id = id; TrackedCompletion.Success = success; return null; }")
+                                               "private static string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success) { if (TrackedCompletion.Block) { TrackedCompletion.Entered.Set(); TrackedCompletion.Release.Wait(); } TrackedCompletion.Count++; TrackedCompletion.Id = id; TrackedCompletion.Success = success; return null; }")
         (output / name).write_text(source, encoding="utf-8")
     (output / "Probe.csproj").write_text(project_source, encoding="utf-8")
     (output / "Program.cs").write_text(probe_source, encoding="utf-8")
-    (output / "TrackedCompletion.cs").write_text("namespace FOnline; internal static class TrackedCompletion { internal static int Count { get; set; } internal static ulong Id { get; set; } internal static bool Success { get; set; } }", encoding="utf-8")
+    (output / "TrackedCompletion.cs").write_text("namespace FOnline; internal static class TrackedCompletion { internal static int Count { get; set; } internal static ulong Id { get; set; } internal static bool Success { get; set; } internal static bool Block { get; set; } internal static readonly System.Threading.ManualResetEventSlim Entered = new(); internal static readonly System.Threading.ManualResetEventSlim Release = new(); }", encoding="utf-8")
     result = subprocess.run([dotnet, "build", "Probe.csproj", "--nologo", "-v:minimal", "-p:ImportDirectoryBuildProps=false", "-p:ImportDirectoryBuildTargets=false", "-p:UseSharedCompilation=false"], cwd=output, capture_output=True, text=True, timeout=120)
     (output / "build.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -684,7 +737,7 @@ def test_nested_invocation_preserves_synchronous_owner(callback_probe, kind, mar
     assert marker in result.stdout
 
 
-@pytest.mark.parametrize("kind", ["tracked-sync", "tracked-success", "tracked-async", "tracked-fault", "tracked-cancel", "tracked-sync-fault", "tracked-sync-cancel", "tracked-sync-throw", "tracked-shutdown"])
+@pytest.mark.parametrize("kind", ["tracked-sync", "tracked-success", "tracked-async", "tracked-fault", "tracked-cancel", "tracked-sync-fault", "tracked-sync-cancel", "tracked-sync-throw", "tracked-shutdown", "tracked-detached-success", "tracked-detached-cancel", "tracked-detached-fault", "tracked-detached-shutdown", "tracked-detached-quiescence"])
 def test_tracked_callback_completes_once_without_charging_deferred_fault_to_scope(callback_probe, kind):
     result = run_probe(callback_probe, "callback", kind)
     assert result.returncode == 0, result.stdout + result.stderr

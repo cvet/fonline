@@ -75,6 +75,7 @@ internal static partial class Native
     // An orderly teardown clears the script statics and collects while the backend is still bound, so a finalizer
     // running in that window cannot tell a dropped resource from one its owner held until the engine stopped
     private static volatile bool BackendTearingDown;
+    private static readonly object CallCompletionGate = new object();
 
     internal static bool IsBackendTearingDown => BackendTearingDown;
 
@@ -82,7 +83,11 @@ internal static partial class Native
     [CallableByEngine]
     internal static void BeginBackendTeardown()
     {
-        BackendTearingDown = true;
+        // Detached completion holds this gate through its native call; teardown waits before closing entry
+        lock (CallCompletionGate)
+        {
+            BackendTearingDown = true;
+        }
     }
 
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
@@ -247,7 +252,7 @@ internal static partial class Native
     }
 
     [CallableByEngine]
-    internal static object? InvokeCallback(Delegate handler, object?[] args)
+    internal static object? InvokeCallback(Delegate handler, object?[] args, bool ignoreCancellation = false)
     {
         MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
                                     throw new InvalidOperationException("Delegate type is missing its Invoke method");
@@ -274,7 +279,9 @@ internal static partial class Native
             // block the script pump that must fire ScriptTask.Delay's completion event, so let the callback
             // continue asynchronously and retain deferred exception accounting
             if (task.IsCompleted) {
-                task.GetAwaiter().GetResult();
+                if (!ignoreCancellation || !task.IsCanceled) {
+                    task.GetAwaiter().GetResult();
+                }
             }
             else {
                 ScriptExceptions.ObserveTask(task);
@@ -289,7 +296,8 @@ internal static partial class Native
     }
 
     [CallableByEngine]
-    internal static int InvokeTrackedCallback(Delegate handler, object?[] args, ulong id)
+    internal static int InvokeTrackedCallback(Delegate handler, object?[] args, ulong id, bool anyThread,
+                                              bool ignoreCancellation)
     {
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter();
 
@@ -299,12 +307,16 @@ internal static partial class Native
             Task task = (Task)result;
 
             if (task.IsCompleted) {
+                if (ignoreCancellation && task.IsCanceled) {
+                    return 2;
+                }
+
                 task.GetAwaiter().GetResult();
                 return 0;
             }
 
             ScriptExceptions.ObserveTask(task, true);
-            ScriptExceptions.ObserveTask(CompleteTrackedCallbackTask(task, id), true);
+            ScriptExceptions.ObserveTask(CompleteTrackedCallbackTask(task, id, anyThread), true);
             return 1;
         }
         catch (Exception ex) {
@@ -313,20 +325,39 @@ internal static partial class Native
         }
     }
 
-    private static async Task CompleteTrackedCallbackTask(Task task, ulong id)
+    private static async Task CompleteTrackedCallbackTask(Task task, ulong id, bool anyThread)
     {
         bool success = true;
 
         try {
-            await task;
+            if (anyThread) {
+                // Runtime accounting touches only the detached completion under CallCompletionGate
+#pragma warning disable RS0030
+                await task.ConfigureAwait(false);
+#pragma warning restore RS0030
+            }
+            else {
+                await task;
+            }
         }
         catch (Exception) {
             // ObserveTask owns deferred fault reporting; the timer applies its explicit Stop/Repeat policy
             success = false;
         }
 
-        string? error = CompleteScriptCallInternal(BoundBackend, id, success);
-        ThrowNativeError(error);
+        if (anyThread) {
+            lock (CallCompletionGate)
+            {
+                if (BackendTearingDown || BoundBackend == IntPtr.Zero) {
+                    return;
+                }
+
+                ThrowNativeError(CompleteScriptCallInternal(BoundBackend, id, success));
+            }
+        }
+        else {
+            ThrowNativeError(CompleteScriptCallInternal(BoundBackend, id, success));
+        }
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
@@ -1804,3 +1835,4 @@ internal static partial class Native
     internal static void SetSettingStringList(string name, List<string> value) =>
         SetSettingString(name, JoinSettingList(value, item => item ?? string.Empty));
 }
+

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"11e1e462e60cc761de6ff39334c130c50dbb80e80e94249c5d40fd8e1e24527b"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"e3e250619b958dc95e108a717989e1b9ab705c206f508c04a416962d33c72be4"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -198,11 +198,25 @@ incremental collection приведены в [Запекании](../content-pip
 
 - `SetAsyncCallbacks(send, receive, disconnect)`;
 - `Dispatch()`;
+- `RequestDisconnect()`;
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
 Send callback возвращает outgoing bytes **по значению**, и каждый transport владеет buffer, переданным socket. Borrowed sender buffer может быть перезаполнен другим dispatch или освобождён при disconnect, пока I/O thread ещё выполняет compression/send. `Disconnect()` очищает callback под тем же lock, который защищает invocation, поэтому teardown ждёт in-flight pull, а последующие transport ticks не достигают исчезающего sender.
+
+`RequestDisconnect()` отмечает соединение отключённым и запрашивает закрытие
+транспорта без блокировок send/receive callbacks. Независимый
+[watchdog RPC](../../reference/scripting/remote-calls.md#мониторинг-времени-выполнения-и-отключение)
+использует его, поскольку callback может ждать выходной буфер, владелец которого
+заблокирован на entity cover скрипта. Обычный `Disconnect()` по-прежнему ждёт
+callbacks и однократно забирает ожидающее уведомление после завершения закрытия
+транспорта. Повторный вход из `DisconnectImpl()` в том же потоке оставляет это
+внешнему закрытию. После запроса только транспорта уведомление может отложиться
+до обычной очистки; interthread peer не гарантирует встречное уведомление о разрыве.
+Владелец по-прежнему обязан дождаться callbacks до уничтожения.
+`NetworkTransportClosureDoesNotWaitForCallbacks` проверяет заблокированные
+send/receive, вложенное закрытие, ожидание полной очистки и единственное уведомление.
 
 `NetworkServer` хранит слабые ссылки на каждое принятое соединение. `Shutdown()` сначала закрывает регистрацию относительно конкурентных accept, делает снимок всех ещё живых соединений и отключает их, затем выполняет зависящую от транспорта остановку listener/io-context и присоединение потока. Соединение, принятое одновременно с остановкой, либо входит в снимок, либо отклоняется и отключается `TrackConnection()`; оно не может потеряться между accept callback и завершением io-thread. Повторный `Shutdown()` ничего не делает.
 
@@ -256,6 +270,7 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 | `ScriptRequest` | вызов `Player.HardDisconnect()` из script |
 | `LoginFailed` | login откатился после server-side failure |
 | `ReplacedByReconnect` | новый login того же account заменил session |
+| `RpcRuntimeLimit` | незавершённый входящий RPC, готовая входная очередь или число pending-обработчиков достигли настроенного предела |
 
 Побеждает первая записанная причина: поздний generic callback `ClientClosed` от transport не перезаписывает конкретное основание. Причина входит в log закрытого соединения и доступна handlers `OnPlayerLogout` через `Player.GetDisconnectReason()`. Контракт закреплён `ServerConnectionRecordsWhyItWasDisconnected`.
 

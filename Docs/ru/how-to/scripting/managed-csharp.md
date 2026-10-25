@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9131483c3666d4e4f38007e10d760ce03e6d552d43907696350f9e0ff07c551c"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"f65676c3da51dd663b6b1bf7b95faecb43ec09f027139f7cf0c9b097f3f972b3"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -159,6 +159,10 @@ Time-event API принимают synchronous delegates и generated async deleg
 Entity-only post-set реакции могут возвращать `Task`; value-transforming setters с `ref` arguments и property getters остаются synchronous, потому что native caller нужен результат до возврата.
 
 Inbound remote-call handlers могут возвращать `void`, `Task` или `Task<T>`. У remote call нет wire result, поэтому незавершённые tasks наблюдаются без блокировки network/client pump; значение `Task<T>` игнорируется. Named script function с non-generic `Task` использует ту же async boundary. `Task<T>` named function остаётся synchronous, когда native code нужен `T`.
+
+RPC dispatch и ожидающие временные события используют единое владение `FuncCallData::Completion` и реестр backend. Прямой Task-returning RPC-делегат передаёт фактическую Task; `Task<T>` регистрируется с объявленным результатом Task, поскольку RPC не возвращает wire-результат. Асинхронный делегат обходит Action-adapter и без владельца мониторинга; синхронный сохраняет typed-путь. По умолчанию completion выполняется в скриптовом контексте. Включать `CompletionOnAnyThread` можно только для callback с detached-состоянием; учёт RPC использует это разрешение, чтобы завершённая Task не оставалась pending из-за занятого script pump. Локальный gate backend закрывает фоновый вход при `BeginBackendTeardown` до освобождения native-состояния. Временные события сохраняют завершение в контексте и собственную политику Stop/Repeat/count.
+
+Мониторинг входящих серверных RPC удерживает владельца завершения до фактического окончания возвращённой task, включая успех, ошибку и отмену. Незавершённые tasks не блокируют dispatch. Backend teardown явно освобождает оставшихся владельцев; конкурентное или позднее завершение освобождает каждого не более одного раза. [Политика RPC](../../reference/scripting/remote-calls.md#мониторинг-времени-выполнения-и-отключение) задаёт пороги возраста/количества и разрыв транспорта; она не отменяет task и не откатывает её эффекты.
 
 Аргументы callback и remote call сохраняют форму metadata: native `any[]` поступает как `List<any>`, а `string=>any` — как `Dictionary<string, any>`. Bridge не превращает их в `List<object>` или строковый словарь; указывайте точные generated types.
 

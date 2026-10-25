@@ -1374,13 +1374,14 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_VERIFY_AND_THROW(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls()->size(), "Inbound remote call handler table does not cover every registered remote call", _inboundRemoteCallHandlers.size(), GetInboundRemoteCalls()->size());
 }
 
-void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data)
+void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion)
 {
     FO_TRACE_ZONE(Script);
 
     auto it = _inboundRemoteCallHandlers.find(name);
     FO_VERIFY_AND_THROW(it != _inboundRemoteCallHandlers.end(), "Lookup failed in inbound remote call handlers");
-    it->second(name, caller, data);
+    it->second(name, caller, data, std::move(completion));
 }
 
 FO_END_NAMESPACE
+

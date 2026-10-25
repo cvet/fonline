@@ -12444,6 +12444,30 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, 2026.1.66-dev.",
       "compatibility": "Existing persisted legacy IDs remain compatible through quoted migration sources. Projects authoring IDs with whitespace must rename them before adopting this revision; no runtime compatibility-marker, saved-schema, or Managed ABI change is required.",
       "owner": "content-data"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.4cf4fc4007d32920",
+      "baseline_contract_sha256": "650de2bb7f3225bd9a5cb8c541a6184129419a9c03ea3b28aafd87a7ffa77338",
+      "current_contract_sha256": "a11ed6c70a7c7a2a54b00386a4f87d12fda1a91c664f7ab00c9b57633fba7040",
+      "classification": "breaking",
+      "rationale": "Add four opt-out RPC runtime settings and an additive disconnect reason; coordinate native RemoteCallHandler ownership and the shared Managed completion helper. Advance runtime marker 0.0.79 to 0.0.80 without changing existing stored values or wire arguments.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-10-26 (2026.1.67-dev) and the Russian mirror specify native fourth-argument migration, rebuild/rebake order, opt-out settings, existing-value invariants, mixed-version refusal and rollback; runtime policy is Docs/en/reference/scripting/remote-calls.md#runtime-monitoring-and-disconnection.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-10-26 for 2026.1.67-dev and its Russian mirror.",
+      "compatibility": "Base f29635c8dce0c3c4b39c30fd6d31ab0059f568db, runtime 0.0.79 -> 0.0.80. Rebuild native applications/extensions and rebake all roles with matching CoreScripts. Managed generator ABI 9 and resource schemas remain unchanged. Disconnect reason IDs 0..10 and existing RPC payload/persisted values retain meaning; RpcRuntimeLimit=11 is additive.",
+      "owner": "Engine networking and scripting runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.e22739d02e44d8c2",
+      "baseline_contract_sha256": "650de2bb7f3225bd9a5cb8c541a6184129419a9c03ea3b28aafd87a7ffa77338",
+      "current_contract_sha256": "a11ed6c70a7c7a2a54b00386a4f87d12fda1a91c664f7ab00c9b57633fba7040",
+      "classification": "breaking",
+      "rationale": "Add four opt-out RPC runtime settings and an additive disconnect reason; coordinate native RemoteCallHandler ownership and the shared Managed completion helper. Advance runtime marker 0.0.79 to 0.0.80 without changing existing stored values or wire arguments.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-10-26 (2026.1.67-dev) and the Russian mirror specify native fourth-argument migration, rebuild/rebake order, opt-out settings, existing-value invariants, mixed-version refusal and rollback; runtime policy is Docs/en/reference/scripting/remote-calls.md#runtime-monitoring-and-disconnection.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-10-26 for 2026.1.67-dev and its Russian mirror.",
+      "compatibility": "Base f29635c8dce0c3c4b39c30fd6d31ab0059f568db, runtime 0.0.79 -> 0.0.80. Rebuild native applications/extensions and rebake all roles with matching CoreScripts. Managed generator ABI 9 and resource schemas remain unchanged. Disconnect reason IDs 0..10 and existing RPC payload/persisted values retain meaning; RpcRuntimeLimit=11 is additive.",
+      "owner": "Engine networking and scripting runtime"
     }
   ]
 }

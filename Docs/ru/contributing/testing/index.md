@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"464ef466c169f7b574030d0288682dabb7d9cf1ff6e9867fd953f3de1c438a30"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"27f25b80f51aa27c7a203ab933d450824c51f9e08841d470f271a110a53dd2d3"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -98,6 +98,32 @@ extraction, directional/shared offsets и копирование усечённ�
 Список `FO_TESTS_SOURCE` безусловный: все единицы трансляции тестов движка зарегистрированы в каждой конфигурации. Файлы `Test_AngelScript*.cpp` и `Test_ManagedScript*.cpp` сами содержат условия компиляции для своих бэкендов; отключённые наборы не регистрируют сценарии Catch2. Общие проверки движка, сущностей, сохранения данных, сети, карт, отрисовки и Mapper сохраняют общие имена и выполняются с обоими бэкендами. Общие фикстуры `Test_*Helpers.h` компилируют встроенные `.fos` только при AngelScript; их native-ресурсы в Managed не требуют скриптов. Сценарии, вынесенные из смешанных наборов, также получают префикс `AngelScript`.
 
 `Test_ManagedScriptRuntime.cpp` компилирует принадлежащий движку `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` настоящим `ManagedScriptBaker` и .NET SDK, затем загружает сборки сервера, клиента и Mapper. Он проверяет инициализацию модулей, события персонажей, вызовы из native-кода в C#, массивы в аргументах и результатах, словари, строки UTF-8 и строки по ссылке, хеши, допускающие null ссылки на сущности, отчёт об исключении и изоляцию двух одновременно работающих серверов. Требуются SDK для `ManagedScript.TargetFramework` и настроенные файлы среды выполнения; маркеры пробного запуска не доказывают выполнение скриптов. Это целевое покрытие связки native/Managed, а не полное соответствие каждому сценарию AS-привязок.
+
+`Test_RpcRuntimeTracker.cpp` проверяет границы warning/disconnect,
+независимые нулевые настройки, интервал и сброс эпизода, ID и завершение вызовов,
+предел pending, ограничение истории прихода, готовность по последнему байту и
+полные 64-битные хеши ожидающих вызовов. `Test_NetBuffer.cpp` проверяет пассивное
+чтение фреймов при фрагментации, непрочитанном текущем payload, shrink и неверном
+входе. Выбор — `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` использует `[rpc-runtime-transport]` для
+настоящих защищённых interthread-соединений: сохранение связи при warning,
+отключение watchdog при занятом единственном script worker, отложенное завершение
+и полностью отключённую политику. Managed core harness дополнительно проверяет
+настоящий adapter: успех, ошибку, отмену, вложенность, завершение из другого потока
+и гонки teardown. Native-пробы отложенного обработчика сами по себе не доказывают
+работу скриптового backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` удерживает send/receive callbacks
+при запросе закрытия, затем проверяет полную очистку и единственное уведомление;
+секция вложенного закрытия защищает синхронный повторный вход из транспорта.
+`ManagedScriptRuntime` также вызывает настоящий Managed RPC через native bridge
+и проверяет фоновый успех, ошибку и отмену при остановленном script pump,
+заранее отменённую Task, вложенный ownerless `Task<T>`, изоляцию двух backend и
+гонку completion с закрытием входа teardown. Строковые getter/ref-setter проверяют
+boxed-мост property callbacks. Python-набор блокируется внутри подставленного
+native completion, доказывая ожидание уже вошедшего callback при teardown и
+подавление позднего завершения; контроль с удалённым gate должен отказать по
+наблюдаемому поведению.
 
 ## Запуск тестов
 

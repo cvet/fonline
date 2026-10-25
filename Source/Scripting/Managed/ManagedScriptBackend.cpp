@@ -1060,8 +1060,8 @@ static constexpr array<pair<string_view, int32_t>, 20> MANAGED_NATIVE_HELPERS {{
     {"GetDictionaryValue", 2},
     {"GetListCount", 1},
     {"GetListItem", 2},
-    {"InvokeCallback", 2},
-    {"InvokeTrackedCallback", 3},
+    {"InvokeCallback", 3},
+    {"InvokeTrackedCallback", 5},
     {"InvokeEvent", 3},
 }};
 
@@ -1096,6 +1096,7 @@ struct ManagedCallbackPlan
     nptr<MonoMethod> Adapter {};
     nptr<BaseEngine> Engine {};
     bool IsAsync {};
+    bool IsRemoteCall {};
 };
 
 // Static free-function definitions (same order as the declarations above)
@@ -4924,10 +4925,11 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
     release_handler_handle_on_error.release();
 
     shared_ptr<ManagedCallbackPlan> plan = MakeManagedCallbackPlan(backend, ComplexTypeDesc {}, args, handler);
+    plan->IsRemoteCall = true;
 
     engine->SetRemoteCallHandler(
         name_hashed,
-        [backend = backend.as_ptr(), engine, args, plan, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+        [backend = backend.as_ptr(), engine, args, plan, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion) FO_DEFERRED {
             FO_VERIFY_AND_THROW(max_payload_size == 0 || data.size() <= max_payload_size, "Remote call payload exceeds structural limit", call_name, data.size(), max_payload_size);
 
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
@@ -5005,6 +5007,13 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                 args_ptrs.emplace_back(data_storage[data_idx]);
             }
             call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
+
+            // The common callback registry retains this detached RPC token through an asynchronous Task.
+            // Dropping an abandoned completion during backend teardown releases accounting without engine access
+            if (completion) {
+                call.Completion = [completion = std::move(completion)](bool) noexcept { };
+                call.CompletionOnAnyThread = true;
+            }
 
             try {
                 DispatchManagedCallback(backend, handler_handle, *plan, call);
@@ -5244,9 +5253,10 @@ static void SetSettingValueFromString(ptr<ManagedScriptBackend> backend, MonoStr
 
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*
 {
-    MonoMethod* invoke_callback = FindNativeMethod(backend, "InvokeCallback", 2);
+    MonoMethod* invoke_callback = FindNativeMethod(backend, "InvokeCallback", 3);
+    mono_bool ignore_cancellation = 0;
 
-    void* invoke_args[] = {handler, args_array};
+    void* invoke_args[] = {handler, args_array, &ignore_cancellation};
     return InvokeManagedScript(backend, invoke_callback, nullptr, invoke_args, "Managed property callback failed");
 }
 
@@ -5369,7 +5379,7 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
 
-    if ((call.Completion && plan.IsAsync && !plan.Ret) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
+    if ((plan.IsAsync && !plan.Ret) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
         DispatchManagedCallbackBoxed(backend, handler_handle, plan, call);
     }
 }
@@ -5448,25 +5458,28 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
     if (call.Completion && plan.IsAsync && !ret) {
         uint64_t completion_id = backend->RegisterCallCompletion(call.Completion);
         auto fail_completion = scope_fail([&]() noexcept { safe_call([&] { backend->CompleteCall(completion_id, false); }); });
-        MonoMethod* invoke_tracked = FindNativeMethod(backend, "InvokeTrackedCallback", 3);
-        void* tracked_args[] = {mono_gchandle_get_target(handler_handle), get_args_array(), &completion_id};
+        MonoMethod* invoke_tracked = FindNativeMethod(backend, "InvokeTrackedCallback", 5);
+        mono_bool any_thread = call.CompletionOnAnyThread ? 1 : 0;
+        mono_bool ignore_cancellation = plan.IsRemoteCall ? 1 : 0;
+        void* tracked_args[] = {mono_gchandle_get_target(handler_handle), get_args_array(), &completion_id, &any_thread, &ignore_cancellation};
         ManagedObjectRoot pending;
         pending.SetObject(InvokeManagedScript(backend, invoke_tracked, nullptr, tracked_args, "Managed tracked callback failed"));
         FO_VERIFY_AND_THROW(pending.GetObject() != nullptr, "Managed tracked callback status is missing");
         int32_t status = *static_cast<int32_t*>(mono_object_unbox(pending.GetObject()));
-        FO_VERIFY_AND_THROW(status == 0 || status == 1, "Managed tracked callback status is invalid", status);
+        FO_VERIFY_AND_THROW(status == 0 || status == 1 || status == 2, "Managed tracked callback status is invalid", status);
 
-        if (status == 0) {
-            backend->CompleteCall(completion_id, true);
+        if (status != 1) {
+            backend->CompleteCall(completion_id, status == 0);
         }
 
         return;
     }
 
     // Delegate types can belong to system assemblies; Native belongs to the backend's loaded scripts
-    MonoMethod* invoke_callback = FindNativeMethod(backend, "InvokeCallback", 2);
+    MonoMethod* invoke_callback = FindNativeMethod(backend, "InvokeCallback", 3);
+    mono_bool ignore_cancellation = plan.IsRemoteCall ? 1 : 0;
 
-    void* invoke_args[] = {mono_gchandle_get_target(handler_handle), get_args_array()};
+    void* invoke_args[] = {mono_gchandle_get_target(handler_handle), get_args_array(), &ignore_cancellation};
     ManagedObjectRoot result;
     result.SetObject(InvokeManagedScript(backend, invoke_callback, nullptr, invoke_args, "Managed callback failed"));
 
@@ -8988,3 +9001,4 @@ void ManagedScriptBackend::BindRequiredStuff()
 FO_END_NAMESPACE
 
 #endif
+

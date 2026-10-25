@@ -72,7 +72,10 @@ internal static class BootstrapScenarios
                      // Reflection does not order types across an assembly, and the naming probes declare
                      // remote calls of their own, so the registered set is compared sorted
                      !Native.RegisteredRemoteCalls.OrderBy(name => name, StringComparer.Ordinal)
-                          .SequenceEqual(new[] { "AsyncRemote", "RemoteProbe", "VoidRemote" })) {
+                          .SequenceEqual(new[] {
+                              "AsyncRemote", "GenericRemote", "RemoteProbe", "SixteenParameterRemote",
+                              "TwoParameterRemote", "VoidRemote", "VoidTwoRemote", "ZeroParameterRemote",
+                          })) {
                 throw new InvalidOperationException(
                     "Managed initialization and registrations depend on the working directory");
             }
@@ -146,3 +149,4 @@ internal static class ConstructorFailureProbe
         }
     }
 }
+

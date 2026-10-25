@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2579 InventorySha256=b11ce3178a723a2ce73e966dde02ac25eae2631fecc486584527e17c606188dc
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2584 InventorySha256=70671d4309704d14fab0cea635e9502c7058fa366e6ec5a6c57f7a7f1bec072a
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 79
+///@ MigrationRule Version 0 0 80
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -1136,3 +1136,4 @@ public:
 FO_END_NAMESPACE
 
 #endif // FO_PRECOMPILED_HEADER_GUARD
+

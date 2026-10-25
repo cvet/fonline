@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"10848253df3a7f279a26361271710bc5f4379403393e3a92830e1a6ebed56a6c"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"69afbdf09d5f4f12069b22aec3e343f1cf1636ba00abc7870520925a087da7df"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -24,6 +24,12 @@ document_id: unit-tests-readme
 ## Текущие наборы тестов
 
 Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+
+`Test_RpcRuntimeTracker.cpp` — детерминированный набор без сети для учёта RPC.
+Он фиксирует включительные границы warning/disconnect, ограничение предупреждений,
+учёт вызовов и предел pending, ограниченное объединение истории прихода,
+выбор ожидающего фрейма и сохранение полного 64-битного хеша. Явные фикстуры
+`nanotime` включают нулевые отметки.
 
 После добавления, удаления или переименования файла `Test_*.cpp` перегенерируйте инвентарь из корня движка:
 

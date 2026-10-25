@@ -126,6 +126,10 @@ SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound 
 SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
 SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningTimeMs, 1000); // Warning age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallDisconnectTimeMs, 30000); // Disconnect age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningIntervalMs, 10000); // Repeat warning interval per connection (0 = once per violating episode)
+SETTING(int32_t, ServerNetwork, MaxPendingRemoteCalls, 256); // Concurrent accepted RPC handlers per connection; the next call disconnects (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept

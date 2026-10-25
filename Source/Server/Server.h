@@ -468,6 +468,7 @@ private:
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
+    auto RpcWatchdogJob() -> std::optional<timespan>;
     auto HealthFileWriteJob(const string& health_info) -> std::optional<timespan>;
     auto WriteHealthFile(string_view text) -> bool;
     auto InitScriptSystemJob() -> std::optional<timespan>;
@@ -500,6 +501,9 @@ private:
     work_thread _starter {"ServerStarter"};
     work_thread _mainWorker {"ServerWorker"};
     work_thread _healthWriter {"ServerHealthWriter"};
+    work_thread _rpcWatchdog {"ServerRpcWatchdog"};
+    mutex _rpcStatesLocker {};
+    vector<weak_ptr<ServerConnection::RuntimeState>> _rpcStates FO_TSA_GUARDED_BY(_rpcStatesLocker) {};
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
@@ -549,3 +553,4 @@ private:
 };
 
 FO_END_NAMESPACE
+

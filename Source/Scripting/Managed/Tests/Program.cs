@@ -239,21 +239,22 @@ internal static class Program
                  Check(ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeLambda()) == "DispatchProbe::MakeLambda",
                        "A lambda is not named after the script method that wrote it");
              }),
-            ("an async remote call is named after its handler, not the adapter that wraps it",
+            ("an async remote call is named after its own method",
              () =>
              {
                  Native.RegisteredRemoteCalls.Clear();
                  Native.RegisteredRemoteCallHandlers.Clear();
+                 Native.RegisteredRemoteCallParameterCounts.Clear();
                  RemoteCallScriptFuncs.RegisterRemoteCalls();
                  int asyncCall = Native.RegisteredRemoteCalls.IndexOf("AsyncRemote");
                  int voidCall = Native.RegisteredRemoteCalls.IndexOf("VoidRemote");
                  Check(asyncCall >= 0 && voidCall >= 0, "The remote call probes were not registered");
                  string asyncName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[asyncCall]);
                  string voidName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[voidCall]);
-                 Check(asyncName == "DispatchProbe::AsyncRemote (via RemoteCallScriptFuncs::ObserveTaskHandler)",
-                       "An async remote call is named after the adapter instead of its handler: " + asyncName);
+                 Check(asyncName == "DispatchProbe::AsyncRemote",
+                       "An async remote call is not named after its own method: " + asyncName);
                  Check(voidName == "DispatchProbe::VoidRemote",
-                       "A remote call that needs no adapter is not named after its own method: " + voidName);
+                       "A void remote call is not named after its own method: " + voidName);
                  Action callback = ExampleGame.DispatchProbe.NoArgs;
                  string capturingName =
                      ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeCapturingLambda(callback));
@@ -298,6 +299,8 @@ internal static class Program
                  Check(invoked, "The queued callback was not executed");
                  Check(ReadPending() == before, "A completed continuation left a snapshot blocker");
              }),
+            ("remote call registration exposes direct Task and Action handlers",
+             RemoteCallCompletionScenarios.Run),
             ("a resumed await is named after its async method",
              () =>
              {
@@ -640,10 +643,72 @@ public static class DispatchProbe
     public static void VoidRemote()
     {
     }
+    public static TaskCompletionSource? RemoteCompletionSource { get; set; }
+
     [ServerRemoteCall]
     public static async Task AsyncRemote()
     {
+        TaskCompletionSource? source = RemoteCompletionSource;
+
+        if (source != null) {
+            await source.Task;
+            return;
+        }
+
         await Task.Yield();
+    }
+    internal static TaskCompletionSource? ZeroParameterRemoteSource;
+    [ServerRemoteCall]
+    public static Task ZeroParameterRemote() => ZeroParameterRemoteSource!.Task;
+
+    internal static TaskCompletionSource? TwoParameterRemoteSource;
+    internal static int RemoteNumber;
+    internal static string RemoteText = "";
+    [ServerRemoteCall]
+    public static Task TwoParameterRemote(int number, string text)
+    {
+        RemoteNumber = number;
+        RemoteText = text;
+        return TwoParameterRemoteSource!.Task;
+    }
+
+    internal static TaskCompletionSource? SixteenParameterRemoteSource;
+    internal static int RemoteWideValue;
+    [ServerRemoteCall]
+    public static Task SixteenParameterRemote(int a, int b, int c, int d, int e, int f, int g, int h,
+                                              int i, int j, int k, int l, int m, int n, int o, int p)
+    {
+        RemoteWideValue = a + 2 * b + 3 * c + 4 * d + 5 * e + 6 * f + 7 * g + 8 * h +
+                          9 * i + 10 * j + 11 * k + 12 * l + 13 * m + 14 * n + 15 * o + 16 * p;
+        return SixteenParameterRemoteSource!.Task;
+    }
+
+    internal static TaskCompletionSource<int>? GenericRemoteSource;
+    [ServerRemoteCall]
+    public static Task<int> GenericRemote() => GenericRemoteSource!.Task;
+
+    [ServerRemoteCall]
+    public static void VoidTwoRemote(int number, string text)
+    {
+        RemoteNumber = number;
+        RemoteText = text;
+    }
+
+    internal static void ResetRemoteCallProbes()
+    {
+        ZeroParameterRemoteSource?.TrySetResult();
+        ZeroParameterRemoteSource = null;
+        TwoParameterRemoteSource?.TrySetResult();
+        TwoParameterRemoteSource = null;
+        SixteenParameterRemoteSource?.TrySetResult();
+        SixteenParameterRemoteSource = null;
+        GenericRemoteSource?.TrySetResult(0);
+        GenericRemoteSource = null;
+        RemoteCompletionSource?.TrySetResult();
+        RemoteCompletionSource = null;
+        RemoteNumber = 0;
+        RemoteText = "";
+        RemoteWideValue = 0;
     }
     public static Action MakeCapturingLambda(Action callback)
     {
@@ -688,3 +753,4 @@ public enum Shared
     Value = 2
 }
 }
+

@@ -267,6 +267,42 @@ auto ServerEngine::HealthFileJob() -> std::optional<timespan>
     return std::chrono::milliseconds {Settings->Server.HealthFilePeriodMs};
 }
 
+auto ServerEngine::RpcWatchdogJob() -> std::optional<timespan>
+{
+    FO_TRACE_ZONE(Network);
+
+    if (IsShutdownInProgress()) {
+        return std::nullopt;
+    }
+
+    vector<shared_ptr<ServerConnection::RuntimeState>> states;
+
+    {
+        scoped_lock locker {_rpcStatesLocker};
+
+        std::erase_if(_rpcStates, [](const auto& weak_state) {
+            auto state = weak_state.lock();
+            return !state || !ServerConnection::IsRuntimeStateActive(state);
+        });
+
+        states.reserve(_rpcStates.size());
+
+        for (const auto& weak_state : _rpcStates) {
+            if (auto state = weak_state.lock()) {
+                states.emplace_back(std::move(state));
+            }
+        }
+    }
+
+    nanotime now = nanotime::now();
+
+    for (auto& state : states) {
+        safe_call([&] { ServerConnection::CheckRuntimeState(state, now); });
+    }
+
+    return std::chrono::milliseconds {100};
+}
+
 auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optional<timespan>
 {
     FO_TRACE_ZONE(FileSystem);
@@ -329,6 +365,10 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->ServerNetwork.MaxMessageSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->ServerNetwork.MaxBufferedInputSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningTimeMs >= 0, "ServerNetwork.RemoteCallWarningTimeMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallDisconnectTimeMs >= 0, "ServerNetwork.RemoteCallDisconnectTimeMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningIntervalMs >= 0, "ServerNetwork.RemoteCallWarningIntervalMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxPendingRemoteCalls >= 0, "ServerNetwork.MaxPendingRemoteCalls must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
     // Every connection runs the secure channel, so a server without its key must not accept anyone
@@ -770,6 +810,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
     // external observers (tests, network OnNewConnection) only see a fully-running server
     FinishStartingUp();
     _started = true;
+    _rpcWatchdog.add_job([this]() FO_DEFERRED { return RpcWatchdogJob(); });
 
     return std::nullopt;
 }
@@ -1095,6 +1136,7 @@ void ServerEngine::Shutdown()
     logging::write("Stop server");
 
     _shutdownInProgress.store(true, std::memory_order_release);
+    _rpcWatchdog.clear();
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context
@@ -2514,6 +2556,13 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
 
         FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
         auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value());
+
+        {
+            scoped_lock state_locker {_rpcStatesLocker};
+
+            _rpcStates.emplace_back(connection->GetRuntimeState());
+        }
+
         auto new_player = safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection));
         _notLoggedInPlayers.emplace_back(std::move(new_player));
         return _notLoggedInPlayers.back();
@@ -5613,12 +5662,18 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     in_buf.Unlock();
 
+    ServerConnection::InboundCall call = connection->BeginRemoteCall(remote_call_name, player->GetId());
+
+    if (!call.Accepted) {
+        return;
+    }
+
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 
     auto ctx = RequireCurrentSyncContext();
     ctx->SyncEntity(player);
 
-    HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
+    HandleInboundRemoteCall(remote_call_name, player, remote_call_data, std::move(call.Completion));
 }
 
 auto ServerEngine::CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool
@@ -5754,3 +5809,4 @@ static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 }
 
 FO_END_NAMESPACE
+

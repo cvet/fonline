@@ -719,7 +719,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         // worker/transport regression independent of the backend's fixture compiler and call syntax.
         server->SetRemoteCallHandler(
             server->Hashes.to_hashed_string("UnitTestLogin"),
-            [&](hstring, nptr<Entity> caller, span<uint8_t>) {
+            [&](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion>) {
                 ptr<Player> player = caller.dyn_cast<Player>();
                 login_calls++;
                 auto logged = server->LoginPlayerToTempSession(player);
@@ -732,7 +732,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
             true);
         server->SetRemoteCallHandler(
             server->Hashes.to_hashed_string("UnitTestWorldStep"),
-            [&](hstring, nptr<Entity> caller, span<uint8_t> data) {
+            [&](hstring, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion>) {
                 ptr<Player> player = caller.dyn_cast<Player>();
                 data_reader reader {data};
                 int32_t step = reader.read<int32_t>();
@@ -824,4 +824,200 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
+struct RpcTransportProbe
+{
+    mutex Locker {};
+    shared_ptr<ScriptCallCompletion> Retained {};
+    shared_ptr<ServerConnection::RuntimeState> Runtime {};
+    std::atomic<bool> Entered {};
+    std::atomic<bool> Finished {};
+    std::atomic<bool> Release {};
+    std::atomic<bool> HasCompletion {};
+    std::atomic<uint32_t> Warnings {};
+};
+
+template<typename Predicate>
+static auto WaitForRpcTransportProbe(Predicate&& predicate) -> bool
+{
+    nanotime deadline = nanotime::now() + std::chrono::seconds {15};
+
+    while (!predicate()) {
+        if (nanotime::now() >= deadline) {
+            return false;
+        }
+
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    return true;
+}
+
+static void CheckRpcRuntimeTransport(bool disconnect, bool deferred, bool disabled)
+{
+    auto probe = safe_alloc::make_shared<RpcTransportProbe>();
+    logging::set_callback("rpc-runtime-transport", [probe](logging::type, string_view message, nptr<const stack_trace::catched_data>) mutable {
+        if (message.find("RPC runtime warning:") != string_view::npos && message.find("cause=pending-call") != string_view::npos) {
+            probe->Warnings.fetch_add(1);
+        }
+    });
+    auto restore_logger = scope_exit([]() noexcept { logging::set_callback("rpc-runtime-transport", {}); });
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallWarningTimeMs, !disconnect && !disabled ? 1000 : 0);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallDisconnectTimeMs, disconnect ? 1000 : 0);
+    BakerTests::OverrideSetting(settings.ServerNetwork.MaxPendingRemoteCalls, disabled ? 0 : 8);
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([probe, &server]() mutable noexcept {
+        probe->Release.store(true);
+
+        {
+            scoped_lock locker {probe->Locker};
+            probe->Retained.reset();
+        }
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+    string error = WaitForServerStart(server);
+    INFO(error);
+    REQUIRE(error.empty());
+    hstring call_name;
+
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        call_name = server->Hashes.to_hashed_string("UnitTestLogin");
+        server->SetRemoteCallHandler(
+            call_name,
+            [probe, deferred](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion> completion) mutable {
+                auto player = caller.dyn_cast<Player>();
+                FO_VERIFY_AND_THROW(player, "RPC transport probe requires a player");
+
+                {
+                    scoped_lock locker {probe->Locker};
+                    probe->Runtime = player->GetConnection()->GetRuntimeState();
+
+                    if (deferred) {
+                        probe->Retained = completion;
+                    }
+                }
+
+                probe->HasCompletion.store(!!completion);
+                probe->Entered.store(true);
+
+                if (!deferred) {
+                    while (!probe->Release.load()) {
+                        coarse_sleep(std::chrono::milliseconds {1});
+                    }
+                }
+
+                probe->Finished.store(true);
+            },
+            true);
+    }
+
+    RawChannelClient client {port};
+    NetOutBuffer handshake {128};
+    handshake.StartMsg(NetMessage::Handshake);
+    handshake.Write(settings.Network.CompatibilityVersion);
+    handshake.Write<string_view>(server->GetMetadataVersion());
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+    handshake.Write<string_view>("Windows-win64");
+    handshake.EndMsg();
+    client.Send(handshake.GetData());
+    REQUIRE(WaitForRpcTransportProbe([&] {
+        auto data = client.GetPlaintext();
+        NetInBuffer response {data.size()};
+        response.AddData(data);
+
+        if (!response.NeedProcess()) {
+            return false;
+        }
+
+        REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
+        CHECK_FALSE(response.Read<bool>());
+        CHECK_FALSE(response.Read<bool>());
+        CHECK_FALSE(response.Read<bool>());
+        return true;
+    }));
+    NetOutBuffer request {32};
+    request.StartMsg(NetMessage::RemoteCall);
+    request.Write<hstring::hash_t>(call_name.as_hash());
+    request.Write<int32_t>(0);
+    request.EndMsg();
+    client.Send(request.GetData());
+    REQUIRE(WaitForRpcTransportProbe([&] { return probe->Entered.load(); }));
+    shared_ptr<ServerConnection::RuntimeState> runtime;
+
+    {
+        scoped_lock locker {probe->Locker};
+        runtime = probe->Runtime;
+    }
+
+    REQUIRE(runtime);
+
+    if (disabled) {
+        CHECK_FALSE(probe->HasCompletion.load());
+        CHECK_FALSE(ServerConnection::IsRuntimeStateActive(runtime));
+        CHECK_FALSE(client.IsDisconnected());
+    }
+    else if (disconnect) {
+        REQUIRE(WaitForRpcTransportProbe([&] { return client.IsDisconnected(); }));
+        CHECK(ServerConnection::GetRuntimeDisconnectReason(runtime) == DisconnectReason::RpcRuntimeLimit);
+        CHECK(probe->Finished.load() == deferred);
+        REQUIRE(WaitForRpcTransportProbe([&] { return !ServerConnection::IsRuntimeStateActive(runtime); }));
+        auto diagnostics = ServerConnection::GetRuntimeDiagnostics(runtime);
+        CHECK(diagnostics.PendingRemoteCalls == 0);
+        CHECK(diagnostics.AbandonedRemoteCalls == 1);
+        CHECK(diagnostics.RuntimeDisconnects == 1);
+    }
+    else {
+        REQUIRE(WaitForRpcTransportProbe([&] { return probe->Warnings.load() != 0; }));
+        CHECK_FALSE(client.IsDisconnected());
+        CHECK(ServerConnection::GetRuntimeDiagnostics(runtime).PendingRemoteCalls == 1);
+        CHECK(ServerConnection::GetRuntimeDisconnectReason(runtime) == DisconnectReason::None);
+    }
+
+    probe->Release.store(true);
+
+    {
+        scoped_lock locker {probe->Locker};
+        probe->Retained.reset();
+    }
+
+    REQUIRE(WaitForRpcTransportProbe([&] { return probe->Finished.load(); }));
+    REQUIRE(WaitForRpcTransportProbe([&] { return ServerConnection::GetRuntimeDiagnostics(runtime).PendingRemoteCalls == 0; }));
+    client.Close();
+    CHECK(WaitForServerConnectionCount(server, 0));
+}
+
+TEST_CASE("ServerRpcRuntimeWatchdogTransport", "[rpc-runtime-transport]")
+{
+    SECTION("A warning leaves the client connected")
+    {
+        CheckRpcRuntimeTransport(false, false, false);
+    }
+
+    SECTION("An independent watchdog disconnects while the only script worker is blocked")
+    {
+        CheckRpcRuntimeTransport(true, false, false);
+    }
+
+    SECTION("A deferred completion retains its deadline after the handler returns")
+    {
+        CheckRpcRuntimeTransport(true, true, false);
+    }
+
+    SECTION("Disabled limits do not create completion owners or disconnect a client")
+    {
+        CheckRpcRuntimeTransport(false, true, true);
+    }
+}
+
 FO_END_NAMESPACE
+

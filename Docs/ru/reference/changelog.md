@@ -7,10 +7,25 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7ef02f729bbfae3241ca7af07a1236febf7a1f750c5ef90cc39d6d691e92ecda"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"06b2e0aea285ec9979a3a83355e1774ac0dedc5b96cc8e4b9b04c734715acbac"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## Current - 2026-10-26
+
+### Добавлено
+
+- Независимый watchdog наблюдает незавершённые входящие серверные RPC и полные входные фреймы в очереди. Настройки `ServerNetwork.RemoteCallWarningTimeMs`, `RemoteCallDisconnectTimeMs`, `RemoteCallWarningIntervalMs`, `MaxPendingRemoteCalls` по умолчанию равны `1000`, `30000`, `10000`, `256`. Ноль независимо отключает реакцию по возрасту или предел допуска; отрицательные настройки отвергаются при запуске. Диагностика содержит идентификаторы/счётчики вызовов и готовность очереди без аргументов.
+
+### Изменено
+
+- RPC используют общее с ожидающими временными событиями владение завершением script backend. Managed-регистрация передаёт прямые `Task`-делегаты, включая `Task<T>`, приведённый к объявленному `Task`; wire-результат остаётся void, синхронные Action-adapters сохраняются. Detached-завершение RPC может учитываться без script pump; завершение таймера сохраняет скриптовый контекст. Teardown закрывает вход фоновых completion до освобождения backend. Отмена освобождает учёт, не становясь ошибкой скрипта.
+
+### Миграция
+
+- База `f29635c8dce0c3c4b39c30fd6d31ab0059f568db` (`2026.1.66-dev`) → `2026.1.67-dev`. Маркер runtime-совместимости `0.0.79` → `0.0.80`; пересоберите native-приложения/расширения и перепеките все роли скриптов с согласованными CoreScripts. Native `BaseEngine::RemoteCallHandler` получает четвёртый аргумент `shared_ptr<ScriptCallCompletion>`: сохраняйте его до завершения/отказа от отложенного native-обработчика. Обычный синхронный native-обработчик может его игнорировать. Интеграции backend используют `FuncCallData::Completion`; включать `CompletionOnAnyThread` можно только для detached callbacks. Старые присваивания обработчика с тремя аргументами отвергаются native-компилятором; compatibility shim не добавлен.
+- Проверьте настройки отключения выше с учётом законных долгих обработчиков. Отключение закрывает транспорт с новым `DisconnectReason::RpcRuntimeLimit = 11`; оно не отменяет произвольные Tasks, не прерывает код и не откатывает игровые эффекты. Значения причин `0..10`, wire-аргументы RPC, сохранённые значения, ABI managed-генератора `9` и форматы ресурсов сохраняют смысл. Конверсия сохранённых данных не нужна. Публикуйте согласованные бинарные файлы/ресурсы вместе; несовместимые комплекты отвергаются идентификатором совместимости. Откат восстанавливает прежние согласованные бинарные файлы/ресурсы и конфигурацию вместе.
 
 ## 2026.1.66-dev - 2026-10-26
 
@@ -26,7 +41,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 - Переименуйте authored prototype ID с whitespace и сохраните прежнее имя только как quoted source, например `///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge`. Обновите native и Python readers совместно, пересоздайте metadata и запеките согласованные ресурсы. Существующие сохранённые ID загружаются через эти правила; изменение runtime compatibility-marker или Managed ABI не требуется.
 
-## Current - 2026-10-26
+## 2026.1.65-dev - 2026-10-26
 
 ### Добавлено
 

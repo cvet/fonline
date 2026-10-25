@@ -12,6 +12,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-10-26
+
+### Added
+
+- Monitor unfinished inbound server RPCs and complete queued input frames with an independent watchdog. `ServerNetwork.RemoteCallWarningTimeMs` defaults to `1000`, `RemoteCallDisconnectTimeMs` to `30000`, `RemoteCallWarningIntervalMs` to `10000`, and `MaxPendingRemoteCalls` to `256`. Zero independently disables an age reaction or admission ceiling; negative settings fail startup. Diagnostics include call identity/counts and queue readiness without arguments.
+
+### Changed
+
+- RPCs share the script backend's completion ownership with awaited time events. Managed registration exposes direct `Task` delegates, including `Task<T>` normalized to a declared `Task`, while preserving void wire results and synchronous Action adapters. Detached RPC completion may finish without the script pump; timer completion retains its script context. Teardown closes background completion entry before releasing backend state. Cancellation releases accounting without becoming a script fault.
+
+### Migration
+
+- Base `f29635c8dce0c3c4b39c30fd6d31ab0059f568db` (`2026.1.66-dev`) → `2026.1.67-dev`. Advance runtime compatibility marker `0.0.79` → `0.0.80`; rebuild native applications/extensions and rebake all script roles with matching CoreScripts. Native `BaseEngine::RemoteCallHandler` receives a fourth `shared_ptr<ScriptCallCompletion>` argument: retain it through deferred native handlers and release it on completion/abandonment. Ordinary synchronous native handlers may ignore it. Backend integrations use `FuncCallData::Completion`; only detached callbacks may opt into `CompletionOnAnyThread`. Old three-argument handler assignments fail native compilation; no compatibility shim is supplied.
+- Review the opt-out settings above for legitimate long-running handlers. Disconnect closes the transport with additive `DisconnectReason::RpcRuntimeLimit = 11`; it does not cancel arbitrary Tasks, preempt code or roll back game effects. Existing reason IDs `0..10`, RPC wire arguments, persisted values, Managed generator ABI `9` and resource formats retain meaning. No saved-data conversion is required. Deploy matching binaries/resources together; mixed artifacts are refused by compatibility identity. Rollback restores the preceding matching binaries/resources and configuration together.
+
 ## 2026.1.66-dev - 2026-10-26
 
 ### Fixed
@@ -26,7 +41,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Rename any authored prototype ID containing whitespace and retain the retired name only as a double-quoted source, for example `///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge`. Update native and Python migration readers together, regenerate metadata, and rebake matching resources. Existing persisted IDs remain loadable through these rules; no runtime compatibility-marker or Managed ABI change is required.
 
-## Current - 2026-10-26
+## 2026.1.65-dev - 2026-10-26
 
 ### Added
 

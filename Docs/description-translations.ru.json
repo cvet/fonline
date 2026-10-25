@@ -10893,6 +10893,26 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.enum-value.DisconnectReason.RpcRuntimeLimit/description": {
+          "source_sha256": "2edbefcb229d2c86c2847671939ce21fd2313ba168bfd50545f2c4f61eff7e8c",
+          "translation": "Входящий RPC или готовая входная очередь превысили настроенный предел времени выполнения."
+        },
+        "/symbols/@id=setting.server.ServerNetwork.MaxPendingRemoteCalls/description": {
+          "source_sha256": "422385a2d0058c78af5fed254604f0a6b169d731033a0e4552a5900827b2fada",
+          "translation": "Число одновременно принятых обработчиков RPC на соединение; следующий вызов отключает клиента (0 = без ограничения)."
+        },
+        "/symbols/@id=setting.server.ServerNetwork.RemoteCallDisconnectTimeMs/description": {
+          "source_sha256": "8695ab76071e643d71b208f5497ded0561523e124182ec36bb5a5b2d259e22aa",
+          "translation": "Возраст незавершённых RPC или готовых входных фреймов для отключения клиента (0 = отключено)."
+        },
+        "/symbols/@id=setting.server.ServerNetwork.RemoteCallWarningIntervalMs/description": {
+          "source_sha256": "ec8149791a404327ea5e422fe20126e5823866ce31b8d2ca77fbe73f11ec6890",
+          "translation": "Интервал повторных предупреждений на соединение (0 = один раз на непрерывный эпизод превышения)."
+        },
+        "/symbols/@id=setting.server.ServerNetwork.RemoteCallWarningTimeMs/description": {
+          "source_sha256": "f25a0430bdca29b47f86c17684b4d68e0413c4babf0e985eabd522d30112ad44",
+          "translation": "Возраст незавершённых RPC или готовых входных фреймов для предупреждения (0 = отключено)."
         }
       }
     },
