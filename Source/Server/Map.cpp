@@ -101,7 +101,7 @@ auto Map::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<Tw
     if (grid_type == "Dynamic") {
         return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
-    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.MapInstanceGridType", grid_type);
+    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", SettingNames::Server_MapInstanceGridType, grid_type);
 }
 
 auto Map::GetName() const noexcept -> string_view

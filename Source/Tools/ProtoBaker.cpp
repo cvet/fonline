@@ -206,6 +206,10 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
             auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
 
+            if (name.find_first_of(" \t\r\n") != string::npos) {
+                throw ProtoBakerException("Proto name must not contain whitespace", name, file.GetPath());
+            }
+
             if (name.find('/') != string::npos || name.find('$') != string::npos) {
                 throw ProtoBakerException("Proto name must not contain a slash or dollar sign, they are reserved for nested section addressing", name, file.GetPath());
             }

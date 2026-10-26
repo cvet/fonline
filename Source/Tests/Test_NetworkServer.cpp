@@ -97,18 +97,30 @@ namespace
     class SendProbeConnection final : public NetworkServerConnection
     {
     public:
-        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings) :
-            NetworkServerConnection(settings)
+        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings, bool reenter = false) :
+            NetworkServerConnection(settings),
+            _reenter {reenter}
         {
         }
 
         using NetworkServerConnection::SendCallback;
 
         void Receive(const_span<uint8_t> buf) { ReceiveCallback(buf); }
+        auto GetTransportCloseCount() const -> uint32_t { return _transportCloses.load(); }
 
     private:
         void DispatchImpl() override { }
-        void DisconnectImpl() override { }
+        void DisconnectImpl() override
+        {
+            _transportCloses.fetch_add(1);
+
+            if (_reenter) {
+                Disconnect();
+            }
+        }
+
+        bool _reenter;
+        std::atomic<uint32_t> _transportCloses {};
     };
 
     static auto MakeTestChannelKey(uint8_t fill) -> crypto::key_bytes
@@ -167,9 +179,121 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
     CHECK(output.empty());
 }
 
+TEST_CASE("NetworkTransportClosureDoesNotWaitForCallbacks", "[rpc-runtime]")
+{
+    bool receive {};
+    bool reenter {};
+
+    SECTION("A sender remains blocked while the transport closes")
+    {
+    }
+    SECTION("A receiver remains blocked while the transport closes")
+    {
+        receive = true;
+    }
+    SECTION("A nested close does not wait on the blocked sender")
+    {
+        reenter = true;
+    }
+
+    auto settings = MakeServerNetworkSettings();
+    auto connection = safe_alloc::make_shared<SendProbeConnection>(&settings, reenter);
+    std::atomic<bool> release {};
+    std::atomic<uint32_t> notifications {};
+    std::promise<void> entered;
+    auto entered_future = entered.get_future();
+    std::promise<void> requested;
+    auto requested_future = requested.get_future();
+    std::promise<void> cleanup_entered;
+    std::promise<void> cleaned;
+    auto cleanup_entered_future = cleanup_entered.get_future();
+    auto cleaned_future = cleaned.get_future();
+    auto block = [&] {
+        entered.set_value();
+
+        while (!release.load()) {
+            coarse_sleep(std::chrono::milliseconds {1});
+        }
+    };
+    connection->SetAsyncCallbacks(
+        [&]() -> vector<uint8_t> {
+            if (!receive) {
+                block();
+            }
+
+            return {};
+        },
+        [&](const_span<uint8_t>) {
+            if (receive) {
+                block();
+            }
+        },
+        [&] { notifications.fetch_add(1); });
+    std::thread callback_worker([&] {
+        if (receive) {
+            connection->Receive(vector<uint8_t> {1});
+        }
+        else {
+            (void)connection->SendCallback();
+        }
+    });
+    std::thread request_worker;
+    std::thread cleanup_worker;
+    auto cleanup = scope_exit([&]() noexcept {
+        release.store(true);
+
+        for (auto worker : {std::ref(callback_worker), std::ref(request_worker), std::ref(cleanup_worker)}) {
+            if (worker.get().joinable()) {
+                worker.get().join();
+            }
+        }
+
+        safe_call([&] { connection->Disconnect(); });
+    });
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    request_worker = std::thread([&] {
+        try {
+            connection->RequestDisconnect();
+            requested.set_value();
+        }
+        catch (...) {
+            requested.set_exception(std::current_exception());
+        }
+    });
+    bool requested_ready = requested_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready;
+    REQUIRE(requested_ready);
+    requested_future.get();
+    CHECK(connection->IsDisconnected());
+    CHECK(connection->GetTransportCloseCount() == 1);
+    CHECK(notifications.load() == 0);
+    connection->RequestDisconnect();
+    CHECK(connection->GetTransportCloseCount() == 1);
+
+    cleanup_worker = std::thread([&] {
+        cleanup_entered.set_value();
+
+        try {
+            connection->Disconnect();
+            cleaned.set_value();
+        }
+        catch (...) {
+            cleaned.set_exception(std::current_exception());
+        }
+    });
+    REQUIRE(cleanup_entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    CHECK(cleaned_future.wait_for(std::chrono::milliseconds {20}) == std::future_status::timeout);
+    CHECK(notifications.load() == 0);
+    release.store(true);
+    REQUIRE(cleaned_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    cleaned_future.get();
+    CHECK(notifications.load() == 1);
+    connection->Disconnect();
+    CHECK(notifications.load() == 1);
+}
+
 TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 {
-    static constexpr DisconnectReason ALL_REASONS[] = {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect};
+    static constexpr DisconnectReason ALL_REASONS[] = {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect, DisconnectReason::RpcRuntimeLimit};
 
     SECTION("every reason is named, so a new one cannot silently degrade a log line to \"unknown\"")
     {

@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 3.22)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
-GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
-SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+if(FO_APP_ICON)
+    GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
+    SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+else()
+    SetValue(FO_GEN_FILE_CONTENT "")
+endif()
 configure_file(
     "${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt"
     ${FO_RC_FILE}
@@ -134,6 +138,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
     "${FO_ENGINE_ROOT}/Source/Common/MapLoader.cpp"
@@ -604,6 +610,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSourceLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_OzzAnimation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LinkDelay.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_RpcRuntimeTracker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"

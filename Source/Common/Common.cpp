@@ -52,6 +52,65 @@ static auto ReadPackagedBuildName() -> string;
 static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
 
+auto CommandLineArgs::GetSettingValue(string_view name, optional<string_view> implicit_value) const -> optional<string_view>
+{
+    for (size_t i = _args.size(); i > 0; --i) {
+        optional<CommandLineSetting> setting = GetSetting(i - 1);
+
+        if (!setting || setting->Name != name) {
+            continue;
+        }
+
+        if (setting->Value) {
+            return setting->Value;
+        }
+
+        if (implicit_value) {
+            return implicit_value;
+        }
+    }
+
+    return std::nullopt;
+}
+
+auto CommandLineArgs::GetSettings(string_view name) const -> vector<CommandLineSetting>
+{
+    vector<CommandLineSetting> result;
+
+    for (size_t i = 0; i < _args.size(); i++) {
+        optional<CommandLineSetting> setting = GetSetting(i);
+
+        if (setting && (name.empty() || setting->Name == name)) {
+            result.emplace_back(setting.value());
+        }
+    }
+
+    return result;
+}
+
+auto CommandLineArgs::GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>
+{
+    if (index >= _args.size()) {
+        return std::nullopt;
+    }
+
+    string_view arg = Get(index);
+
+    if (!IsOption(arg)) {
+        return std::nullopt;
+    }
+
+    string_view name = strvex(arg.substr(arg.starts_with("--") ? 2 : 1)).trim().strv();
+    optional<string_view> value;
+
+    // Checked on the raw next argument, so a negative number stays a value
+    if (index + 1 < _args.size() && !IsOption(Get(index + 1))) {
+        value = Get(index + 1);
+    }
+
+    return CommandLineSetting {name, value};
+}
+
 ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 {
     optional<vector<string>> platform_args = platform::get_command_line_args();

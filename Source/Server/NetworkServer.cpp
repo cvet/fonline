@@ -153,21 +153,40 @@ void NetworkServerConnection::Dispatch()
     DispatchImpl();
 }
 
+void NetworkServerConnection::RequestDisconnect()
+{
+    FO_TRACE_ZONE(Network);
+
+    bool expected = false;
+
+    if (_isDisconnected.compare_exchange_strong(expected, true)) {
+        _transportCloseThread.store(std::this_thread::get_id());
+
+        auto complete = scope_exit([this]() noexcept {
+            _transportCloseComplete.store(true);
+            _transportCloseThread.store(std::thread::id {});
+        });
+
+        DisconnectImpl();
+    }
+}
+
 void NetworkServerConnection::Disconnect()
 {
     FO_TRACE_ZONE(Network);
+
+    // A transport may synchronously re-enter from DisconnectImpl while a callback is still running.
+    // The outer close owns notification; destructors separately quiesce through DropAsyncCallbacks
+    if (_transportCloseThread.load() == std::this_thread::get_id()) {
+        return;
+    }
+
+    RequestDisconnect();
 
     {
         scoped_lock locker {_sendLocker};
 
         _sendCallback = {};
-    }
-
-    bool expected = false;
-    bool disconnected_here = _isDisconnected.compare_exchange_strong(expected, true);
-
-    if (disconnected_here) {
-        DisconnectImpl();
     }
 
     // Taken on every call, not only the first: the owning ServerConnection disconnects from its own
@@ -176,9 +195,9 @@ void NetworkServerConnection::Disconnect()
 
     _receiveCallback = {};
 
-    // Only the call that won the flag may take the disconnect callback: a nested call from the
-    // transport teardown above would otherwise drop it before the winner reports the disconnect
-    if (disconnected_here) {
+    // A previous transport-only request leaves notification for the next ordinary disconnect.
+    // Nested closure must finish before its pending callback can be consumed
+    if (_transportCloseComplete.load()) {
         DisconnectCallback disconnect_callback = std::move(_disconnectCallback);
         _disconnectCallback = {};
 
@@ -196,7 +215,7 @@ void NetworkServerConnection::DropAsyncCallbacks()
         _sendCallback = {};
     }
 
-    // The winner of Disconnect() reports under this lock, so a report already in flight finishes before the owner goes
+    // Disconnect notifications run under this lock, so an in-flight report finishes before its owner goes
     scoped_lock locker {_receiveLocker};
 
     _receiveCallback = {};

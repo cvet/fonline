@@ -10,10 +10,12 @@ internal static class Native
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
                                                 Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
     public static readonly System.Collections.Generic.List<Delegate> RegisteredRemoteCallHandlers = new();
+    public static readonly System.Collections.Generic.List<int> RegisteredRemoteCallParameterCounts = new();
     public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler)
     {
         RegisteredRemoteCalls.Add(name);
         RegisteredRemoteCallHandlers.Add(handler);
+        RegisteredRemoteCallParameterCounts.Add(parameters);
     }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)

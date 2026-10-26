@@ -199,15 +199,13 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
 {
     if (_bakingMode) {
         // Auto settings
-        _appliedSettings.emplace("ApplyConfig");
-        _appliedSettings.emplace("ApplySubConfig");
-        _appliedSettings.emplace("Common.UnpackagedSubConfig");
-        _appliedSettings.emplace("Common.UserWritablePath");
-        _appliedSettings.emplace("Network.CompatibilityVersion");
-        _appliedSettings.emplace("Common.Packaged");
-        _appliedSettings.emplace("Render.RenderDebug");
-        _appliedSettings.emplace("View.MonitorWidth");
-        _appliedSettings.emplace("View.MonitorHeight");
+        _appliedSettings.emplace(SettingNames::Common_UnpackagedSubConfig);
+        _appliedSettings.emplace(SettingNames::Common_UserWritablePath);
+        _appliedSettings.emplace(SettingNames::Network_CompatibilityVersion);
+        _appliedSettings.emplace(SettingNames::Common_Packaged);
+        _appliedSettings.emplace(SettingNames::Render_RenderDebug);
+        _appliedSettings.emplace(SettingNames::View_MonitorWidth);
+        _appliedSettings.emplace(SettingNames::View_MonitorHeight);
     }
 }
 
@@ -248,31 +246,17 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 {
     FO_TRACE_ZONE(Core);
 
-    for (size_t i = 0; i < args.size(); i++) {
-        string_view arg = args.Get(i);
+    // Every entry is applied in command-line order: a replacement followed by a +append must keep both operations
+    for (const CommandLineSetting& setting : args.GetSettings()) {
+        string key {setting.Name};
+        string value = strex("{}", setting.Value.value_or("1")).trim().str();
 
-        if (arg.empty()) {
-            continue;
-        }
-
-        if (i == 0 && !CommandLineArgs::IsOption(arg)) {
-            continue;
-        }
-
-        if (CommandLineArgs::IsOption(arg)) {
-            bool has_next_arg = i + 1 < args.size();
-            string_view next_arg = args.Get(i + 1);
-            string arg_text = strex("{}", arg).trim().str();
-            string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
-            string value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
-
-            // The writable root was taken from this argument and resolved before anything was read, and applied again
-            // as a setting value it would lose that resolution
-            if (key != "ApplyConfig" && key != "ApplySubConfig" && key != "Common.UserWritablePath") {
-                string shown = IsSecretSettingName(key) ? string("***") : value;
-                logging::write(logging::type::info, "Set {} to {}", key, shown);
-                SetValue(key, value);
-            }
+        // The writable root was taken from this argument and resolved before anything was read, and applied again
+        // as a setting value it would lose that resolution
+        if (key != CommandLineSettings::ApplyConfig && key != CommandLineSettings::ApplySubConfig && key != SettingNames::Common_UserWritablePath) {
+            string shown = IsSecretSettingName(key) ? string("***") : value;
+            logging::write(logging::type::info, "Set {} to {}", key, shown);
+            SetValue(key, value);
         }
     }
 }
@@ -308,7 +292,7 @@ void GlobalSettings::ApplyDefaultSettings()
 void GlobalSettings::ApplyWritableRoot(string_view root)
 {
     *FixedSettingForEdit(Common.UserWritablePath) = string(root);
-    _settingValues["Common.UserWritablePath"] = string(root);
+    _settingValues[string(SettingNames::Common_UserWritablePath)] = string(root);
 }
 
 void GlobalSettings::ApplyAutoSettings()
@@ -442,8 +426,8 @@ void GlobalSettings::SetSettingValue(string_view name, string_view value)
 auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
 {
 #define SETTING(type, group, setting_name, ...) \
-    case const_hash(#group "." #setting_name): \
-        if (name == #group "." #setting_name) { \
+    case const_hash(SettingNames::group##_##setting_name.data()): \
+        if (name == SettingNames::group##_##setting_name) { \
             return strex("{}", group.setting_name).str(); \
         } \
         break
@@ -466,8 +450,8 @@ auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
 void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 {
 #define SETTING(type, group, setting_name, ...) \
-    case const_hash(#group "." #setting_name): \
-        if (name == #group "." #setting_name) { \
+    case const_hash(SettingNames::group##_##setting_name.data()): \
+        if (name == SettingNames::group##_##setting_name) { \
             throw SettingsException("Setting is read-only", name); \
         } \
         break
@@ -490,7 +474,7 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
 {
-    if (setting_name == "Common.UserWritablePath") {
+    if (setting_name == SettingNames::Common_UserWritablePath) {
         if (!setting_value.empty()) {
             throw SettingsException("Writable root is resolved before settings", setting_name);
         }
@@ -571,8 +555,8 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     _settingValues[full_name] = strex("{}", sett).str(); \
     break
 #define SETTING(type, group, name, ...) \
-    case const_hash(#group "." #name): \
-        SET_SETTING(*FixedSettingForEdit(group.name), #group "." #name)
+    case const_hash(SettingNames::group##_##name.data()): \
+        SET_SETTING(*FixedSettingForEdit(group.name), string(SettingNames::group##_##name))
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 
@@ -733,7 +717,7 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     };
 
-#define SETTING(type, group, name, ...) add_setting(#group "." #name, group.name)
+#define SETTING(type, group, name, ...) add_setting(SettingNames::group##_##name, group.name)
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
@@ -747,10 +731,10 @@ void GlobalSettings::Draw(bool editable)
 
 #define SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#group "." #name, *FixedSettingForEdit(group.name)); \
+        DrawEditableEntry(SettingNames::group##_##name, *FixedSettingForEdit(group.name)); \
     } \
     else { \
-        DrawEntry(#group "." #name, group.name); \
+        DrawEntry(SettingNames::group##_##name, group.name); \
     }
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
@@ -847,7 +831,7 @@ auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAcce
 
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
-#define SETTING(type, group, setting_name, ...) AddNumericSettingAccess<type>(result, #group "." #setting_name, [](ptr<const GlobalSettings> settings) -> const type& { return settings->group.setting_name; })
+#define SETTING(type, group, setting_name, ...) AddNumericSettingAccess<type>(result, SettingNames::group##_##setting_name, [](ptr<const GlobalSettings> settings) -> const type& { return settings->group.setting_name; })
 #include "Settings.inc"
 #undef SETTING
 #undef SETTING_GROUP

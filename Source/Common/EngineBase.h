@@ -188,7 +188,7 @@ struct ScriptOverrunRecord
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>, shared_ptr<ScriptCallCompletion>)>;
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -209,7 +209,7 @@ public:
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    void FrameAdvance();
+    void FrameAdvance(bool process_backends = true);
 
     virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
@@ -223,7 +223,7 @@ public:
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

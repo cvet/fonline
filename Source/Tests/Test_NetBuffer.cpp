@@ -374,4 +374,71 @@ TEST_CASE("NetBufferAdversarial")
     }
 }
 
+TEST_CASE("NetBufferQueuedFrameDiagnostics", "[rpc-runtime]")
+{
+    NetOutBuffer output {32};
+    output.StartMsg(NetMessage::RemoteCall);
+    output.Write<hstring::hash_t>(0x100000017ULL);
+    output.Write<int32_t>(0);
+    output.EndMsg();
+    size_t first_size = output.GetDataSize();
+
+    SECTION("A fragment becomes queued only when its final byte arrives")
+    {
+        NetInBuffer input {32};
+        auto bytes = output.GetData();
+        input.AddData(bytes.first(first_size - 1));
+        CHECK_FALSE(input.PeekQueuedMessage());
+        CHECK(input.GetReadPos() == 0);
+        CHECK(input.GetBufferedUnreadSize() == first_size - 1);
+        input.AddData(bytes.last(1));
+        auto queued = input.PeekQueuedMessage();
+        REQUIRE(queued);
+        CHECK(queued->PrefixBytes == first_size);
+        CHECK(queued->RemoteCallHash == 0x100000017ULL);
+        CHECK(input.GetReadPos() == 0);
+    }
+
+    SECTION("Peeking skips a live frame without consuming its unread payload")
+    {
+        output.StartMsg(NetMessage::RemoteCall);
+        output.Write<hstring::hash_t>(0x200000019ULL);
+        output.Write<int32_t>(0);
+        output.EndMsg();
+        NetInBuffer input {32};
+        input.AddData(output.GetData());
+        REQUIRE(input.ReadMsg() == NetMessage::RemoteCall);
+        size_t read_pos = input.GetReadPos();
+        auto queued = input.PeekQueuedMessage();
+        REQUIRE(queued);
+        CHECK(queued->RemoteCallHash == 0x200000019ULL);
+        CHECK(queued->PrefixBytes == output.GetDataSize() - read_pos);
+        CHECK(input.GetReadPos() == read_pos);
+        CHECK(input.Read<hstring::hash_t>() == 0x100000017ULL);
+        CHECK(input.Read<int32_t>() == 0);
+        input.ShrinkReadBuf();
+        queued = input.PeekQueuedMessage();
+        REQUIRE(queued);
+        CHECK(queued->PrefixBytes == output.GetDataSize() - first_size);
+        CHECK(input.ReadMsg() == NetMessage::RemoteCall);
+        CHECK(input.Read<hstring::hash_t>() == 0x200000019ULL);
+        CHECK(input.Read<int32_t>() == 0);
+        CHECK_FALSE(input.NeedProcess());
+    }
+
+    SECTION("Diagnostic peeks leave malformed-input rejection to the processing owner")
+    {
+        NetOutBuffer malformed {16};
+        malformed.Write<uint32_t>(0);
+        malformed.Write<uint32_t>(9);
+        malformed.Write(NetMessage::Ping);
+        NetInBuffer input {16};
+        input.AddData(malformed.GetData());
+        CHECK_FALSE(input.PeekQueuedMessage());
+        CHECK(input.GetReadPos() == 0);
+        CHECK(input.GetBufferedUnreadSize() == malformed.GetDataSize());
+        CHECK_THROWS(input.NeedProcess());
+    }
+}
+
 FO_END_NAMESPACE

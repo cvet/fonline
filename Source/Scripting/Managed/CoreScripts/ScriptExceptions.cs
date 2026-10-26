@@ -10,8 +10,11 @@ public static class ScriptExceptions
 {
     private static readonly AsyncLocal<Scope?> CurrentScope = new AsyncLocal<Scope?>();
     private static int RecordedGlobally;
+    private static int PendingTasks;
 
     public static int GlobalCount => RecordedGlobally;
+
+    internal static int PendingTaskCount => Volatile.Read(ref PendingTasks);
 
     // Opens a counting scope on the current logical flow. A synchronous fault recorded anywhere in that flow while
     // the scope is open counts into it, on whichever thread an await resumes the flow, and a fault of any other flow
@@ -61,16 +64,23 @@ public static class ScriptExceptions
             return;
         }
 
+        Interlocked.Increment(ref PendingTasks);
+
         _ = task.ContinueWith(
-            static failedTask =>
+            static completedTask =>
             {
-                if (failedTask.Exception != null) {
-                    // A deferred fault runs on a foreign thread, so only the global counter is incremented here
-                    RecordGlobal(failedTask.Exception, true);
+                try {
+                    if (completedTask.IsFaulted && completedTask.Exception != null) {
+                        // A deferred fault runs on a foreign thread, so only the global counter is incremented here
+                        RecordGlobal(completedTask.Exception, true);
+                    }
+                }
+                finally {
+                    Interlocked.Decrement(ref PendingTasks);
                 }
             },
             CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskContinuationOptions.ExecuteSynchronously,
             // Without an explicit scheduler the continuation would inherit TaskScheduler.Current, which inside a
             // script continuation is the engine's context-bound scheduler -- the exact opposite of the foreign
             // thread this recorder is written for, and a way back into the script context while reporting a fault

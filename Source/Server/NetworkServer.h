@@ -66,6 +66,8 @@ public:
 
     void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);
     void Dispatch();
+    // Requests transport closure without quiescing callbacks; owners still call Disconnect/DropAsyncCallbacks before destruction
+    void RequestDisconnect();
     void Disconnect();
     void DropAsyncCallbacks();
 
@@ -90,6 +92,8 @@ private:
     vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
     DisconnectCallback _disconnectCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
     std::atomic_bool _isDisconnected {};
+    std::atomic_bool _transportCloseComplete {};
+    std::atomic<std::thread::id> _transportCloseThread {};
 };
 
 class NetworkServer

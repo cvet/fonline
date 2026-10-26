@@ -33,6 +33,7 @@
 
 #include "ServerConnection.h"
 
+#include "ScriptSystem.h"
 #include "TextPack.h"
 
 FO_BEGIN_NAMESPACE
@@ -53,6 +54,217 @@ static constexpr std::array<uint8_t, 20> PRE_CHANNEL_REFUSAL {
     0x01, 0x01, 0x00, // Compatibility, updater and metadata outdated
     0x00, 0x00, 0x00, 0x00, // Empty metadata version
     0x00, 0x00, 0x00, 0x00, // Zero encryption key
+};
+
+class ServerConnection::RuntimeState final
+{
+    struct MethodCounters
+    {
+        uint64_t Started {};
+        uint64_t Finished {};
+        size_t Pending {};
+    };
+
+public:
+    RuntimeState(RpcRuntimeLimits limits, shared_ptr<NetworkServerConnection> connection) :
+        _tracker {limits},
+        _connection {connection},
+        _host {connection->GetHost()},
+        _port {connection->GetPort()}
+    {
+    }
+
+    auto GetDisconnectReason() const -> DisconnectReason { return _reason.load(std::memory_order_relaxed); }
+
+    auto IsActive() const -> bool
+    {
+        scoped_lock locker {_locker};
+
+        return !_stopped && _tracker.IsEnabled();
+    }
+
+    auto GetDiagnostics() const -> Diagnostics
+    {
+        scoped_lock locker {_locker};
+
+        Diagnostics result;
+        result.PendingRemoteCalls = _tracker.GetPendingCount();
+        result.BufferedInputBytes = _tracker.GetBufferedInputSize();
+        result.InputArrivalSegments = _tracker.GetArrivalSegmentCount();
+        result.RuntimeWarnings = _warnings;
+        result.RuntimeDisconnects = _disconnects;
+        result.AbandonedRemoteCalls = _abandoned;
+        return result;
+    }
+
+    auto Begin(string_view name, ident_t caller_id, nanotime now) -> RpcRuntimeStart
+    {
+        scoped_lock locker {_locker};
+
+        if (_stopped) {
+            return {false, {}};
+        }
+
+        RpcRuntimeStart started = _tracker.Begin(name, caller_id, now);
+
+        if (started.Accepted && started.Id) {
+            MethodCounters& counters = _methods[string {name}];
+            counters.Started++;
+            counters.Pending++;
+            _lastDispatch = string {name};
+        }
+
+        return started;
+    }
+
+    void Finish(RpcRuntimeCallId id, string_view name)
+    {
+        scoped_lock locker {_locker};
+
+        if (_stopped) {
+            return;
+        }
+
+        auto counters = _methods.find(string {name});
+        FO_STRONG_ASSERT(counters != _methods.end() && counters->second.Pending != 0, "RPC method completion lost its pending call", name, id);
+        _tracker.Finish(id);
+        counters->second.Finished++;
+        counters->second.Pending--;
+    }
+
+    void UpdateInput(size_t consumed, size_t added, optional<NetInBuffer::QueuedMessage> queued, size_t unread, nanotime now)
+    {
+        scoped_lock locker {_locker};
+
+        if (_stopped || !_tracker.IsEnabled()) {
+            return;
+        }
+
+        _tracker.AddInput(added, now);
+        _tracker.ConsumeInput(consumed);
+
+        // Once a frame is ready, later history coalescing must not postpone its deadline
+        if (_queuedPrefix && consumed < *_queuedPrefix) {
+            *_queuedPrefix -= consumed;
+        }
+        else {
+            _queuedPrefix.reset();
+            _queuedReadyAt.reset();
+        }
+
+        if (queued) {
+            if (!_queuedPrefix || *_queuedPrefix != queued->PrefixBytes) {
+                _queuedReadyAt = _tracker.GetInputReadyTime(queued->PrefixBytes);
+            }
+
+            _queuedPrefix = queued->PrefixBytes;
+        }
+        else {
+            _queuedPrefix.reset();
+            _queuedReadyAt.reset();
+        }
+
+        _tracker.SetQueuedMessage(_queuedReadyAt, unread, queued ? queued->RemoteCallHash : 0);
+    }
+
+    auto RecordDisconnectReason(DisconnectReason reason) -> bool
+    {
+        DisconnectReason expected = DisconnectReason::None;
+        return _reason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
+    }
+
+    void Check(nanotime now)
+    {
+        auto connection = _connection.lock();
+
+        if (!connection || connection->IsDisconnected()) {
+            return;
+        }
+
+        RpcRuntimeReport report;
+        string last_dispatch;
+        string counters_call;
+        MethodCounters counters;
+        size_t arrival_segments {};
+
+        {
+            scoped_lock locker {_locker};
+
+            if (_stopped) {
+                return;
+            }
+
+            report = _tracker.Evaluate(now);
+
+            if (report.Action == RpcRuntimeAction::None) {
+                return;
+            }
+
+            last_dispatch = _lastDispatch;
+            counters_call = report.CallName.empty() ? last_dispatch : report.CallName;
+            arrival_segments = _tracker.GetArrivalSegmentCount();
+            auto method = _methods.find(counters_call);
+
+            if (method != _methods.end()) {
+                counters = method->second;
+            }
+
+            if (report.Action == RpcRuntimeAction::Warning) {
+                _warnings++;
+            }
+        }
+
+        bool disconnect = report.Action == RpcRuntimeAction::Disconnect;
+
+        if (disconnect && !RecordDisconnectReason(DisconnectReason::RpcRuntimeLimit)) {
+            return;
+        }
+
+        if (disconnect) {
+            {
+                scoped_lock locker {_locker};
+
+                _disconnects++;
+            }
+
+            auto stop = scope_exit([this]() noexcept { Stop(); });
+            connection->RequestDisconnect();
+        }
+
+        string_view cause = report.Cause == RpcRuntimeCause::InputQueue ? "input-queue" : report.Cause == RpcRuntimeCause::PendingLimit ? "pending-limit" : "pending-call";
+        logging::write(logging::type::warning, "RPC runtime {}: peer={}:{}, caller={}, call={}, id={}, cause={}, age_ms={}, pending={}, buffered_bytes={}, queued_call_hash={}, started={}, finished={}, last_dispatch={}, stats_call={}, method_pending={}, method_started={}, method_finished={}, arrival_segments={}", disconnect ? "disconnect" : "warning", _host, _port, report.CallerId, report.CallName, report.Id, cause, report.Age.milliseconds(), report.PendingCalls, report.BufferedBytes, report.QueuedCallHash, report.StartedCalls, report.FinishedCalls, last_dispatch, counters_call, counters.Pending, counters.Started, counters.Finished, arrival_segments);
+    }
+
+    void Stop()
+    {
+        scoped_lock locker {_locker};
+
+        if (!_stopped) {
+            _abandoned = _tracker.GetPendingCount();
+            _tracker = RpcRuntimeTracker {{0, 0, 0, 0}};
+            _methods.clear();
+            _lastDispatch.clear();
+            _queuedPrefix.reset();
+            _queuedReadyAt.reset();
+            _stopped = true;
+        }
+    }
+
+private:
+    mutable mutex _locker {};
+    RpcRuntimeTracker _tracker FO_TSA_GUARDED_BY(_locker);
+    weak_ptr<NetworkServerConnection> _connection;
+    string _host;
+    uint16_t _port;
+    std::atomic<DisconnectReason> _reason {};
+    uint64_t _warnings FO_TSA_GUARDED_BY(_locker) {};
+    uint64_t _disconnects FO_TSA_GUARDED_BY(_locker) {};
+    size_t _abandoned FO_TSA_GUARDED_BY(_locker) {};
+    bool _stopped FO_TSA_GUARDED_BY(_locker) {};
+    unordered_map<string, MethodCounters> _methods FO_TSA_GUARDED_BY(_locker) {};
+    string _lastDispatch FO_TSA_GUARDED_BY(_locker) {};
+    optional<size_t> _queuedPrefix FO_TSA_GUARDED_BY(_locker) {};
+    optional<nanotime> _queuedReadyAt FO_TSA_GUARDED_BY(_locker) {};
 };
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view
@@ -80,6 +292,8 @@ auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view
         return "login failed";
     case DisconnectReason::ReplacedByReconnect:
         return "replaced by reconnect";
+    case DisconnectReason::RpcRuntimeLimit:
+        return "RPC runtime limit";
     }
 
     return "unknown";
@@ -149,6 +363,7 @@ void ServerConnection::InBufAccessor::Lock()
 void ServerConnection::InBufAccessor::Unlock() noexcept
 {
     if (_inBuf) {
+        _owner->UpdateInputDiagnostics();
         _owner->_inBufLocker.unlock();
         _inBuf = nullptr;
     }
@@ -160,12 +375,14 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     _inBuf(_settings->Network.NetBufferSize),
     _outBuf(_settings->Network.NetBufferSize),
     _channel {channel_identity},
-    _uplinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}}
+    _uplinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}},
+    _runtimeState {safe_alloc::make_shared<RuntimeState>(RpcRuntimeLimits {_settings->ServerNetwork.RemoteCallWarningTimeMs, _settings->ServerNetwork.RemoteCallDisconnectTimeMs, _settings->ServerNetwork.RemoteCallWarningIntervalMs, numeric_cast<size_t>(_settings->ServerNetwork.MaxPendingRemoteCalls)}, _netConnection)}
 {
     auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
+        _runtimeState->Stop();
         logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
     };
@@ -184,6 +401,8 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
 
 ServerConnection::~ServerConnection()
 {
+    _runtimeState->Stop();
+
     safe_call([this] {
         scoped_lock locker {_inBufLocker};
 
@@ -223,18 +442,17 @@ auto ServerConnection::IsInputRejected() const noexcept -> bool
 
 auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
 {
-    return _disconnectReason.load(std::memory_order_relaxed);
+    return GetRuntimeDisconnectReason(_runtimeState);
 }
 
 void ServerConnection::RecordDisconnectReason(DisconnectReason reason) noexcept
 {
-    DisconnectReason expected = DisconnectReason::None;
-    (void)_disconnectReason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
+    (void)_runtimeState->RecordDisconnectReason(reason);
 }
 
 auto ServerConnection::GetDiagnostics() const -> Diagnostics
 {
-    Diagnostics result;
+    Diagnostics result = GetRuntimeDiagnostics(_runtimeState);
     result.HandshakeComplete = _activity.HandshakeComplete;
     result.LastActivityTime = _activity.LastActivityTime;
     result.LastLoginProgressTime = _activity.LastLoginProgressTime;
@@ -247,6 +465,57 @@ auto ServerConnection::GetDiagnostics() const -> Diagnostics
     }
 
     return result;
+}
+
+auto ServerConnection::GetRuntimeState() const -> shared_ptr<RuntimeState>
+{
+    return _runtimeState;
+}
+
+auto ServerConnection::GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason
+{
+    return state->GetDisconnectReason();
+}
+
+auto ServerConnection::GetRuntimeDiagnostics(ptr<const RuntimeState> state) -> Diagnostics
+{
+    return state->GetDiagnostics();
+}
+
+auto ServerConnection::IsRuntimeStateActive(ptr<const RuntimeState> state) -> bool
+{
+    return state->IsActive();
+}
+
+auto ServerConnection::BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall
+{
+    RpcRuntimeStart started = _runtimeState->Begin(name.as_str(), caller_id, nanotime::now());
+
+    if (!started.Accepted) {
+        _runtimeState->Check(nanotime::now());
+        return {false, {}};
+    }
+    if (!started.Id) {
+        return {};
+    }
+
+    auto completion = safe_alloc::make_shared<ScriptCallCompletion>([state = _runtimeState, id = started.Id, call_name = string {name.as_str()}]() mutable noexcept { state->Finish(id, call_name); });
+    return {true, std::move(completion)};
+}
+
+void ServerConnection::CheckRuntimeState(ptr<RuntimeState> state, nanotime now)
+{
+    state->Check(now);
+}
+
+void ServerConnection::UpdateInputDiagnostics(size_t added_bytes)
+{
+    size_t unread = _inBuf.GetBufferedUnreadSize();
+    FO_STRONG_ASSERT(_accountedInputBytes <= std::numeric_limits<size_t>::max() - added_bytes, "Input accounting overflow");
+    size_t available = _accountedInputBytes + added_bytes;
+    FO_STRONG_ASSERT(unread <= available, "Input accounting lost received bytes", unread, available);
+    _runtimeState->UpdateInput(available - unread, added_bytes, _inBuf.PeekQueuedMessage(), unread, nanotime::now());
+    _accountedInputBytes = unread;
 }
 
 auto ServerConnection::IsHandshakeComplete() const noexcept -> bool
@@ -455,8 +724,10 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
                 }
 
                 _inBuf.AddData(_channelPlaintext);
+                UpdateInputDiagnostics(_channelPlaintext.size());
             }
             catch (const NetBufferException& ex) {
+                UpdateInputDiagnostics();
                 RejectInput(ex, true);
             }
             catch (const NoiseException& ex) {

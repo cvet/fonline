@@ -275,7 +275,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     engine->SendRemoteCall(outbound_call->Name, caller, data);
 }
 
-static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
+static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func, shared_ptr<ScriptCallCompletion> completion)
 {
     FO_TRACE_ZONE(Script);
 
@@ -364,6 +364,11 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
+
+    if (completion) {
+        call.Completion = [completion = std::move(completion)](bool) noexcept { };
+    }
+
     size_t args_count = inbound_call.Args.size() + (engine->GetSide() == EngineSideKind::ServerSide ? 1 : 0);
     small_vector<ptr<void>, 16> data_storage;
     data_storage.reserve(args_count);
@@ -532,9 +537,9 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
                     continue;
                 }
 
-                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+                engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func = func.as_ptr()](hstring name, nptr<Entity> entity, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion) FO_DEFERRED {
                     FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
-                    InboundRemoteCallHandler(inbound_call, entity, data, engine, func);
+                    InboundRemoteCallHandler(inbound_call, entity, data, engine, func, std::move(completion));
                 });
             }
         }

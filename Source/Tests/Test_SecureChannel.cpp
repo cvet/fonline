@@ -710,6 +710,63 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
     CHECK(in_buf.Read<int64_t>() == 1234);
 }
 
+TEST_CASE("ServerRpcQueueDeadlineSurvivesLaterArrivalCoalescing", "[rpc-runtime]")
+{
+    auto settings = MakeTestSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallWarningTimeMs, 1000);
+    BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallDisconnectTimeMs, 0);
+    SecureChannelIdentity identity {crypto::generate_secret_key()};
+    auto transport = safe_alloc::make_shared<ProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, transport, identity);
+    SecureChannel client {vector<crypto::key_bytes> {identity.GetPublicKey()}};
+    vector<uint8_t> offer;
+    client.TakeHandshakeOutput(offer);
+    transport->Receive(offer);
+    vector<uint8_t> plaintext;
+    client.Receive(transport->SendCallback(), plaintext);
+    REQUIRE(client.IsEstablished());
+
+    auto send = [&](const_span<uint8_t> data) {
+        vector<uint8_t> sealed;
+        client.Seal(data, sealed);
+        transport->Receive(sealed);
+    };
+    NetOutBuffer frame {32};
+    frame.StartMsg(NetMessage::Ping);
+    frame.Write(false);
+    frame.Write(int64_t {123});
+    frame.EndMsg();
+    send(frame.GetData());
+    send(frame.GetData());
+
+    {
+        auto input = connection->ReadBuf();
+        REQUIRE(input->ReadMsg() == NetMessage::Ping);
+    }
+
+    nanotime before_later = nanotime::now();
+    coarse_sleep(std::chrono::milliseconds {5});
+
+    for (size_t i = 0; i < 4098; i++) {
+        send(frame.GetData());
+    }
+
+    REQUIRE(connection->GetDiagnostics().InputArrivalSegments == 4096);
+
+    {
+        auto input = connection->ReadBuf();
+        CHECK_FALSE(input->Read<bool>());
+        CHECK(input->Read<int64_t>() == 123);
+        input->ShrinkReadBuf();
+    }
+
+    // This synthetic time reaches the original deadline, but not any later arrival's deadline
+    ServerConnection::CheckRuntimeState(connection->GetRuntimeState(), before_later + std::chrono::milliseconds {1000});
+    CHECK(connection->GetDiagnostics().RuntimeWarnings == 1);
+    CHECK_FALSE(transport->IsDisconnected());
+}
+
 namespace
 {
     FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31");

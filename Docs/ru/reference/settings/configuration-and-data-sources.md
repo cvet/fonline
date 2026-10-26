@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"84eb4c1dbaaca87c17628a783036fcd3085f3dccef751c86a3188d5efc2d52d1"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"a0862a45e7fd669398456a38e15f1143dd7cc691220d387bb8ab3c406172f69d"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -156,7 +156,7 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 `Baking.BakeLanguages` является упорядоченным контрактом контента, а не неупорядоченным locale allowlist: text baking использует первое значение как базу нормализации. `Client.Language` выбирает начальный client text pack. Точное поведение `.fotxt`, `$Text`, fallback и runtime lookup описано в разделе [Текст и локализация](../../how-to/content/text-and-localization.md).
 
-До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `Platform::GetUserDataBase()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
+До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `platform::get_user_data_base()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
 
 Любое непустое `Common.UserWritablePath` в основном config, sub-config,
 local-config cache или упакованном internal config вызывает `SettingsException`
@@ -169,6 +169,40 @@ local-config cache или упакованном internal config вызывае�
 Обычный command line по-прежнему применяется к live settings ровно **один раз**, после config, sub-config и local config, поэтому имеет окончательный приоритет, а `+`-append overrides (`-Setting +value`) не накапливаются дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. Settings, чьи имена содержат token из `Common.SecretSettingTokens` (регистронезависимые подстроки, default `secret token password apikey`), журналируются как `Set <name> to ***`. Это не общая защита credentials: raw process arguments и значения settings остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 
 `CommandLineArgs::IsOption()` считает аргумент опцией, только если после начального дефиса идёт буква. Поэтому `--Render.Sleep -1` и другие отрицательные значения не превращаются в новые опции. Строковая настройка сохраняет текст буквально, включая обратные косые черты Windows и кавычки; список строк делится только по пробелам и табуляции. Числовые, логические и enum-настройки по-прежнему разбирают текст. Грамматика экранированных строк `AnyData` применяется к свойствам, но не к настройкам (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
+
+`CommandLineArgs::GetSettingValue(name, implicit_value = "1")` читает отдельную
+настройку до создания settings snapshot. Передавайте точное имя с учётом регистра
+без дефисов, например `Common.NonInteractive` или `ClientLibPath`. Принимаются формы
+`-Name` и `--Name`; общий парсер удаляет пробелы по краям имени опции, побеждает
+последнее совпадающее вхождение. Отсутствующая настройка возвращает `std::nullopt`.
+Опция без значения возвращает `implicit_value`; передайте `std::nullopt`, чтобы
+пропускать такие вхождения и искать последнее явно переданное значение. Явный
+пустой аргумент остаётся присутствующим и пустым, отрицательные числа остаются
+значениями по правилам `IsOption()`. Возвращаемые views заимствуют память аргументов
+либо переданного неявного значения и сохраняют текст значения без удаления пробелов.
+Преобразование и значения по умолчанию выбирает вызывающая сторона.
+
+Имена встроенных настроек объявлены в `SettingNames` в `Common.h` и формируются
+непосредственно из `Settings.inc`: например, `SettingNames::Common_NonInteractive`
+и `SettingNames::Network_CompatibilityVersion`. Подчёркивание разделяет группу
+и имя настройки. Нативный код использует эти
+константы при чтении, записи, сериализации и диагностике настроек. Новые встроенные
+имена добавляются только через схему. Имена, используемые только в командной строке,
+остаются в `CommandLineSettings`, включая `Fork`, `ApplyConfig` и `ClientLibPath`.
+Константы собственных настроек принадлежат встраивающему проекту. Написание в
+командной строке и конфигурационных файлах сохраняется.
+
+`GetSettings(name = {})` использует тот же парсер и возвращает все совпадающие
+`CommandLineSetting` в порядке командной строки, включая повторы. Пустой фильтр
+выбирает все настройки. Запись содержит очищенное от краевых пробелов имя `Name`
+без дефисов и необязательное исходное значение `Value`: `std::nullopt` отличает
+неявный флаг от явной пустой строки. Views заимствуют память argv. Выбор runtime
+host, флаги fork и Windows-службы, выбор конфига, writable root и
+`ApplyCommandLine()` используют этот API. Каждое вхождение запроса конфига или
+subconfig требует значения, даже если последующий запрос корректен. Subconfig
+и `+`-append сохраняют порядок; writable root использует первый явно переданный
+непустой допустимый путь. Эти helpers не загружают конфигурацию и не применяют
+переопределения.
 
 ## Resource packs и источники данных
 
@@ -230,7 +264,7 @@ Snapshot нового источника снимается до его публ
 
 ## Хранилище settings
 
-`Source/Common/SettingsStorage.*` сохраняет небольшие пользовательские настройки инструментов и редакторов (ImGui window layout, view options, last selection) через `GetString()`/`SetString()`, типизированные `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, а также `HasKey()` и `Remove()`. Область задается именем приложения в конструкторе, поэтому разные инструменты не конфликтуют. Platform-specific backend скрыт за pimpl: при `FO_WINDOWS` значения являются `REG_SZ` entries в `HKCU\Software\FOnline\<app_name>` (Win32 headers остаются в `.cpp` за `WIN32_LEAN_AND_MEAN` и `WinApiUndef.inc`, используются явные registry entry points `*A`); на остальных платформах применяется per-application `CacheStorage` в `Platform::GetUserDataBase()/FOnline/<app_name>`. Каждое значение хранится строкой, а typed accessors сериализуют через нее, поэтому оба backends ведут себя одинаково и многострочный ImGui blob `imgui.ini` проходит round trip без изменений. Persistence работает по принципу **best effort**: backend failure журналируется, но не выбрасывается, поэтому инструмент не завершается из-за невозможности записать settings. От `CacheStorage` этот слой отличается назначением (долговечные user preferences вместо восстанавливаемых cache artifacts), а в Windows еще и носителем (registry вместо файлов).
+`Source/Common/SettingsStorage.*` сохраняет небольшие пользовательские настройки инструментов и редакторов (ImGui window layout, view options, last selection) через `GetString()`/`SetString()`, типизированные `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, а также `HasKey()` и `Remove()`. Область задается именем приложения в конструкторе, поэтому разные инструменты не конфликтуют. Platform-specific backend скрыт за pimpl: при `FO_WINDOWS` значения являются `REG_SZ` entries в `HKCU\Software\FOnline\<app_name>` (Win32 headers остаются в `.cpp` за `WIN32_LEAN_AND_MEAN` и `WinApiUndef.inc`, используются явные registry entry points `*A`); на остальных платформах применяется per-application `CacheStorage` в `platform::get_user_data_base()/FOnline/<app_name>`. Каждое значение хранится строкой, а typed accessors сериализуют через нее, поэтому оба backends ведут себя одинаково и многострочный ImGui blob `imgui.ini` проходит round trip без изменений. Persistence работает по принципу **best effort**: backend failure журналируется, но не выбрасывается, поэтому инструмент не завершается из-за невозможности записать settings. От `CacheStorage` этот слой отличается назначением (долговечные user preferences вместо восстанавливаемых cache artifacts), а в Windows еще и носителем (registry вместо файлов).
 
 Его используют только GUI tools: Mapper через `MapperEngine::_uiSettings`, перенесенный из resource `Cache`, а также standalone AnimationViewer и ParticleViewer, загружающие settings в конструкторе и сохраняющие при shutdown. Код находится в `CommonLib` для простоты, но client и server не ссылаются на символы `SettingsStorage`, поэтому linker (`/OPT:REF` и on-demand inclusion static library) исключает объект из поставляемых client/server binaries. Windows registry calls тем самым не попадают в них и не вызывают лишних antivirus heuristics. Собственный autosave ImGui `imgui.ini` отключен в `Application.cpp`, поэтому вся persistence layout проходит через это хранилище.
 

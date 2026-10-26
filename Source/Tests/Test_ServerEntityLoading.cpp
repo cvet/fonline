@@ -124,6 +124,11 @@ static auto CollectCustomEntityIds(ptr<Entity> holder, hstring entry) -> vector<
 static void DiscardLoadedCritter(ptr<ServerEngine> server, ptr<Critter> cr)
 {
     cr->MarkAsDestroying();
+
+    if (cr->GetRawGlobalMapGroup()) {
+        server->MapMngr.RemoveCritterFromMap(cr, nullptr);
+    }
+
     server->UnloadCritterInnerEntities(cr);
     cr->MarkAsDestroyed();
     server->EntityMngr.UnregisterCritter(cr, false);
@@ -227,7 +232,7 @@ TEST_CASE("ServerLoadCritterReadsInventoryTreeOneRequestPerLevel", "[server][ent
     DiscardLoadedCritter(server, loaded);
 }
 
-// One lost record must cost its container only that entry: the siblings read in the same batch still come back
+// A low-level partial load prunes its in-memory container, while the failed top-level load must keep durable IDs
 TEST_CASE("ServerLoadCritterPrunesMissingNestedItemAndKeepsItsSiblings", "[server][entity][database]")
 {
     MAKE_ENTITY_LOADING_SERVER();
@@ -315,7 +320,7 @@ TEST_CASE("ServerLoadCritterReadsCustomInnerEntitiesInOneRequest", "[server][ent
     DiscardLoadedCritter(server, loaded);
 }
 
-// One lost record costs the holder only that entry: the siblings read in the same batch still come back
+// A low-level partial load prunes its in-memory holder, while the failed top-level load must keep durable IDs
 TEST_CASE("ServerLoadCritterPrunesMissingCustomInnerEntityAndKeepsItsSiblings", "[server][entity][database]")
 {
     MAKE_ENTITY_LOADING_SERVER();
@@ -344,6 +349,69 @@ TEST_CASE("ServerLoadCritterPrunesMissingCustomInnerEntityAndKeepsItsSiblings", 
     auto holder_prop = server->GetEntityHolderIdsProp(loaded, record_entry);
     CHECK(loaded->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {kept_first_id, kept_last_id});
     CHECK(CollectCustomEntityIds(loaded, record_entry) == vector<ident_t> {kept_first_id, kept_last_id});
+
+    DiscardLoadedCritter(server, loaded);
+}
+
+TEST_CASE("ServerFailedCritterLoadKeepsCustomEntityReferencesForRetry", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    ptr<Critter> cr = server->CreateCritter(critter_pid, false);
+    ident_t kept_first_id = server->EntityMngr.CreateCustomInnerEntity(cr, record_entry, {})->GetId();
+    ident_t missing_id = server->EntityMngr.CreateCustomInnerEntity(cr, record_entry, {})->GetId();
+    ptr<CustomEntity> kept_last = server->EntityMngr.CreateCustomInnerEntity(cr, record_entry, {});
+    hstring nested_entry = server->Hashes.to_hashed_string("NestedRecords");
+    ident_t nested_id = server->EntityMngr.CreateCustomInnerEntity(kept_last, nested_entry, {})->GetId();
+    vector<ident_t> record_ids {kept_first_id, missing_id, kept_last->GetId()};
+
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    ident_t cr_id = cr->GetId();
+    ident_t kept_last_id = kept_last->GetId();
+    hstring critters_collection = server->Hashes.to_hashed_string("Critters");
+    hstring records_collection = server->Hashes.to_hashed_string("LoadingRecords");
+    hstring children_collection = server->Hashes.to_hashed_string("LoadingChilds");
+    auto original_critter_doc = server->DbStorage.Get(critters_collection, cr_id);
+    auto original_kept_first_doc = server->DbStorage.Get(records_collection, kept_first_id);
+    auto missing_doc = server->DbStorage.Get(records_collection, missing_id);
+    auto original_kept_last_doc = server->DbStorage.Get(records_collection, kept_last_id);
+    auto original_nested_doc = server->DbStorage.Get(children_collection, nested_id);
+
+    server->UnloadCritter(cr);
+    server->DbStorage.WaitCommitChanges();
+    server->DbStorage.Delete(records_collection, missing_id);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_THROWS_AS(server->LoadCritter(cr_id, false), GenericException);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK(server->DbStorage.Get(critters_collection, cr_id) == original_critter_doc);
+    CHECK(server->DbStorage.Get(records_collection, kept_first_id) == original_kept_first_doc);
+    CHECK(server->DbStorage.Get(records_collection, kept_last_id) == original_kept_last_doc);
+    CHECK(server->DbStorage.Get(children_collection, nested_id) == original_nested_doc);
+    CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+
+    CHECK_THROWS_AS(server->LoadCritter(cr_id, false), GenericException);
+    server->DbStorage.WaitCommitChanges();
+    CHECK(server->DbStorage.Get(critters_collection, cr_id) == original_critter_doc);
+
+    server->DbStorage.Insert(records_collection, missing_id, std::move(missing_doc));
+    server->DbStorage.WaitCommitChanges();
+
+    ptr<Critter> loaded = server->LoadCritter(cr_id, false);
+    auto holder_prop = server->GetEntityHolderIdsProp(loaded, record_entry);
+    CHECK(loaded->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == record_ids);
+    CHECK(CollectCustomEntityIds(loaded, record_entry) == record_ids);
+
+    auto loaded_last = server->EntityMngr.GetCustomEntity(record_type, kept_last_id);
+    REQUIRE(loaded_last);
+    hstring child_type = server->Hashes.to_hashed_string("LoadingChild");
+    auto loaded_nested = server->EntityMngr.GetCustomEntity(child_type, nested_id);
+    REQUIRE(loaded_nested);
+    CHECK(loaded_nested->GetCustomHolderId() == kept_last_id);
+    CHECK(loaded_nested->GetCustomHolderEntry() == nested_entry);
 
     DiscardLoadedCritter(server, loaded);
 }
@@ -448,6 +516,10 @@ TEST_CASE("ServerFailedNpcLoadKeepsRecoverableRecords", "[server][entity][databa
     ident_t missing_id = missing->GetId();
     hstring critters_collection = server->Hashes.to_hashed_string("Critters");
     hstring items_collection = server->Hashes.to_hashed_string("Items");
+    auto original_critter_doc = server->DbStorage.Get(critters_collection, cr_id);
+    auto original_kept_doc = server->DbStorage.Get(items_collection, kept_id);
+    auto missing_doc = server->DbStorage.Get(items_collection, missing_id);
+
     server->UnloadCritter(cr);
     server->DbStorage.Delete(items_collection, missing_id);
     server->DbStorage.WaitCommitChanges();
@@ -457,15 +529,23 @@ TEST_CASE("ServerFailedNpcLoadKeepsRecoverableRecords", "[server][entity][databa
     server->DbStorage.WaitCommitChanges();
     CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     CHECK_FALSE(server->EntityMngr.GetItem(kept_id));
-    REQUIRE(server->DbStorage.Valid(critters_collection, cr_id));
-    REQUIRE(server->DbStorage.Valid(items_collection, kept_id));
+    CHECK(server->DbStorage.Get(critters_collection, cr_id) == original_critter_doc);
+    CHECK(server->DbStorage.Get(items_collection, kept_id) == original_kept_doc);
+
+    CHECK_THROWS_AS(server->LoadCritter(cr_id, false), GenericException);
+    server->DbStorage.WaitCommitChanges();
+    CHECK(server->DbStorage.Get(critters_collection, cr_id) == original_critter_doc);
+
+    server->DbStorage.Insert(items_collection, missing_id, std::move(missing_doc));
+    server->DbStorage.WaitCommitChanges();
 
     ptr<Critter> loaded = server->LoadCritter(cr_id, false);
     CHECK_FALSE(loaded->GetControlledByPlayer());
-    CHECK(loaded->GetItemIds() == vector<ident_t> {kept_id});
+    CHECK(loaded->GetItemIds() == vector<ident_t> {kept_id, missing_id});
     auto loaded_item = server->EntityMngr.GetItem(kept_id);
     REQUIRE(loaded_item);
     CHECK(loaded_item->GetCritterId() == cr_id);
+    REQUIRE(server->EntityMngr.GetItem(missing_id));
     server->CrMngr.DestroyCritter(loaded);
     server->DbStorage.WaitCommitChanges();
     CHECK_FALSE(server->DbStorage.Valid(critters_collection, cr_id));

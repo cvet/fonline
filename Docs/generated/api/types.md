@@ -408,6 +408,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9"></a>
 - [`symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9)
 
+<a id="symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099"></a>
+- [`symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099)
+
 <a id="symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475"></a>
 - [`symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475)
 

@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2579 InventorySha256=b11ce3178a723a2ce73e966dde02ac25eae2631fecc486584527e17c606188dc
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2585 InventorySha256=f8fc4a19b539d83f6738cef443a0db37d903092a2b0dcf85ae32c648df34ceac
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 79
+///@ MigrationRule Version 0 0 81
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -86,8 +86,35 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
+namespace SettingNames
+{
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) inline constexpr string_view group##_##name = #group "." #name
+#include "Settings.inc"
+}
+
 // Command line arguments
 using CommandLineArg = nptr<char>;
+
+namespace CommandLineSettings
+{
+    inline constexpr string_view ApplyConfig = "ApplyConfig";
+    inline constexpr string_view ApplySubConfig = "ApplySubConfig";
+    inline constexpr string_view ClientLibPath = "ClientLibPath";
+    inline constexpr string_view ClientLibCompatibilityVersion = "ClientLibCompatibilityVersion";
+    inline constexpr string_view Fork = "fork";
+    inline constexpr string_view ServerServiceStart = "server-service-start";
+    inline constexpr string_view ServerServiceDelete = "server-service-delete";
+}
+
+// One named command-line entry with the dashes removed from Name; a missing Value means an implicit
+// flag rather than an explicit empty string, and both views borrow the original argv storage
+struct CommandLineSetting
+{
+    string_view Name {};
+    optional<string_view> Value {};
+};
 
 class CommandLineArgs
 {
@@ -130,6 +157,8 @@ public:
         return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
     }
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
+    [[nodiscard]] auto GetSettingValue(string_view name, optional<string_view> implicit_value = string_view("1")) const -> optional<string_view>;
+    [[nodiscard]] auto GetSettings(string_view name = {}) const -> vector<CommandLineSetting>;
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
     [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
@@ -137,6 +166,8 @@ public:
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
 private:
+    auto GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>;
+
     vector<CommandLineArg> _args {};
 };
 

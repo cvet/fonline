@@ -72,17 +72,57 @@ enum class ServerSnapshotBlockerKind : uint8_t
     DelayedCallbacks,
     TimeEvents,
     CritterMovements,
+    DelegateBoundTimeEvents,
+    EmbeddingState,
+    ManagedScriptWork,
 };
 
 struct ServerSnapshotBlocker
 {
     ServerSnapshotBlockerKind Kind {};
     size_t Count {};
+    string Identifier {};
+};
+
+struct ServerSnapshotEligibilityIssue
+{
+    string Identifier {};
+    size_t Count {};
+};
+
+// Exhaustive public lifecycle state for an authoritative server session
+enum class ServerSessionState : uint8_t
+{
+    Starting = 0, // Constructed, startup jobs not finished
+    Running = 1, // Started, simulation advancing
+    Paused = 2, // Started, simulation held by PauseSimulation
+    Stopping = 3, // Shutdown requested, world not yet torn down
+    Stopped = 4, // Shutdown finished
+    Failed = 5, // Startup did not complete
+};
+
+[[nodiscard]] auto ServerSessionStateName(ServerSessionState state) noexcept -> string_view;
+
+// Process-independent movement state; elapsed time replaces the monotonic start timestamp
+struct SerializableCritterMovement
+{
+    ident_t CritterId {};
+    ident_t MapId {};
+    msize MapSize {};
+    uint16_t Speed {};
+    vector<mdir> Steps {};
+    vector<uint16_t> ControlSteps {};
+    mpos StartHex {};
+    ipos16 StartHexOffset {};
+    ipos16 EndHexOffset {};
+    float32_t ElapsedTimeMs {};
+    float32_t WholeTimeMs {};
+    float32_t LeaseTimeMs {};
 };
 
 struct ServerSnapshotState
 {
-    static constexpr uint32_t FORMAT_VERSION = 1;
+    static constexpr uint32_t FORMAT_VERSION = 4;
 
     uint32_t FormatVersion {FORMAT_VERSION};
     string CompatibilityVersion {};
@@ -90,6 +130,9 @@ struct ServerSnapshotState
     synctime SynchronizedTime {};
     ident_t LastEntityId {};
     random_generator::state_data RandomState {};
+    uint32_t LastTimeEventId {};
+    vector<TimeEventManager::SerializableTimeEvent> TimeEvents {};
+    vector<SerializableCritterMovement> CritterMovements {};
 };
 
 // The captured world as plain bytes plus the state that describes them. Storing the pair, naming it,
@@ -120,6 +163,7 @@ class ServerEngine final : public BaseEngine, public EntityManagerApi
     friend class ServerEntity;
 
 public:
+    using SnapshotEligibilityCheck = copyable_function<vector<ServerSnapshotEligibilityIssue>(ptr<const ServerEngine>)>;
     using QuiescenceCallback = function<void(const ServerQuiescenceState&)>;
 
     explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt);
@@ -135,6 +179,8 @@ public:
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress.load(); }
     [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
+    [[nodiscard]] auto IsSimulationPaused() const noexcept -> bool { return _simulationPaused.load(std::memory_order_acquire); }
+    [[nodiscard]] auto GetSessionState() const noexcept -> ServerSessionState;
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
@@ -175,6 +221,11 @@ public:
     void Unlock();
     auto RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool;
     auto CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult;
+    void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
+    void PauseSimulation();
+    void ResumeSimulation();
+    [[nodiscard]] auto HoldSimulation(string_view reason) -> bool;
+    [[nodiscard]] auto ReleaseSimulationHold(string_view reason) -> bool;
     void DrawGui();
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
@@ -300,6 +351,7 @@ private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
     std::atomic_bool _shutdownInProgress {false};
+    std::atomic_bool _shutdownCompleted {false};
     std::atomic<int32_t> _liveEntityCount {};
 
 public:
@@ -356,6 +408,12 @@ private:
 
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
+    void SuspendSimulationWork();
+    void RestoreSimulationWork();
+    void RestoreSnapshotTimeEvents();
+    void RestoreSnapshotCritterMovements();
+    [[nodiscard]] auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
+    [[nodiscard]] auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
     auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
@@ -410,6 +468,7 @@ private:
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
+    auto RpcWatchdogJob() -> std::optional<timespan>;
     auto HealthFileWriteJob(const string& health_info) -> std::optional<timespan>;
     auto WriteHealthFile(string_view text) -> bool;
     auto InitScriptSystemJob() -> std::optional<timespan>;
@@ -442,6 +501,9 @@ private:
     work_thread _starter {"ServerStarter"};
     work_thread _mainWorker {"ServerWorker"};
     work_thread _healthWriter {"ServerHealthWriter"};
+    work_thread _rpcWatchdog {"ServerRpcWatchdog"};
+    mutex _rpcStatesLocker {};
+    vector<weak_ptr<ServerConnection::RuntimeState>> _rpcStates FO_TSA_GUARDED_BY(_rpcStatesLocker) {};
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
@@ -472,6 +534,13 @@ private:
     bool _connectionAdmissionOpen FO_TSA_GUARDED_BY(_connectionAdmissionLocker) {true};
     mutex _quiescenceLocker {};
     optional<ServerSnapshotRestore> _restoreSnapshot {};
+    // Startup owns these on the starter thread; after _started, control is serialized by _quiescenceLocker
+    std::atomic<bool> _simulationPaused {};
+    bool _manualSimulationPause {};
+    bool _startupSimulationPause {};
+    unordered_set<string> _simulationHolds {};
+    mutable mutex _snapshotEligibilityLocker {};
+    vector<SnapshotEligibilityCheck> _snapshotEligibilityChecks FO_TSA_GUARDED_BY(_snapshotEligibilityLocker) {};
     mutable mutex _connRateLocker {};
     unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 

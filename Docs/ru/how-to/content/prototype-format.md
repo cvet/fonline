@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"82792a28aee18c0ece140c59b9a91c8f6ed14ee364f4da86bc61e89513338af7"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"6a856425c9f133236e5794f9153126ffcffb8bf400a29fb4e41073569b7f138c"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -102,7 +102,7 @@ NoBlock = false
 
 `$Name = <PrototypeId>` задаёт ID. Без него используется имя исходного файла без расширения.
 
-ID не может содержать `/` или `$`: оба символа зарезервированы для адресации вложенных секций и отклоняются до хеширования и проверки дубликатов.
+ID не может содержать `/`, `$` или whitespace. Слеш и знак доллара зарезервированы для адресации вложенных секций, а whitespace запрещён, чтобы действующие идентификаторы оставались одним token. Baker сначала применяет fallback к имени файла, затем отклоняет эти символы до разрешения миграций, хеширования и проверки дубликатов.
 
 Идентичность ограничена разрешённым типом. `Item/Foo` и `Critter/Foo` могут сосуществовать, но два объявления `Item/Foo` в любом месте одного входа pack приводят к ошибке. ID хешируются и проходят через правила миграции `Proto` до проверки дубликатов.
 
@@ -249,7 +249,10 @@ ID прототипов встречаются в объявлениях, спи
 ```cpp
 ///@ MigrationRule Proto Item Rename OldContainer NewContainer
 ///@ MigrationRule Proto Item Remove RemovedContainer
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge
 ```
+
+Двойные кавычки обязательны для legacy source с whitespace и работают в `Rename`, `Transform` и `Remove`. Голая последовательность слов и replacement с whitespace отклоняются. Новые authored prototype ID не могут содержать whitespace.
 
 Владеющий проект определяет расположение объявлений проектных метаданных и срок хранения правил. Цель переименования обязана существовать в принимающей ревизии. Удаление допустимо, только если политика загрузки может безопасно отбросить ссылку или сущность; иначе мигрируйте на совместимую замену.
 

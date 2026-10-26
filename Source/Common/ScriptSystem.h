@@ -176,6 +176,23 @@ private:
     function<void()> _cleanup {};
 };
 
+// Detached RPC accounting token; captured by the backend-independent completion callback
+class ScriptCallCompletion final
+{
+public:
+    explicit ScriptCallCompletion(function<void()> cleanup) :
+        _cleanup {std::move(cleanup)}
+    {
+        FO_VERIFY_AND_THROW(_cleanup, "Script call completion requires cleanup");
+    }
+    ScriptCallCompletion(const ScriptCallCompletion&) = delete;
+    auto operator=(const ScriptCallCompletion&) -> ScriptCallCompletion& = delete;
+    ~ScriptCallCompletion() noexcept { _cleanup(); }
+
+private:
+    function<void()> _cleanup;
+};
+
 struct FuncCallData
 {
     ptr<const DataAccessor> Accessor;
@@ -184,6 +201,8 @@ struct FuncCallData
     ScriptCallReturnValueOwner RetValueOwner {};
     // A backend takes ownership when script execution outlives the native call
     function<void(bool)> Completion {};
+    // Permission for detached callbacks only; default completion retains the script context
+    bool CompletionOnAnyThread {};
 };
 
 namespace NativeDataProvider

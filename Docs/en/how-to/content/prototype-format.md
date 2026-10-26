@@ -102,7 +102,7 @@ The reusable Engine no longer defines `Item.Count`, `Item.Stackable`, partial-co
 
 `$Name = <PrototypeId>` sets the ID. Without it, the source file name without its extension is used.
 
-An ID must not contain `/` or `$`; both characters are reserved for nested-section addressing and are rejected before hashing and duplicate detection.
+An ID must not contain `/`, `$`, or whitespace. Slash and dollar are reserved for nested-section addressing; whitespace is forbidden so current identifiers remain single tokens. The baker applies the file-basename fallback, then rejects these characters before migration resolution, hashing, or duplicate detection.
 
 Identity is scoped by resolved type. `Item/Foo` and `Critter/Foo` can coexist, but two `Item/Foo` declarations anywhere in the same pack input fail. IDs are hashed and passed through `Proto` migration rules before duplicate detection.
 
@@ -251,7 +251,10 @@ Declare:
 ```cpp
 ///@ MigrationRule Proto Item Rename OldContainer NewContainer
 ///@ MigrationRule Proto Item Remove RemovedContainer
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge
 ```
+
+Double quotes are required for a legacy source containing whitespace and work for `Rename`, `Transform`, and `Remove`. Bare multiword sources and destinations containing whitespace are rejected. New authored prototype IDs must not contain whitespace.
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.
 

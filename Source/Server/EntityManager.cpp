@@ -406,6 +406,24 @@ void EntityManager::FlushExactEntityId()
     _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
 }
 
+// Failed restoration prunes runtime IDs without overwriting the durable list needed by the next attempt
+void EntityManager::PruneRestoredEntityIds(ptr<ServerEntity> entity, bool is_error, const function<void()>& prune_ids)
+{
+    bool restore_persistent = is_error && entity->IsPersistent();
+
+    if (restore_persistent) {
+        entity->SetPersistent(false);
+    }
+
+    auto restore_persistence = scope_exit([entity, restore_persistent]() mutable noexcept {
+        if (restore_persistent) {
+            entity->SetPersistent(true);
+        }
+    });
+
+    prune_ids();
+}
+
 auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>
 {
     FO_TRACE_ZONE(Entity);
@@ -470,7 +488,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
 
         if (map_ids_changed) {
             vector<ident_t> actual_map_ids = vec_transform(loc->GetMaps(), [](ptr<Map> map) -> ident_t { return map->GetId(); });
-            loc->SetMapIds(actual_map_ids);
+            PruneRestoredEntityIds(loc, is_error, [&] { loc->SetMapIds(actual_map_ids); });
         }
 
         // Inner entities
@@ -548,7 +566,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
 
         if (cr_ids_changed) {
             vector<ident_t> actual_cr_ids = vec_transform(map->GetCritters(), [](ptr<Critter> cr) -> ident_t { return cr->GetId(); });
-            map->SetCritterIds(actual_cr_ids);
+            PruneRestoredEntityIds(map, is_error, [&] { map->SetCritterIds(actual_cr_ids); });
         }
 
         // Map items
@@ -574,7 +592,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
 
         if (item_ids_changed) {
             vector<ident_t> actual_item_ids = vec_transform(map->GetItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
-            map->SetItemIds(actual_item_ids);
+            PruneRestoredEntityIds(map, is_error, [&] { map->SetItemIds(actual_item_ids); });
         }
 
         // Inner entities
@@ -652,7 +670,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, nptr<ident_t> st
 
         if (item_ids_changed) {
             vector<ident_t> actual_item_ids = vec_transform(cr->GetInvItems(), [](ptr<Item> item) -> ident_t { return item->GetId(); });
-            cr->SetItemIds(actual_item_ids);
+            PruneRestoredEntityIds(cr, is_error, [&] { cr->SetItemIds(actual_item_ids); });
         }
 
         // Inner entities
@@ -773,13 +791,15 @@ auto EntityManager::LoadItems(const vector<ident_t>& item_ids, bool& is_error) n
             }
 
             if (inner_item_ids_changed) {
-                if (item->HasInnerItems()) {
-                    auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](auto&& inner_item) -> ident_t { return inner_item->GetId(); });
-                    item->SetInnerItemIds(actual_inner_item_ids);
-                }
-                else {
-                    item->SetInnerItemIds({});
-                }
+                PruneRestoredEntityIds(item, is_error, [&] {
+                    if (item->HasInnerItems()) {
+                        auto actual_inner_item_ids = vec_transform(item->GetAllInnerItems(), [](auto&& inner_item) -> ident_t { return inner_item->GetId(); });
+                        item->SetInnerItemIds(actual_inner_item_ids);
+                    }
+                    else {
+                        item->SetInnerItemIds({});
+                    }
+                });
             }
 
             LoadInnerEntities(item, is_error);
@@ -892,7 +912,12 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
                 });
             }
 
-            holder_props->SetValue(holder_prop, actual_inner_entity_ids);
+            if (auto server_holder = holder.dyn_cast<ServerEntity>()) {
+                PruneRestoredEntityIds(server_holder, is_error, [&] { holder_props->SetValue(holder_prop, actual_inner_entity_ids); });
+            }
+            else {
+                holder_props->SetValue(holder_prop, actual_inner_entity_ids);
+            }
         }
     }
     catch (const std::exception& ex) {

@@ -56,7 +56,7 @@ void MapManager::LoadFromResources()
 {
     FO_TRACE_ZONE(Map);
 
-    for (const auto& [setting_name, grid_type] : array<pair<string_view, string_view>, 2> {{{"Server.ProtoMapGridType", _engine->Settings->Server.ProtoMapGridType}, {"Server.MapInstanceGridType", _engine->Settings->Server.MapInstanceGridType}}}) {
+    for (const auto& [setting_name, grid_type] : array<pair<string_view, string_view>, 2> {{{SettingNames::Server_ProtoMapGridType, _engine->Settings->Server.ProtoMapGridType}, {SettingNames::Server_MapInstanceGridType, _engine->Settings->Server.MapInstanceGridType}}}) {
         if (grid_type != "Static" && grid_type != "Chunked" && grid_type != "Dynamic") {
             throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", setting_name, grid_type);
         }

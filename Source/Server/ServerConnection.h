@@ -38,6 +38,7 @@
 #include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
+#include "RpcRuntimeTracker.h"
 #include "SecureChannel.h"
 
 FO_BEGIN_NAMESPACE
@@ -58,13 +59,24 @@ enum class DisconnectReason : uint8_t
     ScriptRequest = 8, // Indicates that server script called Player.HardDisconnect()
     LoginFailed = 9, // Indicates that login was rolled back after a server-side failure
     ReplacedByReconnect = 10, // Indicates that a new login for the same account replaced this session
+    RpcRuntimeLimit = 11, // Indicates that an inbound RPC or ready input queue exceeded its configured runtime limit
 };
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 
+class ScriptCallCompletion;
+
 class ServerConnection final
 {
 public:
+    class RuntimeState;
+
+    struct InboundCall
+    {
+        bool Accepted {true};
+        shared_ptr<ScriptCallCompletion> Completion {};
+    };
+
     using DataArrivedCallback = copyable_function<void()>;
 
     class FO_TSA_SCOPED_CAPABILITY OutBufAccessor
@@ -116,6 +128,12 @@ public:
         timespan RoundTrip {};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
+        size_t PendingRemoteCalls {};
+        size_t BufferedInputBytes {};
+        size_t InputArrivalSegments {};
+        uint64_t RuntimeWarnings {};
+        uint64_t RuntimeDisconnects {};
+        size_t AbandonedRemoteCalls {};
     };
 
     struct UpdateFilePortion
@@ -139,6 +157,10 @@ public:
     [[nodiscard]] auto IsInputRejected() const noexcept -> bool;
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
+    [[nodiscard]] auto GetRuntimeState() const -> shared_ptr<RuntimeState>;
+    [[nodiscard]] static auto GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason;
+    [[nodiscard]] static auto GetRuntimeDiagnostics(ptr<const RuntimeState> state) -> Diagnostics;
+    [[nodiscard]] static auto IsRuntimeStateActive(ptr<const RuntimeState> state) -> bool;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
@@ -147,6 +169,9 @@ public:
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
     [[nodiscard]] auto GetRoundTrip() const noexcept -> timespan;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
+
+    auto BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall;
+    static void CheckRuntimeState(ptr<RuntimeState> state, nanotime now);
 
     void SetDataArrivedCallback(DataArrivedCallback callback);
     void MarkHandshakeComplete() noexcept;
@@ -192,6 +217,7 @@ private:
     void AsyncReceiveData(const_span<uint8_t> buf);
     void RejectInput(const std::exception& ex, bool report) noexcept;
     void RecordDisconnectReason(DisconnectReason reason) noexcept;
+    void UpdateInputDiagnostics(size_t added_bytes = 0) FO_TSA_REQUIRES(_inBufLocker);
 
     ptr<ServerNetworkSettings> _settings;
     shared_ptr<NetworkServerConnection> _netConnection;
@@ -216,7 +242,8 @@ private:
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
     std::atomic<bool> _inputRejected {};
-    std::atomic<DisconnectReason> _disconnectReason {};
+    shared_ptr<RuntimeState> _runtimeState;
+    size_t _accountedInputBytes FO_TSA_GUARDED_BY(_inBufLocker) {};
 };
 
 FO_END_NAMESPACE

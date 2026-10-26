@@ -20,6 +20,7 @@ if(FO_BUILD_COMMON_LIB)
         "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h")
     AddCoreStaticLibrary(AppHeadless FO_APP_HEADLESS_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP)
+    TargetCompileDefinitions(AppHeadless PRIVATE "FO_HEADLESS_APP=1")
 
     if(NOT FO_HEADLESS_ONLY)
         SetValue(FO_APP_FRONTEND_SOURCE
@@ -37,6 +38,7 @@ if(FO_BUILD_COMMON_LIB)
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
+        TargetCompileDefinitions(AppFrontend PRIVATE "FO_HEADLESS_APP=0")
         # Vulkan needs only SDL's vendored headers because the loader resolves dynamically.
         # Anchor FO_SDL_DIR because target_include_directories requires an absolute path
         TargetIncludeDirectories(AppFrontend SYSTEM PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${CMAKE_SOURCE_DIR}/${FO_SDL_DIR}/src/video/khronos>)

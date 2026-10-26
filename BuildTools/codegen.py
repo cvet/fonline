@@ -727,6 +727,33 @@ def tokenize(text: str | None, anySymbols: list[int] | None = None) -> list[str]
     return result
 
 
+def tokenize_migration_rule(text: str | None) -> list[str]:
+    if text is None:
+        return []
+    text = text.strip()
+    result: list[str] = []
+    current_token = ''
+    inside_quotes = False
+
+    for ch in text:
+        if ch == '"':
+            if inside_quotes:
+                result.append(current_token)
+                current_token = ''
+                inside_quotes = False
+            else:
+                current_token = flush_token(result, current_token)
+                inside_quotes = True
+        elif ch in ' \t' and not inside_quotes:
+            current_token = flush_token(result, current_token)
+        else:
+            current_token += ch
+
+    assert not inside_quotes, 'Malformed quoted migration rule argument'
+    current_token = flush_token(result, current_token)
+    return result
+
+
 def normalize_hash_text(text: str) -> str:
     return text.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '')
 
@@ -1792,10 +1819,12 @@ def parse_migration_rule_tags() -> None:
 
         try:
             action_rule = (tag_info or '').split()[0:1] in (['Property'], ['Proto'])
-            rule_args = tokenize(tag_info, anySymbols=[3, 4] if action_rule else [2, 3])
+            rule_args = tokenize_migration_rule(tag_info)
             assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove', 'Enum'], 'Invalid migration rule'
             remove_rule = action_rule and rule_args[2:3] == ['Remove']
             assert len(rule_args) == (4 if remove_rule or not action_rule else 5), 'Invalid migration rule args'
+            assert all(arg.strip() for arg in rule_args), 'Empty migration rule argument'
+            assert remove_rule or not any(char.isspace() for char in rule_args[-1]), 'Migration replacement must not contain whitespace'
             if action_rule:
                 assert rule_args[2] in ['Rename', 'Transform', 'Remove'], 'Invalid migration action'
             for existing in codegen_tags['MigrationRule']:

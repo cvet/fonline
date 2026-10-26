@@ -861,6 +861,7 @@ inline auto AppWindow::GetWindowHandleForInput() const -> nptr<WindowInternalHan
 }
 
 auto IsAppInitialized() noexcept -> bool;
+auto IsNonInteractiveMode() -> bool;
 auto GetApp() noexcept -> ptr<Application>;
 void ResetApp() noexcept;
 auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;

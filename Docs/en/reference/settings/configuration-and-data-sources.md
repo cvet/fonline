@@ -175,7 +175,7 @@ allowlist: text baking uses the first value as the normalization base.
 fallback, and runtime lookup behavior belongs to
 [Text and Localization](../../how-to/content/text-and-localization.md).
 
-Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `Platform::GetUserDataBase()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
+Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `platform::get_user_data_base()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
 
 Any nonempty `Common.UserWritablePath` in a main config, sub-config, local-config
 cache, or packaged internal config throws `SettingsException` with
@@ -188,6 +188,38 @@ substitution and append parsing.
 The ordinary command line is still applied to live settings exactly **once**, after config, sub-config and local config, so it has final precedence and `+`-append overrides (`-Setting +value`) do not accumulate twice. That pass logs each `Set <name> to <value>` override. Settings whose names contain a token from `Common.SecretSettingTokens` (case-insensitive substrings, default `secret token password apikey`) are logged as `Set <name> to ***`. This is not general credential protection: raw process arguments and setting values remain available, and other logs, settings UI, crash output, baked configs, and project code have independent exposure paths. Never pass credentials on the command line; use target-time provisioning and follow [Security and Secrets](../../how-to/release/security-and-secrets.md).
 
 `CommandLineArgs::IsOption()` recognizes a leading dash as an option only when the next character is a letter. Thus `--Render.Sleep -1` and other negative values remain values, not new option names. String settings preserve text as written, including Windows backslashes and quote characters; string-list settings split only at spaces and tabs. Numeric, boolean, and enum settings still parse their text. The `AnyData` escaped-string grammar belongs to properties, not settings (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
+
+`CommandLineArgs::GetSettingValue(name, implicit_value = "1")` reads a single
+setting before a settings snapshot exists. Pass its exact, case-sensitive name
+without dashes, for example `Common.NonInteractive` or `ClientLibPath`. Both
+`-Name` and `--Name` are accepted; option names are trimmed by the shared parser,
+and the last matching occurrence wins. An absent setting returns `std::nullopt`.
+A valueless option returns `implicit_value`; pass `std::nullopt` to skip such
+occurrences and find the last explicit value instead. An explicitly empty
+argument remains present and empty, and negative numbers remain values under
+`IsOption()`. Returned views borrow the argument storage or the supplied implicit
+value and preserve value text without trimming. Callers own conversion and defaults.
+
+Builtin setting names are declared in `SettingNames` in `Common.h`, generated
+directly from `Settings.inc`: for example, `SettingNames::Common_NonInteractive`
+and `SettingNames::Network_CompatibilityVersion`. The underscore separates the
+group and setting name. Use these constants for native
+setting lookups, writes, serialization and diagnostics. Add builtin names only
+through the schema. Command-line-only names remain in `CommandLineSettings`,
+including `Fork`, `ApplyConfig` and `ClientLibPath`. Embedding projects own the
+constants for their custom settings. Command lines and config files keep their
+existing spelling.
+
+`GetSettings(name = {})` uses the same parser and returns every matching
+`CommandLineSetting` in command-line order, including duplicates. An empty filter
+selects all settings. Each entry has a trimmed `Name` without dashes and an
+optional raw `Value`: `std::nullopt` distinguishes an implicit flag from an
+explicit empty string. The views borrow argv storage. Runtime-host selection,
+fork and Windows-service flags, config selection, writable-root selection, and
+`ApplyCommandLine()` all use this API. Config and sub-config requests require a
+value on every occurrence, even when a later request is valid. Sub-configs and
+`+`-append overrides retain their order; the writable root uses the first explicit
+nonempty valid path. These helpers neither load configuration nor apply overrides.
 
 ## Resource packs and data sources
 
@@ -249,7 +281,7 @@ An entry is stored as one plain file named after the entry, with path separators
 
 ## Settings store
 
-`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `Platform::GetUserDataBase()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `platform::get_user_data_base()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
 
 Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
 

@@ -198,11 +198,25 @@ The client runtime should depend on the abstract connection interface where poss
 
 - `SetAsyncCallbacks(send, receive, disconnect)`;
 - `Dispatch()`;
+- `RequestDisconnect()`;
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
 The send callback returns outgoing bytes **by value**, and each transport owns the buffer handed to its socket. A borrowed sender buffer can be refilled by another dispatch or freed during disconnect while an I/O thread is still compressing or sending it. `Disconnect()` clears the callback under the same lock used for invocation, so teardown waits for any in-flight pull and later transport ticks cannot reach a disappearing sender.
+
+`RequestDisconnect()` marks the connection disconnected and requests transport
+closure without acquiring send/receive callback locks. The independent
+[RPC watchdog](../../reference/scripting/remote-calls.md#runtime-monitoring-and-disconnection)
+uses it because an in-flight callback may wait for an output buffer whose owner
+is blocked on script entity cover. Ordinary `Disconnect()` still waits for
+callbacks and consumes pending disconnect notification once transport closure
+finishes. Same-thread re-entry from `DisconnectImpl()` leaves this work to the
+outer close. Notification after a transport-only request may be deferred until
+ordinary cleanup; interthread peers do not guarantee a return close notification.
+Owners must still quiesce callbacks before destruction. The
+`NetworkTransportClosureDoesNotWaitForCallbacks` tests cover blocked send/receive,
+nested closure, waiting full cleanup and single notification.
 
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
@@ -294,6 +308,7 @@ Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)
 | `ScriptRequest` | `Player.HardDisconnect()` from script |
 | `LoginFailed` | login rolled back after a server-side failure |
 | `ReplacedByReconnect` | a new login for the same account replaced this session |
+| `RpcRuntimeLimit` | an unfinished inbound RPC, ready input queue or pending-handler count reached its configured limit |
 
 The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
 

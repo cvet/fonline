@@ -456,6 +456,29 @@ SharedEffectId = OpenVaultDoor
         CHECK(client_strings.contains("HideVaultDoor"));
     }
 
+    SECTION("RejectsWhitespaceInExplicitProtoName")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Items/BadName.fopro", R"([ProtoItem]
+$Name = Bad Name
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackBadName", client_mapper_bake));
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
+    }
+
+    SECTION("RejectsWhitespaceInFileStemProtoName")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Items/Bad Name.fopro", R"([ProtoItem]
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackBadName", client_mapper_bake));
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
+    }
+
     SECTION("RejectsInvalidProtoSectionNames")
     {
         TestRig local_rig;

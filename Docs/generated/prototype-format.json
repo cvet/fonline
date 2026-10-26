@@ -189,12 +189,14 @@
     {
       "id": "prototype-format.rule.identifier-characters",
       "name": "Reserved identifier characters",
-      "requirement": "Prototype ids must not contain / or $ because both characters are reserved for nested section addressing.",
+      "requirement": "Prototype ids must not contain /, $, or whitespace. Slash and dollar are reserved for nested section addressing; whitespace is forbidden so every current identifier remains a single token.",
       "stability": "experimental",
-      "description": "The baker rejects either character after applying the file-basename fallback and before hashing or duplicate detection.",
+      "description": "The baker applies the file-basename fallback, then rejects reserved characters and space, tab, CR, or LF before migration resolution, hashing, or duplicate detection. A legacy id with whitespace is admitted only as a double-quoted MigrationRule source; a rename destination must remain whitespace-free.",
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
         "anchors": [
+          "name.find_first_of(\" \\t\\r\\n\") != string::npos",
+          "Proto name must not contain whitespace",
           "name.find('/') != string::npos",
           "name.find('$') != string::npos",
           "Proto name must not contain a slash or dollar sign"
@@ -3662,5 +3664,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "aed1f1d41a8e6262ed62e22bada21f611052c54c1d5b4ccf90965b2fcebb3821"
+  "contract_digest": "9a4e674b81ec85de87d72a159bcc5e7a5185246292be93e01e81a3ab3d1c1e56"
 }

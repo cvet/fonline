@@ -35,6 +35,7 @@
 
 #if FO_MANAGED_SCRIPTING
 
+#include "ManagedScriptBackend.h"
 #include "ManagedScriptBaker.h"
 #include "Test_ClientEngineHelpers.h"
 #include "Test_MapperHelpers.h"
@@ -45,6 +46,25 @@ FO_BEGIN_NAMESPACE
 class ManagedRuntimeTestResources final
 {
 public:
+    static auto MakeProbeMetadata(string_view target) -> vector<uint8_t>
+    {
+        return target == "server" ? BakerTests::MakeMetadataBlob({
+                                        {"Property",
+                                            {
+                                                {"Critter", "Server", "string", "RuntimeStoredText", "Mutable"},
+                                                {"Critter", "Server", "string", "RuntimeVirtualText", "Virtual"},
+                                            }},
+                                        {"RemoteCall",
+                                            {
+                                                {"UnitTestRuntimeRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeGenericRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeImmediateCanceledRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                                {"UnitTestRuntimeImmediateSuccessRpc", "ManagedRuntimeProbe.cs", "In", "Limits", "0", "0"},
+                                            }},
+                                    }) :
+                                    BakerTests::MakeEmptyMetadataBlob();
+    }
+
     ManagedRuntimeTestResources() :
         Root {std::filesystem::temp_directory_path() / fs::make_path(strex("FOnlineManagedRuntimeTest_{}_{}", platform::get_current_process_id_str(), nanotime::now().milliseconds()).str())}
     {
@@ -69,7 +89,7 @@ public:
             });
 
         for (string_view target : {"server", "client", "mapper"}) {
-            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), BakerTests::MakeEmptyMetadataBlob());
+            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), MakeProbeMetadata(target));
         }
 
         ManagedScriptBaker baker {Rig.MakeContext("RuntimeProbe")};
@@ -87,6 +107,8 @@ public:
     void AddTo(FileSystem& resources) const
     {
         auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ManagedRuntimeAssemblies");
+
+        source->AddFile("Metadata.fometa-server", MakeProbeMetadata("server"));
 
         for (const auto& [path, bytes] : Rig.Outputs) {
             source->AddFile(path, bytes);
@@ -106,7 +128,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
     BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -121,6 +143,61 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
     CHECK_FALSE(server->FindFunc<void>(name("MissingFunction")));
+
+    auto transport = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto rpc_player = server->CreateNotLoggedInPlayer(std::move(transport));
+    hstring rpc_name = server->Hashes.to_hashed_string("UnitTestRuntimeRpc");
+    auto finish_rpc = server->FindFunc<void, int32_t>(name("FinishRuntimeRpc"));
+    REQUIRE(finish_rpc);
+
+    auto finish_off_thread = server->FindFunc<void, int32_t>(name("FinishRuntimeRpcOffThread"));
+    auto script_errors = server->FindFunc<int32_t>(name("GetRuntimeScriptErrors"));
+    REQUIRE(finish_off_thread);
+    REQUIRE(script_errors);
+    REQUIRE(script_errors.Call());
+    int32_t errors_before = script_errors.GetResult();
+
+    for (int32_t outcome : {0, 1, 2}) {
+        auto invocation = rpc_player->GetConnection()->BeginRemoteCall(rpc_name, rpc_player->GetId());
+        REQUIRE(invocation.Accepted);
+        REQUIRE(invocation.Completion);
+        server->HandleInboundRemoteCall(rpc_name, rpc_player, span<uint8_t> {}, std::move(invocation.Completion));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 1);
+        // The world is stopped and no script pump runs while this foreign thread completes the Task
+        REQUIRE(finish_off_thread.Call(outcome));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 0);
+    }
+    REQUIRE(script_errors.Call());
+    CHECK(script_errors.GetResult() == errors_before + 1); // only the fault, neither cancellation
+
+    for (string_view method : {"UnitTestRuntimeImmediateSuccessRpc", "UnitTestRuntimeImmediateCanceledRpc"}) {
+        auto immediate_name = server->Hashes.to_hashed_string(method);
+        auto invocation = rpc_player->GetConnection()->BeginRemoteCall(immediate_name, rpc_player->GetId());
+        REQUIRE(invocation.Accepted);
+        REQUIRE(invocation.Completion);
+        server->HandleInboundRemoteCall(immediate_name, rpc_player, span<uint8_t> {}, std::move(invocation.Completion));
+        CHECK(rpc_player->GetConnection()->GetDiagnostics().PendingRemoteCalls == 0);
+    }
+    REQUIRE(script_errors.Call());
+    CHECK(script_errors.GetResult() == errors_before + 1);
+
+    // Flush only the nested, ownerless generic calls; their completion never owns a tracked RPC
+    server->ProcessBackends();
+    auto generic_finishes = server->FindFunc<int32_t>(name("GetGenericRpcFinishes"));
+    REQUIRE(generic_finishes);
+    REQUIRE(generic_finishes.Call());
+    int32_t generic_before = generic_finishes.GetResult();
+    hstring generic_name = server->Hashes.to_hashed_string("UnitTestRuntimeGenericRpc");
+    server->HandleInboundRemoteCall(generic_name, rpc_player, span<uint8_t> {});
+    REQUIRE(generic_finishes.Call());
+    CHECK(generic_finishes.GetResult() == generic_before); // Task<T> must not synchronously return its wire result
+    server->ProcessBackends();
+    REQUIRE(generic_finishes.Call());
+    CHECK(generic_finishes.GetResult() == generic_before + 1);
+
+    int64_t rpc_metadata_lookups = -1;
+    REQUIRE(server->CallFunc(name("MeasureRuntimeRpcMetadataLookups"), rpc_metadata_lookups));
+    CHECK(rpc_metadata_lookups == 0);
 
     int32_t database_result = -1;
     REQUIRE(server->CallFunc(name("TestConditionalDatabaseRecords"), database_result));
@@ -167,6 +244,11 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(critter_init_calls == 1);
     CHECK(last_critter_id == critter->GetId().underlying_value());
 
+    auto property_bridge = server->FindFunc<string, ptr<Critter>>(name("ProbePropertyBridge"));
+    REQUIRE(property_bridge);
+    REQUIRE(property_bridge.Call(critter));
+    CHECK(property_bridge.GetResult() == "set:probe|get:set:probe|1|1");
+
     auto critter_id = server->FindFunc<int64_t, ptr<Critter>>(name("GetCritterId"));
     REQUIRE(critter_id);
     REQUIRE(critter_id.Call(critter));
@@ -196,13 +278,17 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(exception_message.find("Managed runtime probe failure") != string::npos);
     exceptions::set_callback(std::move(previous_exception_callback));
     restore_exception_callback.release();
+    auto first_pending = rpc_player->GetConnection()->BeginRemoteCall(rpc_name, rpc_player->GetId());
+    REQUIRE(first_pending.Accepted);
+    server->HandleInboundRemoteCall(rpc_name, rpc_player, span<uint8_t> {}, std::move(first_pending.Completion));
+    auto first_runtime = rpc_player->GetConnection()->GetRuntimeState();
     server->Unlock();
     unlock.release();
 
     // A second live engine must initialize its own assembly statics and event subscriptions
     auto second_settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(second_settings.Network.DisableInterthreadCommunication, true);
-    auto second_resources = ServerEngineTests::MakeServerTestResources();
+    auto second_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(second_resources);
     auto second = safe_alloc::make_refcounted<ServerEngine>(&second_settings, std::move(second_resources));
     auto shutdown_second = scope_exit([&second]() noexcept { safe_call([&second] { second->Shutdown(); }); });
@@ -215,17 +301,116 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(init_calls == 1);
     REQUIRE(second->CallFunc(second->Hashes.to_hashed_string("ManagedRuntimeProbe::GetCritterInitCalls"), critter_init_calls));
     CHECK(critter_init_calls == 0);
+    auto second_transport = NetworkServer::CreateDummyConnection(second->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto second_player = second->CreateNotLoggedInPlayer(std::move(second_transport));
+    hstring second_rpc_name = second->Hashes.to_hashed_string("UnitTestRuntimeRpc");
+    auto second_pending = second_player->GetConnection()->BeginRemoteCall(second_rpc_name, second_player->GetId());
+    REQUIRE(second_pending.Accepted);
+    second->HandleInboundRemoteCall(second_rpc_name, second_player, span<uint8_t> {}, std::move(second_pending.Completion));
+    auto second_runtime = second_player->GetConnection()->GetRuntimeState();
+    auto race = second->FindFunc<void>(second->Hashes.to_hashed_string("ManagedRuntimeProbe::RaceRuntimeRpcCompletionWithTeardown"));
+    REQUIRE(race);
+    REQUIRE(race.Call());
     second->Unlock();
     unlock_second.release();
+    second->Shutdown();
+    CHECK(ServerConnection::GetRuntimeDiagnostics(second_runtime).PendingRemoteCalls == 0);
+    CHECK(ServerConnection::GetRuntimeDiagnostics(first_runtime).PendingRemoteCalls == 1);
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock_first_again = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    REQUIRE(finish_off_thread.Call(0));
+    CHECK(ServerConnection::GetRuntimeDiagnostics(first_runtime).PendingRemoteCalls == 0);
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));
     CHECK(init_calls == 1);
     REQUIRE(server->CallFunc(name("GetCritterInitCalls"), critter_init_calls));
     CHECK(critter_init_calls == 1);
     server->Unlock();
     unlock_first_again.release();
+
+    // An externally completed Task must remain blocked while its script continuation is paused
+    server->PauseSimulation();
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("WaitForSnapshotGate")));
+    }
+    auto pending = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+    REQUIRE(pending.ReachedQuiescence);
+    REQUIRE(std::ranges::any_of(pending.Blockers, [](const ServerSnapshotBlocker& blocker) { return blocker.Kind == ServerSnapshotBlockerKind::ManagedScriptWork && blocker.Count > 0; }));
+    CHECK_FALSE(pending.State.has_value());
+    CHECK(pending.Payload.empty());
+    // The counter belongs to the first backend, not the other live engine's assembly statics
+    CHECK_THROWS_AS(second->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("ReleaseSnapshotGate")));
+    }
+    coarse_sleep(std::chrono::milliseconds {50});
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t resumed = -1;
+        REQUIRE(server->CallFunc(name("GetSnapshotResumed"), resumed));
+        CHECK(resumed == 0);
+    }
+    pending = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+    REQUIRE(std::ranges::any_of(pending.Blockers, [](const ServerSnapshotBlocker& blocker) { return blocker.Kind == ServerSnapshotBlockerKind::ManagedScriptWork && blocker.Count > 0; }));
+    server->ResumeSimulation();
+    bool finished = false;
+    for (uint32_t attempt = 0; attempt < 200 && !finished; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t resumed = -1;
+        REQUIRE(server->CallFunc(name("GetSnapshotResumed"), resumed));
+        finished = resumed == 1;
+    }
+    REQUIRE(finished);
+    CHECK_THROWS_AS(server->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
+
+    // A cancelled external Task must release its accounting once the real Mono continuation runs
+    server->PauseSimulation();
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        REQUIRE(server->CallFunc(name("WaitForSnapshotGate")));
+        REQUIRE(server->CallFunc(name("CancelSnapshotGate")));
+    }
+    auto backend = server->GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX);
+    REQUIRE(backend);
+    CHECK(backend->GetSnapshotWorkCount() > 0);
+    server->ResumeSimulation();
+    for (uint32_t attempt = 0; attempt < 200 && backend->GetSnapshotWorkCount() != 0; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+    }
+    CHECK(backend->GetSnapshotWorkCount() == 0);
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    {
+        auto unlock_timer = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        hstring timer_name = name("OnSnapshotTimer");
+        auto callback = server->FindFunc<void>(timer_name);
+        REQUIRE(callback);
+        uint32_t timer_id = server->TimeEventMngr.StartTimeEvent(server.get(), std::move(callback), timespan {std::chrono::hours {1}}, {}, {});
+        auto captured = server->TimeEventMngr.CaptureSerializableTimeEvents();
+        REQUIRE(captured.Events.size() == 1);
+        CHECK(captured.UnresolvedFunctionCount == 0);
+        CHECK(captured.Events[0].EventId == timer_id);
+        server->TimeEventMngr.StopTimeEvent(server.get(), {}, timer_id);
+        CHECK(server->TimeEventMngr.RestartTimeEvent(server.get(), timer_name, captured.Events[0].FuncAlternative, timer_id, timespan {std::chrono::milliseconds {20}}, {}, {}) == timer_id);
+    }
+    finished = false;
+    for (uint32_t attempt = 0; attempt < 200 && !finished; attempt++) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock_timer = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        int32_t calls = 0;
+        REQUIRE(server->CallFunc(name("GetSnapshotTimerCalls"), calls));
+        finished = calls == 1;
+    }
+    REQUIRE(finished);
 
     auto client_settings = ClientEngineTests::MakeClientTestSettings();
     auto client_resources = ClientEngineTests::MakeClientTestResources();
@@ -250,7 +435,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     ManagedRuntimeTestResources assemblies;
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -457,7 +642,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     CHECK(server->GetRefCount() == 1);
 
     {
-        auto live_resources = ServerEngineTests::MakeServerTestResources();
+        auto live_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
         assemblies.AddTo(live_resources);
         auto live_server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(live_resources));
         auto shutdown_live = scope_exit([&live_server]() noexcept { safe_call([&live_server] { live_server->Shutdown(); }); });
@@ -591,6 +776,82 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
     client->TimeEventMngr.StopTimeEvent(client, {}, client_id);
     client_event.reset();
 }
+
+#if FO_DATABASE_SQLITE
+TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][scripting][snapshot]")
+{
+    ManagedRuntimeTestResources assemblies;
+    string storage_root = ServerEngineTests::MakeTempServerResourceDir("managed_session_restore");
+    auto cleanup = scope_exit([&storage_root]() noexcept { (void)fs::remove_dir_tree(storage_root); });
+    ServerSnapshotState state;
+    vector<uint8_t> payload;
+    ident_t critter_id;
+    mpos expected_end;
+
+    {
+        auto settings = ServerEngineTests::MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
+        auto resources = ServerEngineTests::MakeServerTestResources();
+        assemblies.AddTo(resources);
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
+        auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+        REQUIRE(ServerEngineTests::WaitForServerStart(server).empty());
+        server->PauseSimulation();
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            hstring map_pids[] = {server->Hashes.to_hashed_string("UnitTestMap")};
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"), map_pids);
+            server->EntityMngr.MakePersistent(location, true, true);
+            auto map = location->GetMapByIndex(0);
+            REQUIRE(map);
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
+            server->MapMngr.AddCritterToMap(critter, map.get(), ServerEngineTests::SERVER_TEST_MOVE_START_HEX, mdir {}, {});
+            server->EntityMngr.MakePersistent(critter, true, true);
+            critter_id = critter->GetId();
+            auto moving = ServerEngineTests::MakeServerMovementContext(map->GetSize(), critter->GetHex(), server->GameTime.GetFrameTime());
+            expected_end = moving->GetEndHex();
+            server->StartCritterMoving(critter, std::move(moving), nullptr);
+            auto global = server->FindFunc<void>(server->Hashes.to_hashed_string("ManagedRuntimeProbe::OnSnapshotTimer"));
+            REQUIRE(global);
+            (void)server->TimeEventMngr.StartTimeEvent(server.get(), std::move(global), timespan {std::chrono::milliseconds {100}}, {}, {});
+            array args {ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = server->GetBaseType("Critter")}};
+            nptr<ScriptFuncDesc> desc = server->FindFunc(server->Hashes.to_hashed_string("ManagedRuntimeProbe::OnSnapshotCritterTimer"), const_span<ComplexTypeDesc> {args});
+            REQUIRE(desc);
+            (void)server->TimeEventMngr.StartTimeEvent(critter, ScriptFunc<void, ptr<ScriptSelfEntity>> {desc}, timespan {std::chrono::milliseconds {100}}, {}, {});
+        }
+        auto captured = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+        REQUIRE(captured.Blockers.empty());
+        REQUIRE(captured.State.has_value());
+        state = std::move(*captured.State);
+        payload = std::move(captured.Payload);
+        REQUIRE(state.TimeEvents.size() == 2);
+        REQUIRE(state.CritterMovements.size() == 1);
+    }
+
+    auto settings = ServerEngineTests::MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
+    auto resources = ServerEngineTests::MakeServerTestResources();
+    assemblies.AddTo(resources);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources), ServerSnapshotRestore {state, payload});
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(ServerEngineTests::WaitForServerStart(server).empty());
+    bool complete = false;
+    nanotime deadline = nanotime::now() + std::chrono::seconds {5};
+    while (!complete && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {5});
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        auto critter = server->EntityMngr.GetCritter(critter_id);
+        REQUIRE(critter);
+        server->RequireCurrentSyncContext()->SyncEntity(critter);
+        int32_t calls = 0;
+        REQUIRE(server->CallFunc(server->Hashes.to_hashed_string("ManagedRuntimeProbe::GetSnapshotTimerCalls"), calls));
+        complete = calls == 2 && !critter->IsMoving() && critter->GetHex() == expected_end;
+    }
+    CHECK(complete);
+}
+#endif
 
 FO_END_NAMESPACE
 

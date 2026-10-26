@@ -327,7 +327,7 @@ void ClientConnection::StartSecureChannel()
     server_keys.reserve(_settings->ClientNetwork.ChannelServerKeys.size());
 
     for (const string& server_key : _settings->ClientNetwork.ChannelServerKeys) {
-        server_keys.emplace_back(ParseSecureChannelKey(server_key, "ClientNetwork.ChannelServerKeys"));
+        server_keys.emplace_back(ParseSecureChannelKey(server_key, SettingNames::ClientNetwork_ChannelServerKeys));
     }
 
     _channel.emplace(server_keys);

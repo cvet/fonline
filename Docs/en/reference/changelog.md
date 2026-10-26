@@ -12,120 +12,140 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-24
+## Current - 2026-10-26
 
 ### Migration
 
-Base `4588149fa4e4493ed6dddfea0a2fdf65d17c1f3e` (`2026.1.63-dev`) to `2026.1.62-dev`.
+Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: combine the published FOFRM/resource/time branch with master. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Regenerate bindings/metadata, rebuild extensions/all roles and force-rebake. Deploy/roll back matching binaries, assemblies, sources and packs together; mixed generations fail. Saved values/network units keep meaning. Validation: Windows only.
 
-Integrate FOFRM recipes, packaged resource usage selection and typed animation/runtime intervals with project-owned presentation. Runtime compatibility is 0.0.79. SpriteSheet placement uses GetSpriteOffset(frame); motion uses GetSpriteMotion(). Rebuild and force-rebake all roles; deploy matching binaries and packs. Network field units and persisted values stay unchanged.
-
-- Keep shared cropped sprite anchors in logical canvas coordinates, including chains of shared frames. Preserve explicit zero-duration native/script sequences for manual frame selection; file-backed timelines remain positive. Retain double precision until model cycle wrapping so frozen endpoint poses do not wrap to the first frame.
-
-
-- Model controller/instance and particle facade intervals use timespan; Ozz/backend/GPU
-  seconds stay at adapters. UDP retry options are typed; bake reports quantize at JSON output.
-
-- MovingContext intervals/look-ahead and FogLayer.TransitionDuration use timespan.
-  Rebuild and rebake all roles for runtime 0.0.79; wire units and saves stay unchanged.
-
-- Duration: float conversions retain fractions, AS constructors check overflow, Delay accepts timespan.
-  Image DurationMs/GetDurationMs become Duration/GetDuration (timespan); files unchanged.
-
-- `SpriteSheet`: `GetWholeTicks` → `GetDuration` (`timespan`); rebuild. Sub-ms time is retained; files unchanged.
-
-- Removed `TextureAnimation` and native texture playback. Static `Texture`, `Parent`,
-  FOFRM `Size` and full-canvas UVs remain; multi-frame textures fail validation.
-  Rebuild binaries and force-rebake model descriptions and metadata for LFMODINF
-  schema 5/runtime 0.0.79. Other model and image schemas are unchanged.
-
-- Native sprite methods use full names: `GetCurSpr` → `GetCurrentSprite`,
-  `GetSpr` → `GetSprite`, `GetDir` → `GetDirection`, `GetDirCount` →
-  `GetDirectionCount`, `GetStateAnim`/`GetActionAnim` →
-  `GetStateAnimation`/`GetActionAnimation`, `GetSprOffset(frame)` → `GetSpriteOffset(frame)`,
-  and `RefreshParams` → `RefreshParameters`. `Sprite::SetDir` and all its
-  overrides become `SetDirection`; `GetCurrentDirection` keeps its full name.
-- Migration: update native sprite callers and rebuild. Entity/model-instance
-  direction APIs, playback behavior and baked resource layouts are unchanged.
-
-- Image import frames now use `isize32 Size` and `ipos32 Motion`; draw placement remains `Offset`. BAM signed centers and SPR bbox/center anchors are placement, including shared frames. FRM/ART retain animation motion.
-- Migration: native loaders replace Width/Height and NextX/NextY with Size/Motion. Rename FOFRM Move/FrameMoves to Motion/FrameMotions; old keys fail before dependency resolution. Rebuild the baker and rebake affected BAM/SPR roots. SpriteResource v3 layout is unchanged; dimension/motion narrowing remains checked.
-
-- Baking now publishes `Resources.usage.json` after collecting typed Resource roots,
-  required outputs and runtime dependencies. Packaging requires this selection and
-  rejects missing or mismatched manifests; unused art stays in the local cache.
-- Migration: rebuild the baker and bake before packaging. Mark resource-valued
-  properties `Resource`; declare script/GUI/config and opaque-format paths in ordinary
-  FixedType resource arrays. Constructors are not a resource-registration mechanism.
-
-
-- Typed movement/presentation migration: `FogLayer.TransitionDuration` changes from integer milliseconds to `timespan`; C# uses `new timespan(150, 2)`, AngelScript uses `timespan(150, 2)`. `MovingContext.EvaluateProjectedHex` takes the typed look-ahead (`new timespan(100, 2)` / `timespan(100, 2)` replaces `100.0f` milliseconds). `GetElapsedTime` and `GetWholeTime` return `timespan`; use the duration directly, or `duration.nanoseconds / 1_000_000.0` when a floating millisecond boundary must preserve fractions. Native callers use `to_ms<float64_t>()`. The plain `milliseconds` property truncates sub-millisecond parts. Regenerate bindings and compile every affected role; old numeric assignments/calls fail type checking. These transient fields do not require a saved-data conversion.
+- Image import frames replace Width/Height with `isize32 Size` and NextX/NextY with `ipos32 Motion`. Placement remains `Offset`: BAM signed centers and SPR bbox/center anchors, including shared frames, are placement; FRM/ART deltas remain motion. FOFRM Move/FrameMoves become Motion/FrameMotions; obsolete keys fail before dependency resolution. Checked narrowing and SpriteResource v3 layout remain.
+- Native sprite renames: GetCurSpr → GetCurrentSprite, GetSpr → GetSprite, GetDir → GetDirection, GetDirCount → GetDirectionCount, GetStateAnim/GetActionAnim → GetStateAnimation/GetActionAnimation, GetSprOffset(frame) → GetSpriteOffset(frame), RefreshParams → RefreshParameters, Sprite::SetDir and overrides → SetDirection. Update callers; GetCurrentDirection and entity/model direction APIs keep their names. Motion uses GetSpriteMotion().
+- `SpriteSheet.GetWholeTicks` → `GetDuration`; image DurationMs/GetDurationMs → Duration/GetDuration (`timespan`). Model/particle intervals, MovingContext intervals/look-ahead, FogLayer.TransitionDuration and UDP retry options are typed. Ozz/backend/GPU seconds and bake-report JSON milliseconds remain boundary conversions. Delay accepts timespan; float conversions retain fractions and AS constructors check overflow.
+- Replace integer FogLayer.TransitionDuration and numeric MovingContext.EvaluateProjectedHex arguments: C# `new timespan(150, 2)` / `new timespan(100, 2)`, AS `timespan(150, 2)` / `timespan(100, 2)`. MovingContext.GetElapsedTime/GetWholeTime return timespan; use it directly or `nanoseconds / 1_000_000.0` (native `to_ms<float64_t>()`) for fractional milliseconds. `milliseconds` truncates fractions. Old numeric callers fail type checking; no saved-data conversion is needed.
+- Preserve shared cropped anchors in logical canvas coordinates across reference chains. Explicit zero-duration native/script sequences retain manual frame selection; file timelines stay positive. Sub-ms moving-item updates and double-precision model-cycle wrapping preserve motion and frozen endpoint poses. Interval constants retain their values/units; dependency collectors precede baker entrypoints.
+- Remove TextureAnimation and native texture playback; multi-frame model textures fail validation. Static Texture/Parent, FOFRM Size and full-canvas UVs remain. Force-rebake LFMODINF schema 5; LFMODMSH/LFOZZRIG stay unchanged.
+- Full bake retains unused art; Resources.usage.json selects typed Resource roots, required outputs and runtime dependencies. Packaging rejects absent/mismatched manifests. Mark resource properties Resource; force-include script/GUI/config/opaque paths through FixedType resource arrays, not constructors. Bake before packaging.
 
 ### FOFRM and resource migration
 
-### Changes
+- Use PascalCase keys and sections, `Key = Value`, and one-space continuations (no final slash). Ordering/spacing otherwise remain accepted. Move direction 0 into root, resolving field conflicts; use `[HexDir 1]`..`[HexDir 5]` or `[SquareDir 1]`..`[SquareDir 7]` for the active geometry. Map legacy degree order hex 30/90/150/210/270/330 or square 45/90/135/180/225/270/315/0 to indexes 0..N-1. Old Dir/named zero fail before source resolution; no fallback.
+- Rename fps → Fps; Alias → Source, remove Effect. Replace offs_x/offs_y and OffsetX/OffsetY with `Offset = X Y`, preserving carry. Replace frm/Frm/frm_N/Frm_N with exclusive nonempty Frame/Frames; remove Count, retaining active references/repeats/order. Frame is one full path; quote spaces in Frames. Legacy refusals use FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31"); Alias/Effect refusals also expire 2026-12-31.
+- Replace NextX_N/NextY_N with FrameOffsets: one signed-int32 X Y pair per active reference before flattening, missing pairs zero. Empty, malformed, out-of-range, wrong-count or reference-free lists fail. Add Offset and child frame offsets once without accumulation or changing imported deltas; discard child sequence placement, retain Offset carry. Int32 placement overflow fails. Size/FrameSizes resamples W H in 1..65535 while offsets stay literal pixels.
+- Source inherits full collections. Frame/Frames defaults to 10 fps. Duration/FrameDurations are positive ms; local timing overrides root, direction switches retain phase across unequal timelines. Named-direction Fps/Fps0 fail; legacy clocks normalize zero to 10 fps and positive sub-ms to 1 ms. Existing Color/Encoded/Bilinear bytes stay unchanged; [Composition/filter grammar](../how-to/content/image-format.md#fofrm-grammar).
+- FOFRM roots suppress transitive inputs across filtered packs/overlays. Replace direct game/model/UI/script references to consumed images/intermediate FOFRM with root wrappers; mount inputs explicitly. Output filters retain dependencies; NewName loaders declare ResolveOutput. Missing/cyclic chains or >64 FOFRM nodes fail before conversion. Fingerprints refresh dependents/SpriteInfo after same-stat edits, including on-demand bake; removing the last reference restores standalone output. Private `.baker-cache/Image/` snapshots never ship.
+- Full image rebake is required for Sprite v3/SpriteInfo2. Shared pixels retain independent timing/offsets/motion. Terminal ConfigFile continuation has identical EOF/final-newline behavior; consumers validate empty values.
 
-- FOFRM: PascalCase Frame/Frames/Offset/FrameOffsets, indexed HexDir/SquareDir
-  (root 0), physical Size/FrameSizes. Old names fail before source resolution.
-- ConfigFile terminal continuation has EOF/final-newline parity; empty values
-  remain consumer-validated.
-- Image baking publishes FOFRM roots and suppresses their transitive inputs across
-  filtered packs and overlays. Content fingerprints update dependent outputs and
-  SpriteInfo for same-stat input edits in full and on-demand baking.
+## 2026.1.68-dev - 2026-10-26
 
-### Migration details
+### Fixed
 
-- Source now inherits complete binary/FOFRM collections, directions, placement,
-  motion and timing; root transforms default all directions. Frame/Frames defaults
-  to 10 fps from final frames. Use InputDir/FrameInputDirs, Crop/FrameCrops, Grid,
-  FrameIndices, Flip/FrameFlips, Rotate/FrameRotations, Size/FrameSizes,
-  Canvas/FrameCanvases and CanvasOffset/FrameCanvasOffsets for composition.
-  Per-reference lists precede grid/flattening; FrameIndices follows flattening.
-  Motion/FrameMotions explicitly replaces int16 root motion; bitmap transforms keep
-  literal placement/motion. Resample, PixelUsage and ColorSpace select filtering.
-  Existing Color/Encoded/Bilinear bytes stay unchanged. Area cannot upscale;
-  Data/Normal cannot declare ColorSpace. Alias and Effect are refused with dated
-  markers through 2026-12-31; Fps in a named direction fails instead of being ignored.
+- Windows service registration writes the same `server-service-start` option that the service entry point consumes. Existing registrations using the previously unrecognized `--server-service` suffix require an administrator to update their startup command or recreate the registration with the updated utility.
 
-- `bcabd4d6c192400790f577b9a165c79594aa8ee7` (`2026.1.54-dev`) → `2026.1.61-dev`.
-  Rename `fps` → `Fps`; replace Alias with Source and remove Effect. Replace `offs_x/offs_y` or
-  `OffsetX/OffsetY` with `Offset = X Y`, retaining carry. Replace
-  `frm/Frm/frm_N/Frm_N` with exclusive, nonempty Frame/Frames; remove Count,
-  keep active references/repeats/order. Frame is one full path; quote spaces in Frames.
-- Author order: source/frames, selection/crop/grid, geometry/filter, placement/motion, timing.
-  Use `Key = Value`, one-space continuations, last without slash; runtime accepts other spacing/order.
-- Move direction 0 into root, merging fields/resolving conflicts. Use active-geometry
-  `[HexDir 1]`..`[HexDir 5]` or `[SquareDir 1]`..`[SquareDir 7]`.
-  Map old degree order hex 30/90/150/210/270/330 or square
-  45/90/135/180/225/270/315/0 to 0..N-1. Named zero/old Dir fail before source resolution;
-  no fallback. Legacy refusals: `FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31")`.
-- Replace authored NextX_N/NextY_N with FrameOffsets: local signed-int32 X Y
-  pairs, one per active reference before flattening/continued line. Missing pairs
-  are zero; empty/invalid/out-of-range/wrong-count/reference-free lists fail.
-  Placement adds Offset and child frame offsets without accumulation or imported
-  delta changes; child sequence placement drops, Offset carries, int32 placement overflow fails.
-- Size/FrameSizes sets W H in 1..65535; see [FOFRM](../how-to/content/image-format.md#fofrm-grammar)
-  for defaults and validation.
-- Duration/FrameDurations define positive millisecond timelines, with local timing
-  overriding root defaults. Directions may have different counts and durations;
-  direction switches preserve phase. Fps0 is refused; raw legacy zero clocks
-  normalize to10fps, sub-ms positive periods to1ms. Data/Normal bypass alpha crop.
-- Replace direct game/model/UI/script references to consumed images or intermediate
-  FOFRM with separate root wrappers. Mount inputs explicitly; filters select outputs
-  without hiding dependencies. Loaders with NewName declare matching ResolveOutput.
-  Missing/cyclic input chains and more than 64 FOFRM nodes fail before conversion.
-  Rebuild the baker and rebake: `.baker-cache/Image/` snapshots are private and
-  replace timestamp-only image decisions; they are never shipped. Removing a last
-  reference restores standalone publication and updates SpriteInfo automatically.
-- Migrate sources/tools/tests; rebuild roles/metadata, rebake. Check native/client,
-  EN/RU, contracts/docs/site/AI and compat dates; validation covers Windows only.
-- Sprite v3 and SpriteInfo2 require a full image rebake; runtime compatibility
-  is 0.0.79. Shared pixels retain independent logical timing/offsets/motion.
-  Saves/IDs/DB/network schemas and Managed ABI9 are unchanged.
-  Deploy/rollback matching binaries/packs/sources and regenerate metadata.
-- LFMODINF schema5 requires a full model rebake. Textures remain single-frame, single-direction images; TextureAnimation is rejected. LFMODMSH/LFOZZRIG stay unchanged.
+- Native named command-line consumers share `CommandLineArgs` parsing, including
+  runtime-host paths, config/sub-config selection, writable roots, fork and
+  Windows-service flags. `GetSettings()` preserves repeated entries in order;
+  `GetSettingValue(name, std::nullopt)` selects the last explicit value. Early
+  reads now trim option names consistently with ordinary settings application.
+  Builtin names use `SettingNames` constants generated from `Settings.inc` in
+  `Common.h`; command-line-only names remain in `CommandLineSettings`. Native
+  callers must replace `CommandLineSettings::CommonNonInteractive`,
+  `CommonUserWritablePath` and `ClientForceEmbeddedRuntime` with their
+  `SettingNames` equivalents. Setting constant identifiers use `Group_Name`,
+  for example `SettingNames::Common_NonInteractive`; update native references
+  from the concatenated `GroupName` spelling. Dotted config keys and their
+  values are unchanged.
 
-- Preserve fractional moving-item updates through typed elapsed time; floating unit conversions retain sub-millisecond values. Name runtime interval defaults without changing their values or units; place dependency collectors before baker entrypoints.
+- Headless applications always report non-interactive mode and log errors before
+  requesting failed shutdown, including when `Common.NonInteractive` is false.
+  `IsNonInteractiveMode()` is available through `Application.h`; error-message
+  handling belongs to the graphical and headless application implementations.
+
+- Early reads of `Common.NonInteractive` and `Client.ForceEmbeddedRuntime` use
+  the shared `CommandLineArgs::GetSettingValue` lookup, preserving the last
+  occurrence, implicit flag value and each caller's value interpretation.
+
+- `Common.NonInteractive` prevents system error dialogs from blocking unattended
+  runs. Errors retain their log and traceback and take the failed `Exit` path,
+  including direct messages and failures before application creation.
+
+### Documentation
+
+- Retain the reviewed complete AI documentation bundle limit and whole-document membership from ADR-0003; regenerate delivery after integrating the CLI/error-policy guidance.
+
+### Migration
+
+- Automated launchers of graphical apps should pass `--Common.NonInteractive True`
+  before starting the process. Headless apps need no flag. The setting default remains `False`; embedding
+  projects may enable it in their startup hook for agent-controlled sessions.
+  No network, save-data or script-call conversion is required.
+
+- Base `5c32423c1f05f1c42aaa81b02497f4fec79afca7` (`2026.1.67-dev`) -> `2026.1.68-dev`. Rebuild native applications and regenerate API/metadata and baked resources together before deployment. Existing settings keep their values and defaults; `Common.NonInteractive` is a new readonly boolean with a `False` default. No stored-data conversion is needed; wire `0.0.80`, Managed ABI `9`, resource formats and the client-host ABI are unchanged. Rollback restores the matching preceding binaries and resources.
+- Native startup code uses `CommandLineArgs::GetSettingValue(name, implicit_value)` and ordered `GetSettings(name)` with shared `CommandLineSettings` names. Views borrow argv storage; callers keep the owner alive. The scalar default is `"1"`; `std::nullopt` skips valueless occurrences. Explicit empty values and negative numbers remain values. Config/sub-config requests still require a value on every occurrence, append/sub-config order and the first valid writable root are preserved. No existing script call is removed or renamed; projects adopting the helpers rebuild against the current headers. Automated graphical launchers pass the non-interactive flag before process creation; a config/startup hook takes effect only after settings load. The log/error-trace/failed-quit path replaces system error dialogs in this mode. Ordinary graphical launches keep their modal error handling; headless applications always use the non-interactive path.
+
+## 2026.1.67-dev - 2026-10-26
+
+### Added
+
+- Monitor unfinished inbound server RPCs and complete queued input frames with an independent watchdog. `ServerNetwork.RemoteCallWarningTimeMs` defaults to `1000`, `RemoteCallDisconnectTimeMs` to `30000`, `RemoteCallWarningIntervalMs` to `10000`, and `MaxPendingRemoteCalls` to `256`. Zero independently disables an age reaction or admission ceiling; negative settings fail startup. Diagnostics include call identity/counts and queue readiness without arguments.
+
+### Changed
+
+- RPCs share the script backend's completion ownership with awaited time events. Managed registration exposes direct `Task` delegates, including `Task<T>` normalized to a declared `Task`, while preserving void wire results and synchronous Action adapters. Detached RPC completion may finish without the script pump; timer completion retains its script context. Teardown closes background completion entry before releasing backend state. Cancellation releases accounting without becoming a script fault.
+
+### Migration
+
+- Base `f29635c8dce0c3c4b39c30fd6d31ab0059f568db` (`2026.1.66-dev`) → `2026.1.67-dev`. Advance runtime compatibility marker `0.0.79` → `0.0.80`; rebuild native applications/extensions and rebake all script roles with matching CoreScripts. Native `BaseEngine::RemoteCallHandler` receives a fourth `shared_ptr<ScriptCallCompletion>` argument: retain it through deferred native handlers and release it on completion/abandonment. Ordinary synchronous native handlers may ignore it. Backend integrations use `FuncCallData::Completion`; only detached callbacks may opt into `CompletionOnAnyThread`. Old three-argument handler assignments fail native compilation; no compatibility shim is supplied.
+- Review the opt-out settings above for legitimate long-running handlers. Disconnect closes the transport with additive `DisconnectReason::RpcRuntimeLimit = 11`; it does not cancel arbitrary Tasks, preempt code or roll back game effects. Existing reason IDs `0..10`, RPC wire arguments, persisted values, Managed generator ABI `9` and resource formats retain meaning. No saved-data conversion is required. Deploy matching binaries/resources together; mixed artifacts are refused by compatibility identity. Rollback restores the preceding matching binaries/resources and configuration together.
+
+## 2026.1.66-dev - 2026-10-26
+
+### Fixed
+
+- Accept double-quoted legacy source identifiers with whitespace in `MigrationRule` for `Rename`, `Transform`, and `Remove`. Bare multiword sources, empty arguments, unclosed quotes, and replacements containing whitespace are rejected. The shared tokenizer for other metadata tags is unchanged.
+
+### Changed
+
+- Reject whitespace in authored prototype IDs after `$Name`/file-stem resolution and before migration resolution, hashing, or duplicate detection. Slash and dollar remain reserved for nested-section addressing.
+
+### Migration
+
+- Rename any authored prototype ID containing whitespace and retain the retired name only as a double-quoted source, for example `///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge`. Update native and Python migration readers together, regenerate metadata, and rebake matching resources. Existing persisted IDs remain loadable through these rules; no runtime compatibility-marker or Managed ABI change is required.
+
+## 2026.1.65-dev - 2026-10-26
+
+### Added
+
+- Add native simulation pause with independent manual, named and startup ownership. Gameplay timer/movement jobs and frame-driven script processing stop while connection/player/service jobs remain responsive. Full quiescence preserves an existing pause and rejects reentrant control before taking its mutex. Expose authoritative session lifecycle state in native queries and health output.
+- Capture named time events and persistent-world movement in snapshot format `4`, including issued timer ids, concrete callback signatures, remaining delays, map identity, progress and movement leases. Restore their execution on the new process clock without replaying movement-start events. Reject unsupported owners, delegate callbacks and unfinished Managed work; allow native projects to report additional counted eligibility issues.
+- Preserve typed worker deadlines for submission, wake and pending reruns during a hold; validate a complete hold request before changing scheduler state. Reserve issued timer ids before startup callbacks and refuse id exhaustion instead of wrapping to zero.
+
+### Migration
+
+- Upgrade from `2026.1.64-dev` by rebuilding native roles and regenerating/baking matching server/client resources and Managed assemblies. The compatibility marker advances from `78` to `79`; the Managed ABI remains `9`. Keep matching binaries, assemblies and resources together on upgrade and rollback.
+- Native snapshot consumers must parse and populate format `4`, including `LastTimeEventId`, named `TimeEvents` and leased `CritterMovements`. Format `1` and donor formats `2`/`3` are rejected: explicitly convert their project containers with matching world data, or recapture using matching resources. The Engine provides state/bytes rather than a container parser. Failed restore sessions must be destroyed.
+- Snapshot owners must be reachable by ordinary persistent-world restore; detached/transient owners and attached movement block capture. Projects must avoid recreating captured timers in initialization callbacks and register eligibility checks for their own runtime-only state. Pause is a native embedding facility and is not enabled as a gameplay policy. Startup time is frozen through init/restore/start callbacks; durable named holds must be reapplied explicitly by the embedding controller. Existing settings, script method/event ids and persisted property values retain their meaning.
+
+## 2026.1.64-dev - 2026-10-26
+
+### Fixed
+
+- Keep persistent server-entity holder ID lists unchanged in storage when critter restoration fails. Runtime pruning of the partial graph still occurs, but retrying the load retains the original durable references and error; restoring a missing child document recovers the complete graph. Successful pre-load changes and explicit migrations continue to persist normally.
+
+### Migration
+
+- Base `17b4dab02495de2f2877e552d7811dd48951fc41` (`2026.1.63-dev`) → `2026.1.64-dev`. No project data migration is required: public APIs, persisted schemas, resource formats, runtime compatibility `0.0.78` and Managed ABI `9` are unchanged. Existing low-level runtime pruning semantics are preserved; only failed top-level restoration stops saving the partial lists. Rebuild affected server roles and native tests, and deploy server/client resources from one matching bake. Rollback restores the preceding matching binaries and resources together.
+
+## 2026.1.63-dev - 2026-10-25
+
+### Fixed
+
+- Allow CMake projects to omit `FO_APP_ICON`. An empty value now produces no icon resource instead of failing configuration with `FO_APP_ICON not specified`; explicit icon paths retain their existing generated resource.
+
+### Migration
+
+- Base `4588149fa4e4493ed6dddfea0a2fdf65d17c1f3e` (`2026.1.62-dev`) to `2026.1.63-dev`. This is a configuration-only expansion, not a runtime, network, persisted-data or ABI change. Runtime compatibility remains `0.0.78`, Managed ABI `9`, and the sprite container version is unchanged. No saved-data conversion is required. Rollback restores the preceding CMake sources and generated references together.
+- Projects that already set `FO_APP_ICON` need no source or content migration: reconfigure and rebuild normally, preserving the same absolute icon path and `101 ICON` resource. Icon-free example and validation projects now configure successfully and receive an empty `.rc` file rather than `101 ICON ""`. Search declarations with `rg -n "FO_APP_ICON" <project-cmake-and-interface-paths>`; the previous failure was the configure-time diagnostic `FO_APP_ICON not specified`. Do not substitute another project's icon or restore a deleted asset merely to satisfy the old requirement.
+- Regenerate the CMake model and reference pages with `python BuildTools/docs_cmake.py --write`, then run the focused configuration and documentation tests and the aggregate contract diff. `test_actual_scaffold_configures_without_app_icon` exercises the real validation-project configure and checks that no icon resource is emitted. Existing nonempty icon configurations require the same build/package checks as before. No runtime compatibility marker, network protocol, persisted property, resource schema or updater identity changes.
 
 ## 2026.1.62-dev - 2026-10-24
 

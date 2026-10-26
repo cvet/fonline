@@ -342,6 +342,37 @@ auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
     return result;
 }
 
+auto NetInBuffer::PeekQueuedMessage() const -> optional<QueuedMessage>
+{
+    size_t begin = _msgEndPos != 0 ? _msgEndPos : _bufReadPos;
+    constexpr size_t header_size = sizeof(uint32_t) * 2 + sizeof(NetMessage);
+
+    if (begin > _bufEndPos || _bufEndPos - begin < header_size) {
+        return {};
+    }
+
+    uint32_t signature {};
+    uint32_t length {};
+    NetMessage message {};
+    auto header = make_ptr(_bufData.data()).offset(begin);
+    memory::copy(&signature, header, sizeof(signature));
+    memory::copy(&length, header.offset(sizeof(signature)), sizeof(length));
+    memory::copy(&message, header.offset(sizeof(signature) + sizeof(length)), sizeof(message));
+
+    // The processing thread owns malformed-input rejection; diagnostics never advance or reset its cursor
+    if (signature != NETMSG_SIGNATURE || length < header_size || (_maxMsgLen != 0 && length > _maxMsgLen) || length > _bufEndPos - begin) {
+        return {};
+    }
+
+    QueuedMessage result {.PrefixBytes = begin - _bufReadPos + length};
+
+    if (message == NetMessage::RemoteCall && length >= header_size + sizeof(hstring::hash_t)) {
+        memory::copy(&result.RemoteCallHash, header.offset(header_size), sizeof(result.RemoteCallHash));
+    }
+
+    return result;
+}
+
 auto NetInBuffer::NeedProcess() -> bool
 {
     FinishMessageRead();

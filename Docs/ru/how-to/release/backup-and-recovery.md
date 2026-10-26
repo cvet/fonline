@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/backup-and-recovery.html
 ---
 
 # Резервное копирование и восстановление
-<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"54e438e000729ca813f38a66bb840013b5627f7276718598bae62479d41c0b8b"} -->
+<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"2f323d2fe8527b4e54199c1b78586a12881f669a3057409e55afec8c0fbfd94a"} -->
 Этот runbook определяет переиспользуемую границу резервного копирования, восстановления и disaster recovery для сервера FOnline. Используйте его вместе с [Persistence](../../explanation/persistence/) для механики хранилища, [Release Operations](operations.md) для управления процессом и [Engine Upgrade Guide](../migration/engine-upgrade.md), когда долговечные данные переходят между ревизиями Engine или игры.
 
 ## Решение о восстановлении
@@ -41,7 +41,7 @@ Engine владеет facade базы данных, backend-реализация
 - recovery point objective (RPO), recovery time objective (RTO), зависимостями сервисов, drain трафика и полномочиями восстановления;
 - production credentials, обработкой персональных данных, решениями по инцидентам и одобрением разрушительных действий.
 
-Engine не предоставляет команду snapshot базы данных, online-backup API, контроллер point-in-time recovery, транзакцию миграции, endpoint для drain трафика или orchestrator восстановления. Проект должен предоставить и проверить эти операции, не представляя их встроенным поведением Engine.
+Engine предоставляет согласованные байтовые снимки backend базы и native-композицию сервера с проверками допустимости runtime-состояния; см. [снимки хранилища](../../explanation/persistence/) и [снимки сервера](../../explanation/runtime/server.md). Эти примитивы не предоставляют операционную команду резервного копирования, политику провайдера, контроллер point-in-time recovery, транзакцию миграции, endpoint для drain трафика или orchestrator восстановления. Проект должен предоставить и проверить эти операции.
 
 Считайте одним восстанавливаемым релизом совместимый комплект: неизменяемый server package, identity эффективной конфигурации и sub-config, ревизии Engine и игры, запечённые ресурсы, постоянные данные, recovery oplog, состояние миграций и secrets или key identifiers, необходимые для чтения комплекта. Никогда не восстанавливайте данные в произвольный binary только потому, что оба запускаются.
 

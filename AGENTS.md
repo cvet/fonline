@@ -190,6 +190,10 @@ in versioned docs; sanitize evidence.
 
 ## Validation Routing
 
+Tool owners: [Mapper interactive manual](Docs/en/how-to/tools/mapper-interactive.md),
+[Mapper automation](Docs/en/how-to/tools/mapper.md), and
+[Animation and Particle Viewers](Docs/en/how-to/tools/animation-particle-viewers.md).
+
 Build and codegen finish warning-free; fix the source instead of suppressing a
 diagnostic or weakening a gate. Use the embedding project's authoritative targets
 and [Engine testing](Docs/en/contributing/testing/) for the actual configuration.

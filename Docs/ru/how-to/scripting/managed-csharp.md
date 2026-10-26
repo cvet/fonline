@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"ec8cc857e09b1570248a155b0267e9312227e43c3ea82560600e52aca5744505"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4814f4d681d24393217cc413fc8930b7cffe93c9afafd19bd5499f6e18b72523"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -166,9 +166,13 @@ Entity-only post-set реакции могут возвращать `Task`; valu
 
 Inbound remote-call handlers могут возвращать `void`, `Task` или `Task<T>`. У remote call нет wire result, поэтому незавершённые tasks наблюдаются без блокировки network/client pump; значение `Task<T>` игнорируется. Named script function с non-generic `Task` использует ту же async boundary. `Task<T>` named function остаётся synchronous, когда native code нужен `T`.
 
+RPC dispatch и ожидающие временные события используют единое владение `FuncCallData::Completion` и реестр backend. Прямой Task-returning RPC-делегат передаёт фактическую Task; `Task<T>` регистрируется с объявленным результатом Task, поскольку RPC не возвращает wire-результат. Асинхронный делегат обходит Action-adapter и без владельца мониторинга; синхронный сохраняет typed-путь. По умолчанию completion выполняется в скриптовом контексте. Включать `CompletionOnAnyThread` можно только для callback с detached-состоянием; учёт RPC использует это разрешение, чтобы завершённая Task не оставалась pending из-за занятого script pump. Локальный gate backend закрывает фоновый вход при `BeginBackendTeardown` до освобождения native-состояния. Временные события сохраняют завершение в контексте и собственную политику Stop/Repeat/count.
+
+Мониторинг входящих серверных RPC удерживает владельца завершения до фактического окончания возвращённой task, включая успех, ошибку и отмену. Незавершённые tasks не блокируют dispatch. Backend teardown явно освобождает оставшихся владельцев; конкурентное или позднее завершение освобождает каждого не более одного раза. [Политика RPC](../../reference/scripting/remote-calls.md#мониторинг-времени-выполнения-и-отключение) задаёт пороги возраста/количества и разрыв транспорта; она не отменяет task и не откатывает её эффекты.
+
 Аргументы callback и remote call сохраняют форму metadata: native `any[]` поступает как `List<any>`, а `string=>any` — как `Dictionary<string, any>`. Bridge не превращает их в `List<object>` или строковый словарь; указывайте точные generated types.
 
-Методы `[CallableFromNative]` регистрируются под именем `TypeName::MethodName`. Аргументы и результаты `List<T>` и `Dictionary<K,V>` используют Engine descriptors массивов и словарей, когда типы элементов, ключей и значений относятся к поддерживаемым простым типам Engine. Native-регистрация разрешает `K=>V` до синтаксиса массива; словари со значениями-коллекциями остаются за пределами этого callback bridge. Регистрация аргументов по ссылке сейчас поддерживает встроенные delegates `(Critter, Critter, ref string)`. `Test_ManagedScriptRuntime.cpp` проверяет эти вызовы через настоящие скомпилированные assemblies, включая аргументы и возвращаемые значения словарей.
+Методы `[CallableFromNative]` регистрируются под именем `TypeName::MethodName`. Обработчики `[TimeEvent]` регистрируются под тем же именем для native-поиска именованных таймеров и восстановления снимков. Аргументы и результаты `List<T>` и `Dictionary<K,V>` используют Engine descriptors массивов и словарей, когда типы элементов, ключей и значений относятся к поддерживаемым простым типам Engine. Native-регистрация разрешает `K=>V` до синтаксиса массива; словари со значениями-коллекциями остаются за пределами этого callback bridge. Регистрация аргументов по ссылке сейчас поддерживает встроенные delegates `(Critter, Critter, ref string)`. `Test_ManagedScriptRuntime.cpp` проверяет эти вызовы через настоящие скомпилированные assemblies, включая аргументы и возвращаемые значения словарей.
 
 ## Async и планирование continuations
 
@@ -291,7 +295,7 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 
 Для изолированных фикстур используется собственный `DatabaseDocument(entityType, originalValues)` и `Migrate<T>(property, ref value)`. Это вызывает зарегистрированную типизированную функцию без создания сущности; метод не коммитит документ и не имитирует запись в БД. Постоянное сохранение проверяется отдельно настоящей загрузкой БД и перезапуском процесса.
 
-Правила прототипов имеют формы `///@ MigrationRule Proto Item Rename Old New`, `Proto Item Remove Old` и `Proto Item Transform Old GameMigrations.RewriteProto`. `Remove` не принимает замену и заменяет прежний токен `__remove__`. Статическая синхронная функция с `[ProtoMigrator]` имеет сигнатуру `bool RewriteProto(ref hstring value, DatabaseDocument document)`. Источник может быть уже удалён; владелец должен поддерживать прототипы. Функция выполняется только на документе перед поиском прототипа и переносом свойств. Все callbacks читают исходный документ, включая прежний `_Proto`; новое имя добавляется к подготовленным изменениям свойств. `false` сохраняет имя, а `true` с пустым именем намеренно пропускает сущность без миграторов её свойств. Цепочки переименований и функций проверяются на циклы; у источника допускается одно действие. Обычный поиск прототипов и baker не вызывают функции, зависящие от контекста документа: вложенные ссылки требуют отдельных условных проектных путей. `DatabaseDocument.MigrateProto(ref value)` вызывает зарегистрированную функцию в автономной фикстуре без имитации цепочки или записи БД.
+Правила прототипов имеют формы `///@ MigrationRule Proto Item Rename Old New`, `Proto Item Remove Old` и `Proto Item Transform Old GameMigrations.RewriteProto`. `Remove` не принимает замену и заменяет прежний токен `__remove__`. Legacy source-идентификатор с whitespace записывается в двойных кавычках, например `Proto Modifier Rename "Local knowledge" LocalKnowledge`; quoted source также работает в `Transform` и `Remove`. Голая последовательность слов и replacement с whitespace отклоняются. Статическая синхронная функция с `[ProtoMigrator]` имеет сигнатуру `bool RewriteProto(ref hstring value, DatabaseDocument document)`. Источник может быть уже удалён; владелец должен поддерживать прототипы. Функция выполняется только на документе перед поиском прототипа и переносом свойств. Все callbacks читают исходный документ, включая прежний `_Proto`; новое имя добавляется к подготовленным изменениям свойств. `false` сохраняет имя, а `true` с пустым именем намеренно пропускает сущность без миграторов её свойств. Цепочки переименований и функций проверяются на циклы; у источника допускается одно действие. Обычный поиск прототипов и baker не вызывают функции, зависящие от контекста документа: вложенные ссылки требуют отдельных условных проектных путей. `DatabaseDocument.MigrateProto(ref value)` вызывает зарегистрированную функцию в автономной фикстуре без имитации цепочки или записи БД.
 
 ### Indexed native interop ABI
 
@@ -414,6 +418,10 @@ Managed backend передаёт фиксированный native context, mana
 | Package не находит framework type | `ManagedRuntime/runtime.manifest` и target-specific замена pack. |
 | ABI bind падает до module initialization | Stale generated `*Abi.gen.cs`, несовпадение native manifest/hash или пропущенная managed rebuild. |
 | Unsubscribe через wrapper оставляет callback активным | Ownership subscription на native entity и delegate equality; wrapper-local event state запрещён. |
+
+## Снимки сессии
+
+Native-снимок сервера блокируется, пока остаются незавершённые Managed `Task`, переданные через диспетчер движка, или скриптовые продолжения. Завершение, ошибка и отмена снимают учёт Task; продолжения блокируют снимок до обработки очереди. Пауза симуляции удерживает кадровые продолжения, продолжая публиковать замороженное кадровое/синхронизированное время. Статические поля C#, графы объектов и самостоятельная фоновая работа не сериализуются: контроллер проекта должен сохранить это состояние либо отвергнуть его собственной проверкой допустимости. См. [паузу и снимки сервера](../../explanation/runtime/server.md).
 
 ## Матрица проверки
 

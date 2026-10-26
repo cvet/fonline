@@ -1261,7 +1261,7 @@ void BaseEngine::FinishStartingUp()
     _startingUp = false;
 }
 
-void BaseEngine::FrameAdvance()
+void BaseEngine::FrameAdvance(bool process_backends)
 {
     GameTime.FrameAdvance(is_run_in_debugger() || Settings->ServerNetwork.DisableNetworking);
 
@@ -1278,7 +1278,9 @@ void BaseEngine::FrameAdvance()
         }
     }
 
-    ProcessBackends();
+    if (process_backends) {
+        ProcessBackends();
+    }
 }
 
 void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait)
@@ -1372,13 +1374,13 @@ void BaseEngine::VerifyBindedRemoteCalls() const noexcept(false)
     FO_VERIFY_AND_THROW(_inboundRemoteCallHandlers.size() == GetInboundRemoteCalls()->size(), "Inbound remote call handler table does not cover every registered remote call", _inboundRemoteCallHandlers.size(), GetInboundRemoteCalls()->size());
 }
 
-void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data)
+void BaseEngine::HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion)
 {
     FO_TRACE_ZONE(Script);
 
     auto it = _inboundRemoteCallHandlers.find(name);
     FO_VERIFY_AND_THROW(it != _inboundRemoteCallHandlers.end(), "Lookup failed in inbound remote call handlers");
-    it->second(name, caller, data);
+    it->second(name, caller, data, std::move(completion));
 }
 
 FO_END_NAMESPACE

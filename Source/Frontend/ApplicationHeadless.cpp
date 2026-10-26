@@ -784,9 +784,21 @@ void AppAudio::UnlockDevice()
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
-    ignore_unused(message);
-    ignore_unused(traceback);
     ignore_unused(fatal_error);
+
+    logging::write_message(logging::type::error, message);
+
+    if (!traceback.empty()) {
+        logging::write_message(logging::type::error, traceback);
+    }
+
+    if (IsAppInitialized()) {
+        GetApp()->RequestQuit(false);
+    }
+    else {
+        logging::write_message(logging::type::error, "Shutdown!");
+        exit_app(false);
+    }
 }
 
 void Application::ShowProgressWindow(string_view text, const ProgressWindowCallback& callback)

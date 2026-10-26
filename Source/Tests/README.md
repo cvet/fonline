@@ -29,6 +29,11 @@ The complete source-backed filename list and count are generated in [source-inve
 retain their result across another thread's final release and that an older entity cannot unregister
 a successor with the same id.
 
+`Test_RpcRuntimeTracker.cpp` is a deterministic, network-free suite for the RPC runtime tracker. It pins
+inclusive warning and disconnect ages, warning throttling, call accounting and the pending limit,
+bounded input-arrival coalescing, queued-frame arbitration and preservation of the full 64-bit queued
+hash. Its explicit `nanotime` fixtures include zero timestamps.
+
 `FO_TESTS_SOURCE` is unconditional. Backend-specific translation units own complete guards; general native suites run with either backend. Shared header fixtures keep AS compilation guarded. See the [backend ownership contract](../../Docs/en/contributing/testing/#test-runner-model).
 
 `Test_ManagedScriptRuntime.cpp` compiles `Fixtures/ManagedRuntimeProbe.cs` with the real baker/SDK and runs server/client/mapper bridges and two-server isolation. It requires the configured SDK/runtime; the [test map](../../Docs/en/contributing/testing/#test-runner-model) owns coverage and limits.

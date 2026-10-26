@@ -52,34 +52,36 @@ extraction, directional/shared offsets and copying trimmed sheets.
 
 `Test_ManagedScriptRuntime.cpp` compiles the engine-owned `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` with the real `ManagedScriptBaker` and .NET SDK, then loads its server/client/mapper assemblies. It checks module initialization, critter events, native-to-managed calls, array arguments/results, dictionaries, UTF-8 and by-reference strings, hashes, nullable entity handles, exception reporting and isolation of two simultaneously live servers. It requires the SDK for `ManagedScript.TargetFramework` and the configured managed runtime payload; dry-run markers are not runtime evidence. This is focused bridge coverage, not exhaustive parity with every AngelScript export scenario.
 
+`Test_RpcRuntimeTracker.cpp` covers warning/disconnect boundaries, independent
+zero settings, warning cooldown/episode reset, invocation IDs and completion,
+the pending ceiling, bounded arrival history, last-byte readiness and full
+64-bit queued call hashes. `Test_NetBuffer.cpp` checks passive framing across
+fragments, unread current payloads, shrink and malformed input. Select these
+with `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` uses `[rpc-runtime-transport]` for real secure
+interthread connections: warning-only survival, watchdog disconnection while the
+only script worker is blocked, deferred completion and all-disabled behavior.
+The Managed core harness additionally checks actual adapter completion on success,
+fault, cancellation, nesting, foreign-thread completion and teardown races.
+Native deferred-handler probes do not by themselves prove either script backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` keeps send/receive callbacks
+blocked while requesting closure, then checks full cleanup and single notification;
+its nested-close section protects synchronous transport re-entry.
+`ManagedScriptRuntime` also dispatches a real Managed RPC through the native
+completion bridge and checks off-thread success, fault and cancellation while the
+script pump is stopped, completed cancellation, ownerless nested `Task<T>` calls,
+two-backend isolation and completion racing the teardown entry gate. Its string
+property getter/ref-setter fixture exercises the boxed property callback bridge.
+The Python callback suite also blocks inside its substituted native completion
+to prove teardown waits for an entered callback and suppresses a late one; a
+gate-removal control must fail semantically.
+
 ## Native module and resource pipeline checks
 
-The `engine-update` CI job runs the resource-usage, serial/parallel archive,
-resource-pack format, `IsPackaged`, native-module layout and CMake wiring Python
-regressions. The formatting job also runs
-`python3 BuildTools/check_native_modules.py`; its reviewed exceptions and scope
-are documented in [Native module layout](../source-tree/index.md#native-module-layout).
+`engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
 
-`RunResourceUsageIntegrationTests` runs the real native Baker through
-`BuildTools/tests/check_resource_usage_pipeline.py`. It is a dependency of
-`RunUnitTests` when `FO_UNIT_TESTS` is enabled, the Baker target exists and the
-configuration is native. The standard validation project enables
-`FO_BUILD_BAKER` explicitly; a CMake regression checks that option by executing
-the actual profile with stage side effects disabled. CMake fixture projects also
-build `RunUnitTests` and verify that the pipeline command runs first.
-
-The pipeline fixture bakes real metadata, prototypes, FOFRM and a font page,
-checks the exact manifest selection, and writes an archive through the normal
-packager. Another Baker process mounts that archive through the native
-`DataSource` and copies each entry back for byte comparison. An incremental bake
-removes a `ResourceSet.Files` inclusion and changes image content while preserving
-its timestamp. The same Packager instance must reload the manifest and update
-the archive. Negative controls include packaging every baked file and dropping
-the font page. Unused outputs remain in the full bake. Temporary files belong to
-the isolated fixture and are removed on exit; a failed Baker's output is included
-in the failure diagnostic.
-
-The direct runner needs Python's standard library and an existing Baker:
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -318,6 +320,8 @@ notes.
 Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
 
 ### Focused harness patterns
+
+- **Unattended errors:** run each hidden `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` and `ApplicationHeadlessException` case by its exact name in a fresh generated unit-test process. Quit state is irreversible; do not run the shared tag as one suite. The headless cases keep `Common.NonInteractive = False`, and the direct-error case verifies that a later successful quit request retains the failed status. These cases exercise the headless implementation; graphical-frontend and pre-application error paths require separate process smokes with log/trace, exit-status and timeout assertions.
 
 - **Attachment teardown:** `CritterAttachmentTeardown` in `Test_ServerEntityLifetime.cpp` uses a self-contained server with either scripting backend. It covers ordinary detach and destruction of either endpoint, counts native exception reports through the existing exception callback while preserving the previous reporter, and decodes the surviving player's `CritterAttachments` packet. `ClientCritterFinalizationDropsAttachmentIds` in `Test_ClientEntityLifetime.cpp` checks view finalization with cached attachment IDs and a surviving peer. Final entity state alone cannot prove clean teardown: a caught native exception may be followed by a successful retry.
 
