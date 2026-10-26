@@ -37,6 +37,7 @@
 #include "CritterManager.h"
 #include "Item.h"
 #include "Location.h"
+#include "PathFinding.h"
 #include "Player.h"
 #include "Server.h"
 #include "Settings.h"
@@ -880,6 +881,60 @@ auto Map::IsHexesMovable(mpos hex, int32_t radius) const -> bool
     }
 
     return true;
+}
+
+auto Map::GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mpos>
+{
+    FO_TRACE_ZONE(Map);
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    FO_VERIFY_AND_THROW(radius >= 0, "Sight radius must not be negative", radius);
+
+    msize map_size = GetSize();
+    FO_VERIFY_AND_THROW(map_size.is_valid_pos(origin), "Sight origin is outside map bounds", origin, map_size);
+
+    // Cap only the rectangle expansion; the original radius still filters true distance
+    int32_t expansion_radius = std::min(radius, numeric_cast<int32_t>(std::max(map_size.width, map_size.height)));
+    int32_t origin_x = numeric_cast<int32_t>(origin.x);
+    int32_t origin_y = numeric_cast<int32_t>(origin.y);
+    int32_t min_x = std::max(origin_x - expansion_radius, 0);
+    int32_t min_y = std::max(origin_y - expansion_radius, 0);
+    int32_t max_x = std::min(origin_x + expansion_radius, numeric_cast<int32_t>(map_size.width) - 1);
+    int32_t max_y = std::min(origin_y + expansion_radius, numeric_cast<int32_t>(map_size.height) - 1);
+
+    TraceLineInput trace_input;
+    trace_input.StartHex = origin;
+    trace_input.MapSize = map_size;
+    trace_input.IsHexBlocked = [this](mpos hex) { return !IsHexShootable(hex); };
+
+    vector<mpos> hexes;
+
+    for (int32_t x = min_x; x <= max_x; x++) {
+        for (int32_t y = min_y; y <= max_y; y++) {
+            mpos probe {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
+            int32_t distance = GeometryHelper::GetDistance(origin, probe);
+
+            if (distance > radius) {
+                continue;
+            }
+            if (!IsHexMovable(probe)) {
+                continue;
+            }
+            if (distance > 0) {
+                trace_input.TargetHex = probe;
+                trace_input.MaxDist = distance;
+                TraceLineOutput trace = PathFinding::TraceLine(trace_input);
+
+                if (trace.PreBlock != probe) {
+                    continue;
+                }
+            }
+
+            hexes.emplace_back(probe);
+        }
+    }
+
+    return hexes;
 }
 
 auto Map::HasPathfindingObstacle(mpos hex, nptr<const Critter> ignore_cr) const noexcept -> bool

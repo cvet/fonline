@@ -262,26 +262,18 @@ On the client there are exactly two paths, and the map view holds no state of it
 
 ## Line tracing
 
-`TraceLineInput` describes a trace from `StartHex` toward `TargetHex`:
+`TraceLineInput`: `StartHex` toward `TargetHex`; `MaxDist` limits length (`0`: start/target distance), `Angle` sets direction, `CheckLastMovable` requests the last movable hex, `IsHexBlocked` stops tracing, optional `IsHexMovable` records move-valid cells. `TraceLineOutput`: completion, last-movable presence, pre-block/block/last-movable hexes. Uses: movement/pathfinding, visibility, shooting.
 
-- `MaxDist` limits trace length; `0` means use start/target distance.
-- `Angle` can override/drive direction.
-- `CheckLastMovable` asks the trace to report the last movable hex.
-- `IsHexBlocked` stops the trace.
-- `IsHexMovable` optionally records move-valid candidates.
-
-`TraceLineOutput` reports whether the trace was full, whether a last movable hex exists, the pre-block hex, block hex, and last movable hex.
-
-Line tracing is used by movement/path logic and by gameplay systems that need visibility, shooting, or straight-line movement checks.
+Under caller-held map cover, native `Map::GetMovableHexesInSight` / script `Map.GetMovableHexesInSight(origin, radius)` returns movable cells by ascending x/y with `GeometryHelper::GetDistance <= radius`. Negative radii or out-of-bounds origins throw. The origin skips tracing; others match scalar `TracePath(..., distance, 0.0f).PreBlock` via `PathFinding::TraceLine` + `Map::IsHexShootable`. Dynamic/manual/instance-static blockers are read anew, without caching. Visibility/vision/friendliness/sneak/privacy remain project-owned.
 
 ### Direction traces
 
-`TraceDirectionInput` describes a held direction: `StartHex` plus `StartHexOffset` (where the mover is drawn, not its hex centre), `Dir`, a point the direction's line passes through (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, and `Slide`. `PathFinding::TraceDirection()` walks that line one hex at a time: of the neighbour directions either side of the angle it takes the one whose hex centre lies closest to the line, measured in the camera-projected plane `MovingContext` measures in, so the steps hug the line rather than a ray re-aimed at a rounded target. Anything but `Passable` blocks, because a held direction does not route through gags or critters the way a path does. `TraceDirectionOutput` returns the steps, the control steps and `EndHexOffset`:
+`TraceDirectionInput`: `StartHex`, rendered `StartHexOffset`, `Dir`, line point (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, `Slide`. `PathFinding::TraceDirection()` picks the bracketing direction whose hex centre is nearest the line in `MovingContext`'s camera-projected plane, without re-aiming at rounded targets. Only `Passable` permits steps; gags/critters block. `TraceDirectionOutput`: steps, control steps, `EndHexOffset`:
 
-- A trace that never left the line is one straight segment, and `EndHexOffset` projects its last point back onto the line. The line point is the start for a fresh direction and where the run began when a client extends one, so a chain of traces draws one straight line in the input direction with no rounding carried from link to link.
-- With `Slide`, a blocked next hex is replaced by the free neighbour direction closest to the input angle, and only one strictly under 90° off it; a parallel line then resumes from the hex the side step reached. Every step thus advances along the direction, so a trace can never oscillate or walk back over hexes it came from. A slid trace runs through hex centres (a control step after every side step) and returns a zero `EndHexOffset`. Pushing straight into a flat wall finds no side step and stops, exactly as without `Slide`; the map edge stops a trace without `Slide` and is followed with it.
+- Without deviation: one segment ends projected onto the line. Its line point is the fresh start or whole run's start on extension; rounding never accumulates across plans.
+- `Slide`: replace a blocked step with the free neighbour nearest the input angle, strictly within 90°; resume parallel from there. Steps advance without oscillation/backtracking. Slid traces use hex centres, a control step per side step, zero `EndHexOffset`. Perpendicular flat-wall input stops. Map edges stop without `Slide`, follow with it.
 
-`MapView::TraceMoveWay()` is the client's wrapper with the map's own blocking; the client's direct-move controller is its only caller (see [ClientRuntime.md](runtime/client.md#held-direction-movement)).
+`MapView::TraceMoveWay()` adds map blocking; only the client's [direct-move controller](runtime/client.md#held-direction-movement) calls it.
 
 ## Movement contexts
 

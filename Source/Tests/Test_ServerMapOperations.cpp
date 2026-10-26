@@ -222,4 +222,115 @@ TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
     check_paths(true);
 }
 
+TEST_CASE("MapMovableHexesInSightMatchesScalarLineTrace", "[map-visibility]")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+    string startup_error = WaitForStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring static_map_pid = server->Hashes.to_hashed_string("StaticMap");
+    array<hstring, 1> map_pids {static_map_pid};
+    auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
+    auto isolated_location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
+    auto maps = location->GetMaps();
+    auto isolated_maps = isolated_location->GetMaps();
+    REQUIRE(maps.size() == 1);
+    REQUIRE(isolated_maps.size() == 1);
+    ptr<Map> map = maps.front();
+    ptr<Map> isolated_map = isolated_maps.front();
+
+    auto collect_reference = [&](ptr<const Map> target_map, mpos origin, int32_t radius) -> vector<mpos> {
+        vector<mpos> expected;
+        msize map_size = target_map->GetSize();
+
+        for (int32_t x = 0; x < map_size.width; x++) {
+            for (int32_t y = 0; y < map_size.height; y++) {
+                mpos probe {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
+
+                if (!target_map->IsHexMovable(probe)) {
+                    continue;
+                }
+
+                int32_t distance = GeometryHelper::GetDistance(origin, probe);
+
+                if (distance > radius) {
+                    continue;
+                }
+
+                mpos traced = probe;
+
+                if (distance > 0) {
+                    traced = server->MapMngr.TracePath(target_map, origin, probe, distance, 0.0f).PreBlock;
+                }
+
+                if (traced == probe) {
+                    expected.emplace_back(probe);
+                }
+            }
+        }
+
+        return expected;
+    };
+
+    auto check_query = [&](ptr<const Map> target_map, mpos origin, int32_t radius) {
+        vector<mpos> expected = collect_reference(target_map, origin, radius);
+
+        CHECK(target_map->GetMovableHexesInSight(origin, radius) == expected);
+    };
+
+    check_query(map, mpos {25, 25}, 0);
+    check_query(map, mpos {25, 25}, 7);
+    check_query(map, mpos {25, 25}, std::numeric_limits<int32_t>::max());
+
+    for (mpos origin : {mpos {0, 25}, mpos {49, 25}, mpos {25, 0}, mpos {25, 49}}) {
+        check_query(map, origin, 7);
+    }
+
+    mpos control_origin {11, 12};
+    mpos blocked_probe {12, 13};
+    mpos clear_probe {13, 12};
+    int32_t control_radius = 3;
+    vector<mpos> visible = map->GetMovableHexesInSight(control_origin, control_radius);
+    REQUIRE_FALSE(map->IsHexMovable(blocked_probe));
+    REQUIRE(map->IsHexMovable(clear_probe));
+    CHECK(std::ranges::find(visible, blocked_probe) == visible.end());
+    CHECK(std::ranges::find(visible, clear_probe) != visible.end());
+    CHECK(visible == collect_reference(map, control_origin, control_radius));
+
+    vector<mpos> before_invalid = visible;
+    CHECK_THROWS(map->GetMovableHexesInSight(control_origin, -1));
+    CHECK_THROWS(map->GetMovableHexesInSight(mpos {-1, 0}, control_radius));
+    CHECK_THROWS(map->GetMovableHexesInSight(mpos {50, 0}, control_radius));
+    CHECK(map->GetMovableHexesInSight(control_origin, control_radius) == before_invalid);
+
+    map->SetHexManualBlock(clear_probe, true, true);
+    vector<mpos> manually_blocked = map->GetMovableHexesInSight(control_origin, control_radius);
+    CHECK(std::ranges::find(manually_blocked, clear_probe) == manually_blocked.end());
+    CHECK(manually_blocked == collect_reference(map, control_origin, control_radius));
+
+    map->SetHexManualBlock(clear_probe, false, false);
+    CHECK(map->GetMovableHexesInSight(control_origin, control_radius) == visible);
+    CHECK(isolated_map->GetMovableHexesInSight(control_origin, control_radius) == visible);
+
+    REQUIRE(map->RemoveStaticItem(ident_t {21}));
+    CHECK(map->IsHexMovable(blocked_probe));
+    CHECK_FALSE(isolated_map->IsHexMovable(blocked_probe));
+
+    vector<mpos> statically_unblocked = map->GetMovableHexesInSight(control_origin, control_radius);
+    CHECK(std::ranges::find(statically_unblocked, blocked_probe) != statically_unblocked.end());
+    CHECK(statically_unblocked == collect_reference(map, control_origin, control_radius));
+    CHECK(isolated_map->GetMovableHexesInSight(control_origin, control_radius) == visible);
+}
+
 FO_END_NAMESPACE

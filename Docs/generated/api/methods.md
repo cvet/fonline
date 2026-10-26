@@ -3012,6 +3012,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-getlocation-dfe1edec9c"></a>
 - [`symbol-script-method-server-map-getlocation-dfe1edec9c`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getlocation-dfe1edec9c)
 
+<a id="symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb"></a>
+- [`symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb)
+
 <a id="symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414"></a>
 - [`symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414)
 

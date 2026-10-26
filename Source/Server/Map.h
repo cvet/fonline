@@ -72,6 +72,7 @@ public:
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
+    [[nodiscard]] auto GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mpos>;
     [[nodiscard]] auto HasPathfindingObstacle(mpos hex, nptr<const Critter> ignore_cr) const noexcept -> bool;
     [[nodiscard]] auto IsBlockItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;

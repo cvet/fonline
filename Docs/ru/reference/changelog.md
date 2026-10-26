@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"63010a75800d654acc2be94c8ab2ed31d14632ab6cbd45a9aa2eedfb657865f4"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"85fa75adc9d70b9ccab897526aec69e2dfa61a8b7ddf4e52ab70f24b6a77c470"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-28
+
+### Добавлено
+
+- Добавлен серверный `Map.GetMovableHexesInSight(origin, radius)`; см. [контракт запроса](../explanation/maps-and-movement.md#трассировка-линий).
+
+### Миграция
+
+- База `9f07d5b17eb54b0f3b6adceffabbefddaeb603e5` (`2026.1.76-dev`) → `2026.1.77-dev`. API расширен; прежние значения и сохранения не меняются. Перегенерируйте привязки/метаданные, пересоберите native-роли и выпеките согласованные ресурсы. Унаследованный runtime `0.0.82` и Managed ABI `9` сохранены; бинарники, сборки и ресурсы обновляются и откатываются вместе.
+
+## 2026.1.76-dev - 2026-10-28
 
 ### Добавлено
 

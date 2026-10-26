@@ -8310,6 +8310,10 @@
           "source_sha256": "52729e99bc6f89d58eab7e2ee6b590813e80f362cb3acf54b01923255ba60be9",
           "translation": "SyncScope: требует self; возвращает родительскую локацию, но не покрывает ее для последующего чтения."
         },
+        "/symbols/@id=script.method.server.Map.GetMovableHexesInSight/description": {
+          "source_sha256": "5ccdc67feca4b16eb870d96997be98b1f3ec1a24728a4f425eee00090f93777e",
+          "translation": "SyncScope: требуется self; читает текущее состояние статических блокировок и блокировок карты"
+        },
         "/symbols/@id=script.method.server.Map.GetPathLength%23aaa618b299e12baf/description": {
           "source_sha256": "3d71d4138ace01a752d6e6cb0608d53f407a84a93ec517ce8c774023d6553e62",
           "translation": "SyncScope: требует self и cr; поиск пути читает блокировки карты и состояние cr."

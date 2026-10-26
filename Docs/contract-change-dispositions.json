@@ -14100,6 +14100,18 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026.1.69-dev",
       "compatibility": "Runtime 0.0.80 -> 0.0.81; Managed ABI 9 unchanged. Rebuild and force-rebake matching applications/resources; persisted values and wire units keep their meanings.",
       "owner": "Engine duration, movement, rendering and image import contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.f30662f73d1c2847",
+      "baseline_contract_sha256": "5fe1d30dd9052efacfe3e8204048ca992251c708d37f53111a6e3b03ce042046",
+      "current_contract_sha256": "ecf698c963e6fcc6a594f85d043486f95e2672f5adc791ee67d9caca4b6db266",
+      "classification": "breaking",
+      "rationale": "One additive server Map.GetMovableHexesInSight query grows the reviewed native-codegen inventory from 2585 to 2586. Existing signatures, scalar geometry, ordering, values and side effects retain their meanings; the inventory pin changes intentionally.",
+      "migration": "See Docs/en/explanation/maps-and-movement.md#line-tracing and the 2026.1.77-dev migration notes. Regenerate bindings and metadata, rebuild affected native roles and rebake matched resources. Existing scalar calls remain valid; no saved-data conversion is required.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md document the additive Map query and coordinated regeneration.",
+      "compatibility": "The generated API/metadata contract changes. Inherited runtime 0.0.82 and Managed ABI 9 remain unchanged. Existing wire and stored values are not reinterpreted; adopt matching binaries, assemblies and resources together.",
+      "owner": "scripting-runtime"
     }
   ]
 }

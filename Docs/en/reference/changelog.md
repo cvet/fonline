@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Added
 
+- Add server `Map.GetMovableHexesInSight(origin, radius)`; see the [query contract](../explanation/maps-and-movement.md#line-tracing).
+
+### Migration
+
+- Base `9f07d5b17eb54b0f3b6adceffabbefddaeb603e5` (`2026.1.76-dev`) → `2026.1.77-dev`. Additive API; existing values and saves are unchanged. Regenerate bindings/metadata, rebuild native roles and rebake matching resources. The inherited runtime `0.0.82` and Managed ABI `9` remain; adopt/roll back binaries, assemblies and resources together.
+
+## 2026.1.76-dev - 2026-10-28
+
+### Added
+
 - Add registry-backed generation of `Source/Essentials/WinApiUndef.inc` through `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj`. The generator reads the official `Windows.Win32.winmd` and installed SDK headers, adds only actual macro aliases with PInvoke evidence or a generic A/W alias, preserves macro-only entries and the compile-proven allowlist, and removes allowlisted active `#undef` lines. Repeated generation is byte-identical. Pin the metadata package version and record its hash.
 - Add a dedicated `unity` job to `validate.yml` for independent validation of CMake Unity compilation. The job sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs the Unity configure/build fixtures, and then runs the ordinary `unit-tests` validator. It runs for `all` and can be selected manually with `job: unity`. The existing `unit-tests` job retains independent translation units, and bundled third-party targets remain excluded from Unity compilation.
 - Add opt-in CMake Unity builds for first-party core libraries and applications. `FO_UNITY_BUILD=ON` selects `BATCH` mode; `FO_UNITY_BUILD_BATCH_SIZE` defaults to `32` and accepts only positive decimal integers. Ordinary independent translation units remain the default, and bundled third-party targets are not combined. Resolve duplicate internal identifiers and cross-source macro leakage in their owning sources rather than excluding whole subsystems.
