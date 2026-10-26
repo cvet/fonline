@@ -14,6 +14,53 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Fixed
+
+- Windows service registration writes the same `server-service-start` option that the service entry point consumes. Existing registrations using the previously unrecognized `--server-service` suffix require an administrator to update their startup command or recreate the registration with the updated utility.
+
+- Native named command-line consumers share `CommandLineArgs` parsing, including
+  runtime-host paths, config/sub-config selection, writable roots, fork and
+  Windows-service flags. `GetSettings()` preserves repeated entries in order;
+  `GetSettingValue(name, std::nullopt)` selects the last explicit value. Early
+  reads now trim option names consistently with ordinary settings application.
+  Builtin names use `SettingNames` constants generated from `Settings.inc` in
+  `Common.h`; command-line-only names remain in `CommandLineSettings`. Native
+  callers must replace `CommandLineSettings::CommonNonInteractive`,
+  `CommonUserWritablePath` and `ClientForceEmbeddedRuntime` with their
+  `SettingNames` equivalents. Setting constant identifiers use `Group_Name`,
+  for example `SettingNames::Common_NonInteractive`; update native references
+  from the concatenated `GroupName` spelling. Dotted config keys and their
+  values are unchanged.
+
+- Headless applications always report non-interactive mode and log errors before
+  requesting failed shutdown, including when `Common.NonInteractive` is false.
+  `IsNonInteractiveMode()` is available through `Application.h`; error-message
+  handling belongs to the graphical and headless application implementations.
+
+- Early reads of `Common.NonInteractive` and `Client.ForceEmbeddedRuntime` use
+  the shared `CommandLineArgs::GetSettingValue` lookup, preserving the last
+  occurrence, implicit flag value and each caller's value interpretation.
+
+- `Common.NonInteractive` prevents system error dialogs from blocking unattended
+  runs. Errors retain their log and traceback and take the failed `Exit` path,
+  including direct messages and failures before application creation.
+
+### Documentation
+
+- Retain the reviewed complete AI documentation bundle limit and whole-document membership from ADR-0003; regenerate delivery after integrating the CLI/error-policy guidance.
+
+### Migration
+
+- Automated launchers of graphical apps should pass `--Common.NonInteractive True`
+  before starting the process. Headless apps need no flag. The setting default remains `False`; embedding
+  projects may enable it in their startup hook for agent-controlled sessions.
+  No network, save-data or script-call conversion is required.
+
+- Base `5c32423c1f05f1c42aaa81b02497f4fec79afca7` (`2026.1.67-dev`) -> `2026.1.68-dev`. Rebuild native applications and regenerate API/metadata and baked resources together before deployment. Existing settings keep their values and defaults; `Common.NonInteractive` is a new readonly boolean with a `False` default. No stored-data conversion is needed; wire `0.0.80`, Managed ABI `9`, resource formats and the client-host ABI are unchanged. Rollback restores the matching preceding binaries and resources.
+- Native startup code uses `CommandLineArgs::GetSettingValue(name, implicit_value)` and ordered `GetSettings(name)` with shared `CommandLineSettings` names. Views borrow argv storage; callers keep the owner alive. The scalar default is `"1"`; `std::nullopt` skips valueless occurrences. Explicit empty values and negative numbers remain values. Config/sub-config requests still require a value on every occurrence, append/sub-config order and the first valid writable root are preserved. No existing script call is removed or renamed; projects adopting the helpers rebuild against the current headers. Automated graphical launchers pass the non-interactive flag before process creation; a config/startup hook takes effect only after settings load. The log/error-trace/failed-quit path replaces system error dialogs in this mode. Ordinary graphical launches keep their modal error handling; headless applications always use the non-interactive path.
+
+## 2026.1.67-dev - 2026-10-26
+
 ### Added
 
 - Monitor unfinished inbound server RPCs and complete queued input frames with an independent watchdog. `ServerNetwork.RemoteCallWarningTimeMs` defaults to `1000`, `RemoteCallDisconnectTimeMs` to `30000`, `RemoteCallWarningIntervalMs` to `10000`, and `MaxPendingRemoteCalls` to `256`. Zero independently disables an age reaction or admission ceiling; negative settings fail startup. Diagnostics include call identity/counts and queue readiness without arguments.

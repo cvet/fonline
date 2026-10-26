@@ -196,7 +196,7 @@ auto StaticMap::CreateHexField(msize map_size, string_view grid_type) -> unique_
         return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
 
-    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.ProtoMapGridType", grid_type);
+    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", SettingNames::Server_ProtoMapGridType, grid_type);
 }
 
 void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)

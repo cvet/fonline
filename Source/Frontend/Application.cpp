@@ -3036,6 +3036,24 @@ void AppAudio::UnlockDevice()
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
+    if (IsNonInteractiveMode()) {
+        logging::write_message(logging::type::error, message);
+
+        if (!traceback.empty()) {
+            logging::write_message(logging::type::error, traceback);
+        }
+
+        if (IsAppInitialized()) {
+            GetApp()->RequestQuit(false);
+        }
+        else {
+            logging::write_message(logging::type::error, "Shutdown!");
+            exit_app(false);
+        }
+
+        return;
+    }
+
     if (is_run_in_debugger()) {
         return;
     }

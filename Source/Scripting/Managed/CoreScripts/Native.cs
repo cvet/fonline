@@ -1835,4 +1835,3 @@ internal static partial class Native
     internal static void SetSettingStringList(string name, List<string> value) =>
         SetSettingString(name, JoinSettingList(value, item => item ?? string.Empty));
 }
-

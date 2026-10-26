@@ -440,4 +440,3 @@ TEST_CASE("NetBufferQueuedFrameDiagnostics", "[rpc-runtime]")
 }
 
 FO_END_NAMESPACE
-

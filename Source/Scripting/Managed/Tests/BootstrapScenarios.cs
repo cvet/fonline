@@ -73,8 +73,14 @@ internal static class BootstrapScenarios
                      // remote calls of their own, so the registered set is compared sorted
                      !Native.RegisteredRemoteCalls.OrderBy(name => name, StringComparer.Ordinal)
                           .SequenceEqual(new[] {
-                              "AsyncRemote", "GenericRemote", "RemoteProbe", "SixteenParameterRemote",
-                              "TwoParameterRemote", "VoidRemote", "VoidTwoRemote", "ZeroParameterRemote",
+                              "AsyncRemote",
+                              "GenericRemote",
+                              "RemoteProbe",
+                              "SixteenParameterRemote",
+                              "TwoParameterRemote",
+                              "VoidRemote",
+                              "VoidTwoRemote",
+                              "ZeroParameterRemote",
                           })) {
                 throw new InvalidOperationException(
                     "Managed initialization and registrations depend on the working directory");
@@ -149,4 +155,3 @@ internal static class ConstructorFailureProbe
         }
     }
 }
-

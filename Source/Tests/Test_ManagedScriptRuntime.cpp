@@ -856,4 +856,3 @@ TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][
 FO_END_NAMESPACE
 
 #endif
-

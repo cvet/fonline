@@ -77,6 +77,63 @@ TEST_CASE("ApplicationConsoleInterruptDeferred", "[.][console-interrupt-deferred
     REQUIRE(fs::write_file("console-interrupt-deferred.quit", "quit"));
 }
 
+TEST_CASE("ApplicationHeadlessMode")
+{
+    CHECK_FALSE(GetApp()->Settings.Common.NonInteractive);
+    CHECK(IsNonInteractiveMode());
+}
+
+TEST_CASE("ApplicationNonInteractiveErrorMessage", "[.][ApplicationNonInteractiveErrors]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    BakerTests::OverrideSetting(app->Settings.Common.NonInteractive, true);
+
+    Application::ShowErrorMessage("Non-interactive direct error probe", "Direct error traceback probe", false);
+
+    CHECK(app->IsQuitRequested());
+    CHECK_FALSE(app->GetRequestedQuitSuccess());
+}
+
+TEST_CASE("ApplicationNonInteractiveException", "[.][ApplicationNonInteractiveErrors]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    BakerTests::OverrideSetting(app->Settings.Common.NonInteractive, true);
+
+    exceptions::report_and_continue(std::runtime_error("Non-interactive exception probe"));
+
+    CHECK(app->IsQuitRequested());
+    CHECK_FALSE(app->GetRequestedQuitSuccess());
+}
+
+TEST_CASE("ApplicationHeadlessErrorMessage", "[.][ApplicationNonInteractiveErrors]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    REQUIRE_FALSE(app->Settings.Common.NonInteractive);
+
+    Application::ShowErrorMessage("Headless error probe", "Headless traceback probe", false);
+
+    CHECK(app->IsQuitRequested());
+    CHECK_FALSE(app->GetRequestedQuitSuccess());
+
+    app->RequestQuit();
+    CHECK_FALSE(app->GetRequestedQuitSuccess());
+}
+
+TEST_CASE("ApplicationHeadlessException", "[.][ApplicationNonInteractiveErrors]")
+{
+    ptr<Application> app = GetApp();
+    REQUIRE_FALSE(app->IsQuitRequested());
+    REQUIRE_FALSE(app->Settings.Common.NonInteractive);
+
+    exceptions::report_and_continue(std::runtime_error("Headless exception probe"));
+
+    CHECK(app->IsQuitRequested());
+    CHECK_FALSE(app->GetRequestedQuitSuccess());
+}
+
 TEST_CASE("ApplicationChildWindowLifecycle")
 {
     ptr<Application> app = GetApp();

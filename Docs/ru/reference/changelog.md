@@ -7,12 +7,61 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"06b2e0aea285ec9979a3a83355e1774ac0dedc5b96cc8e4b9b04c734715acbac"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f89f635f6bc26fe620da2611fbc6a6b1d5b1fd19cba6d8a02b6712b8b0de5a41"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Исправлено
+
+- Регистрация Windows-службы записывает тот же параметр `server-service-start`, который читает точка входа службы. Для существующих регистраций с прежним нераспознаваемым суффиксом `--server-service` администратор должен обновить команду запуска либо пересоздать регистрацию обновлённой утилитой.
+
+- Нативные потребители именованных аргументов используют общий разбор
+  `CommandLineArgs`: пути runtime host, выбор конфига/subconfig, writable root,
+  fork и флаги Windows-службы. `GetSettings()` сохраняет порядок повторов,
+  `GetSettingValue(name, std::nullopt)` выбирает последнее явное значение.
+  Раннее чтение теперь удаляет пробелы по краям имён опций так же, как обычное
+  применение настроек.
+  Встроенные имена используют константы `SettingNames`, сформированные из
+  `Settings.inc` в `Common.h`; имена только для командной строки остаются в
+  `CommandLineSettings`. Нативным потребителям нужно заменить
+  `CommandLineSettings::CommonNonInteractive`, `CommonUserWritablePath` и
+  `ClientForceEmbeddedRuntime` на соответствующие константы `SettingNames`.
+  Идентификаторы констант настроек используют `Group_Name`, например
+  `SettingNames::Common_NonInteractive`; нативные обращения с прежним слитным
+  написанием `GroupName` нужно обновить. Имена ключей конфигурации с точкой
+  и их значения сохраняются.
+
+- Headless-приложения всегда сообщают о неинтерактивном режиме и записывают ошибку
+  в лог перед запросом завершения с ошибкой, в том числе при `Common.NonInteractive = False`.
+  `IsNonInteractiveMode()` доступна через `Application.h`; обработка сообщений
+  находится в графической и headless-реализациях приложения.
+
+- Раннее чтение `Common.NonInteractive` и `Client.ForceEmbeddedRuntime` использует
+  общий поиск `CommandLineArgs::GetSettingValue`, сохраняя последнее вхождение,
+  неявное значение флага и интерпретацию текста каждой вызывающей стороной.
+
+- `Common.NonInteractive` устраняет блокировку автоматизированных запусков системными
+  окнами ошибок. Сообщение и стек сохраняются в логе, затем выбирается путь завершения
+  с ошибкой, соответствующий `Exit`, включая прямые вызовы и ошибки до создания приложения.
+
+### Документация
+
+- Сохранены проверенный бюджет полного AI-пакета и состав целых документов из ADR-0003; выдача перегенерируется после интеграции описания CLI и политики ошибок.
+
+### Миграция
+
+- Средствам автоматизированного запуска графических приложений следует передавать
+  `--Common.NonInteractive True`. Headless-приложения не требуют флага. По умолчанию остаётся `False`; проект
+  может включить режим в startup hook для агентских сессий. Изменение сетевого протокола,
+  сохранённых данных или вызовов скриптов не требуется.
+
+- База `5c32423c1f05f1c42aaa81b02497f4fec79afca7` (`2026.1.67-dev`) -> `2026.1.68-dev`. Перед развёртыванием совместно пересоберите native-приложения и пересоздайте API/metadata и baked resources. Существующие settings сохраняют значения и defaults; `Common.NonInteractive` является новой readonly boolean-настройкой с default `False`. Конверсия сохранённых данных не нужна; wire `0.0.80`, Managed ABI `9`, форматы ресурсов и client-host ABI не меняются. Откат возвращает согласованные прежние binaries и resources.
+- Нативный startup использует `CommandLineArgs::GetSettingValue(name, implicit_value)` и упорядоченный `GetSettings(name)` с общими именами `CommandLineSettings`. Views заимствуют argv; вызывающая сторона сохраняет его владельца. Default scalar-значение — `"1"`; `std::nullopt` пропускает вхождения без значения. Явная пустая строка и отрицательные числа остаются значениями. Каждое вхождение config/sub-config по-прежнему требует значения; сохраняются порядок append/sub-config и первый допустимый writable root. Существующие script calls не удаляются и не переименовываются; проекты, использующие helpers, пересобираются с текущими headers. Автоматические graphical launchers передают non-interactive-флаг до создания процесса; config/startup hook начинает действовать только после загрузки settings. В этом режиме системные error dialogs заменены записью log/error trace и failed quit. Обычные графические запуски сохраняют модальные ошибки; headless-приложения всегда используют non-interactive-путь.
+
+## 2026.1.67-dev - 2026-10-26
 
 ### Добавлено
 

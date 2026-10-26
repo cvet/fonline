@@ -1170,4 +1170,3 @@ template<typename T, typename U, typename TContainer>
 }
 
 FO_END_NAMESPACE
-

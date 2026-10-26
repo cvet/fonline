@@ -1130,4 +1130,3 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
 #endif
 
 FO_END_NAMESPACE
-

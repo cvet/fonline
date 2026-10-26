@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"27f25b80f51aa27c7a203ab933d450824c51f9e08841d470f271a110a53dd2d3"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"627458249cfea1975367cd85d6c24e53ac77207314ccef8bab0e81842c21060c"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -344,6 +344,8 @@ coverage на нативных платформах хоста. Они такж�
 Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
 
 ### Шаблоны focused harness
+
+- **Неинтерактивные ошибки:** каждый скрытый случай `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` и `ApplicationHeadlessException` запускается по точному имени в отдельном процессе сгенерированного unit-test приложения. Состояние quit необратимо; общий тег нельзя запускать одним набором. Headless-случаи сохраняют `Common.NonInteractive = False`, а прямое сообщение проверяет сохранение статуса ошибки после позднего успешного запроса quit. Эти случаи проверяют headless-реализацию; для графического frontend и ошибки до создания приложения нужны отдельные process smoke с проверками лога/trace, exit status и тайм-аута.
 
 - **Отсоединение при уничтожении:** `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` использует автономный сервер при любом scripting backend. Он проверяет обычное отсоединение и уничтожение любого конца связи, считает native-отчёты через штатный callback исключений с сохранением прежнего обработчика и декодирует пакет `CritterAttachments` игрока, управляющего оставшимся существом. `ClientCritterFinalizationDropsAttachmentIds` в `Test_ClientEntityLifetime.cpp` проверяет финализацию представления с кешированными attachment IDs и живым peer. Одного конечного состояния недостаточно: после пойманного native-исключения повторная попытка может завершить удаление.
 

@@ -265,7 +265,9 @@ internal static class Program
             ("snapshot work accounting follows task completion and cancellation",
              () =>
              {
-                 PropertyInfo? pending = typeof(ScriptExceptions).GetProperty("PendingTaskCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 PropertyInfo? pending =
+                     typeof(ScriptExceptions)
+                         .GetProperty("PendingTaskCount", BindingFlags.Static | BindingFlags.NonPublic);
                  Check(pending != null, "Snapshot eligibility cannot observe unfinished managed tasks");
                  int ReadPending() => (int)pending!.GetValue(null)!;
                  int before = ReadPending();
@@ -283,7 +285,9 @@ internal static class Program
             ("snapshot work accounting sees queued continuations",
              () =>
              {
-                 PropertyInfo? pending = typeof(ScriptSynchronizationContext).GetProperty("PendingWorkCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 PropertyInfo? pending =
+                     typeof(ScriptSynchronizationContext)
+                         .GetProperty("PendingWorkCount", BindingFlags.Static | BindingFlags.NonPublic);
                  Check(pending != null, "Snapshot eligibility cannot observe queued managed continuations");
                  long ReadPending() => (long)pending!.GetValue(null)!;
                  long before = ReadPending();
@@ -291,7 +295,9 @@ internal static class Program
 
                  using (ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter())
                  {
-                     context.Post(_ => invoked = true, null);
+                     context.Post(
+                         _ => invoked = true,
+                         null);
                  }
 
                  Check(ReadPending() == before + 1, "A queued continuation did not block snapshot capture");
@@ -299,8 +305,7 @@ internal static class Program
                  Check(invoked, "The queued callback was not executed");
                  Check(ReadPending() == before, "A completed continuation left a snapshot blocker");
              }),
-            ("remote call registration exposes direct Task and Action handlers",
-             RemoteCallCompletionScenarios.Run),
+            ("remote call registration exposes direct Task and Action handlers", RemoteCallCompletionScenarios.Run),
             ("a resumed await is named after its async method",
              () =>
              {
@@ -675,11 +680,11 @@ public static class DispatchProbe
     internal static TaskCompletionSource? SixteenParameterRemoteSource;
     internal static int RemoteWideValue;
     [ServerRemoteCall]
-    public static Task SixteenParameterRemote(int a, int b, int c, int d, int e, int f, int g, int h,
-                                              int i, int j, int k, int l, int m, int n, int o, int p)
+    public static Task SixteenParameterRemote(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j,
+                                              int k, int l, int m, int n, int o, int p)
     {
-        RemoteWideValue = a + 2 * b + 3 * c + 4 * d + 5 * e + 6 * f + 7 * g + 8 * h +
-                          9 * i + 10 * j + 11 * k + 12 * l + 13 * m + 14 * n + 15 * o + 16 * p;
+        RemoteWideValue = a + 2 * b + 3 * c + 4 * d + 5 * e + 6 * f + 7 * g + 8 * h + 9 * i + 10 * j + 11 * k + 12 * l +
+                          13 * m + 14 * n + 15 * o + 16 * p;
         return SixteenParameterRemoteSource!.Task;
     }
 
@@ -753,4 +758,3 @@ public enum Shared
     Value = 2
 }
 }
-

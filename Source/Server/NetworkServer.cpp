@@ -277,4 +277,3 @@ auto NetworkServer::CreateDummyConnection(ptr<ServerNetworkSettings> settings, D
 }
 
 FO_END_NAMESPACE
-

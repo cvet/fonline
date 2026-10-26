@@ -432,4 +432,3 @@ void NetInBuffer::FinishMessageRead()
 }
 
 FO_END_NAMESPACE
-

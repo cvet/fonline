@@ -94,7 +94,7 @@ static auto MakeCompleteConfigBakerConfig() -> string
 {
     string config;
 
-#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, SettingNames::group##_##name, type {__VA_ARGS__})
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"

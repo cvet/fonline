@@ -372,7 +372,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
     // Every connection runs the secure channel, so a server without its key must not accept anyone
-    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, "ServerNetwork.ChannelSecretKey"));
+    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, SettingNames::ServerNetwork_ChannelSecretKey));
     logging::write("Secure channel public key {}", crypto::format_key(_channelIdentity->GetPublicKey()));
 
     if (!Settings->Network.DisableInterthreadCommunication) {
@@ -5809,4 +5809,3 @@ static void ValidateServerSnapshotState(const ServerSnapshotState& state)
 }
 
 FO_END_NAMESPACE
-

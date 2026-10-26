@@ -145,6 +145,31 @@ Notable responsibilities:
 
 Application initialization is intentionally shared by more than the graphical client. Server, mapper, editor, testing, and package flows may use different flags or window modes, but they should still go through the shared frontend setup where applicable.
 
+`Common.NonInteractive = True` makes system error dialogs unattended: the error and
+traceback go to the log, and an initialized application receives `RequestQuit(false)`,
+the same failed-shutdown request as the desktop dialog's `Exit` button. Before the
+application exists, the process exits with failure immediately. This also applies to
+direct `ShowErrorMessage` calls and runs under a debugger; game GUI screens retain
+their normal behavior. The setting defaults to `False` for graphical frontends.
+
+`IsNonInteractiveMode()` is a free function declared in `Application.h`, available
+before and after application creation. The headless frontend always returns `true`,
+regardless of `Common.NonInteractive`; its `ShowErrorMessage` implementation logs
+and requests failed shutdown directly. The graphical implementation owns both the
+unattended path and the system dialog. Message handling stays in `Application.cpp`
+and `ApplicationHeadless.cpp`; `ApplicationInit.cpp` owns early policy resolution
+and exception callback installation. `Render.HeadlessWindow` hides a graphical
+window and does not select the headless frontend implementation.
+
+Launchers of unattended graphical apps should pass `--Common.NonInteractive True` explicitly. Initialization reads
+this switch before loading configuration, so a missing or invalid config cannot
+block the launcher on an error dialog. During the project startup hook, error
+reporting reads the live settings, so enabling the mode protects failures inside
+the hook too. On every hook exit, initialization retains the final mode and clears
+the temporary settings borrow before the settings can move or unwind.
+The resolved setting controls subsequent errors. Fatal exception reporting
+still exits with failure; a nonfatal error requests the ordinary shutdown path.
+
 After initialization, the client records the OS/version, CPU count, memory, SDL video driver, display mode and window metrics once in its log; a browser build also records its user agent. Each renderer names its selected device and driver, while degraded capabilities are warnings. These diagnostics describe the environment, not a guarantee that a particular GPU or platform passed release acceptance.
 
 ## Application services

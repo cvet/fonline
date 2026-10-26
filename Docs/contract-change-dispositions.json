@@ -12468,6 +12468,30 @@
       "release_note": "Docs/en/reference/changelog.md Current 2026-10-26 for 2026.1.67-dev and its Russian mirror.",
       "compatibility": "Base f29635c8dce0c3c4b39c30fd6d31ab0059f568db, runtime 0.0.79 -> 0.0.80. Rebuild native applications/extensions and rebake all roles with matching CoreScripts. Managed generator ABI 9 and resource schemas remain unchanged. Disconnect reason IDs 0..10 and existing RPC payload/persisted values retain meaning; RpcRuntimeLimit=11 is additive.",
       "owner": "Engine networking and scripting runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.28e2f1153d47d806",
+      "baseline_contract_sha256": "6da1f6d421106cc7379c37e7df4a247d0595ee24d8cfd72866a9a1122348cb41",
+      "current_contract_sha256": "ddeed889054179ad4e160f49b33fcc5ac00a73ce776be20d9fba59688d8f6992",
+      "classification": "breaking",
+      "rationale": "Add the experimental Common.NonInteractive setting with a False default. Existing native-codegen symbols retain their signatures and behavior; the aggregate inventory fingerprint changes for the new setting.",
+      "migration": "Rebuild native targets and regenerate bindings before enabling the setting. Automated launchers pass --Common.NonInteractive True; the application startup hook may enable it after resolving project settings. See Docs/en/explanation/rendering/index.md#application-initialization.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-10-24 records unattended system error reporting and its startup boundary after upstream 2026.1.59-dev.",
+      "compatibility": "No persisted data, resource format, networking, or frozen client-host ABI changes. No forced compatibility-marker bump is required. Ordinary launches retain the False default.",
+      "owner": "frontend"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.cef4f9b842fbb9d8",
+      "baseline_contract_sha256": "a11ed6c70a7c7a2a54b00386a4f87d12fda1a91c664f7ab00c9b57633fba7040",
+      "current_contract_sha256": "d9c2bc5fc95a2354c7dd75281b4fd5d0614b6fe20970692e3f6bab6d6d95ef5f",
+      "classification": "breaking",
+      "rationale": "Add the experimental Common.NonInteractive setting with a False default. Existing native-codegen symbols retain their signatures and behavior; the aggregate inventory fingerprint changes for the new setting.",
+      "migration": "Rebuild native targets and regenerate bindings before enabling the setting. Automated launchers pass --Common.NonInteractive True; the application startup hook may enable it after resolving project settings. See Docs/en/explanation/rendering/index.md#application-initialization.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-10-26 records 2026.1.68-dev after 2026.1.67-dev; the Russian mirror preserves the same migration.",
+      "compatibility": "No persisted data, resource format, networking, or frozen client-host ABI changes. No forced compatibility-marker bump is required. Ordinary launches retain the False default.",
+      "owner": "frontend"
     }
   ]
 }

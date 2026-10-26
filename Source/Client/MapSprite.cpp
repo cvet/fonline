@@ -468,4 +468,3 @@ void MapSpriteHolder::StopDraw()
 }
 
 FO_END_NAMESPACE
-

@@ -297,4 +297,3 @@ void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr
 }
 
 FO_END_NAMESPACE
-

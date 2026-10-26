@@ -47,13 +47,22 @@ static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
 static unique_nptr<Application> App {};
 
+// Startup failures can precede the application, so error-dialog policy belongs to the process set
+struct ErrorMessagePolicyData
+{
+    bool NonInteractive {};
+
+    // Borrowed only while ApplicationInitHook runs, so failures reported from inside it see live changes
+    nptr<const GlobalSettings> InitializingSettings {};
+};
+FO_GLOBAL_DATA(ErrorMessagePolicyData, ErrorMessagePolicy);
+
 void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
 static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
 static auto LoadTestingAppSettings() -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
-static auto FindWritablePathArg(CommandLineArgs args) -> string;
 static void SetupSignals();
 
 auto IsAppInitialized() noexcept -> bool
@@ -70,6 +79,23 @@ auto GetApp() noexcept -> ptr<Application>
 void ResetApp() noexcept
 {
     App.reset();
+}
+
+auto IsNonInteractiveMode() -> bool
+{
+#if FO_HEADLESS_APP
+    return true;
+#else
+    if (IsAppInitialized()) {
+        return GetApp()->Settings.Common.NonInteractive;
+    }
+
+    if (ErrorMessagePolicy.is_created() && ErrorMessagePolicy->InitializingSettings) {
+        return ErrorMessagePolicy->InitializingSettings->Common.NonInteractive;
+    }
+
+    return ErrorMessagePolicy.is_created() && ErrorMessagePolicy->NonInteractive;
+#endif
 }
 
 void InitApp(CommandLineArgs args, AppInitFlags flags)
@@ -93,12 +119,15 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     FO_STRONG_ASSERT(first_call, "Application can be initialized only once");
 
     // Fork the process if requested
-    if (std::ranges::any_of(args, [](nptr<const char> arg) { return arg && string_view(arg.get()) == "--fork"; })) {
+    if (args.GetSettingValue(CommandLineSettings::Fork).has_value()) {
         platform::fork_process();
     }
 
     // Create global data as soon as possible
     global_data::create();
+
+    // Read the unattended-launch switch before configuration loading itself can fail
+    ErrorMessagePolicy->NonInteractive = strvex(args.GetSettingValue(SettingNames::Common_NonInteractive).value_or("0")).to_bool();
 
     // Write log and show message box on exception
     SetupExceptionCallback(is_enum_set(flags, AppInitFlags::ShowMessageOnException));
@@ -119,6 +148,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     logging::write("Starting {}", FO_NICE_NAME);
 
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
+    ErrorMessagePolicy->NonInteractive = settings.Common.NonInteractive;
 
     logging::write("Version: {}", settings.Common.GameVersion);
     logging::write("Engine: {} (revision {})", FO_ENGINE_VERSION, FO_ENGINE_REVISION);
@@ -137,8 +167,17 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // that crash diagnostics reach the log for the crash class named by FO_SELFTEST_CRASH. Inert otherwise
     DiagnosticSelfTest::RunIfRequested();
 
-    // Project-side early init (before App frontend, after settings + exception/log callbacks)
-    ApplicationInitHook(flags, settings);
+    // Project-side early init (before App frontend, after settings + exception/log callbacks). The hook may
+    // change Common.NonInteractive and may fail, so lend it the live settings and retire the borrow on every exit
+    {
+        ErrorMessagePolicy->InitializingSettings = &settings;
+        scope_exit sync_non_interactive {[&settings]() noexcept {
+            ErrorMessagePolicy->NonInteractive = settings.Common.NonInteractive;
+            ErrorMessagePolicy->InitializingSettings = nullptr;
+        }};
+
+        ApplicationInitHook(flags, settings);
+    }
 
     // Prebake resources. Several processes launched from one checkout would each re-validate every pack for
     // minutes, so a launcher that has just baked may start them on the existing output instead
@@ -168,6 +207,11 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 static void SetupExceptionCallback(bool show_message_on_exception)
 {
     exceptions::set_callback([show_message_on_exception](string_view message, const stack_trace::catched_data& st, bool fatal_error) FO_DEFERRED {
+        if (IsNonInteractiveMode()) {
+            Application::ShowErrorMessage(message, stack_trace::format(st), fatal_error);
+            return;
+        }
+
         logging::write_message(logging::type::error, message, &st);
 
         if (fatal_error) {
@@ -207,25 +251,13 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         string config_to_apply_dir;
         bool auto_find_config = false;
 
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg = args.Get(i);
-
-            if (arg.empty()) {
-                continue;
+        for (const CommandLineSetting& setting : args.GetSettings(CommandLineSettings::ApplyConfig)) {
+            if (!setting.Value) {
+                throw AppInitException("Config name not provided");
             }
 
-            string_view arg_view = strex(arg).trim().strv();
-
-            if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
-                string_view next_arg = args.Get(i + 1);
-
-                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
-                    throw AppInitException("Config name not provided");
-                }
-
-                config_to_apply = strex(next_arg).trim().extract_file_name();
-                config_to_apply_dir = strex(next_arg).trim().extract_dir();
-            }
+            config_to_apply = strex(*setting.Value).trim().extract_file_name();
+            config_to_apply_dir = strex(*setting.Value).trim().extract_dir();
         }
 
         if (config_to_apply.empty()) {
@@ -257,24 +289,12 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         // Apply sub config
         vector<string> sub_configs_to_apply;
 
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg = args.Get(i);
-
-            if (arg.empty()) {
-                continue;
+        for (const CommandLineSetting& setting : args.GetSettings(CommandLineSettings::ApplySubConfig)) {
+            if (!setting.Value) {
+                throw AppInitException("Sub config name not provided");
             }
 
-            string_view arg_view = strex(arg).trim().strv();
-
-            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
-                string_view next_arg = args.Get(i + 1);
-
-                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
-                    throw AppInitException("Sub config name not provided");
-                }
-
-                sub_configs_to_apply.emplace_back(strex(next_arg).trim());
-            }
+            sub_configs_to_apply.emplace_back(strex(*setting.Value).trim());
         }
 
         if (auto_find_config && sub_configs_to_apply.empty()) {
@@ -291,12 +311,8 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     else {
         // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
         // honoured; refusing it keeps a launch from silently running with settings the caller did not get
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg_view = strex(args.Get(i)).trim().strv();
-
-            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
-                throw AppInitException("Sub configs are not available in a packaged build", i + 1 < args.size() ? args.Get(i + 1) : string_view {});
-            }
+        for (const CommandLineSetting& setting : args.GetSettings(CommandLineSettings::ApplySubConfig)) {
+            throw AppInitException("Sub configs are not available in a packaged build", setting.Value.value_or(string_view {}));
         }
 
         settings.ApplyInternalConfig();
@@ -336,7 +352,20 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
 
     // Deliberately settings-free: the log, the cache and the local config all live under this root, so
     // nothing that is read from disk may decide where it is. Only the command line and the marker do
-    string root = FindWritablePathArg(args);
+    string root;
+
+    for (const CommandLineSetting& setting : args.GetSettings(SettingNames::Common_UserWritablePath)) {
+        if (!setting.Value) {
+            continue;
+        }
+
+        string_view value = strvex(*setting.Value).trim().strv();
+
+        if (!value.empty() && !CommandLineArgs::IsOption(value)) {
+            root = string(value);
+            break;
+        }
+    }
 
     if (root.empty()) {
         auto exe_path = platform::get_exe_path();
@@ -371,24 +400,6 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
     }
 
     return root;
-}
-
-static auto FindWritablePathArg(CommandLineArgs args) -> string
-{
-    // Scanned by hand rather than through the settings parser, which runs far later
-    for (size_t i = 0; i + 1 < args.size(); i++) {
-        string_view arg = strex(args.Get(i)).trim().strv();
-
-        if (arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
-            string_view value = strex(args.Get(i + 1)).trim().strv();
-
-            if (!value.empty() && !CommandLineArgs::IsOption(value)) {
-                return string(value);
-            }
-        }
-    }
-
-    return "";
 }
 
 static void PrebakeResources(BakingSettings& settings)

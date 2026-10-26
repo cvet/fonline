@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/operations.html
 ---
 
 # Эксплуатация релиза
-<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"ec945927453961a6037102c286b49560bb69d76cff2924c818bf7883d131fa7b"} -->
+<!-- docs-translation: {"document_id":"release-operations","locale":"ru","source_path":"Docs/en/how-to/release/operations.md","source_sha256":"cfbdf046eb3ac5fdaef7916c51939c1a47997973b4881dd82d2db7e937926e94"} -->
 Это руководство описывает переиспользуемый жизненный цикл сервера FOnline: готовность, развёртывание, остановку и откат. [Упаковка и выпуск](packaging.md) владеет артефактами; [Persistence](../../explanation/persistence/) — механикой базы данных; [резервное копирование и восстановление](backup-and-recovery.md) — нейтральной к провайдеру процедурой восстановления. Игра владеет инфраструктурой, политикой данных, целевыми показателями и инцидентами.
 
 ## Решение о rollout
@@ -50,7 +50,7 @@ health-файл, cache, resource overlay, self-updated binaries и server databa
 
 Предпочитайте foreground headless-бинарник под supervisor. Родитель daemon завершается до окончания запуска дочернего процесса, поэтому успешный exit команды запуска не доказывает готовность. Daemon не записывает PID-файл и не реализует протокол менеджера процессов.
 
-Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без распознанного control-флага регистрирует или обновляет команду из quoted executable path, текущей command line и `--server-service`; `--server-service-delete` удаляет регистрацию, а `--server-service-start` входит в SCM dispatcher. Зарегистрированная команда сама не использует этот start-флаг, поэтому текущий helper требует отдельной проверки на Windows: одна регистрация не доказывает запуск службы. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя.
+Windows helper регистрирует фиксированное имя SCM `FOnlineServer` с demand-start. Запуск service executable без распознанного control-флага регистрирует или обновляет команду из quoted executable path, текущей command line и `--server-service-start`. Регистрация и выбор SCM dispatcher используют общую константу `CommandLineSettings::ServerServiceStart`; `--server-service-delete` удаляет регистрацию. Для существующих регистраций с прежним нераспознаваемым суффиксом `--server-service` администратор должен обновить команду запуска либо пересоздать регистрацию. Одна регистрация не доказывает запуск: проверяйте команду под SCM на целевой Windows-системе. Helper не задаёт рабочий каталог, учётную запись, зависимости, recovery actions или продуктовое имя.
 
 ## Определите готовность и здоровье
 

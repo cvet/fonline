@@ -3681,4 +3681,3 @@ auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType,
 }
 
 FO_END_NAMESPACE
-

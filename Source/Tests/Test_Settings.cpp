@@ -59,6 +59,170 @@ TEST_CASE("SettingPathParsing")
     }
 }
 
+TEST_CASE("CommandLineArgsSettingLookup")
+{
+    SECTION("SettingNameNormalizationMatchesTheSettingsParser")
+    {
+        vector<string> values {"lf_tests", "--Render.Sleep ", "-1"};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyCommandLine(args);
+
+        CHECK(settings.Render.Sleep == -1);
+        CHECK(args.GetSettingValue(SettingNames::Render_Sleep) == "-1");
+    }
+
+    SECTION("LastOccurrenceAndExplicitText")
+    {
+        vector<string> values {"lf_tests", "--Probe.Mode", "False", "-Probe.Mode", "True", "--Probe.Number", "-1", "--Probe.Empty", "", "--Probe.Text", " C:\\path\\\"quoted\" "};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+
+        CHECK(args.GetSettingValue("Probe.Mode") == "True");
+        CHECK(args.GetSettingValue("Probe.Number") == "-1");
+        CHECK(args.GetSettingValue("Probe.Empty") == "");
+        CHECK(args.GetSettingValue("Probe.Text") == " C:\\path\\\"quoted\" ");
+        CHECK_FALSE(args.GetSettingValue("Probe"));
+        CHECK_FALSE(args.GetSettingValue("probe.Mode"));
+        CHECK_FALSE(args.GetSettingValue("--Probe.Mode"));
+    }
+
+    SECTION("ImplicitValuesBeforeAnotherOptionAndAtEnd")
+    {
+        vector<string> values {"lf_tests", "--Probe.Flag", "--Probe.Other", "value", "-Probe.Last"};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+
+        CHECK(args.GetSettingValue("Probe.Flag") == "1");
+        CHECK(args.GetSettingValue("Probe.Other") == "value");
+        CHECK(args.GetSettingValue("Probe.Last") == "1");
+        CHECK_FALSE(args.GetSettingValue("Probe.Absent"));
+        CHECK_FALSE(CommandLineArgs {}.GetSettingValue("Probe.Flag"));
+    }
+
+    SECTION("EarlyBooleanMatchesFinalCommandLineOverride")
+    {
+        vector<string> values {"lf_tests", "--Common.NonInteractive", "False", "-Common.NonInteractive"};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyCommandLine(args);
+
+        CHECK(args.GetSettingValue(SettingNames::Common_NonInteractive) == "1");
+        CHECK(settings.Common.NonInteractive);
+        CHECK(strvex(args.GetSettingValue(SettingNames::Common_NonInteractive).value_or("0")).to_bool() == settings.Common.NonInteractive);
+    }
+
+    SECTION("ExplicitOnlyPolicySkipsValuelessOccurrences")
+    {
+        // A bare flag after an explicit path must not answer the explicit-only getter: the earlier
+        // value is the one the caller asked for, while the ordinary policy still takes the last entry
+        vector<string> values {"lf_tests", "--ClientLibPath", "old.dll", "--ClientLibPath"};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+
+        CHECK(args.GetSettingValue(CommandLineSettings::ClientLibPath, std::nullopt) == "old.dll");
+        CHECK(args.GetSettingValue(CommandLineSettings::ClientLibPath) == "1");
+
+        vector<string> empty_values {"lf_tests", "--ClientLibPath", ""};
+        vector<CommandLineArg> empty_argv;
+
+        for (string& value : empty_values) {
+            empty_argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs empty_args {empty_argv};
+
+        CHECK(empty_args.GetSettingValue(CommandLineSettings::ClientLibPath, std::nullopt) == "");
+        CHECK(empty_args.GetSettingValue(CommandLineSettings::ClientLibPath) == "");
+    }
+
+    SECTION("GetSettingsKeepsOrderDuplicatesAndValueKinds")
+    {
+        vector<string> values {"lf_tests", "--ApplySubConfig", "First", "--ApplySubConfig", "Second", "--Probe.Flag", "--Probe.Next", "", "--Probe.Raw", " C:\\path\\\"quoted\" "};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+
+        vector<CommandLineSetting> sub_configs = args.GetSettings(CommandLineSettings::ApplySubConfig);
+
+        REQUIRE(sub_configs.size() == 2);
+        CHECK(sub_configs[0].Name == CommandLineSettings::ApplySubConfig);
+        CHECK(sub_configs[0].Value == "First");
+        CHECK(sub_configs[1].Name == CommandLineSettings::ApplySubConfig);
+        CHECK(sub_configs[1].Value == "Second");
+
+        // The whole enumeration keeps every distinct entry in command-line order, with raw borrowed
+        // values and implicit flags told apart from explicit empty strings
+        vector<CommandLineSetting> all = args.GetSettings();
+
+        REQUIRE(all.size() == 5);
+        CHECK(all[0].Name == CommandLineSettings::ApplySubConfig);
+        CHECK(all[0].Value == "First");
+        CHECK(all[1].Name == CommandLineSettings::ApplySubConfig);
+        CHECK(all[1].Value == "Second");
+        CHECK(all[2].Name == "Probe.Flag");
+        CHECK_FALSE(all[2].Value.has_value());
+        CHECK(all[3].Name == "Probe.Next");
+        REQUIRE(all[3].Value.has_value());
+        CHECK(all[3].Value->empty());
+        CHECK(all[4].Name == "Probe.Raw");
+        CHECK(all[4].Value == " C:\\path\\\"quoted\" ");
+
+        CHECK(args.GetSettings("probe").empty());
+        CHECK(args.GetSettings("--ApplySubConfig").empty());
+    }
+
+    SECTION("FlagPresenceMatchesWholeOptionNames")
+    {
+        vector<string> values {"lf_tests", "--Probe.Path", "C:\\tmp\\--server-service-start", "--server-service-delete-extra", "--fork", "False"};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CommandLineArgs args {argv};
+
+        CHECK_FALSE(args.GetSettingValue(CommandLineSettings::ServerServiceStart).has_value());
+        CHECK_FALSE(args.GetSettingValue(CommandLineSettings::ServerServiceDelete).has_value());
+        CHECK(args.GetSettingValue(CommandLineSettings::Fork).has_value());
+        CHECK(args.GetSettingValue(CommandLineSettings::Fork) == "False");
+    }
+}
+
 TEST_CASE("Settings")
 {
     SECTION("ProjectDayCurvesAreNotEngineSettings")
@@ -448,7 +612,7 @@ TEST_CASE("Settings")
 
         GlobalSettings packaged {false};
         packaged.ApplyDefaultSettings();
-        ConfigFile baked {strex("Baking.BakeOutput={}\nManagedScript.Dirs={}\n", saved.at("Baking.BakeOutput"), saved.at("ManagedScript.Dirs")).str()};
+        ConfigFile baked {strex("Baking.BakeOutput={}\nManagedScript.Dirs={}\n", saved.at(string(SettingNames::Baking_BakeOutput)), saved.at(string(SettingNames::ManagedScript_Dirs))).str()};
         packaged.ApplyConfigFile(baked, "");
 
         CHECK(packaged.Baking.BakeOutput == unc_path);
@@ -504,9 +668,9 @@ TEST_CASE("Settings")
         // Every engine setting is read-only at runtime: a configured value is a knob someone turned, and the
         // system that owns a value which changes while the game runs keeps that value itself
         bool original_scroll = settings.Hex.WindowedMouseScroll;
-        CHECK_THROWS_AS(settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "True"), SettingsException);
+        CHECK_THROWS_AS(settings.SetRuntimeSetting(string(SettingNames::Hex_WindowedMouseScroll), "True"), SettingsException);
         CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
-        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Hex.WindowedMouseScroll")));
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting(SettingNames::Hex_WindowedMouseScroll)));
 
         // The group is part of the name: a bare short name reaches no engine setting and is kept as a custom
         // one, which is what lets two groups declare the same short name without one answering for the other
@@ -521,25 +685,25 @@ TEST_CASE("Settings")
         settings.SetRuntimeSetting("Project.RuntimeValue", "value");
         CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
         CHECK(settings.GetCustomSettingsGeneration() == generation_before + 1);
-        CHECK_THROWS_AS(settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "False"), SettingsException);
+        CHECK_THROWS_AS(settings.SetRuntimeSetting(string(SettingNames::Hex_WindowedMouseScroll), "False"), SettingsException);
         CHECK(settings.GetCustomSettingsGeneration() == generation_before + 1);
         settings.SetCustomSetting("Project.RuntimeValue", any_t("other"));
         CHECK(settings.GetCustomSettingsGeneration() == generation_before + 2);
 
         string original_game_name = settings.Common.GameName;
-        CHECK_THROWS_AS(settings.SetRuntimeSetting("Common.GameName", "Changed"), SettingsException);
+        CHECK_THROWS_AS(settings.SetRuntimeSetting(string(SettingNames::Common_GameName), "Changed"), SettingsException);
         CHECK(settings.Common.GameName == original_game_name);
-        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting("Common.GameName")));
+        CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting(SettingNames::Common_GameName)));
 
         string name_collision = "Common.GameName";
         name_collision.push_back('\0');
         name_collision += "Custom";
-        REQUIRE(const_hash(name_collision.c_str()) == const_hash("Common.GameName"));
+        REQUIRE(const_hash(name_collision.c_str()) == const_hash(SettingNames::Common_GameName.data()));
         settings.SetRuntimeSetting(name_collision, "custom");
         CHECK(settings.Common.GameName == original_game_name);
         CHECK(settings.GetCustomSetting(name_collision) == "custom");
         CHECK(settings.GetRuntimeSetting(name_collision) == "custom");
-        CHECK(settings.GetRuntimeSetting("Common.GameName") == settings.Common.GameName);
+        CHECK(settings.GetRuntimeSetting(string(SettingNames::Common_GameName)) == settings.Common.GameName);
 
         // A bare engine-setting name is not the setting either: it writes a custom value instead of throwing
         settings.SetRuntimeSetting("GameName", "Bare");
@@ -653,6 +817,150 @@ TEST_CASE("Settings")
 
         ignore_unused(fs::remove_dir_tree(temp_dir));
     }
+
+    SECTION("WritableRootTakesFirstValidExplicitPath")
+    {
+        // Valueless and empty occurrences are skipped, and the first explicit path that survives wins,
+        // even when a later occurrence is valid too
+        string temp_dir = MakeTempSettingsDir("settings_writable_first");
+        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        REQUIRE(fs::create_directories(temp_dir));
+
+        string root_a = strex(temp_dir).combine_path("root_a").str();
+        string root_b = strex(temp_dir).combine_path("root_b").str();
+        vector<string> values {"app", "--Common.UserWritablePath", "--Common.UserWritablePath", "", "--Common.UserWritablePath", root_a, "--Common.UserWritablePath", root_b};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        string resolved = ResolveWritableRoot(CommandLineArgs {argv});
+
+        CHECK(resolved == fs::resolve_path(root_a));
+        CHECK(fs::is_dir(root_a));
+        CHECK_FALSE(fs::is_dir(root_b));
+    }
+
+    SECTION("LoadAppSettingsAppliesSubConfigsInCommandLineOrder")
+    {
+        string temp_dir = MakeTempSettingsDir("settings_load_app_order");
+        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        REQUIRE(fs::create_directories(temp_dir));
+
+        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        REQUIRE(fs::write_file(config_path,
+            string_view {"Common.GameName = Base\n"
+                         "[SubConfig]\n"
+                         "Name = First\n"
+                         "Common.GameName = First\n"
+                         "[SubConfig]\n"
+                         "Name = Second\n"
+                         "Common.GameName = Second\n"}));
+
+        string writable_ordered = strex(temp_dir).combine_path("writable_ordered").str();
+        vector<string> ordered_values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "First", "--ApplySubConfig", "Second", "--Common.UserWritablePath", writable_ordered};
+        vector<CommandLineArg> ordered_argv;
+
+        for (string& value : ordered_values) {
+            ordered_argv.emplace_back(value.data());
+        }
+
+        GlobalSettings ordered = LoadAppSettings(CommandLineArgs {ordered_argv});
+
+        CHECK(ordered.Common.GameName == "Second");
+
+        string writable_reversed = strex(temp_dir).combine_path("writable_reversed").str();
+        vector<string> reversed_values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "Second", "--ApplySubConfig", "First", "--Common.UserWritablePath", writable_reversed};
+        vector<CommandLineArg> reversed_argv;
+
+        for (string& value : reversed_values) {
+            reversed_argv.emplace_back(value.data());
+        }
+
+        GlobalSettings reversed = LoadAppSettings(CommandLineArgs {reversed_argv});
+
+        CHECK(reversed.Common.GameName == "First");
+    }
+
+    SECTION("LoadAppSettingsThrowsForBareConfigNameBeforeLaterValidOccurrence")
+    {
+        string temp_dir = MakeTempSettingsDir("settings_load_app_bare_config");
+        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        REQUIRE(fs::create_directories(temp_dir));
+
+        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        REQUIRE(fs::write_file(config_path,
+            string_view {"Common.GameName = Base\n"
+                         "[SubConfig]\n"
+                         "Name = First\n"
+                         "Common.GameName = First\n"}));
+
+        string writable = strex(temp_dir).combine_path("writable").str();
+        vector<string> values {"app", "--ApplyConfig", "--ApplyConfig", config_path, "--Common.UserWritablePath", writable};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CHECK_THROWS_AS(LoadAppSettings(CommandLineArgs {argv}), AppInitException);
+    }
+
+    SECTION("LoadAppSettingsThrowsForBareSubConfigNameBeforeLaterValidOccurrence")
+    {
+        string temp_dir = MakeTempSettingsDir("settings_load_app_bare_subconfig");
+        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        REQUIRE(fs::create_directories(temp_dir));
+
+        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        REQUIRE(fs::write_file(config_path,
+            string_view {"Common.GameName = Base\n"
+                         "[SubConfig]\n"
+                         "Name = First\n"
+                         "Common.GameName = First\n"}));
+
+        string writable = strex(temp_dir).combine_path("writable").str();
+        vector<string> values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "--ApplySubConfig", "First", "--Common.UserWritablePath", writable};
+        vector<CommandLineArg> argv;
+
+        for (string& value : values) {
+            argv.emplace_back(value.data());
+        }
+
+        CHECK_THROWS_AS(LoadAppSettings(CommandLineArgs {argv}), AppInitException);
+    }
+
+    SECTION("ApplyCommandLineKeepsSequentialReplaceAndAppendOperations")
+    {
+        // The scalar getter answers the last occurrence, but the command-line pass applies every entry
+        // in order: replacing the token list and appending twice cannot collapse into the final entry
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Common.SecretSettingTokens";
+        char arg2[] = "base";
+        char arg3[] = "-Common.SecretSettingTokens";
+        char arg4[] = "+tail";
+        char arg5[] = "--Common.SecretSettingTokens";
+        char arg6[] = "+last";
+        char* argv[] = {arg0, arg1, arg2, arg3, arg4, arg5, arg6};
+
+        settings.ApplyCommandLine(CommandLineArgs {7, argv});
+
+        CHECK(settings.Common.SecretSettingTokens == vector<string> {"base", "tail", "last"});
+
+        char arg7[] = "--Probe.Scalar";
+        char arg8[] = "first";
+        char arg9[] = "-Probe.Scalar";
+        char arg10[] = "second";
+        char* last_argv[] = {arg0, arg7, arg8, arg9, arg10};
+
+        settings.ApplyCommandLine(CommandLineArgs {5, last_argv});
+
+        CHECK(settings.GetCustomSetting("Probe.Scalar") == "second");
+    }
 }
 
 TEST_CASE("WritableRootConfigCannotReplaceStartupResolution")
@@ -668,14 +976,14 @@ TEST_CASE("WritableRootConfigCannotReplaceStartupResolution")
 
             CHECK_THROWS_AS(settings.ApplyConfigFile(config, ""), SettingsException);
             CHECK(settings.Common.UserWritablePath == "resolved/startup/root");
-            CHECK(settings.GetRuntimeSetting("Common.UserWritablePath") == "resolved/startup/root");
+            CHECK(settings.GetRuntimeSetting(string(SettingNames::Common_UserWritablePath)) == "resolved/startup/root");
         }
 
         ConfigFile empty_config {"Common.UserWritablePath =\n"};
 
         CHECK_NOTHROW(settings.ApplyConfigFile(empty_config, ""));
         CHECK(settings.Common.UserWritablePath == "resolved/startup/root");
-        CHECK(settings.GetRuntimeSetting("Common.UserWritablePath") == "resolved/startup/root");
+        CHECK(settings.GetRuntimeSetting(string(SettingNames::Common_UserWritablePath)) == "resolved/startup/root");
     }
 }
 
@@ -769,4 +1077,3 @@ TEST_CASE("ApplicationSettings")
 }
 
 FO_END_NAMESPACE
-

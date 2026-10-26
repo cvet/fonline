@@ -29,7 +29,8 @@ public static class ManagedRuntimeProbe
         TimerSecondStartFrame = 0;
         TimerErrorsBefore = ScriptExceptions.GlobalCount;
         return Game.StartTimeEvent(new timespan(1_000_000L),
-                                   new timespan(mode == 3 ? 0L : 1_000_000_000L), AwaitedTimer);
+                                   new timespan(mode == 3 ? 0L : 1_000_000_000L),
+                                   AwaitedTimer);
     }
 
     [CallableFromNative]
@@ -275,14 +276,16 @@ public static class ManagedRuntimeProbe
     [CallableFromNative]
     internal static void ReleaseSnapshotGate()
     {
-        TaskCompletionSource completion = SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
+        TaskCompletionSource completion =
+            SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
         completion.SetResult();
     }
 
     [CallableFromNative]
     internal static void CancelSnapshotGate()
     {
-        TaskCompletionSource completion = SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
+        TaskCompletionSource completion =
+            SnapshotGate ?? throw new InvalidOperationException("Snapshot gate was not started");
         completion.SetCanceled();
     }
 
@@ -444,4 +447,3 @@ public static class ManagedRuntimeProbe
     [CallableFromNative]
     internal static void ThrowFromScript() => throw new InvalidOperationException("Managed runtime probe failure");
 }
-

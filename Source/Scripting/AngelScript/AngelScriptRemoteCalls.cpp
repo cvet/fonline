@@ -630,4 +630,3 @@ auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptMod
 FO_END_NAMESPACE
 
 #endif
-

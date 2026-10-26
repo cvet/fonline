@@ -786,4 +786,3 @@ void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
 }
 
 FO_END_NAMESPACE
-

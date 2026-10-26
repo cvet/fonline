@@ -12896,3 +12896,141 @@ Evidence is retained under the embedding checkout Workspace task
 engine-donor-integration/group5-update-2026-10-25. No other-platform, workload,
 performance, rendered-site, publication or ordinary gameplay-UI qualification
 is claimed by these native checks.
+
+## 2026-10-22 — Unattended startup integration over 2026.1.57-dev
+
+The embedding checkout advanced Engine from `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`
+(`2026.1.13-dev`) to published `aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a`
+(`2026.1.57-dev`), preserving the local startup work. The prepared local update is
+`2026.1.58-dev`; published history remains unchanged. The complete incoming inventory
+contains 561 paths, including 225 source/test paths, and is retained with the exact
+range patch. `Workspace/revision-update-20261022.json` records source blobs and
+documentation owners. Reconciliation covers the changed contract surfaces and local
+integration; it is not independent runtime qualification of every incoming feature.
+
+Preserved incoming defaults, nested-setting validation, the early writable-root guard,
+Windows console-interrupt handling and the separated scripting test suites. Reviewed
+the integration against the incoming rendering/readback, map observation and direct
+packet writers, persistence/entity teardown, optional-component and baking contracts.
+Existing server grid selections remain project-owned. JSON/SQLite codec migration
+requires the published conversion boundary; this work used isolated fresh database
+fixtures and performed no conversion of existing data. Wire marker `0.0.75`, Managed
+ABI `9` and client-host ABI `3` remain unchanged by the local startup update.
+
+The local API delta is one readonly `Common.NonInteractive` boolean, default `False`:
+2579 classified symbols. Shared CLI lookup preserves raw values, explicit empty
+strings, implicit flags, ordering and caller-specific selection rules. Common.h
+line shifts also required map-format provenance regeneration; they introduce no map
+grammar change. Rebuilt API/native references, map references, public-contract
+indexes, description translations and ignored documentation delivery outputs.
+The reviewed complete-bundle limit increases by 32 KiB to 2392064 bytes without
+changing whole-document membership or disabling overflow checks; ADR-0003 records it.
+
+Review retained failed shutdown for unattended missing-baker warning dialogs, as
+required by the selected Exit policy. Added a sticky-failure assertion and documented
+one-process-per-case isolation. Service registration now uses the dispatcher option
+constant; the release-operations guide and dated EN/RU migration notes describe the
+administrator action for legacy registrations. No SCM operation was executed.
+
+Fresh Windows/MSVC native qualification built four embedding targets with both
+scripting backends disabled and JSON/SQLite enabled, without compiler/codegen warnings.
+The full native suite passed 679 cases / 734352 assertions. Four isolated error cases
+passed 15 assertions; the console-interrupt subprocess matrix passed 4/4. Eleven
+startup smokes exercised embedded/fresh-DLL selection, strict config errors, inherent
+headless mode with False, missing-baker warning shutdown, a live graphical frontend
+using NullRenderer/HeadlessWindow, and a project profile enabling the mode without
+its CLI flag. These are error-policy checks, not visual rendering qualification.
+
+Current checks pass: 412 documentation entries; locale parity 194/194; description
+translations 4886/4886; snippets 313/313; retrieval 28 tasks / 67 checks; aggregate
+contract diff 17 domains, 2 changes, 1 required disposition, 0 missing. API, delivery
+and version regression suites each passed 12 tests. The local version/migration gate
+against published HEAD passes. The requested historical range check stops at already
+published `b197060d30d01ac74d7a203039a6bdb379c17948`: its notes use 2026-10-11 while
+its UTC commit date is 2026-10-12. This is an explicit incoming-history limitation,
+not a passing full-range history check; published commits were not rewritten.
+
+Normal project resource baking, Managed/AngelScript runtime, gameplay, SCM operation,
+rendered Jekyll output and other platform qualification remain outside this run.
+Project-specific MCP checks and its exception-safety baseline remain embedding-project
+evidence, not normative Engine validation owners. Safety refs, stashes and original
+patches are retained; no commit or publication has been performed.
+
+## 2026-10-24 — Unattended startup integration over 2026.1.59-dev
+
+The embedding checkout advanced Engine from published
+`aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a` to
+`ca18bfeededf7777db2fdc2b9dcd77ec4c2ce135`, preserving the local unattended-startup
+and setting-name work. The prepared local version is `2026.1.60-dev`; published
+2026.1.58/59 notes and ancestry remain intact. Runtime marker `0.0.76`, Managed
+ABI `9` and sprite container v2 are retained. The complete incoming Engine ledger
+contains 242 paths; its aggregate contract diff has 82 changes across 17 domains,
+with no missing dispositions. Seven existing direct packet-writer owners are
+unchanged in this incoming range. This audit is distinct from runtime coverage
+of every incoming feature.
+
+Reconciled the local source inventory with the incoming schema: 291 builtin
+setting names generated from `Settings.inc`, seven command-line-only names, and
+2578 classified API symbols. The local contract delta remains two changes across
+17 domains, one required disposition and no missing dispositions. The unpublished
+disposition binds the exact new baseline/current digests. Regenerated API, map,
+native references, public indexes, translations, routes/search and AI delivery;
+retained the existing 2392064-byte complete-bundle budget. Current checks pass:
+314 normative snippets, 4887/4887 descriptions, locale parity 194/194, retrieval
+28 tasks / 67 checks, 413 documentation entries, and all 50 documentation-validator
+regressions. API, version and delivery suites each pass 12 tests. Both incoming
+publication steps and the local version gate pass. The previously recorded
+historical date mismatch at published `b197060d30` remains a separate limitation.
+
+Fresh Windows/MSVC qualification enables Managed C#, Mapper and baker, with
+AngelScript disabled. Built the embedding unit-test executable, client/runtime,
+headless server, service executable, Mapper and baker; all three project Managed
+roles compile successfully. Requested native/codegen/Managed compilation completed
+without compiler diagnostics. The first Managed runtime bootstrap also completed;
+its reference-resolution informational output is retained with the original log.
+No Windows SCM operation was performed.
+
+Several owned build processes were deliberately interrupted while diagnosing
+shared scheduling, then resumed on their preserved outputs. Initial native
+attempts waited without an owned active compiler; disabling node reuse alone did
+not resolve the delay. Disabling MultiToolTask for the invocation produced active
+compilation, then four compiler workers were used after a completed library
+boundary. The first project Managed attempt used an already-running shared Roslyn
+server. A later invocation used `UseSharedCompilation=false` and
+`BuildInParallel=false`, produced an owned active compiler and completed. These
+are invocation settings, not repository defaults or disabled diagnostics. Shared
+processes were not stopped. Interrupted attempts remain recorded as interrupted;
+only the completed invocation supplies the build gate.
+
+The fresh full native suite passes 720 cases / 736018 assertions. Four isolated
+unattended/headless error cases pass; the Windows console-interrupt subprocess
+matrix passes 4/4. Thirteen startup smokes pass with failed exit status and their
+expected diagnostics, including fresh-DLL/embedded selection, repeated arguments,
+strict config errors, inherent headless mode despite explicit False, missing-baker
+warning shutdown, live frontend error shutdown, a config-enabled profile, and both
+embedding-specific early agent hooks despite an explicit False override. The last
+two are embedding integration evidence; the reusable native cases remain Engine
+validation owners. NullRenderer/HeadlessWindow error smokes are not visual
+rendering qualification.
+
+The full embedding resource bake completed, including 80 configs, 1539 Visual
+files, 65 ModelInfo files, 40 text outputs, prototypes and 662 map outputs. Dialog
+composition reports zero errors. Four selected embedding gameplay regressions pass
+60 expectations across two suites, with no failed/timed-out/skipped cases or global
+exception delta. They cover playback selection, presentation flags after condition
+changes and a save/unload/restore round trip, and authored daylight catalogue/legacy
+values. The restore fixture uses isolated Memory storage; it is not a production
+database conversion or a cross-process backend migration certificate.
+
+An initial embedding GUI harness used a headless server host. Normal movement and
+Inventory-button transitions passed, but independent image inspection found black
+captures. That run is retained as functional-only evidence and fails visual
+acceptance. A fresh run built and used the ordinary server frontend. Normal walk,
+Inventory-button opening and close-button dismissal passed; independent image
+inspection confirms the rendered map, characters, HUD and Inventory with its 3D
+preview. The adapter stopped its owned process. This is a bounded Windows native
+GUI check, not an exhaustive animation/backend matrix. Script-overrun telemetry on
+the contended host is retained; no performance acceptance is claimed. Rendered
+Jekyll output and other platforms are not qualified by this run.
+Safety copies and original attempts are retained; no staging, commit or remote
+publication has been performed.

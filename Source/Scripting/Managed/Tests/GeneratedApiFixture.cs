@@ -176,4 +176,3 @@ public partial struct TextPackKey
         Key3 = key3;
     }
 }
-

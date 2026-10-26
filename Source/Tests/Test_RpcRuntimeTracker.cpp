@@ -538,4 +538,3 @@ TEST_CASE("RpcRuntimeValidation", "[rpc-runtime][C7]")
 }
 
 FO_END_NAMESPACE
-

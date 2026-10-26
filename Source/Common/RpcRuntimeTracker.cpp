@@ -379,4 +379,3 @@ void RpcRuntimeTracker::FillInputQueueReport(RpcRuntimeReport& report, nanotime 
 }
 
 FO_END_NAMESPACE
-

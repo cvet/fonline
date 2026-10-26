@@ -1018,4 +1018,3 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
 #endif
 
 FO_END_NAMESPACE
-

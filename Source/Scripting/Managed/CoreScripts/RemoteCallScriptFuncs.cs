@@ -55,4 +55,3 @@ internal static class RemoteCallScriptFuncs
         Native.RegisterRemoteCallHandler(method.Name, parameters.Length, handler);
     }
 }
-

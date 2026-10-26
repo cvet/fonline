@@ -118,8 +118,7 @@ internal static class RemoteCallCompletionScenarios
                     "A Task<T> remote call was not normalized to a declared Task return type");
             object? result = handler.DynamicInvoke();
 
-            Require(ReferenceEquals(result, source.Task),
-                    "A Task<T> remote call did not expose the method's own Task");
+            Require(ReferenceEquals(result, source.Task), "A Task<T> remote call did not expose the method's own Task");
             Require(!source.Task.IsCompleted, "Registration completed a pending Task<T> remote call");
 
             source.SetResult(73);
@@ -149,8 +148,7 @@ internal static class RemoteCallCompletionScenarios
         try {
             Require(typed.GetType() == typeof(Action<int, string>),
                     "A typed void remote call was not a direct Action<int, string>");
-            Require(typed.DynamicInvoke(7, "sync") == null,
-                    "A typed void remote call unexpectedly produced a result");
+            Require(typed.DynamicInvoke(7, "sync") == null, "A typed void remote call unexpectedly produced a result");
             Require(ExampleGame.DispatchProbe.RemoteNumber == 7 && ExampleGame.DispatchProbe.RemoteText == "sync",
                     "A typed void remote call did not receive its actual arguments");
         }
@@ -186,4 +184,3 @@ internal static class RemoteCallCompletionScenarios
         }
     }
 }
-

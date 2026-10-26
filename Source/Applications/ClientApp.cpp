@@ -573,31 +573,18 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
         requested_runtime.Path = ResolveBundledRuntimePath();
     }
 
-    for (size_t index = 1; index < args.size(); index++) {
-        string_view arg = args.Get(index);
-
-        if (arg.empty()) {
-            continue;
-        }
-
-        bool has_next_arg = index + 1 < args.size();
-        string_view next_arg = args.Get(index + 1);
-
-        if (arg == "--ClientLibPath" && has_next_arg) {
-            requested_runtime.ExplicitPath = true;
-            requested_runtime.Path = next_arg;
-        }
-
-        if (arg == "--ClientLibCompatibilityVersion" && has_next_arg) {
-            requested_runtime.CompatibilityVersion = next_arg;
-            requested_runtime.CheckCompatibilityVersion = true;
-        }
-
-        if (arg == "--Client.ForceEmbeddedRuntime" || arg == "-Client.ForceEmbeddedRuntime") {
-            string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
-            requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
-        }
+    if (auto explicit_path = args.GetSettingValue(CommandLineSettings::ClientLibPath, std::nullopt)) {
+        requested_runtime.ExplicitPath = true;
+        requested_runtime.Path = *explicit_path;
     }
+
+    if (auto compatibility_version = args.GetSettingValue(CommandLineSettings::ClientLibCompatibilityVersion, std::nullopt)) {
+        requested_runtime.CompatibilityVersion = *compatibility_version;
+        requested_runtime.CheckCompatibilityVersion = true;
+    }
+
+    string_view force_embedded = args.GetSettingValue(SettingNames::Client_ForceEmbeddedRuntime).value_or("0");
+    requested_runtime.ForceEmbedded = force_embedded != "0" && force_embedded != "false" && force_embedded != "False";
 
     return requested_runtime;
 }

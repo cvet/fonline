@@ -137,4 +137,3 @@ internal static class ScriptEntryNames
         return name.StartsWith('<');
     }
 }
-

@@ -1020,4 +1020,3 @@ TEST_CASE("ServerRpcRuntimeWatchdogTransport", "[rpc-runtime-transport]")
 }
 
 FO_END_NAMESPACE
-

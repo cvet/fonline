@@ -602,4 +602,3 @@ void ParticleEditorManager::DrawWindows()
 }
 
 FO_END_NAMESPACE
-

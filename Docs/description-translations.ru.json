@@ -10913,6 +10913,10 @@
         "/symbols/@id=setting.server.ServerNetwork.RemoteCallWarningTimeMs/description": {
           "source_sha256": "f25a0430bdca29b47f86c17684b4d68e0413c4babf0e985eabd522d30112ad44",
           "translation": "Возраст незавершённых RPC или готовых входных фреймов для предупреждения (0 = отключено)."
+        },
+        "/symbols/@id=setting.common.Common.NonInteractive/description": {
+          "source_sha256": "d06b070108556117ed6ca74002d367999efdcfa2428647c1e386654e6291e0ce",
+          "translation": "При True системные окна ошибок записывают сообщение в лог и запрашивают завершение с ошибкой без ожидания пользовательского ввода."
         }
       }
     },

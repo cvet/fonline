@@ -17,8 +17,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     internal static long PendingWorkCount
     {
-        get
-        {
+        get {
             lock (SchedulerGate)
             {
                 return Closed ? 0 : ReadyContexts.Count + SynchronousContexts.Count;

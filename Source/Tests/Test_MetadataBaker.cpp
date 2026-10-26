@@ -758,7 +758,7 @@ namespace TestSettings
         unconfigured_runtime_settings.ApplyDefaultSettings();
         apply_metadata_settings(unconfigured_runtime_settings);
         CHECK(unconfigured_runtime_settings.Common.GameName == "MetadataGame");
-        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting("Common.GameName"));
+        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting(SettingNames::Common_GameName));
         REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
         CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
 
