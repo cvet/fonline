@@ -1157,26 +1157,9 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     HideHexLines(-ox, -oy);
 
     // Shift view position
-    mdir shift_ox_dir;
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_ox_dir = ox > 0 ? hdir::East : hdir::West;
-    }
-    else {
-        shift_ox_dir = ox > 0 ? hdir::East : hdir::NorthWest;
-    }
-
-    mdir shift_oy_dir1;
-    mdir shift_oy_dir2;
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
-        shift_oy_dir2 = oy > 0 ? hdir::SouthWest : hdir::NorthWest;
-    }
-    else {
-        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
-        shift_oy_dir2 = oy > 0 ? hdir::West : hdir::NorthWest;
-    }
+    mdir shift_ox_dir = ox > 0 ? hdir::East : hdir::West;
+    mdir shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
+    mdir shift_oy_dir2 = oy > 0 ? hdir::SouthWest : hdir::NorthWest;
 
     if (ox != 0) {
         for (int32_t i = 0; i < std::abs(ox); i++) {

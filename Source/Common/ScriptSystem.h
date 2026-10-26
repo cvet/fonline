@@ -448,7 +448,7 @@ public:
 
         return *this;
     }
-    ~ScriptFunc() noexcept { ClearStoredReturn(); }
+    ~ScriptFunc() { ClearStoredReturn(); }
 
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
     [[nodiscard]] auto IsDelegate() const noexcept -> bool
@@ -482,7 +482,26 @@ public:
     [[nodiscard]] auto GetResult() noexcept -> TRet
     {
         static_assert(!std::is_same_v<TRet, void> || always_false_v<TRet>);
-        return _ret;
+
+        if constexpr (HANDLE_RETURN) {
+            using elem_t = typename TRet::element_type;
+
+            if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
+                nptr<Entity> base_entity = cast_from_void<Entity*>(_ret.get());
+                auto target_entity = base_entity.template dyn_cast<elem_t>();
+                FO_STRONG_ASSERT(!base_entity || target_entity, "Returned script entity type does not match native return type");
+                return TRet {target_entity};
+            }
+            else if constexpr (std::is_void_v<elem_t>) {
+                return TRet {_ret};
+            }
+            else {
+                return TRet {cast_from_void<elem_t*>(_ret.get())};
+            }
+        }
+        else {
+            return _ret;
+        }
     }
 
     auto Call(const Args&... args) noexcept -> bool { return CallWithCompletion({}, args...); }
@@ -512,7 +531,11 @@ public:
             }
         });
 
-        if constexpr (!std::is_same_v<TRet, void>) {
+        if constexpr (HANDLE_RETURN) {
+            // Argument normalization would redirect the returned handle into temporary storage
+            call.RetData = make_ptr(_ret.get_pp()).void_cast();
+        }
+        else if constexpr (!std::is_same_v<TRet, void>) {
             call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
         }
 
@@ -532,16 +555,23 @@ private:
     {
         if constexpr (!std::is_same_v<TRet, void>) {
             if (_returnValueCleaner) {
-                safe_call([this] { _returnValueCleaner(make_ptr(&_ret).void_cast()); });
+                if constexpr (HANDLE_RETURN) {
+                    safe_call([this] { _returnValueCleaner(make_ptr(_ret.get_pp()).void_cast()); });
+                }
+                else {
+                    safe_call([this] { _returnValueCleaner(make_ptr(&_ret).void_cast()); });
+                }
             }
         }
     }
 
+    static constexpr bool HANDLE_RETURN = specialization_of<TRet, ptr> || specialization_of<TRet, nptr>;
+    using ReturnStorage = std::conditional_t<HANDLE_RETURN, nptr<void>, std::conditional_t<std::is_same_v<TRet, void>, int32_t, TRet>>;
     using ReturnValueCleanerStorage = std::conditional_t<std::is_same_v<TRet, void>, std::nullptr_t, ScriptFuncDesc::ReturnValueCleanerType>;
 
     unique_del_nptr<ScriptFuncDesc> _func {};
     FO_NO_UNIQUE_ADDRESS ReturnValueCleanerStorage _returnValueCleaner {};
-    std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
+    ReturnStorage _ret {};
 };
 
 namespace NativeDataProvider

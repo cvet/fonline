@@ -171,7 +171,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK(script_errors.GetResult() == errors_before + 1); // only the fault, neither cancellation
 
     for (string_view method : {"UnitTestRuntimeImmediateSuccessRpc", "UnitTestRuntimeImmediateCanceledRpc"}) {
-        auto immediate_name = server->Hashes.to_hashed_string(method);
+        hstring immediate_name = server->Hashes.to_hashed_string(method);
         auto invocation = rpc_player->GetConnection()->BeginRemoteCall(immediate_name, rpc_player->GetId());
         REQUIRE(invocation.Accepted);
         REQUIRE(invocation.Completion);
@@ -254,6 +254,46 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(critter_id.Call(critter));
     CHECK(critter_id.GetResult() == critter->GetId().underlying_value());
 
+    {
+        auto echo = server->FindFunc<nptr<Critter>, nptr<Critter>, bool>(name("EchoCritter"));
+        REQUIRE(echo);
+        int32_t completions = 0;
+        bool completed_successfully = false;
+        auto completion = [&](bool success) {
+            completions++;
+            completed_successfully = success;
+        };
+
+        REQUIRE(echo.CallWithCompletion(completion, critter, false));
+        REQUIRE(echo.GetResult() == critter);
+        CHECK(echo.GetResult() == critter);
+        CHECK(completions == 1);
+        CHECK(completed_successfully);
+
+        REQUIRE(echo.Call(critter, false));
+        CHECK(echo.GetResult() == critter);
+
+        CHECK_FALSE(echo.CallWithCompletion(completion, critter, true));
+        CHECK(echo.GetResult() == critter);
+        CHECK(completions == 2);
+        CHECK_FALSE(completed_successfully);
+
+        REQUIRE(echo.Call(nptr<Critter> {}, false));
+        CHECK_FALSE(echo.GetResult());
+        REQUIRE(echo.Call(critter, false));
+
+        auto moved = std::move(echo);
+        CHECK_FALSE(echo); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-from function contract
+        CHECK(moved.GetResult() == critter);
+        moved = ScriptFunc<nptr<Critter>, nptr<Critter>, bool> {};
+        CHECK_FALSE(moved);
+
+        auto non_null_echo = server->FindFunc<ptr<Critter>, ptr<Critter>>(name("EchoNonNullCritter"));
+        REQUIRE(non_null_echo);
+        REQUIRE(non_null_echo.Call(critter));
+        CHECK(non_null_echo.GetResult() == critter);
+    }
+
     auto update_string = server->FindFunc<void, ptr<Critter>, ptr<Critter>, string&>(name("UpdateString"));
     REQUIRE(update_string);
     string updated_text = "value";
@@ -316,6 +356,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     second->Shutdown();
     CHECK(ServerConnection::GetRuntimeDiagnostics(second_runtime).PendingRemoteCalls == 0);
     CHECK(ServerConnection::GetRuntimeDiagnostics(first_runtime).PendingRemoteCalls == 1);
+    CHECK_THROWS_AS(second->CreateSnapshot(timespan {std::chrono::seconds {10}}), ServerQuiescenceException);
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock_first_again = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
@@ -800,7 +841,7 @@ TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][
     {
         auto settings = ServerEngineTests::MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/source", storage_root).str());
-        auto resources = ServerEngineTests::MakeServerTestResources();
+        auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
         assemblies.AddTo(resources);
         auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
         auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -840,7 +881,7 @@ TEST_CASE("ManagedSnapshotRestoresTimersAndMovementInAFreshSession", "[managed][
 
     auto settings = ServerEngineTests::MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}/restored", storage_root).str());
-    auto resources = ServerEngineTests::MakeServerTestResources();
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
     assemblies.AddTo(resources);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources), ServerSnapshotRestore {state, payload});
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });

@@ -7,10 +7,8 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"6326d838bf3935668f07f13bbe10e30fb9e50d219721ceb641588015293b1c18"} -->
-Это руководство объясняет, что нужно перегенерировать после изменения
-исходников Engine или игры, какие данные являются authoritative и как
-проверять generated output, не редактируя его вручную.
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"bca41c5e690259ce4fa1b145979740f8421b7cb2015d36b14d72fe9d94a44230"} -->
+После изменений Engine/игры перегенерируйте результаты из авторитетных источников; проверяйте их без ручного редактирования.
 
 ## Проверенные исходные пути
 
@@ -73,17 +71,15 @@ BuildPackages()
 FinalizeProjectGeneration()
 ```
 
-`SetupCodeGeneration()` использует native sources движка и проекта,
-code-generation tags, templates и project options. `ForceCodeGeneration`
-является dependency для script compilation и baking targets, поэтому
-устаревшие native metadata нельзя скрыть за посторонним incremental resource
-bake.
+`SetupCodeGeneration()` читает native-исходники Engine/проекта, tags, templates и options. Компиляция scripts и baking зависят от `ForceCodeGeneration`; incremental bake не обходит генерацию native metadata.
 
 Повторите configure после изменения CMake options, source registration, stage
 hooks, generated templates или Engine pin. Соберите самый узкий target, который
 компилирует затронутый generated source.
 
-Файл `VERSION` движка также участвует в конфигурации и генерации кода. Его номер CalVer и точная ревизия Engine становятся `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` в `EngineConfig.gen.h`; хеш сборки игрового проекта сохраняет отдельный смысл. Изменение `VERSION` автоматически инвалидирует конфигурацию и генерацию кода. См. [правила версий движка](../release/versioning.md) и [историю изменений](../../reference/changelog.md).
+`VERSION` инвалидирует configure/codegen и задаёт CalVer `FO_ENGINE_VERSION` с точной `FO_ENGINE_REVISION` в `EngineConfig.gen.h` отдельно от хеша проекта. См. [правила версий](../release/versioning.md) и [историю изменений](../../reference/changelog.md).
+
+Git HEAD/ref проекта отслеживаются независимо от Engine, включая packed refs и worktrees. Следующая сборка обновляет `FO_BUILD_HASH`; маркеры Baker используют эту скомпилированную identity, а не более поздний source hash. Для архивов исходников сохраняется случайный hash.
 
 ## Компиляция scripts
 
@@ -114,7 +110,7 @@ BuildTools вызывает generated ASCompiler с параметрами:
 cmake --build <build-dir> --config RelWithDebInfo --target CompileManagedScripts
 ```
 
-Команда запускает standalone `ManagedScriptBaker` после `ForceCodeGeneration`, создаёт target API, `.gen.csproj`/`.gen.sln` и компилирует настроенные assemblies без полного resource bake. Реальным delivery gate остаётся `BakeResources` или `ForceBakeResources`: baker `Managed` записывает target-specific assemblies и подготовленный payload `ManagedRuntime/` в выбранный pack. Исправляйте generated C# во владеющих C++ metadata, configuration, CoreScripts, analyzer или baker и регенерируйте; не редактируйте `.gen.cs` вручную. См. [Скрипты Managed C#](../scripting/managed-csharp.md).
+`ManagedScriptBaker` следует за `ForceCodeGeneration`, генерирует target API/`.gen.csproj`/`.gen.sln` и компилирует assemblies без полного bake. Поставка всё равно требует `BakeResources`/`ForceBakeResources`: baker `Managed` упаковывает target assemblies и `ManagedRuntime/`. Исправляйте generated C# во владеющих native metadata, config, CoreScripts, analyzer или baker и повторяйте генерацию; см. [Managed C#](../scripting/managed-csharp.md).
 
 ## Baking ресурсов
 

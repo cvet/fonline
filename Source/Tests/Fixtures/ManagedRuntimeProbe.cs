@@ -386,6 +386,19 @@ public static class ManagedRuntimeProbe
     internal static long GetCritterId(Critter critter) => critter.Id.value;
 
     [CallableFromNative]
+    internal static Critter? EchoCritter(Critter? critter, bool fail)
+    {
+        if (fail) {
+            throw new InvalidOperationException("Expected entity-return failure");
+        }
+
+        return critter;
+    }
+
+    [CallableFromNative]
+    internal static Critter EchoNonNullCritter(Critter critter) => critter;
+
+    [CallableFromNative]
     internal static bool IsItemNull(Item? item) => item == null;
 
     [CallableFromNative]

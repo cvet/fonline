@@ -8,58 +8,37 @@ permalink: /Docs/en/explanation/maps-and-movement.html
 
 # Maps, Movement, and Geometry
 
-This document explains the reusable map-coordinate, movement, path-finding, line-tracing, and map-loading primitives used by client/server runtime and tools.
+Engine geometry/movement owners: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers and tests.
 
-Use [Map Format](../how-to/content/map-format.md) for authored `.fomap` sections, placement identity and ownership, mapper round-trip behavior, side-specific baking, and runtime content materialization. This page owns geometry and movement semantics.
-
-Use it when changing `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map baker behavior, or map/movement tests.
+For `.fomap` sections, placement identity/ownership, Mapper round-trips, side-specific baking and runtime materialization, see [Map Format](../how-to/content/map-format.md).
 
 ## Ownership model
 
-The engine owns coordinate types, path algorithms, movement interpolation, and map-file loading mechanics. An embedding game project owns concrete maps, blocker layout, encounter rules, and gameplay decisions around movement.
-
-Keep project-specific map content and quest/navigation rules outside this document.
+Engine owns coordinate types, path algorithms, interpolation and file loading. Projects own maps, blockers, encounter rules and gameplay navigation/quests.
 
 ## Coordinate and direction types
 
-`Source/Common/Geometry.h` defines the exported value types used across runtime, generated API, and scripts:
+`Source/Common/Geometry.h` exports these runtime/API/script value types:
 
 - `mpos` — map hex/tile position stored as `int16 x` + `int16 y`.
 - `msize` — map dimensions stored as `int16 width` + `int16 height`.
 - `hdir` — discrete hex/tile direction.
 - `mdir` — movement direction angle; convertible to/from hex direction.
 
-`msize` provides checked/clamped helpers:
+`msize` bounds helpers:
 
 - `clamp_pos()` clamps raw coordinates into map bounds;
 - `from_raw_pos()` asserts that raw coordinates are already in bounds.
 
-Do not replace these types with generic `ipos`/`isize` in public map APIs without checking generated metadata and script-visible value layouts.
+Public map API substitutions with `ipos`/`isize` require generated metadata and script-layout checks.
 
 ### Sub-hex offset convention
 
-Sub-hex pixel offsets are measured relative to the hex **visual center**, bounded by
-`±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. This single convention is used by critter `HexOffset`,
-`MovingContext` start/end offsets, move-target offsets (`MoveToHex`), transparent-egg offsets, and the
-value returned by `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos`. A click/cursor offset is
-therefore directly usable as a move or critter offset with no conversion. Keep new offset
-producers/consumers on this convention.
+Sub-hex pixel offsets use the hex **visual center**, bounded by `±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. Critter `HexOffset`, `MovingContext` start/end, `MoveToHex`, transparent eggs and `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos` share this convention; cursor offsets need no conversion.
 
-Implementation note — there are two anchor points that must not be confused:
+`GeometryHelper::GetHexPos`, `MapView::GetHexMapPos` and per-`Field` `Offset` return the **top-left** origin, stepping by `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`. `HexView::AddSprite` anchors critters/items at origin `+ {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`; `MapView::GetHexScreenPos` returns this visual center (critter feet).
 
-- `GeometryHelper::GetHexPos` / `MapView::GetHexMapPos` (and the per-`Field` `Offset` grid) return the
-  hex cell **top-left** draw origin, stepping by full `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`.
-- Sprites (critters, items) anchor at the hex **visual center** = top-left `+ {MAP_HEX_WIDTH/2,
-  MAP_HEX_HEIGHT/2}` (see `HexView::AddSprite`), and `MapView::GetHexScreenPos` returns that same
-  visual center (where a centered critter's feet render).
-
-Because the visual center is half a hex past the cell origin, any code that resolves or applies a
-center-relative offset against `GetHexMapPos` must add `{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`:
-`GetHexAtScreen` biases its lookup point by `-{half hex}` so `GetHexPosCoord` snaps to the hex whose
-visual center is nearest and the returned offset is already center-relative and in range (no clamping);
-`UpdateTransparentEgg` and the critter-based `SetTransparentEgg` add/subtract the same half-hex so a
-stored center-relative egg offset renders at the intended point. `GetHexScreenPos(hex) + offset`
-projects a `(hex, center-relative offset)` pair straight to screen with no further bias.
+When combining center offsets with `GetHexMapPos`, apply that half-hex bias. `GetHexAtScreen` subtracts it before `GetHexPosCoord`, selecting the nearest visual center and returning an in-range center offset without clamping. `UpdateTransparentEgg` and critter-based `SetTransparentEgg` add/subtract the same bias. `GetHexScreenPos(hex) + offset` projects directly without another bias.
 
 ## Geometry modes
 
@@ -71,6 +50,8 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+`MapView::RebuildMapOffset` keeps the camera center visible when reversing or combining axes on large maps. Negative X uses west; alternating positive Y uses south-east/south-west, negative Y north-east/north-west, in both geometries.
 
 ## Map camera projection
 

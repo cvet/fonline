@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"61e66ea43ef905c94416bb51561095c6852816622eb45c81eccf33056a601faf"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"001b6cf2040e660317ccb2a168a188058913c7db9089a5edc9bb0c171ca4ff79"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Исправлено
+
+- Исправлены сдвиги камеры square, типизированный slot/cleanup handle результатов `ScriptFunc` и Git-зависимости build hash проекта, включая packed refs/worktrees. Snapshot fixtures используют runtime metadata; сохранены входящие isolation/shutdown checks.
+
+### Миграция
+
+- База `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`) → `2026.1.70-dev`: переконфигурируйте, пересоберите native/расширения и перепеките ресурсы. Конверсия исходников/сохранений не нужна: borrow результатов, cover, координаты и identity скомпилированного Baker сохраняют смысл. Runtime `0.0.81`, Managed ABI `9`, persisted formats и wire-аргументы RPC не меняются.
+
+## 2026.1.69-dev - 2026-10-26
 
 ### Миграция
 

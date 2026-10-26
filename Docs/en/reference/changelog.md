@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Fixed
+
+- Correct square camera shifts, typed `ScriptFunc` handle storage/cleanup and project Git build-hash dependencies, including packed refs/worktrees. Snapshot fixtures use runtime metadata; retain upstream isolation and shutdown checks.
+
+### Migration
+
+- Base `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`) → `2026.1.70-dev`: reconfigure, rebuild native/extensions and rebake. No source/save conversion: borrowed results, cover, coordinates and compiled Baker identity retain meaning. Runtime `0.0.81`, Managed ABI `9`, persisted formats and RPC wire arguments are unchanged.
+
+## 2026.1.69-dev - 2026-10-26
+
 ### Migration
 
 Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: combine the published FOFRM/resource/time branch with master. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Regenerate bindings/metadata, rebuild extensions/all roles and force-rebake. Deploy/roll back matching binaries, assemblies, sources and packs together; mixed generations fail. Saved values/network units keep meaning. Validation: Windows only.

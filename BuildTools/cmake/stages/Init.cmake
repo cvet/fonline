@@ -116,6 +116,12 @@ RequireNonEmptyVariables(
 
 # Evaluate build hash
 SetValue(FO_GIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+# Track the project's own Git identity so HEAD/ref changes reconfigure the build hash
+include("${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/EngineVersion.cmake")
+CollectGitHeadDependencies("${FO_GIT_ROOT}" FO_GIT_DEPENDENCIES)
+if(NOT "${FO_GIT_DEPENDENCIES}" STREQUAL "")
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FO_GIT_DEPENDENCIES})
+endif()
 ExecuteProcess(COMMAND git rev-parse HEAD
 	WORKING_DIRECTORY ${FO_GIT_ROOT}
 	RESULT_VARIABLE FO_GIT_HASH_RESULT

@@ -388,6 +388,8 @@ Do not use `Game.OnFinish` only to reproduce those owner actions. Use it for fun
 
 Script expression temporaries, returned object handles, delegates, arrays, and dictionaries are runtime-owned according to their registered AngelScript behaviours. Unsafe-reference expressions may defer receiver and argument cleanup until the expression reaches a safe point; native/script call bridges retain the copied result and release replaced or exceptional-path objects. Project scripts must not add manual reference-count or shutdown registries to compensate for those internals. A surviving object graph indicates a missing owner release or GC enumeration contract in the owning type.
 
+`ScriptFunc` writes handle returns to its nullable slot, separate from normalized arguments. `GetResult()` restores the declared type, constructing non-nullable pointers on read. Results borrow without cover. AngelScript retains the cached reference until replacement/cleanup through that slot; moves transfer cleanup. Managed wrappers retain their existing lifetime without another native reference.
+
 A suspended continuation can outlive the gameplay assumptions under which it started. On resumption, a destroyed handle must be treated as invalid even if the local variable is still non-null at the script-language level; the normal entity access guard is expected to reject destroyed access. Prefer explicit resolution and nullable narrowing where destruction is a normal outcome.
 
 ## Recommended workflow
