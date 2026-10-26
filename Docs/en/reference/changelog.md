@@ -186,6 +186,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 - Preserve Android Vulkan orientation and recover lost presentation surfaces; rebuild clients/mapper.
 - Threading traces count completed callbacks per batch participant, distinguishing idle workers and partial failure. Rebuild profiled consumers; no API or resource migration.
 - Retain maps in Mapper reentrancy tests.
+- Fix SQUARE bearings, trace offsets/chains and viewport shifts; rebuild native consumers; formats/IDs unchanged.
 
 ### Migration
 

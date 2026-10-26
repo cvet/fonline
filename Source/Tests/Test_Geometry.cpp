@@ -782,5 +782,112 @@ TEST_CASE("NormalizeHexOffset")
     }
 }
 
+TEST_CASE("Direction bearings use the projected map plane")
+{
+    CHECK(GeometryHelper::GetDirAngle(mpos {10, 10}, mpos {10, 10}) == 240.0f);
+    CHECK(GeometryHelper::GetDirAngle(0, 0, 0, 0) == 240.0f);
+
+    float32_t extreme_angle = GeometryHelper::GetDirAngle(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::max());
+    CHECK(std::isfinite(extreme_angle));
+    CHECK(extreme_angle >= 0.0f);
+    CHECK(extreme_angle < 360.0f);
+
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        SECTION("Hex parity keeps its discrete bearing frame")
+        {
+            CHECK(GeometryHelper::GetDirAngle(0, 0, 1, 0) == Catch::Approx(270.0f).margin(0.001f));
+            CHECK(GeometryHelper::GetDirAngle(1, 0, 0, 0) == Catch::Approx(90.0f).margin(0.001f));
+        }
+    }
+    else {
+        struct BearingCase
+        {
+            mpos Delta;
+            float32_t Angle;
+        };
+
+        struct EdgeBearing
+        {
+            mpos From;
+            mpos To;
+            float32_t Angle;
+        };
+
+        constexpr array<BearingCase, 8> bearings {{{mpos {-4, 0}, 40.893388f}, {mpos {-4, 4}, 90.0f}, //
+            {mpos {0, 4}, 139.106612f}, {mpos {4, 4}, 180.0f}, {mpos {4, 0}, 220.893388f}, //
+            {mpos {4, -4}, 270.0f}, {mpos {0, -4}, 319.106612f}, {mpos {-4, -4}, 0.0f}}};
+        constexpr array<mpos, 4> origins {{{10, 10}, {11, 10}, {10, 11}, {11, 11}}};
+        constexpr array<EdgeBearing, 4> edges {{{mpos {0, 0}, mpos {4, 4}, 180.0f}, {mpos {29, 29}, mpos {25, 29}, 40.893388f}, //
+            {mpos {29, 0}, mpos {29, 4}, 139.106612f}, {mpos {0, 29}, mpos {0, 25}, 319.106612f}}};
+
+        bool default_fixture = GameSettings::MAP_HEX_WIDTH == 32 && GameSettings::MAP_HEX_HEIGHT == 16 && std::abs(GameSettings::MAP_CAMERA_ANGLE - 25.6589f) <= 0.00001f;
+
+        SECTION("Even and odd origin bearings match the projected line")
+        {
+            for (mpos origin : origins) {
+                for (const BearingCase& bearing : bearings) {
+                    mpos target {numeric_cast<int16_t>(origin.x + bearing.Delta.x), numeric_cast<int16_t>(origin.y + bearing.Delta.y)};
+                    ipos32 from_pos = GeometryHelper::GetHexPos(origin);
+                    ipos32 to_pos = GeometryHelper::GetHexPos(target);
+                    float32_t projected_angle = GeometryHelper::GetLineDirAngle(from_pos.x, from_pos.y, to_pos.x, to_pos.y);
+                    float32_t map_angle = GeometryHelper::GetDirAngle(origin, target);
+
+                    INFO(origin.x << "," << origin.y << " -> " << target.x << "," << target.y);
+                    CHECK(map_angle == Catch::Approx(projected_angle).margin(0.001f));
+
+                    if (default_fixture) {
+                        CHECK(map_angle == Catch::Approx(bearing.Angle).margin(0.001f));
+                    }
+                }
+            }
+        }
+
+        SECTION("Map edge bearings match the projected line")
+        {
+            for (const EdgeBearing& bearing : edges) {
+                ipos32 from_pos = GeometryHelper::GetHexPos(bearing.From);
+                ipos32 to_pos = GeometryHelper::GetHexPos(bearing.To);
+                float32_t projected_angle = GeometryHelper::GetLineDirAngle(from_pos.x, from_pos.y, to_pos.x, to_pos.y);
+                float32_t map_angle = GeometryHelper::GetDirAngle(bearing.From, bearing.To);
+
+                INFO(bearing.From.x << "," << bearing.From.y << " -> " << bearing.To.x << "," << bearing.To.y);
+                CHECK(map_angle == Catch::Approx(projected_angle).margin(0.001f));
+
+                if (default_fixture) {
+                    CHECK(map_angle == Catch::Approx(bearing.Angle).margin(0.001f));
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("Discrete direction identities")
+{
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        constexpr array<int16_t, 6> expected {30, 90, 150, 210, 270, 330};
+
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            CHECK(mdir(hdir(dir_value)).angle() == expected[numeric_cast<size_t>(dir_value)]);
+        }
+
+        CHECK(mdir(hdir(GameSettings::MAP_DIR_COUNT)).angle() == 30);
+        CHECK(mdir(hdir(-1)).angle() == 330);
+        CHECK(mdir(390).angle() == 30);
+        CHECK(mdir(-330).angle() == 30);
+    }
+    else {
+        constexpr array<int16_t, 8> expected {45, 90, 135, 180, 225, 270, 315, 0};
+
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            CHECK(mdir(hdir(dir_value)).angle() == expected[numeric_cast<size_t>(dir_value)]);
+        }
+
+        CHECK(mdir(hdir(GameSettings::MAP_DIR_COUNT)).angle() == 45);
+        CHECK(mdir(hdir(-1)).angle() == 0);
+        CHECK(mdir(405).angle() == 45);
+        CHECK(mdir(-315).angle() == 45);
+    }
+}
+
 FO_END_NAMESPACE
 

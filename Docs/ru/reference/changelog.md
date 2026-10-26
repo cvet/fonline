@@ -191,6 +191,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
 - Трассы Threading считают завершённые callbacks каждого участника пакета, различая пустых workers и частичный отказ. Пересоберите profiled consumers; миграций API и ресурсов нет.
 - Карты удерживаются в reentrancy-тестах Mapper.
+- Исправлены SQUARE bearings, offsets/цепочки трасс и сдвиги viewport; пересоберите native consumers. Идентичности/форматы сохраняются.
 
 ### Миграция
 

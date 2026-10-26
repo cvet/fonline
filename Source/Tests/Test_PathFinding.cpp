@@ -2223,6 +2223,89 @@ TEST_CASE("PathFinding::TraceDirection")
         }
     }
 
+    SECTION("SquareDiagonalRayUsesBothBracketingStepTypes")
+    {
+        if constexpr (!GameSettings::HEXAGONAL_GEOMETRY) {
+            constexpr int32_t steps = 24;
+            auto output = PathFinding::TraceDirection(make_input(start, {}, 45, steps, false, nothing_blocked));
+
+            REQUIRE(std::cmp_equal(output.Steps.size(), steps));
+            CHECK_FALSE(output.Slid);
+
+            int32_t northeast_steps = 0;
+            int32_t east_steps = 0;
+            bool default_square_fixture = GameSettings::MAP_HEX_WIDTH == 32 && GameSettings::MAP_HEX_HEIGHT == 16 && std::abs(GameSettings::MAP_CAMERA_ANGLE - 25.6589f) <= 0.00001f;
+
+            for (mdir step : output.Steps) {
+                northeast_steps += step.hex() == hdir::NorthEast ? 1 : 0;
+                east_steps += step.hex() == hdir::East ? 1 : 0;
+            }
+
+            vector<mpos> hexes = walk(start, output);
+            REQUIRE_FALSE(hexes.empty());
+
+            for (mpos hex : hexes) {
+                CHECK(map_size.is_valid_pos(hex));
+            }
+
+            if (default_square_fixture) {
+                CHECK(northeast_steps > 0);
+                CHECK(east_steps > 0);
+
+                ipos32 end_center = GeometryHelper::GetHexOffset(start, hexes.back());
+                float32_t end_x = numeric_cast<float32_t>(end_center.x + output.EndHexOffset.x);
+                float32_t end_y = numeric_cast<float32_t>(end_center.y + output.EndHexOffset.y);
+                CHECK(distance_from_ray(end_x, end_y, 45) <= 1.5f);
+                CHECK(std::abs(output.EndHexOffset.x) <= GameSettings::MAP_HEX_WIDTH / 2);
+                CHECK(std::abs(output.EndHexOffset.y) <= GameSettings::MAP_HEX_HEIGHT / 2);
+            }
+        }
+    }
+
+    SECTION("SquareSelectionWrapsAtFullTurn")
+    {
+        if constexpr (!GameSettings::HEXAGONAL_GEOMETRY) {
+            auto direct = PathFinding::TraceDirection(make_input(start, {}, 45, horizon, false, nothing_blocked));
+            auto positive_wrap = PathFinding::TraceDirection(make_input(start, {}, 405, horizon, false, nothing_blocked));
+            auto negative_wrap = PathFinding::TraceDirection(make_input(start, {}, -315, horizon, false, nothing_blocked));
+            auto north_direct = PathFinding::TraceDirection(make_input(start, {}, 350, horizon, false, nothing_blocked));
+            auto north_wrap = PathFinding::TraceDirection(make_input(start, {}, -10, horizon, false, nothing_blocked));
+
+            REQUIRE_FALSE(direct.Steps.empty());
+            REQUIRE_FALSE(north_direct.Steps.empty());
+            CHECK(direct.Steps == positive_wrap.Steps);
+            CHECK(direct.Steps == negative_wrap.Steps);
+            CHECK(north_direct.Steps == north_wrap.Steps);
+        }
+    }
+
+    SECTION("SquareDiagonalStopsAtMapEdge")
+    {
+        if constexpr (!GameSettings::HEXAGONAL_GEOMETRY) {
+            constexpr int32_t steps = 30;
+            constexpr mpos near_west_edge {24, 100};
+            auto output = PathFinding::TraceDirection(make_input(near_west_edge, {}, 45, steps, false, nothing_blocked));
+
+            CHECK(std::cmp_equal(output.Steps.size(), 24));
+            CHECK(std::cmp_less(output.Steps.size(), steps));
+
+            int32_t east_steps = 0;
+            bool default_square_fixture = GameSettings::MAP_HEX_WIDTH == 32 && GameSettings::MAP_HEX_HEIGHT == 16 && std::abs(GameSettings::MAP_CAMERA_ANGLE - 25.6589f) <= 0.00001f;
+
+            for (mdir step : output.Steps) {
+                east_steps += step.hex() == hdir::East ? 1 : 0;
+            }
+
+            if (default_square_fixture) {
+                CHECK(east_steps > 0);
+            }
+
+            for (mpos hex : walk(near_west_edge, output)) {
+                CHECK(map_size.is_valid_pos(hex));
+            }
+        }
+    }
+
     SECTION("RayStartsFromTheSubHexOffset")
     {
         // A mover drawn below its hex centre keeps that height when it walks east: the ray is parallel, not recentred

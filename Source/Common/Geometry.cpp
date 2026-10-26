@@ -285,26 +285,54 @@ auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
     float32_t hy = numeric_cast<float32_t>(y1);
     float32_t tx = numeric_cast<float32_t>(x2);
     float32_t ty = numeric_cast<float32_t>(y2);
-    float32_t nx = 3 * (tx - hx);
-    float32_t ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
-    float32_t r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
-    FO_VERIFY_AND_THROW(r >= 0.0f, "Hex direction angle calculation produced a negative raw angle", x1, y1, x2, y2, r);
-    FO_VERIFY_AND_THROW(r <= 360.0f, "Hex direction angle calculation produced a value above 360 degrees before normalization", x1, y1, x2, y2, r);
+    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+        float32_t nx = 3 * (tx - hx);
+        float32_t ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
 
-    r = -r + 60.0f;
+        float32_t r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
+        FO_VERIFY_AND_THROW(r >= 0.0f, "Hex direction angle calculation produced a negative raw angle", x1, y1, x2, y2, r);
+        FO_VERIFY_AND_THROW(r <= 360.0f, "Hex direction angle calculation produced a value above 360 degrees before normalization", x1, y1, x2, y2, r);
 
-    if (r < 0.0f) {
-        r += 360.0f;
+        r = -r + 60.0f;
+
+        if (r < 0.0f) {
+            r += 360.0f;
+        }
+        if (r >= 360.0f) {
+            r -= 360.0f;
+        }
+
+        FO_VERIFY_AND_THROW(r >= 0.0f, "Normalized hex direction angle calculation produced a negative value", x1, y1, x2, y2, r);
+        FO_VERIFY_AND_THROW(r < 360.0f, "Computed hex direction angle is outside the normalized degree range", x1, y1, x2, y2, r);
+
+        return r;
     }
-    if (r >= 360.0f) {
-        r -= 360.0f;
+    else {
+        if (x1 == x2 && y1 == y2) {
+            return 240.0f;
+        }
+
+        float32_t dx = tx - hx;
+        float32_t dy = ty - hy;
+        float32_t width = numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
+        float32_t line_height = numeric_cast<float32_t>(GameSettings::MAP_HEX_LINE_HEIGHT);
+        float32_t map_x = (dy - dx) * width * 0.5f;
+        float32_t map_y = (dy + dx) * line_height * GetYProj();
+        float32_t r = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(map_y, map_x);
+
+        if (r < 0.0f) {
+            r += 360.0f;
+        }
+        if (r >= 360.0f) {
+            r -= 360.0f;
+        }
+
+        FO_VERIFY_AND_THROW(r >= 0.0f, "Normalized direction angle calculation produced a negative value", x1, y1, x2, y2, r);
+        FO_VERIFY_AND_THROW(r < 360.0f, "Computed direction angle is outside the normalized degree range", x1, y1, x2, y2, r);
+
+        return r;
     }
-
-    FO_VERIFY_AND_THROW(r >= 0.0f, "Normalized hex direction angle calculation produced a negative value", x1, y1, x2, y2, r);
-    FO_VERIFY_AND_THROW(r < 360.0f, "Computed hex direction angle is outside the normalized degree range", x1, y1, x2, y2, r);
-
-    return r;
 }
 
 auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float32_t

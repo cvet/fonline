@@ -239,6 +239,29 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         CHECK(map->IsHexInViewArea(mpos {8, 8}));
         CHECK_FALSE(map->IsHexInViewArea(mpos {12, 12}));
     }
+
+    SECTION("AxialPixelScrollPreservesRequestedCameraTranslation")
+    {
+        map->SetScrollCheck(false);
+        map->InstantZoom(1.0f, {0.5f, 0.5f});
+        map->InstantScrollTo(mpos {8, 8});
+
+        auto camera_position = [&map]() { return fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset(); };
+        constexpr int32_t horizontal_step = GameSettings::MAP_HEX_WIDTH;
+        constexpr int32_t vertical_step = 2 * GameSettings::MAP_HEX_LINE_HEIGHT;
+        constexpr array<ipos32, 5> displacements {{{0, 0}, {-horizontal_step, 0}, {horizontal_step, 0}, {0, -vertical_step}, {0, vertical_step}}};
+
+        for (ipos32 delta : displacements) {
+            fpos32 before = camera_position();
+
+            map->InstantScroll(fpos32(delta));
+
+            fpos32 after = camera_position();
+            CAPTURE(delta.x, delta.y, before.x, before.y, after.x, after.y);
+            CHECK(after.x == Catch::Approx(before.x + numeric_cast<float32_t>(delta.x)).margin(0.01f));
+            CHECK(after.y == Catch::Approx(before.y + numeric_cast<float32_t>(delta.y)).margin(0.01f));
+        }
+    }
 }
 
 TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")

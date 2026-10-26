@@ -538,10 +538,31 @@ auto PathFinding::TraceDirection(const TraceDirectionInput& input) -> TraceDirec
     TraceDirectionOutput output;
     float32_t angle = numeric_cast<float32_t>(input.Dir.angle());
     DirectionLine line = MakeDirectionLine(input.RayHex, input.RayHexOffset, angle);
+    float32_t selection_angle = angle;
+
+    if constexpr (!GameSettings::HEXAGONAL_GEOMETRY) {
+        // Bracket in the raw lattice direction frame; the distance check still uses the projected physical line
+        constexpr float32_t width = numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
+        constexpr float32_t twice_line_height = numeric_cast<float32_t>(GameSettings::MAP_HEX_LINE_HEIGHT) * 2.0f;
+
+        float32_t screen_y = line.DirY / GeometryHelper::GetYProj();
+        float32_t raw_x = screen_y / twice_line_height - line.DirX / width;
+        float32_t raw_y = screen_y / twice_line_height + line.DirX / width;
+
+        selection_angle = 135.0f + RAD_TO_DEG_FLOAT * std::atan2(raw_x, raw_y);
+
+        if (selection_angle < 0.0f) {
+            selection_angle += 360.0f;
+        }
+        if (selection_angle >= 360.0f) {
+            selection_angle -= 360.0f;
+        }
+    }
+
     mpos cur_hex = input.StartHex;
 
     while (std::cmp_less(output.Steps.size(), input.MaxSteps)) {
-        optional<mdir> line_dir = FindDirectionLineStep(cur_hex, line, angle, input.MapSize);
+        optional<mdir> line_dir = FindDirectionLineStep(cur_hex, line, selection_angle, input.MapSize);
 
         if (line_dir.has_value()) {
             mpos next_hex = cur_hex;
