@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #include "NetSockets.h"
 #include "NetworkServer.h"
 #include "ServerConnection.h"

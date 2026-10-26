@@ -32,6 +32,7 @@
 //
 
 #include "FontManager.h"
+
 #include "DefaultSprites.h"
 #include "ResourceManager.h"
 #include "SpriteManager.h"

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/content/model-animation.html
 ---
 
 # Метаданные и длительность анимаций моделей
-<!-- docs-translation: {"document_id":"model-animation","locale":"ru","source_path":"Docs/en/how-to/content/model-animation.md","source_sha256":"c59759480d793e847fe3f627d921fe106132e6fcd13e98e1d5c43996cd5b5161"} -->
+<!-- docs-translation: {"document_id":"model-animation","locale":"ru","source_path":"Docs/en/how-to/content/model-animation.md","source_sha256":"a6be3cbcd85894100305bc0447af2f979dcd983ecd77120ff7e1cbe1cff21f22"} -->
 Это руководство описывает переиспользуемый контракт FOnline, который преобразует исходные анимации моделей и пары `(state, action)` в клиентский runtime rig и общие метаданные эффективного цикла. Оно следует текущим реализациям source loader, converter, `ModelInfoBaker`, клиентского lookup, регистрации общих метаданных, script exports и тестов движка. Подключающий проект может определять свои имена моделей, правила использования animation enum, игровое время и fallback policy, но не должен повторно реализовывать lookup движка или разбирать приватные baked payloads.
 
 ## Статус контракта
@@ -142,6 +142,10 @@ Generated metadata file содержит по одной section на кажды
 ## Runtime и script lookup
 
 `ModelInformation` строго загружает один immutable canonical skeleton, clip set, binding table, remaps, presence/nearest data и rest-pose contract из обязательного rig payload. Старые unversioned model-info data, missing/partial rigs, identity mismatches, malformed counts и trailing data отклоняются; fallback на legacy pose evaluator отсутствует. `ModelAnimation` скрывает Ozz objects за принадлежащим Engine runtime interface, а каждый `ModelInstance` владеет mutable controller timelines, sampled pose buffers, world matrices, linked children и procedural overrides. Shared `ModelHierarchy` остаётся physical mesh topology и никогда не получает mutable pose output.
+
+Длительности, позиции и события контроллера, а также прошедшее время инстанса используют `timespan`. До мутации проверяются все треки; порядок применения событий и скорости в конце шага сохранён. Callback проверяет циклы двух концов интервала и вызывается не более одного раза за update, без воспроизведения пропущенных промежуточных циклов. DTO клипов/Ozz и GPU получают секунды на границах. Запрос инстанса сохраняет наносекунды; общая baked-таблица остаётся в целых миллисекундах.
+
+На границе сэмплирования позиция трека сохраняет двойную точность до расчёта остатка внутри цикла. Только полученное время сэмпла переводится в float для Ozz. Поэтому замороженная позиция непосредственно перед концом клипа не округляется до полного цикла и не возвращается в первую позу.
 
 `BaseEngine` регистрирует `ModelAnimationInfo.foinfo` при startup после prototypes и до завершения регистрации metadata. Регистрация проверяет versioned duration/bounds payload, уникальность model sections и tuples. Path каждой section регистрируется в hash storage движка и становится model key, используемым scripts.
 

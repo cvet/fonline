@@ -24,8 +24,9 @@ nonempty arrays ordered by direction then frame. Sources are handles, frames are
 indices; a source supplies that direction or its only direction. Offsets are absolute pixel
 anchors; motions are explicit deltas, including script-owned splice compensation. Length
 divides by positive framesPerDirection; direction count is one or the configured full count.
-Invalid arrays/handles/indices/kinds and negative/out-of-int32-millisecond durations throw.
-Duration is timespan stored in whole milliseconds (zero allowed). Results are stopped,
+Invalid arrays/handles/indices/kinds and nonpositive/oversized durations throw.
+Duration is a timespan with at least one nanosecond per frame and a total no greater
+than uint32 milliseconds; native playback retains fractional milliseconds. Results are stopped,
 independent sheets sharing atlas pixels/geometry. Free inputs; FreeSprite releases constructed
 sheets and caches named resources by name/atlas. Client map-unload cleanup drops unused
 named handles before collecting sprite/atlas caches; active handles remain valid.
@@ -64,7 +65,7 @@ void Resolve(hstring model, CritterStateAnim state, CritterActionAnim action, ui
 ```
 
 Managed: regenerate SDK; subscribe `[Event] void Resolve(hstring model,CritterStateAnim state,CritterActionAnim action,ref uint sprId)` from `[ModuleInit]` with `Game.OnCritterAnimationSprite.Subscribe(Resolve)`. Use the same calls with uint[], int[], ipos[], ipos[] and timespan; free inputs, transfer the result.
-Native: replace both old resolvers with `ResolveCritterAnimationSprite(hstring,CritterStateAnim,CritterActionAnim) -> shared_ptr<SpriteSheet>`, returning an independent sheet or null when unresolved; substitutions retain their signature. `SpriteSheet::SetFrame(index, sprite, offset, motion)` retains the original shared sprite with independent ordinary offset and per-frame motion metadata; `GetSprOffset(index)` reads the directional sheet's anchor. Remove native calls to `AtlasSprite::CopyWithOffset` and its wrapper constructor; pass the original shared sprite and draw offset separately. Script signatures, source offsets, atlas pixels and geometry remain unchanged.
+Native: replace both old resolvers with `ResolveCritterAnimationSprite(hstring,CritterStateAnim,CritterActionAnim) -> shared_ptr<SpriteSheet>`, returning an independent sheet or null when unresolved; substitutions retain their signature. `SpriteSheet::SetFrame(index, sprite, offset, motion)` retains the original shared sprite with independent ordinary offset and per-frame motion metadata; `GetSpriteOffset(index)` reads the directional sheet's anchor. Remove native calls to `AtlasSprite::CopyWithOffset` and its wrapper constructor; pass the original shared sprite and draw offset separately. Script signatures, source offsets, atlas pixels and geometry remain unchanged.
 Detect old callers with `rg -n 'OnCritterAnimationFrames|OnCritterAnimationFallout|ResolveCritterAnimationFrames|ResolveCritterAnimationFallout' <source-roots>`; removed members fail compile. Regenerate metadata/bindings/SDK, rebuild client/Mapper/baker/compiler/server, rebake scripts/metadata, restart and package matching outputs. Check directions, poses, two-axis splices, weapon/death/reload timing, source immutability and visible walking. Test_SpriteSheet/Test_ClientEngine own native checks; projects own resource/visual acceptance.
 ### Project-owned animation playback and preview
 
@@ -120,9 +121,9 @@ Native migration: include ResourceManager.h for SpriteFactory and resource APIs;
 The terms are distinct: offset is the ordinary sprite offset to its root; motion
 is an authored per-frame delta of visual displacement. SpriteSheet stores these
 values in `_sprOffset` and `_sprMotion`. `SetFrame(index, sprite, offset, motion)`
-assigns each input to its matching field. `GetSprOffset(frame)` reads the offset;
-`GetSprMotion()[frame]` reads motion. Replace the former native
-`GetSprOffset()` delta span with `GetSprMotion()`. The renderer's borrowed optional frame override uses
+assigns each input to its matching field. `GetSpriteOffset(frame)` reads the offset;
+`GetSpriteMotion()[frame]` reads motion. Replace the former native
+`GetSpriteOffset()` delta span with `GetSpriteMotion()`. The renderer's borrowed optional frame override uses
 `SetSpriteOffsetOverride`; its owner and fallback to Sprite::GetOffset are unchanged.
 
 Public script names retain these meanings: `GetSpriteFrameOffset` reads offset,

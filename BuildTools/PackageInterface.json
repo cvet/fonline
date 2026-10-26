@@ -8,12 +8,13 @@
     "included": [
       "DefinePackage declaration clauses and the per-binary POSTFIX modifier",
       "package.py targets, platforms, architecture keys, pack tokens, and payload effects",
-      "implemented, placeholder, and unsupported package boundaries"
+      "implemented, placeholder, and unsupported package boundaries",
+      "Resources.usage.json prerequisite and selection before target-specific resource packaging"
     ],
     "excluded": [
       "embedding-project package matrices and release policy",
       "project configuration key schema and secret provisioning",
-      "resource-pack content selection and deployment topology",
+      "game-specific resource root declarations and deployment topology",
       "installer signing credentials and external tool operation"
     ]
   },
@@ -57,7 +58,7 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions."
   },
   "targets": [
     {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary plus server resources and client update resource packs."},

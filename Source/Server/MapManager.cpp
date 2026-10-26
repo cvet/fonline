@@ -32,6 +32,7 @@
 //
 
 #include "MapManager.h"
+
 #include "CritterManager.h"
 #include "EntityManager.h"
 #include "ItemManager.h"

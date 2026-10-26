@@ -46,6 +46,7 @@
 FO_USING_NAMESPACE();
 
 #if FO_WINDOWS
+static constexpr std::chrono::milliseconds SERVICE_STOP_POLL_INTERVAL {1};
 static wchar_t ServiceName[32] = L"FOnlineServer";
 #endif
 
@@ -137,7 +138,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
                 }
             }
 
-            coarse_sleep(std::chrono::milliseconds {1});
+            coarse_sleep(SERVICE_STOP_POLL_INTERVAL);
         }
 
         auto server = GetServiceServer();

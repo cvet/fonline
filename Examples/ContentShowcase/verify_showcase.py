@@ -115,10 +115,15 @@ def verify_sources(budget: dict[str, object]) -> None:
         fail("showcase chime exceeds duration budget")
 
     descriptor = (ROOT / "ShowcaseAssets/Showcase/Sprites/Beacon.fofrm").read_text(encoding="utf-8")
-    if "count = 6" not in descriptor or "fps = 8" not in descriptor:
-        fail("beacon FOFRM timing changed")
-    if len(re.findall(r"^next_[xy]_\d+\s*=", descriptor, re.MULTILINE)) != 12:
-        fail("beacon FOFRM must retain complete NextX/NextY metadata")
+    expected_offsets = [(1, 0), (1, -1), (0, 0), (-1, 0), (-1, 1), (0, 0)]
+    frame_lines = " \\\n".join(f" Beacon_{frame}.tga" for frame in range(6))
+    offset_lines = " \\\n".join(f" {x} {y}" for x, y in expected_offsets)
+    expected_descriptor = (
+        f"Frames = \\\n{frame_lines}\nOffset = -48 -112\n"
+        f"FrameOffsets = \\\n{offset_lines}\nFps = 8\n"
+    )
+    if descriptor != expected_descriptor:
+        fail("beacon FOFRM reference order, placement, timing or authoring style changed")
 
     particle = (ROOT / "ShowcaseAssets/Showcase/Particles/Showcase.spark").read_text(encoding="utf-8")
     capacity_match = re.search(r'id="capacity" value="(\d+)"', particle)
@@ -137,6 +142,10 @@ def verify_sources(budget: dict[str, object]) -> None:
         fail("showcase map item inventory no longer matches its explicit budget")
 
     capture = load_json("captures/capture-contract.json")
+    from capture_showcase import source_digest
+
+    if capture.get("current_source_sha256") != source_digest():
+        fail("current showcase source digest is stale")
     profiles = capture.get("profiles")
     if not isinstance(profiles, list) or {profile.get("id") for profile in profiles if isinstance(profile, dict)} != {
         "windows-direct3d11",

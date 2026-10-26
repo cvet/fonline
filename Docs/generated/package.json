@@ -13,12 +13,13 @@
     "included": [
       "DefinePackage declaration clauses and the per-binary POSTFIX modifier",
       "package.py targets, platforms, architecture keys, pack tokens, and payload effects",
-      "implemented, placeholder, and unsupported package boundaries"
+      "implemented, placeholder, and unsupported package boundaries",
+      "Resources.usage.json prerequisite and selection before target-specific resource packaging"
     ],
     "excluded": [
       "embedding-project package matrices and release policy",
       "project configuration key schema and secret provisioning",
-      "resource-pack content selection and deployment topology",
+      "game-specific resource root declarations and deployment topology",
       "installer signing credentials and external tool operation"
     ]
   },
@@ -86,7 +87,7 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions."
   },
   "targets": [
     {
@@ -905,5 +906,5 @@
     "artifact_pack_count": 8,
     "cli_argument_count": 17
   },
-  "contract_digest": "13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f"
+  "contract_digest": "eddfe1395ddf308c3626f977b13e24189189dfc3fcc88ea58665ce2676561d54"
 }

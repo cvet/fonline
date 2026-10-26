@@ -139,8 +139,7 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
     }
 
     FrameShot shot;
-    shot.Width = numeric_cast<uint16_t>(width);
-    shot.Height = numeric_cast<uint16_t>(height);
+    shot.Size = {width, height};
     shot.Data = std::move(data);
     return shot;
 }

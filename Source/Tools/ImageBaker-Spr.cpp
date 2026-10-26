@@ -45,6 +45,8 @@ namespace ImageBakerSpr
     using ImageImport::FrameSequence;
     using ImageImport::FrameShot;
 
+    static constexpr timespan SPR_FRAME_DURATION {std::chrono::milliseconds {100}};
+
     auto Load(string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> FrameCollection
     {
         FO_TRACE_ZONE(Baking);
@@ -52,6 +54,9 @@ namespace ImageBakerSpr
         ignore_unused(context);
 
         FrameCollection collection;
+        uint16_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             reader.SetCurPos(0);
@@ -330,16 +335,20 @@ namespace ImageBakerSpr
             }
 
             if (dir == 0) {
-                collection.SequenceSize = numeric_cast<uint16_t>(anim_frames.size());
-                collection.AnimTicks = numeric_cast<uint16_t>(1000 / 10 * anim_frames.size());
+                sequence_size = numeric_cast<uint16_t>(anim_frames.size());
+                duration_ms = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size());
             }
 
             if (dir == 1) {
-                collection.HaveDirs = true;
+                have_dirs = true;
             }
 
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.Frames.resize(collection.SequenceSize);
+            sequence.Frames.resize(anim_frames.size());
+
+            for (auto& frame : sequence.Frames) {
+                frame.Duration = SPR_FRAME_DURATION;
+            }
 
             for (size_t anim_frame = 0; anim_frame < anim_frames.size(); anim_frame++) {
                 auto& shot = sequence.Frames[anim_frame];
@@ -350,6 +359,8 @@ namespace ImageBakerSpr
 
                 for (size_t i = 0, j = anim_frame; i < j; i++) {
                     if (anim_frames[i] == frm) {
+                        shot = sequence.Frames[i];
+                        shot.Data.clear();
                         shot.Shared = true;
                         shot.SharedIndex = numeric_cast<uint16_t>(i);
                         founded = true;
@@ -491,16 +502,36 @@ namespace ImageBakerSpr
                     }
                 }
 
-                shot.Width = numeric_cast<uint16_t>(whole_width);
-                shot.Height = numeric_cast<uint16_t>(whole_height);
-                shot.NextX = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_width / 2);
-                shot.NextY = numeric_cast<int16_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_height);
+                shot.Size = {whole_width, whole_height};
+                shot.Offset = {
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0]) - center_x + center_x_ex + whole_width / 2),
+                    numeric_cast<int32_t>(numeric_cast<int64_t>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1]) - center_y + center_y_ex + whole_height),
+                };
                 shot.Data = std::move(whole_data);
             }
 
             if (dir_cnt == 1) {
                 break;
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

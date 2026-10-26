@@ -44,6 +44,8 @@ internal static class Program
         ownerThread = Environment.CurrentManagedThreadId;
         if (kind.StartsWith("tracked-")) return TrackedCallback(kind);
         if (kind.StartsWith("guard-")) return CheckInitializationGuard(kind == "guard-reject");
+        if (kind == "literal-int") return LiteralDelay(ScriptTask.Delay(7), 7, 2);
+        if (kind == "literal-raw") return LiteralDelay(ScriptTask.Delay(new timespan(7)), 7, 0);
         if (kind == "nested-result-yield") return NestedResultYield();
         if (kind == "nested-result-external") return NestedResultExternal();
         if (kind == "nested-sync-in-async") return NestedSyncInAsync();
@@ -360,6 +362,18 @@ internal static class Program
         return rejected == expectRejection && registered == (expectRejection ? 0 : 2) ? 0 : 38;
     }
 
+    private static int LiteralDelay(Task task, long value, int place)
+    {
+        bool deferred = !task.IsCompleted && Game.TimerCount == 1;
+        bool transported = Game.DurationValue == value && Game.DurationPlace == place;
+
+        Game.FireTimer();
+
+        bool completed = PumpUntil(() => task.IsCompletedSuccessfully);
+        Console.WriteLine("LITERAL_DELAY value=" + Game.DurationValue + " place=" + Game.DurationPlace + " deferred=" + deferred + " completed=" + completed);
+        return transported && deferred && completed ? 0 : 48;
+    }
+
     private static bool PumpUntil(Func<bool> condition)
     {
         return SpinWait.SpinUntil(() => { Native.PumpContinuations(); return condition(); }, 5000);
@@ -550,12 +564,26 @@ internal static class Program
 namespace FOnline
 {
     public class Entity { }
-    public readonly struct timespan { public timespan(long value) { } }
+    public readonly struct timespan
+    {
+        public readonly long value;
+        public readonly int place;
+        public timespan(long value) { this.value = value; place = 0; }
+        public timespan(long value, int place) { this.value = value; this.place = place; }
+    }
     public static partial class Game
     {
         private static Action? timer;
         public static int TimerCount;
-        public static void StartTimeEvent(timespan duration, Action callback) { TimerCount++; timer = callback; }
+        public static long DurationValue;
+        public static int DurationPlace;
+        public static void StartTimeEvent(timespan duration, Action callback)
+        {
+            TimerCount++;
+            DurationValue = duration.value;
+            DurationPlace = duration.place;
+            timer = callback;
+        }
         public static void FireTimer() => (timer ?? throw new Exception("timer missing"))();
     }
     public static class ScriptFuncRegistration { public static int Calls; public static void RegisterEngineAttributeFuncs() { Calls++; } }
@@ -594,7 +622,7 @@ def replace_internal_call(source, declaration, replacement):
 
 def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
     (output / ".editorconfig").write_text("root = true\n", encoding="utf-8")
-    for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
+    for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "TimePlace.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
             # External reporting and native continuation entry are the only substituted boundaries
@@ -695,6 +723,16 @@ def test_yield_completed_before_awaiter_registration_still_returns_to_owner(call
     result = run_probe(callback_probe, "callback", "late-yield")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "LATE_YIELD deferred=True owner=True timers=1" in result.stdout
+
+
+@pytest.mark.parametrize("kind, marker", [
+    ("literal-int", "LITERAL_DELAY value=7 place=2 deferred=True completed=True"),
+    ("literal-raw", "LITERAL_DELAY value=7 place=0 deferred=True completed=True"),
+])
+def test_literal_delay_preserves_declared_unit_and_fake_timer_completion(callback_probe, kind, marker):
+    result = run_probe(callback_probe, "callback", kind)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert marker in result.stdout
 
 
 @pytest.mark.parametrize("boundary", ["event", "callback", "module"])

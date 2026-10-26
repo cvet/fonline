@@ -120,6 +120,12 @@ mirror the native API (`ipos.x`, `hstr()`, `timespan.milliseconds`), and
 `__event_OnStart`) to avoid collisions with properties declared by an embedding
 project. Do not apply the handwritten member rule to those generated names.
 
+Use `TimePlace.Nanoseconds`, `TimePlace.Microseconds`, `TimePlace.Milliseconds`
+or `TimePlace.Seconds` for the `place` constructor argument of `timespan` and
+`synctime`, for example `new timespan(100, TimePlace.Milliseconds)`. The constants
+retain the native unit codes `0`, `1`, `2` and `3`; raw one-argument constructors
+continue to accept nanoseconds for `timespan` and milliseconds for `synctime`.
+
 Methods resolved by the native backend through `[CallableByEngine]` are
 `internal`, even though Mono lookup can find non-public methods. They are dispatch
 entry points, not ordinary direct-call helpers; a change must respect the owning
@@ -176,6 +182,9 @@ Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pump
 `Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
+
+`ScriptTask.Delay(timespan)` retains nanoseconds; `Delay(int)` adapts milliseconds.
+Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
 
 `ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel`, and manually dispatched ThreadPool work deliberately bypass the Engine synchronization context. They may perform isolated computation, but they must not call Engine APIs. The entry assembly's backend binding can still identify an Engine from such a thread, so this misuse is not guaranteed to fail at every native call; only synchronization-sensitive routes such as server entity access reliably reject it. Embedding projects should ban these escape APIs statically and return to the captured Engine context before touching Engine state.
 

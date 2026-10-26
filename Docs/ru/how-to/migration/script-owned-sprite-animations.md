@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/migration/script-owned-sprite-animations.html
 ---
 
 # Перенос анимаций спрайтов в скрипты
-<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"d3a756c77f410f054014c3bf8f4935e433ba5cf48d380203c49148693e2f488d"} -->
+<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"3c359aeb4d0f032a928e0481579c3d81b97532b12c2d133048fae661a261cfbe"} -->
 ### Скриптовые 2D-анимации криттеров
 
 Удалите OnCritterAnimationFrames(modelName,stateAnim,actionAnim,pass,flags,ox,oy,animName) и
@@ -24,8 +24,9 @@ CreateSpriteSequence(sources,frames,offsets,motions,framesPerDirection,duration)
 источник даёт соответствующее либо своё единственное направление. Offsets — абсолютные
 пиксельные опоры, motions — явные дельты с игровой компенсацией стыка. Длина делится на
 положительное framesPerDirection; направлений одно либо полное число геометрии. Неверные
-массивы/handle/индексы/типы и отрицательная/выходящая за int32 миллисекунд длительность дают
-исключение. Timespan хранится целыми миллисекундами, ноль допустим. Результат остановлен,
+массивы/handle/индексы/типы и неположительные/слишком большие длительности дают
+исключение. Duration — timespan с минимум одной наносекундой на кадр и суммой не больше
+uint32 миллисекунд; native playback сохраняет доли миллисекунды. Результат остановлен,
 независим, пиксели/геометрия атласа общие. Освободите источники; FreeSprite освобождает созданные
 последовательности, именованные кеширует по имени/атласу. При выгрузке карты клиент удаляет
 неактивные именованные handles перед очисткой кешей спрайтов/атласов; активные handles остаются
@@ -64,7 +65,7 @@ void Resolve(hstring model, CritterStateAnim state, CritterActionAnim action, ui
 ```
 
 Managed: обновите SDK; подпишите `[Event] void Resolve(hstring model,CritterStateAnim state,CritterActionAnim action,ref uint sprId)` из `[ModuleInit]` через `Game.OnCritterAnimationSprite.Subscribe(Resolve)`. Те же вызовы принимают uint[], int[], ipos[], ipos[] и timespan; освободите входы, передайте результат.
-Native: замените оба resolver на `ResolveCritterAnimationSprite(hstring,CritterStateAnim,CritterActionAnim) -> shared_ptr<SpriteSheet>`, возвращающий независимую последовательность или null, если анимация не найдена; сигнатура замены прежняя. `SpriteSheet::SetFrame(index, sprite, offset, motion)` сохраняет исходный общий спрайт и независимые обычное смещение и покадровые дельты motion; `GetSprOffset(index)` читает опору листа направления. Удалите нативные вызовы `AtlasSprite::CopyWithOffset` и его конструктора-обёртки; передавайте исходный общий спрайт и смещение отдельно. Сигнатуры скриптов, исходные смещения, пиксели и геометрия атласа не меняются.
+Native: замените оба resolver на `ResolveCritterAnimationSprite(hstring,CritterStateAnim,CritterActionAnim) -> shared_ptr<SpriteSheet>`, возвращающий независимую последовательность или null, если анимация не найдена; сигнатура замены прежняя. `SpriteSheet::SetFrame(index, sprite, offset, motion)` сохраняет исходный общий спрайт и независимые обычное смещение и покадровые дельты motion; `GetSpriteOffset(index)` читает опору листа направления. Удалите нативные вызовы `AtlasSprite::CopyWithOffset` и его конструктора-обёртки; передавайте исходный общий спрайт и смещение отдельно. Сигнатуры скриптов, исходные смещения, пиксели и геометрия атласа не меняются.
 Поиск: `rg -n 'OnCritterAnimationFrames|OnCritterAnimationFallout|ResolveCritterAnimationFrames|ResolveCritterAnimationFallout' <source-roots>`; старые члены перестают компилироваться. Обновите metadata/привязки/SDK, соберите client/Mapper/baker/compiler/server, перепеките scripts/metadata, перезапустите и упакуйте совпадающие выходы. Проверьте направления, позы, обе оси стыка, оружие/смерть/перезарядку, исходный кеш и видимую ходьбу. Test_SpriteSheet/Test_ClientEngine проверяют native; игровые ресурсы/видимую приёмку — проект.
 ### Выбор воспроизведения и превью принадлежит проекту
 
@@ -122,8 +123,8 @@ ResourceManager подписывается на начало сцены в пр�
 Термины различаются: offset — обычное смещение спрайта до рута; motion — авторская
 покадровая дельта визуального переноса. SpriteSheet хранит их в `_sprOffset` и
 `_sprMotion`. `SetFrame(index, sprite, offset, motion)` записывает каждый вход в
-соответствующее поле. `GetSprOffset(frame)` читает offset, `GetSprMotion()[frame]` —
-motion. Прежний нативный span дельт `GetSprOffset()` замените на `GetSprMotion()`.
+соответствующее поле. `GetSpriteOffset(frame)` читает offset, `GetSpriteMotion()[frame]` —
+motion. Прежний нативный span дельт `GetSpriteOffset()` замените на `GetSpriteMotion()`.
 Заимствованная необязательная подмена offset в рендерере задаётся через
 `SetSpriteOffsetOverride`; владелец и fallback к Sprite::GetOffset сохраняются.
 

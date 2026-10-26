@@ -202,6 +202,98 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 }
 
 #if (FO_ENABLE_3D)
+TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")
+{
+    constexpr string_view model_path = "Models/MultiFrameTexture.fo3d";
+    constexpr string_view mesh_path = "Models/MultiFrameTexture.fbx";
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Cycle.fofrm", BakerTests::MakeMinimalBakedSprite()}};
+    auto mesh = MakeRuntimeModelTriangleMesh();
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Cycle.fofrm\n", {}, nullptr, false, resources);
+
+    // The baker saw a one-frame resource, so the description is valid; only the mounted bytes become multi-frame
+    resources.front().second = BakerTests::MakeMultiFrameBakedSprite(2, 1, 1, 200);
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    REQUIRE_THROWS_WITH(factory->GetModelMngr()->CreateModel(model_path), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one frame"));
+}
+
+TEST_CASE("ClientEngineOverridesConsumedImportedDiffuse")
+{
+#if FO_ENABLE_3D
+    constexpr string_view model_path = "Models/EffectiveTexture.fo3d";
+    constexpr string_view mesh_path = "Models/EffectiveTexture.fbx";
+    auto mesh = MakeRuntimeModelTriangleMesh({}, "Consumed.png");
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Effective.fofrm", BakerTests::MakeMinimalBakedSprite()}};
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Effective.fofrm\n", {}, nullptr, false, resources);
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(model_path);
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    REQUIRE(model->GetMeshTexture(0, 0));
+    CHECK(model->GetMeshTexture(0, 0)->MainTex->Size.width > 0);
+#endif
+}
+
+TEST_CASE("ClientEngineLoadsLargeFofrmModelTextures")
+{
+#if FO_ENABLE_3D
+    constexpr string_view model_path = "Models/LargeTexture.fo3d";
+    constexpr string_view mesh_path = "Models/LargeTexture.fbx";
+    auto mesh = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Large.fofrm", BakerTests::MakeMinimalBakedSprite(1024, 1024)}};
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Large.fofrm\n", {}, nullptr, false, resources);
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(model_path);
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    auto texture = model->GetMeshTexture(0, 0);
+    REQUIRE(texture);
+    CHECK(texture->MainTex->Size.width >= 1026);
+    CHECK(texture->MainTex->Size.height >= 1026);
+#endif
+}
+
+TEST_CASE("ClientEngineRetriesMissingImportedDiffuse")
+{
+#if FO_ENABLE_3D
+    constexpr string_view model_path = "Models/MissingTexture.fo3d";
+    constexpr string_view mesh_path = "Models/MissingTexture.fbx";
+    auto mesh = MakeRuntimeModelTriangleMesh({}, "Missing.png");
+    vector<pair<string, vector<uint8_t>>> bake_resources {{"Models/Missing.png", BakerTests::MakeMinimalBakedSprite()}};
+    auto description = MakeRuntimeModelDescription(model_path, mesh_path, mesh, "", {}, nullptr, false, bake_resources);
+    vector<pair<string, vector<uint8_t>>> resources {{string {mesh_path}, std::move(mesh)}, {string {model_path}, std::move(description)}, {"ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path)}};
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(model_path);
+    REQUIRE(model);
+    REQUIRE_THROWS_WITH(model->StartMeshGeneration(), Catch::Matchers::ContainsSubstring("Model texture could not be loaded"));
+    REQUIRE_THROWS_WITH(model->StartMeshGeneration(), Catch::Matchers::ContainsSubstring("Model texture could not be loaded"));
+#endif
+}
+
 TEST_CASE("ClientEngineLoadsModelMeshBakerOutputThroughRuntimeParser")
 {
     constexpr string_view model_path = "Models/RuntimeParserTriangle.obj";
@@ -236,7 +328,7 @@ f 1 2 3
 #if (FO_ENABLE_3D)
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
-    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 3);
+    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 5);
 
     vector<pair<string, vector<uint8_t>>> malformed_resources;
 
@@ -325,10 +417,12 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }));
 
     {
+        FO_TEMPORARY_COMPAT(test_model_description_schema4, "2026-12-31");
+
         vector<uint8_t> data;
         data_writer writer {data};
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(uint16_t {4});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
         malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
     }
@@ -1488,7 +1582,8 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     cropped_mesh.SourceOffset = {1, -1};
     cropped_mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
     cropped_mesh.Indices = {0, 1, 2};
-    constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
+    static_assert(SPRITE_RESOURCE_VERSION == 3);
+    constexpr size_t mesh_kind_offset = 30 + 2 * 2 * sizeof(ucolor);
     constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
     constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
     constexpr size_t mesh_source_size_offset = mesh_index_count_offset + sizeof(uint32_t);
@@ -1876,7 +1971,7 @@ TEST_CASE("ClientEngineSpriteCleanupReleasesUnusedFrames")
     uint32_t released_id = client->AnimLoad(client->Hashes.to_hashed_string("Released.fofrm"), AtlasType::MapSprites);
     auto released = client->AnimGetSpr(released_id).dyn_cast<SpriteSheet>();
     REQUIRE(released);
-    auto frame_owner = released->GetSpr(0)->weak_from_this();
+    auto frame_owner = released->GetSprite(0)->weak_from_this();
     client->AnimFree(released_id);
     CHECK(frame_owner.lock());
 
@@ -1986,7 +2081,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
     vector<uint8_t> animation_info;
     vector<pair<string, vector<uint8_t>>> resources;
     resources.emplace_back(string(mesh_path), mesh);
-    resources.emplace_back(string(model_path), MakeRuntimeModelDescription(model_path, mesh_path, mesh, "RotationBone Limb\nAnim 401 509 ModelFile Base\n", {}, nullptr, true, 2.0f, &animation_info));
+    resources.emplace_back(string(model_path), MakeRuntimeModelDescription(model_path, mesh_path, mesh, "RotationBone Limb\nAnim 401 509 ModelFile Base\n", {}, nullptr, true, {}, 2.0f, &animation_info));
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     auto proto_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolicyMapMetadata");
     proto_source->AddFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
@@ -2155,11 +2250,21 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         });
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock = scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        });
+
         model->PoseSpriteFrame(true);
         model->SetDir(mdir {0}, false);
         model->SetMovementState(true, false, 0);
         model->SetLookDir(mdir {120});
+        nanotime selected_at = client->GameTime.GetFrameTime();
         pose();
+        INFO("Initial pose elapsed: " << (client->GameTime.GetFrameTime() - selected_at).milliseconds());
+        INFO("Selected clip duration: " << model->GetAnimDuration(state, action).milliseconds());
         REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
         model->PoseSpriteFrame(false);
         auto before_speed_change = model->GetBonePos(root);
@@ -2167,9 +2272,14 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         model->SetMovementState(true, false, 0);
         model->PoseSpriteFrame(false);
         CHECK(model->GetBonePos(root) == before_speed_change);
+        client->GameTime.Resume();
+
+        nanotime retimed_at = client->GameTime.GetFrameTime();
         coarse_sleep(std::chrono::milliseconds {650});
         client->GameTime.FrameAdvance(false);
         model->PoseSpriteFrame(true);
+        INFO("Time since retiming: " << (client->GameTime.GetFrameTime() - retimed_at).milliseconds());
+        INFO("Clip duration: " << model->GetAnimDuration(state, action).milliseconds());
         CHECK(model->GetMovingContext() == (expect_still_turning ? CritterAnimationContext::TurnRight : CritterAnimationContext::Default));
 
         if (expect_still_turning) {

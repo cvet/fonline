@@ -74,6 +74,42 @@ auto BuildModelAnimationBoundBones(const_span<hstring> canonical_joint_names, co
     return bound_bones;
 }
 
+auto ScaleModelAnimationTime(timespan time, float64_t factor) -> timespan
+{
+    FO_VERIFY_AND_THROW(std::isfinite(factor), "Animation time factor is not finite", factor);
+
+    if (factor == 1.0) {
+        return time;
+    }
+    if (factor == 0.0) {
+        return {};
+    }
+
+    return timespan {iround<int64_t>(numeric_cast<float64_t>(time.nanoseconds()) * factor)};
+}
+
+auto IsModelAnimationCallbackReached(timespan previous, timespan current, timespan duration, float32_t normalized_time) -> bool
+{
+    FO_VERIFY_AND_THROW(duration > timespan::zero && std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Animation callback phase or duration is invalid");
+
+    if (current <= previous) {
+        return false;
+    }
+
+    int64_t cycle = duration.nanoseconds();
+    int64_t phase = normalized_time == 1.0f ? cycle : normalized_time == 0.0f ? 0 : iround<int64_t>(numeric_cast<float64_t>(normalized_time) * numeric_cast<float64_t>(cycle));
+    auto remainder = [cycle](timespan position) {
+        int64_t result = position.nanoseconds() % cycle;
+        return result < 0 ? result + cycle : result;
+    };
+    int64_t previous_phase = remainder(previous);
+    int64_t current_phase = remainder(current);
+    uint64_t distance = static_cast<uint64_t>(current.nanoseconds()) - static_cast<uint64_t>(previous.nanoseconds());
+
+    // Preserve the two endpoint-cycle checks and one callback per update.
+    return (phase > previous_phase && distance >= numeric_cast<uint64_t>(phase - previous_phase)) || (phase <= current_phase && distance > numeric_cast<uint64_t>(current_phase - phase));
+}
+
 ModelAnimationController::ModelAnimationController(int32_t track_count)
 {
     FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
@@ -89,15 +125,15 @@ auto ModelAnimationController::Copy() const -> ModelAnimationController
     ModelAnimationController clone {0};
     clone._animationBindings = _animationBindings;
     clone._tracks.resize(_tracks.size());
-    clone._eventsTime = 0.0f;
+    clone._eventsTime = {};
     return clone;
 }
 
-auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, float32_t duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t
+auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, timespan duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t
 {
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(clip_index <= numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max()), "Animation clip index exceeds controller range", clip_index);
-    FO_VERIFY_AND_THROW(std::isfinite(duration) && duration > 0.0f && std::isfinite(1.0f / duration), "Animation duration is invalid", duration);
+    FO_VERIFY_AND_THROW(duration > timespan::zero, "Animation duration is invalid", duration);
     FO_VERIFY_AND_THROW(_animationBindings->size() < numeric_cast<size_t>(std::numeric_limits<int32_t>::max()), "Animation controller table is full", _animationBindings->size());
 
     int32_t animation_index = numeric_cast<int32_t>(_animationBindings->size());
@@ -105,7 +141,7 @@ auto ModelAnimationController::RegisterAnimation(uint32_t clip_index, float32_t 
     return animation_index;
 }
 
-auto ModelAnimationController::GetAnimDuration(int32_t index) const -> float32_t
+auto ModelAnimationController::GetAnimDuration(int32_t index) const -> timespan
 {
     FO_VERIFY_AND_THROW(_animationBindings, "Animation controller has no tracks");
     FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
@@ -130,7 +166,7 @@ auto ModelAnimationController::GetTrackSpeed(int32_t track) const -> float32_t
     return _tracks[track].Speed;
 }
 
-auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_t
+auto ModelAnimationController::GetTrackPosition(int32_t track) const -> timespan
 {
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
@@ -246,33 +282,43 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
 
 void ModelAnimationController::ResetEvents()
 {
-    _eventsTime = 0.0f;
+    _eventsTime = {};
 
     for (auto& t : _tracks) {
         t.Events.clear();
     }
 }
 
-void ModelAnimationController::AddEventEnable(int32_t track, bool enable, float32_t start_time)
+void ModelAnimationController::AddEventEnable(int32_t track, bool enable, timespan start_time)
 {
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
-    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = {}});
 }
 
-void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, float32_t start_time, float32_t smooth_time)
+void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, timespan start_time, timespan smooth_time)
 {
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(speed), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
 
-void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, float32_t start_time, float32_t smooth_time)
+void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, timespan start_time, timespan smooth_time)
 {
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+
+    FO_VERIFY_AND_THROW(start_time >= timespan::zero, "Animation event start time is negative", start_time);
+
+    FO_VERIFY_AND_THROW(smooth_time >= timespan::zero && std::isfinite(weight), "Animation event value or smoothing is invalid");
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -285,7 +331,7 @@ void ModelAnimationController::SetTrackEnable(int32_t track, bool enable)
     _tracks[track].Enabled = enable;
 }
 
-void ModelAnimationController::SetTrackPosition(int32_t track, float32_t position)
+void ModelAnimationController::SetTrackPosition(int32_t track, timespan position)
 {
     FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
     FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
@@ -301,34 +347,30 @@ void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
     _tracks[track].Speed = speed;
 }
 
-void ModelAnimationController::AdvanceTimeline(float32_t time)
+void ModelAnimationController::AdvanceTimeline(timespan elapsed)
 {
-    _eventsTime += time;
+    timespan next_events_time {checked_add<int64_t>(_eventsTime.nanoseconds(), elapsed.nanoseconds())};
 
-    for (auto& track : _tracks) {
+    auto resolve_track = [&](Track& track, bool commit) {
+        bool enabled = track.Enabled;
+        float32_t speed = track.Speed;
+        float32_t weight = track.Weight;
+
         for (auto it = track.Events.begin(); it != track.Events.end();) {
             auto event = make_ptr(&*it);
 
-            if (_eventsTime >= event->StartTime) {
+            if (next_events_time >= event->StartTime) {
                 bool erase = false;
                 float32_t value;
+                timespan event_elapsed = next_events_time - event->StartTime;
 
-                if (_eventsTime < event->StartTime + event->SmoothTime) {
-                    FO_VERIFY_AND_THROW(event->SmoothTime > 0.0f, "Event smooth time must be positive");
+                if (event_elapsed < event->SmoothTime) {
+                    float32_t value_from = event->ValueFrom.value_or(event->Type == Track::EventType::Speed ? speed : event->Type == Track::EventType::Weight ? weight : 0.0f);
+                    value = lerp(value_from, event->ValueTo, event_elapsed.div<float32_t>(event->SmoothTime));
 
-                    if (!event->ValueFrom.has_value()) {
-                        if (event->Type == Track::EventType::Speed) {
-                            event->ValueFrom = track.Speed;
-                        }
-                        else if (event->Type == Track::EventType::Weight) {
-                            event->ValueFrom = track.Weight;
-                        }
-                        else {
-                            event->ValueFrom = 0.0f;
-                        }
+                    if (commit && !event->ValueFrom.has_value()) {
+                        event->ValueFrom = value_from;
                     }
-
-                    value = lerp(event->ValueFrom.value(), event->ValueTo, (_eventsTime - event->StartTime) / event->SmoothTime);
                 }
                 else {
                     erase = true;
@@ -336,16 +378,16 @@ void ModelAnimationController::AdvanceTimeline(float32_t time)
                 }
 
                 if (event->Type == Track::EventType::Enable) {
-                    track.Enabled = value > 0.0f;
+                    enabled = value > 0.0f;
                 }
                 else if (event->Type == Track::EventType::Speed) {
-                    track.Speed = value;
+                    speed = value;
                 }
                 else if (event->Type == Track::EventType::Weight) {
-                    track.Weight = value;
+                    weight = value;
                 }
 
-                if (erase) {
+                if (commit && erase) {
                     it = track.Events.erase(it);
                     continue;
                 }
@@ -354,10 +396,32 @@ void ModelAnimationController::AdvanceTimeline(float32_t time)
             ++it;
         }
 
-        // Add track time
-        if (track.Enabled) {
-            track.Position += time * track.Speed;
+        if (commit) {
+            track.Enabled = enabled;
+            track.Speed = speed;
+            track.Weight = weight;
+            return timespan::zero;
         }
+
+        FO_VERIFY_AND_THROW(std::isfinite(speed) && std::isfinite(weight), "Animation track resolved non-finite values", speed, weight);
+
+        timespan advance = enabled ? ScaleModelAnimationTime(elapsed, speed) : timespan::zero;
+        return timespan {checked_add<int64_t>(track.Position.nanoseconds(), advance.nanoseconds())};
+    };
+
+    // Validate all tracks before changing the event clock, events or any position.
+    small_vector<timespan, 2> next_positions;
+    next_positions.reserve(_tracks.size());
+
+    for (auto& track : _tracks) {
+        next_positions.emplace_back(resolve_track(track, false));
+    }
+
+    _eventsTime = next_events_time;
+
+    for (size_t index = 0; index < _tracks.size(); index++) {
+        (void)resolve_track(_tracks[index], true);
+        _tracks[index].Position = next_positions[index];
     }
 }
 
@@ -1264,8 +1328,8 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
 
     if (result.Active) {
         float32_t duration = clip.GetDuration();
-        float32_t loop_position = std::fmod(input.Position, duration);
-        float32_t source_time = input.Reversed ? duration - loop_position : loop_position;
+        float64_t loop_position = std::fmod(input.Position, numeric_cast<float64_t>(duration));
+        float32_t source_time = numeric_cast<float32_t>(input.Reversed ? duration - loop_position : loop_position);
 
         if (result.Nearest) {
             source_time = SnapModelAnimationRuntimeSampleTime(source_time, joint_remap.NearestSampleTimes);

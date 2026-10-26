@@ -312,7 +312,7 @@ Particle resources follow a separate backend-neutral factory path. `ParticleMana
 
 ## 2D sprite root motion
 
-Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `NextX` / `NextY` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `Motion` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: map presentation and local spatial state
 

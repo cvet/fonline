@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "LinkDelay.h"
@@ -48,6 +50,15 @@ namespace
 TEST_CASE("LinkDelayEstimator")
 {
     LinkDelayEstimator estimator {std::chrono::milliseconds {30000}, std::chrono::milliseconds {150}, std::chrono::milliseconds {3000}};
+
+    SECTION("FractionalRebaseTimeDoesNotBecomeImmediate")
+    {
+        LinkDelayEstimator fractional {std::chrono::seconds {30}, std::chrono::microseconds {500}, std::chrono::microseconds {500}};
+        CHECK(fractional.AddSample(0, At(0)) == timespan::zero);
+        CHECK(fractional.AddSample(0, At(1)) == timespan {std::chrono::milliseconds {1}});
+        CHECK(fractional.AddSample(0, At(1) + timespan {499999}) == timespan {std::chrono::milliseconds {1}});
+        CHECK(fractional.AddSample(0, At(1) + timespan {500000}) == timespan::zero);
+    }
 
     SECTION("RejectsUnrepresentableSenderTimesBeforeChangingSamples")
     {

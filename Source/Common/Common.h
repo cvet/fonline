@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 ///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2585 InventorySha256=f8fc4a19b539d83f6738cef443a0db37d903092a2b0dcf85ae32c648df34ceac
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 80
+///@ MigrationRule Version 0 0 81
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -973,7 +973,8 @@ public:
 
 private:
     bool _enabled {};
-    int32_t _sleep {};
+    timespan _sleep {};
+    bool _yieldAfterLoop {};
     int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};

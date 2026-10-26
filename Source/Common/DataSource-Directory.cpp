@@ -240,9 +240,9 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
 
     vector<string> fnames;
 
-    fs::iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
+    fs::iterate_dir(full_dir, recursive && _recursive, [&fnames, dir](string_view path2, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
-        fnames.emplace_back(path2);
+        fnames.emplace_back(strex(dir).normalize_path_slashes().combine_path(path2));
     });
 
     return GetFileNamesGeneric(fnames, dir, recursive, ext);

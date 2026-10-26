@@ -32,6 +32,7 @@
 //
 
 #include "Client.h"
+
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "ManagedScripting.h"
@@ -42,6 +43,9 @@
 #include "UpdateDescriptor.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr timespan LOCAL_MAP_PREPARE_REFRESH_INTERVAL {std::chrono::milliseconds {1000}};
+static constexpr timespan FRAME_HEALTH_REPORT_INTERVAL {std::chrono::seconds {1}};
 
 void ClientInitHook(ptr<ClientEngine>);
 
@@ -801,7 +805,7 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
         mpos start_hex = moving->GetStartHex();
         mpos end_hex = moving->GetEndHex();
 
-        TraceMoveSync("move_send", strex("cr={} start={},{} end={},{} steps={} speed={} whole_ms={}", cr->GetId(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, moving->GetSteps().size(), moving->GetSpeed(), iround<int32_t>(moving->GetWholeTime())).strv());
+        TraceMoveSync("move_send", strex("cr={} start={},{} end={},{} steps={} speed={} whole_ms={}", cr->GetId(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, moving->GetSteps().size(), moving->GetSpeed(), iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>())).strv());
     }
 }
 
@@ -1326,14 +1330,14 @@ void ClientEngine::Net_OnCritterMoveSpeed()
     }
 
     uint16_t old_speed = moving->GetSpeed();
-    float32_t old_elapsed = moving->GetElapsedTime();
+    timespan old_elapsed = moving->GetElapsedTime();
 
     moving->ChangeSpeed(speed, GameTime.GetFrameTime());
 
     if (Settings->Network.MoveSyncTrace) {
         mpos hex = cr->GetHex();
 
-        TraceMoveSync("speed_recv", strex("cr={} own={} old_speed={} speed={} hex={},{} elapsed_ms={} rebased_ms={} whole_ms={}", cr_id, cr->GetIsChosen() ? 1 : 0, old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(moving->GetElapsedTime()), iround<int32_t>(moving->GetWholeTime())).strv());
+        TraceMoveSync("speed_recv", strex("cr={} own={} old_speed={} speed={} hex={},{} elapsed_ms={} rebased_ms={} whole_ms={}", cr_id, cr->GetIsChosen() ? 1 : 0, old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>())).strv());
     }
 
     cr->RefreshView();
@@ -1591,7 +1595,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
-    float32_t client_lease_time = std::max((lease_distance + cr->GetMovingServerDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+    timespan client_lease_time = EvaluateMovementLeaseDuration(lease_distance + cr->GetMovingServerDistanceShift(), moving->GetSpeed());
 
     if (client_lease_time <= moving->GetLeaseTime()) {
         return;
@@ -1609,7 +1613,7 @@ void ClientEngine::Net_OnCritterMoveLease()
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_recv", strex("cr={} uid={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_uid, iround<int32_t>(client_lease_time), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
+        TraceMoveSync("lease_recv", strex("cr={} uid={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_uid, iround<int32_t>(client_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
     }
 }
 
@@ -2329,7 +2333,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
         cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset));
     }
     else {
-        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, std::chrono::milliseconds {whole_time}));
     }
 
     auto moving = cr->GetMoving();
@@ -2338,11 +2342,11 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
 
     // A copy joined further along is shorter than the server's plan; a lease's distance moves with it.
     // The player's own critter is not held by a lease: its plans are its own input
-    float32_t distance_shift = (moving->GetWholeTime() - numeric_cast<float32_t>(whole_time)) * numeric_cast<float32_t>(speed) / 1000.0f;
+    float32_t distance_shift = (moving->GetWholeTime() - timespan {std::chrono::milliseconds {whole_time}}).to_sec<float32_t>() * numeric_cast<float32_t>(speed);
     cr->SetMovingServerPlan(server_uid, distance_shift);
 
     if (lease_distance > 0.0f && !cr->GetIsChosen()) {
-        moving->SetLeaseTime(std::max((lease_distance + distance_shift) * 1000.0f / numeric_cast<float32_t>(speed), 0.001f), GameTime.GetFrameTime());
+        moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + distance_shift, speed), GameTime.GetFrameTime());
     }
 
     // A plan a stall held back is where the critter was seconds ago: the critter catches up with where it is by now,
@@ -2368,7 +2372,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
                 end_hex.x, end_hex.y, //
                 prev_hex.x, prev_hex.y, //
                 offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, //
-                joined_steps, iround<int32_t>(moving->GetLeaseTime()), //
+                joined_steps, iround<int32_t>(moving->GetLeaseTime().to_ms<float64_t>()), //
                 late_time.milliseconds(), server_ahead_time.milliseconds(), //
                 catch_up_time.milliseconds(), smooth_time.milliseconds())
                 .strv());
@@ -2957,7 +2961,7 @@ void ClientEngine::LmapPrepareMap()
         pix_y = 0;
     }
 
-    _lmapPrepareNextTime = GameTime.GetFrameTime() + std::chrono::milliseconds {1000};
+    _lmapPrepareNextTime = GameTime.GetFrameTime() + LOCAL_MAP_PREPARE_REFRESH_INTERVAL;
 }
 
 void ClientEngine::CleanupSpriteCache()
@@ -3060,7 +3064,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
     }
 
     if (try_move) {
-        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan::zero, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
         auto moving = cr->GetMoving();
         FO_VERIFY_AND_THROW(moving, "Missing active movement state");
         moving->ValidateRuntimeState();
@@ -3155,12 +3159,10 @@ void ClientEngine::ProcessDirectMove()
         return;
     }
 
-    float32_t step_time = moving->GetWholeTime() / numeric_cast<float32_t>(moving->GetSteps().size());
-
     // The server and the other players run the plan only as far as the lease; it is renewed while the direction is
     // held, a few steps ahead of the critter, so a stall on the player's link stops them there instead of a trace ahead
     float32_t step_distance = moving->GetWholeDist() / numeric_cast<float32_t>(moving->GetSteps().size());
-    float32_t elapsed_distance = moving->GetElapsedTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f;
+    float32_t elapsed_distance = moving->GetElapsedTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed());
 
     if (intent.LeaseDistance < moving->GetWholeDist() && intent.LeaseDistance - elapsed_distance <= step_distance * numeric_cast<float32_t>(Settings->Client.DirectMoveLeaseRenewSteps)) {
         intent.LeaseDistance = std::min(elapsed_distance + step_distance * numeric_cast<float32_t>(Settings->Client.DirectMoveLeaseSteps), moving->GetWholeDist());
@@ -3170,9 +3172,9 @@ void ClientEngine::ProcessDirectMove()
     // A plan cut short by an obstacle ends where it ends; only a full one is followed by the next, at the speed the
     // server has left it at, before its last steps are walked, so the move never stops between plans
     if (intent.PlanReachedHorizon) {
-        float32_t remaining_time = moving->GetWholeTime() - moving->GetElapsedTime();
+        timespan remaining_time = moving->GetWholeTime() - moving->GetElapsedTime();
 
-        if (remaining_time <= step_time * numeric_cast<float32_t>(Settings->Client.DirectMoveExtendAheadSteps)) {
+        if (remaining_time.div<float64_t>(moving->GetWholeTime()) <= numeric_cast<float64_t>(Settings->Client.DirectMoveExtendAheadSteps) / numeric_cast<float64_t>(moving->GetSteps().size())) {
             PlanDirectMove(cr, "extend", moving->GetSpeed(), true);
         }
     }
@@ -3250,7 +3252,7 @@ void ClientEngine::PlanDirectMove(ptr<CritterHexView> cr, string_view reason, ui
         return;
     }
 
-    refcount_ptr<MovingContext> plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(trace.Steps), std::move(trace.ControlSteps), GameTime.GetFrameTime(), timespan {}, start_hex, start_hex_offset, trace.EndHexOffset);
+    refcount_ptr<MovingContext> plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(trace.Steps), std::move(trace.ControlSteps), GameTime.GetFrameTime(), timespan::zero, start_hex, start_hex_offset, trace.EndHexOffset);
     plan->ValidateRuntimeState();
 
     // A fresh plan is leased a few steps ahead; ProcessDirectMove renews the lease while the direction is held
@@ -3285,7 +3287,7 @@ void ClientEngine::TraceFrameHealth()
     _frameHealthLast = frame_time;
     _frameHealthFrames++;
 
-    if (frame_time - _frameHealthStart >= std::chrono::seconds {1}) {
+    if (frame_time - _frameHealthStart >= FRAME_HEALTH_REPORT_INTERVAL) {
         TraceMoveSync("frames", strex("n={} ms={} max_ms={}", _frameHealthFrames, (frame_time - _frameHealthStart).milliseconds(), _frameHealthMaxGap.milliseconds()).strv());
 
         _frameHealthStart = frame_time;

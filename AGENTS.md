@@ -60,11 +60,19 @@ in versioned docs; sanitize evidence.
 
 ## Native review checklist
 
-- **Module structure:** a standalone named native module is a `.h` + `.cpp` pair,
-  both registered in its owning source list, even if it currently contains only
-  passive data. Pure template/constexpr/umbrella headers are exceptions. Keep
+- **Module structure:** public modules use a `.h` + `.cpp` pair, both registered
+  in the owning source list, even for shared passive data. Implementation-only
+  units do not need a header; do not create headers used only by their own `.cpp`.
+  Pure template/constexpr/umbrella headers are exceptions to header-side pairing. Keep
   engine-owned source inventories unconditional; self-guarded modules own their
   `#if FO_*` and are included normally. Third-party feature dependencies may be gated.
+  Headers include `Common.h` first. Implementations include their case-exact
+  same-stem header first when it exists, otherwise `Common.h`. Separate that
+  include from following content with a blank line; do not add an empty line at EOF.
+  Bootstrap headers (`Common.h`, Essentials and ImGui configuration) preserve their
+  lower-layer dependencies. Run `BuildTools/check_native_source_layout.py` and
+  `BuildTools/check_native_modules.py`; [source layout](Docs/en/contributing/source-tree/#native-module-layout)
+  owns exact scope and exceptions.
 - **Types/names:** passive structs have no user constructors, methods, invariants or
   `final`; behavioral types are encapsulated classes. Static-only utilities are
   namespaces unless class identity is required (`friend class safe_alloc`). Essentials
@@ -83,8 +91,9 @@ in versioned docs; sanitize evidence.
   Surround complete control-flow statements with blank lines; adjacent statements
   of the same construct may form a run. Preprocessor directives do not change this
   spacing. Put a blank line before a comment and none between it and its following
-  block. Edited source ends with
-  exactly one trailing blank line. Reuse MIT headers and `#pragma once`.
+  block. Native source ends with exactly one newline (`text\n`, or `text\r\n`),
+  without trailing spaces or an additional empty line.
+  Reuse MIT headers and `#pragma once`.
   Manually review changed semantic groups and control-flow blocks in the final diff;
   neither a formatter nor `git diff --check` verifies these spacing rules.
 - **Comments:** explain only what code cannot express: intent, units, ownership,

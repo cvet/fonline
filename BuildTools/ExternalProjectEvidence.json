@@ -24,6 +24,13 @@
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
+    "last-frontier-map-acceptance": {
+      "repository": "lastfrontierdev/lf",
+      "url": "git@github.com:lastfrontierdev/lf.git",
+      "revision": "b9c18d6582378d7172efffaad49ad8edc7d2e65d",
+      "availability": "private-local-checkout",
+      "role": "Pinned linked-model output-discovery regression evidence"
+    },
     "fonline-tla": {
       "repository": "cvet/fonline-tla",
       "url": "https://github.com/cvet/fonline-tla.git",
@@ -33,6 +40,23 @@
     }
   },
   "records": [
+    {
+      "id": "linked-model-output-discovery",
+      "title": "Linked model discovery with a partial output cache",
+      "sources": [
+        {"snapshot": "last-frontier-map-acceptance", "path": "Docs/Plans/2026-10-24-map-acceptance.md"}
+      ],
+      "reusable_claim": "Output discovery enumerates linked model descriptions without reading a partially populated baked model graph; ordinary cached baking retains strict linked-texture validation.",
+      "disposition": "promoted",
+      "owner": "content-data",
+      "priority": "P1",
+      "engine_targets": ["Docs/en/explanation/content-pipeline/baking.md"],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": ["content-data", "quality"],
+      "promotion_gate": "Engine-owned linked parent/child fixtures enumerate both outputs with no payload during discovery and reject the missing child during normal cached validation.",
+      "decision": "ModelInfoBaker owns the discovery boundary and Test_ModelBaker covers both modes; game maps and acceptance policy remain project-owned."
+    },
     {
       "id": "project-bootstrap-and-build",
       "title": "Project bootstrap, staged build, and first launch",

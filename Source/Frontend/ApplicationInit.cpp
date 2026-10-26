@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Application.h"
 
 #include "CacheStorage.h"

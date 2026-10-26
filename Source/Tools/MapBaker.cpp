@@ -32,6 +32,7 @@
 //
 
 #include "MapBaker.h"
+
 #include "AngelScriptScripting.h"
 #include "ConfigFile.h"
 #include "ManagedScripting.h"
@@ -64,22 +65,22 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     vector<MapBakeEntry> filtered_files;
 
     auto check_file = [&](const FileHeader& file_header, string_view map_name) -> bool {
-        bool server_side = _context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
-        bool client_side = _context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
+        bool server_side = _context->CheckOutput(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
+        bool client_side = _context->CheckOutput(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
 
         if (server_side || client_side) {
             if (!server_side) {
-                (void)_context->BakeChecker(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
+                (void)_context->CheckOutput(strex("{}.fomap-bin-server", map_name), file_header.GetWriteTime());
             }
             if (!client_side) {
-                (void)_context->BakeChecker(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
+                (void)_context->CheckOutput(strex("{}.fomap-bin-client", map_name), file_header.GetWriteTime());
             }
         }
 
         return server_side || client_side;
     };
 
-    const auto& proto_file_extensions = _context->Settings->Baking.ProtoFileExtensions;
+    const auto& proto_file_extensions = _context->GetSettings()->Baking.ProtoFileExtensions;
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
@@ -100,7 +101,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             vector<string> stale_map_names;
 
             for (auto& map_name : map_names) {
-                if (!_context->BakeChecker || check_file(file_header, map_name)) {
+                if (!_context->HasBakeChecker() || check_file(file_header, map_name)) {
                     stale_map_names.emplace_back(std::move(map_name));
                 }
             }
@@ -156,7 +157,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             return;
         }
 
-        if (_context->BakeChecker && !check_file(file, target_map_name)) {
+        if (_context->HasBakeChecker() && !check_file(file, target_map_name)) {
             return;
         }
 
@@ -168,12 +169,12 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     }
 
     // Load protos
-    auto server_engine = BakerServerEngine(*_context->BakedFiles);
-    auto client_engine = BakerClientEngine(*_context->BakedFiles);
+    auto server_engine = BakerServerEngine(*_context->GetBakedFiles());
+    auto client_engine = BakerClientEngine(*_context->GetBakedFiles());
 
     vector<std::future<void>> proto_loadings;
-    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterServerProtos", [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->BakedFiles); }));
-    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterClientProtos", [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->BakedFiles); }));
+    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterServerProtos", [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->GetBakedFiles()); }));
+    proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterClientProtos", [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->GetBakedFiles()); }));
 
     for (auto& proto_loading : proto_loadings) {
         proto_loading.get();
@@ -184,10 +185,10 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     server_engine.MapScriptTypes(&server_engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
+    InitAngelScriptScripting(&server_engine, *_context->GetSettings(), *_context->GetBakedFiles());
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(&server_engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
+    InitManagedScripting(&server_engine, _context->GetBakedFiles(), _context->GetSettings()->Baking.CacheResources, _context->GetSettings()->Baking.BakeOutput);
 #endif
 
     // Bake maps

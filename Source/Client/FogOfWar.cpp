@@ -44,7 +44,7 @@ void FogShape::Clear()
     _transitionActive = false;
     _collapsingToOff = false;
     _transitionTime = {};
-    _transitionDuration = 0;
+    _transitionDuration = {};
     _lastOrigin = {};
     _lastDistance = {};
     _lastRadius = {};
@@ -184,11 +184,11 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 }
 
-void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
+void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, timespan duration)
 {
     // One morph duration for every change: the oval grows from its center on appearance, glides between
     // shapes as the player moves, and shrinks back to center on disappearance. No separate slow reveal
-    _transitionDuration = std::max(duration, 0);
+    _transitionDuration = std::max(duration, timespan::zero);
 
     if (points.empty()) {
         // Disappear: shrink the current fan to its center, then clear when the morph finishes. Nothing to
@@ -199,7 +199,7 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 
         _collapsingToOff = true;
 
-        if (_transitionDuration > 0) {
+        if (_transitionDuration > timespan::zero) {
             _startPoints = _points;
             _targetPoints = MakeCollapsed(_points);
             _transitionTime = frame_time;
@@ -217,7 +217,7 @@ void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_t
 
     _collapsingToOff = false;
 
-    if (_transitionDuration == 0) {
+    if (_transitionDuration == timespan::zero) {
         _points = std::move(points);
         _startPoints.clear();
         _targetPoints = _points;
@@ -241,14 +241,12 @@ void FogShape::UpdateTransition(nanotime frame_time)
         return;
     }
 
-    int32_t clamped_duration = std::max(_transitionDuration, 0);
-
-    if (clamped_duration == 0) {
+    if (_transitionDuration == timespan::zero) {
         FinishTransition();
         return;
     }
 
-    float32_t progress = std::clamp((frame_time - _transitionTime).div<float32_t>(std::chrono::milliseconds {clamped_duration}), 0.0f, 1.0f);
+    float32_t progress = std::clamp((frame_time - _transitionTime).div<float32_t>(_transitionDuration), 0.0f, 1.0f);
 
     InterpolatePoints(_startPoints, _targetPoints, progress, _points);
 

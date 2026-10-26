@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
@@ -867,7 +869,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
     system.Update();
-    REQUIRE(system.GetElapsedTime() > 0.0f);
+    REQUIRE(system.GetElapsedTime() > timespan::zero);
 
     rig.ClearDraws();
     system.Draw();
@@ -875,7 +877,7 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
     CheckEffekseerFixtureGeometry(unscaled_draws);
     CHECK_FALSE(system.NeedForceDraw());
 
-    float32_t elapsed_before_scale = system.GetElapsedTime();
+    timespan elapsed_before_scale = system.GetElapsedTime();
     system.SetScale(2.0f);
     CHECK(system.NeedForceDraw());
     CHECK(system.GetElapsedTime() == elapsed_before_scale);
@@ -910,15 +912,31 @@ TEST_CASE("Particle facade advances a model-attached effect from an explicit fra
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
 
-    constexpr float32_t frame_delta = 1.0f / 30.0f;
+    constexpr timespan frame_delta {std::chrono::nanoseconds {33333333}};
     system.Update(frame_delta);
 
-    CHECK(system.GetElapsedTime() == Catch::Approx(frame_delta));
+    CHECK(system.GetElapsedTime() == frame_delta);
     CHECK(system.IsActive());
 
     rig.ClearDraws();
     system.Draw();
     CheckEffekseerFixtureGeometry(rig.GetDraws());
+}
+
+TEST_CASE("Particle facade preserves fractional elapsed time", "[particle][effekseer-runtime]")
+{
+    EffekseerRuntimeTestRig rig;
+    optional<ParticleSystem> created_system = rig.CreateManagedSystem();
+    REQUIRE(created_system);
+
+    ParticleSystem& system = *created_system;
+    REQUIRE(system.Respawn(977));
+
+    system.Update(timespan {500001});
+    system.Update(timespan {1});
+    CHECK(system.GetElapsedTime() == timespan {500002});
+    CHECK_THROWS(system.Update(timespan {-1}));
+    CHECK(system.GetElapsedTime() == timespan {500002});
 }
 
 TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[particle][effekseer-runtime]")

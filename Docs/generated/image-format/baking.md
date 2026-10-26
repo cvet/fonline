@@ -35,3 +35,15 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-image-format-baking-error-aggregation-cba2eb94a4"></a>
 - [`entry-image-format-baking-error-aggregation-cba2eb94a4`](../../en/reference/image-format/baking.md#entry-image-format-baking-error-aggregation-cba2eb94a4)
+
+<a id="entry-image-format-baking-fofrm-resampling-5d3ff287b1"></a>
+- [`entry-image-format-baking-fofrm-resampling-5d3ff287b1`](../../en/reference/image-format/baking.md#entry-image-format-baking-fofrm-resampling-5d3ff287b1)
+
+<a id="entry-image-format-baking-source-graph-c27023cf6d"></a>
+- [`entry-image-format-baking-source-graph-c27023cf6d`](../../en/reference/image-format/baking.md#entry-image-format-baking-source-graph-c27023cf6d)
+
+<a id="entry-image-format-baking-root-outputs-838091eda7"></a>
+- [`entry-image-format-baking-root-outputs-838091eda7`](../../en/reference/image-format/baking.md#entry-image-format-baking-root-outputs-838091eda7)
+
+<a id="entry-image-format-baking-fingerprints-2efabf9393"></a>
+- [`entry-image-format-baking-fingerprints-2efabf9393`](../../en/reference/image-format/baking.md#entry-image-format-baking-fingerprints-2efabf9393)

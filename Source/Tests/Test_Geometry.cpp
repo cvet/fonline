@@ -31,9 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 #include "Application.h"
 #include "Geometry.h"

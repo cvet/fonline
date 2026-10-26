@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetworkServer.h"
 
 FO_BEGIN_NAMESPACE

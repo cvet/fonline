@@ -31,8 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
+#include "Common.h"
 
+#include "catch_amalgamated.hpp"
 #include "RpcRuntimeTracker.h"
 
 FO_BEGIN_NAMESPACE

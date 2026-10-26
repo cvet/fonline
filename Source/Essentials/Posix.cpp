@@ -32,6 +32,7 @@
 //
 
 #include "Posix.h"
+
 #include "FatalError.h"
 #include "StackTrace.h"
 #include "StringUtils.h"

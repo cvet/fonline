@@ -32,6 +32,7 @@
 //
 
 #include "ServerConnection.h"
+
 #include "ScriptSystem.h"
 #include "TextPack.h"
 

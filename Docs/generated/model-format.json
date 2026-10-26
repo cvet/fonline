@@ -237,7 +237,7 @@
       "stability": "experimental",
       "description": "Default diffuse textures and explicit non-Parent Texture values resolve relative to the owning baked mesh file.",
       "requirements": [
-        "every imported default diffuse texture must exist in baked resources",
+        "an imported default diffuse texture must exist in baked resources unless replaced on its mesh by an unconditional slot0 Texture override",
         "an explicit texture target mesh must be drawable"
       ],
       "source": [
@@ -819,21 +819,30 @@
       "context": "current link and Mesh selector",
       "repeatable": true,
       "stability": "experimental",
-      "description": "Overrides one texture slot on the selected mesh or all meshes. Non-Parent names resolve relative to the current model mesh; Parent copies the active parent texture from an attached-model context.",
-      "runtime_effect": "The override participates in mesh batching and texture-atlas coordinate adjustment.",
+      "description": "Texture requires a published SpriteInfo output with one direction and one frame. Paths resolve relative to the target mesh. Parent[_mesh] inherits the current static texture at the same slot.",
+      "runtime_effect": "Static textures retain full logical canvas/UV; cropped sprite meshes restore the canvas before upload. FOFRM Size can reduce the baked texture. Native GetMeshTexture supports inspection without script exports; there is no texture timeline.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
             "else if (token == \"Texture\")",
-            "Parent texture"
+            "Model texture requires exactly one frame",
+            "Texture output has no SpriteInfo metadata"
           ]
         },
         {
           "path": "Source/Client/ModelInstance.cpp",
           "anchors": [
-            "Parent texture was requested without a parent model",
-            "mesh->CurTexures[tex_num] = texture"
+            "texture = _modelInfo->_hierarchy->GetTexture(tex_name);",
+            "mesh->CurTexures[tex_num] = texture;",
+            "_parent->ResolveDefaultTexture(mesh, numeric_cast<size_t>(tex_num));"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ClientEngineRejectsMultiFrameModelTextures",
+            "ClientEngineLoadsLargeFofrmModelTextures"
           ]
         }
       ]
@@ -1369,7 +1378,7 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "The child copies the parent's current material state, not the imported default, and root descriptions have no parent context.",
+      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1512,6 +1521,34 @@
           ]
         }
       ]
+    },
+    {
+      "id": "model-format.rule.texture-wire",
+      "name": "Static texture compatibility",
+      "stability": "experimental",
+      "requirement": "LFMODINF description schema 5 stores texture name, mesh and slot without an animation flag. Rebuild matching baker/runtime and force-rebake model descriptions and metadata; runtime compatibility 0.0.76. Earlier description schemas are rejected. LFMODMSH, LFOZZRIG, sprite v3 and SpriteInfo 2 schemas are unchanged.",
+      "rationale": "Model textures are static; multi-frame images and the TextureAnimation directive are rejected instead of selecting an implicit first frame.",
+      "source": [
+        {
+          "path": "Source/Common/ModelAnimationData.h",
+          "anchors": [
+            "MODEL_DESCRIPTION_SCHEMA_VERSION = 5;"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInformation.cpp",
+          "anchors": [
+            "schema == MODEL_DESCRIPTION_SCHEMA_VERSION",
+            "2 * BAKED_STRING_MIN_SIZE + sizeof(int32_t), \"texture overrides\""
+          ]
+        },
+        {
+          "path": "Source/Tools/ModelInfoBaker.cpp",
+          "anchors": [
+            "for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo)"
+          ]
+        }
+      ]
     }
   ],
   "removed_legacy": [
@@ -1551,7 +1588,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 15,
+    "rule_count": 16,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1568,5 +1605,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "21c2e912e499cdbaa1c1c3f180fb0d3349f3bba72b76996dd8cb73431540a6c0"
+  "contract_digest": "496eb2ea2d6b5150b06217723895efce2ad6ef5d0b1a2c65d26da299f0c91b68"
 }

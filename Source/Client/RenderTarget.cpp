@@ -32,6 +32,7 @@
 //
 
 #include "RenderTarget.h"
+
 #include "Application.h"
 #include "ImageWriter.h"
 

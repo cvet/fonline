@@ -32,6 +32,7 @@
 //
 
 #include "ClientEntity.h"
+
 #include "Client.h"
 
 FO_BEGIN_NAMESPACE

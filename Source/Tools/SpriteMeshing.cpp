@@ -32,6 +32,7 @@
 //
 
 #include "SpriteMeshing.h"
+
 #include "Settings.h"
 
 #include "clipper2/clipper.h"

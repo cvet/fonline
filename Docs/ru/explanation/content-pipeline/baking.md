@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"251486f935f29f04208dc91219bc20c516687afb5ac7e2495d7df106b628cb28"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"93959aa341723c2666f8ee35108a86b8182d6d75a9db476c102699e960ee90c8"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -174,6 +174,76 @@ outputs и успешное повторное использование пос
 завершения владельца. Lock защищает сотрудничающие baker-процессы, но не
 создаёт транзакцию над всем набором ресурсов.
 
+## Отбор используемых ресурсов
+
+Полный bake сохраняет свободные файлы для разработки и инструментов. После всех
+baker-ов `MasterBaker` пересоздаёт `Resources.usage.json` по текущим запечённым
+метаданным, прототипам (включая FixedType-таблицы) и свойствам сущностей на картах.
+Размещённые critter-ы учитываются на сервере, items — на обеих сторонах.
+Корнями также служат `Render.ImGuiDefaultEffect`, `Render.CritterStubSpriteName`
+и `Render.ItemStubSpriteName` из текущих настроек и запечённых клиентских конфигов.
+Каждое непустое свойство `hstring` или `hstring[]` с флагом `Resource` задаёт корень.
+Каждый проход пропускает поля, выключенные для его стороны. Поле `Resource`,
+доступное только серверу или клиенту, учитывается активной стороной в общем отборе.
+При cache hit отбор пересчитывается: удаление последней ссылки убирает экспорт,
+а для добавления ссылки не требуется редактировать сам asset.
+
+Манифест версии 1 содержит `BuildHash`, `BakingConfigHash`, `Packs` (точные
+отсортированные пути выходов относительно каждого настроенного пакета, включая
+пустые пакеты) и диагностические `Reasons`. Идентичность пакета сохраняется;
+все физические поставщики логического пути остаются доступны прежним правилам
+монтирования и сторон. Отсутствующая ссылка прерывает bake с указанием свойства,
+владельца или причины зависимости.
+
+Встроенные asset-baker-ы помечают изображения, звук, эффекты, частицы, модели и
+raw-copy выходы как ресурсы. Служебные выходы обязательны: embedded-данные,
+SpriteInfo, ModelAnimationInfo и стандартные эффекты движка. У пользовательского
+`BaseBaker` по умолчанию `BakingOutputKind::Required`; для необязательных assets
+выбирают `Resource`, обязательные companion-файлы отмечают через
+`BakingContext::KeepOutput`, а внешние runtime-зависимости объявляют через
+`CollectResourceDependencies`. `CheckOutput` регистрирует и cache hit,
+`WriteData` — записанные выходы.
+
+Отбор обходит runtime-зависимости: страницы шрифтов, текущие проходы и стадии
+эффектов, меши, attachments, текстуры, эффекты и cuts моделей, внешние файлы частиц.
+Входы FOFRM нужны при bake; сплющенному спрайту исходные изображения при загрузке
+не нужны. Полный локальный кеш изображений также допускает самостоятельный выход
+поглощённого входа; в список поставки его добавит только отдельная ресурсная ссылка
+или runtime-зависимость. Это отбор поставки, без обещания уменьшить обработку исходников.
+
+Описания моделей и частиц читаются из собственного физического пакета.
+`ResourceProviderCallback` предоставляет всех текущих доступных поставщиков пути;
+сборщик объединяет варианты мешей и дочерних описаний, включая относительные замены
+текстур. Общий список является консервативным объединением. Устаревшие файлы, не
+объявленные текущими baker-ами, кандидатами не становятся. Причины включения на карте
+группируются по исходной карте, типу сущности и свойству, без повтора каждого ID.
+
+Встраивающий проект задаёт принудительные включения обычными метаданными и `.foinfo`:
+
+```text
+///@ FixedType Common ResourceSet
+///@ Property ResourceSet Common hstring[] Files Resource
+```
+
+```ini
+[ResourceSet]
+$Name = Startup
+Files = "Interface/Example With Space.png" \
+ "Music/Example.ogg"
+```
+
+`ResourceSet` — пример проектного типа, а не специальный механизм Engine. Указывают
+точные запечённые имена; маски и каталоги не поддерживаются. Проект сопровождает
+прямые пути скриптов, GUI и настроек, вычисляемые семейства и внешние ссылки внутри
+непрозрачных JSON/INI/Spine-данных. Конструкторы скриптов для сбора регистра не выполняются.
+
+Эксклюзивная блокировка bake захватывается до инвалидирования старого манифеста.
+Успешный проход публикует временный файл переименованием после согласования выходов,
+затем пишет существующие маркеры успеха. После ошибки старый отбор непригоден.
+Упаковщик проверяет маркеры и применяет манифест; локальные инструменты могут читать
+полное дерево. Это не транзакционный снимок произвольных внешних изменений и не
+гарантия полноты объявлений всех проектных runtime-путей.
+
 ## Точки входа CMake
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` определяет `AddBakingTarget` как проверяемый helper project interface и использует его для создания стандартных команд запекания после появления application targets.
@@ -200,16 +270,18 @@ AddBakingTarget(Game_PublicResources
 
 ### `BakingContext`
 
-`BakingContext` из `Baker.h` переносит общие данные одного запуска:
+Класс в `Source/Tools/BakingContext.h/.cpp` инкапсулирует состояние, заданное
+пассивным `BakingContextOptions`. Settings/files заимствуются, report и const-граф
+сохраняют общих владельцев. Для чтения служат `Get*` и `GetAsyncMode()`;
+режимы и граф задаются до запуска задач.
 
-- `Settings` — текущие `BakingSettings`;
-- `PackName` — имя обрабатываемого resource pack;
-- `BakeChecker` — callback проверки актуальности существующего результата;
-- `WriteData` — callback асинхронной записи;
-- `BakedFiles` — data source уже запечённых файлов;
-- `ForceSyncMode` — необязательное принудительное синхронное выполнение.
+`CheckOutput()` один раз вызывает checker при наличии, применяет `required`
+(включая `false`) и один раз учитывает итог в отчёте. `HasBakeChecker()` определяет
+его отсутствие. `WriteData()` возвращает результат writer и учитывает только
+успешные submissions.
 
-В проходе `MasterBaker` контекст также содержит общий collector отчёта и стабильное имя baker-а для attribution. `WriteData` возвращает `BakingWriteResult`, различающий реально изменившуюся запись и byte-identical файл, которому только обновили timestamp.
+`IsImageOutputOwned(path)` распознаёт consumed sources и image roots текущего
+pack; без графа возвращает `false`. Методы отчёта являются no-op без collector-а.
 
 Изменённые результаты записываются через `fs::write_file`: временный файл
 рядом с назначением создаётся эксклюзивно, записывается, сбрасывается и закрывается,
@@ -233,7 +305,7 @@ Windows пытается применить OS/filesystem-specific POSIX rename 
 
 Жёсткие cross-pack зависимости разведены по стадиям: `ParticleBaker` выполняется перед `ModelInfoBaker`, затем идут `ProtoBaker` и `MapBaker`. Описание модели может ссылаться на запечённую частицу, прототип — на модель, карта — на прототип. Эти проверки не должны гоняться с публикацией собственных зависимостей во время чистого или принудительного rebuild.
 
-`BaseBaker::SetupBakers()` создаёт запрошенные встроенные baker-ы и затем вызывает `SetupBakersHook()`, позволяя внешнему коду добавить проектные реализации. Каждый baker получает собственную копию общего контекста. При активном отчёте callbacks check/write оборачиваются именем baker-а, поэтому attribution остаётся верным и для его асинхронных задач. Защищённые helpers позволяют встроенным и проектным baker-ам добавлять counters и histograms; без collector-а они являются no-op.
+`BaseBaker::SetupBakers()` создаёт запрошенные встроенные baker-ы и затем вызывает `SetupBakersHook()`, позволяя внешнему коду добавить проектные реализации. Каждый бейкер получает собственную именованную копию `BakingContext`, сохраняя общих владельцев collector-а и read-only графа. Методы контекста учитывают выходы с именем этого бейкера, в том числе из асинхронных задач, без повторного оборачивания callbacks. Защищённые helpers `BaseBaker` делегируют этим методам и сохраняют интерфейс подклассов.
 
 ### `MasterBaker`
 
@@ -318,6 +390,11 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 
 Во время output discovery resource packs обходятся в порядке конфигурации. Более поздний baker может читать объявленные output предыдущей зависимости. При совпадении logical output path поздняя регистрация заменяет раннюю; lookup также идёт от последнего pack к первому, реализуя overlay rule.
 
+Discovery model-info регистрирует пути выходов без проверки содержимого кеша:
+связанные описания того же baker-а могут ещё отсутствовать в индексе. Обычная
+инкрементальная и отложенная выпечка сохраняет проверку зависимостей текстур
+и отклоняет отсутствующие связанные описания и анимированные текстуры моделей.
+
 ## Проектирование resource pack в игре
 
 `Settings.h/.cpp` определяют состояние `[ResourcePack]`: авторские `Name`, `InputDirs`, `InputFiles`, `IncludePatterns`, `ExcludePatterns`, `ServerOnly`, `ClientOnly`, `MapperOnly`, `Bakers` и вычисляемый `ConfigDir` объявившего файла. Имя обязательно; одновременно может быть истинным не более одного side-only флага; относительные inputs разрешаются от `ConfigDir`; порядок секций сохраняется.
@@ -366,9 +443,9 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 
 ### Общие metadata анимации
 
-`AnimationInfo` объединяет `SpriteInfo` для 2D frame count/duration/directions/bounds и, при `FO_ENABLE_3D`, `ModelAnimationInfo` для model/animation AABB и typed durations. `ReadSpriteResource` заполняет sprite payload из baked header/table. Для запросов без загрузки pixels `ImageBaker` пишет компактный index версии 1 `SpriteInfo/<PackName>.foinfo` для каждого pack.
+`AnimationInfo` объединяет `SpriteInfo` для 2D frame count/duration/directions/bounds и, при `FO_ENABLE_3D`, `ModelAnimationInfo` для model/animation AABB и typed durations. `ReadSpriteResource` заполняет sprite payload из baked header/table. Для запросов без загрузки pixels `ImageBaker` пишет компактный index версии 2 `SpriteInfo/<PackName>.foinfo` для каждого pack.
 
-Index является aggregate output. Обычный scan merge-ит изменённые entries с полным предыдущим index того же pack; явный запрос index пересобирает все entries. Предыдущий pack-local output монтируется отдельно от cross-pack registry, чтобы aggregate был доступен до первого invocation. Появление или исчезновение index требует full rebuild. `ReadAnimationInfo` загружает 2D indexes во всех builds, добавляет `ModelAnimationInfo.foinfo` в 3D и объединяет их по resource name в `EngineMetadata`.
+Index объединяет опубликованные корни: у направлений отдельные counts, у кадров durations. Пак без корней публикует пустой index до запуска зависимых bakers. Удаление последнего корня не оставляет устаревшие метаданные текстур доступными до финальной очистки выходов. Успешные dependency snapshots сохраняют полные entries; full/lazy baking восстанавливает отсутствующий index без декодирования неизменённых pixels. Поглощённые входы и промежуточные FOFRM исключены. Pack-local outputs отделены от cross-pack winners. Смена sprite schema требует согласованных бинарников и полной выпечки. `ReadAnimationInfo` загружает 2D indexes во всех builds, добавляет `ModelAnimationInfo.foinfo` в 3D и объединяет их по resource name в `EngineMetadata`.
 
 `ModelInfoBaker` пишет model descriptions и companion `ModelAnimationInfo.foinfo` версии 2. Контракт включает:
 
@@ -452,7 +529,7 @@ Model pipeline разделён на извлечение source, compatibility 
 - [Model Animation](../../how-to/content/model-animation.md) — tuples, `AnimSpeed`, aliases, durations и runtime lookup;
 - [Text and Localization](../../how-to/content/text-and-localization.md) и [text reference](../../reference/text-format/index.md) — `.fotxt`, normalization и `$Text`;
 - [Image and Sprite Formats](../../how-to/content/image-format.md) и [image reference](../../reference/image-format/index.md) — import, FOFRM, baked sprites, atlases и caches;
-- [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `NextX`/`NextY` и movement phase;
+- [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) - `Motion` и movement phase;
 - [Particle Format](../../how-to/content/particle-format.md) и [particle reference](../../reference/particle-format/index.md) — SPARK/Effekseer;
 - [Font Formats](../../how-to/content/font-format.md) и [font reference](../../reference/font-format/index.md) — descriptors и layout;
 - [Audio](../../how-to/content/audio.md), [audio reference](../../reference/audio/index.md), [Video](../../how-to/content/video.md), [video reference](../../reference/video/index.md) — audio baking и video raw-copy/runtime decoding;
@@ -470,7 +547,7 @@ Detailed path трассирует pixel-cell boundaries, сохраняет isl
 
 Coverage проверяется по полной unit-square area каждого visible pixel, а не несколькими samples. Constrained overdraw ограничен guard, cleanup и integer rounding; expanded/enclosing candidates оплачивают actual area через score. Failure reasons разделяют contour, offset, vertex limit, triangulation, area, coverage и tolerance. Empty mask даёт empty geometry, unsafe/unprofitable/oversized — quad. Delaunay refinement не применяется из-за отсутствия выгоды по count/area и bit-identical гарантии.
 
-Baked sprite использует engine-owned magic/version, per-frame draw offset, cropped RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `ResourceManager::LoadSpriteAsQuad`. После изменения format или `SpriteMesh.*` без нового build hash нужен `ForceBakeResources`.
+Baked spritev3 хранит count/total по направлениям, duration, int32 placement и int16 движение по логическим кадрам. Shared объединяет только pixels/geometry; concrete хранит RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `ResourceManager::LoadSpriteAsQuad`. Изменение схемы требует полного согласованного rebake.
 
 `MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides криттеров/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
 

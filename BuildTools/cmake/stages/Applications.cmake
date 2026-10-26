@@ -322,6 +322,8 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
 
     if(FO_UNIT_TESTS)
         SetupTestBuild(UnitTests)
+        include("${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/ResourceUsageIntegration.cmake")
+        SetupResourceUsageIntegrationTests()
     endif()
 
     if(FO_CODE_COVERAGE)

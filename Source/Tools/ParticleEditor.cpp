@@ -32,6 +32,7 @@
 //
 
 #include "ParticleEditor.h"
+
 #include "ImGuiStuff.h"
 #include "Mapper.h"
 #include "ParticleSprites.h"

@@ -143,6 +143,10 @@ If the selected source set contains no concrete `.fo3d` files, no duration metad
 
 `ModelInformation` strictly loads one immutable canonical skeleton, clip set, binding table, remaps, presence/nearest data, and rest-pose contract from the required rig payload. It rejects old unversioned model-info data, missing/partial rigs, identity mismatches, malformed counts, and trailing data; there is no fallback to a legacy pose evaluator. `ModelAnimation` keeps Ozz objects behind the Engine-owned runtime interface, while each `ModelInstance` owns mutable controller timelines, sampled pose buffers, world matrices, linked children, and procedural overrides. Shared `ModelHierarchy` data remains physical mesh topology and never receives mutable pose output.
 
+Controller durations, positions, event times and instance elapsed time use `timespan`. Advance validates all tracks before mutation and keeps end-of-step speed/event ordering. Callbacks retain the two endpoint-cycle checks, at most once per update; they do not replay skipped middle cycles. Runtime clip/Ozz sampling DTOs and GPU absolute time use seconds only at their adapters. Instance duration queries preserve nanoseconds; common baked metadata retains whole milliseconds.
+
+At the sampling adapter, track position retains double precision until cycle wrapping. Only the wrapped sample time converts to float precision for Ozz. This keeps a frozen position just before the clip endpoint from rounding up to a full cycle and wrapping to the first pose.
+
 `BaseEngine` registers `ModelAnimationInfo.foinfo` during startup after prototypes and before metadata registration is finalized. Registration validates the versioned duration and bounds payload, unique model sections, and unique tuples. Each section path is registered in the engine hash storage and becomes the model key used by scripts.
 
 The common API is available on server, client, and mapper runtimes:

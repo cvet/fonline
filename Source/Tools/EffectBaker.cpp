@@ -32,9 +32,11 @@
 //
 
 #include "EffectBaker.h"
+
 #include "Application.h"
 #include "ConfigFile.h"
 #include "Direct3DLevel9.h"
+#include "ResourceDefaults.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #include "../Include/Types.h"
@@ -68,8 +70,21 @@ static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
 
+static auto GetEffectOutputPaths(string_view path, int32_t passes) -> vector<string>
+{
+    vector<string> result;
+
+    for (int32_t pass = 1; pass <= passes; pass++) {
+        for (string_view suffix : {"info", "vert-spv", "frag-spv", "vert-spv_sdl", "frag-spv_sdl", "vert-glsl", "frag-glsl", "vert-glsl_es", "frag-glsl_es", "vert-dxbc", "frag-dxbc", "vert-msl_mac", "frag-msl_mac", "vert-msl_ios", "frag-msl_ios"}) {
+            result.emplace_back(strex(path).change_file_extension(strex("fofx-{}-{}", pass, suffix)));
+        }
+    }
+
+    return result;
+}
+
 EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx), NAME)
+    BaseBaker(std::move(ctx), NAME, BakingOutputKind::Resource)
 {
     glslang::InitializeProcess();
 }
@@ -77,6 +92,30 @@ EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
 EffectBaker::~EffectBaker()
 {
     glslang::FinalizeProcess();
+}
+
+auto EffectBaker::CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string>
+{
+    ignore_unused(providers);
+    vector<string> result;
+
+    if (strex(path).get_file_extension() != "fofx") {
+        return result;
+    }
+
+    auto resources = _context->GetPackBakedFiles() ? _context->GetPackBakedFiles() : _context->GetBakedFiles();
+    FO_VERIFY_AND_THROW(resources, "Effect dependency collection has no baked resources", path);
+    File source = files.FindFileByPath(path);
+    FO_VERIFY_AND_THROW(source, "Effect dependency collection has no authored descriptor", path);
+    ConfigFile config {source.GetStr()};
+
+    for (const string& output : GetEffectOutputPaths(path, config.GetAsInt("Effect", "Passes", 1))) {
+        if (resources->IsFileExists(output)) {
+            result.emplace_back(output);
+        }
+    }
+
+    return result;
 }
 
 void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path) const
@@ -92,25 +131,15 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
         uint64_t write_time = file.GetWriteTime();
 
-        for (int32_t pass = 1; pass <= passes; pass++) {
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-info", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-spv_sdl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-dxbc", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-dxbc", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_ios", pass)), write_time);
+        if (std::ranges::find(EffectDefaults::Paths, path) != EffectDefaults::Paths.end()) {
+            _context->KeepOutput(path);
         }
 
-        if (!_context->BakeChecker(path, write_time)) {
+        for (const string& output : GetEffectOutputPaths(path, passes)) {
+            (void)_context->CheckOutput(output, write_time);
+        }
+
+        if (!_context->CheckOutput(path, write_time)) {
             return false;
         }
 
@@ -133,7 +162,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
             auto file = File(File::Load(file_header));
 
-            if (_context->BakeChecker && !check_file(file)) {
+            if (_context->HasBakeChecker() && !check_file(file)) {
                 continue;
             }
 
@@ -151,7 +180,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         if (!file) {
             return;
         }
-        if (_context->BakeChecker && !check_file(file)) {
+        if (_context->HasBakeChecker() && !check_file(file)) {
             return;
         }
 
@@ -455,7 +484,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         auto source = compiler.compile();
         vector<uint8_t> dxbc = CompileHlsl(source, is_vertex ? "vs_4_0" : "ps_4_0", VKD3D_SHADER_TARGET_DXBC_TPF, fname_wo_ext);
 
-        if (_context->Settings->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
+        if (_context->GetSettings()->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
             vector<uint8_t> level9 = CompileHlsl(source, is_vertex ? "vs_2_a" : "ps_2_0", VKD3D_SHADER_TARGET_D3D_BYTECODE, fname_wo_ext);
             dxbc = AddDirect3DLevel9Code(dxbc, level9, is_vertex, fname_wo_ext);
         }

@@ -117,8 +117,11 @@ static_assert(sizeof(FoPalette) == 1024);
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
-        collection.SequenceSize = frm_count;
-        collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        uint16_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
+        sequence_size = frm_count;
+        duration_ms = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
         collection.NewName = strvex(fname).starts_with("art/critters/") ? strex(fname).lower().str() : string(fname);
 
@@ -128,8 +131,6 @@ static_assert(sizeof(FoPalette) == 1024);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.Frames.resize(collection.SequenceSize);
-
             int32_t dir_frm = dir;
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
@@ -158,8 +159,18 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             if (dir == 1) {
-                collection.HaveDirs = true;
+                have_dirs = true;
             }
+
+            reader.SetCurPos(0x4);
+            frm_fps = reader.GetBEUInt16();
+            reader.SetCurPos(0x8);
+            frm_count = reader.GetBEUInt16();
+            FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", fname, dir, frm_count);
+            sequence_size = frm_count;
+            sequence.Frames.resize(sequence_size);
+            duration_ms = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
+            anim_pix_type = 0;
 
             // Make palette
             const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
@@ -186,11 +197,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 reader.SetCurPos(offset);
                 uint16_t w = reader.GetBEUInt16();
                 uint16_t h = reader.GetBEUInt16();
-                shot.Width = w;
-                shot.Height = h;
+                shot.Size = {w, h};
                 reader.GoForward(4); // Frame size
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.Motion = {reader.GetBEInt16(), reader.GetBEInt16()};
 
                 // Allocate data
                 shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
@@ -284,22 +293,22 @@ static_assert(sizeof(FoPalette) == 1024);
                     }
 
                     if ((anim_pix_type & 0x01) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x04) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x10) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x08) != 0) {
-                        collection.AnimTicks = 142;
+                        duration_ms = 142;
                     }
                     if ((anim_pix_type & 0x02) != 0) {
-                        collection.AnimTicks = 100;
+                        duration_ms = 100;
                     }
                     if ((anim_pix_type & 0x20) != 0) {
-                        collection.AnimTicks = 100;
+                        duration_ms = 100;
                     }
 
                     if (anim_pix_type != 0) {
@@ -335,9 +344,9 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        collection.AnimTicks *= frm_count;
-                        collection.SequenceSize = frm_count;
-                        sequence.Frames.resize(collection.SequenceSize);
+                        duration_ms *= frm_count;
+                        sequence_size = frm_count;
+                        sequence.Frames.resize(sequence_size);
                     }
                 }
 
@@ -345,6 +354,28 @@ static_assert(sizeof(FoPalette) == 1024);
                     offset += w * h + 12;
                 }
             }
+
+            uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+            ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;
@@ -369,8 +400,11 @@ static_assert(sizeof(FoPalette) == 1024);
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
-        collection.SequenceSize = frm_count;
-        collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
+        uint16_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
+        sequence_size = frm_count;
+        duration_ms = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
         if (strvex(fname).starts_with("art/critters/")) {
             collection.NewName = strex("{}.fofrm", strex(fname).erase_file_extension().lower());
@@ -385,8 +419,6 @@ static_assert(sizeof(FoPalette) == 1024);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-            sequence.Frames.resize(collection.SequenceSize);
-
             int32_t dir_frm = dir;
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
@@ -425,8 +457,18 @@ static_assert(sizeof(FoPalette) == 1024);
             uint32_t offset = 0x3E + reader.GetBEUInt32();
 
             if (dir == 1) {
-                collection.HaveDirs = true;
+                have_dirs = true;
             }
+
+            reader.SetCurPos(0x4);
+            frm_fps = reader.GetBEUInt16();
+            reader.SetCurPos(0x8);
+            frm_count = reader.GetBEUInt16();
+            FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", fname, dir, frm_count);
+            sequence_size = frm_count;
+            sequence.Frames.resize(sequence_size);
+            duration_ms = frm_fps != 0 ? std::max(uint32_t {1}, uint32_t {1000} / frm_fps) * frm_count : 0;
+            anim_pix_type = 0;
 
             // Make palette
             const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
@@ -453,14 +495,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 reader.SetCurPos(offset);
                 uint16_t w = reader.GetBEUInt16();
                 uint16_t h = reader.GetBEUInt16();
-
-                shot.Width = w;
-                shot.Height = h;
-
+                shot.Size = {w, h};
                 reader.GoForward(4); // Frame size
-
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.Motion = {reader.GetBEInt16(), reader.GetBEInt16()};
 
                 // Allocate data
                 shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
@@ -553,22 +590,22 @@ static_assert(sizeof(FoPalette) == 1024);
                     }
 
                     if ((anim_pix_type & 0x01) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x04) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x10) != 0) {
-                        collection.AnimTicks = 200;
+                        duration_ms = 200;
                     }
                     if ((anim_pix_type & 0x08) != 0) {
-                        collection.AnimTicks = 142;
+                        duration_ms = 142;
                     }
                     if ((anim_pix_type & 0x02) != 0) {
-                        collection.AnimTicks = 100;
+                        duration_ms = 100;
                     }
                     if ((anim_pix_type & 0x20) != 0) {
-                        collection.AnimTicks = 100;
+                        duration_ms = 100;
                     }
 
                     if (anim_pix_type != 0) {
@@ -608,9 +645,9 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        collection.AnimTicks *= frm_count;
-                        collection.SequenceSize = frm_count;
-                        sequence.Frames.resize(collection.SequenceSize);
+                        duration_ms *= frm_count;
+                        sequence_size = frm_count;
+                        sequence.Frames.resize(sequence_size);
                     }
                 }
 
@@ -618,9 +655,54 @@ static_assert(sizeof(FoPalette) == 1024);
                     offset += w * h + 12;
                 }
             }
+
+            uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+            ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;
+    }
+
+    auto DiscoverDependencies(string_view fname, const FileCollection& files) -> vector<ImageImport::DependencyReference>
+    {
+        ignore_unused(files);
+        return {{strex("{}.pal", strvex(fname).erase_file_extension()).str(), true}};
+    }
+
+    auto DiscoverFrXDependencies(string_view fname, const FileCollection& files) -> vector<ImageImport::DependencyReference>
+    {
+        auto dependencies = DiscoverDependencies(fname, files);
+
+        for (int32_t direction = 1; direction < 6; direction++) {
+            string path = strex("{}{}", fname.substr(0, fname.size() - 1), direction).str();
+            dependencies.push_back({path, direction == 1});
+            bool exists = std::ranges::any_of(files, [&path](const FileHeader& file) { return file.GetPath() == path; });
+
+            if (direction == 1 && !exists) {
+                break;
+            }
+        }
+
+        return dependencies;
     }
 
     auto ResolveOutput(string_view fname) -> string

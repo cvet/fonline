@@ -32,6 +32,7 @@
 //
 
 #include "Compressor.h"
+
 #include "SafeArithmetics.h"
 #include "StackTrace.h"
 

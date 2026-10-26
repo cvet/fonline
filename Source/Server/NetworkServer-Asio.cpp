@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetSockets.h"
 #include "NetworkServer.h"
 

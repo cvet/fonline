@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE

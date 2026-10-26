@@ -32,6 +32,7 @@
 //
 
 #include "Properties.h"
+
 #include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE

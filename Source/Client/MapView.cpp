@@ -32,9 +32,11 @@
 //
 
 #include "MapView.h"
+
 #include "Client.h"
 #include "LineTracer.h"
 #include "MapLoader.h"
+#include "ResourceDefaults.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -45,6 +47,7 @@ static constexpr int32_t LIGHT_HEX_COLOR_MAX = 200;
 static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX = 255;
 static constexpr float32_t MAP_DEPTH_RANGE_MARGIN = 1000.0f;
 static constexpr isize32 MAP_RENDER_TARGET_PADDING = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
+static constexpr timespan LIGHT_TRANSITION_DURATION {std::chrono::milliseconds {200}};
 
 // A map flush effect may displace its lookup (a screen shake, a heat warp) by a few percent of the view
 static constexpr int32_t MAP_COMPOSITE_MARGIN_DIVISOR = 8;
@@ -345,7 +348,7 @@ void MapView::LoadStaticData()
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
 
     MapLoader::ReadBakedFileHeader(reader, GetProtoId());
 
@@ -544,8 +547,8 @@ void MapView::Process()
         if (_scrollDtAccum >= fixed_dt) {
             _scrollDtAccum = std::min(_scrollDtAccum, timespan(fixed_dt.value() * 10));
             _scrollDtAccum -= fixed_dt;
-            ProcessZoom(fixed_dt.to_ms<float32_t>());
-            ProcessScroll(fixed_dt.to_ms<float32_t>());
+            ProcessZoom(fixed_dt);
+            ProcessScroll(fixed_dt);
         }
     }
 }
@@ -1457,7 +1460,7 @@ void MapView::ProcessLighting()
         int32_t prev_intensity = ls->CurIntensity;
 
         if (ls->CurIntensity != ls->TargetIntensity) {
-            float32_t elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(std::chrono::milliseconds {200});
+            float32_t elapsed_time = (_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(LIGHT_TRANSITION_DURATION);
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
 
@@ -3053,13 +3056,13 @@ void MapView::DrawViewAreaMask(const irect32& draw_area)
         interior[i * 2 + 1].EggData = fpos32(world_center);
     }
 
-    auto effect = _engine->EffectMngr.LoadEffect(EffectUsage::Primitive, "Effects/Primitive_ViewAreaFog.fofx");
+    auto effect = _engine->EffectMngr.LoadEffect(EffectUsage::Primitive, EffectDefaults::ViewAreaFog);
     FO_VERIFY_AND_THROW(effect, "Bounded view fog effect is null");
     _engine->SprMngr.DrawPoints(interior, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
 }
 
-void MapView::ProcessScroll(float32_t dt)
+void MapView::ProcessScroll(timespan elapsed)
 {
     bool is_manual_scrolling = IsManualScrolling();
 
@@ -3070,7 +3073,7 @@ void MapView::ProcessScroll(float32_t dt)
     fpos32 scroll;
 
     if (_autoScrollActive) {
-        float32_t scroll_step = numeric_cast<float32_t>(_autoScrollSpeed) / 10000.0f * dt;
+        float32_t scroll_step = numeric_cast<float32_t>(_autoScrollSpeed) / 10.0f * elapsed.to_sec<float32_t>();
         scroll.x = lerp(0.0f, _autoScrollOffset.x, scroll_step);
         scroll.y = lerp(0.0f, _autoScrollOffset.y, scroll_step);
 
@@ -3103,7 +3106,7 @@ void MapView::ProcessScroll(float32_t dt)
         }
 
         float32_t zoom = GetSpritesZoom();
-        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / 1000.f / zoom * dt;
+        float32_t scroll_step = numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / zoom * elapsed.to_sec<float32_t>();
         scroll.x *= scroll_step;
         scroll.y *= scroll_step;
     }
@@ -3121,7 +3124,7 @@ void MapView::ChangeZoom(float32_t new_zoom, fpos32 anchor)
     SetSpritesZoomTarget(new_zoom);
 }
 
-void MapView::ProcessZoom(float32_t dt)
+void MapView::ProcessZoom(timespan elapsed)
 {
     if (!_engine->Settings->View.MapZoomEnabled) {
         return;
@@ -3150,7 +3153,7 @@ void MapView::ProcessZoom(float32_t dt)
         int32_t zoom_speed = _engine->Settings->Hex.ZoomSpeed;
         constexpr float32_t zoom_stop_bias = 0.001f;
 
-        float32_t new_zoom = lerp(init_zoom, clamped_target_zoom, dt * numeric_cast<float32_t>(zoom_speed) / 10000.0f);
+        float32_t new_zoom = lerp(init_zoom, clamped_target_zoom, elapsed.to_sec<float32_t>() * numeric_cast<float32_t>(zoom_speed) / 10.0f);
 
         if (std::abs(new_zoom - clamped_target_zoom) < zoom_stop_bias) {
             new_zoom = clamped_target_zoom;

@@ -98,7 +98,7 @@ namespace ServerEngineTests
     inline auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        data_writer writer {map_data};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.write<uint32_t>(uint32_t {0});
@@ -185,7 +185,7 @@ namespace ServerEngineTests
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -552,7 +552,7 @@ namespace ServerEngineInitGateTest
 
     inline auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
     {
-        return safe_alloc::make_refcounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan::zero, start_hex, ipos16 {}, ipos16 {});
     }
 
     inline auto WaitForUnlockedServerCondition(ptr<ServerEngine> server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool

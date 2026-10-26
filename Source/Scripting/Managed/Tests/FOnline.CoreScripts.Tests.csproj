@@ -20,6 +20,8 @@
     <Compile Include="../CoreScripts/RemoteCallScriptFuncs.cs" Link="RemoteCallScriptFuncs.cs" />
     <Compile Include="../CoreScripts/Attributes.cs" Link="Attributes.cs" />
     <Compile Include="../CoreScripts/ScriptSynchronizationContext.cs" Link="ScriptSynchronizationContext.cs" />
+    <Compile Include="../CoreScripts/ScriptTask.cs" Link="ScriptTask.cs" />
+    <Compile Include="../CoreScripts/TimePlace.cs" Link="TimePlace.cs" />
     <Compile Include="../CoreScripts/ScriptEntryNames.cs" Link="ScriptEntryNames.cs" />
   </ItemGroup>
 </Project>

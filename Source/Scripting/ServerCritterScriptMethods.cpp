@@ -816,7 +816,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     // A refused request still ends the route in progress, and through StopCritterMoving: a bare Critter::StopMoving
     // tells no observer, so every client keeps walking the critter to the end of the route the server abandoned
     if (speed == 0) {
-        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan::zero, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
         engine->StopCritterMoving(self, MovingState::Stopped);
         return failed_moving;
@@ -856,7 +856,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
             break;
         }
 
-        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan::zero, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
 
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
@@ -868,7 +868,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     }
 
     // A route in progress is replaced by StartCritterMoving itself, so its observers get one CritterMove and no stop
-    auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan::zero, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine->StartCritterMoving(self, moving, nullptr);
     return moving;
 }

@@ -32,6 +32,7 @@
 //
 
 #include "DataBase.h"
+
 #include "DataBase-Json.h"
 #include "DataBase-Memory.h"
 #include "DataBase-Mongo.h"
@@ -52,6 +53,8 @@ namespace osfile = winapi;
 #else
 namespace osfile = posix;
 #endif
+
+static constexpr std::chrono::milliseconds FAILED_BACKEND_POLL_INTERVAL {10};
 
 static void ValidateFiniteAnyValue(const AnyData::Value& value);
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
@@ -1201,7 +1204,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                coarse_sleep(std::chrono::milliseconds {10});
+                coarse_sleep(FAILED_BACKEND_POLL_INTERVAL);
             }
         }
         catch (const std::exception& ex) {

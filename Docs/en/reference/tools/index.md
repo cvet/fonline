@@ -90,7 +90,7 @@ automation, and script helper details.
 
 The baking family is the most mature batch tool group. `Source/Tools/Baker.h` / `.cpp` define the common infrastructure:
 
-- `BakingContext` carries settings, pack name, write callback, existing baked files, and sync/async mode hints.
+- `BakingContext` in `Source/Tools/BakingContext.h/.cpp` encapsulates shared configuration, output checks and writes, image ownership, report attribution, and sync/async mode selection.
 - `BaseBaker` defines `GetName()`, `GetOrder()`, and `BakeFiles()`.
 - `BaseBaker::SetupBakers()` constructs requested built-in bakers and exposes `SetupBakersHook()` for project/external extension.
 - `MasterBaker::BakeAll()` coordinates full resource-pack baking.

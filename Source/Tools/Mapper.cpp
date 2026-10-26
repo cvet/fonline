@@ -32,6 +32,7 @@
 //
 
 #include "Mapper.h"
+
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
@@ -6832,7 +6833,7 @@ auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<c
     auto source_sprite = sprite;
 
     if (auto sprite_sheet = source_sprite.dyn_cast<const SpriteSheet>()) {
-        source_sprite = sprite_sheet->GetCurSpr();
+        source_sprite = sprite_sheet->GetCurrentSprite();
     }
 
     return source_sprite.dyn_cast<const AtlasSprite>();

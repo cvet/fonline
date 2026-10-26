@@ -32,6 +32,7 @@
 //
 
 #include "PropertiesSerializer.h"
+
 #include "EntityProtos.h"
 
 FO_BEGIN_NAMESPACE

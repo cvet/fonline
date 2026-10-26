@@ -429,7 +429,7 @@ void ParticleViewer::PlayCurrent()
 void ParticleViewer::ApplyDirection()
 {
     if (_previewSprite) {
-        _previewSprite->SetDir(mdir(iround<int32_t>(_dirAngle)));
+        _previewSprite->SetDirection(mdir(iround<int32_t>(_dirAngle)));
     }
 }
 

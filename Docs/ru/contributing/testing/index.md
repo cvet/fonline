@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"627458249cfea1975367cd85d6c24e53ac77207314ccef8bab0e81842c21060c"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"e8830b89adebd47f451085354ae15db1711e2b3e8f64bd86807c9b08cc0a8da5"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -124,6 +124,40 @@ boxed-мост property callbacks. Python-набор блокируется вн
 native completion, доказывая ожидание уже вошедшего callback при teardown и
 подавление позднего завершения; контроль с удалённым gate должен отказать по
 наблюдаемому поведению.
+
+<a id="native-module-and-resource-pipeline-checks"></a>
+
+## Проверки нативных модулей и ресурсного пайплайна
+
+Задача CI `engine-update` запускает Python-регрессии отбора ресурсов,
+последовательной и параллельной упаковки, формата ресурсного пака, `IsPackaged`,
+оформления нативных модулей и связей CMake. Задача форматирования также выполняет
+`python3 BuildTools/check_native_modules.py`; область проверки и рассмотренные
+исключения описаны в [оформлении нативных модулей](../source-tree/index.md#native-module-layout).
+
+Цель `RunResourceUsageIntegrationTests` запускает настоящий нативный Baker через
+`BuildTools/tests/check_resource_usage_pipeline.py`. При включённом `FO_UNIT_TESTS`,
+наличии цели Baker и нативной конфигурации она входит в зависимости `RunUnitTests`.
+Стандартный validation-project явно включает `FO_BUILD_BAKER`; регрессия CMake
+проверяет этот параметр, исполняя настоящий профиль с отключёнными побочными
+действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
+и проверяют, что команда пайплайна выполняется первой.
+
+Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
+проверяет точный отбор manifest и создаёт архив обычным упаковщиком. Другой процесс
+Baker подключает архив через нативный `DataSource` и копирует все записи для
+побайтового сравнения. Повторный bake удаляет включение из `ResourceSet.Files`
+и меняет содержимое изображения с сохранением его времени. Тот же экземпляр
+Packager должен перечитать manifest и обновить архив. Отрицательные контроли —
+упаковка всех запечённых файлов и потеря страницы шрифта. Неиспользуемые выходы
+остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
+и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
+
+Прямому запуску нужны стандартная библиотека Python и существующий Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
 
 ## Запуск тестов
 

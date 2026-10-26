@@ -70,9 +70,9 @@ struct MeshInstance
 {
     ptr<MeshData> Mesh;
     bool Disabled {};
-    nptr<MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};
-    nptr<MeshTexture> DefaultTexures[MODEL_MAX_TEXTURES] {};
-    nptr<MeshTexture> LastTexures[MODEL_MAX_TEXTURES] {};
+    nptr<const MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};
+    nptr<const MeshTexture> DefaultTexures[MODEL_MAX_TEXTURES] {};
+    nptr<const MeshTexture> LastTexures[MODEL_MAX_TEXTURES] {};
     nptr<RenderEffect> CurEffect {};
     nptr<RenderEffect> DefaultEffect {};
     nptr<RenderEffect> LastEffect {};
@@ -110,7 +110,7 @@ public:
 
 private:
     void SetupBones();
-    auto GetTexture(string_view tex_name) -> ptr<MeshTexture>;
+    auto GetTexture(string_view tex_name) -> ptr<const MeshTexture>;
     auto GetEffect(string_view name) -> ptr<RenderEffect>;
 
     ptr<ModelManager> _modelMngr;

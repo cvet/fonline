@@ -77,6 +77,16 @@ The Python callback suite also blocks inside its substituted native completion
 to prove teardown waits for an entered callback and suppresses a late one; a
 gate-removal control must fail semantically.
 
+## Native module and resource pipeline checks
+
+`engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
+
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
+
 ## Running tests
 
 The `engine-update` CI job also runs

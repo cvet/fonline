@@ -32,10 +32,13 @@
 //
 
 #include "ResourceManager.h"
+
 #include "Application.h"
 #include "DefaultSprites.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr timespan DUMMY_ANIMATION_FRAME_DURATION {std::chrono::milliseconds {100}};
 
 ResourceManager::ResourceManager(ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr) :
     _resources {resources},
@@ -99,7 +102,7 @@ void ResourceManager::LoadDefaultSprites(const RenderSettings& settings)
 
     auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
-    _critterDummyAnimFrames = safe_alloc::make_shared<SpriteSheet>(_sprMngr, 1, 100, 1);
+    _critterDummyAnimFrames = safe_alloc::make_shared<SpriteSheet>(_sprMngr, 1, DUMMY_ANIMATION_FRAME_DURATION, 1);
     ipos32 dummy_offset = atlas_spr->GetOffset();
 
     _critterDummyAnimFrames->SetFrame(0, std::move(atlas_spr), dummy_offset, ipos32 {});

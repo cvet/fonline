@@ -32,6 +32,7 @@
 //
 
 #include "Threading.h"
+
 #include "BaseLogging.h"
 #include "ExceptionHandling.h"
 #include "GlobalData.h"

@@ -32,6 +32,7 @@
 //
 
 #include "Platform.h"
+
 #include "Posix.h"
 #include "StackTrace.h"
 #include "StringUtils.h"

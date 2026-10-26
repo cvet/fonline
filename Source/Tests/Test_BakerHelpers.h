@@ -186,7 +186,7 @@ namespace BakerTests
         // Registration reads the fixed header first, so a test blob has to carry one even when the test only
         // cares about the sections behind it
         vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
-        auto writer = data_writer(metadata);
+        data_writer writer {metadata};
 
         writer.write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
 
@@ -238,7 +238,7 @@ namespace BakerTests
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -262,7 +262,7 @@ namespace BakerTests
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
         vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {1});
@@ -293,27 +293,29 @@ namespace BakerTests
 
     // A baked sprite with several frames in one direction. Some runtime paths cast the loaded sprite to
     // SpriteSheet, which a single-frame sprite never becomes, so they need this instead
-    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint16_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
+    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint32_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.write<uint16_t>(frame_count);
-        writer.write<uint16_t>(ticks);
         writer.write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint16_t>(frame_count);
+        writer.write<uint32_t>(ticks);
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (uint16_t frame = 0; frame < frame_count; frame++) {
-            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
-            writer.write<int16_t>(int16_t {0}); // Offset x
-            writer.write<int16_t>(int16_t {0}); // Offset y
-            writer.write<uint16_t>(width);
-            writer.write<uint16_t>(height);
+            uint32_t duration = numeric_cast<uint32_t>((numeric_cast<uint64_t>(frame) + 1) * ticks / frame_count - numeric_cast<uint64_t>(frame) * ticks / frame_count);
+            writer.write<uint32_t>(duration);
+            writer.write<int32_t>(int32_t {0}); // Offset x
+            writer.write<int32_t>(int32_t {0}); // Offset y
             writer.write<int16_t>(frame_motion.x);
             writer.write<int16_t>(frame_motion.y);
+            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+            writer.write<uint16_t>(width);
+            writer.write<uint16_t>(height);
 
             for (size_t i = 0; i < pixel_count; i++) {
                 writer.write<uint8_t>(uint8_t {255});
@@ -335,21 +337,21 @@ namespace BakerTests
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.write<uint16_t>(uint16_t {1}); // Frames count
-        writer.write<uint16_t>(uint16_t {0}); // Ticks
         writer.write<uint8_t>(uint8_t {1}); // Directions
-
-        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
-        writer.write<int16_t>(int16_t {0}); // Offset x
-        writer.write<int16_t>(int16_t {0}); // Offset y
-        writer.write<uint16_t>(width);
-        writer.write<uint16_t>(height);
+        writer.write<uint16_t>(uint16_t {1}); // Frames count
+        writer.write<uint32_t>(uint32_t {100}); // Whole duration
+        writer.write<uint32_t>(uint32_t {100}); // Frame duration
+        writer.write<int32_t>(int32_t {0}); // Offset x
+        writer.write<int32_t>(int32_t {0}); // Offset y
         writer.write<int16_t>(int16_t {0}); // Frame x
         writer.write<int16_t>(int16_t {0}); // Frame y
+        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+        writer.write<uint16_t>(width);
+        writer.write<uint16_t>(height);
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
@@ -575,7 +577,7 @@ namespace BakerTests
 
         [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
 
-        auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext>
+        auto MakeContextOptions(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> BakingContextOptions
         {
             Outputs.clear();
 
@@ -586,7 +588,7 @@ namespace BakerTests
             auto settings_ptr = make_nptr(&Settings);
             auto baked_files_ptr = make_nptr(&BakedFiles);
 
-            return safe_alloc::make_shared<BakingContext>(BakingContext {
+            return BakingContextOptions {
                 .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
@@ -597,8 +599,10 @@ namespace BakerTests
                     },
                 .BakedFiles = baked_files_ptr,
                 .ForceSyncMode = true,
-            });
+            };
         }
+
+        auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext> { return safe_alloc::make_shared<BakingContext>(MakeContextOptions(pack_name, std::move(bake_checker))); }
 
         [[nodiscard]] auto GetOutputText(string_view path) const -> string
         {
@@ -616,6 +620,15 @@ namespace BakerTests
         nptr<MemoryDataSource> _sourceData {};
         nptr<MemoryDataSource> _bakedData {};
     };
+
+    inline void AddTestBakedImage(TestRig& rig, string_view path, const vector<uint8_t>& data)
+    {
+        auto sprite = ReadSpriteResource(data);
+        FO_VERIFY_AND_THROW(sprite.Animation.Sprite, "Test image has no sprite metadata", path);
+        SpriteInfoFileEntry entry {string {path}, string {path}, *sprite.Animation.Sprite};
+        rig.AddBakedFile(path, data);
+        rig.AddBakedFile(strex("SpriteInfo/TestImages/{}.foinfo", path), WriteSpriteInfoFile({entry}));
+    }
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {

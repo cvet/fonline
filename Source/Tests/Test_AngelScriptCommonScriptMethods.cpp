@@ -845,6 +845,24 @@ namespace CommonMethods
         timespan invalid = timespan(1, 99);
     }
 
+    void TestTimeUnitOverflowThrows()
+    {
+        timespan invalid = timespan(9223372036854775807, 1);
+    }
+
+    void TestSyncTimeUnitOverflowThrows()
+    {
+        synctime invalid = synctime(9223372036854775807, 3);
+    }
+
+    int TestTimeUnitBoundaryValues()
+    {
+        if (timespan(9223372036854775, 1).nanoseconds != 9223372036854775000) return -1;
+        if (synctime(9223372036854775807, 2).milliseconds != 9223372036854775807) return -2;
+        if (synctime(-9223372036854775807, 0).milliseconds != -9223372036854) return -3;
+        return 0;
+    }
+
     void TestInvalidAnyToIntThrows()
     {
         any invalid = "DefinitelyNotAnInt";
@@ -2203,6 +2221,21 @@ TEST_CASE("ScriptTypeConversionOps")
     SECTION("InvalidTimePlaceThrows")
     {
         RUN_CM_FUNC_THROWS("TestInvalidTimePlaceThrows", "Invalid time place");
+    }
+
+    SECTION("TimeUnitBoundaries")
+    {
+        RUN_CM_FUNC("TestTimeUnitBoundaryValues");
+    }
+
+    SECTION("TimeUnitOverflowThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestTimeUnitOverflowThrows", "Integer multiplication overflow");
+    }
+
+    SECTION("SyncTimeUnitOverflowThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestSyncTimeUnitOverflowThrows", "Integer multiplication overflow");
     }
 
     SECTION("InvalidAnyToIntThrows")

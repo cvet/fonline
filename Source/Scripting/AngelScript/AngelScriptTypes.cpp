@@ -642,21 +642,27 @@ static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, 
 template<typename T>
 static void Time_ConstructWithPlace(T* self, int64_t value, int32_t place)
 {
-    if (place == 0) {
-        new (self) T {std::chrono::nanoseconds {value}};
-    }
-    else if (place == 1) {
-        new (self) T {std::chrono::microseconds {value}};
-    }
-    else if (place == 2) {
-        new (self) T {std::chrono::milliseconds {value}};
-    }
-    else if (place == 3) {
-        new (self) T {std::chrono::seconds {value}};
-    }
-    else {
+    if (place < 0 || place > 3) {
         throw ScriptException("Invalid time place", place);
     }
+
+    if constexpr (std::same_as<T, synctime>) {
+        if (place == 0) {
+            value /= 1000000;
+        }
+        else if (place == 1) {
+            value /= 1000;
+        }
+        else if (place == 3) {
+            value = checked_mul<int64_t>(value, int64_t {1000});
+        }
+    }
+    else {
+        constexpr array<int64_t, 4> scales {1, 1000, 1000000, 1000000000};
+        value = checked_mul<int64_t>(value, scales[place]);
+    }
+
+    new (self) T {value};
 }
 
 static void Ipos_ConstructXandY(ipos32* self, int32_t x, int32_t y)

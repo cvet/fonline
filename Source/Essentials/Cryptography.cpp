@@ -32,6 +32,7 @@
 //
 
 #include "Cryptography.h"
+
 #include "Platform.h"
 #include "SafeArithmetics.h"
 #include "StackTrace.h"

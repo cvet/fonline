@@ -32,6 +32,7 @@
 //
 
 #include "Player.h"
+
 #include "Critter.h"
 #include "CritterManager.h"
 #include "Item.h"
@@ -486,7 +487,7 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
         if (moving) {
             mpos end_hex = moving->GetEndHex();
 
-            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()))).strv());
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>())).strv());
         }
         else {
             _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y).strv());
@@ -552,7 +553,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetMovingUid());
-    out_buf->Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
+    out_buf->Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
     out_buf->Write(_engine->GameTime.GetFrameTime().milliseconds());
 }
 
@@ -1025,8 +1026,8 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
-    out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime())));
-    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime())));
+    out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>())));
+    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>()));
     out_buf.Write(moving->GetSpeed());
     out_buf.Write(moving->GetStartHex());
     out_buf.Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
@@ -1044,7 +1045,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     out_buf.Write(moving->GetEndHexOffset());
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
     out_buf.Write(cr->GetMovingUid());
-    out_buf.Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
+    out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
     // The frame the elapsed time above was taken at, by the server's clock: the receiver tells from it how much
     // later than usual the plan reached it
     out_buf.Write(_engine->GameTime.GetFrameTime().milliseconds());

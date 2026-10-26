@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"f65676c3da51dd663b6b1bf7b95faecb43ec09f027139f7cf0c9b097f3f972b3"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4814f4d681d24393217cc413fc8930b7cffe93c9afafd19bd5499f6e18b72523"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -121,6 +121,12 @@ value types повторяют native API (`ipos.x`, `hstr()`, `timespan.millise
 `__event_OnStart`), чтобы избежать коллизий со свойствами embedding project.
 Не применяйте правило написанных вручную членов к этим генерируемым именам.
 
+Для аргумента `place` конструкторов `timespan` и `synctime` используйте
+`TimePlace.Nanoseconds`, `TimePlace.Microseconds`, `TimePlace.Milliseconds`
+или `TimePlace.Seconds`, например `new timespan(100, TimePlace.Milliseconds)`.
+Константы сохраняют native-коды единиц `0`, `1`, `2` и `3`; конструкторы с одним
+аргументом по-прежнему принимают наносекунды для `timespan` и миллисекунды для `synctime`.
+
 Методы, которые native backend разрешает через `[CallableByEngine]`, имеют доступ
 `internal`, хотя Mono lookup умеет находить непубличные методы. Это входы
 dispatcher, а не обычные вспомогательные методы для прямого вызова; изменения
@@ -177,6 +183,9 @@ RPC dispatch и ожидающие временные события испол�
 `Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
 Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
+
+`ScriptTask.Delay(timespan)` сохраняет наносекунды; `Delay(int)` переводит миллисекунды.
+Обе перегрузки запрещают синхронный callback. Масштабирование единиц использует checked-арифметику.
 
 `ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel` и ручная отправка работы в ThreadPool намеренно обходят Engine synchronization context. Там можно выполнять изолированные вычисления, но нельзя вызывать Engine API. Привязка entry assembly к backend всё ещё позволяет определить Engine из такого thread, поэтому ошибка не обязана проявляться на каждом native call; надёжно её отклоняют только чувствительные к синхронизации маршруты, например server entity access. Подключающий проект должен статически запрещать эти escape API и возвращаться в захваченный Engine context до обращения к состоянию движка.
 

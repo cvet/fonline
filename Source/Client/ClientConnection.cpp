@@ -32,6 +32,7 @@
 //
 
 #include "ClientConnection.h"
+
 #include "Updater.h"
 
 FO_BEGIN_NAMESPACE

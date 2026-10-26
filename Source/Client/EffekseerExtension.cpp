@@ -33,6 +33,8 @@
 
 #include "EffekseerExtension.h"
 
+#include "ResourceDefaults.h"
+
 #if FO_EFFEKSEER_PARTICLES
 
 #include "Application.h"
@@ -546,9 +548,9 @@ private:
 EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mngr)
 {
     static constexpr string_view effect_names[BLEND_MODES] = {
-        "Effects/Particles_ColorMulAtlas.fofx",
-        "Effects/Particles_ColorAddAtlas.fofx",
-        "Effects/Particles_ColorSubAtlas.fofx",
+        EffectDefaults::ParticleColorMul,
+        EffectDefaults::ParticleColorAdd,
+        EffectDefaults::ParticleColorSub,
     };
 
     for (size_t blend = 0; blend < BLEND_MODES; blend++) {
@@ -559,8 +561,8 @@ EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mng
 #if FO_ENABLE_3D
     // The distortion family carries the particle's own plane per vertex, which is the model vertex layout
     static constexpr string_view distortion_effect_names[DISTORTION_BLEND_MODES] = {
-        "Effects/Particles_DistortionAtlas.fofx",
-        "Effects/Particles_DistortionAddAtlas.fofx",
+        EffectDefaults::ParticleDistortion,
+        EffectDefaults::ParticleDistortionAdd,
     };
 
     for (size_t blend = 0; blend < DISTORTION_BLEND_MODES; blend++) {

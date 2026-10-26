@@ -32,6 +32,7 @@
 //
 
 #include "MetadataBaker.h"
+
 #include "MetadataRegistration.h"
 
 FO_BEGIN_NAMESPACE
@@ -68,7 +69,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         filtered_files.emplace_back(File::Load(file_header));
     }
 
-    for (const auto& config_path : _context->Settings->GetAppliedConfigs()) {
+    for (const auto& config_path : _context->GetSettings()->GetAppliedConfigs()) {
         max_write_time = std::max(max_write_time, fs::last_write_time(config_path));
     }
 
@@ -76,9 +77,9 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         return;
     }
 
-    bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-server", max_write_time);
-    bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-client", max_write_time);
-    bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-mapper", max_write_time);
+    bool bake_server = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-server", max_write_time);
+    bool bake_client = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-client", max_write_time);
+    bool bake_mapper = !_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-mapper", max_write_time);
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
@@ -92,19 +93,19 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     if (bake_server) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Server", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Server");
-            _context->WriteData(_context->PackName + ".fometa-server", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-server", data);
         }));
     }
     if (bake_client) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Client", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Client");
-            _context->WriteData(_context->PackName + ".fometa-client", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-client", data);
         }));
     }
     if (bake_mapper) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Mapper", [&]() FO_DEFERRED {
             auto data = BakeMetadata(filtered_files, "Mapper");
-            _context->WriteData(_context->PackName + ".fometa-mapper", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-mapper", data);
         }));
     }
 
@@ -115,7 +116,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            if (_context->ForceSyncMode.value_or(false)) {
+            if (_context->GetForceSyncMode().value_or(false)) {
                 throw;
             }
 
@@ -1574,7 +1575,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
         tag_tokens.emplace_back(std::move(name));
         tag_tokens.emplace_back(type_str);
 
-        auto setting_value = _context->Settings->FindSettingValue(tag_tokens.front());
+        auto setting_value = _context->GetSettings()->FindSettingValue(tag_tokens.front());
 
         if (!setting_value) {
             throw MetadataBakerException("Invalid Setting codegen tag: setting has no configured value", tag_desc.SourceFile, tag_desc.LineNumber, tag_tokens.front());

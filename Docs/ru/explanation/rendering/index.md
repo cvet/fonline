@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"f0b193f229b51022db4adc702f86562b11422628a17b3124c87103747b23b0e7"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"97dce7146a828ceca7847aeef29b4a4453a7cfb3aaa2d303047fe0382dd5010d"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -551,6 +551,9 @@ wasted area без rotation. Manager сравнивает fit во всех су
 данного type и только затем создаёт page; при equal score выбирается старый
 atlas. Packed rectangle уже включает one-pixel texture border, поэтому padding,
 sprite pixels и UV не меняются.
+
+Страницы текстур моделей начинают с 1024 x 2048 и растут под изображение с рамкой
+в пределах backend. Текстуре шириной 1024 нужны 1026 пикселей с учётом рамки.
 
 Font sheets, model material textures, particle maps и Spine attachment textures
 — rectangular consumers: authored glyph/normalized UV адресуют весь source

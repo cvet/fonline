@@ -1,5 +1,39 @@
 # Documentation Verification Report
 
+## 2026-10-24 - Prepare FOFRM rework against published master 61
+
+Integrate published feature `a0489ef02bc71b2c5caab53b19d1524bc0e2b381`
+with published master `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4`.
+Review both incoming commits and every changed path. The item-movement conflict
+retains typed elapsed time: floating `timespan::to_ms` already preserves the
+fractional milliseconds required by the incoming fix. Native implementation
+tokens remain unchanged relative to the feature tip. Runtime compatibility stays
+at 0.0.78; network units, persisted data and Managed ABI 9 are unchanged.
+
+Prepare 2026.1.62-dev from published 2026.1.61-dev. Preserve master's historical
+notes verbatim, freeze its Current heading, and place the FOFRM/resource/timing
+migrations in the new dated bilingual entry. Regenerate the native API model
+and both type-reference pages after the named-duration defaults. The public
+index remains current. Aggregate comparison with master passes 72 changes
+across 17 domains: 35 required dispositions and none missing.
+
+Correct the sprite root-motion guide and its source-linked test to describe
+logical-canvas placement for cropped shared frames, including reference chains.
+Keep placement and motion independent. All eight focused documentation tests
+pass; the original stale assertion is retained in the embedding task evidence.
+The validator's own 50 tests pass. Actual native/bake/runtime qualification is
+recorded separately by the embedding integration plan.
+
+The embedding Windows build passes seven native targets and the full native
+suite: 751 cases and 735989 assertions. Pointer, allocator and exception audits
+pass. A force bake completes all 33 packs and 662 maps; the following incremental
+bake changes/deletes no files and retains the exact usage manifest. Eight
+headless and seven real embedded-client regressions pass 205 expectations with
+zero skips, timeouts or global exceptions. Review captured character/HUD frames.
+These are merge-worktree checks, not release artifacts or qualification of other
+platforms. The embedding map validator still reports findings reproduced on the
+published base's map sources; this does not constitute full map-content approval.
+
 ## 2026-10-24 - Reconcile the published animation branch with master
 
 Merge published feature tip `0cd8146d6f42c263c869f35c183432cc00755cfa`

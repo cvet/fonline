@@ -32,6 +32,7 @@
 //
 
 #include "ProtoTextBaker.h"
+
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"
@@ -43,7 +44,7 @@ FO_BEGIN_NAMESPACE
 ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    if (_context->Settings->Baking.BakeLanguages.empty()) {
+    if (_context->GetSettings()->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("No bake languages specified");
     }
 }
@@ -66,9 +67,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->Baking.ProtoFileExtensions, ext);
+        auto it = std::ranges::find(_context->GetSettings()->Baking.ProtoFileExtensions, ext);
 
-        if (it == _context->Settings->Baking.ProtoFileExtensions.end()) {
+        if (it == _context->GetSettings()->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -80,22 +81,22 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    if (_context->Settings->Baking.BakeLanguages.empty()) {
-        throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
+    if (_context->GetSettings()->Baking.BakeLanguages.empty()) {
+        throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->GetPackName());
     }
 
-    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages);
 
     // Process files
-    if (_context->BakeChecker) {
+    if (_context->HasBakeChecker()) {
         bool check_result = false;
 
         for (const auto& lang_name : bake_languages.Languages) {
-            check_result |= _context->BakeChecker(strex("{}.Protos.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
-            check_result |= _context->BakeChecker(strex("{}.Items.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
-            check_result |= _context->BakeChecker(strex("{}.Critters.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
-            check_result |= _context->BakeChecker(strex("{}.Maps.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
-            check_result |= _context->BakeChecker(strex("{}.Locations.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
+            check_result |= _context->CheckOutput(strex("{}.Protos.{}.fotxt-bin", _context->GetPackName(), lang_name), max_write_time);
+            check_result |= _context->CheckOutput(strex("{}.Items.{}.fotxt-bin", _context->GetPackName(), lang_name), max_write_time);
+            check_result |= _context->CheckOutput(strex("{}.Critters.{}.fotxt-bin", _context->GetPackName(), lang_name), max_write_time);
+            check_result |= _context->CheckOutput(strex("{}.Maps.{}.fotxt-bin", _context->GetPackName(), lang_name), max_write_time);
+            check_result |= _context->CheckOutput(strex("{}.Locations.{}.fotxt-bin", _context->GetPackName(), lang_name), max_write_time);
         }
 
         if (!check_result) {
@@ -103,7 +104,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    auto engine = BakerServerEngine(*_context->BakedFiles);
+    auto engine = BakerServerEngine(*_context->GetBakedFiles());
     hstring proto_rule_name = engine.Hashes.to_hashed_string("Proto");
     hstring item_type_name = engine.Hashes.to_hashed_string("Item");
     hstring critter_type_name = engine.Hashes.to_hashed_string("Critter");
@@ -182,7 +183,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
-    bool allow_repeated_parents = _context->Settings->Baking.AllowRepeatedProtoParents;
+    bool allow_repeated_parents = _context->GetSettings()->Baking.AllowRepeatedProtoParents;
 
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;
@@ -334,7 +335,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     // Save packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->PackName, pack_name, lang_name), text_pack.GetBinaryData());
+            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->GetPackName(), pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }

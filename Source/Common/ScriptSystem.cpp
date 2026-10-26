@@ -32,6 +32,7 @@
 //
 
 #include "ScriptSystem.h"
+
 #include "Application.h"
 #include "EngineBase.h"
 #include "Entity.h"

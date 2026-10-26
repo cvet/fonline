@@ -33,6 +33,64 @@ repair belong to `BuildTools/cmake/stages/Codegen.cmake` and
 runtime. Follow the [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md)
 for that boundary; change the native tool owner when its baked behavior changes.
 
+## Native module layout
+
+Use an adjacent `Name.h` + `Name.cpp` pair for a public native module whose header
+is consumed by other units. Register both in the owning source lists in
+[`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake),
+[`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake), or the actual
+application target in [`Applications.cmake`](../../../../BuildTools/cmake/stages/Applications.cmake).
+Shared passive data and constants still have a `.cpp` anchor, as in
+`ResourceDefaults.h` + `ResourceDefaults.cpp`. Supporting template/constexpr and
+umbrella headers may use reviewed header-only exceptions.
+
+Implementation-only units need no header. Remove headers included only by their
+own `.cpp`; do not create empty anchors, shared-header wrappers or duplicated
+generated script declarations solely to form a pair. Renderer, transport,
+script-binding and entry-point implementations may therefore be `.cpp` only.
+Keep source inventories unconditional within their owning target and use numeric
+feature guards inside optional modules.
+
+Run `python3 BuildTools/check_native_modules.py` after adding or moving modules.
+It checks case-sensitive header pairs and registration in the source-inventory
+owners, including the AngelScript directory alias and application library targets.
+A `.cpp` without a header must still be registered. Comments and diagnostic strings
+do not register sources. Reviewed header-only and special entry-point/generator
+exceptions use exact paths and nonempty reasons in
+[`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
+schema `Version = 1`. Stale entries, wildcards, duplicate keys and complete-pair
+exceptions fail. The two `Source/Common/*.template.cpp` files are generator inputs,
+not compiled modules. Platform builds validate the effective CMake configuration.
+
+The first include in a header is `#include "Common.h"`. A `.cpp` starts with its
+case-exact same-directory same-stem header if present, otherwise `Common.h`.
+Separate this include from following content by a blank line. If it is the sole
+include at EOF, no extra empty line is added. License comments and `#pragma once`
+may precede it; conditions do not change lexical include order.
+Bootstrap headers cannot include `Common.h`: `Source/Common/Common.h` itself,
+headers directly in `Source/Essentials/` and `Source/Common/ImGuiExt/ImGuiConfig.h`
+preserve their dependency order. ImGui consumes its config through
+`IMGUI_USER_CONFIG`; absence of a literal local include does not make it unused.
+
+Native files end with exactly one newline: `text\n` or `text\r\n`. Missing EOL,
+trailing spaces and additional empty lines at EOF are rejected. The formatter,
+layout validator and ordinary Git whitespace checks agree on this convention.
+
+Run `python3 BuildTools/check_native_source_layout.py` alongside the module check.
+It checks owned `.h/.cpp` recursively in `Source/`, excluding the two generator
+templates, and ignores fake directives in comments and string literals. Invalid
+or empty scopes return nonzero. Embedding-project extensions use
+`--root <project> --source-dir SourceExt --shallow` to avoid imported nested
+libraries. Generated build output and `ThirdParty/` are outside authored scope.
+Both validators and their regressions are required in CI. Also check
+`--source-dir Examples` and `--source-dir BuildTools/validation-project`.
+
+The sample `Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h` belongs
+to a standalone C++ library built without Engine includes; it keeps its standard
+library dependency and must not include `Common.h`. Its independent
+`Tests/NativeExtensionCoreTest.cpp` starts with `NativeExtensionCore.h`. These exact
+boundaries are validated; its server extension follows the regular cpp-only rule.
+
 ## `Source/Applications/`
 
 Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, Managed script baker, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.
@@ -54,7 +112,7 @@ Shared runtime code used by client/server/tools/scripts. Key areas include:
 - Maps and movement: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Networking primitives: `NetBuffer.*`, `NetworkUdp.*`, and the shared updater file-list parser `UpdateDescriptor.*`.
 - Config/data access: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
-- Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
+- Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `ResourceDefaults.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 If a change is reusable and shared by both client and server, it likely starts here.

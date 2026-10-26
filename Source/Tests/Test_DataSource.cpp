@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Compressor.h"
@@ -538,6 +540,10 @@ TEST_CASE("DataSource")
         auto recursive_names = recursive->GetFileNames("nested", true, "txt");
         REQUIRE(recursive_names.size() == 1);
         CHECK(recursive_names[0] == "nested/child.txt");
+        auto non_cached_recursive = DataSource::MountDir(temp_dir, true, true, false);
+        CHECK(non_cached_recursive->GetFileNames("nested", true, "txt") == recursive_names);
+        CHECK(non_cached_recursive->GetFileNames("nested\\", false, "txt") == recursive_names);
+        CHECK(non_cached_recursive->GetFileNames("", true, "txt").size() == 2);
         CHECK(recursive->GetFileNames("missing", true, "txt").empty());
         CHECK(recursive->GetFileNames("nested/child.txt", true, "txt").empty());
 

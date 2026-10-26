@@ -513,7 +513,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         nanotime paused_frame_time = server->GameTime.GetFrameTime();
         server->FrameAdvance();
         CHECK(server->GameTime.GetFrameTime() == paused_frame_time);
-        CHECK(server->GameTime.GetFrameDeltaTime() == timespan {});
+        CHECK(server->GameTime.GetFrameDeltaTime() == timespan::zero);
     }));
 
     CHECK(callback_invoked);
@@ -601,7 +601,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
             auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
             ScriptFunc<void> event_func {&event_desc};
             REQUIRE(event_func);
-            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
+            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan::zero, {}));
         }
 
         auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
@@ -933,8 +933,8 @@ TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
             control_steps.insert(control_steps.begin(), 0); // A zero-length initial segment is valid
             auto moving = safe_alloc::make_refcounted<MovingContext>(SERVER_TEST_MAP_SIZE, SERVER_TEST_MOVE_SPEED, std::move(steps), std::move(control_steps), server->GameTime.GetFrameTime(), timespan {}, SERVER_TEST_MOVE_START_HEX, ipos16 {}, ipos16 {});
             expected_end = moving->GetEndHex();
-            advance_time = timespan {std::chrono::duration<float64_t, std::milli> {moving->GetWholeTime() / 4.0}};
-            moving->SetLeaseTime(moving->GetWholeTime() / 2.0f, server->GameTime.GetFrameTime());
+            advance_time = timespan {moving->GetWholeTime().value() / 4};
+            moving->SetLeaseTime(timespan {moving->GetWholeTime().value() / 2}, server->GameTime.GetFrameTime());
             server->StartCritterMoving(critter, std::move(moving), nullptr);
         }
 
@@ -1007,6 +1007,14 @@ TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
         {
             state.CritterMovements[0].LeaseTimeMs = std::numeric_limits<float32_t>::quiet_NaN();
         }
+        SECTION("UnrepresentableWholeTime")
+        {
+            state.CritterMovements[0].WholeTimeMs = std::numeric_limits<float32_t>::max();
+        }
+        SECTION("UnrepresentableLeaseTime")
+        {
+            state.CritterMovements[0].LeaseTimeMs = std::numeric_limits<float32_t>::max();
+        }
         SECTION("InvalidControlStep")
         {
             state.CritterMovements[0].ControlSteps[0] = numeric_cast<uint16_t>(state.CritterMovements[0].Steps.size() + 1);
@@ -1068,7 +1076,7 @@ TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
             server->RequireCurrentSyncContext()->SyncEntity(critter);
             REQUIRE(critter->GetMoving());
             CHECK(critter->GetHex() == captured_hex);
-            CHECK(critter->GetMoving()->GetLeaseTime() == state.CritterMovements[0].LeaseTimeMs);
+            CHECK(critter->GetMoving()->GetLeaseTime().to_ms<float32_t>() == state.CritterMovements[0].LeaseTimeMs);
             CHECK(server->TimeEventMngr.CountTimeEvent(server.get(), {}, state.TimeEvents[0].EventId) == 1);
             auto fresh = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
             REQUIRE(fresh);
@@ -1085,14 +1093,14 @@ TEST_CASE("ServerEngineSnapshotRestoresTimerAndLeasedMovementExecution")
             REQUIRE(critter);
             server->RequireCurrentSyncContext()->SyncEntity(critter);
             REQUIRE(critter->GetMoving());
-            CHECK(critter->GetMoving()->GetElapsedTime() <= state.CritterMovements[0].LeaseTimeMs + 1.0f);
+            CHECK(critter->GetMoving()->GetElapsedTime().to_ms<float32_t>() <= state.CritterMovements[0].LeaseTimeMs + 1.0f);
             CHECK(critter->GetHex() != expected_end);
             auto calls = server->FindFunc<int32_t>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestGetManualCalls"));
             REQUIRE(calls);
             REQUIRE(calls.Call());
             CHECK(calls.GetResult() == 1);
             CHECK(server->TimeEventMngr.CountTimeEvent(server.get(), {}, state.TimeEvents[0].EventId) == 0);
-            critter->GetMoving()->SetLeaseTime(0.0f, server->GameTime.GetFrameTime());
+            critter->GetMoving()->SetLeaseTime(timespan::zero, server->GameTime.GetFrameTime());
         }
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         bool locked = true;
@@ -1750,7 +1758,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1799,7 +1807,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto path_hexes = template_moving->EvaluatePathHexes(cr->GetHex());
         REQUIRE(path_hexes.size() == SERVER_TEST_MOVE_STEPS.size() + 1);
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
@@ -1862,7 +1870,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime()) + 100}};
+        timespan overdue_time = timespan {std::chrono::milliseconds {iround<int32_t>(template_moving->GetWholeTime().to_ms<float64_t>()) + 100}};
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);

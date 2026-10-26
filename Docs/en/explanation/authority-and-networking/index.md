@@ -400,8 +400,8 @@ Packet types:
 - `MaxPayload`
 - `MaxPendingBytes`
 - `MaxReorderAhead`
-- `ResendTimeoutMs`
-- `ConnectRetryMs`
+- `ResendTimeout` (`timespan`)
+- `ConnectRetry` (`timespan`)
 - `Redundancy`
 
 `UdpPacketInfo` carries parsed packet data:

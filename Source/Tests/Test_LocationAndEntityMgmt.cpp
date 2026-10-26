@@ -1185,7 +1185,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
         optional<timespan> time_until_pending;
         CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_pending).empty());
         REQUIRE(time_until_pending.has_value());
-        CHECK(time_until_pending.value() > timespan {});
+        CHECK(time_until_pending.value() > timespan::zero);
     }
 
     // Backdate one event instead of waiting on the frame clock, so readiness is deterministic
@@ -1207,7 +1207,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
     CHECK(ready.front().Event->Id == ready_id);
     CHECK(ready.front().OwnerEntity == cr);
     REQUIRE(time_until_next.has_value());
-    CHECK(time_until_next.value() > timespan {});
+    CHECK(time_until_next.value() > timespan::zero);
 
     // A paused dispatcher stops delivering notifications without losing the hooks themselves
     cancelled_ids.clear();

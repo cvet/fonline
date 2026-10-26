@@ -86,11 +86,10 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _sceneBackgroundProvider {std::move(scene_background_provider)},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
-    _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
-    _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
+    _moveTransitionTime = std::chrono::milliseconds {std::max(_settings->Render.Animation3dSmoothTime, 1)};
 
     if (_settings->Render.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
+        _animUpdateThreshold = std::chrono::milliseconds {iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS))};
     }
 
     _headBone = GetBoneHashedString(settings->Render.HeadBone);
@@ -139,7 +138,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    auto reader = data_reader(file.GetDataSpan());
+    data_reader reader {file.GetDataSpan()};
     auto root_bone = [&]() -> unique_ptr<ModelBone> {
         try {
             ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
@@ -180,8 +179,6 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
         auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = safe_alloc::make_unique<MeshInstance>(mesh);
-        string_view tex_name = mesh->DiffuseTexture;
-        new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
     }

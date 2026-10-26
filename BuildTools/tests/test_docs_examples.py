@@ -437,7 +437,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         tutorial_server_extension = (
             ENGINE_ROOT / "Examples/MinimalMultiplayer/SourceExt/ServerExtension.cpp"
         ).read_text(encoding="utf-8")
-        self.assertIn("AddEngineSources(SERVER SourceExt/ServerExtension.cpp)", tutorial_cmake)
+        self.assertIn("SERVER SourceExt/ServerExtension.cpp", tutorial_cmake)
         self.assertIn("///@ EngineHook", tutorial_server_extension)
         self.assertIn("CheckCritterVisibilityHook", tutorial_server_extension)
         self.assertIn("GetLookDistance()", tutorial_server_extension)
@@ -612,7 +612,7 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         native_cmake = (ENGINE_ROOT / "Examples/NativeExtensionSample/CMakeLists.txt").read_text(encoding="utf-8")
         for marker in (
             "list(APPEND FO_SERVER_LIBS NativeExtensionCore)",
-            "AddEngineSources(SERVER SourceExt/ServerExtension.cpp)",
+            "SERVER SourceExt/ServerExtension.cpp",
             "FONATIVE_NativeExtensionCoreTest",
             "RunNativeExtensionChecks",
         ):

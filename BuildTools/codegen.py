@@ -2312,7 +2312,7 @@ def generate_generic_code() -> None:
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
-        global_lines.append('struct BakingContext;')
+        global_lines.append('class BakingContext;')
         global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
     if not is_engine_hook_enabled('CheckCritterVisibilityHook'):
         global_lines.append('class ServerEngine;')

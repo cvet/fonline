@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetworkClient.h"
 
 #include "NetSockets.h"
@@ -42,6 +44,9 @@ FO_BEGIN_NAMESPACE
 constexpr auto PROXY_SOCKS4 = 1;
 constexpr auto PROXY_SOCKS5 = 2;
 constexpr auto PROXY_HTTP = 3;
+
+static constexpr timespan PROXY_ANSWER_TIMEOUT {std::chrono::milliseconds {10000}};
+static constexpr std::chrono::milliseconds PROXY_ANSWER_POLL_INTERVAL {1};
 
 class NetworkClientConnection_Sockets final : public NetworkClientConnection
 {
@@ -150,11 +155,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
                 return vector<uint8_t>(result_buf.begin(), result_buf.end());
             }
 
-            if (nanotime::now() - time >= std::chrono::milliseconds {10000}) {
+            if (nanotime::now() - time >= PROXY_ANSWER_TIMEOUT) {
                 throw NetworkClientException("Proxy answer timeout");
             }
 
-            coarse_sleep(std::chrono::milliseconds {1});
+            coarse_sleep(PROXY_ANSWER_POLL_INTERVAL);
         }
     };
 

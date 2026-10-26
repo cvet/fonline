@@ -32,6 +32,7 @@
 //
 
 #include "BaseLogging.h"
+
 #include "GlobalData.h"
 
 #if FO_WINDOWS

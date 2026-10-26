@@ -32,9 +32,12 @@
 //
 
 #include "Common.h"
+
 #include "Application.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr timespan IDLE_TIME_BALANCE_FLOOR {-std::chrono::milliseconds {1000}};
 
 struct InterthreadData
 {
@@ -220,7 +223,8 @@ static auto ReadPackagedBuildName() -> string
 
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
-    _sleep {sleep},
+    _sleep {std::chrono::milliseconds {std::max(sleep, 0)}},
+    _yieldAfterLoop {sleep == 0},
     _fixedFps {fixed_fps}
 {
 }
@@ -261,16 +265,16 @@ void FrameBalancer::EndLoop()
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < timespan(-std::chrono::milliseconds {1000})) {
-                _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
+            if (_idleTimeBalance < IDLE_TIME_BALANCE_FLOOR) {
+                _idleTimeBalance = IDLE_TIME_BALANCE_FLOOR;
             }
         }
     }
-    else if (_sleep == 0) {
+    else if (_yieldAfterLoop) {
         std::this_thread::yield();
     }
-    else if (_sleep > 0) {
-        coarse_sleep(std::chrono::milliseconds(_sleep));
+    else if (_sleep > timespan::zero) {
+        coarse_sleep(_sleep.value());
     }
 }
 

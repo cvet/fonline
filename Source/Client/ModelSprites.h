@@ -89,7 +89,7 @@ public:
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
-    void SetDir(mdir dir) override;
+    void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Baker.h"
@@ -554,7 +556,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         // The allowance is min(round trip / 2, MoveFinishCatchUpMaxMs) + CritterMovingPeriodMs. This movement
         // is authored to fit inside it, and the guard fails loudly if the hex metric or the defaults change
         int32_t allowed_catch_up_ms = std::min(400, server->Settings->Server.MoveFinishCatchUpMaxMs) + server->Settings->Server.CritterMovingPeriodMs;
-        REQUIRE(moving->GetWholeTime() < numeric_cast<float32_t>(allowed_catch_up_ms));
+        REQUIRE(moving->GetWholeTime().to_ms<float64_t>() < numeric_cast<float32_t>(allowed_catch_up_ms));
 
         // Reporting arrival one hex in must settle the critter there, short of where the plan ends. Left to
         // itself the movement would carry it to end_hex, so this is what the reconciliation actually decides
@@ -799,7 +801,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
             auto moving = cr->GetMoving();
             REQUIRE(static_cast<bool>(moving));
-            float32_t elapsed_ms = moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime());
+            float64_t elapsed_ms = moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime()).to_ms<float64_t>();
 
             if (delay_ms != 0) {
                 CHECK(elapsed_ms >= 2800.0f);
@@ -911,7 +913,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
         REQUIRE(cr->GetMoving()->GetSteps().size() == 5);
-        CHECK(cr->GetMoving()->GetLeaseTime() == 0.0f);
+        CHECK(cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() == 0.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);
@@ -934,11 +936,11 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->SwitchPlayerCritter(player, cr);
 
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start_hex, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan::zero, start_hex, ipos16 {}, ipos16 {});
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(cr, moving, player, 7);
         server->ChangeCritterMovingSpeed(cr, uint16_t {150});
-        REQUIRE(moving->GetLeaseTime() == 400.0f);
+        REQUIRE(moving->GetLeaseTime().to_ms<float64_t>() == 400.0f);
 
         // This renewal was sent before the player learned the new speed: its boundary is still ninety pixels in
         SendCritterMoveLease(test_connection, server, map->GetId(), cr->GetId(), 7, 300.0f, uint16_t {300});
@@ -946,13 +948,13 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
             ctx->SyncEntity(cr);
-            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime() >= 590.0f;
+            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() >= 590.0f;
         }));
 
         auto ctx = server->RequireCurrentSyncContext();
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
-        CHECK(moving->GetLeaseTime() == 600.0f);
+        CHECK(moving->GetLeaseTime().to_ms<float64_t>() == 600.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);
