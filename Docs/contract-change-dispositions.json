@@ -12432,6 +12432,18 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-10-26",
       "compatibility": "Increment compatibility 78 to 79 for Engine 2026.1.65-dev. Snapshot formats 1, 2 and 3 are not accepted; Managed ABI remains 9.",
       "owner": "Engine runtime and persistence maintainers"
+    },
+    {
+      "domain": "prototype-format",
+      "change_id": "prototype-format-change.modified.b20ef6c41cf16f96",
+      "baseline_contract_sha256": "735339878848d1e5dd7617c907eb3feb9bddd75a40d85f628c2555644337a926",
+      "current_contract_sha256": "4a065c5cc2ef298a3b59b01f62c9b6b02cd08fb3f1b4b992e035fb44bc4e9485",
+      "classification": "breaking",
+      "rationale": "Whitespace in authored prototype IDs made single-token migration declarations ambiguous. Current IDs stay single-token while legacy saved IDs remain migratable through explicit double-quoted sources.",
+      "migration": "Rename authored prototype IDs containing whitespace and write retired sources as ///@ MigrationRule Proto <Type> Rename \"Old Name\" CurrentName (or Transform/Remove as applicable). Bare multiword sources and whitespace destinations are rejected. Regenerate metadata and rebake matching resources; see Docs/en/reference/changelog.md, 2026.1.66-dev.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, 2026.1.66-dev.",
+      "compatibility": "Existing persisted legacy IDs remain compatible through quoted migration sources. Projects authoring IDs with whitespace must rename them before adopting this revision; no runtime compatibility-marker, saved-schema, or Managed ABI change is required.",
+      "owner": "content-data"
     }
   ]
 }

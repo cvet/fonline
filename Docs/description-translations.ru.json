@@ -18461,16 +18461,16 @@
           "translation": "В ProtoBaker попадают только файлы, чьё расширение входит в Baking.ProtoFileExtensions."
         },
         "/rules/@id=prototype-format.rule.identifier-characters/description": {
-          "source_sha256": "18541d1f263496a93bd3b23d0c70d5b6b784f1a211d9e5379e4c4b84c5ba5bc9",
-          "translation": "Baker отклоняет оба символа после применения fallback к имени файла и до хеширования или проверки дубликатов."
+          "source_sha256": "3f571800ca2018dc11b91257c23158cbd616aefdfefed0cc0873f316982bc34b",
+          "translation": "Baker применяет fallback к имени файла, затем отклоняет зарезервированные символы и space, tab, CR или LF до разрешения миграций, хеширования или проверки дубликатов. Legacy ID с whitespace принимается только как quoted source в MigrationRule; destination переименования не может содержать whitespace."
         },
         "/rules/@id=prototype-format.rule.identifier-characters/name": {
           "source_sha256": "1cd0ab9d54c7be454c1ee92bd48dbd0f44c14fe1eafea270ebd81ce69977051c",
           "translation": "Зарезервированные символы ID"
         },
         "/rules/@id=prototype-format.rule.identifier-characters/requirement": {
-          "source_sha256": "29d280f10ac918596a9c08742e860f81b467ddbf47d59296e56100f15b3a91ff",
-          "translation": "ID прототипов не могут содержать / или $, поскольку оба символа зарезервированы для адресации вложенных секций."
+          "source_sha256": "e8e71efc963816e896f9bc7816025f4a1042b6ac748b190b0b6782a490f1d6e2",
+          "translation": "ID прототипов не могут содержать /, $ или whitespace. Слеш и знак доллара зарезервированы для адресации вложенных секций, а whitespace запрещён, чтобы каждый действующий идентификатор оставался одним token."
         },
         "/rules/@id=prototype-format.rule.identity-per-type/description": {
           "source_sha256": "488f2c5bc1694dd266a48cfa29735aef4ca40a75c01757c2fd554ee316c3bf8c",

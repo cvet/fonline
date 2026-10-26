@@ -12,6 +12,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.66-dev - 2026-10-26
+
+### Fixed
+
+- Accept double-quoted legacy source identifiers with whitespace in `MigrationRule` for `Rename`, `Transform`, and `Remove`. Bare multiword sources, empty arguments, unclosed quotes, and replacements containing whitespace are rejected. The shared tokenizer for other metadata tags is unchanged.
+
+### Changed
+
+- Reject whitespace in authored prototype IDs after `$Name`/file-stem resolution and before migration resolution, hashing, or duplicate detection. Slash and dollar remain reserved for nested-section addressing.
+
+### Migration
+
+- Rename any authored prototype ID containing whitespace and retain the retired name only as a double-quoted source, for example `///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge`. Update native and Python migration readers together, regenerate metadata, and rebake matching resources. Existing persisted IDs remain loadable through these rules; no runtime compatibility-marker or Managed ABI change is required.
+
 ## Current - 2026-10-26
 
 ### Added

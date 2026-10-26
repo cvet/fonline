@@ -7,10 +7,24 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c38e93c55b41a06741dd9740240786434196d514f210d31462d2d930f42ad223"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7ef02f729bbfae3241ca7af07a1236febf7a1f750c5ef90cc39d6d691e92ecda"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## 2026.1.66-dev - 2026-10-26
+
+### Исправлено
+
+- В `MigrationRule` для `Rename`, `Transform` и `Remove` разрешены legacy source-идентификаторы с whitespace, заключённые в двойные кавычки. Голая последовательность слов, пустые аргументы, незакрытые кавычки и replacement с whitespace отклоняются. Общий tokenizer остальных metadata-тегов не изменён.
+
+### Изменено
+
+- Запрещён whitespace в authored prototype ID после разрешения `$Name`/file-stem и до разрешения миграций, хеширования или проверки дубликатов. Слеш и знак доллара по-прежнему зарезервированы для адресации вложенных секций.
+
+### Миграция
+
+- Переименуйте authored prototype ID с whitespace и сохраните прежнее имя только как quoted source, например `///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge`. Обновите native и Python readers совместно, пересоздайте metadata и запеките согласованные ресурсы. Существующие сохранённые ID загружаются через эти правила; изменение runtime compatibility-marker или Managed ABI не требуется.
 
 ## Current - 2026-10-26
 

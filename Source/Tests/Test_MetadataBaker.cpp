@@ -902,6 +902,11 @@ namespace TestEventsAndRemoteCalls
             {"///@ MigrationRule Property Item Transform Identity Migrations:::Rewrite", "too many rule arguments"},
             {"///@ MigrationRule Property Item Transform Identity Migrations::", "too many rule arguments"},
             {"///@ MigrationRule Property Item Rename Old Migrations::New", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Rename Local knowledge LocalKnowledge", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Remove Old New", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Rename \"Local knowledge LocalKnowledge", "malformed quoted rule argument"},
+            {"///@ MigrationRule Proto Modifier Rename \"\" LocalKnowledge", "empty rule argument"},
+            {"///@ MigrationRule Proto Modifier Rename Old \"New Name\"", "rule replacement must not contain whitespace"},
         };
 
         for (const auto& [script, message] : cases) {
@@ -909,15 +914,18 @@ namespace TestEventsAndRemoteCalls
         }
     }
 
-    SECTION("serializes migration rules with dotted names")
+    SECTION("serializes migration rules with dotted names and quoted spaces")
     {
         rig.AddSourceFile("Scripts/TestMigration.fos", R"(
 namespace TestMigration
 {
+///@ Entity Client Modifier HasProtos
 ///@ Property Item Common bool Weapon Component
 ///@ Property Item Common hstring Weapon.Ammo Mutable Persistent PublicSync
 ///@ MigrationRule Property Item Rename Weapon.AmmoPid Weapon.Ammo
-///@ MigrationRule Proto Modifier Remove LegacyAchvO9tCm0
+///@ MigrationRule Proto Modifier Remove "Legacy achievement"
+///@ MigrationRule Proto Modifier Transform "Conditional legacy" GameMigrations.RewriteProto
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge // legacy identifier with a space
 }
 )");
 
@@ -966,7 +974,9 @@ namespace TestMigration
         reader.verify_end();
 
         CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Rename", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
-        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Remove", "LegacyAchvO9tCm0"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Remove", "Legacy achievement"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Transform", "Conditional legacy", "GameMigrations.RewriteProto"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Rename", "Local knowledge", "LocalKnowledge"}) == 1);
         CHECK(settings_entries.empty());
 
         EngineMetadata meta {[] { }};
@@ -976,14 +986,19 @@ namespace TestMigration
         meta.RegisterEntityType("Item", true, false, true, true, true);
         meta.RegisterEnumGroup("ItemProperty", "int32", {});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE(meta.GetEntityType(meta.Hashes.to_hashed_string("Modifier")).HasProtos);
 
         auto property_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Item"), meta.Hashes.to_hashed_string("Weapon.AmmoPid"));
         REQUIRE(property_rule.has_value());
         CHECK(property_rule.value() == meta.Hashes.to_hashed_string("Weapon.Ammo"));
 
-        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("LegacyAchvO9tCm0"));
+        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("Legacy achievement"));
         REQUIRE(proto_rule.has_value());
         CHECK_FALSE(static_cast<bool>(proto_rule.value()));
+
+        auto legacy_proto_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("Local knowledge"));
+        REQUIRE(legacy_proto_rule.has_value());
+        CHECK(legacy_proto_rule.value() == meta.Hashes.to_hashed_string("LocalKnowledge"));
     }
 
     SECTION("serializes ref type fields declared via property tags")
