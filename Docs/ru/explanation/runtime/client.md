@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"d32653bc08dd55f2f5a079200135c061bcdde0afddcf2192e783fffe613d09f8"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"a3dbbf0f987bbf902ec282084331030125a619005e237bca600ff40835d4800d"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -274,6 +274,20 @@ Particle resources идут через отдельный backend-neutral factor
 не render masks. Native `MapView::GetItemAtScreen` и `GetEntityAtScreen` имеют ту
 же опцию с default false. Скриптовый default одинаков для AngelScript и Managed
 C#; режимы ввода, включающие опцию, принадлежат встраивающему проекту.
+
+`map.GetVisibleItemOnHex(itemId, hex)` возвращает предмет с точным ID, только
+если в запрошенной занятой клетке есть его действительный нескрытый sprite.
+Учитываются нарисованные копии multihex, исходный sprite которых скрыт или
+находится за экраном. Запрошенный гекс должен входить в ограниченную область
+обзора; исходная клетка предмета может быть снаружи. Нулевой ID и неверный гекс
+вызывают исключение; неизвестный ID, скрытая или недействительная копия,
+физическая клетка без изображения и удалённый предмет дают null.
+Проверяется запись отрисовки, а не alpha отдельных пикселей или верхний
+предмет в экранной точке.
+
+Существующие `GetItem`, `GetItemOnHex`, `GetItems` и `GetItemsOnHex` сохраняют
+фильтрацию области обзора по исходной клетке. `Item.IsVisible()` по-прежнему
+проверяет основной sprite, а не видимость каждой дополнительной копии.
 
 Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для криттера берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
 

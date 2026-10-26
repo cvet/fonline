@@ -867,6 +867,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-getvisiblehexes-f304ec4403"></a>
 - [`symbol-script-method-client-map-getvisiblehexes-f304ec4403`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblehexes-f304ec4403)
 
+<a id="symbol-script-method-client-map-getvisibleitemonhex-262234ff85"></a>
+- [`symbol-script-method-client-map-getvisibleitemonhex-262234ff85`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisibleitemonhex-262234ff85)
+
 <a id="symbol-script-method-client-map-getvisiblelayers-be4054caf4"></a>
 - [`symbol-script-method-client-map-getvisiblelayers-be4054caf4`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblelayers-be4054caf4)
 

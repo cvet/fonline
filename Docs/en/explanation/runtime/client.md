@@ -343,6 +343,18 @@ Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same
 default-false option. The script default applies to both AngelScript and Managed
 C#; an embedding project owns when its input mode opts in.
 
+`map.GetVisibleItemOnHex(itemId, hex)` resolves an exact item ID only when a
+valid, nonhidden sprite represents it at the requested occupied hex. This
+includes drawn multihex copies whose primary sprite is hidden or outside the
+viewport. The requested hex must be inside the bounded view area; the item's
+origin may be outside it. Zero IDs and invalid hexes throw; unknown IDs, hidden
+or invalid copies, physical-only mesh cells and removed items return null.
+This query checks render entries, not pixel alpha or frontmost screen picking.
+
+Existing `GetItem`, `GetItemOnHex`, `GetItems` and `GetItemsOnHex` retain their
+origin-based view-area filtering. `Item.IsVisible()` still checks the primary
+sprite; it does not report visibility of every additional copy.
+
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
 `MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).

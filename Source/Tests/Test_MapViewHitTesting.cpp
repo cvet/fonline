@@ -45,6 +45,7 @@ FO_BEGIN_NAMESPACE
 
 auto Client_Map_GetItems(ptr<MapView> self) -> vector<ptr<ItemView>>;
 auto Client_Map_GetItem(ptr<MapView> self, ident_t item_id) -> nptr<ItemView>;
+auto Client_Map_GetVisibleItemOnHex(ptr<MapView> self, ident_t item_id, mpos hex) -> nptr<ItemView>;
 auto Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex) -> vector<ptr<ItemView>>;
 
 namespace
@@ -72,6 +73,18 @@ namespace
         items.emplace_back("HitTestWall", [&proto_engine](ProtoItem& proto) {
             proto.SetIsWall(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
+        });
+        items.emplace_back("HitTestMeshWall", [&proto_engine](ProtoItem& proto) {
+            proto.SetIsWall(true);
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
+            proto.SetMultihexMesh(vector<mpos> {{8, 8}, {10, 8}, {10, 10}});
+            proto.SetDrawMultihexMesh(true);
+        });
+        items.emplace_back("HitTestPhysicalMeshWall", [&proto_engine](ProtoItem& proto) {
+            proto.SetIsWall(true);
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
+            proto.SetMultihexMesh(vector<mpos> {{8, 8}, {10, 8}, {10, 10}});
+            proto.SetDrawMultihexMesh(false);
         });
         items.emplace_back("HitTestFloor", [&proto_engine](ProtoItem& proto) {
             proto.SetIsTile(true);
@@ -244,6 +257,144 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         CHECK(map->IsHexInViewArea(mpos {8, 8}));
         CHECK_FALSE(map->IsHexInViewArea(mpos {12, 12}));
     }
+}
+
+TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
+{
+    GlobalSettings settings(false);
+    settings.ApplyDefaultSettings();
+    settings.ApplyAutoSettings();
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->EnableMapperMode();
+    ptr<ItemHexView> wall = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestMeshWall"), mpos {8, 8}, nullptr);
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(wall->IsMapSpriteVisible());
+    REQUIRE(wall->HasExtraMapSprites());
+
+    mpos contact {10, 8};
+    mpos other_contact {10, 10};
+    auto extra_sprites = wall->GetExtraMapSprites();
+    REQUIRE(extra_sprites);
+    nptr<MapSprite> contact_sprite {};
+    nptr<MapSprite> other_sprite {};
+
+    for (auto&& [sprite, valid] : *extra_sprites) {
+        REQUIRE(valid);
+        REQUIRE(sprite);
+
+        if (sprite->GetHex() == contact) {
+            contact_sprite = sprite;
+        }
+
+        if (sprite->GetHex() == other_contact) {
+            other_sprite = sprite;
+        }
+    }
+
+    REQUIRE(contact_sprite);
+    REQUIRE(other_sprite);
+    CHECK_FALSE(contact_sprite->IsHidden());
+    CHECK_FALSE(other_sprite->IsHidden());
+    CHECK(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
+    CHECK(wall->IsMapSpriteVisibleAtHex(contact));
+    CHECK(wall->IsMapSpriteVisibleAtHex(other_contact));
+    CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(mpos {9, 9}));
+
+    CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {8, 8}) == wall);
+    CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact) == wall);
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {9, 9}));
+    CHECK(std::ranges::find(map->GetItemsOnHex(contact), wall) != map->GetItemsOnHex(contact).end());
+    CHECK(Client_Map_GetItem(map, wall->GetId()) == wall);
+
+    wall->GetMapSprite()->SetHidden(true);
+    CHECK_FALSE(wall->IsMapSpriteVisible());
+    CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
+    CHECK(wall->IsMapSpriteVisibleAtHex(contact));
+    CHECK_FALSE(contact_sprite->IsHidden());
+    other_sprite->SetHidden(true);
+    CHECK(other_sprite->IsHidden());
+    CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(other_contact));
+    CHECK(wall->IsMapSpriteVisibleAtHex(contact));
+    CHECK_FALSE(contact_sprite->IsHidden());
+
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), other_contact));
+
+    map->SetViewArea(contact, 1);
+    CHECK(map->IsHexInViewArea(contact));
+    CHECK_FALSE(map->IsHexInViewArea(wall->GetHex()));
+    CHECK_FALSE(Client_Map_GetItem(map, wall->GetId()));
+    CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact) == wall);
+    CHECK(Client_Map_GetItemsOnHex(map, contact).empty());
+    CHECK(std::ranges::find(map->GetItemsOnHex(contact), wall) != map->GetItemsOnHex(contact).end());
+
+    map->SetViewArea(wall->GetHex(), 1);
+    CHECK(map->IsHexInViewArea(wall->GetHex()));
+    CHECK_FALSE(map->IsHexInViewArea(contact));
+    CHECK(Client_Map_GetItem(map, wall->GetId()) == wall);
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact));
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), wall->GetHex()));
+    CHECK(Client_Map_GetItemsOnHex(map, contact).size() == 1);
+
+    map->SetViewArea(contact, 0);
+    CHECK_THROWS(Client_Map_GetItem(map, ident_t {}));
+    CHECK_THROWS(Client_Map_GetItemsOnHex(map, mpos {20, 0}));
+    CHECK_FALSE(Client_Map_GetItem(map, ident_t {999999}));
+    CHECK_THROWS(Client_Map_GetVisibleItemOnHex(map, ident_t {}, contact));
+    CHECK_THROWS(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {20, 0}));
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, ident_t {999999}, contact));
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {9, 9}));
+
+    ptr<ItemHexView> physical = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestPhysicalMeshWall"), mpos {8, 8}, nullptr);
+    wall->RefreshSprite();
+    REQUIRE(wall->IsMapSpriteVisible());
+    REQUIRE(physical->IsMapSpriteVisible());
+    CHECK_FALSE(physical->HasExtraMapSprites());
+    CHECK(physical->IsMapSpriteVisibleAtHex(mpos {8, 8}));
+    CHECK_FALSE(physical->IsMapSpriteVisibleAtHex(contact));
+
+    CHECK(Client_Map_GetVisibleItemOnHex(map, physical->GetId(), mpos {8, 8}) == physical);
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical->GetId(), contact));
+    CHECK(std::ranges::find(map->GetItemsOnHex(contact), physical) != map->GetItemsOnHex(contact).end());
+
+    wall->GetMapSprite()->Invalidate();
+    CHECK_FALSE(wall->IsMapSpriteValid());
+    CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
+    CHECK(wall->IsMapSpriteVisibleAtHex(contact));
+    CHECK(wall->IsMapSpriteVisibleAtHex(other_contact));
+    auto current_extras = wall->GetExtraMapSprites();
+    REQUIRE(current_extras);
+    auto contact_entry = std::ranges::find_if(*current_extras, [contact](auto&& entry) {
+        return entry.second && entry.first->GetHex() == contact;
+    });
+    REQUIRE(contact_entry != current_extras->end());
+    nptr<MapSprite> current_contact_sprite = contact_entry->first;
+    REQUIRE(current_contact_sprite);
+    REQUIRE_FALSE(current_contact_sprite->IsHidden());
+    INFO("VISIBLE_HEX_FIXTURE|primary_visible=" << (wall->IsMapSpriteVisible() ? 1 : 0)
+         << "|contact_visible=" << (!current_contact_sprite->IsHidden() ? 1 : 0));
+
+    current_contact_sprite->Invalidate();
+    CHECK_FALSE(contact_entry->second);
+    CHECK(contact_entry->first);
+    CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(contact));
+    CHECK(wall->IsMapSpriteVisibleAtHex(other_contact));
+
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact));
+    CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), other_contact) == wall);
+
+    ident_t physical_id = physical->GetId();
+    map->DestroyItem(physical);
+    CHECK_FALSE(map->GetItem(physical_id));
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical_id, mpos {8, 8}));
+    CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical_id, contact));
 }
 
 TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")

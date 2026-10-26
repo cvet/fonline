@@ -15468,6 +15468,18 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror; Docs/en/explanation/rendering/index.md#optional-unlit-sprite-overlay specifies release at the next sprite update.",
       "compatibility": "No binary resource or persisted schema changes. This is a native ownership correction; consumers rebuild with the matching Engine. The separately added script export changes the generated compatibility fingerprint, so its full binary/metadata/bake set must stay coordinated. Buffer/lifecycle tests do not substitute for GPU or platform acceptance.",
       "owner": "rendering-particles"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.c65b047a271abc5e",
+      "baseline_contract_sha256": "e9891e4ec26e4e5de8ce25427d7c2563fac690944d6b1ed05f0a56f366116f2a",
+      "current_contract_sha256": "5e6fb9bd3482e972f2f0b982a90981efee9dab8042fa0b3b81ec426ade03e349",
+      "classification": "breaking",
+      "rationale": "The strict native-codegen scope grows from 2584 to 2585 symbols solely by adding client/mapper Map.GetVisibleItemOnHex. No existing stable ID, signature, unit, default or valid-result meaning is removed or replaced. The query deliberately checks the requested visible render entry; existing item lookups retain origin-based filtering and Item.IsVisible remains primary-only.",
+      "migration": "Docs/en/reference/changelog.md#unreleased and its Russian mirror. Regenerate bindings and metadata, rebuild enabled native roles and managed assemblies, and bake matching server/client resources. New callers supply an exact nonzero runtime item ID and a valid contact hex. No existing caller or saved-data conversion is required.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; Docs/en/explanation/runtime/client.md documents the visible-copy query. This feature-branch change retains the published version; a new dated minor belongs to authorized master integration.",
+      "compatibility": "The added export changes codegen compatibility identity and the generated method manifest. The manual migration marker, Managed ABI and persisted/network field layouts are unchanged. Deploy or roll back matching binaries, bindings, metadata, assemblies and baked resources together; mixed sets remain rejected. Native visibility tests do not qualify rendering on other platforms.",
+      "owner": "scripting-rendering"
     }
   ]
 }

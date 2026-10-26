@@ -196,6 +196,23 @@ void HexView::RefreshSprite()
     }
 }
 
+auto HexView::IsMapSpriteVisibleAtHex(mpos hex) const noexcept -> bool
+{
+    if (_mapSprValid && _mapSpr && _mapSpr->GetHex() == hex && !_mapSpr->IsHidden()) {
+        return true;
+    }
+
+    if (_extraMapSpr) {
+        for (auto&& [mspr, valid] : *_extraMapSpr) {
+            if (valid && mspr && mspr->GetHex() == hex && !mspr->IsHidden()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 {
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");

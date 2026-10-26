@@ -264,6 +264,31 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     return item;
 }
 
+// Returns the item with the supplied nonzero runtime id when a visible sprite render entry represents it at the requested in-view hex, or null when absent; a zero id or invalid hex throws
+///@ ExportMethod
+FO_SCRIPT_API nptr<ItemView> Client_Map_GetVisibleItemOnHex(ptr<MapView> self, ident_t itemId, mpos hex)
+{
+    if (!itemId) {
+        throw ScriptException("Item id arg is zero");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+    if (!self->IsHexInViewArea(hex)) {
+        return nullptr;
+    }
+
+    span<ptr<ItemHexView>> hex_items = self->GetItemsOnHex(hex);
+
+    for (auto item : hex_items) {
+        if (item->GetId() == itemId && item->IsMapSpriteVisibleAtHex(hex)) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
 // Returns the map's single-item lookup result for a valid hex, or null when no item is selected there; an invalid hex throws
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex)

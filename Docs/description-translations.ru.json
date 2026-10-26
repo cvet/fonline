@@ -5590,6 +5590,10 @@
           "source_sha256": "405236e72866f39de76e9df74279e73d7e1f02bf1b494b0e7f924f1fe6a41224",
           "translation": "Возвращает все гексы карты, которые это представление сейчас выбирает для отрисовки."
         },
+        "/symbols/@id=script.method.client.Map.GetVisibleItemOnHex/description": {
+          "source_sha256": "1a8f07fbb8bc65cd866d13eadd18348d524c789efad4f0382d95f7aa735ff488",
+          "translation": "Возвращает предмет с заданным ненулевым runtime ID, если в запрошенном гексе внутри области обзора есть его видимая запись отрисовки; иначе null. Нулевой ID или неверный гекс вызывает исключение."
+        },
         "/symbols/@id=script.method.client.Map.GetVisibleLayers/description": {
           "source_sha256": "736f71b53bbf0b66e5fe692549decded5cb111a877ffca9964ea878c17880007",
           "translation": "Возвращает набор слоёв, видимых в текущем представлении карты."
