@@ -4,8 +4,12 @@
 # Common
 Common.GameName = FOnline Minimal Multiplayer
 Common.GameVersion = 0.1.0
+Common.UnpackagedSubConfig =
+Common.Packaged = False
 Common.AsyncLogWrite = False
+Common.NonInteractive = False
 Common.SecretSettingTokens = secret token password apikey
+Common.UserWritablePath =
 
 # AngelScript
 AngelScript.OverrunReportTime = 0
@@ -62,6 +66,7 @@ Network.MoveLateCatchUpMinMs = 150
 Network.MoveLateCatchUpMaxMs = 10000
 Network.MovePlanJoinMaxSteps = 3
 Network.MoveSyncTrace = False
+Network.CompatibilityVersion =
 Network.ForceCompatibilityVersion =
 Network.ForceMetadataVersion =
 
@@ -116,6 +121,8 @@ Audio.MixRate = 44100
 # View
 View.ScreenWidth = 1024
 View.ScreenHeight = 768
+View.MonitorWidth = 0
+View.MonitorHeight = 0
 View.HideNativeCursor = False
 View.FadingDuration = 1000
 View.MapZoomEnabled = False
@@ -168,6 +175,7 @@ Render.ForceSDLGpu = False
 Render.ForceGlslEsProfile = False
 Render.AllowSoftwareRenderer = False
 Render.SDLGpuDriver =
+Render.RenderDebug = False
 Render.DrawWireframe = False
 Render.VSync = False
 Render.AlwaysOnTop = False

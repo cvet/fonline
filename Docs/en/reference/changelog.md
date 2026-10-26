@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Fix libc++ noexcept checks, local types, search focus/selection and backup links; refresh example defaults.
+
+### Migration
+
+- Base `4dc5c55f59240f45e0e2d9f9f2564261b3ffa471` (`2026.1.70-dev`). APIs/settings/values/formats, runtime `0.0.81` and Managed ABI `9` unchanged; no conversion. Rebuild/regenerate docs; rollback matching artifacts.
+
+## 2026.1.70-dev - 2026-10-26
+
+### Fixed
+
 - Correct square camera shifts, typed `ScriptFunc` handle storage/cleanup and project Git build-hash dependencies, including packed refs/worktrees. Snapshot fixtures use runtime metadata; retain upstream isolation and shutdown checks.
 
 ### Migration

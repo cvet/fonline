@@ -1491,9 +1491,9 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
             ctx->LockSingleton(server->GetEntityLock());
 
             auto hash = [&server](string_view value) { return server->Hashes.to_hashed_string(value); };
-            auto root_entry = hash("RootState");
-            auto leaf_entry = hash("LeafState");
-            auto critter_entry = hash("CritterState");
+            hstring root_entry = hash("RootState");
+            hstring leaf_entry = hash("LeafState");
+            hstring critter_entry = hash("CritterState");
 
             auto marker_property = [&server](ptr<Entity> entity) {
                 auto prop = server->GetPropertyRegistrar(entity->GetTypeName())->FindProperty("Marker");

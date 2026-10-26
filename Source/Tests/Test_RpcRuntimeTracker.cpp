@@ -33,8 +33,8 @@
 
 #include "Common.h"
 
-#include "catch_amalgamated.hpp"
 #include "RpcRuntimeTracker.h"
+#include "catch_amalgamated.hpp"
 
 FO_BEGIN_NAMESPACE
 

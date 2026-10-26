@@ -188,7 +188,8 @@ public partial struct synctime
     public static bool operator >=(synctime a, synctime b) => a.value >= b.value;
     public static synctime operator +(synctime a, timespan b) => new synctime(a.value + b.milliseconds);
     public static synctime operator -(synctime a, timespan b) => new synctime(a.value - b.milliseconds);
-    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value, TimePlace.Milliseconds);
+    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value,
+                                                                              TimePlace.Milliseconds);
 
     public long milliseconds => value;
     public long seconds => value / 1_000L;

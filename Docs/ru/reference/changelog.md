@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"001b6cf2040e660317ccb2a168a188058913c7db9089a5edc9bb0c171ca4ff79"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"5e15be8cc2467f37c22299ca4939ebd630b7de4e3a53d79451971c5107089368"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Исправлено
+
+- Исправлены noexcept libc++, типы, поиск, ссылки резервирования и defaults примера.
+
+### Миграция
+
+- От `4dc5c55f59240f45e0e2d9f9f2564261b3ffa471` (`2026.1.70-dev`). API/настройки/значения/форматы, runtime `0.0.81` и Managed ABI `9` прежние; без конверсии. Пересборка/генерация документации; откат согласованными артефактами.
+
+## 2026.1.70-dev - 2026-10-26
 
 ### Исправлено
 
