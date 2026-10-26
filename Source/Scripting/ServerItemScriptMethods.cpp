@@ -43,7 +43,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the init callback and store its name as the init script
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<Item>, bool> initFunc)
 {
@@ -58,7 +58,7 @@ FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the named init script and store its name
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
@@ -69,7 +69,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover
+// Create an item from a prototype id and add it to a container
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, any_t stackId = any_t {})
 {
@@ -84,7 +84,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hs
     return self->AddItemToContainer(item, stackId);
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover
+// Create an item from a prototype descriptor and add it to a container
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, any_t stackId = any_t {})
 {
@@ -96,7 +96,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, pt
     return self->AddItemToContainer(item, stackId);
 }
 
-// SyncScope: requires self; returns inner item handles covered by self while the cover remains
+// Return inner items of this container, optionally limited to a stack id
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
@@ -105,7 +105,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item>
     return items;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
+// Resolve the map containing this item through its critter or container ownership chain
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
@@ -114,7 +114,7 @@ FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMap(ptr<Item> self)
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
+// Resolve the containing map and write the item's map hex through the output argument
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
@@ -123,7 +123,7 @@ FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMapPosition(ptr<Item>
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover
+// Resolve the critter holding this item through container ownership, or null when map-owned
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
@@ -132,7 +132,7 @@ FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Critter> Server_Item_GetCritter(ptr<Item>
     return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches
+// Refresh map visibility and blocking caches for an item owned by a map hex
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {

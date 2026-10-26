@@ -38,7 +38,7 @@
 
 FO_BEGIN_NAMESPACE
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the init callback and store its name as the init script
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, ptr<Location>, bool> initFunc)
 {
@@ -53,7 +53,7 @@ FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<vo
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the named init script and store its name
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring initFunc)
 {
@@ -64,7 +64,7 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring ini
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; creates and attaches a child map under the location cover
+// Create a child map from a prototype id and attach it to a location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> self, hstring mapPid)
 {
@@ -76,7 +76,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> se
     return map;
 }
 
-// SyncScope: requires self; creates and attaches a child map under the location cover
+// Create a child map from a prototype descriptor and attach it to a location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
@@ -90,14 +90,14 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> se
     return map;
 }
 
-// SyncScope: requires self; counts child maps covered by the location cover
+// Return the number of child maps attached to this location
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Location_GetMapCount(ptr<Location> self)
 {
     return numeric_cast<int32_t>(self->GetMapsCount());
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the first child map with the given prototype id, or null
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPid)
 {
@@ -112,7 +112,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the first child map with the given prototype descriptor, or null
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
@@ -128,7 +128,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
     return nullptr;
 }
 
-// SyncScope: requires self; returned map is covered by self while the location cover remains
+// Return the child map at the given index, or throw when it is missing
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
@@ -137,7 +137,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_GetMapByIndex(ptr<Locat
     return map;
 }
 
-// SyncScope: requires self; returned maps are covered by self while the location cover remains
+// Return all child maps attached to this location
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Map>> Server_Location_GetMaps(ptr<Location> self)
 {
@@ -146,7 +146,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Map>> Server_Location_GetMaps(ptr<Loc
     return maps;
 }
 
-// SyncScope: requires self; regenerates all child maps covered by the location cover
+// Regenerate every child map of a location that is not being destroyed
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
 {

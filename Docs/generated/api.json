@@ -72946,7 +72946,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.Action(CritterAction action, int32 actionData, AbstractItem? contextItem)",
-      "description": "SyncScope: requires self + context item when non-null; sends/broadcasts action only",
+      "description": "Send and broadcast a critter action with an optional context item",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -72954,7 +72954,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 713
+        "line": 706
       },
       "contract": {
         "explicit": true,
@@ -73007,7 +73007,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item Critter.AddItem(ProtoItem proto)",
-      "description": "SyncScope: requires self; creates and attaches a new inventory item under self's cover",
+      "description": "Create an inventory item from a prototype descriptor and attach it to a critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73015,7 +73015,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 481
+        "line": 474
       },
       "contract": {
         "explicit": true,
@@ -73054,7 +73054,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item Critter.AddItem(hstring pid)",
-      "description": "SyncScope: requires self; creates and attaches a new inventory item under self's cover",
+      "description": "Create an inventory item from a prototype id and attach it to a critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73062,7 +73062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 463
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -73101,7 +73101,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.AttachToCritter(Critter cr)",
-      "description": "SyncScope: requires self + cr, and both must be on the same covered map",
+      "description": "Attach this critter to a critter on the same map, detaching it from a previous master first",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73109,7 +73109,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 930
+        "line": 923
       },
       "contract": {
         "explicit": true,
@@ -73148,7 +73148,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.ChangeItemSlot(ident itemId, CritterItemSlot slot)",
-      "description": "SyncScope: requires self + inventory item; mutates item slot and fires movement/equipment events",
+      "description": "Move an inventory item to an enabled critter slot, swapping the occupant and firing item-moved events",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73156,7 +73156,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 597
+        "line": 590
       },
       "contract": {
         "explicit": true,
@@ -73202,7 +73202,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.ChangeMovingSpeed(int32 speed)",
-      "description": "SyncScope: requires self; changes current movement speed",
+      "description": "Change this critter's movement speed within the uint16_t range",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73210,7 +73210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 919
+        "line": 912
       },
       "contract": {
         "explicit": true,
@@ -73249,7 +73249,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.DetachAllCritters()",
-      "description": "SyncScope: requires self and attached critters; detaches each attached critter and refreshes visibility",
+      "description": "Detach all critters attached to this critter and refresh visibility",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73257,7 +73257,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 982
+        "line": 975
       },
       "contract": {
         "explicit": true,
@@ -73288,7 +73288,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.DetachFromCritter()",
-      "description": "SyncScope: requires self + current map; detaches self and refreshes visibility",
+      "description": "Detach this critter from its master and refresh visibility",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73296,7 +73296,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 970
+        "line": 963
       },
       "contract": {
         "explicit": true,
@@ -73327,7 +73327,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.Disconnect()",
-      "description": "SyncScope: requires self + its auto-widened Player link; closes that player's connection",
+      "description": "Request graceful disconnection of the player controlling this critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73335,7 +73335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 740
+        "line": 733
       },
       "contract": {
         "explicit": true,
@@ -73366,7 +73366,7 @@
       ],
       "receiver": "Critter",
       "signature": "Critter[] Critter.GetAttachedCritters()",
-      "description": "SyncScope: requires self; returned attached critters need their own cover before mutation",
+      "description": "Return critters attached to this critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73374,7 +73374,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 993
+        "line": 986
       },
       "contract": {
         "explicit": true,
@@ -73405,7 +73405,7 @@
       ],
       "receiver": "Critter",
       "signature": "Critter? Critter.GetCritter(ident id, CritterSeeType seeType)",
-      "description": "SyncScope: requires self; observer lookup may need self's map covered when self is mapped",
+      "description": "Return a critter visible to this critter by id and visibility type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73413,7 +73413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 384
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -73459,7 +73459,7 @@
       ],
       "receiver": "Critter",
       "signature": "Critter[] Critter.GetCritters(CritterSeeType seeType, CritterFindType findType)",
-      "description": "SyncScope: requires self and current map when mapped; returned critters are covered only while that cover remains",
+      "description": "Return critters visible to this critter, sorted by distance when it is on a map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73467,7 +73467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 392
+        "line": 385
       },
       "contract": {
         "explicit": true,
@@ -73513,7 +73513,7 @@
       ],
       "receiver": "Critter",
       "signature": "ident[] Critter.GetGlobalMapCritterIds(uint64& revision)",
-      "description": "SyncScope: requires self; returns the ids of self's current global-map group together with the group's\nmembership revision (empty with revision 0 when self is mapped). Group members are independent Critter roots\nthat self's cover does not include, so a caller that sends initial info to, transfers, or destroys a\nglobal-map critter resolves and covers the returned ids and then re-reads ids plus revision to prove the\nmembership did not change while it was acquiring that cover",
+      "description": "Return ids of this critter's global-map group and write its membership revision",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73521,7 +73521,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 113
+        "line": 109
       },
       "contract": {
         "explicit": true,
@@ -73560,7 +73560,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item? Critter.GetItem(ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned inventory item is covered by self while the cover remains",
+      "description": "Return the first inventory item whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73568,7 +73568,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 519
+        "line": 512
       },
       "contract": {
         "explicit": true,
@@ -73614,7 +73614,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item? Critter.GetItem(ident itemId)",
-      "description": "SyncScope: requires self; returned inventory item is covered by self while the cover remains",
+      "description": "Return an inventory item by id, or null when it is absent or the id is zero",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73622,7 +73622,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 493
+        "line": 486
       },
       "contract": {
         "explicit": true,
@@ -73661,7 +73661,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item? Critter.GetItem(hstring protoId)",
-      "description": "SyncScope: requires self; returned inventory item is covered by self while the cover remains",
+      "description": "Return the highest-priority inventory item with the given prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73669,7 +73669,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 505
+        "line": 498
       },
       "contract": {
         "explicit": true,
@@ -73708,7 +73708,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item? Critter.GetItem(ProtoItem proto)",
-      "description": "SyncScope: requires self; returned inventory item is covered by self while the cover remains",
+      "description": "Return the highest-priority inventory item with the given prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73716,7 +73716,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 512
+        "line": 505
       },
       "contract": {
         "explicit": true,
@@ -73755,7 +73755,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item[] Critter.GetItems(ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned inventory items are covered by self while the cover remains",
+      "description": "Return inventory items whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73763,7 +73763,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 542
+        "line": 535
       },
       "contract": {
         "explicit": true,
@@ -73809,7 +73809,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item[] Critter.GetItems(hstring protoId)",
-      "description": "SyncScope: requires self; returned inventory items are covered by self while the cover remains",
+      "description": "Return inventory items with the given prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73817,7 +73817,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 561
+        "line": 554
       },
       "contract": {
         "explicit": true,
@@ -73856,7 +73856,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item[] Critter.GetItems()",
-      "description": "SyncScope: requires self; returned inventory items are covered by self while the cover remains",
+      "description": "Return all inventory items of this critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73864,7 +73864,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 534
+        "line": 527
       },
       "contract": {
         "explicit": true,
@@ -73895,7 +73895,7 @@
       ],
       "receiver": "Critter",
       "signature": "Item[] Critter.GetItems(ProtoItem proto)",
-      "description": "SyncScope: requires self; returned inventory items are covered by self while the cover remains",
+      "description": "Return inventory items with the given prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -73903,7 +73903,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 579
+        "line": 572
       },
       "contract": {
         "explicit": true,
@@ -73942,7 +73942,7 @@
       ],
       "receiver": "Critter",
       "signature": "Map? Critter.GetMap()",
-      "description": "SyncScope: requires self; returns the current parent map handle, but does not cover it for later reads",
+      "description": "Return the parent map of this critter",
       "flags": [
         "PassOwnership"
       ],
@@ -73983,7 +73983,7 @@
       ],
       "receiver": "Critter",
       "signature": "MovingContext? Critter.GetMovingContext()",
-      "description": "SyncScope: requires self; returned movement context is a snapshot handle for self's active move",
+      "description": "Return the current movement context or the last retained context when movement has stopped",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74022,7 +74022,7 @@
       ],
       "receiver": "Critter",
       "signature": "MovingState Critter.GetMovingState()",
-      "description": "SyncScope: requires self; reads current movement state only",
+      "description": "Return the current movement state of this critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74030,7 +74030,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 905
+        "line": 898
       },
       "contract": {
         "explicit": true,
@@ -74061,7 +74061,7 @@
       ],
       "receiver": "Critter",
       "signature": "uint32 Critter.GetMovingUid()",
-      "description": "SyncScope: requires self; reads current movement uid only",
+      "description": "Return the current movement uid of this critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74100,7 +74100,7 @@
       ],
       "receiver": "Critter",
       "signature": "Player? Critter.GetPlayer()",
-      "description": "SyncScope: requires self; returns the auto-widen partner Player when one is attached",
+      "description": "Return the player controlling this critter when one is attached",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74139,7 +74139,7 @@
       ],
       "receiver": "Critter",
       "signature": "timespan Critter.GetPlayerOfflineTime()",
-      "description": "SyncScope: requires self; reads offline state for this critter's player link only",
+      "description": "Return the offline duration of this critter's player link",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74147,7 +74147,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 1001
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -74178,7 +74178,7 @@
       ],
       "receiver": "Critter",
       "signature": "CritterVisibilityMode Critter.GetVisibilityMode(Critter cr)",
-      "description": "SyncScope: requires self + cr; reads self's visibility-mode cache for a covered critter",
+      "description": "Return this critter's visibility mode for the critter, full for itself",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74186,7 +74186,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 441
+        "line": 434
       },
       "contract": {
         "explicit": true,
@@ -74225,7 +74225,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsAlive()",
-      "description": "SyncScope: requires self; reads current condition state only",
+      "description": "Return whether this critter is alive",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74233,7 +74233,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 342
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -74264,7 +74264,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsDead()",
-      "description": "SyncScope: requires self; reads current condition state only",
+      "description": "Return whether this critter is dead",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74272,7 +74272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 356
+        "line": 349
       },
       "contract": {
         "explicit": true,
@@ -74303,7 +74303,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsKnockout()",
-      "description": "SyncScope: requires self; reads current condition state only",
+      "description": "Return whether this critter is knocked out",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74311,7 +74311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 349
+        "line": 342
       },
       "contract": {
         "explicit": true,
@@ -74342,7 +74342,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsMoving()",
-      "description": "SyncScope: requires self; reads current movement flag only",
+      "description": "Return whether this critter is currently moving",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74381,7 +74381,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsOnline()",
-      "description": "SyncScope: requires self + its auto-widened Player link; reads online state only",
+      "description": "Return whether this player-controlled critter has a live player",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74389,7 +74389,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 786
+        "line": 779
       },
       "contract": {
         "explicit": true,
@@ -74420,7 +74420,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsSee(Critter cr)",
-      "description": "SyncScope: requires self + cr; checks self's visibility cache for a covered critter",
+      "description": "Return whether this critter sees the critter, true for itself",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74428,7 +74428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 415
+        "line": 408
       },
       "contract": {
         "explicit": true,
@@ -74467,7 +74467,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsSee(Item item)",
-      "description": "SyncScope: requires self + item; checks self's visible-item cache for a covered item",
+      "description": "Return whether this critter's visible-item cache contains the item",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74475,7 +74475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 454
+        "line": 447
       },
       "contract": {
         "explicit": true,
@@ -74514,7 +74514,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.IsSeenBy(Critter cr)",
-      "description": "SyncScope: requires self + cr; checks cr's visibility cache for this covered critter",
+      "description": "Return whether the critter sees this critter, true for itself",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74522,7 +74522,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 428
+        "line": 421
       },
       "contract": {
         "explicit": true,
@@ -74561,7 +74561,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.MakeControllable(bool controllable)",
-      "description": "SyncScope: requires self + current map; changes controllable/player state and may self-sync map",
+      "description": "Mark or unmark this critter as player-controllable, detaching its player when disabling",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74569,7 +74569,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 753
+        "line": 746
       },
       "contract": {
         "explicit": true,
@@ -74608,7 +74608,7 @@
       ],
       "receiver": "Critter",
       "signature": "bool Critter.MapTransfersLocked()",
-      "description": "SyncScope: requires self; returns a transient snapshot of the transfer-lock nesting counter and neither\nacquires cover nor reserves the lock state against a later change",
+      "description": "Return whether transfers between maps are currently locked for this critter",
       "flags": [
         "Getter"
       ],
@@ -74618,7 +74618,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 146
+        "line": 139
       },
       "contract": {
         "explicit": true,
@@ -74649,7 +74649,7 @@
       ],
       "receiver": "Critter",
       "signature": "MovingContext Critter.MoveToHex(mpos hex, int32 cut, int32 speed, callback(bool,Critter,Item) gagCallabck)",
-      "description": "SyncScope: requires self + current map; starts movement and returns the new movement context",
+      "description": "Start path movement to a hex and return the new movement context",
       "flags": [
         "PassOwnership"
       ],
@@ -74659,7 +74659,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 877
+        "line": 870
       },
       "contract": {
         "explicit": true,
@@ -74719,7 +74719,7 @@
       ],
       "receiver": "Critter",
       "signature": "MovingContext Critter.MoveToHex(mpos hex, int32 cut, ipos16 endHexOffset, int32 speed, callback(bool,Critter,Item) gagCallabck)",
-      "description": "SyncScope: requires self + current map; starts movement and returns the new movement context",
+      "description": "Start path movement with an end hex offset and return the new movement context",
       "flags": [
         "PassOwnership"
       ],
@@ -74729,7 +74729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 886
+        "line": 879
       },
       "contract": {
         "explicit": true,
@@ -74806,7 +74806,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 896
+        "line": 889
       },
       "contract": {
         "explicit": true,
@@ -74880,7 +74880,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.RefreshView()",
-      "description": "SyncScope: requires self + current map when mapped; recomputes visible critters/items",
+      "description": "Recompute this critter's visible critters and items",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74888,7 +74888,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 363
+        "line": 356
       },
       "contract": {
         "explicit": true,
@@ -74919,7 +74919,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.RefreshVisibility()",
-      "description": "SyncScope: requires self + current map when mapped; recomputes visible critters/items",
+      "description": "Recompute this critter's visible critters and items",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74927,7 +74927,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 1008
+        "line": 1001
       },
       "contract": {
         "explicit": true,
@@ -74958,7 +74958,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SendGlobalMapGroupInfo()",
-      "description": "SyncScope: requires self + every critter of self's current global-map group; sends the other members to self's\nplayer without acquiring any cover. Initial info sends only the critter itself, so a caller that attaches a\nglobal-map critter to a player covers the group (Sync::WidenCritterWithGlobalMapGroup) and then calls this",
+      "description": "Send the other members of this critter's global-map group to its player after validating every member",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -74966,7 +74966,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 122
+        "line": 116
       },
       "contract": {
         "explicit": true,
@@ -74997,7 +74997,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SendItems(Item[] items, bool owned = false, bool withInnerEntities = false, any contextParam = any())",
-      "description": "SyncScope: requires self + every non-null item in items; sends a network payload without changing cover",
+      "description": "Send the listed non-null items to this critter's player with ownership and inner-entity flags",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75005,7 +75005,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 722
+        "line": 715
       },
       "contract": {
         "explicit": true,
@@ -75065,7 +75065,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SetCondition(CritterCondition cond, CritterActionAnim actionAnim, AbstractItem? contextItem)",
-      "description": "SyncScope: requires self + current map when mapped + context item when non-null; mutates condition and map fields",
+      "description": "Change this critter's condition, update its map field and broadcast the matching action",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75073,7 +75073,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 667
+        "line": 660
       },
       "contract": {
         "explicit": true,
@@ -75126,7 +75126,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SetDir(mdir dir)",
-      "description": "SyncScope: requires self; mutates direction and broadcasts it",
+      "description": "Change this critter's direction and broadcast it when the direction differs",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75134,7 +75134,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 371
+        "line": 364
       },
       "contract": {
         "explicit": true,
@@ -75173,7 +75173,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SetupScript(callback(void,Critter,bool) initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the init callback and store its name as the init script",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75220,7 +75220,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.SetupScriptEx(hstring initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the named init script and store its name",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75267,7 +75267,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.StopMoving()",
-      "description": "SyncScope: requires self; stops current movement",
+      "description": "Stop this critter's current movement",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75275,7 +75275,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 912
+        "line": 905
       },
       "contract": {
         "explicit": true,
@@ -75306,7 +75306,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToGlobal()",
-      "description": "SyncScope: requires self + current source map when self is mapped; mutates self to global-map state",
+      "description": "Move this critter from its current map to the global map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75314,7 +75314,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 247
+        "line": 240
       },
       "contract": {
         "explicit": true,
@@ -75345,7 +75345,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToGlobalGroup(Critter globalCr)",
-      "description": "SyncScope: requires self + globalCr; if self is mapped also requires self's current source map",
+      "description": "Join this critter to a global-map critter's group, transferring it off the map when mapped",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75353,7 +75353,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 289
+        "line": 282
       },
       "contract": {
         "explicit": true,
@@ -75392,7 +75392,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToGlobalWithGroup(Critter[] group)",
-      "description": "SyncScope: requires self + current source map and every group critter + its current source map before transfer",
+      "description": "Move this critter to the global map, then move each live non-null group member",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75400,7 +75400,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 264
+        "line": 257
       },
       "contract": {
         "explicit": true,
@@ -75439,7 +75439,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToHex(mpos hex, mdir dir)",
-      "description": "SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement/dir",
+      "description": "Move this critter to a valid hex on its current map, updating direction and broadcasting a direction-only change",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75447,7 +75447,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 175
+        "line": 168
       },
       "contract": {
         "explicit": true,
@@ -75493,7 +75493,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToHex(mpos hex)",
-      "description": "SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement",
+      "description": "Move this critter to a valid hex on its current map, keeping its current direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75501,7 +75501,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 153
+        "line": 146
       },
       "contract": {
         "explicit": true,
@@ -75540,7 +75540,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex)",
-      "description": "SyncScope: requires self + source map if mapped + destination map + destination location; scripts should use Sync::LockForTransferToMap(self, map)",
+      "description": "Transfer this critter to a valid hex on another map, keeping its direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75548,7 +75548,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 206
+        "line": 199
       },
       "contract": {
         "explicit": true,
@@ -75594,7 +75594,7 @@
       ],
       "receiver": "Critter",
       "signature": "void Critter.TransferToMap(Map map, mpos hex, mdir dir, bool preciseHex = false)",
-      "description": "SyncScope: requires self + source map if mapped + destination map + destination location; scripts should use Sync::LockForTransferToMap(self, map)",
+      "description": "Transfer this critter with the given direction, using exact placement or a search within radius two",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -75602,7 +75602,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 224
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -75662,7 +75662,7 @@
       ],
       "receiver": "Entity",
       "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any[]) func, bool excludeExecuting = false)",
-      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "description": "Count registered time events for this entity and callback, optionally excluding executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75722,7 +75722,7 @@
       ],
       "receiver": "Entity",
       "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,TimeEventContext) func, bool excludeExecuting = false)",
-      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "description": "Count registered time events for this entity and callback, optionally excluding executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75782,7 +75782,7 @@
       ],
       "receiver": "Entity",
       "signature": "int32 Entity.CountTimeEvent(callback(void,Entity,any) func, bool excludeExecuting = false)",
-      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "description": "Count registered time events for this entity and callback, optionally excluding executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75842,7 +75842,7 @@
       ],
       "receiver": "Entity",
       "signature": "int32 Entity.CountTimeEvent(callback(void,Entity) func, bool excludeExecuting = false)",
-      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "description": "Count registered time events for this entity and callback, optionally excluding executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -75902,7 +75902,7 @@
       ],
       "receiver": "Entity",
       "signature": "int32 Entity.CountTimeEvent(uint32 id, bool excludeExecuting = false)",
-      "description": "SyncScope: requires self; counts registered records, optionally excluding executing callbacks; no cover change",
+      "description": "Count registered time events with the given event id, optionally excluding executing callbacks",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76007,7 +76007,7 @@
       ],
       "receiver": "Entity",
       "signature": "bool Entity.IsPersistent()",
-      "description": "SyncScope: requires self; reads persistence flag only",
+      "description": "Return whether this server entity is marked persistent",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -76052,7 +76052,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.MakePersistent(bool persistent)",
-      "description": "SyncScope: requires self; persistence cascade may self-sync covered child entities",
+      "description": "Apply the persistent flag and cascade it to child entities",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -76105,7 +76105,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.RepeatTimeEvent(uint32 id, timespan repeat)",
-      "description": "SyncScope: requires self; updates repeat for event bound to self, no cover change",
+      "description": "Update the repeat interval for the time event with the given id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76165,7 +76165,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.RepeatTimeEvent(callback(void,Entity,any) func, timespan repeat)",
-      "description": "SyncScope: requires self; updates repeat for event bound to self, no cover change",
+      "description": "Update the repeat interval for time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76225,7 +76225,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.RepeatTimeEvent(callback(void,Entity,any[]) func, timespan repeat)",
-      "description": "SyncScope: requires self; updates repeat for event bound to self, no cover change",
+      "description": "Update the repeat interval for time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76285,7 +76285,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.RepeatTimeEvent(callback(void,Entity,TimeEventContext) func, timespan repeat)",
-      "description": "SyncScope: requires self; updates repeat for event bound to self, no cover change",
+      "description": "Update the repeat interval for time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76345,7 +76345,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.RepeatTimeEvent(callback(void,Entity) func, timespan repeat)",
-      "description": "SyncScope: requires self; updates repeat for event bound to self, no cover change",
+      "description": "Update the repeat interval for time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76405,7 +76405,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(callback(void,Entity,any) func, any data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76465,7 +76465,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(callback(void,Entity,any[]) func, any[] data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76525,7 +76525,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(uint32 id, any data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of the time event with the given id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76585,7 +76585,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(uint32 id, any[] data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of the time event with the given id using a data list",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76645,7 +76645,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(callback(void,Entity,TimeEventContext) func, any[] data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76705,7 +76705,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.SetTimeEventData(callback(void,Entity,TimeEventContext) func, any data)",
-      "description": "SyncScope: requires self; updates data for event bound to self, no cover change",
+      "description": "Replace the data payload of time events bound to this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76765,7 +76765,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any data)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event with a context and one data argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76839,7 +76839,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event with a context argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76899,7 +76899,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any[] data)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event with a context and a data list and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -76966,7 +76966,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity) func)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77033,7 +77033,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func, any[] data)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event with a context and a data list and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77107,7 +77107,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any[]) func, any[] data)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event with a data list and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77181,7 +77181,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity,any) func, any data)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event with one data argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77255,7 +77255,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity,any) func, any data)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event with one data argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77322,7 +77322,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, timespan repeat, callback(void,Entity,TimeEventContext) func)",
-      "description": "SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self",
+      "description": "Register a repeating time event with a context argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77389,7 +77389,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity,any[]) func, any[] data)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event with a data list and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77456,7 +77456,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity,TimeEventContext) func, any data)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event with a context and one data argument and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77523,7 +77523,7 @@
       ],
       "receiver": "Entity",
       "signature": "uint32 Entity.StartTimeEvent(timespan delay, callback(void,Entity) func)",
-      "description": "SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self",
+      "description": "Register a one-shot time event and return its id",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77583,7 +77583,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.StopTimeEvent(callback(void,Entity,any) func)",
-      "description": "SyncScope: requires self; stops events bound to self, no cover change",
+      "description": "Stop time events registered for this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77636,7 +77636,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.StopTimeEvent(callback(void,Entity,TimeEventContext) func)",
-      "description": "SyncScope: requires self; stops events bound to self, no cover change",
+      "description": "Stop time events registered for this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77689,7 +77689,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.StopTimeEvent(uint32 id)",
-      "description": "SyncScope: requires self; stops event bound to self, no cover change",
+      "description": "Stop the time event with the given id for this entity",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77742,7 +77742,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.StopTimeEvent(callback(void,Entity) func)",
-      "description": "SyncScope: requires self; stops events bound to self, no cover change",
+      "description": "Stop time events registered for this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77795,7 +77795,7 @@
       ],
       "receiver": "Entity",
       "signature": "void Entity.StopTimeEvent(callback(void,Entity,any[]) func)",
-      "description": "SyncScope: requires self; stops events bound to self, no cover change",
+      "description": "Stop time events registered for this entity and callback",
       "flags": [
         "TimeEventRelated"
       ],
@@ -77848,7 +77848,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.CallStaticItemFunction(Critter? cr, StaticItem staticItem, Item? usedItem, any param)",
-      "description": "SyncScope: requires cr and usedItem when non-null; staticItem is static map data, not a live entity cover",
+      "description": "Call a static item script function for a critter and optional used item",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -77856,7 +77856,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1539
+        "line": 1538
       },
       "contract": {
         "explicit": true,
@@ -77963,7 +77963,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.CreateCritter(hstring protoId, bool forPlayer, CritterProperty=>any props)",
-      "description": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
+      "description": "Create a detached critter with property overrides",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78024,7 +78024,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.CreateCritter(ProtoCritter proto, bool forPlayer)",
-      "description": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
+      "description": "Create a detached critter from a prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78078,7 +78078,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.CreateCritter(hstring protoId, bool forPlayer)",
-      "description": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
+      "description": "Create a detached critter from a prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78132,7 +78132,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.CreateCritter(ProtoCritter proto, bool forPlayer, CritterProperty=>any props)",
-      "description": "SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use",
+      "description": "Create a detached critter from a prototype descriptor with property overrides",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78341,7 +78341,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(hstring protoId, hstring[] map_pids, LocationProperty=>any props)",
-      "description": "SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location with child map ids and property overrides",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78402,7 +78402,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(ProtoLocation proto, LocationProperty=>any props)",
-      "description": "SyncScope: creates a new location in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location from a prototype descriptor with property overrides",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78456,7 +78456,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(ProtoLocation proto)",
-      "description": "SyncScope: creates a new location in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location from a prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78503,7 +78503,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(hstring protoId)",
-      "description": "SyncScope: creates a new location in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location from a prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78550,7 +78550,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(hstring protoId, hstring[] map_pids)",
-      "description": "SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location with child maps from prototype ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78604,7 +78604,7 @@
       ],
       "receiver": "Game",
       "signature": "Location Game.CreateLocation(hstring protoId, LocationProperty=>any props)",
-      "description": "SyncScope: creates a new location in the current context; returned location is covered by registration self-sync",
+      "description": "Create a location with property overrides",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78658,7 +78658,7 @@
       ],
       "receiver": "Game",
       "signature": "Player Game.CreateNotLoggedInPlayer()",
-      "description": "SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session",
+      "description": "Create a not-logged-in player session with a dummy connection",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78697,7 +78697,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbCompareExchangeRecordString(hstring collectionName, ident id, string key, string expected, string desired)",
-      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "description": "Compare and exchange one string field of a database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78705,7 +78705,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1235
+        "line": 1234
       },
       "contract": {
         "explicit": true,
@@ -78772,7 +78772,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbCompareExchangeRecordString(hstring collectionName, string id, string key, string expected, string desired)",
-      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "description": "Compare and exchange one string field of a database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78780,7 +78780,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1255
+        "line": 1254
       },
       "contract": {
         "explicit": true,
@@ -78847,7 +78847,7 @@
       ],
       "receiver": "Game",
       "signature": "ident[] Game.DbGetAllRecordIds(hstring collectionName)",
-      "description": "SyncScope: database collection scan only; no live entity cover is required",
+      "description": "Return all integer record ids in a database collection",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78855,7 +78855,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1050
+        "line": 1049
       },
       "contract": {
         "explicit": true,
@@ -78894,7 +78894,7 @@
       ],
       "receiver": "Game",
       "signature": "string[] Game.DbGetAllRecordKeys(hstring collectionName)",
-      "description": "SyncScope: database collection scan only; no live entity cover is required",
+      "description": "Return all string record keys in a database collection",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78902,7 +78902,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1061
+        "line": 1060
       },
       "contract": {
         "explicit": true,
@@ -78941,7 +78941,7 @@
       ],
       "receiver": "Game",
       "signature": "string=>string Game.DbGetPlayerData(ident playerId)",
-      "description": "SyncScope: database lookup only; does not touch live player entity cover",
+      "description": "Return a player database record as string key-value pairs",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78949,7 +78949,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1081
+        "line": 1080
       },
       "contract": {
         "explicit": true,
@@ -78988,7 +78988,7 @@
       ],
       "receiver": "Game",
       "signature": "string=>string Game.DbGetRecord(hstring collectionName, string id)",
-      "description": "SyncScope: database record read only; no live entity cover is required",
+      "description": "Return a database record by string key as string key-value pairs",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -78996,7 +78996,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1148
+        "line": 1147
       },
       "contract": {
         "explicit": true,
@@ -79042,7 +79042,7 @@
       ],
       "receiver": "Game",
       "signature": "string=>string Game.DbGetRecord(hstring collectionName, ident id)",
-      "description": "SyncScope: database record read only; no live entity cover is required",
+      "description": "Return a database record by integer id as string key-value pairs",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79050,7 +79050,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1127
+        "line": 1126
       },
       "contract": {
         "explicit": true,
@@ -79096,7 +79096,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbHasEntity(Entity entity)",
-      "description": "SyncScope: requires entity for type/id read; database lookup itself does not cover a live entity",
+      "description": "Return whether a entity has a database record",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79104,7 +79104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1072
+        "line": 1071
       },
       "contract": {
         "explicit": true,
@@ -79143,7 +79143,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbHasRecord(hstring collectionName, string id)",
-      "description": "SyncScope: database record lookup only; no live entity cover is required",
+      "description": "Return whether a database collection contains the string record key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79151,7 +79151,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1113
+        "line": 1112
       },
       "contract": {
         "explicit": true,
@@ -79197,7 +79197,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbHasRecord(hstring collectionName, ident id)",
-      "description": "SyncScope: database record lookup only; no live entity cover is required",
+      "description": "Return whether a database collection contains the integer record id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79205,7 +79205,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1099
+        "line": 1098
       },
       "contract": {
         "explicit": true,
@@ -79251,7 +79251,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbInsertRecord(hstring collectionName, ident id, string=>string keyValues)",
-      "description": "SyncScope: database record insert only; no live entity cover is required",
+      "description": "Insert a database record with an integer id, rejecting an existing record",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79259,7 +79259,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1275
+        "line": 1274
       },
       "contract": {
         "explicit": true,
@@ -79312,7 +79312,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbInsertRecord(hstring collectionName, string id, string=>string keyValues)",
-      "description": "SyncScope: database record insert only; no live entity cover is required",
+      "description": "Insert a database record with a string key, rejecting an existing record",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79320,7 +79320,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1312
+        "line": 1311
       },
       "contract": {
         "explicit": true,
@@ -79373,7 +79373,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbRemoveRecord(hstring collectionName, ident id)",
-      "description": "SyncScope: database record remove only; no live entity cover is required",
+      "description": "Remove a database record with an integer id when it exists",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79381,7 +79381,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1453
+        "line": 1452
       },
       "contract": {
         "explicit": true,
@@ -79427,7 +79427,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbRemoveRecord(hstring collectionName, string id)",
-      "description": "SyncScope: database record remove only; no live entity cover is required",
+      "description": "Remove a database record with a string key when it exists",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79435,7 +79435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1469
+        "line": 1468
       },
       "contract": {
         "explicit": true,
@@ -79481,7 +79481,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbTryInsertRecord(hstring collectionName, string id, string=>string keyValues)",
-      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "description": "Try to insert a database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79489,7 +79489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1202
+        "line": 1201
       },
       "contract": {
         "explicit": true,
@@ -79542,7 +79542,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.DbTryInsertRecord(hstring collectionName, ident id, string=>string keyValues)",
-      "description": "SyncScope: database mutation only; no live entity cover is required",
+      "description": "Try to insert a database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79550,7 +79550,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1169
+        "line": 1168
       },
       "contract": {
         "explicit": true,
@@ -79603,7 +79603,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordBool(hstring collectionName, ident id, string key, bool value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one bool field of an existing database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79611,7 +79611,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1439
+        "line": 1438
       },
       "contract": {
         "explicit": true,
@@ -79671,7 +79671,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordBool(hstring collectionName, string id, string key, bool value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one bool field of an existing database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79679,7 +79679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1446
+        "line": 1445
       },
       "contract": {
         "explicit": true,
@@ -79739,7 +79739,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordFloat64(hstring collectionName, ident id, string key, float64 value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one float64 field of an existing database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79747,7 +79747,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1425
+        "line": 1424
       },
       "contract": {
         "explicit": true,
@@ -79807,7 +79807,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordFloat64(hstring collectionName, string id, string key, float64 value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one float64 field of an existing database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79815,7 +79815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1432
+        "line": 1431
       },
       "contract": {
         "explicit": true,
@@ -79875,7 +79875,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordInt64(hstring collectionName, string id, string key, int64 value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one int64 field of an existing database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79883,7 +79883,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1418
+        "line": 1417
       },
       "contract": {
         "explicit": true,
@@ -79943,7 +79943,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordInt64(hstring collectionName, ident id, string key, int64 value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one int64 field of an existing database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -79951,7 +79951,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1411
+        "line": 1410
       },
       "contract": {
         "explicit": true,
@@ -80011,7 +80011,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordString(hstring collectionName, ident id, string key, string value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one string field of an existing database record with an integer id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80019,7 +80019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1397
+        "line": 1396
       },
       "contract": {
         "explicit": true,
@@ -80079,7 +80079,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DbUpdateRecordString(hstring collectionName, string id, string key, string value)",
-      "description": "SyncScope: database record update only; no live entity cover is required",
+      "description": "Update one string field of an existing database record with a string key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80087,7 +80087,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1404
+        "line": 1403
       },
       "contract": {
         "explicit": true,
@@ -80147,7 +80147,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyCritter(Critter? cr)",
-      "description": "SyncScope: requires cr + current source map when cr is non-null and not player-controlled",
+      "description": "Destroy a non-player critter subtree",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80194,7 +80194,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyCritters(Critter[] critters)",
-      "description": "SyncScope: requires every non-null cr + current source map when not player-controlled",
+      "description": "Destroy each non-null non-player critter subtree",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80241,7 +80241,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyEntities(Entity[] entities)",
-      "description": "SyncScope: requires every non-null entity + current parent when present; destroys each subtree",
+      "description": "Destroy each non-null entity subtree",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80288,7 +80288,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyEntity(Entity? entity)",
-      "description": "SyncScope: requires entity + current parent when entity is non-null; destroys the entity subtree",
+      "description": "Destroy the entity subtree when the entity is non-null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80335,7 +80335,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyItem(Item? item)",
-      "description": "SyncScope: requires item + current item parent when item is non-null; destroys the item subtree",
+      "description": "Destroy the item subtree when the item is non-null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80382,7 +80382,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyItems(Item[] items)",
-      "description": "SyncScope: requires every non-null item + current item parent; destroys each item subtree",
+      "description": "Destroy each non-null item subtree",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80429,7 +80429,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyLocation(Location? loc)",
-      "description": "SyncScope: requires loc when non-null; destroy cascade self-syncs covered child maps/entities",
+      "description": "Destroy a location subtree when the location is non-null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80476,7 +80476,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyMap(Map? map)",
-      "description": "SyncScope: requires map + parent location when map is non-null; destroy cascade self-syncs covered child entities",
+      "description": "Destroy a map subtree when the map is non-null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80523,7 +80523,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DestroyUnloadedCritter(ident crId)",
-      "description": "SyncScope: unloaded-record operation only; no live entity cover is required",
+      "description": "Delete an unloaded critter record by id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80570,7 +80570,7 @@
       ],
       "receiver": "Game",
       "signature": "Item[] Game.GetAllItems(ProtoItem? proto)",
-      "description": "SyncScope: registry scan only; returned item handles are not covered for later reads/mutations",
+      "description": "Return registered items matching the optional prototype descriptor",
       "flags": [
         "PassOwnership"
       ],
@@ -80580,7 +80580,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1001
+        "line": 1000
       },
       "contract": {
         "explicit": true,
@@ -80619,7 +80619,7 @@
       ],
       "receiver": "Game",
       "signature": "Item[] Game.GetAllItems(hstring pid)",
-      "description": "SyncScope: registry scan only; returned item handles are not covered for later reads/mutations",
+      "description": "Return registered items matching the optional prototype id",
       "flags": [
         "PassOwnership"
       ],
@@ -80629,7 +80629,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 981
+        "line": 980
       },
       "contract": {
         "explicit": true,
@@ -80668,7 +80668,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter[] Game.GetAllNpc(hstring pid)",
-      "description": "SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations",
+      "description": "Return non-player critters matching the optional prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80676,7 +80676,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1493
+        "line": 1492
       },
       "contract": {
         "explicit": true,
@@ -80715,7 +80715,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter[] Game.GetAllNpc(ProtoCritter proto)",
-      "description": "SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations",
+      "description": "Return non-player critters matching the given prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80723,7 +80723,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1512
+        "line": 1511
       },
       "contract": {
         "explicit": true,
@@ -80762,7 +80762,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter[] Game.GetAllNpc()",
-      "description": "SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations",
+      "description": "Return all non-player critters",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80770,7 +80770,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1485
+        "line": 1484
       },
       "contract": {
         "explicit": true,
@@ -80801,7 +80801,7 @@
       ],
       "receiver": "Game",
       "signature": "int64 Game.GetAllocatorMemoryUsage()",
-      "description": "SyncScope: allocator metric read only; no entity cover is required",
+      "description": "Return the allocator's in-use memory in bytes",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80809,7 +80809,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1846
+        "line": 1844
       },
       "contract": {
         "explicit": true,
@@ -80840,7 +80840,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter? Game.GetCritter(ident crId)",
-      "description": "SyncScope: registry lookup only; returned critter handle is not covered for later reads/mutations",
+      "description": "Return a live critter by id, or null when the id is zero or the entity is missing or being destroyed",
       "flags": [
         "PassOwnership"
       ],
@@ -80889,7 +80889,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetCritterRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover required",
+      "description": "Return the number of critters in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -80897,7 +80897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1883
+        "line": 1881
       },
       "contract": {
         "explicit": true,
@@ -80928,7 +80928,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter[] Game.GetCritters(CritterFindType findType)",
-      "description": "SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations",
+      "description": "Return registered critters matching the find type",
       "flags": [
         "PassOwnership"
       ],
@@ -80977,7 +80977,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Item item1, Item item2)",
-      "description": "SyncScope: requires item1 + item2; reads same-map placement from the covered items",
+      "description": "Return the distance between two items on the same map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81031,7 +81031,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Item item, Critter cr)",
-      "description": "SyncScope: requires item + cr; reads same-map placement from the covered entities",
+      "description": "Return the surface distance between a item and critter on the same map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81085,7 +81085,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(mpos hex, Critter cr)",
-      "description": "SyncScope: requires cr; reads critter placement from the covered critter",
+      "description": "Return the surface distance from a hex to a critter on a map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81139,7 +81139,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Critter cr, Item item)",
-      "description": "SyncScope: requires cr + item; reads same-map placement from the covered entities",
+      "description": "Return the surface distance between a critter and item on the same map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81193,7 +81193,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Item item, mpos hex)",
-      "description": "SyncScope: requires item; reads item placement from the covered item",
+      "description": "Return the distance from a item on a map to a hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81247,7 +81247,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Critter cr, mpos hex)",
-      "description": "SyncScope: requires cr; reads critter placement from the covered critter",
+      "description": "Return the surface distance from a critter on a map to a hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81301,7 +81301,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(mpos hex, Item item)",
-      "description": "SyncScope: requires item; reads item placement from the covered item",
+      "description": "Return the distance from a hex to a item on a map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81355,7 +81355,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetDistance(Critter cr1, Critter cr2)",
-      "description": "SyncScope: requires cr1 + cr2; reads same-map placement from the covered critters",
+      "description": "Return the surface distance between two critters on the same map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81409,7 +81409,7 @@
       ],
       "receiver": "Game",
       "signature": "Entity? Game.GetEntity(ident entityId)",
-      "description": "SyncScope: registry lookup only; returned entity handle is not covered for later reads/mutations",
+      "description": "Return a live entity by id, or null when the id is zero or the entity is missing or being destroyed",
       "flags": [
         "PassOwnership"
       ],
@@ -81458,7 +81458,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetEntityRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover is required",
+      "description": "Return the number of entities in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81466,7 +81466,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1855
+        "line": 1853
       },
       "contract": {
         "explicit": true,
@@ -81497,7 +81497,7 @@
       ],
       "receiver": "Game",
       "signature": "Entity[] Game.GetHeldSyncEntities()",
-      "description": "SyncScope: returns current held cover; does not change cover",
+      "description": "Return the entities currently held in the synchronization cover",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81505,7 +81505,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1803
+        "line": 1801
       },
       "contract": {
         "explicit": true,
@@ -81536,7 +81536,7 @@
       ],
       "receiver": "Game",
       "signature": "Item? Game.GetItem(ident itemId)",
-      "description": "SyncScope: registry lookup only; returned item handle is not covered for later reads/mutations",
+      "description": "Return a live item by id after rejecting a zero id, or null when it is missing or destroying",
       "flags": [
         "PassOwnership"
       ],
@@ -81585,7 +81585,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetItemRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover required",
+      "description": "Return the number of items in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81593,7 +81593,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1890
+        "line": 1888
       },
       "contract": {
         "explicit": true,
@@ -81624,7 +81624,7 @@
       ],
       "receiver": "Game",
       "signature": "hstring[] Game.GetItemRegistryProtoIds()",
-      "description": "SyncScope: registry snapshot of proto ids only; reads the registry map without touching entity state,\nso no entity cover is required. Intended for test-harness leak diagnostics",
+      "description": "Return the prototype ids of all registered items",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81632,7 +81632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1898
+        "line": 1895
       },
       "contract": {
         "explicit": true,
@@ -81663,7 +81663,7 @@
       ],
       "receiver": "Game",
       "signature": "Location? Game.GetLocation(ident locId)",
-      "description": "SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations",
+      "description": "Return a live location by id, or null for a missing or destroying location",
       "flags": [
         "PassOwnership"
       ],
@@ -81673,7 +81673,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 860
+        "line": 859
       },
       "contract": {
         "explicit": true,
@@ -81712,7 +81712,7 @@
       ],
       "receiver": "Game",
       "signature": "Location? Game.GetLocation(ProtoLocation locProto, int32 skipCount = 0)",
-      "description": "SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations",
+      "description": "Return a live location by prototype descriptor and occurrence index, or null",
       "flags": [
         "PassOwnership"
       ],
@@ -81722,7 +81722,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 876
+        "line": 875
       },
       "contract": {
         "explicit": true,
@@ -81768,7 +81768,7 @@
       ],
       "receiver": "Game",
       "signature": "Location? Game.GetLocation(hstring locPid, int32 skipCount = 0)",
-      "description": "SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations",
+      "description": "Return a live location by prototype id and occurrence index, or null",
       "flags": [
         "PassOwnership"
       ],
@@ -81778,7 +81778,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 868
+        "line": 867
       },
       "contract": {
         "explicit": true,
@@ -81824,7 +81824,7 @@
       ],
       "receiver": "Game",
       "signature": "Location? Game.GetLocation(LocationProperty property, int32 propertyValue)",
-      "description": "SyncScope: registry scan only; returned location handle is not covered for later reads/mutations",
+      "description": "Return the first live location whose integer property equals the value",
       "flags": [
         "PassOwnership"
       ],
@@ -81834,7 +81834,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 885
+        "line": 884
       },
       "contract": {
         "explicit": true,
@@ -81880,7 +81880,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetLocationRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover required",
+      "description": "Return the number of locations in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -81888,7 +81888,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1869
+        "line": 1867
       },
       "contract": {
         "explicit": true,
@@ -81919,7 +81919,7 @@
       ],
       "receiver": "Game",
       "signature": "Location[] Game.GetLocations()",
-      "description": "SyncScope: registry scan only; returned location handles are not covered for later reads/mutations",
+      "description": "Return all registered locations",
       "flags": [
         "PassOwnership"
       ],
@@ -81929,7 +81929,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 901
+        "line": 900
       },
       "contract": {
         "explicit": true,
@@ -81960,7 +81960,7 @@
       ],
       "receiver": "Game",
       "signature": "Location[] Game.GetLocations(ProtoLocation? proto)",
-      "description": "SyncScope: registry scan only; returned location handles are not covered for later reads/mutations",
+      "description": "Return registered locations matching the optional prototype descriptor",
       "flags": [
         "PassOwnership"
       ],
@@ -81970,7 +81970,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 936
+        "line": 935
       },
       "contract": {
         "explicit": true,
@@ -82009,7 +82009,7 @@
       ],
       "receiver": "Game",
       "signature": "Location[] Game.GetLocations(hstring pid)",
-      "description": "SyncScope: registry scan only; returned location handles are not covered for later reads/mutations",
+      "description": "Return registered locations matching the optional prototype id",
       "flags": [
         "PassOwnership"
       ],
@@ -82019,7 +82019,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 916
+        "line": 915
       },
       "contract": {
         "explicit": true,
@@ -82058,7 +82058,7 @@
       ],
       "receiver": "Game",
       "signature": "Location[] Game.GetLocations(LocationProperty property, int32 propertyValue)",
-      "description": "SyncScope: registry scan only; returned location handles are not covered for later reads/mutations",
+      "description": "Return registered locations whose integer property equals the value",
       "flags": [
         "PassOwnership"
       ],
@@ -82068,7 +82068,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 963
+        "line": 962
       },
       "contract": {
         "explicit": true,
@@ -82114,7 +82114,7 @@
       ],
       "receiver": "Game",
       "signature": "Map? Game.GetMap(hstring mapPid, int32 skipCount = 0)",
-      "description": "SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations",
+      "description": "Return a live map by prototype id and occurrence index, or null",
       "flags": [
         "PassOwnership"
       ],
@@ -82124,7 +82124,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 784
+        "line": 783
       },
       "contract": {
         "explicit": true,
@@ -82170,7 +82170,7 @@
       ],
       "receiver": "Game",
       "signature": "Map? Game.GetMap(ident mapId)",
-      "description": "SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations",
+      "description": "Return a live map by id, or null for a missing or destroying map",
       "flags": [
         "PassOwnership"
       ],
@@ -82180,7 +82180,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 776
+        "line": 775
       },
       "contract": {
         "explicit": true,
@@ -82219,7 +82219,7 @@
       ],
       "receiver": "Game",
       "signature": "Map? Game.GetMap(ProtoMap mapProto, int32 skipCount = 0)",
-      "description": "SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations",
+      "description": "Return a live map by prototype descriptor and occurrence index, or null",
       "flags": [
         "PassOwnership"
       ],
@@ -82229,7 +82229,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 792
+        "line": 791
       },
       "contract": {
         "explicit": true,
@@ -82275,7 +82275,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetMapRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover required",
+      "description": "Return the number of maps in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82283,7 +82283,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1876
+        "line": 1874
       },
       "contract": {
         "explicit": true,
@@ -82314,7 +82314,7 @@
       ],
       "receiver": "Game",
       "signature": "Map[] Game.GetMaps(hstring pid)",
-      "description": "SyncScope: registry scan only; returned map handles are not covered for later reads/mutations",
+      "description": "Return registered maps matching the optional prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82322,7 +82322,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 809
+        "line": 808
       },
       "contract": {
         "explicit": true,
@@ -82361,7 +82361,7 @@
       ],
       "receiver": "Game",
       "signature": "Map[] Game.GetMaps()",
-      "description": "SyncScope: registry scan only; returned map handles are not covered for later reads/mutations",
+      "description": "Return all registered maps",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82369,7 +82369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 801
+        "line": 800
       },
       "contract": {
         "explicit": true,
@@ -82400,7 +82400,7 @@
       ],
       "receiver": "Game",
       "signature": "Map[] Game.GetMaps(ProtoMap? proto)",
-      "description": "SyncScope: registry scan only; returned map handles are not covered for later reads/mutations",
+      "description": "Return registered maps matching the optional prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82408,7 +82408,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 831
+        "line": 830
       },
       "contract": {
         "explicit": true,
@@ -82447,7 +82447,7 @@
       ],
       "receiver": "Game",
       "signature": "Player[] Game.GetOnlinePlayers()",
-      "description": "SyncScope: registry scan only; returned player handles are not covered for later reads/mutations",
+      "description": "Return all online players",
       "flags": [
         "PassOwnership"
       ],
@@ -82457,7 +82457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1028
+        "line": 1027
       },
       "contract": {
         "explicit": true,
@@ -82488,7 +82488,7 @@
       ],
       "receiver": "Game",
       "signature": "Player? Game.GetPlayer(ident playerId)",
-      "description": "SyncScope: registry lookup only; returned player handle is not covered for later reads/mutations",
+      "description": "Return a live player by id, or null when the id is zero or the entity is missing or being destroyed",
       "flags": [
         "PassOwnership"
       ],
@@ -82498,7 +82498,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 764
+        "line": 763
       },
       "contract": {
         "explicit": true,
@@ -82537,7 +82537,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetPlayerRegistryCount()",
-      "description": "SyncScope: registry count only; no entity cover required",
+      "description": "Return the number of players in the registry",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82545,7 +82545,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1862
+        "line": 1860
       },
       "contract": {
         "explicit": true,
@@ -82576,7 +82576,7 @@
       ],
       "receiver": "Game",
       "signature": "int64 Game.GetProcessMemoryUsage()",
-      "description": "SyncScope: process metric read only; no entity cover is required",
+      "description": "Return the process memory usage in bytes",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82584,7 +82584,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1837
+        "line": 1835
       },
       "contract": {
         "explicit": true,
@@ -82615,7 +82615,7 @@
       ],
       "receiver": "Game",
       "signature": "ProtoCritter[] Game.GetProtoCrittersForProtoMap(ProtoMap proto)",
-      "description": "SyncScope: static proto-map read only; no live entity cover is required",
+      "description": "Return the critter prototypes placed in a prototype map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82623,7 +82623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1566
+        "line": 1565
       },
       "contract": {
         "explicit": true,
@@ -82662,7 +82662,7 @@
       ],
       "receiver": "Game",
       "signature": "ident[] Game.GetRegisteredPlayerIds()",
-      "description": "SyncScope: database registry read only; no live player cover is required",
+      "description": "Return all player record ids from the database",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82670,7 +82670,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1043
+        "line": 1042
       },
       "contract": {
         "explicit": true,
@@ -82701,7 +82701,7 @@
       ],
       "receiver": "Game",
       "signature": "StaticItem[] Game.GetStaticItemsForProtoMap(ProtoMap proto)",
-      "description": "SyncScope: static proto-map read only; no live entity cover is required",
+      "description": "Return the static items of a prototype map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82709,7 +82709,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1557
+        "line": 1556
       },
       "contract": {
         "explicit": true,
@@ -82748,7 +82748,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.GetTextCount(TextPackKey textKey)",
-      "description": "SyncScope: language-pack read only; no entity cover is required",
+      "description": "Return the number of language-pack texts for the key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82756,7 +82756,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1591
+        "line": 1590
       },
       "contract": {
         "explicit": true,
@@ -82795,7 +82795,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.IsEntityLocked(Entity? entity)",
-      "description": "SyncScope: sync-safe probe; returns whether entity is covered without emitting diagnostics",
+      "description": "Return whether the entity is covered without emitting diagnostics",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82803,7 +82803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1812
+        "line": 1810
       },
       "contract": {
         "explicit": true,
@@ -82842,7 +82842,7 @@
       ],
       "receiver": "Game",
       "signature": "bool Game.IsTextPresent(TextPackKey textKey)",
-      "description": "SyncScope: language-pack read only; no entity cover is required",
+      "description": "Return whether the language pack contains the text key",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82850,7 +82850,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1584
+        "line": 1583
       },
       "contract": {
         "explicit": true,
@@ -82889,7 +82889,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.LoadCritter(ident crId, bool forPlayer)",
-      "description": "SyncScope: the newly loaded critter is captured before publication and remains covered on return",
+      "description": "Load a stored critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -82943,7 +82943,7 @@
       ],
       "receiver": "Game",
       "signature": "Critter Game.LoadCritter(ident crId, bool forPlayer, Map map)",
-      "description": "SyncScope: requires the target map cover; the newly restored critter is captured before publication",
+      "description": "Load a stored critter onto a map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83004,7 +83004,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Lock()",
-      "description": "SyncScope: locks the Game singleton bucket; do not call Game.Sync while this lock is held",
+      "description": "Lock the Game singleton bucket",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83012,7 +83012,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1821
+        "line": 1819
       },
       "contract": {
         "explicit": true,
@@ -83043,7 +83043,7 @@
       ],
       "receiver": "Game",
       "signature": "Player Game.LoginPlayerToExistentRecord(Player notLoggedInPlayer, ident playerId)",
-      "description": "SyncScope: requires notLoggedInPlayer plus the prepared main-critter/map/location graph; a live reconnect\nadditionally requires the existing player. Login preserves the caller-provided cover",
+      "description": "Log a non-logged-in player into an existing record and return the resulting player",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83051,7 +83051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 747
+        "line": 746
       },
       "contract": {
         "explicit": true,
@@ -83097,7 +83097,7 @@
       ],
       "receiver": "Game",
       "signature": "Player Game.LoginPlayerToNewRecord(Player notLoggedInPlayer)",
-      "description": "SyncScope: requires notLoggedInPlayer; login mutates that player/session record",
+      "description": "Log a non-logged-in player into a new record and return the resulting player",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83144,7 +83144,7 @@
       ],
       "receiver": "Game",
       "signature": "Player Game.LoginPlayerToTempSession(Player notLoggedInPlayer)",
-      "description": "SyncScope: requires notLoggedInPlayer; login mutates that player/session record",
+      "description": "Log a non-logged-in player into a temporary session and return the resulting player",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83191,7 +83191,7 @@
       ],
       "receiver": "Game",
       "signature": "Item? Game.MoveItem(Item item, Item toCont, any stackId = any())",
-      "description": "SyncScope: requires item + current item parent + destination container item",
+      "description": "Move the item into a container with an optional stack id and return it",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83252,7 +83252,7 @@
       ],
       "receiver": "Game",
       "signature": "Item? Game.MoveItem(Item item, Map toMap, mpos toHex)",
-      "description": "SyncScope: requires item + current item parent + destination map",
+      "description": "Move the item to a valid hex on a map and return it",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83367,7 +83367,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.MoveItems(Item[] items, Critter toCr)",
-      "description": "SyncScope: requires destination critter + every item and its current parent",
+      "description": "Move each non-null live item to a critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83421,7 +83421,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.MoveItems(Item[] items, Item toCont, any stackId = any())",
-      "description": "SyncScope: requires destination container item + every item and its current parent",
+      "description": "Move each non-null live item into a container with an optional stack id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83482,7 +83482,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.MoveItems(Item[] items, Map toMap, mpos toHex)",
-      "description": "SyncScope: requires destination map + every item and its current parent",
+      "description": "Move each non-null live item to a valid hex on a map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83543,7 +83543,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SetSynchronizedTime(synctime time)",
-      "description": "SyncScope: requires Game.Lock singleton; mutates global synchronized time, not a live entity",
+      "description": "Set the global synchronized game time",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83551,7 +83551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1531
+        "line": 1530
       },
       "contract": {
         "explicit": true,
@@ -83590,7 +83590,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Sync(Entity entity)",
-      "description": "SyncScope: replaces current cover with entity plus engine auto-widen partners",
+      "description": "Replace the current cover with one live entity and its auto-widen partners",
       "flags": [
         "Async"
       ],
@@ -83600,7 +83600,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1683
+        "line": 1682
       },
       "contract": {
         "explicit": true,
@@ -83639,7 +83639,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Sync(Entity entity1, Entity entity2, Entity entity3)",
-      "description": "SyncScope: replaces current cover with all entities plus engine auto-widen partners",
+      "description": "Replace the current cover with three live entities and their auto-widen partners",
       "flags": [
         "Async",
         "AllowDestroyedEntityArgs"
@@ -83650,7 +83650,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1715
+        "line": 1714
       },
       "contract": {
         "explicit": true,
@@ -83703,7 +83703,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Sync(Entity[] entities)",
-      "description": "SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners",
+      "description": "Replace the current cover with all non-null live entities and their auto-widen partners",
       "flags": [
         "Async",
         "AllowDestroyedEntityArgs"
@@ -83714,7 +83714,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1737
+        "line": 1736
       },
       "contract": {
         "explicit": true,
@@ -83753,7 +83753,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Sync(Entity entity1, Entity entity2)",
-      "description": "SyncScope: replaces current cover with both entities plus engine auto-widen partners",
+      "description": "Replace the current cover with two live entities and their auto-widen partners",
       "flags": [
         "Async",
         "AllowDestroyedEntityArgs"
@@ -83764,7 +83764,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1697
+        "line": 1696
       },
       "contract": {
         "explicit": true,
@@ -83810,7 +83810,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SyncRelease()",
-      "description": "SyncScope: releases the full held set \u2014 the entity cover AND any singleton Game.Lock entries\n(SyncContext::Release drains both buckets); a Game.Lock taken before this call needs no Unlock after it",
+      "description": "Release the held entity cover and Game singleton locks",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83818,7 +83818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1787
+        "line": 1785
       },
       "contract": {
         "explicit": true,
@@ -83860,7 +83860,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1762
+        "line": 1761
       },
       "contract": {
         "explicit": true,
@@ -83909,7 +83909,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1795
+        "line": 1793
       },
       "contract": {
         "explicit": true,
@@ -83940,7 +83940,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.SystemCall(string command, string& output)",
-      "description": "SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks",
+      "description": "Run an external command, capture its output lines and return the exit code",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83948,7 +83948,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1650
+        "line": 1649
       },
       "contract": {
         "explicit": true,
@@ -83994,7 +83994,7 @@
       ],
       "receiver": "Game",
       "signature": "int32 Game.SystemCall(string command)",
-      "description": "SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks",
+      "description": "Run an external command, log its output and return the exit code",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84002,7 +84002,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1640
+        "line": 1639
       },
       "contract": {
         "explicit": true,
@@ -84051,7 +84051,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1666
+        "line": 1665
       },
       "contract": {
         "explicit": true,
@@ -84090,7 +84090,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.UnloadCritter(Critter cr)",
-      "description": "SyncScope: requires cr + current parent map; unload mutates critter simulation state",
+      "description": "Unload a critter from simulation",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84137,7 +84137,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.Unlock()",
-      "description": "SyncScope: unlocks the Game singleton bucket; entity cover is unchanged",
+      "description": "Unlock the Game singleton bucket while keeping entity cover",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84145,7 +84145,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1829
+        "line": 1827
       },
       "contract": {
         "explicit": true,
@@ -84176,7 +84176,7 @@
       ],
       "receiver": "Item",
       "signature": "Item Item.AddItem(ProtoItem proto, any stackId = any())",
-      "description": "SyncScope: requires self; creates and attaches a new inner item under the container cover",
+      "description": "Create an item from a prototype descriptor and add it to a container",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84230,7 +84230,7 @@
       ],
       "receiver": "Item",
       "signature": "Item Item.AddItem(hstring pid, any stackId = any())",
-      "description": "SyncScope: requires self; creates and attaches a new inner item under the container cover",
+      "description": "Create an item from a prototype id and add it to a container",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84284,7 +84284,7 @@
       ],
       "receiver": "Item",
       "signature": "Critter? Item.GetCritter()",
-      "description": "SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover",
+      "description": "Resolve the critter holding this item through container ownership, or null when map-owned",
       "flags": [
         "PassOwnership"
       ],
@@ -84325,7 +84325,7 @@
       ],
       "receiver": "Item",
       "signature": "Item[] Item.GetItems(any stackId = any())",
-      "description": "SyncScope: requires self; returns inner item handles covered by self while the cover remains",
+      "description": "Return inner items of this container, optionally limited to a stack id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84372,7 +84372,7 @@
       ],
       "receiver": "Item",
       "signature": "Map? Item.GetMap()",
-      "description": "SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads",
+      "description": "Resolve the map containing this item through its critter or container ownership chain",
       "flags": [
         "PassOwnership"
       ],
@@ -84413,7 +84413,7 @@
       ],
       "receiver": "Item",
       "signature": "Map? Item.GetMapPosition(mpos& hex)",
-      "description": "SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads",
+      "description": "Resolve the containing map and write the item's map hex through the output argument",
       "flags": [
         "PassOwnership"
       ],
@@ -84462,7 +84462,7 @@
       ],
       "receiver": "Item",
       "signature": "void Item.RefreshVisibility()",
-      "description": "SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches",
+      "description": "Refresh map visibility and blocking caches for an item owned by a map hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84501,7 +84501,7 @@
       ],
       "receiver": "Item",
       "signature": "void Item.SetupScript(callback(void,Item,bool) initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the init callback and store its name as the init script",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84548,7 +84548,7 @@
       ],
       "receiver": "Item",
       "signature": "void Item.SetupScriptEx(hstring initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the named init script and store its name",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84595,7 +84595,7 @@
       ],
       "receiver": "Location",
       "signature": "Map Location.AddMap(ProtoMap mapProto)",
-      "description": "SyncScope: requires self; creates and attaches a child map under the location cover",
+      "description": "Create a child map from a prototype descriptor and attach it to a location",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84642,7 +84642,7 @@
       ],
       "receiver": "Location",
       "signature": "Map Location.AddMap(hstring mapPid)",
-      "description": "SyncScope: requires self; creates and attaches a child map under the location cover",
+      "description": "Create a child map from a prototype id and attach it to a location",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84689,7 +84689,7 @@
       ],
       "receiver": "Location",
       "signature": "Map? Location.GetMap(ProtoMap mapProto)",
-      "description": "SyncScope: requires self; returned map is covered by self while the location cover remains",
+      "description": "Return the first child map with the given prototype descriptor, or null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84736,7 +84736,7 @@
       ],
       "receiver": "Location",
       "signature": "Map? Location.GetMap(hstring mapPid)",
-      "description": "SyncScope: requires self; returned map is covered by self while the location cover remains",
+      "description": "Return the first child map with the given prototype id, or null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84783,7 +84783,7 @@
       ],
       "receiver": "Location",
       "signature": "Map Location.GetMapByIndex(int32 index)",
-      "description": "SyncScope: requires self; returned map is covered by self while the location cover remains",
+      "description": "Return the child map at the given index, or throw when it is missing",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84830,7 +84830,7 @@
       ],
       "receiver": "Location",
       "signature": "int32 Location.GetMapCount()",
-      "description": "SyncScope: requires self; counts child maps covered by the location cover",
+      "description": "Return the number of child maps attached to this location",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84869,7 +84869,7 @@
       ],
       "receiver": "Location",
       "signature": "Map[] Location.GetMaps()",
-      "description": "SyncScope: requires self; returned maps are covered by self while the location cover remains",
+      "description": "Return all child maps attached to this location",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84908,7 +84908,7 @@
       ],
       "receiver": "Location",
       "signature": "void Location.Regenerate()",
-      "description": "SyncScope: requires self; regenerates all child maps covered by the location cover",
+      "description": "Regenerate every child map of a location that is not being destroyed",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84947,7 +84947,7 @@
       ],
       "receiver": "Location",
       "signature": "void Location.SetupScript(callback(void,Location,bool) initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the init callback and store its name as the init script",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84994,7 +84994,7 @@
       ],
       "receiver": "Location",
       "signature": "void Location.SetupScriptEx(hstring initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the named init script and store its name",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85041,7 +85041,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(ProtoCritter proto, mpos hex, mdir dir, CritterProperty=>any props)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter from a prototype descriptor with property overrides on a valid map hex and direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85049,7 +85049,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1159
+        "line": 1157
       },
       "contract": {
         "explicit": true,
@@ -85109,7 +85109,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(ProtoCritter proto, mpos hex, mdir dir, CritterProperty=>int32 props)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter from a prototype descriptor with integer property overrides on a valid map hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85117,7 +85117,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1111
+        "line": 1109
       },
       "contract": {
         "explicit": true,
@@ -85177,7 +85177,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(hstring protoId, mpos hex, mdir dir)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter from a prototype id on a valid map hex and direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85185,7 +85185,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1054
+        "line": 1052
       },
       "contract": {
         "explicit": true,
@@ -85238,7 +85238,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(ProtoCritter proto, mpos hex, mdir dir)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter from a prototype descriptor on a valid map hex and direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85246,7 +85246,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1069
+        "line": 1067
       },
       "contract": {
         "explicit": true,
@@ -85299,7 +85299,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(hstring protoId, mpos hex, mdir dir, CritterProperty=>int32 props)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter with integer property overrides on a valid map hex and direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85307,7 +85307,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1084
+        "line": 1082
       },
       "contract": {
         "explicit": true,
@@ -85367,7 +85367,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter Map.AddCritter(hstring protoId, mpos hex, mdir dir, CritterProperty=>any props)",
-      "description": "SyncScope: requires self; creates and attaches a new critter on the map under self cover",
+      "description": "Create a critter with property overrides on a valid map hex and direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85375,7 +85375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1132
+        "line": 1130
       },
       "contract": {
         "explicit": true,
@@ -85435,7 +85435,7 @@
       ],
       "receiver": "Map",
       "signature": "Item Map.AddItem(mpos hex, hstring protoId, ItemProperty=>int32 props)",
-      "description": "SyncScope: requires self; creates and attaches a new map item under the map cover",
+      "description": "Create a map item with integer property overrides on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85496,7 +85496,7 @@
       ],
       "receiver": "Map",
       "signature": "Item Map.AddItem(mpos hex, ProtoItem proto)",
-      "description": "SyncScope: requires self; creates and attaches a new map item under the map cover",
+      "description": "Create a map item from a prototype descriptor on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85550,7 +85550,7 @@
       ],
       "receiver": "Map",
       "signature": "Item Map.AddItem(mpos hex, hstring protoId)",
-      "description": "SyncScope: requires self; creates and attaches a new map item under the map cover",
+      "description": "Create a map item from a prototype id on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85604,7 +85604,7 @@
       ],
       "receiver": "Map",
       "signature": "Item Map.AddItem(mpos hex, ProtoItem proto, ItemProperty=>int32 props)",
-      "description": "SyncScope: requires self; creates and attaches a new map item under the map cover",
+      "description": "Create a map item from a prototype descriptor with integer property overrides on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85665,7 +85665,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.BlockHex(mpos hex, bool full)",
-      "description": "SyncScope: requires self; mutates manual blocking for one map hex",
+      "description": "Set manual blocking for a valid map hex with optional full blocking",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85673,7 +85673,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1254
+        "line": 1252
       },
       "contract": {
         "explicit": true,
@@ -85719,7 +85719,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.CheckPlaceForItem(mpos hex, hstring pid)",
-      "description": "SyncScope: requires self; reads map placement rules and item prototype data",
+      "description": "Check whether an item of this prototype can be placed on the hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85727,7 +85727,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1234
+        "line": 1232
       },
       "contract": {
         "explicit": true,
@@ -85773,7 +85773,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.CheckPlaceForItem(mpos hex, ProtoItem proto)",
-      "description": "SyncScope: requires self; reads map placement rules and item prototype data",
+      "description": "Check whether an item of this prototype can be placed on the hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85781,7 +85781,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1247
+        "line": 1245
       },
       "contract": {
         "explicit": true,
@@ -85827,7 +85827,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.FindPathToAny(Critter cr, mpos[] targetHexes, int32& pathLength, mpos& targetHex, callback(bool,Critter,Item) gagCallback)",
-      "description": "SyncScope: requires self + cr; pathing reads map blockers and cr state",
+      "description": "Find a path for a critter to any target and write its length and chosen target",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85835,7 +85835,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1000
+        "line": 998
       },
       "contract": {
         "explicit": true,
@@ -85902,7 +85902,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.FindPathToAny(mpos fromHex, mpos[] targetHexes, int32& pathLength, mpos& targetHex, callback(bool,Item) gagCallback)",
-      "description": "SyncScope: requires self; pathing reads map blockers and optional gag callback items",
+      "description": "Find a path from a valid hex to any target and write its length and chosen target",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -85910,7 +85910,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 967
+        "line": 965
       },
       "contract": {
         "explicit": true,
@@ -85985,7 +85985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1032
+        "line": 1030
       },
       "contract": {
         "explicit": true,
@@ -86038,7 +86038,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter? Map.GetCritter(ident crid)",
-      "description": "SyncScope: requires self; returned critter is covered by self while the map cover remains",
+      "description": "Return a map critter by id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86085,7 +86085,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter? Map.GetCritter(CritterProperty property, int32 propertyValue, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critter is covered by self while the map cover remains",
+      "description": "Return the first critter matching an integer property and find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86146,7 +86146,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter? Map.GetCritterOnHex(mpos hex)",
-      "description": "SyncScope: requires self; returned critter is covered by self while the map cover remains",
+      "description": "Return a living critter on a valid hex, or a dead one when no living critter is present",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86193,7 +86193,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCritters(CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return map critters matching the find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86240,7 +86240,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCritters(hstring pid, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return map critters matching the optional prototype id and find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86248,7 +86248,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 772
+        "line": 770
       },
       "contract": {
         "explicit": true,
@@ -86294,7 +86294,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCritters(CritterProperty property, int32 propertyValue, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return map critters matching an integer property and find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86302,7 +86302,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 808
+        "line": 806
       },
       "contract": {
         "explicit": true,
@@ -86355,7 +86355,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCritters(ProtoCritter proto, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return map critters matching the given prototype descriptor and find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86363,7 +86363,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 790
+        "line": 788
       },
       "contract": {
         "explicit": true,
@@ -86409,7 +86409,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersInPath(mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned path critters are covered by self while the map cover remains",
+      "description": "Trace a path and return its critters matching the find type",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86417,7 +86417,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 827
+        "line": 825
       },
       "contract": {
         "explicit": true,
@@ -86484,7 +86484,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersInPath(mpos fromHex, mpos toHex, float32 angle, int32 dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)",
-      "description": "SyncScope: requires self; returned path critters are covered by self while the map cover remains",
+      "description": "Trace a path, write pre-block and block hexes, and return its critters",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86492,7 +86492,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 836
+        "line": 834
       },
       "contract": {
         "explicit": true,
@@ -86573,7 +86573,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersInRadius(mpos hex, int32 radius, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return critters within a non-negative radius of a valid hex sorted by distance",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86634,7 +86634,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersOnHex(mpos hex, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned critters are covered by self while the map cover remains",
+      "description": "Return critters on a valid hex sorted by distance including multihex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86688,7 +86688,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersWhoSeeHex(mpos hex, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned observer critters are covered by self while the map cover remains",
+      "description": "Return critters whose look distance covers the hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86696,7 +86696,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 847
+        "line": 845
       },
       "contract": {
         "explicit": true,
@@ -86742,7 +86742,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersWhoSeeHex(mpos hex, int32 radius, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned observer critters are covered by self while the map cover remains",
+      "description": "Return critters whose look distance plus radius covers the hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86750,7 +86750,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 862
+        "line": 860
       },
       "contract": {
         "explicit": true,
@@ -86803,7 +86803,7 @@
       ],
       "receiver": "Map",
       "signature": "Critter[] Map.GetCrittersWhoSeePath(mpos fromHex, mpos toHex, CritterFindType findType)",
-      "description": "SyncScope: requires self; returned observer critters are covered by self while the map cover remains",
+      "description": "Return critters whose look circle intersects the path",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86811,7 +86811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 877
+        "line": 875
       },
       "contract": {
         "explicit": true,
@@ -86864,7 +86864,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.GetHexInPath(mpos fromHex, mpos& toHex, float32 angle, int32 dist)",
-      "description": "SyncScope: requires self; path trace reads static/map blockers only",
+      "description": "Trace a path and write the last hex before the first blocker",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86872,7 +86872,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 894
+        "line": 892
       },
       "contract": {
         "explicit": true,
@@ -86932,7 +86932,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItem(ident itemId)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return a map item by id, or null when it is absent or the id is zero",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86979,7 +86979,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemInRadius(mpos hex, int32 radius, hstring pid)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first item with the given prototype id within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87040,7 +87040,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemInRadius(mpos hex, int32 radius, ProtoItem proto)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first item with the given prototype descriptor within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87101,7 +87101,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemInRadius(mpos hex, int32 radius, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first item within a non-negative radius whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87169,7 +87169,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemOnHex(mpos hex, ProtoItem proto)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first map item with the given prototype descriptor on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87223,7 +87223,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemOnHex(mpos hex, hstring pid)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first map item with the given prototype id on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87277,7 +87277,7 @@
       ],
       "receiver": "Map",
       "signature": "Item? Map.GetItemOnHex(mpos hex, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned item is covered by self while the map cover remains",
+      "description": "Return the first item on a valid hex whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87338,7 +87338,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItems(ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87392,7 +87392,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItems(hstring pid)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items with the given prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87439,7 +87439,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItems()",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return all dynamic map items",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87478,7 +87478,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItems(ProtoItem proto)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items with the given prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87525,7 +87525,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsInRadius(mpos hex, int32 radius, ProtoItem proto)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items with the given prototype descriptor within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87586,7 +87586,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsInRadius(mpos hex, int32 radius)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items within a non-negative radius of a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87640,7 +87640,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsInRadius(mpos hex, int32 radius, hstring pid)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items with the given prototype id within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87701,7 +87701,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsInRadius(mpos hex, int32 radius, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items within a non-negative radius whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87769,7 +87769,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsOnHex(mpos hex)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87816,7 +87816,7 @@
       ],
       "receiver": "Map",
       "signature": "Item[] Map.GetItemsOnHex(mpos hex, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned items are covered by self while the map cover remains",
+      "description": "Return dynamic map items on a valid hex whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87877,7 +87877,7 @@
       ],
       "receiver": "Map",
       "signature": "Location Map.GetLocation()",
-      "description": "SyncScope: requires self; returns parent location, but does not cover it for later reads",
+      "description": "Return the parent location of this map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87916,7 +87916,7 @@
       ],
       "receiver": "Map",
       "signature": "int32 Map.GetPathLength(Critter cr, mpos toHex, int32 cut, callback(bool,Critter,Item) gagCallabck)",
-      "description": "SyncScope: requires self + cr; pathing reads map blockers and cr state",
+      "description": "Return the path length in steps for a critter to a valid hex, or zero when no path exists",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87924,7 +87924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 942
+        "line": 940
       },
       "contract": {
         "explicit": true,
@@ -87984,7 +87984,7 @@
       ],
       "receiver": "Map",
       "signature": "int32 Map.GetPathLength(mpos fromHex, mpos toHex, int32 cut, callback(bool,Item) gagCallabck)",
-      "description": "SyncScope: requires self; pathing reads map blockers and optional gag callback items",
+      "description": "Return the path length in steps from a valid hex to another, or zero when no path exists",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -87992,7 +87992,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 916
+        "line": 914
       },
       "contract": {
         "explicit": true,
@@ -88052,7 +88052,7 @@
       ],
       "receiver": "Map",
       "signature": "int32 Map.GetPlayerCritterCount()",
-      "description": "SyncScope: requires self; reads the map's player-critter membership without materializing it",
+      "description": "Return the number of player critters currently on the map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88091,7 +88091,7 @@
       ],
       "receiver": "Map",
       "signature": "Player[] Map.GetSpectatorPlayers()",
-      "description": "SyncScope: requires self; returns the map's current spectator Players. A spectator is an independent Player\nroot that neither the map nor its location cover includes, so a caller that destroys this map or its location\nmust cover every returned Player first and re-read this list to prove the membership did not change",
+      "description": "Return a snapshot of the players spectating this map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88099,7 +88099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 762
+        "line": 760
       },
       "contract": {
         "explicit": true,
@@ -88130,7 +88130,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem? Map.GetStaticItem(ident id)",
-      "description": "SyncScope: requires self; returned static item is map-static data covered by the map cover",
+      "description": "Return a static map item by id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88177,7 +88177,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem? Map.GetStaticItemOnHex(mpos hex, ProtoItem proto)",
-      "description": "SyncScope: requires self; returned static item is map-static data covered by the map cover",
+      "description": "Return a static item with the given prototype descriptor on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88231,7 +88231,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem? Map.GetStaticItemOnHex(mpos hex, hstring pid)",
-      "description": "SyncScope: requires self; returned static item is map-static data covered by the map cover",
+      "description": "Return a static item with the given prototype id on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88285,7 +88285,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItems(ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88339,7 +88339,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItems(ProtoItem proto)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items with the given prototype descriptor",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88386,7 +88386,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItems(hstring pid)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items with the given prototype id",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88433,7 +88433,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItems()",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return all static items of this map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88472,7 +88472,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItemsInRadius(mpos hex, int32 radius, ProtoItem proto)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items with the given prototype descriptor within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88533,7 +88533,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItemsInRadius(mpos hex, int32 radius, hstring pid)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items with the given prototype id within a non-negative radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88594,7 +88594,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItemsInRadius(mpos hex, int32 radius, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items within a non-negative radius whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88662,7 +88662,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItemsOnHex(mpos hex)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items on a valid hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88709,7 +88709,7 @@
       ],
       "receiver": "Map",
       "signature": "StaticItem[] Map.GetStaticItemsOnHex(mpos hex, ItemProperty property, int32 propertyValue)",
-      "description": "SyncScope: requires self; returned static items are map-static data covered by the map cover",
+      "description": "Return static items on a valid hex whose integer property equals the value",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88770,7 +88770,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.GetWallHexInPath(mpos fromHex, mpos& toHex, float32 angle, int32 dist)",
-      "description": "SyncScope: requires self; path trace reads wall blockers only",
+      "description": "Trace a wall-only path and write the last movable hex, or the start hex when none",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88778,7 +88778,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 902
+        "line": 900
       },
       "contract": {
         "explicit": true,
@@ -88838,7 +88838,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.IsHexMovable(mpos hex)",
-      "description": "SyncScope: requires self; reads map blocking state",
+      "description": "Return whether a valid map hex is movable",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88846,7 +88846,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1187
+        "line": 1185
       },
       "contract": {
         "explicit": true,
@@ -88885,7 +88885,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.IsHexShootable(mpos hex)",
-      "description": "SyncScope: requires self; reads map shoot-blocking state",
+      "description": "Return whether a valid map hex is shootable",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88893,7 +88893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1212
+        "line": 1210
       },
       "contract": {
         "explicit": true,
@@ -88932,7 +88932,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.IsHexValid(mpos hex)",
-      "description": "SyncScope: requires self; reads map size only",
+      "description": "Return whether the hex lies inside the map bounds",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88940,7 +88940,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1180
+        "line": 1178
       },
       "contract": {
         "explicit": true,
@@ -88979,7 +88979,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.IsHexesMovable(mpos hex, int32 radius)",
-      "description": "SyncScope: requires self; reads map blocking state",
+      "description": "Return whether the hex and its neighborhood within the given radius are free for movement",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -88987,7 +88987,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1198
+        "line": 1196
       },
       "contract": {
         "explicit": true,
@@ -89033,7 +89033,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.IsOutsideArea(mpos hex)",
-      "description": "SyncScope: requires self; reads map outdoor/indoor area state",
+      "description": "Return whether a valid map hex lies outside an indoor area",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89041,7 +89041,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1223
+        "line": 1221
       },
       "contract": {
         "explicit": true,
@@ -89080,7 +89080,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.MoveHexByDir(mpos& hex, mdir dir)",
-      "description": "SyncScope: requires self; uses map size for a pure coordinate step",
+      "description": "Move a hex one step in a direction using map bounds and return whether it moved",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89088,7 +89088,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1289
+        "line": 1287
       },
       "contract": {
         "explicit": true,
@@ -89134,7 +89134,7 @@
       ],
       "receiver": "Map",
       "signature": "int32 Map.MoveHexByDir(mpos& hex, mdir dir, int32 steps)",
-      "description": "SyncScope: requires self; uses map size for pure coordinate steps",
+      "description": "Move a hex up to the given steps in a direction and return the completed steps",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89142,7 +89142,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1301
+        "line": 1299
       },
       "contract": {
         "explicit": true,
@@ -89195,7 +89195,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.Regenerate()",
-      "description": "SyncScope: requires self; regenerates map content and placement caches",
+      "description": "Regenerate map content and placement caches",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89203,7 +89203,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1282
+        "line": 1280
       },
       "contract": {
         "explicit": true,
@@ -89281,7 +89281,7 @@
       ],
       "receiver": "Map",
       "signature": "bool Map.RemoveStaticItem(StaticItem staticItem)",
-      "description": "SyncScope: requires self; mutates the map's own removal list, which the property sync fans out to clients",
+      "description": "Remove a static item belonging to this map, rejecting items from another map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89328,7 +89328,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.SetupScript(callback(void,Map,bool) initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the init callback and store its name as the init script",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89375,7 +89375,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.SetupScriptEx(hstring initFunc)",
-      "description": "SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities",
+      "description": "Run the named init script and store its name",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89422,7 +89422,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.UnblockHex(mpos hex)",
-      "description": "SyncScope: requires self; mutates manual blocking for one map hex",
+      "description": "Clear manual blocking for a valid map hex",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89430,7 +89430,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1268
+        "line": 1266
       },
       "contract": {
         "explicit": true,
@@ -89469,7 +89469,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.VerifyTrigger(Critter cr, mpos hex, mdir dir)",
-      "description": "SyncScope: requires self + cr; trigger verification may inspect/mutate critter-facing map state",
+      "description": "Verify map triggers for a critter crossing into a valid hex from the previous direction",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89477,7 +89477,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1319
+        "line": 1317
       },
       "contract": {
         "explicit": true,
@@ -89530,7 +89530,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.Disconnect()",
-      "description": "SyncScope: requires self; closes this player's connection",
+      "description": "Request graceful disconnection of this player's connection",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89569,7 +89569,7 @@
       ],
       "receiver": "Player",
       "signature": "Critter? Player.GetControlledCritter()",
-      "description": "SyncScope: requires self; returns the controlled critter handle, auto-widened when self is Sync'd",
+      "description": "Return the critter controlled by this player, or null when none is controlled",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89608,7 +89608,7 @@
       ],
       "receiver": "Player",
       "signature": "DisconnectReason Player.GetDisconnectReason()",
-      "description": "SyncScope: requires self; reads connection state only",
+      "description": "Return the reason this player's connection was closed",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89647,7 +89647,7 @@
       ],
       "receiver": "Player",
       "signature": "string Player.GetHost()",
-      "description": "SyncScope: requires self; reads connection endpoint only",
+      "description": "Return this player's connection host",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89686,7 +89686,7 @@
       ],
       "receiver": "Player",
       "signature": "int32 Player.GetPort()",
-      "description": "SyncScope: requires self; reads connection endpoint only",
+      "description": "Return this player's connection port",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89725,7 +89725,7 @@
       ],
       "receiver": "Player",
       "signature": "Map? Player.GetViewMapTarget()",
-      "description": "SyncScope: requires self; returns the map self currently spectates, but does not cover it for later reads.\nThe view target is an independent Map root that self's cover does not include, so a caller that reads or\nmutates it covers the returned map first and re-reads this handle to prove the view did not change",
+      "description": "Return the map this player currently spectates",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89733,7 +89733,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 138
+        "line": 136
       },
       "contract": {
         "explicit": true,
@@ -89764,7 +89764,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.HardDisconnect()",
-      "description": "SyncScope: requires self; forcibly closes this player's connection",
+      "description": "Force-close this player's connection with the script request reason",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89803,7 +89803,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.RefreshCritterMoving(Critter cr)",
-      "description": "SyncScope: requires self + cr; sends movement state for a critter visible on player's current map",
+      "description": "Send movement state for a critter on the player's current map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89850,7 +89850,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.ResetViewMap()",
-      "description": "SyncScope: requires self; clears view-map state, no entity reparent",
+      "description": "Clear view-map state without reparenting any entity",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89858,7 +89858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 207
+        "line": 205
       },
       "contract": {
         "explicit": true,
@@ -89889,7 +89889,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.ReturnFromViewMap()",
-      "description": "SyncScope: requires self + the controlled critter's initial-info graph; restores its ordinary display",
+      "description": "Return a viewing player with a controlled critter to ordinary display",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89897,7 +89897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 193
+        "line": 191
       },
       "contract": {
         "explicit": true,
@@ -89928,7 +89928,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.SetName(string name)",
-      "description": "SyncScope: requires self; mutates player name only",
+      "description": "Set the player name after rejecting empty, untrimmed or invalid UTF-8 input",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89975,7 +89975,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.SwitchCritter(Critter? cr)",
-      "description": "SyncScope: requires self + cr when cr is non-null; before linkage callers must explicitly cover both",
+      "description": "Switch the player to the specified critter, or detach control when the argument is null",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -90022,7 +90022,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.UnloadMap()",
-      "description": "SyncScope: requires self; clears view-map state and sends unload, no entity reparent",
+      "description": "Clear view-map state and send a map unload when the player controls no critter",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -90030,7 +90030,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 214
+        "line": 212
       },
       "contract": {
         "explicit": true,
@@ -90061,7 +90061,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.ViewMap(Map map, mpos hex)",
-      "description": "SyncScope: requires self + map + map location; sends load-map data and opens a map view for self",
+      "description": "Load the map for a player without a controlled critter and open a full map view",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -90069,7 +90069,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 145
+        "line": 143
       },
       "contract": {
         "explicit": true,
@@ -90115,7 +90115,7 @@
       ],
       "receiver": "Player",
       "signature": "void Player.ViewMapArea(Map map, mpos hex, int32 radius)",
-      "description": "SyncScope: requires self + map + its location; a controlled critter must remain on the global map",
+      "description": "Open a bounded view of the map after validating the player, hex and positive int16_t radius",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -90123,7 +90123,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 173
+        "line": 171
       },
       "contract": {
         "explicit": true,
