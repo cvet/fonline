@@ -328,6 +328,15 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     server->Unlock();
     unlock_first_again.release();
 
+    // Snapshot isolation needs a live backend independent of the one already used for teardown
+    auto snapshot_resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"));
+    assemblies.AddTo(snapshot_resources);
+    auto snapshot_control = safe_alloc::make_refcounted<ServerEngine>(&second_settings, std::move(snapshot_resources));
+    auto shutdown_snapshot_control = scope_exit([&snapshot_control]() noexcept { safe_call([&snapshot_control] { snapshot_control->Shutdown(); }); });
+    startup_error = ServerEngineTests::WaitForServerStart(snapshot_control);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
     // An externally completed Task must remain blocked while its script continuation is paused
     server->PauseSimulation();
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -341,7 +350,7 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     CHECK_FALSE(pending.State.has_value());
     CHECK(pending.Payload.empty());
     // The counter belongs to the first backend, not the other live engine's assembly statics
-    CHECK_THROWS_AS(second->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
+    CHECK_THROWS_AS(snapshot_control->CreateSnapshot(timespan {std::chrono::seconds {10}}), DataBaseException);
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     {
         auto unlock_gate = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
