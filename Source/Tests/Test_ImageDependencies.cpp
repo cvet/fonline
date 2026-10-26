@@ -35,6 +35,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "AngelScriptBaker.h"
 #include "ConfigFile.h"
 #include "ImageBaker.h"
 #include "ImageDependencyCache.h"
@@ -398,6 +399,11 @@ TEST_CASE("ImageDependenciesPreserveIndependentModelTexturesWhenSourceIsConsumed
     string output_dir = strex(temp_dir).combine_path("output").str();
     vector<uint8_t> pixels {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8, 0, 0, 255, 255};
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Empty.cs"), string_view {"///@ FixedType Common ResourceSet\n///@ Property ResourceSet Common hstring[] Files Resource\n"}));
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Scripts.fos"), string_view {"namespace SharedDiagnostics { int Value() { return 42; } }\n"}));
+#endif
+
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("art/Source.tga"), pixels));
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("recipes/Other.tga"), pixels));
     string recipe = strex(temp_dir).combine_path("recipes/Root.fofrm").str();
@@ -406,9 +412,15 @@ TEST_CASE("ImageDependenciesPreserveIndependentModelTexturesWhenSourceIsConsumed
     string model = strex(temp_dir).combine_path("models/Model.fo3d").str();
     REQUIRE(fs::write_file(model, string_view {"Model Body.obj\nTexture 0 Source.tga\n"}));
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("protos/Roots.fopro"), string_view {"[ResourceSet]\n$Name = ModelRoot\nFiles = Model.fo3d\n"}));
+    string metadata_bakers = "Metadata";
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    metadata_bakers += strex(" {}", string(AngelScriptBaker::NAME));
+#endif
+
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker initial {&settings};
     REQUIRE(initial.BakeAll());
@@ -451,6 +463,11 @@ TEST_CASE("ResourceUsagePreservesPhysicalModelProviders")
     }
 
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Types.cs"), "///@ FixedType Common ResourceSet\n///@ Property ResourceSet Common hstring[] Files Resource\n"));
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("metadata/Scripts.fos"), string_view {"namespace SharedDiagnostics { int Value() { return 42; } }\n"}));
+#endif
+
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("protos/Roots.fopro"), strex("[ResourceSet]\n$Name = Models\nFiles = {}\n", root).str()));
     vector<uint8_t> pixels {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8, 0, 0, 255, 255};
 
@@ -461,9 +478,15 @@ TEST_CASE("ResourceUsagePreservesPhysicalModelProviders")
         REQUIRE(fs::write_file(strex(temp_dir).combine_path(directory).combine_path(prefix).combine_path("Tint.tga"), pixels));
     }
 
+    string metadata_bakers = "Metadata";
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    metadata_bakers += strex(" {}", string(AngelScriptBaker::NAME));
+#endif
+
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, common_pack).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers, common_pack).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());

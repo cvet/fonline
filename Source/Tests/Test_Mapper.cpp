@@ -2817,6 +2817,8 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("UnloadingTheEditedMapDoesNotLeaveDeadTargetsOrDirtyEntries")
     {
+        // Retain the map while checking its terminal state after the callback unloads it
+        auto held_map = map.hold_ref();
         ptr<CritterHexView> critter = map->GetCritters().front();
         auto prop = critter->GetPropertyCondition();
         bool callback_ran = false;
@@ -2827,8 +2829,8 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         });
         CHECK(mapper->ApplyEntityPropertyText(critter, prop, "Dead"));
         CHECK(callback_ran);
-        CHECK(map->IsDestroyed());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK(held_map->IsDestroyed());
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
         CHECK_FALSE(mapper->GetCurMap());
     }
 

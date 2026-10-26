@@ -8,7 +8,7 @@ document_id: unit-tests-readme
 
 # Unit Tests
 
-This directory contains deterministic engine tests built into the generated test application. For the full maintained test map, validation routing, and coverage target details, see [Testing](../../Docs/en/contributing/testing/).
+Deterministic engine tests; [Testing](../../Docs/en/contributing/testing/) owns the map, validation and coverage.
 
 ## Framework and target
 
@@ -17,13 +17,13 @@ This directory contains deterministic engine tests built into the generated test
 - Test source list owner: `BuildTools/cmake/stages/EngineSources.cmake` (`FO_TESTS_SOURCE`)
 - Generated executable target shape: `<ProjectDevName>_UnitTests`
 - Generated run target: `RunUnitTests`
-- Generated coverage target shape: `<ProjectDevName>_CodeCoverage` plus `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage` when coverage is enabled
+- Coverage switch: `FO_CODE_COVERAGE`; targets below.
 
-The executable target uses the embedding project's development-name prefix (`<ProjectDevName>_UnitTests`); `RunUnitTests` is the generated runner target. Treat the prefix as project-generated, not universal engine API.
+`<ProjectDevName>` is the embedding project's prefix, not universal API.
 
 ## Current test suites
 
-The complete source-backed filename list and count are generated in [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). [Testing](../../Docs/en/contributing/testing/) provides the maintained ownership groups and validation routing.
+Generated filenames/count: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); ownership and validation: [Testing](../../Docs/en/contributing/testing/).
 
 `Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
 retain their result across another thread's final release and that an older entity cannot unregister
@@ -54,13 +54,13 @@ checks client cache release while keeping the peer alive. They live in the exist
 
 ## Running tests
 
-Prefer running the generated run target from a configured build directory:
+From a configured build directory:
 
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Use the executable target directly when you need Catch2 arguments. Generated test binaries are normally emitted under `Binaries/Tests-*`, for example:
+Pass Catch2 arguments directly to the executable under `Binaries/Tests-*`:
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
@@ -73,6 +73,8 @@ Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Do
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
+Executable: `<ProjectDevName>_CodeCoverage`.
+
 Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`
 and exclude `Source/Tests/` from the reported source denominator.
 
@@ -83,7 +85,9 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
 `Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h`, and `Test_ServerMapOperationsHelpers.h` share native resource construction with their AngelScript suites. Backend-specific compilation stays guarded inside these fixtures.
 
 - `Source/Tests/Test_BakerHelpers.h` - baked-resource fixtures (sprites, protos, metadata) and a
-  `TestRig` that runs the real bakers over in-memory sources.
+  `TestRig` for real in-memory bakers. AS resource fixtures use `AddBakedScriptBytecode` before
+  server proto baking; it copies real three-role outputs into `BakedFiles` before `MakeContext`
+  clears `Outputs`. Disk fixtures include AngelScript with Metadata before Proto.
 - `Source/Tests/Test_ParticleFixtures.h` - particle asset fixtures.
 - `Source/Tests/Test_ImGuiHarness.h` - presses ImGui widgets by label so the branch behind a button,
   checkbox, selectable or folded section runs in a headless frame. Pinned by

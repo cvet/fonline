@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"5e15be8cc2467f37c22299ca4939ebd630b7de4e3a53d79451971c5107089368"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8deb645411b65ec81aaaf79e780cd9f7f8206bbee414b3bb4c6974d649c88790"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Исправлено
+
+- Исправлены getters synctime на полном диапазоне и bytecode/lifetime/service assertions тестов.
+
+### Миграция
+
+- База `3cc3a490b8f5700a6370a4192f526bcaa1d04ab1` (`2026.1.71-dev`). Пересоберите/перепеките; конверсия исходников/данных не нужна. Единицы, API, форматы, runtime `0.0.81` и Managed ABI `9` прежние. Откат согласованными артефактами.
+
+## 2026.1.71-dev - 2026-10-26
 
 ### Исправлено
 

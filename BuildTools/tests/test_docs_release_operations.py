@@ -42,6 +42,7 @@ class DocumentationReleaseOperationsTests(unittest.TestCase):
     def test_source_still_exposes_documented_lifecycle_signals(self) -> None:
         server = (ENGINE_ROOT / "Source/Server/Server.cpp").read_text(encoding="utf-8")
         service = (ENGINE_ROOT / "Source/Applications/ServerServiceApp.cpp").read_text(encoding="utf-8")
+        common = (ENGINE_ROOT / "Source/Common/Common.h").read_text(encoding="utf-8")
         daemon = (ENGINE_ROOT / "Source/Applications/ServerDaemonApp.cpp").read_text(encoding="utf-8")
         signals = (ENGINE_ROOT / "Source/Frontend/ApplicationInit.cpp").read_text(encoding="utf-8")
 
@@ -57,7 +58,10 @@ class DocumentationReleaseOperationsTests(unittest.TestCase):
         self.assertIn("GetApp()->RequestQuit()", service)
         self.assertIn("Data->ServerThread.join()", service)
         self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
-        self.assertIn('append(L" --server-service")', service)
+        self.assertIn('ServerServiceStart = "server-service-start";', common)
+        self.assertIn('strex(" --{}", CommandLineSettings::ServerServiceStart).to_wide_char()', service)
+        self.assertIn('append(service_start_arg)', service)
+        self.assertIn('args.GetSettingValue(CommandLineSettings::ServerServiceStart).has_value()', service)
         self.assertIn("platform::fork_process();", daemon)
         self.assertIn("std::signal(SIGTERM, SignalHandler)", signals)
 

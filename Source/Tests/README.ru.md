@@ -5,10 +5,10 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"69afbdf09d5f4f12069b22aec3e343f1cf1636ba00abc7870520925a087da7df"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"04362e9ccb117d89993a2b0f29a13a30646dcf281ed4e0c8f3ccdcc413ae68c8"} -->
 # Модульные тесты
 
-Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
+Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
 
 ## Фреймворк и цель
 
@@ -17,13 +17,13 @@ document_id: unit-tests-readme
 - Владелец списка исходных файлов тестов: `BuildTools/cmake/stages/EngineSources.cmake` (`FO_TESTS_SOURCE`)
 - Формат имени генерируемого исполняемого файла: `<ProjectDevName>_UnitTests`
 - Генерируемая цель запуска: `RunUnitTests`
-- Формат имени генерируемой цели покрытия: `<ProjectDevName>_CodeCoverage`, а также `RunCodeCoverage`, `GenerateCodeCoverageReport` и `AnalyzeCodeCoverage`, когда покрытие включено
+- Переключатель покрытия: `FO_CODE_COVERAGE`; цели ниже.
 
-Имя исполняемой цели использует префикс имени проекта для разработки (`<ProjectDevName>_UnitTests`); `RunUnitTests` является генерируемой целью запуска. Считайте префикс частью генерации проекта, а не универсальным API движка.
+`<ProjectDevName>` — префикс встраивающего проекта, а не универсальный API.
 
 ## Текущие наборы тестов
 
-Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+Генерируемые имена и количество файлов: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); владение и проверки: [Тестирование](../../Docs/ru/contributing/testing/).
 
 `Test_RpcRuntimeTracker.cpp` — детерминированный набор без сети для учёта RPC.
 Он фиксирует включительные границы warning/disconnect, ограничение предупреждений,
@@ -51,13 +51,13 @@ python BuildTools/docs_inventory.py --check
 
 ## Запуск тестов
 
-Предпочтительно запускайте генерируемую цель из настроенного каталога сборки:
+Из настроенного каталога сборки:
 
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Запускайте исполняемую цель напрямую, когда требуются аргументы Catch2. Генерируемые тестовые файлы обычно размещаются в `Binaries/Tests-*`, например:
+Передавайте аргументы Catch2 напрямую исполняемому файлу в `Binaries/Tests-*`:
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
@@ -70,6 +70,8 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
+Исполняемая цель: `<ProjectDevName>_CodeCoverage`.
+
 Отчёты о покрытии создаются в `CodeCoverage/<Toolchain>/<Platform-Config>/`,
 а `Source/Tests/` исключается из знаменателя покрытия исходного кода.
 
@@ -80,7 +82,9 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 `Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h` и `Test_ServerMapOperationsHelpers.h` разделяют построение native-ресурсов с наборами AngelScript. Компиляция для конкретного бэкенда остаётся под guards внутри этих фикстур.
 
 - `Source/Tests/Test_BakerHelpers.h` содержит fixtures запечённых ресурсов (спрайтов, прототипов и metadata) и
-  `TestRig`, который запускает настоящие bakers поверх источников в памяти.
+  `TestRig` для настоящих bakers в памяти. AS-фикстуры ресурсов вызывают `AddBakedScriptBytecode` перед
+  выпечкой server proto: реальные выходы трёх ролей копируются в `BakedFiles` до очистки `Outputs`
+  следующим `MakeContext`. Дисковые фикстуры включают AngelScript вместе с Metadata перед Proto.
 - `Source/Tests/Test_ParticleFixtures.h` содержит fixtures ресурсов частиц.
 - `Source/Tests/Test_ImGuiHarness.h` нажимает виджеты ImGui по label, чтобы ветвь за кнопкой,
   checkbox, selectable или свёрнутой секцией выполнялась в headless-кадре. Контракт закреплён

@@ -85,6 +85,15 @@ TEST_CASE("TimeRelated")
         CHECK(synctime::zero == synctime {});
     }
 
+    SECTION("SyncTimeUnitConversionsPreserveTheFullMillisecondRange")
+    {
+        for (int64_t value : {std::numeric_limits<int64_t>::min(), int64_t {-1500}, int64_t {-999}, int64_t {0}, int64_t {999}, int64_t {1500}, std::numeric_limits<int64_t>::max()}) {
+            synctime time {value};
+            CHECK(time.milliseconds() == value);
+            CHECK(time.seconds() == value / 1000);
+        }
+    }
+
     SECTION("OffsetAndDescRoundtrip")
     {
         time_desc_t now_desc = nanotime::now().desc(false);

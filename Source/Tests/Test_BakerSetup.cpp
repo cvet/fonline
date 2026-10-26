@@ -1560,6 +1560,11 @@ ClientFile = Client.png
     rig.AddBakedFile("Music.ogg", "music");
     rig.AddBakedFile("Server.png", "server image");
     rig.AddBakedFile("Client.png", "client image");
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    BakerTests::AddBakedScriptBytecode(rig);
+#endif
+
     ProtoBaker baker {rig.MakeContext("Protos")};
     baker.BakeFiles(rig.GetAllSourceFiles(), {});
 
@@ -1612,6 +1617,10 @@ PicMap = Placed.png
     for (string_view path : {"Inherited.png", "Inventory.png", "Placed.png"}) {
         rig.AddBakedFile(path, "image");
     }
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    BakerTests::AddBakedScriptBytecode(rig);
+#endif
 
     ProtoBaker prototypes {rig.MakeContext("Protos")};
     prototypes.BakeFiles(rig.GetAllSourceFiles(), {});

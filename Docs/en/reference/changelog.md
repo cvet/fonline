@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Fix full-range synctime getters; repair test bytecode/lifetime/service assertions.
+
+### Migration
+
+- Base `3cc3a490b8f5700a6370a4192f526bcaa1d04ab1` (`2026.1.71-dev`). Rebuild/rebake; no source/data conversion. Units, APIs, formats, runtime `0.0.81` and Managed ABI `9` unchanged. Roll back matching artifacts.
+
+## 2026.1.71-dev - 2026-10-26
+
+### Fixed
+
 - Fix libc++ noexcept checks, local types, search focus/selection and backup links; refresh example defaults.
 
 ### Migration

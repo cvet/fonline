@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AngelScriptBaker.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
@@ -629,6 +630,26 @@ namespace BakerTests
         rig.AddBakedFile(path, data);
         rig.AddBakedFile(strex("SpriteInfo/TestImages/{}.foinfo", path), WriteSpriteInfoFile({entry}));
     }
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    // A server proto bake loads real script bytecode, so in-memory resource fixtures compile their own role outputs
+    // before the next MakeContext resets Outputs
+    inline void AddBakedScriptBytecode(TestRig& rig)
+    {
+        rig.AddSourceFile("Scripts/Fixture.fos", "namespace SharedDiagnostics { int Value() { return 42; } }\n");
+
+        AngelScriptBaker baker {rig.MakeContext("Scripts")};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 3);
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            REQUIRE(strex(path).get_file_extension().starts_with("fos-bin-"));
+            REQUIRE(!bytes.empty());
+            rig.AddBakedFile(path, bytes);
+        }
+    }
+#endif
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
