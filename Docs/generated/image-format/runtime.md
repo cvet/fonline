@@ -6,6 +6,9 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/image-format/runtime.md) | [Russian](../../ru/reference/image-format/runtime.md)
 
+<a id="entry-image-format-runtime-cpu-preparation-01f8c627d2"></a>
+- [`entry-image-format-runtime-cpu-preparation-01f8c627d2`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-cpu-preparation-01f8c627d2)
+
 <a id="entry-image-format-runtime-factory-coverage-dbed40ee44"></a>
 - [`entry-image-format-runtime-factory-coverage-dbed40ee44`](../../en/reference/image-format/runtime.md#entry-image-format-runtime-factory-coverage-dbed40ee44)
 

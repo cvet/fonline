@@ -156,7 +156,7 @@ The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/defa
 
 Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
 
-Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so the Russian budget measures actual text bytes. The source manifest enforces the reviewed 1.78125 MiB (1,867,776-byte) hard limit independently for each generated index. The limit is capacity for the complete bilingual corpus, not permission to omit documents; generation still fails closed when either locale exceeds it.
+Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so the Russian budget measures actual text bytes. The source manifest enforces the reviewed 1.8125 MiB (1,900,544-byte) hard limit independently for each generated index. The limit is capacity for the complete bilingual corpus, not permission to omit documents; generation still fails closed when either locale exceeds it.
 
 Regenerate after changing public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups, or search policy:
 
@@ -393,3 +393,8 @@ Escalate a mismatch to both repository and domain administrators. Do not work ar
 14. The dedicated Russian 200-percent screenshot is reviewed; manual keyboard, production-domain 200-percent zoom, and representative screen-reader checks are recorded for a release candidate; axe incomplete nodes are reviewed rather than silently ignored.
 15. The site, static report, browser report, and screenshot artifacts are attached to the exact reviewed commit.
 16. Production source settings and DNS were not changed unless the change explicitly required administrator review.
+
+The reviewed integration of client multithreading with the current master corpus adds 32,768 bytes of index capacity; complete document coverage, token policy and overflow rejection remain unchanged.
+
+Diagram outputs use UTF-8 with LF on every host. `docs_diagrams.py --check` compares exact stored bytes
+with the rendered outputs, so a line-ending change cannot pass while invalidating the catalog's SVG hashes.

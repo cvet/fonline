@@ -74,6 +74,12 @@ public:
     [[nodiscard]] auto GetDrawInScene() const -> bool override;
     [[nodiscard]] auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D> override;
     [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D> override;
+    [[nodiscard]] auto GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics override;
+    [[nodiscard]] auto CanUpdateCpu() const noexcept -> bool override;
+
+    void UpdateCpu(float32_t delta_seconds, bool worker, CpuUpdateDiagnostics& result) override;
+    void CommitCpuUpdate(const CpuUpdateDiagnostics& result) noexcept override;
+    void RetireCpuUpdate() noexcept override;
 
     void RebaseWorldParticles(vec3 delta) noexcept override;
     void Setup(const ParticleRuntimeSetup& setup) override;
@@ -84,6 +90,7 @@ public:
     void Draw() override;
 
     auto GetEditableBaseSystem() -> SPK::Ref<SPK::System>;
+    static auto IsCpuGraphSafe(const SPK::Ref<SPK::System>& system) -> bool;
     void ReplaceBaseSystem(SPK::Ref<SPK::System> system);
 
 private:

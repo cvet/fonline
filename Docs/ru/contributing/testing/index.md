@@ -544,3 +544,7 @@ transport checks остаются assertions. На browser/device client зад�
 
 - [Profiling](../../how-to/quality/profiling.md) — Tracy build modes и captures.
 - [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.
+
+`Test_WorkScheduler.cpp` проверяет выбор клиентских потоков, синхронные пакеты, передачу ошибок и порядок фаз спрайтов. `Test_ModelAnimationPoseProcedural.cpp` проверяет битовую идентичность параллельных поз; `ModelPosePhasesMatchTheSinglePassPose` в `Test_ClientEngine.cpp` использует общие model fixtures и не требует конкретного backend. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md).
+
+`Test_ClientPoseBatchCost.cpp` добавляет отдельный эксперимент на запечённом rig; см. [контракт входов и доказательств](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз).

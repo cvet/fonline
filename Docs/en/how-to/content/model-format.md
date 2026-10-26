@@ -301,6 +301,16 @@ The link's `MoveX`, `MoveY`, `MoveZ`, and `RotY` feed particle placement. The pa
 
 The attached resource's XML, registered SPARK objects, renderer fields, effects/textures, runtime cache, and visible validation are owned by [Particle Format And Runtime](particle-format.md). Model-bone particles use the direct 3D composition path rather than `ParticleSprite`'s atlas/direct-scene selector.
 
+Attachment updates use the model pose delta after pose evaluation has joined.
+Children finalize first; joint transforms and runtime setup remain owner-only.
+Optional client workers may update contiguous admitted SPARK systems or useful
+Effekseer chunks, using the existing client scheduler. The owner joins before
+layout refresh, animation callbacks or drawing. Zero-delta layout re-poses retain
+the existing simulation semantics. Unsupported graphs stay on the owner; the
+existing Effekseer nonzero look-angle rejection also remains. Eligibility,
+failure boundaries and storage costs belong to
+[Particle CPU Updates](../../explanation/runtime/client-multithreading.md#particle-cpu-updates).
+
 ## Transforms and speed
 
 Per-link fields are:

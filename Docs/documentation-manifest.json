@@ -203,7 +203,7 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2392064,
+      "max_bytes": 2400256,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
@@ -227,7 +227,7 @@
         "en": "Docs/Site/Assets/docs-search.json",
         "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1867776,
+      "max_bytes": 1900544,
       "minimum_query_length": 2
     },
     "browser_validation": {
@@ -384,6 +384,7 @@
           "engine-architecture",
           "entity-model",
           "client-runtime",
+          "client-multithreading",
           "server-runtime",
           "networking",
           "persistence",
@@ -13078,6 +13079,61 @@
         "BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py",
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/en/explanation/runtime/client-multithreading.md": {
+      "id": "client-multithreading",
+      "title": "Optional Client Multithreading",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "explanation",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "runtime",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/explanation/runtime/client-multithreading.md",
+      "sources": [
+        "Source/Client/WorkScheduler.h",
+        "Source/Client/WorkScheduler.cpp",
+        "Source/Client/Client.cpp",
+        "Source/Client/SpriteManager.cpp",
+        "Source/Client/ModelSprites.cpp",
+        "Source/Client/ModelInstance.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Tests/Test_WorkScheduler.cpp",
+        "Source/Tests/Test_ModelAnimationPoseProcedural.cpp",
+        "Source/Tests/Test_ClientEngine.cpp"
+      ]
+    },
+    "Docs/ClientMultithreading.md": {
+      "id": "legacy-client-multithreading-route",
+      "title": "Optional Client Multithreading",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "public",
+        "human": false,
+        "translation": "not-required"
+      },
+      "owner": "runtime",
+      "state": "redirect",
+      "disposition": "replace",
+      "target": "Docs/en/explanation/runtime/client-multithreading.md",
+      "redirect_to": "client-multithreading",
+      "sources": [
+        "Docs/en/explanation/runtime/client-multithreading.md",
+        "Docs/ru/explanation/runtime/client-multithreading.md"
       ]
     }
   }

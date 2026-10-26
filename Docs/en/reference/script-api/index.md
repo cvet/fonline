@@ -13,7 +13,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 1013 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 1015 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 995 | Entities, enums, value types, reference types, fields, and methods. |

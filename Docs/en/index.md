@@ -178,4 +178,6 @@ not depend on Last Frontier, TLA, or another project's files. External projects
 may provide version-pinned evidence, but reusable helpers and regressions cited
 as the source of an Engine guarantee belong in this repository.
 
+- [Client multithreading](explanation/runtime/client-multithreading.md).
+
 Checkout agents start with [AGENTS.md](../../AGENTS.md) and source guides; website retrieval bundles are optional build outputs.

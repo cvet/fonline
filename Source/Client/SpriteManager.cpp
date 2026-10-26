@@ -35,6 +35,7 @@
 
 #include "Application.h"
 #include "DefaultSprites.h"
+#include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -71,7 +72,7 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
-SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
+SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler) :
     _settings {settings},
     _window {window},
     _gameTimer {game_time},
@@ -81,6 +82,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _input {window->GetInput()},
     _effectMngr {effect_mngr},
     _hashResolver {hashes},
+    _workScheduler {work_scheduler},
     _spritesDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _primitiveDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _flushDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
@@ -253,14 +255,147 @@ void SpriteManager::BeginScene()
 
     EventDispatcher<> {&_onBeginScene}();
 
+    UpdateSprites();
+}
+
+void SpriteManager::UpdateSprites()
+{
+    FO_TRACE_ZONE(Render);
+
+    // The live set is materialized first because an Update may start updating another sprite, and inserting into the
+    // map being walked would rehash it under the iterator. It also gives the prepared CPU work a stable index space
+    _liveUpdateSprites.clear();
+
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
-        if (auto spr = it->second.lock(); spr && spr->Update()) {
+        if (auto spr = it->second.lock()) {
+            _liveUpdateSprites.emplace_back(std::move(spr));
             ++it;
         }
         else {
             it = _updateSprites.erase(it);
         }
     }
+
+    // A serial client never enters the two-phase path: with no worker the split would only move effects and
+    // callbacks relative to the other sprites of the frame while buying nothing
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        PrepareSpriteCpuUpdates();
+    }
+
+    for (size_t index = 0; index < _liveUpdateSprites.size();) {
+        if (_workScheduler && _workScheduler->IsParallel()) {
+            size_t updated = TryUpdateParticleCpuSpan(index);
+
+            if (updated != 0) {
+                index += updated;
+                continue;
+            }
+        }
+
+        auto& spr = _liveUpdateSprites[index];
+
+        if (!spr->Update()) {
+            _updateSprites.erase(make_ptr(spr.get()));
+        }
+
+        index++;
+    }
+
+    _liveUpdateSprites.clear();
+}
+
+auto SpriteManager::TryUpdateParticleCpuSpan(size_t begin) -> size_t
+{
+    size_t end = begin;
+
+    while (end < _liveUpdateSprites.size()) {
+        auto particle = _liveUpdateSprites[end].as_ptr().dyn_cast<ParticleSprite>();
+
+        if (!particle || !particle->CanUpdateParticleCpu()) {
+            break;
+        }
+
+        end++;
+    }
+
+    size_t count = end - begin;
+
+    if (!_workScheduler->ShouldRunParallel(count, 2)) {
+        return 0;
+    }
+
+    struct ParticleUpdateJob
+    {
+        ptr<ParticleSystem> Particle;
+        float32_t Delta {};
+        CpuUpdateDiagnostics Result {};
+    };
+
+    // Nothing is allocated or copied until the complete contiguous span passes the threshold.
+    vector<ParticleUpdateJob> jobs;
+    jobs.reserve(count);
+    auto retire_on_failure = scope_fail([this, begin, end]() noexcept {
+        for (size_t index = begin; index < end; index++) {
+            auto sprite = _liveUpdateSprites[index].as_ptr().dyn_cast<ParticleSprite>();
+            sprite->GetParticle()->GetRuntimeSystem()->RetireCpuUpdate();
+        }
+    });
+
+    for (size_t index = begin; index < end; index++) {
+        auto sprite = _liveUpdateSprites[index].as_ptr().dyn_cast<ParticleSprite>();
+        ptr<ParticleSystem> particle = sprite->GetParticle();
+        float32_t delta = particle->PrepareCpuUpdate();
+        jobs.emplace_back(ParticleUpdateJob {particle, delta, {}});
+    }
+
+    std::thread::id owner_thread = std::this_thread::get_id();
+    _workScheduler->RunBatch("ParticleCpuUpdate", jobs.size(), 1, [&jobs, owner_thread](size_t index) {
+        auto& job = jobs[index];
+        job.Particle->GetRuntimeSystem()->UpdateCpu(job.Delta, std::this_thread::get_id() != owner_thread, job.Result);
+    });
+
+    for (size_t index = 0; index < jobs.size(); index++) {
+        auto& job = jobs[index];
+        job.Particle->CommitCpuUpdate(job.Delta, job.Result);
+
+        if (!job.Particle->IsActive()) {
+            _updateSprites.erase(make_ptr(_liveUpdateSprites[begin + index].get()));
+        }
+    }
+
+    return count;
+}
+
+void SpriteManager::PrepareSpriteCpuUpdates()
+{
+    FO_TRACE_ZONE(Render);
+
+    {
+        FO_TRACE_ZONE_NAMED(Render, "SpriteCpuUpdatePrepare");
+
+        _preparedUpdateSprites.clear();
+
+        for (auto& spr : _liveUpdateSprites) {
+            if (spr->PrepareUpdate()) {
+                _preparedUpdateSprites.emplace_back(spr.get());
+            }
+        }
+    }
+
+    ptr<WorkScheduler> work_scheduler = _workScheduler;
+
+    // The one place this stage chooses between the two ways of running the same kernel. A frame with too few
+    // prepared sprites runs them right here instead, because the batch would cost more than it spreads
+    if (work_scheduler->ShouldRunParallel(_preparedUpdateSprites.size(), numeric_cast<size_t>(std::max(_settings->Render.ParallelSpriteUpdateMinCount, 1)))) {
+        work_scheduler->RunBatch("SpriteCpuUpdate", _preparedUpdateSprites.size(), 1, [this](size_t index) { _preparedUpdateSprites[index]->RunPreparedUpdate(); });
+    }
+    else {
+        for (ptr<Sprite> spr : _preparedUpdateSprites) {
+            spr->RunPreparedUpdate();
+        }
+    }
+
+    _preparedUpdateSprites.clear();
 }
 
 void SpriteManager::EndScene()
@@ -290,12 +425,17 @@ void SpriteManager::AbortScene() noexcept
 {
     // Runs on the unwind path, so it hands the renderer back as it was found — dropped draws, released scissor and
     // render target — and reports rather than raises the one step that can fail on an already-gone render context
+    _geometryQueue.clear();
     _dipQueue.clear();
     _spriteWireframeVertices.clear();
     _spritesDrawBuf->VertCount = 0;
     _spritesDrawBuf->IndCount = 0;
     _scissorStack.clear();
     _rtMngr.ClearStack();
+
+    // An abandoned update leaves its working set behind, and those entries hold a sprite alive until the next frame
+    _preparedUpdateSprites.clear();
+    _liveUpdateSprites.clear();
 
     safe_call([this] {
         _render->DisableScissor();
@@ -523,7 +663,7 @@ void SpriteManager::DisableScissor()
 void SpriteManager::Flush()
 {
     // Every render target switch flushes, and most find nothing queued, so only a real batch opens a zone
-    if (_spritesDrawBuf->VertCount == 0) {
+    if (_spritesDrawBuf->VertCount == 0 && _geometryQueue.empty()) {
         return;
     }
 
@@ -534,6 +674,7 @@ void SpriteManager::FlushBatch()
 {
     FO_TRACE_ZONE(Render);
 
+    CompleteSpriteGeometry();
     _spritesDrawBuf->Upload(EffectUsage::QuadSprite);
 
     EnableScissor();
@@ -580,6 +721,8 @@ void SpriteManager::FlushBatch()
 
 void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
 {
+    CompleteSpriteGeometry();
+
     FO_VERIFY_AND_THROW(index_count % 3 == 0, "Sprite wireframe source indices are not grouped by triangles", start_index, index_count);
     FO_VERIFY_AND_THROW(start_index <= _spritesDrawBuf->IndCount && index_count <= _spritesDrawBuf->IndCount - start_index, "Sprite wireframe source range is outside the index buffer", start_index, index_count, _spritesDrawBuf->IndCount);
 
@@ -653,7 +796,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
     color = ApplyColorBrightness(color);
 
     size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
+    size_t ind_count = FillSpriteGeometry(spr, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
         if (_drawWireframe) {
@@ -716,7 +859,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
     color = ApplyColorBrightness(color);
 
     size_t start_index = _spritesDrawBuf->IndCount;
-    size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
+    size_t ind_count = FillSpriteGeometry(spr, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
         if (_drawWireframe) {
@@ -754,7 +897,7 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
 
     color = ApplyColorBrightness(color);
 
-    size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, uv0, uv1, frect32 {pos, size}, color);
+    size_t ind_count = FillSpriteRegionGeometry(atlas_spr, uv0, uv1, frect32 {pos, size}, color);
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -812,7 +955,7 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
         for (float32_t xx = numeric_cast<float32_t>(pos.x); xx < end_x; xx += width) {
             float32_t local_width = std::min(width, end_x - xx);
             fpos32 uv1 {local_width / width, local_height / height};
-            size_t ind_count = atlas_spr->FillRegionData(_spritesDrawBuf, {}, uv1, {xx, yy, local_width, local_height}, color);
+            size_t ind_count = FillSpriteRegionGeometry(atlas_spr, {}, uv1, {xx, yy, local_width, local_height}, color);
 
             if (ind_count != 0) {
                 if (_dipQueue.empty() || _dipQueue.back().MainTexture != atlas_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -1038,62 +1181,35 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
         float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
-        size_t start_vpos = _spritesDrawBuf->VertCount;
         size_t start_ipos = _spritesDrawBuf->IndCount;
-        size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
-
-        auto& vbuf = _spritesDrawBuf->Vertices;
-        bool standing_sprite = is_standing_sprite(draw_order);
         vec3 sprite_proj = get_map_sprite_proj(mspr.get());
-        float32_t pos_z = sprite_proj.z;
-
-        for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-            vbuf[j].PosZ = pos_z;
-        }
-
-        // Rotation and map-projected flattening
+        PreparedSpriteTransform transform {
+            .MapSprite = true,
+            .ProjectionY = sprite_proj.y,
+            .ProjectionZ = sprite_proj.z,
+        };
         int16_t angle_deg = mspr->GetAngle();
         bool use_map_projected = mspr->GetMapProjected();
 
         if (angle_deg != 0 || use_map_projected) {
             float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
-            float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
-            float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-            float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
-            float32_t cx = xf + wf * 0.5f;
-            float32_t cy = yf + hf * 0.5f;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t dx = vbuf[j].PosX - cx;
-                float32_t dy = vbuf[j].PosY - cy;
-                vbuf[j].PosX = cx + dx * cs - dy * sn;
-                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
-            }
+            transform.Rotate = true;
+            transform.Center = {xf + wf * 0.5f, yf + hf * 0.5f};
+            transform.CosAngle = angle_deg != 0 ? std::cos(rad) : 1.0f;
+            transform.SinAngle = angle_deg != 0 ? std::sin(rad) : 0.0f;
+            transform.YScale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
         }
 
-        if (standing_sprite) {
-            float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
+        if (is_standing_sprite(draw_order)) {
+            transform.Standing = true;
+            transform.SceneRootY = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
             float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-            float32_t sin_a = std::sin(angle_rad);
-            float32_t cos_a = std::cos(angle_rad);
-            float32_t tan_a = sin_a / cos_a;
-
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
-                vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
-            }
+            transform.DepthSlope = std::sin(angle_rad) / std::cos(angle_rad);
         }
 
-        // Setup eggs
-        bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr);
-        bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr);
-
-        if (use_first_egg || use_second_egg) {
-            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
-                vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
-            }
-        }
+        transform.EggFlags[0] = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr) ? EGG_ENABLED_FLAG : 0.0f;
+        transform.EggFlags[1] = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr) ? EGG_ENABLED_FLAG : 0.0f;
+        size_t ind_count = FillSpriteGeometry(spr, {xf, yf, wf, hf}, {color_l, color_r}, transform);
 
         if (ind_count != 0) {
             if (_drawWireframe) {
@@ -1350,6 +1466,108 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     }
     else {
         return color;
+    }
+}
+
+auto SpriteManager::FillSpriteGeometry(ptr<const Sprite> sprite, const frect32& pos, const tuple<ucolor, ucolor>& colors, const PreparedSpriteTransform& transform) -> size_t
+{
+    FO_TRACE_ZONE(Render);
+
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        if (auto geometry = sprite->PrepareGeometry(pos, colors)) {
+            geometry->Transform = transform;
+            return SubmitSpriteGeometry(std::move(*geometry));
+        }
+
+        CompleteSpriteGeometry();
+    }
+
+    size_t start_vertex = _spritesDrawBuf->VertCount;
+    size_t index_count = sprite->FillData(_spritesDrawBuf, pos, colors);
+    TransformPreparedSpriteGeometry(transform, span<Vertex2D> {_spritesDrawBuf->Vertices}.subspan(start_vertex, _spritesDrawBuf->VertCount - start_vertex));
+    return index_count;
+}
+
+auto SpriteManager::FillSpriteRegionGeometry(ptr<const AtlasSprite> sprite, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) -> size_t
+{
+    FO_TRACE_ZONE(Render);
+
+    if (!_workScheduler || !_workScheduler->IsParallel()) {
+        return sprite->FillRegionData(_spritesDrawBuf, uv0, uv1, pos, color);
+    }
+
+    auto region = sprite->ResolveRegion(uv0, uv1, pos);
+
+    if (!region) {
+        return 0;
+    }
+
+    return SubmitSpriteGeometry(PreparedSpriteGeometry {
+        .DrawRect = region->DrawRect,
+        .TextureRect = region->TextureRect,
+        .ColorLeft = color,
+        .ColorRight = color,
+    });
+}
+
+auto SpriteManager::SubmitSpriteGeometry(PreparedSpriteGeometry geometry) -> size_t
+{
+    FO_TRACE_ZONE(Render);
+
+    size_t vertex_count = GetPreparedSpriteVertexCount(geometry);
+    size_t index_count = GetPreparedSpriteIndexCount(geometry);
+
+    if (index_count == 0) {
+        return 0;
+    }
+
+    _spritesDrawBuf->CheckAllocBuf(vertex_count, index_count);
+    size_t vertex_offset = _spritesDrawBuf->VertCount;
+    size_t index_offset = _spritesDrawBuf->IndCount;
+
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        _geometryQueue.emplace_back(GeometryCommand {std::move(geometry), vertex_offset, index_offset});
+    }
+    else {
+        WritePreparedSpriteGeometry(geometry, span<Vertex2D> {_spritesDrawBuf->Vertices}.subspan(vertex_offset, vertex_count), span<vindex_t> {_spritesDrawBuf->Indices}.subspan(index_offset, index_count), vertex_offset);
+    }
+
+    _spritesDrawBuf->VertCount += vertex_count;
+    _spritesDrawBuf->IndCount += index_count;
+    return index_count;
+}
+
+void SpriteManager::CompleteSpriteGeometry()
+{
+    FO_TRACE_ZONE_NAMED(Render, "SpriteGeometryBatch");
+
+    if (_geometryQueue.empty()) {
+        return;
+    }
+
+    auto clear_commands = scope_exit([this]() noexcept { _geometryQueue.clear(); });
+    auto discard_failed_batch = scope_fail([this]() noexcept {
+        _dipQueue.clear();
+        _spriteWireframeVertices.clear();
+        _spritesDrawBuf->VertCount = 0;
+        _spritesDrawBuf->IndCount = 0;
+    });
+    const_span<GeometryCommand> commands {_geometryQueue};
+    span<Vertex2D> vertices {_spritesDrawBuf->Vertices};
+    span<vindex_t> indices {_spritesDrawBuf->Indices};
+    auto write_geometry = [commands, vertices, indices](size_t index) {
+        const auto& command = commands[index];
+        WritePreparedSpriteGeometry(command.Geometry, vertices.subspan(command.VertexOffset, GetPreparedSpriteVertexCount(command.Geometry)), indices.subspan(command.IndexOffset, GetPreparedSpriteIndexCount(command.Geometry)), command.VertexOffset);
+    };
+    size_t min_count = numeric_cast<size_t>(std::max(_settings->Render.ParallelSpriteGeometryMinCount, 2));
+
+    if (_workScheduler && _workScheduler->ShouldRunParallel(commands.size(), min_count)) {
+        _workScheduler->RunBatch("SpriteGeometry", commands.size(), std::max<size_t>(min_count / 2, 1), write_geometry);
+    }
+    else {
+        for (size_t index = 0; index < commands.size(); index++) {
+            write_geometry(index);
+        }
     }
 }
 

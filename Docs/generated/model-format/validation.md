@@ -43,6 +43,9 @@ Continue with the [canonical reference](../../en/reference/model-format/validati
 <a id="entry-model-format-rule-first-animation-wins-5d78a9978f"></a>
 - [`entry-model-format-rule-first-animation-wins-5d78a9978f`](../../en/reference/model-format/validation.md#entry-model-format-rule-first-animation-wins-5d78a9978f)
 
+<a id="entry-model-format-rule-particle-cpu-order-293dd7243e"></a>
+- [`entry-model-format-rule-particle-cpu-order-293dd7243e`](../../en/reference/model-format/validation.md#entry-model-format-rule-particle-cpu-order-293dd7243e)
+
 <a id="entry-model-format-rule-runtime-composition-582952d10d"></a>
 - [`entry-model-format-rule-runtime-composition-582952d10d`](../../en/reference/model-format/validation.md#entry-model-format-rule-runtime-composition-582952d10d)
 

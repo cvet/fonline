@@ -1221,3 +1221,13 @@ ResourceManager подписывается на начало сцены в пр�
 - orientation учитывает `IsRenderTargetFlipped()`: OpenGL flipped, Direct3D/Vulkan/SDL_GPU not flipped;
 - effect changes описывают parsing config, shader files и script-value buffers; Vulkan resources соблюдают set-0-UBO/set-1-sampler;
 - Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).
+
+Рендерер остаётся на потоке приложения при включении [многопоточности клиента](../runtime/client-multithreading.md); CPU-пакеты поз не владеют GPU-объектами и записью команд.
+
+### CPU-пакеты геометрии
+
+Спрайты атласа, quad областей и глифы шрифта используют общий чистый kernel `WritePreparedSpriteGeometry`. Поток приложения фиксирует неизменяемые входы, резервирует смещения выходных диапазонов и сохраняет порядок отрисовки. При включённых client workers геометрия завершается до upload и до чтения буфера wireframe или внешним sprite; смена render target и scissor сохраняет прежние границы flush. Последовательный клиент вызывает kernel напрямую. Поворот карты, flattening, глубина стоящего спрайта и оба egg flags передаются значениями; workers не читают сущности карты. В [многопоточности клиента](../runtime/client-multithreading.md#геометрия-спрайтов-и-глифов) описаны время жизни, исключения, пороги и ограничения замеров.
+
+## Параллельная подготовка карты
+
+Worker-стадии света и тумана вычисляют только пассивные CPU-результаты. `MapView` публикует отметки источников и упорядоченные fans после light barrier; `FogShape` привязывает draw/base offsets после sector barrier и сохраняет transition-state у владельца. Выбор render targets, сборка примитивов, upload и композиция остаются в прежнем порядке потока приложения. [Многопоточность клиента](../runtime/client-multithreading.md#пакеты-света-и-тумана) определяет обход в direct-ветке, неизменные снимки препятствий, контракт ошибок/повтора и предварительные пороги. Native equality tests отделены от видимой backend/GPU-проверки.

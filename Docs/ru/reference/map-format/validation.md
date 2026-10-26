@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-validation","locale":"ru","source_path":"Docs/en/reference/map-format/validation.md","source_sha256":"e9ab9b4752b7e37364b05ad69a8af928b9ddf3fc09777457891eec222eb9f0dd"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-validation","locale":"ru","source_path":"Docs/en/reference/map-format/validation.md","source_sha256":"078eeb7eeb090dc2d730a80ba34073f67c898438b45d1c485588902edb95ed15"} -->
 
 # Правила валидации карт
 
@@ -36,6 +36,7 @@ generated: true
 | <a id="entry-map-format-rule-multihex-mesh-74e1ef58a8"></a><code>map-format.rule.multihex-mesh</code> | Сериализация multihex-сетки | MultihexMesh обязан содержать пары координат x/y; Mapper нормализует его в пары с продолжением обратной косой чертой. | Нечётное число координат вызывает ошибку сериализации Mapper. | [Source/Client/MapView.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/MapView.cpp) |
 | <a id="entry-map-format-rule-multihex-lines-runtime-abb0599412"></a><code>map-format.rule.multihex-lines-runtime</code> | Runtime-контур multihex-линий | Считайте MultihexLines частью полного runtime-контура предмета вокруг его якоря и каждой допустимой ячейки MultihexMesh. | Серверная материализация статических и динамических предметов индексирует каждую развёрнутую ячейку линии на тот же предмет и пересчитывает его флаги блокировки и взаимодействия. | [Source/Server/Map.cpp](https://github.com/cvet/fonline/blob/master/Source/Server/Map.cpp) |
 | <a id="entry-map-format-rule-error-aggregation-356613e4d0"></a><code>map-format.rule.error-aggregation</code> | Агрегация ошибок | Считайте любую накопленную ошибку загрузки сущности или проверки свойства или ресурса ошибкой запекания карты. | Диагностика отдельных сущностей записывается до того, как MapLoader или MapBaker выбросит общую ошибку. | [Source/Tools/MapBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/MapBaker.cpp) |
+| <a id="entry-map-format-rule-client-resource-preparation-793d833886"></a><code>map-format.rule.client-resource-preparation</code> | Подготовка ресурсов статики клиента | После приёма холодного допустимого спрайта исходным replay проверяются не больше 64 записей, включая текущую, с пассивными owner properties; допустимые ресурсы подаются до единственного fence окна, затем сохраняется исходный порядок публикации предметов. Removed IDs пропускаются до восстановления свойств. Спекулятивные ошибки откладываются до исходного replay. | Direct, нулевой бюджет workers и полностью тёплый кеш обходят lookahead, fences и смену epoch. Подготовка не меняет baked format, действующий PicMap, factory overrides или опубликованный префикс перед ошибкой. | [Source/Client/MapView.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/MapView.cpp) |
 
 ## Последовательность авторской валидации
 

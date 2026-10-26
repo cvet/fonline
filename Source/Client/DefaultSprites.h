@@ -66,14 +66,22 @@ public:
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
     [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
+
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
+private:
+    [[nodiscard]] auto GetGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry;
+
 protected:
+    [[nodiscard]] auto PrepareAtlasGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> PreparedSpriteGeometry;
+
     nptr<TextureAtlas> _atlas {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
-    optional<SpriteMeshData> _meshData {};
+    shared_ptr<const SpriteMeshData> _meshData {};
+    isize32 _meshFrameSize {};
     unique_del_nptr<TextureAtlasLayout::Allocation> _atlasAllocation {};
 };
 
@@ -113,6 +121,8 @@ public:
     [[nodiscard]] auto GetSpriteMotion() const noexcept -> const_span<ipos32> { return GetCurrentDirection()->_sprMotion; }
     [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
+
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
 
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
@@ -168,6 +178,8 @@ public:
     static auto CreateDummySprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
 private:
+    auto PublishSprite(hstring path, AtlasType atlas_type, SpriteResourceData resource) -> shared_ptr<Sprite>;
+    auto PublishQuad(hstring path, AtlasType atlas_type, SpriteResourceData resource) -> shared_ptr<AtlasSprite>;
     auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels, optional<SpriteMeshData> mesh_data) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;

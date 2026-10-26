@@ -35,7 +35,7 @@ generated: true
 | [BMFont](bmfont.md) | 9 | Принимаемые блоки binary v3 и преобразования метрик. |
 | [Binding](binding.md) | 8 | Raw-copy, слоты, атлас, масштаб и поведение при запуске. |
 | [Layout](layout.md) | 9 | TextFormat, перенос, выравнивание, измерение и fallback глифов. |
-| [Rendering](rendering.md) | 7 | Подготовка текстуры, рамки, эффекты, теги цвета и кеш. |
+| [Rendering](rendering.md) | 9 | Подготовка текстуры, рамки, эффекты, теги цвета и кеш. |
 | [Validation](validation.md) | 8 | Режимы отказа и исполняемые gate проверки. |
 
 ## Граница ответственности

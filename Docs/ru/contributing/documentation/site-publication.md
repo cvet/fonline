@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"9ce232d077bcb86f09c6acf1022f254bf15bd45d53520c1c8c8c1de5a07e03c3"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"3a7fbcecefa9f841d0a058ec51f9ae2f5f47a10e386e44913c3a26b7c930db47"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -155,7 +155,7 @@ Public site оборачивает обычный Markdown, отрендерен
 
 Каждая public current human top-level page должна ровно один раз входить в navigation. Generated detail pages не попадают в sidebar, но доступны в поиске через generated index pages. Internal plans, placeholders и AI-only maintainer routes отсутствуют в обеих reader surfaces.
 
-Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому русский бюджет измеряет фактические байты текста. Source manifest независимо применяет reviewed hard limit 1,78125 MiB (1 867 776 байт) к каждому generated index. Лимит даёт ёмкость полному двуязычному corpus, но не разрешает исключать документы; при превышении любой локалью generation по-прежнему завершается fail-closed.
+Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому русский бюджет измеряет фактические байты текста. Source manifest независимо применяет reviewed hard limit 1,8125 MiB (1 900 544 байт) к каждому generated index. Лимит даёт ёмкость полному двуязычному corpus, но не разрешает исключать документы; при превышении любой локалью generation по-прежнему завершается fail-closed.
 
 После изменения public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups или search policy выполните:
 
@@ -375,3 +375,8 @@ dig +short fonline.ru A
 14. Отдельный русский screenshot при 200 процентах просмотрен; manual keyboard, production-domain 200 percent zoom и representative screen-reader checks записаны для release candidate; axe incomplete nodes review выполнен.
 15. Site, static report, browser report и screenshot artifacts привязаны к exact reviewed commit.
 16. Production source settings и DNS не менялись без явного administrator review.
+
+Проверенное объединение документации клиентской многопоточности с текущим корпусом master добавляет 32 768 байт ёмкости индекса; полнота документов, правила токенов и отказ при переполнении сохраняются.
+
+Результаты генерации диаграмм используют UTF-8 с LF на любом хосте. `docs_diagrams.py --check` сравнивает
+точные сохранённые байты с результатом рендера: смена переводов строк не проходит проверку, нарушая хеши SVG в каталоге.

@@ -463,6 +463,35 @@
   ],
   "rendering_rules": [
     {
+      "id": "font-format.rendering.cpu-geometry",
+      "name": "Owner-prepared glyph geometry",
+      "stability": "internal",
+      "requirement": "Keep layout and font access on the application thread; submit immutable glyph values in draw order and complete their geometry before buffer upload.",
+      "rationale": "Glyphs share the pure sprite geometry kernel. Serial mode writes directly; optional client workers process disjoint reserved ranges without renderer or font-manager access.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "SubmitSpriteGeometry",
+            "PreparedSpriteGeometry"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "CompleteSpriteGeometry",
+            "SpriteGeometryBatch"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteGeometry.cpp",
+          "anchors": [
+            "WritePreparedSpriteGeometry"
+          ]
+        }
+      ]
+    },
+    {
       "id": "font-format.rendering.one-pixel-sampling-border",
       "name": "One-pixel sampling border",
       "stability": "experimental",
@@ -520,6 +549,31 @@
       "requirement": "Do not depend on cached layout identity or lifetime; the cache key includes text, font, flags, skips, rectangle size, color, and mode and expires after three unused frames.",
       "rationale": "The cache is a client implementation detail and is cleared whenever fonts are stored or cleared.",
       "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT = 3", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
+    },
+    {
+      "id": "font-format.rendering.batch-layout",
+      "name": "Measurement and draw batch preparation",
+      "stability": "experimental",
+      "requirement": "Prepare equally sized text/color lists with common bounds and format; draw each entry with its returned extent and the same color and format on the application thread.",
+      "rationale": "Distinct cold misses run pure CPU layout in two phases, while cache publication, recency, brightness and draw order remain owner-thread work; warm caches submit no jobs.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "PrepareTextLayouts",
+            "PrepareFormats",
+            "TextMeasureLayout",
+            "TextDrawLayout"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PrepareTextLayouts",
+            "Client_Game_CanPrepareTextLayoutsInParallel"
+          ]
+        }
+      ]
     }
   ],
   "validation_rules": [

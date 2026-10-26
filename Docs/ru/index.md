@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"17a1640c76a8e35cd809bf887b801ada2dd3dc4f80c7e8dbed6f64a0ed767853"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"271b630970abd62fde56814620b8775a9e370d93e1b301ffd7f0277ec7c33015"} -->
 # Документация движка FOnline
 
 [Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
@@ -187,5 +187,7 @@ FOnline. Она предназначена для разработчиков и�
 проекты могут давать привязанные к ревизии доказательства, но переиспользуемые
 helpers и регрессионные тесты, на которых основана гарантия Engine, должны
 находиться в этом репозитории.
+
+- [Многопоточность клиента](explanation/runtime/client-multithreading.md).
 
 Агенты с checkout начинают с [AGENTS.md](../../AGENTS.md) и исходных руководств; сборники для читателей сайта — необязательные результаты сборки.

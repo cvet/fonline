@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "FileSystem.h"
+#include "ResourcePreparation.h"
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -65,12 +66,12 @@ class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr);
+    ResourceManager(ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr, nptr<WorkScheduler> work_scheduler = nullptr, ResourcePreparation::Decoder resource_decoder = ReadSpriteResource);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
     auto operator=(ResourceManager&&) noexcept = delete;
-    ~ResourceManager() = default;
+    ~ResourceManager();
 
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetItemDefaultSpr() -> shared_ptr<Sprite>;
@@ -81,6 +82,15 @@ public:
     auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    [[nodiscard]] auto CanPrepareSpriteResources() const -> bool;
+    [[nodiscard]] auto GetResourcePreparationDiagnostics() const -> ResourcePreparation::Diagnostics;
+    auto PrefetchSpriteResource(hstring path, AtlasType atlas_type, bool as_quad = false) -> bool;
+    auto ConsumePreparedSpriteResource(hstring path, AtlasType atlas_type, bool as_quad, const function<void(SpriteResourceData&&)>& publish) -> bool;
+    void DrainPreparedSpriteResources();
+    void DiscardPreparedSpriteResources();
+    void AdvanceResourcePreparationGeneration();
+    void ShutdownResourcePreparation();
+
     void LoadDefaultSprites(const RenderSettings& settings);
     void ForgetFailedSprite(string_view path);
     void InvalidateSpriteResource(string_view path);
@@ -93,6 +103,7 @@ private:
 
     ptr<FileSystem> _resources;
     ptr<SpriteManager> _sprMngr;
+    nptr<WorkScheduler> _workScheduler;
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
     unordered_map<string, ptr<SpriteFactory>> _spriteFactoryMap {};
     unordered_set<hstring> _nonFoundSprites {};
@@ -100,6 +111,13 @@ private:
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
     EventUnsubscriber _eventUnsubscriber {};
+
+    uint64_t _resourceGeneration {1};
+    uint64_t _resourceEpoch {1};
+    ResourcePreparation::Decoder _resourceDecoder;
+    bool _resourcePreparationStopped {};
+    // Last member drains first during constructor unwind, before factories, atlases and provider borrows
+    unique_nptr<ResourcePreparation> _resourcePreparation {};
 };
 
 FO_END_NAMESPACE

@@ -51,6 +51,24 @@ using EffectInstanceRemovingCallback = std::function<void(Manager*, Handle, bool
 using CollisionCallback =
 	std::function<bool(const Vector3D& startPosition, const Vector3D& endPosition, Vector3D& collisionPosition, Vector3D& collisionNormal)>;
 
+// (FOnline Patch) Passive counts of actual nonempty CPU chunk kernels. Results are published only after success.
+struct CpuUpdateResult
+{
+	uint64_t OwnerKernelCalls = 0;
+	uint64_t WorkerKernelCalls = 0;
+	uint64_t UpdatedInstances = 0;
+};
+
+// (FOnline Patch) Borrowed synchronous executor. Execute must join every started job before returning or throwing.
+// The job reports actual Instance::Update calls, and worker identifies the executing thread relative to the owner.
+class CpuUpdateExecutor
+{
+public:
+	using Job = uint32_t (*)(void* context, size_t index, bool worker);
+	virtual ~CpuUpdateExecutor() = default;
+	virtual void Execute(size_t count, void* context, Job job) = 0;
+};
+
 /**
 	@brief エフェクト管理クラス
 */

@@ -260,6 +260,16 @@ Particle path является глобальным путём запечённ�
 
 `MoveX/Y/Z` и `RotY` определяют placement частицы. Instance живёт, пока активна точная пара layer/value, и удаляется при изменении композиции. XML, SPARK objects, renderer fields, effects/textures, runtime cache и визуальная проверка принадлежат [формату частиц](particle-format.md). Частицы на bones используют прямой путь 3D-композиции, а не selector atlas/direct-scene у `ParticleSprite`.
 
+Обновление attachments использует delta позы модели после join её вычисления.
+Сначала завершаются дети; joint transforms и runtime setup остаются только у владельца.
+Необязательные workers клиента могут обновлять соседние допущенные SPARK systems
+или полезные Effekseer chunks через прежний scheduler клиента. Владелец выполняет
+join до layout refresh, animation callbacks и рисования. Повторные layout poses
+с нулевой delta сохраняют прежнюю семантику simulation. Неподходящие графы остаются
+у владельца; прежний отказ Effekseer для ненулевого look angle также сохраняется.
+Eligibility, границы отказа и затраты хранения описаны в разделе
+[CPU-обновление частиц](../../explanation/runtime/client-multithreading.md#cpu-обновление-частиц).
+
 ## Преобразования и скорость
 
 Поля link: `RotX/Y/Z` в градусах, `MoveX/Y/Z` в координатах модели, `ScaleX/Y/Z` и playback multiplier `Speed`. `Scale` задаёт все три оси.

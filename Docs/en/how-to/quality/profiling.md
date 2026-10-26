@@ -119,6 +119,14 @@ Tracy lock wrappers. A CPU capture therefore must not be reported as GPU
 timing or lock-contention proof. Use renderer-specific tools or deliberately
 add scoped instrumentation when that evidence is required.
 
+Client batch diagnostics are available without the `Script` category. `Threading` emits batch-size text and
+separate join/predicate-wait zones; `Render` isolates eligible sprite preparation; `Engine` marks scheduled
+callbacks, OnLoop and OnRenderIface handler boundaries. Their exact scopes and interpretation limits are
+defined in [client multithreading](../../explanation/runtime/client-multithreading.md#measuring-it).
+Use inclusive unwrap exports to retain starts, durations, threads and RunBatch text; self-time exports remove
+children and cannot be used for interval containment. Named wait zones are elapsed CPU-zone time, not lock
+profiler events. Formatting batch text adds profiling-only work when `Threading` is enabled.
+
 Plain C-library allocations made outside the Engine allocation wrappers are
 not automatically attributed to the Engine heap. See
 [Essentials](../../reference/native/essentials.md#memory-pointers-and-lifetime-utilities) before

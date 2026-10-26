@@ -226,6 +226,13 @@ Effekseer сейчас использует direct-scene rendering. SPARK мож
 или direct-scene route. Оба маршрута всё равно зависят от состояния эффекта, image resources,
 настроек камеры и draw order встраивающего проекта.
 
+Effekseer отклоняет ненулевой `ParticleRuntimeSetup::LookDirectionAngle`; CPU-параллелизм
+не расширяет эту возможность. Обычный `RunParticle` модели сохраняет текущий look angle.
+Поэтому нативные model fixtures устанавливают нулевой look angle через
+`SetDir(mdir {180}, false)` до создания Effekseer attachment. Это доказывает поддерживаемый
+model route, а не поддержку всех направлений персонажа. World transforms модели
+по-прежнему применяются через `Setup`.
+
 ## Интеграция
 
 `ParticleSpriteFactory` предоставляет все включённые runtime-расширения обобщённому

@@ -33,7 +33,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | [BMFont](bmfont.md) | 9 | Accepted binary-v3 blocks and metric transformations. |
 | [Binding](binding.md) | 8 | Raw-copy, slot, atlas, scale, and startup behavior. |
 | [Layout](layout.md) | 9 | TextFormat, wrapping, alignment, measurement, and glyph fallback. |
-| [Rendering](rendering.md) | 7 | Texture preparation, borders, effects, color tags, and cache. |
+| [Rendering](rendering.md) | 9 | Texture preparation, borders, effects, color tags, and cache. |
 | [Validation](validation.md) | 8 | Failure modes and executable validation gates. |
 
 ## Boundary

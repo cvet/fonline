@@ -152,7 +152,7 @@ void Instance::UpdateChildrenGroupMatrix()
 	}
 }
 
-InstanceGlobal* Instance::GetInstanceGlobal()
+InstanceGlobal* Instance::GetInstanceGlobal() const
 {
 	return m_pContainer->GetRootInstance();
 }

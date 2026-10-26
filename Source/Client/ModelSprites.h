@@ -87,11 +87,15 @@ public:
     [[nodiscard]] auto GetModel() -> ptr<ModelInstance>;
     [[nodiscard]] auto IsPlaying() const -> bool override;
 
+    [[nodiscard]] auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry> override;
+
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
+    auto PrepareUpdate() -> bool override;
+    void RunPreparedUpdate() override;
     auto Update() -> bool override;
     void SetSize(isize32 size);
     void DrawToAtlas();
@@ -112,6 +116,8 @@ private:
         optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
     };
 
+    [[nodiscard]] auto ResolveGeometryColors(const tuple<ucolor, ucolor>& colors) const -> tuple<ucolor, ucolor>;
+
     void RefreshHitMask() const;
     void SetupFrame(isize32 frame_size);
     auto PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop;
@@ -124,6 +130,10 @@ private:
     isize32 _frameSize {};
     irect32 _cropRect {};
     optional<isize32> _requestedFrameSize {};
+    bool _frameUpdatePrepared {};
+    bool _frameAtlasDrawPending {};
+    bool _frameCpuPosePrepared {};
+    isize32 _preparedRenderFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
 
@@ -151,6 +161,7 @@ public:
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    auto SettleModelFrame(ptr<ModelSprite> model_spr) -> isize32;
     auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
     void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);

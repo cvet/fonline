@@ -25,6 +25,8 @@ document_id: unit-tests-readme
 
 Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
 
+`Test_ClientEntityLifetime.cpp` выполняется с любым scripting backend. Он проверяет, что результат поиска в registry остаётся живым при освобождении последней другой ссылки из другого потока и что старая сущность не может удалить регистрацию новой сущности с тем же id.
+
 `Test_RpcRuntimeTracker.cpp` — детерминированный набор без сети для учёта RPC.
 Он фиксирует включительные границы warning/disconnect, ограничение предупреждений,
 учёт вызовов и предел pending, ограниченное объединение истории прихода,
@@ -61,6 +63,12 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Отдельное измерение стоимости пакета поз
+
+Скрытый (`[.]`) тест `ClientPoseBatchCost` в `Test_ClientPoseBatchCost.cpp` требует 3D. Запускайте только его из каталога с `ClientPoseBatchCost.json`. Поля: `schema: 1`, `rigFile` (полный архив `WriteModelAnimationRigData`), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), `warmup` (1..512). Каждая дорожка ограничена четырьмя миллионами измеряемых вычислений.
+
+Тест чередует порядок прямого и пакетного расчёта при одинаковых временах clip, побайтово сравнивает все матрицы на владельце и сохраняет `samples.csv` и `result.json` с сигнатурами rig и счётчиками пакетов. Ноль workers означает прямую петлю; с workers тест обходит `ShouldRunParallel`, поэтому даже один элемент измеряет dispatch одного chunk. Прогрев, загрузка, сравнение результатов и файловый I/O не измеряются; dispatch/join scheduler измеряются. Нужны тихий хост, сырые пары и повторы. Замеры ядра не подтверждают ускорение кадра, визуальную или платформенную приёмку.
 
 ## Запуск покрытия кода
 

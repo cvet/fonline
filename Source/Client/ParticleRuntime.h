@@ -42,6 +42,7 @@ class FileSystem;
 class IAppRender;
 class RenderDrawBuffer;
 class RenderTexture;
+class WorkScheduler;
 struct RenderSettings;
 
 using ParticleTextureLoader = copyable_function<pair<nptr<RenderTexture>, frect32>(string_view)>;
@@ -105,6 +106,14 @@ struct ParticleRuntimeServices
     ParticleSceneBackgroundProvider SceneBackgroundProvider;
     ptr<RenderSettings> Settings;
     ParticleWireframeQuery DrawWireframe;
+    nptr<WorkScheduler> Scheduler {};
+};
+
+struct CpuUpdateDiagnostics
+{
+    uint64_t OwnerKernelCalls {};
+    uint64_t WorkerKernelCalls {};
+    uint64_t UpdatedInstances {};
 };
 
 class ParticleRuntimeSystem
@@ -121,6 +130,13 @@ public:
     [[nodiscard]] virtual auto GetDrawInScene() const -> bool = 0;
     [[nodiscard]] virtual auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D>;
     [[nodiscard]] virtual auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D>;
+    [[nodiscard]] virtual auto GetCpuUpdateDiagnostics() const noexcept -> CpuUpdateDiagnostics;
+
+    // Only an isolated, audited backend opts into an outer owner-prepared CPU batch.
+    [[nodiscard]] virtual auto CanUpdateCpu() const noexcept -> bool;
+    virtual void UpdateCpu(float32_t delta_seconds, bool worker, CpuUpdateDiagnostics& result);
+    virtual void CommitCpuUpdate(const CpuUpdateDiagnostics& result) noexcept;
+    virtual void RetireCpuUpdate() noexcept;
 
     virtual void RebaseWorldParticles(vec3 delta) noexcept;
     virtual void Setup(const ParticleRuntimeSetup& setup) = 0;

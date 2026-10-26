@@ -204,15 +204,24 @@ namespace
         GameTimer Timer {&Settings};
         hash_storage Hashes {};
         EffectManager Effects {&Settings, &Resources, Window->GetRender()};
-        SpriteManager Sprites {&Settings, Window, &Timer, &Effects, &Hashes};
-        ResourceManager Assets {&Resources, &Sprites};
+        WorkScheduler Scheduler;
+        SpriteManager Sprites {&Settings, Window, &Timer, &Effects, &Hashes, &Scheduler};
+        ResourceManager Assets {&Resources, &Sprites, &Scheduler};
         nptr<RecordingSpriteSheetFactory> Factory {};
 
-        explicit SpriteSheetFixture(bool shared_frame = false) { InitializeResources(MakeSpriteSheetTestResource(shared_frame)); }
+        explicit SpriteSheetFixture(bool shared_frame = false, int32_t workers = 0, bool default_factory = false) :
+            Scheduler {"SpriteSheet", workers}
+        {
+            InitializeResources(MakeSpriteSheetTestResource(shared_frame), default_factory);
+        }
 
-        explicit SpriteSheetFixture(const vector<vector<uint32_t>>& timelines) { InitializeResources(MakeTimelineTestResource(timelines)); }
+        explicit SpriteSheetFixture(const vector<vector<uint32_t>>& timelines) :
+            Scheduler {"SpriteSheet", 0}
+        {
+            InitializeResources(MakeTimelineTestResource(timelines), false);
+        }
 
-        void InitializeResources(vector<uint8_t> sheet)
+        void InitializeResources(vector<uint8_t> sheet, bool default_factory)
         {
             auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteSheetTest");
             source->AddFile("Sheet.fofrm", sheet);
@@ -227,9 +236,15 @@ namespace
 
             Resources.AddCustomSource(std::move(source));
             Effects.LoadDefaultEffects();
-            auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites, &Assets);
-            Factory = factory.as_nptr();
-            Assets.RegisterSpriteFactory(std::move(factory));
+
+            if (default_factory) {
+                Assets.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&Sprites, &Assets));
+            }
+            else {
+                auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites, &Assets);
+                Factory = factory.as_nptr();
+                Assets.RegisterSpriteFactory(std::move(factory));
+            }
         }
     };
 
@@ -304,7 +319,23 @@ TEST_CASE("ResourceManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
 
 TEST_CASE("CritterFramesCacheCachesProjectOwnedDirectionalSequences", "[sprite]")
 {
-    SpriteSheetFixture fixture {true};
+    bool shared_frame = GENERATE(false, true);
+    bool prepared = GENERATE(false, true);
+    CAPTURE(shared_frame, prepared);
+
+    if constexpr (FO_WEB) {
+        if (prepared) {
+            SKIP("This build has no worker threads");
+        }
+    }
+
+    SpriteSheetFixture fixture {shared_frame, prepared ? 1 : 0, prepared};
+
+    if (prepared) {
+        REQUIRE(fixture.Assets.PrefetchSpriteResource(fixture.Hashes.to_hashed_string("Sheet.fofrm"), AtlasType::MapSprites));
+        fixture.Assets.DrainPreparedSpriteResources();
+    }
+
     SpriteSheetTestResolver resolver;
     resolver.Frames = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
     REQUIRE(resolver.Frames);
@@ -740,6 +771,92 @@ TEST_CASE("ResourceManagerDetachesCallbacksAtShutdownAndDestruction", "[sprite]"
     fixture.Sprites.EndScene();
     EventDispatcher<> {fixture.Window->GetOnLowMemory()}();
     CHECK(updates == 1);
+}
+
+TEST_CASE("ResourcePreparationPublishesIndependentSheetsAndPreservesFactoryOverrides", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    SpriteSheetFixture fixture {true, 1, true};
+    REQUIRE(fixture.Assets.CanPrepareSpriteResources());
+    hstring path = fixture.Hashes.to_hashed_string("Sheet.fofrm");
+    REQUIRE(fixture.Assets.PrefetchSpriteResource(path, AtlasType::MapSprites));
+    fixture.Assets.DrainPreparedSpriteResources();
+    auto first = fixture.Assets.LoadSprite(path, AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto second = fixture.Assets.LoadSprite(path, AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    REQUIRE(first);
+    REQUIRE(second);
+    CHECK(first != second);
+    CHECK(first->GetFramesCount() == 3);
+    CHECK(first->GetDirCount() == GameSettings::MAP_DIR_COUNT);
+    CHECK(first->GetSprMotion()[1] == ipos32 {1, -1});
+    CHECK(first->GetSprMotion()[2] == ipos32 {3, -3});
+    first->SetDir(hdir {1});
+    first->SetTime(1.0f);
+    first->Play({}, true, true);
+    CHECK_FALSE(second->IsPlaying());
+    CHECK(second->GetTime() == 0.0f);
+    CHECK(fixture.Assets.GetResourcePreparationDiagnostics().Consumed == 1);
+    CHECK_FALSE(fixture.Assets.PrefetchSpriteResource(path, AtlasType::MapSprites));
+
+    SpriteSheetFixture custom {false, 1};
+    hstring custom_path = custom.Hashes.to_hashed_string("Sheet.fofrm");
+    CHECK_FALSE(custom.Assets.PrefetchSpriteResource(custom_path, AtlasType::MapSprites));
+    REQUIRE(custom.Assets.LoadSprite(custom_path, AtlasType::MapSprites));
+    CHECK(custom.Factory->LoadCount == 1);
+    CHECK(custom.Assets.GetResourcePreparationDiagnostics().Submitted == 0);
+}
+
+TEST_CASE("ResourcePreparationQuadKeepsDistinctValidationAndRevocation", "[resource-preparation]")
+{
+    if constexpr (FO_WEB) {
+        SKIP("This build has no worker threads");
+    }
+
+    SpriteSheetFixture fixture {false, 1, true};
+    auto mesh_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PreparedMesh");
+    SpriteMeshData mesh {{3, 3}, {1, 1}, {{0, 0}, {1, 0}, {0, 1}}, {0, 1, 2}};
+    mesh_source->AddFile("Mesh.png", BakerTests::MakeMinimalBakedSprite(1, 1, SpriteMeshKind::Mesh, mesh));
+    fixture.Resources.AddCustomSource(std::move(mesh_source));
+    hstring mesh_path = fixture.Hashes.to_hashed_string("Mesh.png");
+    REQUIRE(fixture.Assets.PrefetchSpriteResource(mesh_path, AtlasType::IfaceSprites, true));
+    fixture.Assets.DrainPreparedSpriteResources();
+    auto image = fixture.Assets.LoadSpriteAsQuad(mesh_path, AtlasType::IfaceSprites);
+    REQUIRE(image);
+    CHECK(image->GetSize() == isize32 {3, 3});
+    auto texture = image->GetBatchTexture();
+    REQUIRE(texture);
+    auto rect = image->GetAtlasRect();
+    ipos32 pos {iround<int32_t>(rect.x * numeric_cast<float32_t>(texture->Size.width)), iround<int32_t>(rect.y * numeric_cast<float32_t>(texture->Size.height))};
+    auto pixels = texture->GetTextureRegion(pos, {3, 3});
+    REQUIRE(pixels.size() == 9);
+
+    for (size_t index = 0; index < pixels.size(); index++) {
+        CHECK(pixels[index] == (index == 4 ? ucolor {255, 255, 255, 255} : ucolor {}));
+    }
+
+    hstring sheet = fixture.Hashes.to_hashed_string("Sheet.fofrm");
+    REQUIRE(fixture.Assets.PrefetchSpriteResource(sheet, AtlasType::IfaceSprites, true));
+    fixture.Assets.DrainPreparedSpriteResources();
+    CHECK_THROWS_WITH(fixture.Assets.LoadSpriteAsQuad(sheet, AtlasType::IfaceSprites), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one direction"));
+
+    hstring quad = fixture.Hashes.to_hashed_string("Quad.png");
+    REQUIRE(fixture.Assets.PrefetchSpriteResource(quad, AtlasType::IfaceSprites, true));
+    fixture.Assets.DrainPreparedSpriteResources();
+    fixture.Assets.InvalidateSpriteResource("Quad.png");
+    auto replacement = safe_alloc::make_unique<BakerTests::MemoryDataSource>("Replacement");
+    replacement->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(9, 4));
+    fixture.Resources.AddCustomSource(std::move(replacement));
+    auto replaced = fixture.Assets.LoadSpriteAsQuad(quad, AtlasType::IfaceSprites);
+    REQUIRE(replaced);
+    CHECK(replaced->GetSize() == isize32 {9, 4});
+    CHECK(fixture.Assets.GetResourcePreparationDiagnostics().Outstanding == 0);
+
+    fixture.Assets.ShutdownResourcePreparation();
+    CHECK_FALSE(fixture.Assets.CanPrepareSpriteResources());
+    REQUIRE(fixture.Assets.LoadSprite(quad, AtlasType::IfaceSprites));
 }
 
 TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")

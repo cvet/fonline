@@ -40,12 +40,19 @@ FO_BEGIN_NAMESPACE
 
 static constexpr timespan DUMMY_ANIMATION_FRAME_DURATION {std::chrono::milliseconds {100}};
 
-ResourceManager::ResourceManager(ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr) :
+ResourceManager::ResourceManager(ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr, nptr<WorkScheduler> work_scheduler, ResourcePreparation::Decoder resource_decoder) :
     _resources {resources},
-    _sprMngr {spr_mngr}
+    _sprMngr {spr_mngr},
+    _workScheduler {work_scheduler},
+    _resourceDecoder {std::move(resource_decoder)}
 {
     _eventUnsubscriber += (*_sprMngr->GetOnBeginScene()) += [this]() FO_DEFERRED { UpdateFactories(); };
     _eventUnsubscriber += (*_sprMngr->GetWindow()->GetOnLowMemory()) += [this]() FO_DEFERRED { CleanupSpriteCache(); };
+}
+
+ResourceManager::~ResourceManager()
+{
+    ShutdownResourcePreparation();
 }
 
 void ResourceManager::UnsubscribeEvents() noexcept
@@ -62,6 +69,8 @@ void ResourceManager::UpdateFactories()
 
 void ResourceManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 {
+    DiscardPreparedSpriteResources();
+
     for (const auto& ext : factory->GetExtensions()) {
         _spriteFactoryMap.insert_or_assign(ext, factory);
     }
@@ -125,6 +134,138 @@ auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
 auto ResourceManager::GetCritterDummyFrames() -> ptr<const SpriteSheet>
 {
     return _critterDummyAnimFrames;
+}
+
+auto ResourceManager::CanPrepareSpriteResources() const -> bool
+{
+    return !_resourcePreparationStopped && _workScheduler && _workScheduler->IsParallel();
+}
+
+auto ResourceManager::GetResourcePreparationDiagnostics() const -> ResourcePreparation::Diagnostics
+{
+    return _resourcePreparation ? _resourcePreparation->GetDiagnostics() : ResourcePreparation::Diagnostics {};
+}
+
+auto ResourceManager::PrefetchSpriteResource(hstring path, AtlasType atlas_type, bool as_quad) -> bool
+{
+    FO_TRACE_ZONE(Render);
+
+    if (!CanPrepareSpriteResources() || !path || path.as_str().size() > ResourcePreparation::Limits {}.PathBytes) {
+        return false;
+    }
+
+    if (!as_quad && (_copyableSpriteCache.count({path, atlas_type}) != 0 || _nonFoundSprites.count(path) != 0)) {
+        return false;
+    }
+
+    if (as_quad) {
+        if (!GetSpriteFactory(typeid(DefaultSpriteFactory))) {
+            return false;
+        }
+    }
+    else {
+        auto factory = _spriteFactoryMap.find(strex(path).get_file_extension());
+
+        if (factory == _spriteFactoryMap.end() || typeid(*factory->second) != typeid(DefaultSpriteFactory)) {
+            return false;
+        }
+    }
+
+    if (!_resourcePreparation) {
+        _resourcePreparation = safe_alloc::make_unique<ResourcePreparation>(_workScheduler, ResourcePreparation::Limits {}, std::move(_resourceDecoder));
+    }
+
+    ResourcePreparation::Key key {string(path.as_str()), as_quad ? ResourcePreparation::Kind::Quad : ResourcePreparation::Kind::Sprite, static_cast<uint32_t>(atlas_type), _resourceGeneration, _resourceEpoch};
+
+    if (_resourcePreparation->FindRequest(key) != 0) {
+        return true;
+    }
+
+    if (!_resourcePreparation->HasAvailableRequestSlot()) {
+        return false;
+    }
+
+    File file;
+    std::exception_ptr error;
+
+    try {
+        auto header = _resources->ReadFileHeader(path.as_str());
+
+        if (header && header.GetSize() > ResourcePreparation::Limits {}.EncodedBytes) {
+            return false;
+        }
+
+        file = _resources->ReadFile(path);
+    }
+    catch (const std::exception& ex) {
+        ignore_unused(ex);
+        error = std::current_exception();
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+
+    ResourcePreparation::RequestResult result;
+
+    if (file && !error) {
+        result = _resourcePreparation->Request(std::move(key), file.GetDataSpan());
+    }
+    else {
+        ResourcePreparation::Input input;
+        input.Identity = std::move(key);
+        input.Missing = !error;
+        input.AcquisitionError = std::move(error);
+        result = _resourcePreparation->Request(std::move(input));
+    }
+
+    return result.Status == ResourcePreparation::Admission::Accepted || result.Status == ResourcePreparation::Admission::Coalesced;
+}
+
+auto ResourceManager::ConsumePreparedSpriteResource(hstring path, AtlasType atlas_type, bool as_quad, const function<void(SpriteResourceData&&)>& publish) -> bool
+{
+    if (!_resourcePreparation || _resourcePreparationStopped) {
+        return false;
+    }
+
+    ResourcePreparation::Key key {string(path.as_str()), as_quad ? ResourcePreparation::Kind::Quad : ResourcePreparation::Kind::Sprite, static_cast<uint32_t>(atlas_type), _resourceGeneration, _resourceEpoch};
+    uint64_t ticket = _resourcePreparation->FindRequest(key);
+    return ticket != 0 && _resourcePreparation->Consume(ticket, publish);
+}
+
+void ResourceManager::DrainPreparedSpriteResources()
+{
+    if (_resourcePreparation) {
+        _resourcePreparation->Drain();
+    }
+}
+
+void ResourceManager::DiscardPreparedSpriteResources()
+{
+    FO_VERIFY_AND_THROW(_resourceEpoch != std::numeric_limits<uint64_t>::max(), "Sprite preparation epoch exhausted");
+    _resourceEpoch++;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->CancelAll();
+    }
+}
+
+void ResourceManager::AdvanceResourcePreparationGeneration()
+{
+    FO_VERIFY_AND_THROW(_resourceGeneration != std::numeric_limits<uint64_t>::max(), "Sprite preparation generation exhausted");
+    uint64_t generation = _resourceGeneration++;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->CancelGeneration(generation);
+    }
+}
+
+void ResourceManager::ShutdownResourcePreparation()
+{
+    _resourcePreparationStopped = true;
+
+    if (_resourcePreparation) {
+        _resourcePreparation->Shutdown();
+    }
 }
 
 auto ResourceManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
@@ -196,6 +337,8 @@ void ResourceManager::InvalidateSpriteResource(string_view path)
 {
     FO_TRACE_ZONE(Render);
 
+    DiscardPreparedSpriteResources();
+
     hstring hashed_path = _sprMngr->ToHashedString(path);
     _nonFoundSprites.erase(hashed_path);
 
@@ -223,6 +366,8 @@ void ResourceManager::RetryFailedSpriteLoads()
 void ResourceManager::CleanupSpriteCache()
 {
     FO_TRACE_ZONE(Render);
+
+    DiscardPreparedSpriteResources();
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
         _spriteFactories[i]->ClenupCache();

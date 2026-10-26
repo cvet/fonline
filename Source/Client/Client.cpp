@@ -49,6 +49,8 @@ static constexpr timespan FRAME_HEALTH_REPORT_INTERVAL {std::chrono::seconds {1}
 
 void ClientInitHook(ptr<ClientEngine>);
 
+static auto ChooseClientWorkerCount(const ClientSettings& settings) -> int32_t;
+
 auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
 {
     vector<string> pack_dirs = GetClientPackDirs(settings);
@@ -103,9 +105,10 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
+    WorkSched("ClientWorker", ChooseClientWorkerCount(*settings)),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
-    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr)),
+    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes), make_ptr(&WorkSched)),
+    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(&WorkSched)),
     CritterFrames(this),
     FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
@@ -278,11 +281,14 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FinishStartingUp();
 }
 
+// The mapper edits content on one thread and gains nothing from client workers, so its scheduler is constructed
+// serial whatever Client.Multithreading says
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
     BaseEngine(settings, std::move(resources), mapper_registrar),
+    WorkSched("MapperWorker", 0),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
-    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
-    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr)),
+    SprMngr(Settings, window, make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes), make_ptr(&WorkSched)),
+    ResMngr(make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(&WorkSched)),
     CritterFrames(this),
     FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
@@ -316,6 +322,8 @@ ClientEngine::~ClientEngine()
 void ClientEngine::Shutdown()
 {
     FO_TRACE_ZONE(Engine);
+
+    ResMngr.ShutdownResourcePreparation();
 
     Disconnect();
 
@@ -497,8 +505,13 @@ void ClientEngine::MainLoop()
 
     _conn.Process();
     ProcessInputEvents();
-    ProcessScheduledCallbacks();
-    TimeEventMngr.ProcessTimeEvents();
+
+    {
+        FO_TRACE_ZONE_NAMED(Engine, "ClientFrameCallbacks");
+
+        ProcessScheduledCallbacks();
+        TimeEventMngr.ProcessTimeEvents();
+    }
 
     // Reporting an overrun is itself a script call that can overrun, so a record produced here simply arrives
     // on the next frame instead of recursing
@@ -506,7 +519,11 @@ void ClientEngine::MainLoop()
         OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
     }
 
-    OnLoop.Fire();
+    {
+        FO_TRACE_ZONE_NAMED(Engine, "ClientFrameOnLoop");
+
+        OnLoop.Fire();
+    }
 
     if (_curMap) {
         auto map = GetCurMap();
@@ -548,7 +565,11 @@ void ClientEngine::MainLoop()
         CanDrawInScripts = true;
         auto restore_draw_scope = scope_exit([this]() noexcept { CanDrawInScripts = false; });
 
-        OnRenderIface.Fire();
+        {
+            FO_TRACE_ZONE_NAMED(Engine, "ClientFrameOnRenderIface");
+
+            OnRenderIface.Fire();
+        }
 
         // A script that throws between activating and presenting a surface leaves it bound, and BeginScene clears the
         // render-target stack but not this list — an abandoned surface would fail EndScene on every following frame
@@ -2850,6 +2871,8 @@ void ClientEngine::UnloadMap()
 {
     FO_TRACE_ZONE(Map);
 
+    ResMngr.AdvanceResourcePreparationGeneration();
+
     OnMapUnload.Fire();
 
     // A held direction belongs to the map it was given on; on the next one the input says again whether it is still held
@@ -3680,6 +3703,33 @@ auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType,
     }
 
     return effect;
+}
+
+// Multithreading is a switch and the worker count is the engine's call. The log names the count actually started
+// and what limited it, because a line that only echoed the setting could not tell serial from parallel
+static auto ChooseClientWorkerCount(const ClientSettings& settings) -> int32_t
+{
+    if (!settings.Client.Multithreading) {
+        logging::write("Client multithreading: off");
+        return 0;
+    }
+
+    WorkScheduler::WorkerCountInputs inputs = WorkScheduler::ReadWorkerCountInputs();
+    WorkScheduler::WorkerCountLimits limits {
+        .MaxWorkers = settings.Client.MultithreadingMaxWorkers,
+        .MaxMobileWorkers = settings.Client.MultithreadingMaxMobileWorkers,
+        .HeadroomMinCores = settings.Client.MultithreadingHeadroomMinCores,
+    };
+    WorkScheduler::WorkerCountChoice choice = WorkScheduler::ChooseWorkerCount(inputs, limits);
+
+    if (choice.WorkerCount == 0) {
+        logging::write("Client multithreading: on, running serial ({} logical cores, {})", inputs.LogicalCores, choice.Reason);
+    }
+    else {
+        logging::write("Client multithreading: on, {} worker {} ({} logical cores, {})", choice.WorkerCount, choice.WorkerCount == 1 ? "thread" : "threads", inputs.LogicalCores, choice.Reason);
+    }
+
+    return choice.WorkerCount;
 }
 
 FO_END_NAMESPACE

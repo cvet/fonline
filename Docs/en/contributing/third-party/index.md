@@ -138,6 +138,56 @@ For a branch-tracked or WIP fork, record the exact upstream commit alongside
 the snapshot date in `ThirdParty/README.md`; the upstream version string alone
 does not identify a reproducible source tree.
 
+## Particle CPU Extensions
+
+The SPARK and Effekseer snapshots contain semantic `(FOnline Patch)` changes for
+the optional client CPU stages. Preserve these changes when updating either
+dependency; upstream versions alone do not reproduce this runtime contract.
+
+SPARK's `SPKObject::copy(source, destinationContext)` selects the destination
+context in the base copy constructor, before each derived constructor calls
+`onContextSet`. It preserves the original constructor draw order, initializes
+the destination seed from the actual source context, and returns the consumed
+seed to that source on both success and unwinding. It preserves shared DAG
+aliases and restores temporary copy bindings after failure. It does not add
+cycle support: the engine admits only audited acyclic graphs to private-context
+copying. Unknown graphs retain the original owner route. Do not replace this
+with a post-copy rebind or with the requested system seed. The constructor and
+system seed streams are distinct; `Test_ParticleBaker.cpp` and
+`Test_ParticleCpuUpdates.cpp` pin both streams and destination ownership.
+
+Effekseer's concrete `ManagerImplemented::UpdateHandle` overload borrows a
+synchronous `CpuUpdateExecutor`. The engine supplies its existing
+`WorkScheduler`, without enabling a second middleware worker pool or changing
+the manager's instance budget. Each generation checks useful active instances
+and already calculated parent transforms before allocating job descriptors.
+Only disjoint instance chunks execute concurrently; child generation, pools,
+global update state and lifecycle operations remain on the owner. The executor
+must join every invocation before returning or rethrowing. A live external
+collision callback vetoes this path. The original overload remains direct.
+`Instance::GetInstanceGlobal` is now const-qualified; rebuild native consumers
+of these vendored headers together with the engine.
+
+The dynamic-equation result cache starts at zero, so first-birth parameter evaluation before the first global VM refresh cannot read indeterminate results.
+
+`BeginUpdate` also releases its recursive mutex and clears the update flag if
+the automatic `Flip` throws, preserving the valid garbage-collection prefix.
+A successful call still holds the lock until `EndUpdate`. The engine handle
+helper drains CPU jobs, ends a successfully started update, invalidates the
+affected handle, and attempts the existing three-flip retirement while preserving
+the original exception. Cleanup uses `safe_call`: a persistent removal-callback
+failure is reported and may prevent full instance-budget reclamation. The
+self-clearing callback fixture verifies recovery after its one-shot failure, not
+universal recovery from callbacks that keep throwing. Invalid deltas are rejected before mutation and do not retire a
+handle. This guarantee does not cover an unrelated caller's manual `Flip` with
+automatic flipping disabled. `Test_EffekseerParticleRuntime.cpp` exercises an
+actual removing-callback failure and a joined partial instance update, including
+unrelated handle survival and budget recovery.
+
+See [Optional Client Multithreading](../../explanation/runtime/client-multithreading.md)
+for engine eligibility and the limits of functional evidence. These patches do
+not establish a frame-time or memory improvement.
+
 ## Adding A New Engine Dependency
 
 Add reusable dependencies to the engine only when they are genuinely engine

@@ -39,6 +39,7 @@
 
 #include "ModelAnimation.h"
 #include "ModelAnimationConverter.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -163,6 +164,96 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
 }
 
 #endif
+
+TEST_CASE("ModelAnimationRuntimePosesEvaluateIdenticallyOnClientWorkers")
+{
+    // Pose evaluation is the kernel client workers run, and the claim behind it is that separate poses
+    // over one shared rig are independent: the same inputs run twice must give bit-identical world matrices
+    ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
+    constexpr size_t POSE_COUNT = 24;
+
+    auto make_root_matrix = [](size_t index) {
+        float32_t offset = numeric_cast<float32_t>(index);
+        return glm::translate(mat44 {1.0f}, vec3 {offset, offset * 0.5f, -offset * 0.25f});
+    };
+    auto make_procedural_rotations = [&fixture](size_t index) {
+        float32_t body_angle = glm::radians(numeric_cast<float32_t>(index) * 3.0f - 30.0f);
+        float32_t head_angle = glm::radians(numeric_cast<float32_t>(index) * -2.0f + 15.0f);
+
+        return array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> {
+            ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint, .Rotation = glm::angleAxis(body_angle, vec3 {1.0f, 0.0f, 0.0f})},
+            ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint, .Rotation = glm::angleAxis(head_angle, vec3 {1.0f, 0.0f, 0.0f})},
+        };
+    };
+
+    auto evaluate_all = [&](vector<unique_ptr<ModelAnimationRuntimePose>>& poses, nptr<WorkScheduler> scheduler) {
+        auto evaluate_one = [&](size_t index) {
+            array<ModelAnimationRuntimePose::TrackInput, 2> body_tracks {};
+            array<ModelAnimationRuntimePose::TrackInput, 2> movement_tracks {};
+            array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural_rotations = make_procedural_rotations(index);
+
+            poses[index]->Evaluate(body_tracks, movement_tracks, make_root_matrix(index), const_span<ModelAnimationRuntimePose::ProceduralLocalRotation> {procedural_rotations});
+        };
+
+        if (scheduler) {
+            scheduler->RunBatch("PoseEvaluate", poses.size(), 1, evaluate_one);
+        }
+        else {
+            for (size_t index = 0; index < poses.size(); index++) {
+                evaluate_one(index);
+            }
+        }
+    };
+
+    auto read_all = [](const vector<unique_ptr<ModelAnimationRuntimePose>>& poses) {
+        vector<vector<mat44>> result;
+        result.reserve(poses.size());
+
+        for (const auto& pose : poses) {
+            const_span<mat44> world_matrices = pose->GetWorldMatrices();
+            result.emplace_back(world_matrices.begin(), world_matrices.end());
+        }
+
+        return result;
+    };
+
+    auto make_poses = [&fixture]() {
+        vector<unique_ptr<ModelAnimationRuntimePose>> poses;
+        poses.reserve(POSE_COUNT);
+
+        for (size_t index = 0; index < POSE_COUNT; index++) {
+            poses.emplace_back(safe_alloc::make_unique<ModelAnimationRuntimePose>(fixture.Rig.get()));
+        }
+
+        return poses;
+    };
+
+    vector<unique_ptr<ModelAnimationRuntimePose>> serial_poses = make_poses();
+    evaluate_all(serial_poses, nullptr);
+    vector<vector<mat44>> expected = read_all(serial_poses);
+
+    WorkScheduler scheduler {"test-pose-evaluate", 4};
+    vector<unique_ptr<ModelAnimationRuntimePose>> parallel_poses = make_poses();
+
+    // Repeated so a single lucky interleaving cannot pass for independence
+    for (int32_t round = 0; round < 8; round++) {
+        evaluate_all(parallel_poses, &scheduler);
+        vector<vector<mat44>> actual = read_all(parallel_poses);
+
+        REQUIRE(actual.size() == expected.size());
+
+        for (size_t index = 0; index < actual.size(); index++) {
+            CAPTURE(round, index);
+            REQUIRE(actual[index].size() == expected[index].size());
+
+            for (size_t joint = 0; joint < actual[index].size(); joint++) {
+                CheckModelAnimationRuntimeProceduralTestMatrixExact(actual[index][joint], expected[index][joint]);
+            }
+        }
+    }
+
+    CHECK(scheduler.GetDiagnostics().ParallelBatches == 8);
+}
 
 TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
 {

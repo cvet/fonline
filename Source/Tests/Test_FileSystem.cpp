@@ -359,9 +359,11 @@ TEST_CASE("FileSystem")
         check_read_error([&] { (void)reader.GetLEUInt16(); }, 2);
         check_read_error([&] { (void)reader.GetBEUInt32(); }, 4);
         check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
+
         array<uint8_t, 4> output {};
         // FO_FILE_READER_COPY_DATA_NEGATIVE_TEST: Exercises CopyData bounds failure and unchanged reader position
         check_read_error([&] { reader.CopyData(output); }, 4);
+        check_read_error([&] { reader.ReadBytes(output); }, 4);
 
         CHECK_THROWS(reader.GetStrNT());
         CHECK(reader.GetCurPos() == 2);
@@ -424,3 +426,4 @@ TEST_CASE("FileSystem")
 }
 
 FO_END_NAMESPACE
+

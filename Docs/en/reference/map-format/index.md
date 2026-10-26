@@ -27,7 +27,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | [Syntax](syntax.md) | 8 | Sections and control directives. |
 | [Properties](properties.md) | 108 | Engine-owned Map, Critter, and Item properties. |
 | [Baking](baking.md) | 4 | Ownership and server/client materialization. |
-| [Validation](validation.md) | 19 | Source-backed requirements and limitations. |
+| [Validation](validation.md) | 20 | Source-backed requirements and limitations. |
 
 ## Boundary
 

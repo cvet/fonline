@@ -1672,14 +1672,14 @@ Symbol ID: <code>script.enum.TransparentEggSlot</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:61](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L61)
+Source: [Source/Client/SpriteManager.h:63](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L63)
 
 Selects one of the two simultaneous transparency-egg masks supported by sprite rendering
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:64](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L64) | First transparency-egg mask evaluated for map sprites |
-| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:65](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L65) | Second independent transparency-egg mask evaluated for map sprites |
+| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:66](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L66) | First transparency-egg mask evaluated for map sprites |
+| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:67](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L67) | Second independent transparency-egg mask evaluated for map sprites |
 
 <a id="symbol-script-enum-transparenteggtarget-980d792f08"></a>
 ### <code>TransparentEggTarget</code>
@@ -1689,14 +1689,14 @@ Symbol ID: <code>script.enum.TransparentEggTarget</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:69](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L69)
+Source: [Source/Client/SpriteManager.h:71](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L71)
 
 Which of the sprites standing in front of an egg&#x27;s hex the egg cuts
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:72](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L72) | Cut every sprite whose egg appearance places it before the egg |
-| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:73](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L73) | Cut walls and roofs only, leaving foreground props drawn |
+| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:74](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L74) | Cut every sprite whose egg appearance places it before the egg |
+| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:75](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L75) | Cut walls and roofs only, leaving foreground props drawn |
 
 ## Value Types
 
@@ -1770,6 +1770,24 @@ Bundled text formatting parameters: font slot, FontFlag bitmask, and skip-lines 
 | <code>FontFlag TextFormat.Flags</code> | <a id="symbol-script-value-field-textformat-flags-954ab22bf2"></a><code>script.value-field.TextFormat.Flags</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:85](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L85) | FontFlag bitmask controlling alignment, wrapping, clipping, color tags, and glyph presentation |
 | <code>FontType TextFormat.Font</code> | <a id="symbol-script-value-field-textformat-font-54adc00ad4"></a><code>script.value-field.TextFormat.Font</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:84](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L84) | Font slot selected for text measurement and rendering |
 | <code>int32 TextFormat.SkipLines</code> | <a id="symbol-script-value-field-textformat-skiplines-289c6d57d9"></a><code>script.value-field.TextFormat.SkipLines</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:86](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L86) | Line-skip count taken from the top by default or from the bottom when AlignBottom is set |
+
+<a id="symbol-script-value-type-textlayoutresult-d9a2aedf5e"></a>
+### <code>TextLayoutResult</code>
+
+<code>value type TextLayoutResult</code><br>
+Symbol ID: <code>script.value-type.TextLayoutResult</code><br>
+Runtime: server, client, mapper<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
+Flags: <code>Layout</code>, <code>=</code>, <code>int32</code>, <code>-</code>, <code>Width</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Height</code>, <code>+</code>, <code>int32</code>, <code>-</code>, <code>Lines</code><br>
+Source: [Source/Client/FontManager.h:108](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L108)
+
+Measured extent and visible line count for one entry in a prepared text-layout batch.
+
+| Field | Symbol ID | Value contract | API contract | Source | Description |
+| --- | --- | --- | --- | --- | --- |
+| <code>int32 TextLayoutResult.Height</code> | <a id="symbol-script-value-field-textlayoutresult-height-53575942ef"></a><code>script.value-field.TextLayoutResult.Height</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:106](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L106) | Measured text height used to prepare the draw layout |
+| <code>int32 TextLayoutResult.Lines</code> | <a id="symbol-script-value-field-textlayoutresult-lines-fe182c9a89"></a><code>script.value-field.TextLayoutResult.Lines</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:107](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L107) | Number of visible lines in the measurement rectangle |
+| <code>int32 TextLayoutResult.Width</code> | <a id="symbol-script-value-field-textlayoutresult-width-b6a8bb12fb"></a><code>script.value-field.TextLayoutResult.Width</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/FontManager.h:105](https://github.com/cvet/fonline/blob/master/Source/Client/FontManager.h#L105) | Measured text width used to prepare the draw layout |
 
 <a id="symbol-script-value-type-textpackkey-fc2a0c075a"></a>
 ### <code>TextPackKey</code>
@@ -2245,10 +2263,10 @@ Symbol ID: <code>script.ref-type.client.VideoPlayback</code><br>
 Runtime: client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
-Source: [Source/Client/Client.h:78](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L78)
+Source: [Source/Client/Client.h:79](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L79)
 
 Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback
 
 | Kind | Member | Symbol ID | Member contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/Client.h:78](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L78) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |
+| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/Client.h:79](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L79) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |

@@ -40,8 +40,10 @@
 #include "MapSprite.h"
 #include "RenderTarget.h"
 #include "Settings.h"
+#include "SpriteGeometry.h"
 #include "TextureAtlas.h"
 #include "VisualParticles.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -100,6 +102,12 @@ public:
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
+    [[nodiscard]] virtual auto PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
+    {
+        ignore_unused(pos, colors);
+        return std::nullopt;
+    }
+
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
@@ -107,6 +115,8 @@ public:
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
+    virtual auto PrepareUpdate() -> bool { return false; }
+    virtual void RunPreparedUpdate() { }
     virtual auto Update() -> bool { return false; }
     virtual void DrawInScene(fpos32 scene_pos, float32_t depth) const { ignore_unused(scene_pos, depth); }
 
@@ -156,7 +166,7 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -172,6 +182,7 @@ public:
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
     [[nodiscard]] auto GetTimer() const noexcept -> const GameTimer& { return *_gameTimer; }
     [[nodiscard]] auto GetWindow() noexcept -> ptr<IAppWindow> { return _window; }
+    [[nodiscard]] auto GetWorkScheduler() const noexcept -> nptr<WorkScheduler> { return _workScheduler; }
     [[nodiscard]] auto GetRender() noexcept -> IAppRender& { return *_render; }
     [[nodiscard]] auto GetRender() const noexcept -> const IAppRender& { return *_render; }
     [[nodiscard]] auto GetInput() noexcept -> ptr<IAppInput> { return _input; }
@@ -225,6 +236,13 @@ public:
     void InvalidateEgg();
 
 private:
+    struct GeometryCommand
+    {
+        PreparedSpriteGeometry Geometry {};
+        size_t VertexOffset {};
+        size_t IndexOffset {};
+    };
+
     struct EggSlot
     {
         bool Valid {};
@@ -239,6 +257,13 @@ private:
     [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
+    void UpdateSprites();
+    auto TryUpdateParticleCpuSpan(size_t begin) -> size_t;
+    void PrepareSpriteCpuUpdates();
+    auto FillSpriteGeometry(ptr<const Sprite> sprite, const frect32& pos, const tuple<ucolor, ucolor>& colors, const PreparedSpriteTransform& transform = {}) -> size_t;
+    auto FillSpriteRegionGeometry(ptr<const AtlasSprite> sprite, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) -> size_t;
+    auto SubmitSpriteGeometry(PreparedSpriteGeometry geometry) -> size_t;
+    void CompleteSpriteGeometry();
     void FlushBatch();
     void RefreshScissor();
     void EnableScissor();
@@ -255,8 +280,13 @@ private:
     ptr<IAppInput> _input;
     ptr<EffectManager> _effectMngr;
     ptr<hash_resolver> _hashResolver;
+    nptr<WorkScheduler> _workScheduler;
     random_generator _randomGenerator {};
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
+    // Rebuilt every BeginScene and kept alive for the whole update, so a sprite that Update starts updating cannot
+    // rehash the set being walked, and so the prepared CPU work has a stable index space for a batch
+    vector<shared_ptr<Sprite>> _liveUpdateSprites {};
+    vector<ptr<Sprite>> _preparedUpdateSprites {};
 
     nptr<RenderTarget> _rtMain {};
     nptr<RenderTarget> _rtSceneBackground {};
@@ -265,6 +295,7 @@ private:
     bool _sceneBackgroundValid {};
 
     vector<DipData> _dipQueue {};
+    vector<GeometryCommand> _geometryQueue {};
     vector<DirectDrawSprite> _directDrawSprites {};
     vector<Vertex2D> _spriteWireframeVertices {};
     unique_ptr<RenderDrawBuffer> _spritesDrawBuf;
@@ -283,6 +314,7 @@ private:
 
     EventObserver<> _onBeginScene {};
     EventUnsubscriber _eventUnsubscriber {};
+
 };
 
 FO_END_NAMESPACE

@@ -43,7 +43,7 @@ class ParticleFormatDocumentationTests(unittest.TestCase):
             outputs["bake_transforms"], {"spark": "spk", "efkproj": "efk"}
         )
         self.assertTrue(outputs["authored_binaries_rejected"])
-        self.assertEqual(self.model["summary"]["entry_count"], 113)
+        self.assertEqual(self.model["summary"]["entry_count"], 115)
         self.assertEqual(self.model["summary"]["format_count"], 4)
         self.assertEqual(self.model["summary"]["graph_object_count"], 37)
 
@@ -73,6 +73,8 @@ class ParticleFormatDocumentationTests(unittest.TestCase):
     def test_runtime_contract_is_backend_neutral_and_seedable(self) -> None:
         runtime = {entry["id"]: entry for entry in self.model["runtime_rules"]}
 
+        self.assertIn("particle-format.runtime.cpu-stages", runtime)
+        self.assertIn("particle-format.runtime.effekseer-look-angle", runtime)
         self.assertIn(
             "single feature-aware composition point",
             runtime["particle-format.runtime.backend-composition"]["rationale"],

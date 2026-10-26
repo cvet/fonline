@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **1013** native methods exported to scripts.
+This page contains **1015** native methods exported to scripts.
 
 <a id="group-method-client-critter-9909bc1fac"></a>
 ## <code>Critter</code> (client)

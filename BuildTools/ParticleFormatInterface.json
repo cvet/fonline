@@ -31,6 +31,7 @@
     "Source/Client/ParticleRuntime.cpp",
     "Source/Client/VisualParticles.cpp",
     "Source/Client/ParticleSprites.cpp",
+    "Source/Client/SpriteManager.cpp",
     "Source/Client/SparkExtension.cpp",
     "Source/Client/EffekseerExtension.cpp",
     "Source/Tools/ParticleEditor.cpp",
@@ -42,6 +43,7 @@
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
+    "Source/Tests/Test_ParticleCpuUpdates.cpp",
     "Source/Tests/Test_EffekseerParticleRuntime.cpp"
   ],
   "outputs": {
@@ -2337,6 +2339,30 @@
     }
   ],
   "runtime_rules": [
+    {
+      "id": "particle-format.runtime.cpu-stages",
+      "name": "Optional particle CPU stages",
+      "stability": "experimental",
+      "requirement": "Use the existing client WorkScheduler for admitted independent SPARK systems or useful Effekseer chunks within one generation. Creation, transforms, prewarm, shared lifecycle, child generation, drawing and publication remain on the owner; false, zero-worker and below-threshold routes stay direct.",
+      "rationale": "SPARK private contexts preserve constructor and system random streams; Effekseer retains one manager and its 16384-instance budget. Unknown graphs, external callbacks and unready parents cannot become worker work.",
+      "source": [
+        {"path": "Source/Client/SparkExtension.cpp", "anchors": ["IsSparkCpuGraphSafe", "CpuContext", "SPK_DEBUG"]},
+        {"path": "Source/Client/EffekseerExtension.cpp", "anchors": ["IsCpuEffectSafe", "EffekseerWorkSchedulerExecutor", "UpdateEffekseerParticleHandle"]},
+        {"path": "Source/Client/SpriteManager.cpp", "anchors": ["TryUpdateParticleCpuSpan", "ShouldRunParallel(count, 2)"]},
+        {"path": "Source/Tests/Test_ParticleCpuUpdates.cpp", "anchors": ["Model particles preserve geometry across direct and worker owners", "WorkerKernelCalls > 0"]}
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-look-angle",
+      "name": "Effekseer look-angle capability",
+      "stability": "experimental",
+      "requirement": "Effekseer runtime setup requires a zero LookDirectionAngle. Model RunParticle captures the model look angle; worker support does not make other directions supported.",
+      "rationale": "The existing setup capability rejection is identical in direct and parallel execution, while world transforms still apply.",
+      "source": [
+        {"path": "Source/Client/EffekseerExtension.cpp", "anchors": ["setup.LookDirectionAngle != 0.0f", "look-direction oriented particles are unsupported"]},
+        {"path": "Source/Client/ModelInstance.cpp", "anchors": ["void ModelInstance::RunParticle", "move, _lookDirAngle"]}
+      ]
+    },
     {
       "id": "particle-format.runtime.backend-composition",
       "name": "Backend composition",

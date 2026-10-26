@@ -6,6 +6,12 @@ The canonical generated reference moved to locale-specific paths.
 
 [English](../../en/reference/particle-format/runtime.md) | [Russian](../../ru/reference/particle-format/runtime.md)
 
+<a id="entry-particle-format-runtime-cpu-stages-ca4eddfab3"></a>
+- [`entry-particle-format-runtime-cpu-stages-ca4eddfab3`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-cpu-stages-ca4eddfab3)
+
+<a id="entry-particle-format-runtime-effekseer-look-angle-1402018cb1"></a>
+- [`entry-particle-format-runtime-effekseer-look-angle-1402018cb1`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-effekseer-look-angle-1402018cb1)
+
 <a id="entry-particle-format-runtime-backend-composition-ecb62b0f31"></a>
 - [`entry-particle-format-runtime-backend-composition-ecb62b0f31`](../../en/reference/particle-format/runtime.md#entry-particle-format-runtime-backend-composition-ecb62b0f31)
 
