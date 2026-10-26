@@ -8,7 +8,7 @@ document_id: unit-tests-readme
 <!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"69afbdf09d5f4f12069b22aec3e343f1cf1636ba00abc7870520925a087da7df"} -->
 # Модульные тесты
 
-Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
+Детерминированные suites; [Тестирование](../../Docs/ru/contributing/testing/) описывает проверки, покрытие и полную карту.
 
 ## Фреймворк и цель
 
@@ -19,7 +19,7 @@ document_id: unit-tests-readme
 - Генерируемая цель запуска: `RunUnitTests`
 - Формат имени генерируемой цели покрытия: `<ProjectDevName>_CodeCoverage`, а также `RunCodeCoverage`, `GenerateCodeCoverageReport` и `AnalyzeCodeCoverage`, когда покрытие включено
 
-Имя исполняемой цели использует префикс имени проекта для разработки (`<ProjectDevName>_UnitTests`); `RunUnitTests` является генерируемой целью запуска. Считайте префикс частью генерации проекта, а не универсальным API движка.
+Проект задаёт `<ProjectDevName>`; `RunUnitTests` — его сгенерированная цель запуска.
 
 ## Текущие наборы тестов
 
@@ -63,6 +63,10 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Квалификация worker-потоков частиц
+
+Запускайте скрытые `[particle-worker-qualification]` вместе с default suite. Оба cases используют все проверки model/equation geometry, RNG и attachment. Каждый логирует до четырёх полных попыток и требует реальные worker kernels отдельно для SPARK, model Effekseer и global equations; local equations остаются последовательными. Отключённые backends и SPARK с `SPK_DEBUG` не требуют witness. Отсутствие работы означает отказ qualification. Default допускает завершённую enabled работу целиком на owner или helpers. Сохраняйте все попытки; размер пула и плановые batches не доказывают участие или производительность.
 
 ## Отдельное измерение стоимости пакета поз
 

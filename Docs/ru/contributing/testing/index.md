@@ -7,19 +7,12 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"e8830b89adebd47f451085354ae15db1711e2b3e8f64bd86807c9b08cc0a8da5"} -->
-> Документация принадлежит движку. Страница описывает текущий test executable,
-> сгенерированные test/coverage targets и полный набор suites из
-> `Source/Tests/Test_*.cpp`.
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"4edabaeb348f8495571d245521e780a8e988fe28d818767d1e7bfc67b9621567"} -->
+> Test executable движка, сгенерированные test/coverage targets и все текущие suites `Source/Tests/Test_*.cpp`.
 
 ## Назначение
 
-Используйте эту страницу, чтобы подобрать native-проверку для изменения движка
-или добавить Catch2-тест. Краткая точка входа находится в
-[Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md), а здесь
-поддерживается полная карта. Для детерминированных script/content/server/client
-процессов проекта продолжайте с
-[Gameplay и integration testing](../../how-to/testing/gameplay-and-integration.md).
+Выбирайте здесь native-проверки при изменениях движка или Catch2 suites. [Source/Tests/README.ru.md](../../../../Source/Tests/README.ru.md) — краткая точка входа; процессные тесты проекта описывает [Gameplay и integration testing](../../how-to/testing/gameplay-and-integration.md).
 
 ## Проверенные исходные пути
 
@@ -34,10 +27,7 @@ permalink: /Docs/ru/contributing/testing/
 
 ## Модель test runner
 
-`Source/Applications/TestingApp.cpp` является entry point тестового приложения.
-Он требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, выставляет
-`IsTestingInProgress` и передает выполнение в
-`Catch::Session().run(argc, argv)`.
+`Source/Applications/TestingApp.cpp` требует `FO_TESTING_APP`, вызывает `InitAppForTesting()`, устанавливает `IsTestingInProgress` и запускает `Catch::Session().run(argc, argv)`.
 
 Скрытую пробу `ApplicationConsoleInterrupt` запускает Windows-тест
 `BuildTools/tests/test_console_interrupt.py`. Задайте в `FONLINE_TEST_EXECUTABLE`
@@ -77,19 +67,7 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует
 требуют такого радиуса, когда visibility hooks проекта проверяют расстояние:
 нулевое значение закономерно скрывает проверяемые предметы после движения.
 
-Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
-или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
-поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
-`d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`), отсутствующие
-в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`,
-`d3dcompiler_47.dll`)
-и API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Новый
-несовместимый экспорт добавляют в список одновременно с исправлением импорта.
-Статически связанные библиотеки, включая managed runtime, попадают в таблицу
-импортов итогового PE. Проектная CI-ветка Windows 7 должна проверять каждый
-связанный executable и DLL после линковки и до упаковки. Статическая проверка
-не доказывает работу на настоящей Windows 7 SP1; см.
-[Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
+`BuildTools/check_windows7_imports.py <binary> [...]` fail-closed отклоняет нечитаемый/повреждённый PE-ввод. Запрещены известные Windows 8+ exports из `kernel32`, `user32`, `dxgi` и `d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`); отсутствующие в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`); API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Добавляйте новые exports вместе с исправлением imports. CI проверяет все связанные Win7 executable/DLL до packaging, включая static third-party/managed imports. Gate не доказывает Windows 7 SP1 runtime behavior; см. [compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 `Test_SpriteSheet.cpp` использует native resolver и stub frontend с любым
 scripting backend: первые/cache-hit копии, начальная геометрия, first/last
@@ -548,3 +526,5 @@ transport checks остаются assertions. На browser/device client зад�
 `Test_WorkScheduler.cpp` проверяет выбор клиентских потоков, синхронные пакеты, передачу ошибок и порядок фаз спрайтов. `Test_ModelAnimationPoseProcedural.cpp` проверяет битовую идентичность параллельных поз; `ModelPosePhasesMatchTheSinglePassPose` в `Test_ClientEngine.cpp` использует общие model fixtures и не требует конкретного backend. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md).
 
 `Test_ClientPoseBatchCost.cpp` добавляет отдельный эксперимент на запечённом rig; см. [контракт входов и доказательств](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз).
+
+Для потоков частиц обязателен явный [worker qualification gate](../../../../Source/Tests/README.ru.md#квалификация-worker-потоков-частиц).

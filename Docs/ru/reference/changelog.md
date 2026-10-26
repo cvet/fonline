@@ -182,6 +182,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Исправлено
 
+- Отделить физические проверки частиц от явной worker qualification каждого backend; запускайте `[particle-worker-qualification]` вместе с default suite. Runtime и миграции не меняются.
 - Компилятор SDK запускается с обычной globalization только в дочернем процессе, чтобы его именованные локали не наследовали invariant-режим встроенного Mono. Настройка родительского runtime сохраняется; пересоберите baker и повторите компиляцию/bake проекта.
 - Vulkan принимает поверхности RGBA8 UNORM, сохраняя единый формат текстур, upload и обоих readback. Пересоберите клиенты/mapper; проверьте цвета, alpha, resize и readback на каждой платформе. Миграция скриптов/ресурсов/wire/сохранённых данных не нужна.
 - Упаковщик Android Client читает метаданные из парного `.fomain-server`, встраивая `.fomain-client`. Сохраняйте оба файла одного bake и пересоберите APK: Activity больше не передаёт `--ApplySubConfig` уже разрешённому packaged config. Native ABI и форматы ресурсов не меняются.

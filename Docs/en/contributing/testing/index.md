@@ -8,11 +8,11 @@ permalink: /Docs/en/contributing/testing/
 
 # Testing
 
-> Engine-owned documentation. This page maps the current engine test executable, generated test targets, coverage targets, and every `Source/Tests/Test_*.cpp` suite currently present in the checkout.
+> Engine test executable, generated test/coverage targets and every current `Source/Tests/Test_*.cpp` suite.
 
 ## Purpose
 
-Use this page when choosing native validation for an engine change or when adding/removing Catch2 tests. The source-tree README at [Source/Tests/README.md](../../../../Source/Tests/README.md) is a short entry point; this page is the maintained full test map. For deterministic script, content, server, and client process tests in an embedding game, continue with [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md).
+Choose native checks here when changing Engine or Catch2 suites. [Source/Tests/README.md](../../../../Source/Tests/README.md) is the short entry point; embedding-game process tests belong to [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md).
 
 ## Source paths inspected
 
@@ -29,11 +29,11 @@ Use this page when choosing native validation for an engine change or when addin
 
 ## Test runner model
 
-`Source/Applications/TestingApp.cpp` is the test application entry point. It requires `FO_TESTING_APP`, initializes the application layer with `InitAppForTesting()`, marks `IsTestingInProgress`, and delegates execution to `Catch::Session().run(argc, argv)`.
+`Source/Applications/TestingApp.cpp` requires `FO_TESTING_APP`, calls `InitAppForTesting()`, sets `IsTestingInProgress` and runs `Catch::Session().run(argc, argv)`.
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files and fails closed on unreadable or malformed input. It rejects a curated set of Windows 8+ `kernel32`, `user32`, `dxgi`, and `d3d11` exports (including `CreateFile2` and `GetCurrentThreadStackLimits`), libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`), and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add any newly discovered incompatible export to the list with its import fix. Static third-party libraries, including the managed runtime, contribute to the same final PE import table. Embedding-project CI should check every linked Win7 executable and DLL after linking and before packaging; this static gate does not prove runtime behavior on a real Windows 7 SP1 host. See the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
+`BuildTools/check_windows7_imports.py <binary> [...]` fails closed on unreadable/bad PE inputs. It rejects known Windows 8+ exports from `kernel32`, `user32`, `dxgi` and `d3d11` (including `CreateFile2` and `GetCurrentThreadStackLimits`); libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`); and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add newly discovered exports with their import fixes. CI checks every linked Win7 executable/DLL before packaging, including static third-party/managed imports. This gate cannot prove Windows 7 SP1 runtime behavior; see the [compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
@@ -581,3 +581,5 @@ runtime invoke and skips transports that need compiled code.
 `Test_WorkScheduler.cpp` covers client worker selection, synchronous batches, failure propagation, and sprite phase order. `Test_ModelAnimationPoseProcedural.cpp` covers bit-identical parallel poses; `ModelPosePhasesMatchTheSinglePassPose` in `Test_ClientEngine.cpp` uses the shared backend-neutral model fixtures. See [client multithreading](../../explanation/runtime/client-multithreading.md).
 
 `Test_ClientPoseBatchCost.cpp` adds an opt-in baked-rig experiment; see its [input and evidence contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost).
+
+Particle threading also requires the explicit [worker qualification gate](../../../../Source/Tests/README.md#particle-worker-qualification).

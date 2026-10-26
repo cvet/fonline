@@ -163,15 +163,19 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
 
     SECTION("BoundedViewRespectsAuthoredScrollArea")
     {
-        map->SetScrollAxialArea(irect32 {0, 0, 38, 20});
+        constexpr int32_t scroll_area_height = (240 + GameSettings::MAP_HEX_LINE_HEIGHT - 1) / GameSettings::MAP_HEX_LINE_HEIGHT;
+        CHECK(scroll_area_height * GameSettings::MAP_HEX_LINE_HEIGHT >= 240);
+
+        map->SetScrollAxialArea(irect32 {0, 0, 38, scroll_area_height});
         map->SetScrollCheck(true);
+
         auto check_viewport = [&map](isize32 size) {
             fpos32 viewport_origin = fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset();
             fpos32 viewport_end = viewport_origin + fpos32(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)) / map->GetSpritesZoom();
             CHECK(viewport_origin.x >= GameSettings::MAP_HEX_WIDTH - 0.01f);
             CHECK(viewport_origin.y >= GameSettings::MAP_HEX_LINE_HEIGHT - 0.01f);
             CHECK(viewport_end.x <= 20 * GameSettings::MAP_HEX_WIDTH + 0.01f);
-            CHECK(viewport_end.y <= 21 * GameSettings::MAP_HEX_LINE_HEIGHT + 0.01f);
+            CHECK(viewport_end.y <= (scroll_area_height + 1) * GameSettings::MAP_HEX_LINE_HEIGHT + 0.01f);
         };
 
         for (mpos focus : {mpos {1, 1}, mpos {18, 18}}) {

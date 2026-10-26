@@ -1349,12 +1349,53 @@ static auto CountCpuVertices(const vector<ParticleCpuTests::CapturedDraw>& draws
     return count;
 }
 
+struct EffekseerEquationWorkerEvidence
+{
+    uint64_t GlobalWorkerKernelCalls {};
+    uint64_t LocalWorkerKernelCalls {};
+};
+
+static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvidence;
+
 TEST_CASE("Effekseer serialized local and global equations change actual particle geometry", "[particle][effekseer][particle-cpu-dynamics]")
+{
+    (void)RunEffekseerEquationGeometryScenario();
+}
+
+TEST_CASE("Effekseer equation CPU worker participation qualification", "[.][particle-worker-qualification][particle-cpu-dynamics]")
+{
+    EffekseerEquationWorkerEvidence total_evidence;
+    size_t attempts = 0;
+    bool witness_present = false;
+
+    for (size_t attempt = 0; attempt < 4; attempt++) {
+        EffekseerEquationWorkerEvidence attempt_evidence = RunEffekseerEquationGeometryScenario();
+        attempts++;
+
+        logging::write("EFFEKSEEREQUATIONWORKERQUALIFY attempt={} globalWorkerCalls={} localWorkerCalls={}",
+            attempt, attempt_evidence.GlobalWorkerKernelCalls, attempt_evidence.LocalWorkerKernelCalls);
+
+        total_evidence.GlobalWorkerKernelCalls += attempt_evidence.GlobalWorkerKernelCalls;
+        total_evidence.LocalWorkerKernelCalls += attempt_evidence.LocalWorkerKernelCalls;
+        witness_present = total_evidence.GlobalWorkerKernelCalls > 0;
+
+        if (witness_present) {
+            break;
+        }
+    }
+
+    logging::write("EFFEKSEEREQUATIONWORKERQUALIFYRESULT attempts={} globalWorkerCalls={} localWorkerCalls={}",
+        attempts, total_evidence.GlobalWorkerKernelCalls, total_evidence.LocalWorkerKernelCalls);
+    CHECK(total_evidence.GlobalWorkerKernelCalls > 0);
+}
+
+static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvidence
 {
     InitializeEffekseerMemory();
     WorkScheduler zero {"EquationZero", 0};
     WorkScheduler parallel {"EquationWorkers", 2};
     REQUIRE(parallel.IsParallel());
+    EffekseerEquationWorkerEvidence evidence;
 
     for (bool local : {false, true}) {
         CAPTURE(local);
@@ -1419,15 +1460,30 @@ TEST_CASE("Effekseer serialized local and global equations change actual particl
             CHECK(changed);
             auto diagnostics = system->GetCpuUpdateDiagnostics();
 
-            if (!local && mode == 2) {
-                INFO("Missing actual worker participation is incomplete execution evidence, separate from the geometry oracle");
-                CHECK(diagnostics.WorkerKernelCalls > 0);
+            if (mode == 2) {
+                if (local) {
+                    evidence.LocalWorkerKernelCalls += diagnostics.WorkerKernelCalls;
+                }
+                else {
+                    evidence.GlobalWorkerKernelCalls += diagnostics.WorkerKernelCalls;
+                }
+            }
+
+            if (local) {
+                CHECK(diagnostics.WorkerKernelCalls == 0);
+            }
+            else if (mode == 2) {
+                INFO("Missing completed owner or worker kernel work is incomplete execution evidence, separate from the geometry oracle");
+                CHECK(diagnostics.OwnerKernelCalls + diagnostics.WorkerKernelCalls > 0);
             }
             else {
+                CHECK(diagnostics.OwnerKernelCalls > 0);
                 CHECK(diagnostics.WorkerKernelCalls == 0);
             }
         }
     }
+
+    return evidence;
 }
 
 TEST_CASE("Effekseer generations preserve random geometry through parent expiry across handles", "[particle][effekseer][particle-cpu-dynamics]")

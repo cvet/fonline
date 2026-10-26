@@ -178,6 +178,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 
 ### Fixed
 
+- Separate particle physics checks from explicit per-backend worker qualification; run `[particle-worker-qualification]` as well as the default suite. No runtime or migration change.
 - SDK compiler children use normal globalization for named cultures; embedded Mono keeps its setting. Rebuild the baker; compile/bake again.
 - Vulkan accepts RGBA8 UNORM surfaces, retaining one format for textures, upload and both readbacks. Rebuild clients/mapper; check colors, alpha, resize and readback per platform. No script/resource/wire/saved-data migration.
 - Android Client packaging reads metadata from the matching `.fomain-server` while embedding `.fomain-client`. Keep both files from one bake and regenerate APKs: Activity no longer passes `--ApplySubConfig` to a resolved packaged config. Native ABI and resource formats are unchanged.

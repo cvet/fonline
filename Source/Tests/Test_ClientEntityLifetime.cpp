@@ -760,7 +760,7 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
     server_proto.SetPicMap(server_engine.Hashes.to_hashed_string("LifetimeSprite.png"));
     server_proto.SetShootThru(true);
     server_proto.SetLightThru(true);
-    server_proto.SetMultihexLines(vector<uint8_t> {5, 1});
+    server_proto.SetMultihexLines(vector<uint8_t> {numeric_cast<uint8_t>(hdir::NorthWest.value()), 1});
     server_proto.SetDrawMultihexLines(false);
 
     // Instances inherit the prototype contour, so no local unsynced geometry overrides are authored
@@ -789,7 +789,7 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
         proto.SetPicMap(client_engine.Hashes.to_hashed_string("LifetimeSprite.png"));
         proto.SetShootThru(true);
         proto.SetLightThru(true);
-        proto.SetMultihexLines(vector<uint8_t> {5, 1});
+        proto.SetMultihexLines(vector<uint8_t> {numeric_cast<uint8_t>(hdir::NorthWest.value()), 1});
         proto.SetDrawMultihexLines(false);
     });
     auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(client_engine, client_engine.Hashes.to_hashed_string("Item"), client_protos);
@@ -813,10 +813,10 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
     auto item_a = map->AddReceivedItem(ident_t {5001}, client->Hashes.to_hashed_string("FootprintLifetimeItem"), mpos {16, 16}, footprint_chunks, false);
     auto item_b = map->AddReceivedItem(ident_t {5002}, client->Hashes.to_hashed_string("FootprintLifetimeItem"), mpos {24, 24}, control_chunks, false);
 
-    // Direction 5 traces one NorthWest step from each anchor: A {(16,16),(16,15)}, B {(24,24),(24,23)}
+    // NorthWest traces one step from each anchor: A {(16,16),(16,15)}, B {(24,24),(24,23)}
     array<mpos, 2> footprint_a {mpos {16, 16}, mpos {16, 15}};
     array<mpos, 2> footprint_b {mpos {24, 24}, mpos {24, 23}};
-    vector<uint8_t> expected_lines {5, 1};
+    vector<uint8_t> expected_lines {GameSettings::HEXAGONAL_GEOMETRY ? 5 : 6, 1};
 
     CHECK(item_a->GetMultihexLines() == expected_lines);
     CHECK(item_b->GetMultihexLines() == expected_lines);

@@ -516,7 +516,8 @@ namespace CommonMethods
                                 R"(
         hdir dir = HDIR_SouthEast;
         if (dir.str.length() == 0) return -34;
-        if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
+        hdir randomDir = HDIR_Random;
+        if (randomDir.value < 0 || randomDir.value > hdir(-1).value) return -35;
         if (!(dir == hdir(2))) return -36;
 
         mdir angle = mdir(120);

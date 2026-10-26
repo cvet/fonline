@@ -8,7 +8,7 @@ document_id: unit-tests-readme
 
 # Unit Tests
 
-This directory contains deterministic engine tests built into the generated test application. For the full maintained test map, validation routing, and coverage target details, see [Testing](../../Docs/en/contributing/testing/).
+Deterministic suites; [Testing](../../Docs/en/contributing/testing/) owns validation, coverage and the full test map.
 
 ## Framework and target
 
@@ -19,7 +19,7 @@ This directory contains deterministic engine tests built into the generated test
 - Generated run target: `RunUnitTests`
 - Generated coverage target shape: `<ProjectDevName>_CodeCoverage` plus `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage` when coverage is enabled
 
-The executable target uses the embedding project's development-name prefix (`<ProjectDevName>_UnitTests`); `RunUnitTests` is the generated runner target. Treat the prefix as project-generated, not universal engine API.
+The embedding project sets `<ProjectDevName>`; `RunUnitTests` is its generated runner.
 
 ## Current test suites
 
@@ -64,6 +64,10 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Particle worker qualification
+
+Run hidden `[particle-worker-qualification]` alongside the default suite. Both cases reuse all model/equation geometry, RNG and attachment checks. Each logs up to four complete attempts, requiring actual worker kernels separately for SPARK, model Effekseer and global equations; local equations stay serial. Disabled backends and SPARK with `SPK_DEBUG` need no witness. Missing work fails qualification. Defaults accept completed owner-only or helper-only enabled work. Retain every attempt; pool size and planned batches prove neither participation nor performance.
 
 ## Opt-in pose batch cost
 

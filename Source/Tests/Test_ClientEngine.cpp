@@ -2228,13 +2228,17 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
     SECTION("FrozenMovementEndpointDoesNotWrap")
     {
-        float32_t time = 0.999f;
+        float32_t near_end_time = std::nextafter(1.0f, 0.0f);
+        float32_t time = near_end_time;
         model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
             selected_state = state;
             selected_action = action;
             flags = CritterAnimationFlags::Freeze;
             normalized_time = time;
         });
+
+        // Hold the animated parent still while comparing frozen movement samples
+        model->SetSpeed(0.0f);
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         pose();
         auto first = model->GetBonePos(root);
@@ -2245,13 +2249,15 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         REQUIRE(near_end);
         CHECK(*near_end != *first);
         time = 1.0f;
+        model->SetMovementState(false, false, 0);
         model->SetMovementState(true, true, 137);
         pose();
         CHECK(model->GetBonePos(root) == near_end);
         model->SetMoveDir(mdir {180}, false);
         pose();
         auto turned_end = model->GetBonePos(root);
-        time = 0.999f;
+        time = near_end_time;
+        model->SetMovementState(false, false, 0);
         model->SetMovementState(true, true, 137);
         pose();
         CHECK(model->GetBonePos(root) == turned_end);
