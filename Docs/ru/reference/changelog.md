@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"35d8c1bf507189c6a85d7c588f94b71c5d0030a45ebb32d7c67ade6c02450ab8"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"cdeaa50368ae17d462e920b747cc7b757894bde8940d8269ab91a900b1c17168"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Исправлено
+
+- Все три генератора примеров распознают настройки, заполняемые runtime.
+
+### Миграция
+
+- `497af3a8d7` (`2026.1.73-dev`) → `2026.1.74-dev`: выполните `generate_config.py` каждого примера, затем `--check`. Совместимость прежняя (runtime `0.0.81`, Managed ABI `9`). Пересоберите и запеките; откатите согласованный комплект.
+
+## 2026.1.73-dev - 2026-10-26
 
 ### Миграция
 

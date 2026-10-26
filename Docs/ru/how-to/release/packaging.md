@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"67a53cc17f4edfe11a27de77f07628b8ad1b400b0003ef12b3dbc09cbae166e5"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"d4b29f496340836345f392fcb2f3888713df09523818743d0c14a1e59da6c812"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -223,9 +223,7 @@ setting. Checked-in `FOnlinePackagingMatrix.fomain` детерминирован
 из `Source/Common/Settings.inc`; `generate_config.py --check` завершается
 ошибкой при расхождении settings и fixture.
 
-Эта fixture и `Examples/MinimalMultiplayer` получают значения по умолчанию из
-текущих объявлений `SETTING(...)`. После изменения схемы настроек пересоздайте
-конфигурации обоих примеров, затем проверьте их актуальность.
+Все три генератора примеров исключают заполняемые runtime ключи `SettingNames`. После изменения схемы пересоздайте конфигурации и выполните `--check`.
 
 В отдельном checkout `Examples/PackagingMatrix` с инициализированным submodule
 `Engine` сконфигурируйте host build и соберите принадлежащую fixture цель

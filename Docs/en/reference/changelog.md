@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Fixed
+
+- Fix runtime-owned settings in example generators.
+
+### Migration
+
+- `497af3a8d7` (`2026.1.73-dev`) → `2026.1.74-dev`: run each example's `generate_config.py`, then `--check`. Compatibility unchanged (runtime `0.0.81`, Managed ABI `9`). Rebuild/rebake; roll back matching artifacts.
+
+## 2026.1.73-dev - 2026-10-26
+
 ### Migration
 
 Base `00c3c4cf5207ec7080179e4c9d455221ff1149d4` (`2026.1.72-dev`) to `2026.1.73-dev`: comment-only change; no migration is required.
