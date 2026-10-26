@@ -3515,6 +3515,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
     resources.emplace_back("PolicyMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
     auto settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.LegBones, vector<string> {"Limb"});
+    BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 650);
+
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     auto factory = client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
@@ -3776,8 +3778,16 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         client->GameTime.Resume();
 
         nanotime retimed_at = client->GameTime.GetFrameTime();
-        coarse_sleep(std::chrono::milliseconds {650});
-        client->GameTime.FrameAdvance(false);
+
+        // Cap logical frames so scheduler stalls cannot skip the intermediate turn state
+        nanotime timed_frame_start = client->GameTime.GetFrameTime();
+        coarse_sleep(std::chrono::milliseconds {1100});
+        client->GameTime.FrameAdvance(true);
+
+        int64_t timed_delta_ms = (client->GameTime.GetFrameTime() - timed_frame_start).to_ms<int64_t>();
+        INFO("MODEL_TURN_LOGICAL_FRAME|elapsed_ms=" << timed_delta_ms);
+        CHECK(timed_delta_ms == 650);
+
         model->PoseSpriteFrame(true);
         INFO("Time since retiming: " << (client->GameTime.GetFrameTime() - retimed_at).milliseconds());
         INFO("Clip duration: " << model->GetAnimDuration(state, action).milliseconds());
@@ -3785,7 +3795,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
         if (expect_still_turning) {
             coarse_sleep(std::chrono::milliseconds {650});
-            client->GameTime.FrameAdvance(false);
+            client->GameTime.FrameAdvance(true);
+
             model->PoseSpriteFrame(true);
             CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
         }
