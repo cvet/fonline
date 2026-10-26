@@ -1025,6 +1025,178 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     return {source_point.x - numeric_cast<float32_t>(frame.Mesh.SourceOffset.x), source_point.y - numeric_cast<float32_t>(frame.Mesh.SourceOffset.y)};
 }
 
+#if FO_IMAGE_FRM
+TEST_CASE("ImageBakerFrmCustomPaletteWithByteWrapping")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    ConfigureSpriteMesh(rig, false);
+
+    vector<uint8_t> palette = MakeFrmPalette();
+    palette[3] = 255;
+    palette[4] = 128;
+    palette[5] = 65;
+    AddSourceBinaryFile(rig, "gfx/byte-palette.frm",
+        MakeFrm(10, {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
+    AddSourceBinaryFile(rig, "gfx/byte-palette.pal", palette);
+
+    ImageBaker baker {rig.MakeContext()};
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/byte-palette.frm");
+
+    REQUIRE(rig.Outputs.contains("gfx/byte-palette.frm"));
+    auto frame = ReadSingleFrame(rig.Outputs.at("gfx/byte-palette.frm"));
+
+    CHECK(frame.Width == 1);
+    CHECK(frame.Height == 1);
+    CHECK(frame.Data == vector<uint8_t> {252, 0, 4, 255});
+}
+#endif
+
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerSpr")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesSprSequenceOptionsThroughFofrm")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/spr.fofrm", "Frm=actor$[1,5,-10,20]walk.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].NextX == 1);
+        CHECK(sequence.Frames[0].NextY == 1);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
+    }
+
+    SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frm=actor$[9,1,2,3]walk.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
+        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].NextX == 1);
+        CHECK(sequence.Frames[0].NextY == 1);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
+    }
+
+    SECTION("BakesSprRepeatedFramesAsShared")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/repeated.spr");
+
+        REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
+
+        data_reader reader {rig.Outputs.at("gfx/repeated.spr")};
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+        CHECK(reader.read<uint16_t>() == 2);
+        CHECK(reader.read<uint16_t>() == 200);
+        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+
+        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.read<bool>());
+            CHECK(reader.read<int16_t>() == 0);
+            CHECK(reader.read<int16_t>() == 0);
+
+            auto width = reader.read<uint16_t>();
+            auto height = reader.read<uint16_t>();
+            int16_t next_x = reader.read<int16_t>();
+            int16_t next_y = reader.read<int16_t>();
+
+            size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            const_span<uint8_t> data = reader.read_bytes(data_size);
+
+            if (width == 3) {
+                CHECK(width == 3);
+                CHECK(height == 1);
+                CHECK(next_x == 1);
+                CHECK(next_y == 1);
+                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+            }
+            else {
+                CHECK(width == 1);
+                CHECK(height == 1);
+                CHECK(next_x == 0);
+                CHECK(next_y == 1);
+                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
+            }
+
+            SkipSpriteMesh(reader);
+            CHECK(reader.read<bool>());
+            CHECK(reader.read<uint16_t>() == 0);
+        }
+
+        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
+        CHECK_NOTHROW(reader.verify_end());
+    }
+
+    SECTION("RejectsSprAnimationCountAndDurationRanges")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/too-many.spr", MakeSprWithSequenceFrames(vector<int16_t>(65536, 0)));
+        AddSourceBinaryFile(rig, "gfx/long.spr", MakeSprWithSequenceFrames(vector<int16_t>(656, 0)));
+
+        ImageBaker baker {rig.MakeContext()};
+
+        for (string_view path : {"gfx/too-many.spr", "gfx/long.spr"}) {
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
+        }
+
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("InvalidSprInputsAreReported")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
+        rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
+
+        auto missing_spranim = MakeSimpleSpr();
+        ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
+
+        auto bad_internal_zar = MakeSimpleSpr();
+        ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
+
+        ImageBaker baker {rig.MakeContext()};
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-header.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-sequence.fofrm"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-spranim.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-internal-zar.spr"), ImageBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+}
+#endif
+
 TEST_CASE("ImageBaker")
 {
     using namespace BakerTests;
@@ -2607,127 +2779,6 @@ TEST_CASE("ImageBaker")
     }
 #endif
 
-#if FO_IMAGE_SPR
-    SECTION("BakesSprSequenceOptionsThroughFofrm")
-    {
-        TestRig rig;
-        rig.AddSourceFile("gfx/spr.fofrm", "Frm=actor$[1,5,-10,20]walk.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
-
-        REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
-
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 3);
-        CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
-    }
-#endif
-
-#if FO_IMAGE_SPR
-    SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
-    {
-        TestRig rig;
-        rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frm=actor$[9,1,2,3]walk.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
-
-        REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
-
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 3);
-        CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
-    }
-#endif
-
-#if FO_IMAGE_SPR
-    SECTION("BakesSprRepeatedFramesAsShared")
-    {
-        TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/repeated.spr");
-
-        REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
-
-        data_reader reader {rig.Outputs.at("gfx/repeated.spr")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 2);
-        CHECK(reader.read<uint16_t>() == 200);
-        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
-
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.read<bool>());
-            CHECK(reader.read<int16_t>() == 0);
-            CHECK(reader.read<int16_t>() == 0);
-
-            auto width = reader.read<uint16_t>();
-            auto height = reader.read<uint16_t>();
-            int16_t next_x = reader.read<int16_t>();
-            int16_t next_y = reader.read<int16_t>();
-
-            size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const_span<uint8_t> data = reader.read_bytes(data_size);
-
-            if (width == 3) {
-                CHECK(width == 3);
-                CHECK(height == 1);
-                CHECK(next_x == 1);
-                CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
-            }
-            else {
-                CHECK(width == 1);
-                CHECK(height == 1);
-                CHECK(next_x == 0);
-                CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
-            }
-
-            SkipSpriteMesh(reader);
-            CHECK(reader.read<bool>());
-            CHECK(reader.read<uint16_t>() == 0);
-        }
-
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
-    }
-#endif
-
-#if FO_IMAGE_SPR
-    SECTION("RejectsSprAnimationCountAndDurationRanges")
-    {
-        TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/too-many.spr", MakeSprWithSequenceFrames(vector<int16_t>(65536, 0)));
-        AddSourceBinaryFile(rig, "gfx/long.spr", MakeSprWithSequenceFrames(vector<int16_t>(656, 0)));
-
-        ImageBaker baker {rig.MakeContext()};
-
-        for (string_view path : {"gfx/too-many.spr", "gfx/long.spr"}) {
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
-        }
-
-        CHECK(rig.Outputs.empty());
-    }
-#endif
-
     SECTION("BakesFofrmSequenceThroughNestedImages")
     {
         TestRig rig;
@@ -3321,32 +3372,6 @@ Frm=one.toy
 #if FO_IMAGE_BAM
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad.bam"), ImageBakerException);
 #endif
-        CHECK(rig.Outputs.empty());
-    }
-#endif
-
-#if FO_IMAGE_SPR
-    SECTION("InvalidSprInputsAreReported")
-    {
-        TestRig rig;
-        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
-        rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
-
-        auto missing_spranim = MakeSimpleSpr();
-        ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
-        AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
-
-        auto bad_internal_zar = MakeSimpleSpr();
-        ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
-        AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
-
-        ImageBaker baker {rig.MakeContext()};
-
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-header.spr"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-sequence.fofrm"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-spranim.spr"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-internal-zar.spr"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
 #endif

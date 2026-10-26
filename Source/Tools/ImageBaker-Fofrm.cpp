@@ -141,8 +141,8 @@ namespace ImageBakerFofrm
                     throw ImageBakerException("FOFRM nested image loading failed", fname, frm_name, ex.what());
                 }
 
-                frames = checked_add<int32_t>(frames, sub_collection.SequenceSize);
-                FO_VERIFY_AND_THROW(frames <= std::numeric_limits<uint16_t>::max(), "FOFRM flattened frame count exceeds the serialized range", fname, frames);
+                frames = checked_add(frames, sub_collection.SequenceSize);
+                FO_VERIFY_AND_THROW(frames <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "FOFRM flattened frame count exceeds the serialized range", fname, frames);
 
                 int32_t next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
                 next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
@@ -164,10 +164,10 @@ namespace ImageBakerFofrm
             // Allocate animation storage
             if (dir == 0) {
                 collection.SequenceSize = frames;
-                int64_t frame_count_wide = frm_count;
-                int64_t fps_wide = frm_fps;
-                int64_t anim_ticks = frm_fps != 0 ? checked_div<int64_t>(checked_mul<int64_t>(int64_t {1000}, frame_count_wide), fps_wide) : 0;
-                FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= std::numeric_limits<uint16_t>::max(), "FOFRM animation duration is outside the serialized range", fname, anim_ticks);
+                int64_t frame_count_wide = numeric_cast<int64_t>(frm_count);
+                int64_t fps_wide = numeric_cast<int64_t>(frm_fps);
+                int64_t anim_ticks = frm_fps != 0 ? checked_div(checked_mul(int64_t {1000}, frame_count_wide), fps_wide) : 0;
+                FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max()), "FOFRM animation duration is outside the serialized range", fname, anim_ticks);
                 collection.AnimTicks = numeric_cast<int32_t>(anim_ticks);
             }
             else {
@@ -177,24 +177,25 @@ namespace ImageBakerFofrm
             auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
             sequence.OffsX = numeric_cast<int16_t>(ox);
             sequence.OffsY = numeric_cast<int16_t>(oy);
-            sequence.Frames.resize(collection.SequenceSize);
+            sequence.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
 
             // Merge many animations in one
             int32_t frm = 0;
 
             for (auto&& [sub_collection, next_x, next_y] : sub_collections) {
                 for (int32_t i = 0; i < sub_collection.SequenceSize; i++, frm++) {
-                    auto& shot = sequence.Frames[frm];
+                    auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
+                    const FrameShot& sub_shot = sub_collection.Main.Frames[numeric_cast<size_t>(i)];
 
-                    if (sub_collection.Main.Frames[i].Shared) {
+                    if (sub_shot.Shared) {
                         throw ImageBakerException("FOFRM file invalid data (shared index)", fname);
                     }
 
-                    shot.Width = sub_collection.Main.Frames[i].Width;
-                    shot.Height = sub_collection.Main.Frames[i].Height;
-                    shot.Data = sub_collection.Main.Frames[i].Data;
-                    shot.NextX = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextX + next_x);
-                    shot.NextY = numeric_cast<int16_t>(sub_collection.Main.Frames[i].NextY + next_y);
+                    shot.Width = sub_shot.Width;
+                    shot.Height = sub_shot.Height;
+                    shot.Data = sub_shot.Data;
+                    shot.NextX = numeric_cast<int16_t>(checked_add(numeric_cast<int32_t>(sub_shot.NextX), next_x));
+                    shot.NextY = numeric_cast<int16_t>(checked_add(numeric_cast<int32_t>(sub_shot.NextY), next_y));
                 }
             }
         }

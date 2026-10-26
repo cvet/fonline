@@ -400,10 +400,10 @@ FO_SCRIPT_API mdir Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, 
     int32_t rotated = dir.angle();
 
     if (clockwise) {
-        rotated = checked_add<int32_t>(rotated, numeric_cast<int32_t>(step));
+        rotated = checked_add(rotated, numeric_cast<int32_t>(step));
     }
     else {
-        rotated = checked_sub<int32_t>(rotated, numeric_cast<int32_t>(step));
+        rotated = checked_sub(rotated, numeric_cast<int32_t>(step));
     }
 
     while (rotated < 0) {
@@ -823,7 +823,7 @@ FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividen
 {
     ignore_unused(engine);
 
-    int32_t quotient = checked_div<int32_t>(dividend, divisor);
+    int32_t quotient = checked_div(dividend, divisor);
 
     remainder = dividend % divisor;
     return quotient;

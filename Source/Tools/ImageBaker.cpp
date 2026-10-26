@@ -215,7 +215,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }));
     }
 
-    size_t errors = 0;
+    int32_t errors = 0;
     string first_error;
 
     for (size_t file_index = 0; file_index < file_bakings.size(); file_index++) {
@@ -230,7 +230,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 first_error = ex.what();
             }
 
-            errors++;
+            errors = checked_add(errors, int32_t {1});
         }
     }
 
@@ -282,8 +282,8 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
         .Info =
             {
                 .FrameCount = collection.SequenceSize,
-                .Duration = std::chrono::milliseconds {collection.AnimTicks},
-                .Directions = vector<SpriteDirInfo>(dirs),
+                .Duration = std::chrono::milliseconds {numeric_cast<std::chrono::milliseconds::rep>(collection.AnimTicks)},
+                .Directions = vector<SpriteDirInfo>(numeric_cast<size_t>(dirs)),
             },
     };
     bool report_enabled = IsBakingReportEnabled();
@@ -300,8 +300,8 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
 
     for (int32_t dir = 0; dir < dirs; dir++) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[dir];
-        direction_info.Frames.resize(collection.SequenceSize);
+        SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[numeric_cast<size_t>(dir)];
+        direction_info.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
         vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
         vector<int32_t> mesh_build_paddings(sequence.Frames.size());
         vector<int32_t> frame_paddings(sequence.Frames.size());
@@ -322,21 +322,21 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                     mesh_build_paddings[frame_index] = SPRITE_MESH_MAXIMUM_PADDING;
                 }
 
-                int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                int64_t reference_quad_double_area = checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2});
                 prepared_meshes[frame_index] = BuildSpriteMesh(mesh_shot->Data, {mesh_shot->Width, mesh_shot->Height}, mesh_config, reference_quad_double_area);
                 frame_paddings[frame_index] = ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]);
             }
         }
 
         for (int32_t i = 0; i < collection.SequenceSize; i++) {
-            const auto& shot = sequence.Frames[i];
-            SpriteFrameInfo& frame_info = direction_info.Frames[i];
+            const auto& shot = sequence.Frames[numeric_cast<size_t>(i)];
+            SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(i)];
             stats.FrameSlots++;
             writer.write<bool>(shot.Shared);
 
             if (!shot.Shared) {
                 stats.UniqueFrames++;
-                int32_t frame_padding = frame_paddings[i];
+                int32_t frame_padding = frame_paddings[numeric_cast<size_t>(i)];
                 optional<ImageImport::FrameShot> padded_shot;
                 ptr<const ImageImport::FrameShot> bake_shot = &shot;
 
@@ -345,20 +345,20 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                     bake_shot = &*padded_shot;
                 }
 
-                FO_VERIFY_AND_THROW(bake_shot->Width > 0 && bake_shot->Height > 0 && bake_shot->Width <= std::numeric_limits<uint16_t>::max() && bake_shot->Height <= std::numeric_limits<uint16_t>::max(), "Animation frame dimensions are outside the serialized range", bake_shot->Width, bake_shot->Height);
-                size_t pixel_width = bake_shot->Width;
-                size_t pixel_height = bake_shot->Height;
-                size_t expected_data_size = checked_mul<size_t>(checked_mul<size_t>(pixel_width, pixel_height), size_t {4});
+                FO_VERIFY_AND_THROW(bake_shot->Width > 0 && bake_shot->Height > 0 && bake_shot->Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && bake_shot->Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", bake_shot->Width, bake_shot->Height);
+
+                int64_t pixel_count = checked_mul(numeric_cast<int64_t>(bake_shot->Width), numeric_cast<int64_t>(bake_shot->Height));
+                size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
                 FO_VERIFY_AND_THROW(bake_shot->Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", bake_shot->Data.size(), bake_shot->Width, bake_shot->Height);
 
                 BakedSpriteMesh mesh;
 
-                if (prepared_meshes[i].has_value() && prepared_meshes[i]->Kind != SpriteMeshKind::Quad) {
-                    mesh = std::move(*prepared_meshes[i]);
-                    TranslateSpriteMesh(mesh, frame_padding - mesh_build_paddings[i], *bake_shot);
+                if (prepared_meshes[numeric_cast<size_t>(i)].has_value() && prepared_meshes[numeric_cast<size_t>(i)]->Kind != SpriteMeshKind::Quad) {
+                    mesh = std::move(*prepared_meshes[numeric_cast<size_t>(i)]);
+                    TranslateSpriteMesh(mesh, frame_padding - mesh_build_paddings[numeric_cast<size_t>(i)], *bake_shot);
                 }
                 else {
-                    int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                    int64_t reference_quad_double_area = checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2});
                     mesh = BuildSpriteMesh(bake_shot->Data, {bake_shot->Width, bake_shot->Height}, mesh_config, reference_quad_double_area);
                 }
 
@@ -372,15 +372,15 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                     }
                 }
 
-                ipos32 source_offset {sequence.OffsX, sequence.OffsY};
+                ipos32 source_offset {numeric_cast<int32_t>(sequence.OffsX), numeric_cast<int32_t>(sequence.OffsY)};
                 isize32 source_size {shot.Width, shot.Height};
                 isize32 cropped_size {bake_shot->Width, bake_shot->Height};
                 FO_VERIFY_AND_THROW(mesh.Kind != SpriteMeshKind::Mesh || (source_size.width > 0 && source_size.height > 0 && cropped_size.width > 0 && cropped_size.height > 0), "Sprite frame offset resolution requires positive dimensions", source_size, cropped_size);
 
                 ipos32 frame_offset = mesh.Kind == SpriteMeshKind::Mesh ?
                     ipos32 {
-                        source_offset.x + cropped_size.width / 2 - source_size.width / 2 + mesh.Data.SourceOffset.x,
-                        source_offset.y + cropped_size.height - source_size.height + mesh.Data.SourceOffset.y,
+                        checked_add(checked_add(source_offset.x, cropped_size.width / 2), checked_sub(mesh.Data.SourceOffset.x, source_size.width / 2)),
+                        checked_add(checked_add(source_offset.y, cropped_size.height), checked_sub(mesh.Data.SourceOffset.y, source_size.height)),
                     } :
                     source_offset;
 
@@ -417,8 +417,8 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                         .Padding = frame_padding,
                         .SimplifyTolerance = mesh.SimplifyTolerance,
                         .ActualDilation = mesh.ActualDilation,
-                        .SourceFramePixels = numeric_cast<uint64_t>(shot.Width) * shot.Height,
-                        .BakedCanvasPixels = numeric_cast<uint64_t>(bake_shot->Width) * bake_shot->Height,
+                        .SourceFramePixels = numeric_cast<uint64_t>(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height))),
+                        .BakedCanvasPixels = numeric_cast<uint64_t>(checked_mul(numeric_cast<int64_t>(bake_shot->Width), numeric_cast<int64_t>(bake_shot->Height))),
                         .VisiblePixels = mesh.VisiblePixels,
                         .SubmittedGeometryDoubleArea = mesh.DoubleArea,
                         .SelectionScore = mesh.SelectionScore,
@@ -434,7 +434,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 writer.write<int16_t>(bake_shot->NextY);
                 frame_info.Offset = frame_offset;
                 frame_info.Size = cropped_size;
-                frame_info.NextOffset = {bake_shot->NextX, bake_shot->NextY};
+                frame_info.NextOffset = {numeric_cast<int32_t>(bake_shot->NextX), numeric_cast<int32_t>(bake_shot->NextY)};
 
                 if (!bake_shot->Data.empty()) {
                     writer.write_bytes({bake_shot->Data.data(), bake_shot->Data.size()});
@@ -463,7 +463,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 stats.SharedFrameReferences++;
                 FO_VERIFY_AND_THROW(shot.SharedIndex >= 0 && shot.SharedIndex < i, "Shared sprite frame points outside previously baked frames", fname, dir, i, shot.SharedIndex);
                 writer.write<uint16_t>(numeric_cast<uint16_t>(shot.SharedIndex));
-                frame_info = direction_info.Frames[shot.SharedIndex];
+                frame_info = direction_info.Frames[numeric_cast<size_t>(shot.SharedIndex)];
                 frame_info.SharedFrameIndex = shot.SharedIndex;
             }
         }
@@ -497,33 +497,34 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
 static auto PadSpriteFrame(const ImageImport::FrameShot& shot, int32_t padding) -> ImageImport::FrameShot
 {
     FO_VERIFY_AND_THROW(padding > 0, "Sprite frame padding must be positive", padding);
-    FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= std::numeric_limits<uint16_t>::max() && shot.Height <= std::numeric_limits<uint16_t>::max(), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
-    size_t source_width = shot.Width;
-    size_t source_height = shot.Height;
-    size_t expected_data_size = checked_mul<size_t>(checked_mul<size_t>(source_width, source_height), size_t {4});
+    FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
+
+    int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
+    size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
     FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
-    int32_t padded_width = checked_add<int32_t>(shot.Width, checked_mul<int32_t>(padding, int32_t {2}));
-    int32_t padded_height = checked_add<int32_t>(shot.Height, checked_mul<int32_t>(padding, int32_t {2}));
-    FO_VERIFY_AND_THROW(padded_width <= std::numeric_limits<uint16_t>::max() && padded_height <= std::numeric_limits<uint16_t>::max(), "Sprite frame padding exceeds the serialized dimension range", shot.Width, shot.Height, padding);
+    int32_t padded_width = checked_add(shot.Width, checked_mul(padding, int32_t {2}));
+    int32_t padded_height = checked_add(shot.Height, checked_mul(padding, int32_t {2}));
+    FO_VERIFY_AND_THROW(padded_width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && padded_height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Sprite frame padding exceeds the serialized dimension range", shot.Width, shot.Height, padding);
 
     ImageImport::FrameShot result;
     result.Width = padded_width;
     result.Height = padded_height;
     result.NextX = shot.NextX;
     result.NextY = shot.NextY;
-    size_t destination_width = result.Width;
-    size_t destination_height = result.Height;
-    result.Data.resize(checked_mul<size_t>(checked_mul<size_t>(destination_width, destination_height), size_t {4}));
+    int64_t destination_pixel_count = checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height));
+    result.Data.resize(numeric_cast<size_t>(checked_mul(destination_pixel_count, int64_t {4})));
 
-    size_t source_row_size = checked_mul<size_t>(source_width, size_t {4});
-    size_t destination_row_size = checked_mul<size_t>(destination_width, size_t {4});
-    size_t padding_size = padding;
-    size_t destination_x_offset = checked_mul<size_t>(padding_size, size_t {4});
+    size_t source_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}));
+    size_t destination_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}));
+    int64_t destination_x_offset_wide = checked_mul(numeric_cast<int64_t>(padding), int64_t {4});
+    size_t destination_x_offset = numeric_cast<size_t>(destination_x_offset_wide);
 
     for (int32_t y = 0; y < shot.Height; y++) {
-        size_t source_offset = y * source_row_size;
-        size_t destination_offset = checked_add<int32_t>(y, padding) * destination_row_size + destination_x_offset;
+        int32_t destination_y = checked_add(y, padding);
+        size_t source_offset = checked_mul(numeric_cast<size_t>(y), source_row_size);
+        size_t destination_row_offset = checked_mul(numeric_cast<size_t>(destination_y), destination_row_size);
+        size_t destination_offset = checked_add(destination_row_offset, destination_x_offset);
         memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
     }
 
@@ -539,9 +540,13 @@ static auto ResolveSpriteFramePadding(const ImageImport::FrameShot& shot, const 
     int32_t required_padding = 0;
 
     for (ipos32 vertex : mesh.Data.Vertices) {
-        int32_t relative_x = vertex.x - build_padding;
-        int32_t relative_y = vertex.y - build_padding;
-        required_padding = std::max({required_padding, -relative_x, relative_x - shot.Width, -relative_y, relative_y - shot.Height});
+        int32_t relative_x = checked_sub(vertex.x, build_padding);
+        int32_t relative_y = checked_sub(vertex.y, build_padding);
+        int32_t relative_right = checked_sub(relative_x, shot.Width);
+        int32_t relative_bottom = checked_sub(relative_y, shot.Height);
+        int32_t relative_left = checked_sub(int32_t {0}, relative_x);
+        int32_t relative_top = checked_sub(int32_t {0}, relative_y);
+        required_padding = std::max({required_padding, relative_left, relative_right, relative_top, relative_bottom});
     }
 
     FO_VERIFY_AND_THROW(required_padding <= SPRITE_MESH_MAXIMUM_PADDING, "Resolved sprite mesh padding exceeds the internal maximum", required_padding, SPRITE_MESH_MAXIMUM_PADDING);
@@ -555,24 +560,24 @@ static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const Ima
     }
 
     for (ipos32 vertex : mesh.Data.Vertices) {
-        int64_t translated_x = numeric_cast<int64_t>(vertex.x) + offset;
-        int64_t translated_y = numeric_cast<int64_t>(vertex.y) + offset;
-        FO_VERIFY_AND_THROW(translated_x >= 0 && translated_x <= shot.Width && translated_y >= 0 && translated_y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
+        int64_t translated_x = checked_add(numeric_cast<int64_t>(vertex.x), numeric_cast<int64_t>(offset));
+        int64_t translated_y = checked_add(numeric_cast<int64_t>(vertex.y), numeric_cast<int64_t>(offset));
+        FO_VERIFY_AND_THROW(translated_x >= 0 && translated_x <= numeric_cast<int64_t>(shot.Width) && translated_y >= 0 && translated_y <= numeric_cast<int64_t>(shot.Height), "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
     }
 
     for (ipos32& vertex : mesh.Data.Vertices) {
-        vertex.x = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.x) + offset);
-        vertex.y = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.y) + offset);
+        vertex.x = numeric_cast<int32_t>(checked_add(numeric_cast<int64_t>(vertex.x), numeric_cast<int64_t>(offset)));
+        vertex.y = numeric_cast<int32_t>(checked_add(numeric_cast<int64_t>(vertex.y), numeric_cast<int64_t>(offset)));
     }
 }
 
 static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, const ImageImport::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageImport::FrameShot>
 {
     FO_VERIFY_AND_THROW(mesh.Kind == SpriteMeshKind::Mesh && !mesh.Data.Vertices.empty() && !mesh.Data.Indices.empty(), "Sprite frame cropping requires a non-empty mesh");
-    FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= std::numeric_limits<uint16_t>::max() && shot.Height <= std::numeric_limits<uint16_t>::max(), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
-    size_t source_width = shot.Width;
-    size_t source_height = shot.Height;
-    size_t expected_data_size = checked_mul<size_t>(checked_mul<size_t>(source_width, source_height), size_t {4});
+    FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
+
+    int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
+    size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
     FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
     ipos32 minimum_vertex {shot.Width, shot.Height};
@@ -586,11 +591,11 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
         maximum_vertex.y = std::max(maximum_vertex.y, vertex.y);
     }
 
-    isize32 cropped_size = {maximum_vertex.x - minimum_vertex.x, maximum_vertex.y - minimum_vertex.y};
-    FO_VERIFY_AND_THROW(cropped_size.width > 0 && cropped_size.height > 0 && cropped_size.width <= std::numeric_limits<uint16_t>::max() && cropped_size.height <= std::numeric_limits<uint16_t>::max(), "Sprite mesh bounds are outside the serialized dimension range", minimum_vertex, maximum_vertex);
+    isize32 cropped_size = {checked_sub(maximum_vertex.x, minimum_vertex.x), checked_sub(maximum_vertex.y, minimum_vertex.y)};
+    FO_VERIFY_AND_THROW(cropped_size.width > 0 && cropped_size.height > 0 && cropped_size.width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && cropped_size.height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Sprite mesh bounds are outside the serialized dimension range", minimum_vertex, maximum_vertex);
 
     mesh.Data.SourceSize = {source_shot.Width, source_shot.Height};
-    mesh.Data.SourceOffset = {minimum_vertex.x - padding, minimum_vertex.y - padding};
+    mesh.Data.SourceOffset = {checked_sub(minimum_vertex.x, padding), checked_sub(minimum_vertex.y, padding)};
 
     for (ipos32& vertex : mesh.Data.Vertices) {
         vertex -= minimum_vertex;
@@ -605,19 +610,19 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
     result.Height = cropped_size.height;
     result.NextX = shot.NextX;
     result.NextY = shot.NextY;
-    size_t cropped_width = result.Width;
-    size_t cropped_height = result.Height;
-    result.Data.resize(checked_mul<size_t>(checked_mul<size_t>(cropped_width, cropped_height), size_t {4}));
+    int64_t cropped_pixel_count = checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height));
+    result.Data.resize(numeric_cast<size_t>(checked_mul(cropped_pixel_count, int64_t {4})));
 
-    size_t source_row_size = checked_mul<size_t>(source_width, size_t {4});
-    size_t cropped_row_size = checked_mul<size_t>(cropped_width, size_t {4});
-    size_t source_x = minimum_vertex.x;
-    size_t source_x_offset = checked_mul<size_t>(source_x, size_t {4});
+    size_t source_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}));
+    size_t cropped_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}));
+    int64_t source_x_offset_wide = checked_mul(numeric_cast<int64_t>(minimum_vertex.x), int64_t {4});
+    size_t source_x_offset = numeric_cast<size_t>(source_x_offset_wide);
 
     for (int32_t y = 0; y < result.Height; y++) {
-        size_t source_y = checked_add<int32_t>(y, minimum_vertex.y);
-        size_t source_offset = source_y * source_row_size + source_x_offset;
-        size_t destination_offset = y * cropped_row_size;
+        int32_t source_y = checked_add(y, minimum_vertex.y);
+        size_t source_row_offset = checked_mul(numeric_cast<size_t>(source_y), source_row_size);
+        size_t source_offset = checked_add(source_row_offset, source_x_offset);
+        size_t destination_offset = checked_mul(numeric_cast<size_t>(y), cropped_row_size);
         memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
     }
 
@@ -665,27 +670,27 @@ static auto LoadImage(const ImageImport::Loader& loader, string_view fname, stri
 
 static void ValidateFrameCollection(string_view fname, const ImageImport::FrameCollection& collection)
 {
-    FO_VERIFY_AND_THROW(collection.SequenceSize > 0 && collection.SequenceSize <= std::numeric_limits<uint16_t>::max(), "Image frame count is outside the serialized range", fname, collection.SequenceSize);
-    FO_VERIFY_AND_THROW(collection.AnimTicks >= 0 && collection.AnimTicks <= std::numeric_limits<uint16_t>::max(), "Image animation duration is outside the serialized range", fname, collection.AnimTicks);
+    FO_VERIFY_AND_THROW(collection.SequenceSize > 0 && collection.SequenceSize <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image frame count is outside the serialized range", fname, collection.SequenceSize);
+    FO_VERIFY_AND_THROW(collection.AnimTicks >= 0 && collection.AnimTicks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image animation duration is outside the serialized range", fname, collection.AnimTicks);
 
     int32_t dir_count = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
 
     for (int32_t dir = 0; dir < dir_count; dir++) {
         const ImageImport::FrameSequence& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        FO_VERIFY_AND_THROW(std::cmp_equal(sequence.Frames.size(), collection.SequenceSize), "Image direction frame count does not match the sequence size", fname, dir, sequence.Frames.size(), collection.SequenceSize);
+        FO_VERIFY_AND_THROW(sequence.Frames.size() == numeric_cast<size_t>(collection.SequenceSize), "Image direction frame count does not match the sequence size", fname, dir, sequence.Frames.size(), collection.SequenceSize);
 
         for (int32_t frame_index = 0; frame_index < collection.SequenceSize; frame_index++) {
-            const ImageImport::FrameShot& shot = sequence.Frames[frame_index];
+            const ImageImport::FrameShot& shot = sequence.Frames[numeric_cast<size_t>(frame_index)];
 
             if (shot.Shared) {
                 FO_VERIFY_AND_THROW(shot.SharedIndex >= 0 && shot.SharedIndex < frame_index, "Shared image frame points outside previously loaded frames", fname, dir, frame_index, shot.SharedIndex);
                 continue;
             }
 
-            FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= std::numeric_limits<uint16_t>::max() && shot.Height <= std::numeric_limits<uint16_t>::max(), "Image frame dimensions are outside the serialized range", fname, dir, frame_index, shot.Width, shot.Height);
-            size_t pixel_width = shot.Width;
-            size_t pixel_height = shot.Height;
-            size_t expected_data_size = checked_mul<size_t>(checked_mul<size_t>(pixel_width, pixel_height), size_t {4});
+            FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image frame dimensions are outside the serialized range", fname, dir, frame_index, shot.Width, shot.Height);
+
+            int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
+            size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
             FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Image frame RGBA payload size does not match frame dimensions", fname, dir, frame_index, shot.Data.size(), shot.Width, shot.Height);
         }
     }

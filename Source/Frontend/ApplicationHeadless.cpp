@@ -220,8 +220,8 @@ auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) co
         return {};
     }
 
-    float32_t source_aspect = checked_div<float32_t>(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
-    float32_t target_aspect = checked_div<float32_t>(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
+    float32_t source_aspect = checked_div(numeric_cast<float32_t>(source_size.width), numeric_cast<float32_t>(source_size.height));
+    float32_t target_aspect = checked_div(numeric_cast<float32_t>(target_size.width), numeric_cast<float32_t>(target_size.height));
     int32_t width = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) * source_aspect : numeric_cast<float32_t>(target_size.width));
     int32_t height = iround<int32_t>(source_aspect <= target_aspect ? numeric_cast<float32_t>(target_size.height) : numeric_cast<float32_t>(target_size.width) / source_aspect);
 

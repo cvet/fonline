@@ -53,33 +53,33 @@ namespace ImageBakerRix
         reader.SetCurPos(0x4);
         uint16_t width_wire = 0;
         reader.ReadObject(width_wire);
-        int32_t w = width_wire;
+        int32_t w = numeric_cast<int32_t>(width_wire);
         uint16_t height_wire = 0;
         reader.ReadObject(height_wire);
-        int32_t h = height_wire;
+        int32_t h = numeric_cast<int32_t>(height_wire);
 
         reader.SetCurPos(0xA);
-        const_span<uint8_t> palette = reader.GetCurDataSpan(256 * 3);
+        const_span<uint8_t> palette = reader.GetCurDataSpan(numeric_cast<size_t>(256 * 3));
 
         FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid RIX dimensions", fname, w, h);
-        int64_t pixel_count = w;
-        pixel_count *= h;
-        vector<uint8_t> data(numeric_cast<size_t>(pixel_count * 4));
+        int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
+        size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+        vector<uint8_t> data(data_size);
         span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
-        reader.SetCurPos(0xA + 256 * 3);
+        reader.SetCurPos(numeric_cast<size_t>(0xA + 256 * 3));
 
-        for (int64_t i = 0; i < pixel_count; i++) {
-            int32_t index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
-            auto r = numeric_cast<uint8_t>(palette[index + 2] * 4);
-            auto g = numeric_cast<uint8_t>(palette[index + 1] * 4);
-            auto b = numeric_cast<uint8_t>(palette[index + 0] * 4);
+        for (size_t i = 0; i < pixels.size(); i++) {
+            size_t index = checked_mul(numeric_cast<size_t>(reader.GetUInt8()), size_t {3});
+            uint8_t r = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {2})]) * 4);
+            uint8_t g = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {1})]) * 4);
+            uint8_t b = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[index]) * 4);
             pixels[i] = ucolor {r, g, b};
         }
 
         FrameCollection collection;
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
-        collection.Main.Frames.resize(collection.SequenceSize);
+        collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
         collection.Main.Frames[0].Width = w;
         collection.Main.Frames[0].Height = h;
         collection.Main.Frames[0].Data = std::move(data);

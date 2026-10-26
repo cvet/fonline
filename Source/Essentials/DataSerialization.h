@@ -47,7 +47,7 @@ inline void span_align_pos(size_t& pos, size_t alignment)
     FO_VERIFY_AND_THROW(alignment != 0, "Span alignment is zero");
     FO_VERIFY_AND_THROW((alignment & (alignment - 1)) == 0, "Span alignment is not power of two");
 
-    size_t aligned_pos = checked_add<size_t>(pos, alignment - 1);
+    size_t aligned_pos = checked_add(pos, alignment - 1);
     pos = aligned_pos & ~(alignment - 1);
 }
 
@@ -384,7 +384,7 @@ public:
 
             auto target = mutable_objects_ptr(out);
             ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
-            size_t byte_count = checked_mul<size_t>(out.size(), sizeof(T));
+            size_t byte_count = checked_mul(out.size(), sizeof(T));
             read_bytes({bytes.get(), byte_count});
         }
     }
@@ -518,7 +518,7 @@ public:
         if (!data.empty()) {
             auto source = source_objects_ptr(data);
             ptr<const uint8_t> bytes = source.template reinterpret_as<const uint8_t>();
-            size_t byte_count = checked_mul<size_t>(data.size(), sizeof(T));
+            size_t byte_count = checked_mul(data.size(), sizeof(T));
             write_bytes({bytes.get(), byte_count});
         }
     }
@@ -592,11 +592,11 @@ private:
 
     void grow_buf(size_t size)
     {
-        size_t required_size = checked_add<size_t>(_data_buf->size(), size);
+        size_t required_size = checked_add(_data_buf->size(), size);
         size_t new_capacity = std::max<size_t>(_data_buf->capacity(), size_t {1});
 
         while (new_capacity < required_size) {
-            new_capacity = checked_mul<size_t>(new_capacity, size_t {2});
+            new_capacity = checked_mul(new_capacity, size_t {2});
         }
 
         if (new_capacity > _data_buf->capacity()) {

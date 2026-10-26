@@ -14,7 +14,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- Deduce checked arithmetic types from matching operands. Call `checked_add/sub/mul/div` without explicit template arguments; mixed operand types and explicit type arguments fail compilation, preserving checked conversions at the caller.
 - Use signed `int32_t` quantities throughout sprite metadata, image import and baking: frame counts, shared-frame indices, dimensions and animation duration. Align internal types before converting; keep checked arithmetic and checked narrowing at serialized or external boundaries.
+- Use fixed-width intermediates for image sizes and counts, retaining `size_t` at target container, buffer and external API boundaries. Make numeric type transitions explicit with `numeric_cast`, including widening and container indexing.
 
 ### Fixed
 
@@ -22,6 +24,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
+- Native checked-arithmetic calls replace `checked_mul<int64_t>(a, b)` with `checked_mul(a, b)` when both operands are already `int64_t`; apply the same transformation to `checked_add`, `checked_sub`, and `checked_div`. Keep every existing `numeric_cast` and typed literal: `checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height))` selects a wide product. Search authored native headers/sources with `rg -n 'checked_(add|sub|mul|div)\s*<' <native-source-dirs>`; old explicit type arguments fail C++ template argument matching (MSVC C2672), while mixed operands fail type deduction. A cast of the completed result does not repair overflow during the operation.
+- The native template-call format changes from an explicit arithmetic type plus matching deduced operands to a fully deduced common operand type. The preceding declaration is in feature base `d392f3e1f21641fd757450db52aa3712e326ae61`; this Unreleased draft does not assign a future published version. All four operations retain integer/floating valid results, time/byte units, evaluation order, overflow/zero/non-finite exception classes and finite floating underflow. Existing ordinary literals that match the operand type remain valid. Rebuild every affected native role after migrating custom native extensions; regenerate/check source-owned docs, run native arithmetic/consumer tests, then rebake matching resources through the project's ordinary route before packaging. Rebuild both sides when reverting this source API change. No stored property, ID, save, network protocol, managed/script binding ABI or resource v2 layout changes; no data conversion or compatibility-marker change is required.
 - Rebuild native consumers of `SpriteInfo`, `SpriteFrameInfo`, `SpriteResourceFrameData`, `ImageImport::FrameShot` and `FrameCollection`; their formerly unsigned 16-bit count/dimension/index/duration members now use `int32_t`. `SpriteInfo::Duration` retains its typed duration. Keep native quantities and loop indices signed, and retain checked conversion when writing the existing 16-bit fields. Native metadata frame-count range errors use `VerificationException`; audit handlers that previously distinguished the narrowing `OverflowException` for an oversized text count.
 - Valid sprite v2 bytes, metadata text, pixel ordering, timing units, frame offsets and shared references remain unchanged; no saved-data, resource-format or script-binding migration is required. FRM/FRx duration overflow is rejected instead of wrapping a 16-bit field; existing explicit ART duration saturation is preserved. TGA dimensions with the high bit set are supported with complete payloads. Rebuild and rebake matching native consumers/resources together; runtime and Managed ABI markers are unchanged.
 

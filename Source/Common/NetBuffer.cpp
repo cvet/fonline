@@ -63,7 +63,7 @@ void NetBuffer::ResetBuf() noexcept
 
 void NetBuffer::GrowBuf(size_t len)
 {
-    size_t required_len = checked_add<size_t>(_bufEndPos, len);
+    size_t required_len = checked_add(_bufEndPos, len);
 
     if (required_len <= _bufData.size()) {
         return;
@@ -72,7 +72,7 @@ void NetBuffer::GrowBuf(size_t len)
     size_t new_len = std::max<size_t>(_bufData.size(), size_t {1});
 
     while (new_len < required_len) {
-        new_len = checked_mul<size_t>(new_len, size_t {2});
+        new_len = checked_mul(new_len, size_t {2});
     }
 
     _bufData.resize(new_len);

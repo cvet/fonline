@@ -59,7 +59,7 @@ namespace ImageBakerTga
         FrameCollection collection;
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
-        collection.Main.Frames.resize(collection.SequenceSize);
+        collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
         collection.Main.Frames[0].Width = width;
         collection.Main.Frames[0].Height = height;
         collection.Main.Frames[0].Data = std::move(data);
@@ -106,8 +106,8 @@ namespace ImageBakerTga
         read_tga(&pixel_depth, 1);
         read_tga(&unused_char, 1);
 
-        int32_t width = width_wire;
-        int32_t height = height_wire;
+        int32_t width = numeric_cast<int32_t>(width_wire);
+        int32_t height = numeric_cast<int32_t>(height_wire);
 
         // Check if the image is color indexed
         if (type == 1) {
@@ -128,12 +128,10 @@ namespace ImageBakerTga
 
         // Read
         int32_t bpp = pixel_depth / 8;
-        size_t bpp_size = bpp;
-        size_t width_size = width;
-        size_t height_size = height;
-        size_t pixel_count = checked_mul<size_t>(width_size, height_size);
-        size_t read_size = checked_mul<size_t>(pixel_count, bpp_size);
-        size_t result_size = checked_mul<size_t>(pixel_count, size_t {4});
+        size_t bpp_size = numeric_cast<size_t>(bpp);
+        int64_t pixel_count = checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height));
+        size_t read_size = numeric_cast<size_t>(checked_mul(pixel_count, numeric_cast<int64_t>(bpp)));
+        size_t result_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
         vector<uint8_t> read_data;
 
         if (type == 2) {
@@ -146,8 +144,9 @@ namespace ImageBakerTga
             }
         }
         else {
-            size_t minimum_packet_count = (pixel_count - 1) / 128 + 1;
-            size_t minimum_packet_bytes = checked_mul<size_t>(minimum_packet_count, 1 + bpp_size);
+            int64_t minimum_packet_count = checked_add(checked_div(checked_sub(pixel_count, int64_t {1}), int64_t {128}), int64_t {1});
+            int64_t minimum_packet_size = checked_add(int64_t {1}, numeric_cast<int64_t>(bpp));
+            size_t minimum_packet_bytes = numeric_cast<size_t>(checked_mul(minimum_packet_count, minimum_packet_size));
             FO_VERIFY_AND_THROW(minimum_packet_bytes <= data.size() - cur_pos, "Truncated TGA RLE payload", minimum_packet_bytes, data.size() - cur_pos);
             read_data.resize(read_size);
 
@@ -157,8 +156,9 @@ namespace ImageBakerTga
                 uint8_t packet_header = 0;
                 read_tga(&packet_header, 1);
 
-                size_t run_length = (packet_header & 0x7Fu) + 1u;
-                size_t run_bytes = checked_mul<size_t>(run_length, bpp_size);
+                int32_t run_length = checked_add(numeric_cast<int32_t>(packet_header & 0x7Fu), int32_t {1});
+                int32_t run_bytes_wide = checked_mul(run_length, bpp);
+                size_t run_bytes = numeric_cast<size_t>(run_bytes_wide);
 
                 if ((packet_header & 0x80) != 0) {
                     FO_VERIFY_AND_THROW(run_bytes <= read_size - bytes_read, "TGA RLE run packet exceeds image data", run_bytes, read_size - bytes_read);
@@ -167,7 +167,7 @@ namespace ImageBakerTga
                     read_tga(color, bpp_size);
 
                     for (size_t offset = 0; offset < run_bytes; offset += bpp_size) {
-                        for (int32_t c = 0; c < bpp; c++) {
+                        for (size_t c = 0; c < bpp_size; c++) {
                             read_data[bytes_read + offset + c] = color[c];
                         }
                     }
@@ -187,13 +187,19 @@ namespace ImageBakerTga
         // Copy data
         vector<uint8_t> result(result_size);
 
+        size_t source_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(bpp)));
+        size_t result_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(width), int64_t {4}));
+
         for (int32_t y = 0; y < height; y++) {
-            size_t source_row = y * width_size * bpp_size;
-            size_t result_row = (height - y - 1) * width_size * 4;
+            int32_t flipped_y = checked_sub(checked_sub(height, y), int32_t {1});
+            size_t source_row = checked_mul(numeric_cast<size_t>(y), source_row_size);
+            size_t result_row = checked_mul(numeric_cast<size_t>(flipped_y), result_row_size);
 
             for (int32_t x = 0; x < width; x++) {
-                size_t source_pos = source_row + x * bpp_size;
-                size_t result_pos = result_row + x * 4;
+                size_t source_x = checked_mul(numeric_cast<size_t>(x), bpp_size);
+                size_t result_x = checked_mul(numeric_cast<size_t>(x), size_t {4});
+                size_t source_pos = checked_add(source_row, source_x);
+                size_t result_pos = checked_add(result_row, result_x);
                 result[result_pos + 0] = read_data[source_pos + 2];
                 result[result_pos + 1] = read_data[source_pos + 1];
                 result[result_pos + 2] = read_data[source_pos + 0];

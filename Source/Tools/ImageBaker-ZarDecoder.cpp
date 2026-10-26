@@ -77,15 +77,16 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
 
     // Read image
     uint32_t rle_size = reader.GetLEUInt32();
-    const_span<uint8_t> rle_data = reader.GetCurDataSpan(numeric_cast<size_t>(rle_size));
-    reader.GoForward(rle_size);
+    size_t rle_size_value = numeric_cast<size_t>(rle_size);
+    const_span<uint8_t> rle_data = reader.GetCurDataSpan(rle_size_value);
+    reader.GoForward(rle_size_value);
 
-    FO_VERIFY_AND_THROW(width > 0 && height > 0 && width <= std::numeric_limits<uint16_t>::max() && height <= std::numeric_limits<uint16_t>::max(), "Invalid ZAR dimensions", fname, width, height);
+    FO_VERIFY_AND_THROW(width > 0 && height > 0 && width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Invalid ZAR dimensions", fname, width, height);
 
     // Allocate data
-    int64_t pixel_count = width;
-    pixel_count *= height;
-    vector<uint8_t> data(numeric_cast<size_t>(pixel_count * 4));
+    int64_t pixel_count = checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height));
+    size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+    vector<uint8_t> data(data_size);
     span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
     size_t pixel_pos = 0;
     size_t rle_pos = 0;
@@ -98,7 +99,8 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
         int32_t control_mode = control & 3;
         int32_t control_count = control >> 2;
 
-        size_t payload_size = numeric_cast<size_t>(control_count) * (control_mode == 2 ? 2 : (control_mode == 0 ? 0 : 1));
+        int32_t payload_width = control_mode == 2 ? 2 : (control_mode == 0 ? 0 : 1);
+        size_t payload_size = checked_mul(numeric_cast<size_t>(control_count), numeric_cast<size_t>(payload_width));
         FO_VERIFY_AND_THROW(payload_size <= rle_data.size() - rle_pos && numeric_cast<size_t>(control_count) <= pixels.size() - pixel_pos, "Invalid ZAR run length", fname, rle_pos, pixel_pos);
 
         for (int32_t i = 0; i < control_count; i++) {

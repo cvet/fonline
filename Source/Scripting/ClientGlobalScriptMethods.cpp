@@ -941,7 +941,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseMove(ptr<ClientEngine> client, ipos3
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub<int32_t>(pos.x, prev_pos.x), checked_sub<int32_t>(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
     }
 }
 
@@ -952,7 +952,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseDown(ptr<ClientEngine> client, ipos3
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub<int32_t>(pos.x, prev_pos.x), checked_sub<int32_t>(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
     }
 
     client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
@@ -965,7 +965,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseUp(ptr<ClientEngine> client, ipos32 
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub<int32_t>(pos.x, prev_pos.x), checked_sub<int32_t>(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
     }
 
     client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
@@ -978,7 +978,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub<int32_t>(pos.x, prev_pos.x), checked_sub<int32_t>(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
     }
 
     if (button == MouseButton::WheelUp) {
@@ -1406,8 +1406,8 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     int32_t y = pos.y;
 
     if (offs) {
-        x = checked_add<int32_t>(x, checked_add<int32_t>(checked_sub<int32_t>(0, sprite->GetSize().width) / 2, sprite->GetOffset().x));
-        y = checked_add<int32_t>(y, checked_add<int32_t>(checked_sub<int32_t>(0, sprite->GetSize().height), sprite->GetOffset().y));
+        x = checked_add(x, checked_add(checked_sub(0, sprite->GetSize().width) / 2, sprite->GetOffset().x));
+        y = checked_add(y, checked_add(checked_sub(0, sprite->GetSize().height), sprite->GetOffset().y));
     }
 
     client->SprMngr.DrawSprite(sprite, {x, y}, color != ucolor::clear ? color : Color::Neutral);
@@ -1462,7 +1462,7 @@ FO_SCRIPT_API void Client_Game_DrawSprite(ptr<ClientEngine> client, uint32_t spr
     }
 
     ipos32 offset = offs ? sprite->GetOffset() : ipos32 {};
-    fpos32 draw_pos {numeric_cast<float32_t>(checked_add<int32_t>(pos.x, offset.x)), numeric_cast<float32_t>(checked_add<int32_t>(pos.y, offset.y))};
+    fpos32 draw_pos {numeric_cast<float32_t>(checked_add(pos.x, offset.x)), numeric_cast<float32_t>(checked_add(pos.y, offset.y))};
     client->SprMngr.DrawSpriteSizeExt(sprite, draw_pos, fsize32(size), fit, true, true, color != ucolor::clear ? color : Color::Neutral);
 }
 
@@ -1517,12 +1517,12 @@ FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view te
     int32_t height = size.height;
 
     if (width < 0) {
-        width = checked_sub<int32_t>(0, width);
-        x = checked_sub<int32_t>(x, width);
+        width = checked_sub(0, width);
+        x = checked_sub(x, width);
     }
     if (height < 0) {
-        height = checked_sub<int32_t>(0, height);
-        y = checked_sub<int32_t>(y, height);
+        height = checked_sub(0, height);
+        y = checked_sub(y, height);
     }
 
     client->FontMngr.DrawText(irect32 {x, y, width, height}, text, color != ucolor::clear ? color : Color::TextWhite, format);
@@ -1557,7 +1557,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter2d(ptr<ClientEngine> client, hstring m
     auto frames = client->CritterFrames.GetCritterAnimFrames(modelName, stateAnim, actionAnim, dir);
 
     if (frames) {
-        isize32 size {checked_sub<int32_t>(r, l), checked_sub<int32_t>(b, t)};
+        isize32 size {checked_sub(r, l), checked_sub(b, t)};
         client->SprMngr.DrawSpriteSize(frames->GetCurSpr(), {l, t}, size, scratch, center, color != ucolor::clear ? color : Color::Neutral);
     }
 }
@@ -1800,8 +1800,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 {
     int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
     int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
-    int32_t r = std::clamp(checked_add<int32_t>(pos.x, size.width), 0, client->SprMngr.GetScreenSize().width);
-    int32_t b = std::clamp(checked_add<int32_t>(pos.y, size.height), 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(checked_add(pos.x, size.width), 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(checked_add(pos.y, size.height), 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1817,8 +1817,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 {
     int32_t l = std::clamp(pos.x, 0, client->SprMngr.GetScreenSize().width);
     int32_t t = std::clamp(pos.y, 0, client->SprMngr.GetScreenSize().height);
-    int32_t r = std::clamp(checked_add<int32_t>(pos.x, size.width), 0, client->SprMngr.GetScreenSize().width);
-    int32_t b = std::clamp(checked_add<int32_t>(pos.y, size.height), 0, client->SprMngr.GetScreenSize().height);
+    int32_t r = std::clamp(checked_add(pos.x, size.width), 0, client->SprMngr.GetScreenSize().width);
+    int32_t b = std::clamp(checked_add(pos.y, size.height), 0, client->SprMngr.GetScreenSize().height);
     frect32 from(l, t, r - l, b - t);
     irect32 to(l, t, r - l, b - t);
 
@@ -1845,12 +1845,12 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
 {
     frect32 from = frect32(std::clamp(fromX, 0, client->SprMngr.GetScreenSize().width), //
         std::clamp(fromY, 0, client->SprMngr.GetScreenSize().height), //
-        std::clamp(fromW, 0, std::max(checked_sub<int32_t>(client->SprMngr.GetScreenSize().width, fromX), 0)), //
-        std::clamp(fromH, 0, std::max(checked_sub<int32_t>(client->SprMngr.GetScreenSize().height, fromY), 0)));
+        std::clamp(fromW, 0, std::max(checked_sub(client->SprMngr.GetScreenSize().width, fromX), 0)), //
+        std::clamp(fromH, 0, std::max(checked_sub(client->SprMngr.GetScreenSize().height, fromY), 0)));
     irect32 to = irect32(std::clamp(toX, 0, client->SprMngr.GetScreenSize().width), //
         std::clamp(toY, 0, client->SprMngr.GetScreenSize().height), //
-        std::clamp(toW, 0, std::max(checked_sub<int32_t>(client->SprMngr.GetScreenSize().width, toX), 0)), //
-        std::clamp(toH, 0, std::max(checked_sub<int32_t>(client->SprMngr.GetScreenSize().height, toY), 0)));
+        std::clamp(toW, 0, std::max(checked_sub(client->SprMngr.GetScreenSize().width, toX), 0)), //
+        std::clamp(toH, 0, std::max(checked_sub(client->SprMngr.GetScreenSize().height, toY), 0)));
 
     auto rt = TakeActiveOffscreenSurface(client);
     rt->SetCustomDrawEffect(client->GetOffscreenEffect(effectSubtype));

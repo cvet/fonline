@@ -3341,8 +3341,8 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
         int32_t bottom;
 
         if (ctx->ViewPort.width != ctx->TargetSize.width || ctx->ViewPort.height != ctx->TargetSize.height) {
-            float32_t x_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width));
-            float32_t y_ratio = checked_div<float32_t>(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height));
+            float32_t x_ratio = checked_div(numeric_cast<float32_t>(ctx->ViewPort.width), numeric_cast<float32_t>(ctx->TargetSize.width));
+            float32_t y_ratio = checked_div(numeric_cast<float32_t>(ctx->ViewPort.height), numeric_cast<float32_t>(ctx->TargetSize.height));
 
             left = ctx->ViewPort.x + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.x) * x_ratio);
             top = ctx->ViewPort.y + iround<int32_t>(numeric_cast<float32_t>(ctx->ScissorRect.y) * y_ratio);
@@ -3450,8 +3450,8 @@ void Vulkan_Renderer::Present()
 // calls SetRenderTarget, so resizes must refresh these here)
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size)
 {
-    float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Screen->Size.width), numeric_cast<float32_t>(ctx->Screen->Size.height));
+    float32_t back_buf_aspect = checked_div(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+    float32_t screen_aspect = checked_div(numeric_cast<float32_t>(ctx->Screen->Size.width), numeric_cast<float32_t>(ctx->Screen->Size.height));
     int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
     int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
 
@@ -3481,8 +3481,8 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         // Letterboxes like ApplySwapchainTargetMetrics, but into locals: the projection is rebuilt below
         // from the resolved target size
         isize32 back_buf_size = _ctx->SwapchainSize;
-        float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
+        float32_t back_buf_aspect = checked_div(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+        float32_t screen_aspect = checked_div(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
         int32_t vp_ox = (back_buf_size.width - fit_width) / 2;

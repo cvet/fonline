@@ -101,10 +101,12 @@ in versioned docs; sanitize evidence.
   `string`, `hstring` and other simple values. No redundant top-level local `const`;
   pointee/referent constness and `constexpr` remain. Align numeric types first:
   counts, lengths, dimensions and their arithmetic use signed integers, normally
-  `int32_t`, with wider signed intermediates when required. Keep `size_t` at container
-  boundaries and unsigned types for bit patterns, identities and external formats.
-  Use `numeric_cast` where a real range/sign boundary needs checking; never replace
-  it with an unchecked narrowing cast. See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
+  `int32_t`, with wider fixed-width signed intermediates when required. Use `size_t`
+  only where the target container, buffer or external API requires it; retain unsigned
+  types for bit patterns, identities and external formats. Use `numeric_cast` for
+  every transition between different numeric types, including widening and container
+  indices; do not replace it with implicit conversion or an unchecked cast.
+  See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
   for justified suppression and use-after-move checks.
 - **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
   affects sizes, offsets or other important calculations. Check before mutation;

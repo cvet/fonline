@@ -555,7 +555,7 @@ auto SpriteSheet::Update() -> bool
         int32_t frames_passed = dt / ticks_per_frame;
 
         if (frames_passed > 0) {
-            _startTick += std::chrono::milliseconds {frames_passed * ticks_per_frame};
+            _startTick += std::chrono::milliseconds {numeric_cast<std::chrono::milliseconds::rep>(frames_passed * ticks_per_frame)};
 
             int32_t index = _curIndex + (_reversed ? -frames_passed : frames_passed);
 
@@ -666,10 +666,10 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             mdir dir = hdir(i);
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
-            SpriteResourceDirectionData& direction = resource.Directions[i];
+            SpriteResourceDirectionData& direction = resource.Directions[numeric_cast<size_t>(i)];
 
             for (int32_t j = 0; j < sprite_info.FrameCount; j++) {
-                SpriteResourceFrameData& frame = direction.Frames[j];
+                SpriteResourceFrameData& frame = direction.Frames[numeric_cast<size_t>(j)];
 
                 if (!frame.SharedFrameIndex.has_value()) {
                     auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
@@ -678,7 +678,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                 }
                 else {
                     int32_t index = *frame.SharedFrameIndex;
-                    dir_anim->SetFrame(j, dir_anim->GetSpr(index)->MakeCopy(), dir_anim->GetSprOffset(index), dir_anim->GetSprMotion()[index]);
+                    dir_anim->SetFrame(j, dir_anim->GetSpr(index)->MakeCopy(), dir_anim->GetSprOffset(index), dir_anim->GetSprMotion()[numeric_cast<size_t>(index)]);
                 }
             }
         }

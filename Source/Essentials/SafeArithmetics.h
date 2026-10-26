@@ -266,10 +266,10 @@ template<typename T, typename U>
     return numeric_cast<T>(std::llround(value));
 }
 
-// Safe arithmetics
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_add(const U& value1, const U& value2) -> U
+// Safe arithmetics; empty non-type packs prevent explicit types from enabling implicit operand conversions
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_add(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -303,9 +303,9 @@ template<typename T, typename U>
     return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_sub(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_sub(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -339,9 +339,9 @@ template<typename T, typename U>
     return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_mul(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_mul(const T& value1, const T& value2) -> T
 {
     if constexpr (std::integral<T>) {
         if constexpr (std::is_unsigned_v<T>) {
@@ -389,9 +389,9 @@ template<typename T, typename U>
     return result;
 }
 
-template<typename T, typename U>
-    requires(std::is_arithmetic_v<T> && std::same_as<T, U>)
-[[nodiscard]] constexpr auto checked_div(const U& value1, const U& value2) -> U
+template<auto... ExplicitArgs, typename T>
+    requires(sizeof...(ExplicitArgs) == 0 && std::is_arithmetic_v<T> && !std::same_as<T, bool>)
+[[nodiscard]] constexpr auto checked_div(const T& value1, const T& value2) -> T
 {
     if constexpr (std::floating_point<T>) {
         if (!std::isfinite(value1) || !std::isfinite(value2)) {

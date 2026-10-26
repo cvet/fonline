@@ -201,7 +201,7 @@
             "auto Load",
             "header.Bpp == 8",
             "stored_rotations == art_rotations",
-            "numeric_cast<size_t>(info.DataSize) == pixel_count"
+            "numeric_cast<int64_t>(info.DataSize) == pixel_count"
           ]
         },
         {
@@ -226,7 +226,7 @@
           "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "auto Load",
-            "checked_mul<int32_t>(int32_t {100}, collection.SequenceSize)"
+            "checked_mul(int32_t {100}, collection.SequenceSize)"
           ]
         },
         {
@@ -287,7 +287,7 @@
           "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
             "auto Load",
-            "checked_mul<int32_t>(int32_t {100}, frames_count)"
+            "checked_mul(int32_t {100}, frames_count)"
           ]
         },
         {
@@ -385,7 +385,7 @@
             "static auto TgaLoad",
             "if (type != 2 && type != 10)",
             "if (pixel_depth != 24 && pixel_depth != 32)",
-            "size_t result_row = (height - y - 1) * width_size * 4;"
+            "size_t result_row = checked_mul(numeric_cast<size_t>(flipped_y), result_row_size);"
           ]
         }
       ],
@@ -529,8 +529,8 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "sub_collection.Main.Frames[i].NextX + next_x",
-            "sub_collection.Main.Frames[i].NextY + next_y"
+            "checked_add(numeric_cast<int32_t>(sub_shot.NextX), next_x)",
+            "checked_add(numeric_cast<int32_t>(sub_shot.NextY), next_y)"
           ]
         }
       ]
@@ -545,9 +545,9 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "frames = checked_add<int32_t>(frames, sub_collection.SequenceSize);",
+            "frames = checked_add(frames, sub_collection.SequenceSize);",
             "frames != collection.SequenceSize",
-            "sub_collection.Main.Frames[i].Data"
+            "shot.Data = sub_shot.Data;"
           ]
         }
       ]
@@ -563,7 +563,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "checked_div<int64_t>(checked_mul<int64_t>(int64_t {1000}, frame_count_wide), fps_wide)"
+            "checked_div(checked_mul(int64_t {1000}, frame_count_wide), fps_wide)"
           ]
         }
       ]
@@ -603,7 +603,7 @@
             "case 'H':",
             "case 'V':",
             "case 'F':",
-            "frm_count_target_wide = numeric_cast<int64_t>(std::max(frm_from, frm_to))"
+            "frm_count_target_wide = checked_add"
           ]
         }
       ]
@@ -1163,7 +1163,7 @@
           "anchors": [
             "Indexed TGA is not supported",
             "TGA support only 24 and 32 bpp",
-            "height - y - 1"
+            "int32_t flipped_y = checked_sub"
           ]
         },
         {
@@ -1238,7 +1238,7 @@
       "id": "image-format.validation.numeric-boundaries",
       "name": "Signed quantities and checked format boundaries",
       "stability": "internal",
-      "requirement": "Use int32_t for imported frame counts, dimensions, whole animation milliseconds and shared-frame indices; SpriteInfo retains its typed duration. Validate signed ranges and RGBA byte counts before use; retain checked uint16/uint8 serialization and preserve all valid v2 bytes. Decode TGA uint16 dimensions into signed int32_t; reject truncated payloads and oversized run packets while preserving complete final raw-packet clipping.",
+      "requirement": "Use int32_t for imported frame counts, dimensions, whole animation milliseconds and shared-frame indices; SpriteInfo retains its typed duration. Validate signed ranges and RGBA byte counts before use; retain checked uint16/uint8 serialization and preserve all valid v2 bytes. Decode TGA uint16 dimensions into signed int32_t; reject truncated payloads and oversized run packets while preserving complete final raw-packet clipping. Internal arithmetic uses fixed-width integers; reserve size_t for actual target container, buffer or external APIs and use numeric_cast for every transition between different numeric types, including widening and indexing.",
       "rationale": "Consistent signed types remove intermediate narrowing while preventing negative sizes, duration wrapping and high-bit wire dimensions from reaching allocation or indexing incorrectly.",
       "source": [
         {
@@ -1302,5 +1302,5 @@
       "internal": 8
     }
   },
-  "contract_digest": "9612666792243875ebcc08ae7d253464a722c63b5bc7f865d9be0bae7454e6eb"
+  "contract_digest": "e56da271209c2413d0d5b4e5b49e709d19a5f19c3e548b09bebd244481cda419"
 }

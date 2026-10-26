@@ -67,9 +67,12 @@ indices use `int32_t`; `SpriteInfo` keeps its typed duration. A collection must 
 1–65535 frames, 0–65535 whole milliseconds, matching frame arrays in each active
 direction, and positive 16-bit dimensions with exactly width × height × 4 RGBA
 bytes for each concrete frame. Shared indices must name an earlier frame. The
-loader boundary validates these values before meshing or writing output. Buffer
-sizes use `size_t` after signed validation; checked arithmetic receives matching
-operand types. The v2 stream retains checked 16-bit fields and unchanged valid bytes.
+loader boundary validates these values before meshing or writing output. Internal
+quantities use fixed-width signed types, with `int64_t` for wide byte/pixel products.
+Use `size_t` where the target container, buffer or external API requires it, converting
+through `numeric_cast`. Every transition between different numeric types is explicit,
+and checked arithmetic receives matching operand types. The v2 stream retains checked
+16-bit fields and unchanged valid bytes.
 
 Projects own asset catalogs/licenses, pack precedence, source policy, visual
 style, animation substitutions, hit expectations, movement tuning and visual baselines.
