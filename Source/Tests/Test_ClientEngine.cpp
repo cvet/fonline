@@ -36,6 +36,7 @@
 #include "EffekseerCompiler.h"
 #include "EffekseerExtension.h"
 #include "MapView.h"
+#include "ParticleSprites.h"
 #include "Test_ClientEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -385,6 +386,158 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
         CHECK_THROWS(GetClientResources(settings));
     }
 }
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("ParticleSpriteInitialSimulationUsesSceneSpace", "[particles][effekseer][particle-sprites]")
+{
+    constexpr string_view particle_path = "Particles/SceneBirth.efk";
+    constexpr string_view particle_project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Stationary</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+            <Infinite>False</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Min>30</Min>
+            <Max>30</Max>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Min>0</Min>
+              <Max>0</Max>
+            </GenerationTime>
+          </Generation>
+          <LocationEffectType>1</LocationEffectType>
+        </CommonValues>
+        <LocationValues>
+          <Type>0</Type>
+          <Fixed>
+            <Location>
+              <X>3</X>
+              <Y>0</Y>
+              <Z>0</Z>
+            </Location>
+          </Fixed>
+        </LocationValues>
+        <RendererCommonValues>
+          <AlphaBlend>1</AlphaBlend>
+          <ZTest>False</ZTest>
+          <ZWrite>False</ZWrite>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>255</R>
+              <G>255</G>
+              <B>255</B>
+              <A>255</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFK";
+
+    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()};
+    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/SceneBirth.efkproj", project_bytes);
+    REQUIRE(particle.Dependencies.empty());
+
+    AppendEffekseerBoundsTrailer(particle.Binary, vec3 {3.0f, 0.0f, 0.0f}, vec3 {3.0f, 0.0f, 0.0f}, 0.75f);
+
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string {particle_path}, std::move(particle.Binary));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    float32_t scale = GENERATE(1.0f, 2.0f);
+    bool switch_from_atlas = GENERATE(false, true);
+    CAPTURE(scale, switch_from_atlas);
+
+    auto actual = client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>();
+    REQUIRE(actual);
+    REQUIRE(actual->IsDirectDraw());
+
+    auto reference = client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>();
+    REQUIRE(reference);
+
+    auto wrong = client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>();
+    REQUIRE(wrong);
+
+    auto atlas = client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>();
+    REQUIRE(atlas);
+
+    mat44 projection {1.0f};
+    mat44 scene_world {1.0f};
+
+    for (int32_t replay = 0; replay < 2; replay++) {
+        CAPTURE(replay);
+
+        if (switch_from_atlas) {
+            actual->SetDrawInScene(false);
+            actual->SetDrawInScene(true);
+        }
+
+        reference->GetParticle()->Setup(projection, scene_world, {}, 0.0f, {}, true);
+        wrong->GetParticle()->Setup(projection, glm::translate(scene_world, vec3 {8.0f, 0.0f, 0.0f}), {}, 0.0f, {}, true);
+
+        atlas->SetDrawInScene(true);
+        atlas->SetDrawInScene(false);
+
+        for (auto sprite : {actual, reference, wrong, atlas}) {
+            auto system = sprite->GetParticle();
+            system->SetScale(scale);
+
+            bool played = sprite->PlayWithSeed(1337);
+            REQUIRE(played);
+
+            system->Update(timespan {std::chrono::nanoseconds {16'666'667}});
+            system->Setup(projection, scene_world, {}, 0.0f, {}, true);
+            system->RefreshRenderTransform();
+        }
+
+        auto actual_bounds = actual->GetParticle()->GetLiveBounds();
+        auto reference_bounds = reference->GetParticle()->GetLiveBounds();
+        auto wrong_bounds = wrong->GetParticle()->GetLiveBounds();
+        REQUIRE(actual_bounds);
+        REQUIRE(reference_bounds);
+        REQUIRE(wrong_bounds);
+
+        auto atlas_bounds = atlas->GetParticle()->GetLiveBounds();
+        REQUIRE(atlas_bounds);
+
+        CAPTURE(actual_bounds->PositionMin.x, actual_bounds->PositionMax.x,
+            reference_bounds->PositionMin.x, reference_bounds->PositionMax.x,
+            wrong_bounds->PositionMin.x, wrong_bounds->PositionMax.x);
+        REQUIRE(wrong_bounds->PositionMax.x > reference_bounds->PositionMax.x + 1.0f);
+        CHECK(atlas_bounds->PositionMin.x < reference_bounds->PositionMin.x - 1.0f);
+
+        for (int32_t axis = 0; axis < 3; axis++) {
+            CAPTURE(axis);
+            CHECK(is_float_equal(actual_bounds->PositionMin[axis], reference_bounds->PositionMin[axis]));
+            CHECK(is_float_equal(actual_bounds->PositionMax[axis], reference_bounds->PositionMax[axis]));
+        }
+    }
+}
+#endif
 
 #if (FO_ENABLE_3D)
 TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")

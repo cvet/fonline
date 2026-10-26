@@ -924,6 +924,11 @@ A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight i
 
 `ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
 
+Initial loading and switching from atlas to scene mode establish identity World
+before simulation. `DrawInScene` later supplies the map projection, so nodes
+that retain their birth placement cannot inherit atlas-frame translation.
+Atlas mode keeps the orthographic transform from `ComputeSpriteFrame`.
+
 Live render bounds and rebasing of already emitted particles are backend capabilities behind the same facade. Both backends report live bounds from their baked extent (SPARK through the `.spk` `bounds` attribute, Effekseer through the `.efk` bounds trailer). Rebasing of already emitted particles is SPARK-only, because it emits in world space; Effekseer composes instance transforms with the effect root matrix, so it treats rebasing as a no-op and needs none.
 
 Seeded respawn is deterministic per particle-system instance in both bundled

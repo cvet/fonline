@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"672ac090c9dd7bbf423511d3e922ecb7538c17495b779ca206725a2ab76072d5"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"784b4da35088de8ac1a803d6fb4a845eda8d371f66ced91b51e14d2ce2d9b276"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -212,6 +212,12 @@ Preview поддерживает фильтрацию ресурсов, разм
 - `ComputeSpriteFrame` проецирует baked bounds через камеру карты и выводит выделение
   спрайта, offset эмиттера и world transform;
 - `GetDrawInScene` выбирает атласный или direct-scene rendering route.
+
+Самостоятельные scene-спрайты получают единичную World до первого шага
+симуляции, в том числе при переключении из атласного режима. `DrawInScene`
+позже передаёт проекцию карты. Положение рождения поэтому исключает смещение
+атласного кадра; atlas-спрайты сохраняют вычисленный transform кадра.
+Seeded respawn использует выбранное размещение ещё до отрисовки.
 
 `ParticleBounds3D` намеренно разделяет две величины. Прямоугольник позиций следует
 за полным размещением эмиттера. Радиус билборда следует за scale размещения,

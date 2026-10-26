@@ -1084,6 +1084,11 @@ Facade делегирует через `ParticleRuntimeSystem`, поэтому r
 содержит SPARK/Effekseer branches. One-shot SPARK можно повторно запускать после
 `Game.PlaySprite(...)` и cache reuse.
 
+Первичная загрузка и переключение из атласа в сцену задают единичную World
+до симуляции. `DrawInScene` позже передаёт проекцию карты, поэтому узлы,
+сохраняющие положение рождения, не наследуют смещение атласного кадра.
+Атласный режим сохраняет ортографический transform из `ComputeSpriteFrame`.
+
 Live bounds и rebasing emitted particles также являются capabilities facade.
 Оба backend сообщают bounds baked extent: SPARK через `.spk` `bounds`, Effekseer
 через `.efk` trailer. Rebasing нужен только SPARK world-space; Effekseer

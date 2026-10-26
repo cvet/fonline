@@ -66,7 +66,10 @@ void ParticleSprite::SetDrawInScene(bool draw_in_scene)
 
     _drawInScene = draw_in_scene;
 
-    if (!_drawInScene) {
+    if (_drawInScene) {
+        _particle->Setup(mat44 {1.0f}, mat44 {1.0f}, {}, _lookDirAngle, {}, true);
+    }
+    else {
         ApplyAtlasSetup();
     }
 }
@@ -200,9 +203,17 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     }
 
     ParticleSpriteFrame layout = particle->ComputeSpriteFrame(*_settings);
-    mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
+    bool draw_in_scene = particle->GetDrawInScene();
 
-    particle->Setup(proj, layout.World, {}, {}, {});
+    if (draw_in_scene) {
+        // Simulation may create particles before the first scene draw supplies its projection
+        particle->Setup(mat44 {1.0f}, mat44 {1.0f}, {}, {}, {}, true);
+    }
+    else {
+        mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
+
+        particle->Setup(proj, layout.World, {}, {}, {});
+    }
 
     auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, layout.DrawSize);
 
@@ -212,7 +223,6 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     atlas_rect.width = numeric_cast<float32_t>(layout.DrawSize.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(layout.DrawSize.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
-    bool draw_in_scene = particle->GetDrawInScene();
     auto particle_value = safe_alloc::make_unique<ParticleSystem>(std::move(*particle));
     return safe_alloc::make_shared<ParticleSprite>(_sprMngr, layout.DrawSize, layout.Offset, atlas, std::move(atlas_allocation), atlas_rect, this, std::move(particle_value), draw_in_scene);
 }

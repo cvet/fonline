@@ -208,6 +208,12 @@ drawing. `ParticleSystem` adds the shared timing and control facade. Its explici
   sprite allocation, emitter offset, and world transform;
 - `GetDrawInScene` selects the atlas or direct-scene rendering route.
 
+Standalone scene sprites start with identity World before their first simulation
+tick, including a switch from atlas rendering. `DrawInScene` supplies the map
+projection later. Birth placement therefore excludes atlas-frame translation;
+atlas sprites retain their computed frame transform. Seeded respawn uses the
+selected placement even before a draw.
+
 `ParticleBounds3D` deliberately separates two quantities. The position box
 follows the complete emitter placement. The billboard radius follows placement
 scale but remains camera-facing, so callers add it as view-plane padding and do
