@@ -72,7 +72,7 @@ def test_unavailable_native_pipeline_does_not_change_other_profiles(tmp_path: Pa
 
 
 def test_standard_ci_validation_project_enables_the_real_baker(tmp_path: Path) -> None:
-    # Execute the actual profile; only compiler detection and stage side effects are disabled.
+    # Execute the actual profile; only compiler detection and stage side effects are disabled
     source = (ENGINE / "BuildTools/validation-project/CMakeLists.txt").read_text(encoding="utf-8")
     source = source.replace("project(FOnlineTest)", "project(FOnlineTest LANGUAGES NONE)")
     init = tmp_path / "Engine/BuildTools/Init.cmake"

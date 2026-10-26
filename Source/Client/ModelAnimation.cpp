@@ -106,7 +106,7 @@ auto IsModelAnimationCallbackReached(timespan previous, timespan current, timesp
     int64_t current_phase = remainder(current);
     uint64_t distance = static_cast<uint64_t>(current.nanoseconds()) - static_cast<uint64_t>(previous.nanoseconds());
 
-    // Preserve the two endpoint-cycle checks and one callback per update.
+    // Preserve the two endpoint-cycle checks and one callback per update
     return (phase > previous_phase && distance >= numeric_cast<uint64_t>(phase - previous_phase)) || (phase <= current_phase && distance > numeric_cast<uint64_t>(current_phase - phase));
 }
 
@@ -409,7 +409,7 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
         return timespan {checked_add<int64_t>(track.Position.nanoseconds(), advance.nanoseconds())};
     };
 
-    // Validate all tracks before changing the event clock, events or any position.
+    // Validate all tracks before changing the event clock, events or any position
     small_vector<timespan, 2> next_positions;
     next_positions.reserve(_tracks.size());
 

@@ -7,12 +7,18 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8deb645411b65ec81aaaf79e780cd9f7f8206bbee414b3bb4c6974d649c88790"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"35d8c1bf507189c6a85d7c588f94b71c5d0030a45ebb32d7c67ade6c02450ab8"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Миграция
+
+База `00c3c4cf5207ec7080179e4c9d455221ff1149d4` (`2026.1.72-dev`) → `2026.1.73-dev`: изменены только комментарии; миграция не требуется.
+
+## 2026.1.72-dev - 2026-10-26
 
 ### Исправлено
 
@@ -46,7 +52,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Миграция
 
-База `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) → `2026.1.69-dev`: объединены опубликованная ветка FOFRM/ресурсов/времени и master. Совместимость runtime становится `0.0.81`; Managed ABI остаётся `9`. Перегенерируйте bindings/метаданные, пересоберите native-расширения и все роли, затем выполните полный bake. Разворачивайте и откатывайте согласованные бинарники, сборки, исходники и пакеты вместе. Значения сохранений и сетевые единицы сохраняют смысл; смешанные поколения отвергаются. Проверки квалифицируют только Windows.
+База `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) → `2026.1.69-dev`: интегрированы FOFRM/ресурсы/время. Совместимость runtime становится `0.0.81`; Managed ABI остаётся `9`. Пересоберите и перепеките все роли, разворачивайте только согласованные артефакты. Значения сохранений и сетевые единицы сохраняют смысл.
 
 - Кадры импорта заменяют Width/Height на `isize32 Size`, NextX/NextY — на `ipos32 Motion`. Размещение остаётся Offset: знаковые центры BAM и bbox/center SPR, включая общие кадры, задают размещение; дельты FRM/ART остаются движением. В FOFRM Move/FrameMoves заменяются на Motion/FrameMotions; старые ключи отклоняются до разрешения зависимостей. Пересоберите baker и перезапеките корни BAM/SPR; проверки сужения и layout SpriteResource v3 сохраняются.
 - Native-переименования: GetCurSpr → GetCurrentSprite, GetSpr → GetSprite, GetDir → GetDirection, GetDirCount → GetDirectionCount, GetStateAnim/GetActionAnim → GetStateAnimation/GetActionAnimation, GetSprOffset(frame) → GetSpriteOffset(frame), RefreshParams → RefreshParameters, Sprite::SetDir и overrides → SetDirection. Обновите вызовы; GetCurrentDirection и API направления entity/model сохраняют имена. Размещение читает GetSpriteOffset(frame), движение — GetSpriteMotion().

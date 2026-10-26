@@ -360,7 +360,7 @@ static_assert(sizeof(FoPalette) == 1024);
         }
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms
-        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict
         if (!have_dirs) {
             for (auto& sequence : collection.Dirs) {
                 sequence.Frames.clear();
@@ -661,7 +661,7 @@ static_assert(sizeof(FoPalette) == 1024);
         }
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms
-        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict
         if (!have_dirs) {
             for (auto& sequence : collection.Dirs) {
                 sequence.Frames.clear();

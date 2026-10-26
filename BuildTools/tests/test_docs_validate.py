@@ -1945,7 +1945,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
 
-        # The copied Common.h owns the animation enums; keeping the bootstrap stub duplicates metadata.
+        # The copied Common.h owns the animation enums; keeping the bootstrap stub duplicates metadata
         (root / "Source/Common/CritterAnimationEnums.h").unlink()
         generated_path.write_text(docs_inventory.render_inventory(root), encoding="utf-8")
         api_path.write_text(docs_api.render_api_model(root), encoding="utf-8")

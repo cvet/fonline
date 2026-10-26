@@ -14,6 +14,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Migration
+
+Base `00c3c4cf5207ec7080179e4c9d455221ff1149d4` (`2026.1.72-dev`) to `2026.1.73-dev`: comment-only change; no migration is required.
+
+## 2026.1.72-dev - 2026-10-26
+
 ### Fixed
 
 - Fix full-range synctime getters; repair test bytecode/lifetime/service assertions.
@@ -46,7 +52,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: combine the published FOFRM/resource/time branch with master. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Regenerate bindings/metadata, rebuild extensions/all roles and force-rebake. Deploy/roll back matching binaries, assemblies, sources and packs together; mixed generations fail. Saved values/network units keep meaning. Validation: Windows only.
+Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: integrate FOFRM/resources/time. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Rebuild/rebake all roles and deploy matching artifacts. Saved values/network units keep meaning.
 
 - Image import frames replace Width/Height with `isize32 Size` and NextX/NextY with `ipos32 Motion`. Placement remains `Offset`: BAM signed centers and SPR bbox/center anchors, including shared frames, are placement; FRM/ART deltas remain motion. FOFRM Move/FrameMoves become Motion/FrameMotions; obsolete keys fail before dependency resolution. Checked narrowing and SpriteResource v3 layout remain.
 - Native sprite renames: GetCurSpr → GetCurrentSprite, GetSpr → GetSprite, GetDir → GetDirection, GetDirCount → GetDirectionCount, GetStateAnim/GetActionAnim → GetStateAnimation/GetActionAnimation, GetSprOffset(frame) → GetSpriteOffset(frame), RefreshParams → RefreshParameters, Sprite::SetDir and overrides → SetDirection. Update callers; GetCurrentDirection and entity/model direction APIs keep their names. Motion uses GetSpriteMotion().

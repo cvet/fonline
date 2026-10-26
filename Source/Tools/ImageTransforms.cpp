@@ -247,7 +247,7 @@ static auto ResizeEncodedColorFrame(const ImageImport::FrameShot& source, isize3
         return resized;
     }
 
-    // Fixed-point pixel centers keep premultiplied-alpha resampling deterministic across baker platforms.
+    // Fixed-point pixel centers keep premultiplied-alpha resampling deterministic across baker platforms
     constexpr int64_t pixel_unit = 65536;
     constexpr uint64_t weight_unit = uint64_t {1} << 32;
 

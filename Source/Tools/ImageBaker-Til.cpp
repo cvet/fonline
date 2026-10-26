@@ -91,7 +91,7 @@ namespace ImageBakerTil
         }
 
         // Raw formats without a playable clock use the default cadence; positive sub-ms
-        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict.
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict
         if (!have_dirs) {
             for (auto& sequence : collection.Dirs) {
                 sequence.Frames.clear();

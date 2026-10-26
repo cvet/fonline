@@ -62,7 +62,7 @@ def create_fixture(work: Path) -> tuple[Path, Path, Path]:
           f'Files = Fonts/Test.fofnt "{FORCED}"\n')
 
     # Pack paths use space-separated tokens, so keep them relative to the config.
-    # Metadata.fometa-* is the native metadata registration entry point.
+    # Metadata.fometa-* is the native metadata registration entry point
     config = work / "Producer.fomain"
     write(config, f"Baking.BakeOutput = {baked.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
@@ -84,7 +84,7 @@ def make_packager(baked: Path) -> package.Packager:
 
 
 def check_selection(consumer: package.Packager, baked: Path, expected: set[str]) -> list[str]:
-    # The expected paths are fixture constants, not values copied out of the manifest.
+    # The expected paths are fixture constants, not values copied out of the manifest
     manifest = json.loads((baked / "Resources.usage.json").read_text(encoding="utf-8"))
     actual = set(manifest["Packs"]["Art"])
     require(actual == expected, f"Producer selected {sorted(actual)}, expected {sorted(expected)}")
@@ -178,7 +178,7 @@ def main() -> int:
     if args.workdir:
         args.workdir.mkdir(parents=True, exist_ok=True)
 
-    # External archive caches are unrelated to this isolated producer/consumer contract.
+    # External archive caches are unrelated to this isolated producer/consumer contract
     os.environ.pop(package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, None)
 
     with tempfile.TemporaryDirectory(prefix="resource usage pipeline-", dir=args.workdir) as directory:

@@ -158,7 +158,7 @@ public static class ManagedRuntimeProbe
     [ServerRemoteCall]
     internal static Task UnitTestRuntimeRpc(Player player)
     {
-        // An ownerless nested RPC must not inherit or release this invocation's completion.
+        // An ownerless nested RPC must not inherit or release this invocation's completion
         RemoteCall.Loopback(null, "UnitTestRuntimeGenericRpc");
         PendingRemoteCall = new TaskCompletionSource();
         return PendingRemoteCall.Task;

@@ -1831,7 +1831,7 @@ auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, 
             return false;
         }
 
-        // Diffuse UVs are baked per vertex; auxiliary slots use one atlas rectangle per batch.
+        // Diffuse UVs are baked per vertex; auxiliary slots use one atlas rectangle per batch
         if (i != 0 && combined_mesh->Textures[i] && mesh_instance->CurTexures[i] && combined_mesh->Textures[i]->AtlasOffsetData != mesh_instance->CurTexures[i]->AtlasOffsetData) {
             return false;
         }

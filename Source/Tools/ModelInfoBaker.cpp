@@ -490,7 +490,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             auto file = File::Load(header);
 
             for (auto& entry : ReadSpriteInfoFile(file.GetPath(), file.GetStr())) {
-                // Match runtime metadata precedence: the first visible pack wins.
+                // Match runtime metadata precedence: the first visible pack wins
                 result.try_emplace(std::move(entry.ResourcePath), std::move(entry.Info));
             }
         }
