@@ -2794,6 +2794,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
     auto body = MakeItemBlock(20, TILE_A, 12, 12, "LightDistance = 7") + MakeItemBlock(21, TILE_A, 13, 12, "LightDistance = 9") + MakeCritterBlock(30, CRITTER_A, 8, 8);
     auto map = mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body));
     REQUIRE(map);
+
+    refcount_ptr<MapView> retained_map = map.hold_ref();
+
     mapper->ShowMap(map);
     REQUIRE_FALSE(mapper->IsMapDirty(map));
 
@@ -2827,7 +2830,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         });
         CHECK(mapper->ApplyEntityPropertyText(critter, prop, "Dead"));
         CHECK(callback_ran);
-        CHECK(map->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
         CHECK_FALSE(mapper->IsMapDirty(map));
         CHECK_FALSE(mapper->GetCurMap());
     }
@@ -2893,7 +2896,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         mapper->InspectorSelectedLineValue = "Dead";
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_NOTHROW(mapper->ApplyInspectorPropertyEdit(critter));
-        CHECK(map->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
         CHECK_FALSE(mapper->IsMapDirty(map));
     }
@@ -2912,7 +2915,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanUndo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteUndo());
-        CHECK(map->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
         CHECK_FALSE(mapper->IsMapDirty(map));
     }
@@ -2932,7 +2935,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanRedo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteRedo());
-        CHECK(map->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
         CHECK_FALSE(mapper->IsMapDirty(map));
     }

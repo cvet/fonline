@@ -190,6 +190,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
 - Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
 - Трассы Threading считают завершённые callbacks каждого участника пакета, различая пустых workers и частичный отказ. Пересоберите profiled consumers; миграций API и ресурсов нет.
+- Карты удерживаются в reentrancy-тестах Mapper.
 
 ### Миграция
 
