@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"35d8c1bf507189c6a85d7c588f94b71c5d0030a45ebb32d7c67ade6c02450ab8"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"42c864d736517cdb73fe7abe1df08fcc342da1481432bbc014b90e6ea2ceb324"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-26
+## Current - 2026-10-27
+
+### Исправлено
+
+- Пакеты движения получают монотонное время отправки, не кадра; ложная перемотка устранена.
+
+### Миграция
+
+База `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) → `2026.1.74-dev`: пересборка native-ролей/тестов, без конверсии. Layout/API, runtime `0.0.81`, Managed ABI `9` прежние. Развёртывание/откат — согласованным комплектом.
+
+## 2026.1.73-dev - 2026-10-26
 
 ### Миграция
 

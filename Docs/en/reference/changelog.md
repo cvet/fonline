@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-26
+## Current - 2026-10-27
+
+### Fixed
+
+- Stamp movement packets with monotonic send time, not frame time; prevent false catch-up.
+
+### Migration
+
+Base `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) to `2026.1.74-dev`: rebuild native roles/tests; no conversion. Layouts/APIs, runtime `0.0.81`, Managed ABI `9` unchanged. Deploy matching artifacts.
+
+## 2026.1.73-dev - 2026-10-26
 
 ### Migration
 
