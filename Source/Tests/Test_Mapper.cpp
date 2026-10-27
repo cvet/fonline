@@ -2887,6 +2887,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("InspectorEditCanUnloadItsMapDuringPostSetter")
     {
+        auto held_map = map.hold_ref();
         ptr<CritterHexView> critter = map->GetCritters().front();
         auto prop = critter->GetPropertyCondition();
         mapper->ShowProps = {prop};
@@ -2895,13 +2896,14 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         mapper->InspectorSelectedLineValue = "Dead";
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_NOTHROW(mapper->ApplyInspectorPropertyEdit(critter));
-        CHECK(map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 
     SECTION("UndoCanUnloadTheEditedMapFromItsPostSetter")
     {
+        auto held_map = map.hold_ref();
         auto primary = map->GetItem(ident_t {20});
         REQUIRE(primary);
         auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
@@ -2914,13 +2916,14 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanUndo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteUndo());
-        CHECK(map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 
     SECTION("RedoCanUnloadTheEditedMapFromItsPostSetter")
     {
+        auto held_map = map.hold_ref();
         auto primary = map->GetItem(ident_t {20});
         REQUIRE(primary);
         auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
@@ -2934,9 +2937,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanRedo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteRedo());
-        CHECK(map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 }
 

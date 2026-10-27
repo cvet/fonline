@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-26
+## Current - 2026-10-27
+
+### Fixed
+
+- Retain unloaded maps in tests; check the shared service-start flag.
+
+### Migration
+
+- `16e3b73de7` (`2026.1.74-dev`) → `2026.1.75-dev`: test fixes only. Compatibility unchanged; rebuild tests.
+
+## 2026.1.74-dev - 2026-10-26
 
 ### Fixed
 
