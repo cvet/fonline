@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"e8830b89adebd47f451085354ae15db1711e2b3e8f64bd86807c9b08cc0a8da5"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"8724593bbbb8852eb7fa40bdfd796068f3e9dbb715aa06cd9790a8613aba3236"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -302,6 +302,8 @@ configure command требует `-A`, validator отклоняет cached gener
 Linux-specific. `BuildTools/tests/test_native_unit_validation.py` покрывает
 platform resolution, передачу configure, проверки generator cache и
 неподдерживаемые hosts.
+
+Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
 
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
 пересекает границы подсистем.

@@ -45,7 +45,7 @@ static auto MakeTempPackPath(string_view name) -> string
     return fs::path_to_string(base);
 }
 
-static auto MakeBytes(string_view text) -> const_span<uint8_t>
+static auto MakePackBytes(string_view text) -> const_span<uint8_t>
 {
     return const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()};
 }
@@ -90,7 +90,7 @@ TEST_CASE("ResourcePack")
 
         {
             ResourcePackWriter writer {pack_path};
-            writer.AddFile("Zeta/Last.bin", MakeBytes("last"));
+            writer.AddFile("Zeta/Last.bin", MakePackBytes("last"));
             writer.AddFile("Alpha/First.bin", const_span<uint8_t> {compressible.data(), compressible.size()});
             writer.AddFile("Alpha/Noise.bin", const_span<uint8_t> {incompressible.data(), incompressible.size()});
             writer.AddFile("Empty.bin", const_span<uint8_t> {});
@@ -164,7 +164,7 @@ TEST_CASE("ResourcePack")
 
         {
             ResourcePackWriter writer {pack_path};
-            writer.AddFile("Payload.bin", MakeBytes("payload"));
+            writer.AddFile("Payload.bin", MakePackBytes("payload"));
             writer.Finish();
         }
 
@@ -187,7 +187,7 @@ TEST_CASE("ResourcePack")
 
         {
             ResourcePackWriter writer {pack_path};
-            writer.AddFile("Payload.bin", MakeBytes("payload"));
+            writer.AddFile("Payload.bin", MakePackBytes("payload"));
             writer.Finish();
         }
 
@@ -267,7 +267,7 @@ TEST_CASE("ResourcePack")
 
         {
             ResourcePackWriter writer {pack_path};
-            writer.AddFile(unicode_path, MakeBytes("payload"));
+            writer.AddFile(unicode_path, MakePackBytes("payload"));
             writer.Finish();
         }
 
@@ -292,7 +292,7 @@ TEST_CASE("ResourcePack")
 
         {
             ResourcePackWriter writer {pack_path};
-            writer.AddFile("Payload.bin", MakeBytes("payload"));
+            writer.AddFile("Payload.bin", MakePackBytes("payload"));
             writer.Finish();
         }
 
@@ -364,9 +364,9 @@ TEST_CASE("ResourcePack")
             ResourcePackWriter writer {pack_path, settings};
             // Added in sorted order, which is what makes the file canonical: the index is sorted either way, but
             // the payloads are laid down as they arrive
-            writer.AddFile("Alpha.bin", MakeBytes("alpha payload"));
+            writer.AddFile("Alpha.bin", MakePackBytes("alpha payload"));
             writer.AddFile("Zeta.bin", const_span<uint8_t> {});
-            writer.AddFile("nested/Beta.bin", MakeBytes("beta"));
+            writer.AddFile("nested/Beta.bin", MakePackBytes("beta"));
             writer.Finish();
         }
 
@@ -416,8 +416,8 @@ TEST_CASE("ResourcePack")
     {
         string pack_path = MakeTempPackPath("duplicate");
         ResourcePackWriter writer {pack_path};
-        writer.AddFile("Payload.bin", MakeBytes("first"));
-        writer.AddFile("Payload.bin", MakeBytes("second"));
+        writer.AddFile("Payload.bin", MakePackBytes("first"));
+        writer.AddFile("Payload.bin", MakePackBytes("second"));
         CHECK_THROWS(writer.Finish());
     }
 }
@@ -427,7 +427,7 @@ static void WritePatchTestPack(string_view path, const vector<pair<string, strin
     ResourcePackWriter writer {path, settings};
 
     for (const auto& [name, text] : files) {
-        writer.AddFile(name, MakeBytes(text));
+        writer.AddFile(name, MakePackBytes(text));
     }
 
     writer.Finish();
@@ -596,7 +596,7 @@ TEST_CASE("ResourcePackPatch")
         ResourcePatchWriter writer {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
         fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
         writer.Begin(patch_lock);
-        REQUIRE_THROWS(writer.AddEncodedFile(MakeBytes("bad")));
+        REQUIRE_THROWS(writer.AddEncodedFile(MakePackBytes("bad")));
         REQUIRE_THROWS(writer.Finish());
         ResourcePackSource view {base, patch};
         CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});

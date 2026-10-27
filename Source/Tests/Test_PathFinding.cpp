@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    constexpr msize TEST_MAP_SIZE {20, 20};
+    constexpr msize PATH_FINDING_MAP_SIZE {20, 20};
     constexpr msize WIDE_MAP_SIZE {120, 120};
     constexpr mpos POCKET_CENTER {60, 60};
     constexpr mpos FAR_START {10, 10};
@@ -55,7 +55,7 @@ namespace
         FindPathInput settings;
         settings.FromHex = from;
         settings.ToHex = to;
-        settings.MapSize = TEST_MAP_SIZE;
+        settings.MapSize = PATH_FINDING_MAP_SIZE;
         settings.MaxLength = 200;
         settings.CritterDetour = TEST_CRITTER_DETOUR;
         settings.Cut = cut;
@@ -260,9 +260,9 @@ TEST_CASE("PathFinding::FindPath")
             mdir dir = hdir(dir_value);
             ipos32 raw_to {from.x, from.y};
             GeometryHelper::MoveHexByDirUnsafe(raw_to, dir);
-            REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw_to));
+            REQUIRE(PATH_FINDING_MAP_SIZE.is_valid_pos(raw_to));
 
-            mpos to = TEST_MAP_SIZE.from_raw_pos(raw_to);
+            mpos to = PATH_FINDING_MAP_SIZE.from_raw_pos(raw_to);
             auto settings = MakeClearSettings(from, to);
             auto output = PathFinding::FindPath(settings);
 
@@ -346,8 +346,8 @@ TEST_CASE("PathFinding::FindPath")
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
-            CHECK(TEST_MAP_SIZE.is_valid_pos(raw));
-            cur = TEST_MAP_SIZE.from_raw_pos(raw);
+            CHECK(PATH_FINDING_MAP_SIZE.is_valid_pos(raw));
+            cur = PATH_FINDING_MAP_SIZE.from_raw_pos(raw);
         }
 
         CHECK(cur == output.NewToHex);
@@ -528,7 +528,7 @@ TEST_CASE("PathFinding::FindPath")
 
     SECTION("MultihexPerimeterOutsideMapReturnsBlocked")
     {
-        auto result = PathFinding::CheckHexWithMultihex(mpos {0, 0}, hdir::SouthEast, 1, TEST_MAP_SIZE, [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; });
+        auto result = PathFinding::CheckHexWithMultihex(mpos {0, 0}, hdir::SouthEast, 1, PATH_FINDING_MAP_SIZE, [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; });
 
         CHECK(result == HexBlockResult::Blocked);
     }
@@ -618,8 +618,8 @@ TEST_CASE("PathFinding::FindPath")
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
-            REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw));
-            cur = TEST_MAP_SIZE.from_raw_pos(raw);
+            REQUIRE(PATH_FINDING_MAP_SIZE.is_valid_pos(raw));
+            cur = PATH_FINDING_MAP_SIZE.from_raw_pos(raw);
         }
         CHECK(cur == output.NewToHex);
     }
@@ -640,7 +640,7 @@ TEST_CASE("PathFinding::FindPath")
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
-            cur = TEST_MAP_SIZE.from_raw_pos(raw);
+            cur = PATH_FINDING_MAP_SIZE.from_raw_pos(raw);
             uint32_t key = static_cast<uint32_t>(cur.x * 1000 + cur.y);
             CHECK(visited.find(key) == visited.end());
             visited.insert(key);
@@ -708,8 +708,8 @@ TEST_CASE("PathFinding::FindPath")
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
-            REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw));
-            cur = TEST_MAP_SIZE.from_raw_pos(raw);
+            REQUIRE(PATH_FINDING_MAP_SIZE.is_valid_pos(raw));
+            cur = PATH_FINDING_MAP_SIZE.from_raw_pos(raw);
         }
         CHECK(cur == output.NewToHex);
         CHECK(output.NewToHex == to);
@@ -1517,10 +1517,10 @@ TEST_CASE("PathFinding::FindReachable")
         vector<mpos> targets {mpos {5, 5}, mpos {6, 5}};
         auto open = [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; };
 
-        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 0, targets, open)) == vector<mpos> {mpos {5, 5}});
-        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 1, targets, open)) == targets);
-        CHECK(PathFinding::FindReachable(make_input(mpos {50, 50}, TEST_MAP_SIZE, 100, targets, open)).empty());
-        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 100, {}, open)).empty());
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, PATH_FINDING_MAP_SIZE, 0, targets, open)) == vector<mpos> {mpos {5, 5}});
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, PATH_FINDING_MAP_SIZE, 1, targets, open)) == targets);
+        CHECK(PathFinding::FindReachable(make_input(mpos {50, 50}, PATH_FINDING_MAP_SIZE, 100, targets, open)).empty());
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, PATH_FINDING_MAP_SIZE, 100, {}, open)).empty());
     }
 }
 
@@ -1640,7 +1640,7 @@ TEST_CASE("PathFinding::TraceLine")
         settings.TargetHex = to;
         settings.MaxDist = 0;
         settings.Angle = 0.0f;
-        settings.MapSize = TEST_MAP_SIZE;
+        settings.MapSize = PATH_FINDING_MAP_SIZE;
         settings.CheckLastMovable = false;
         settings.IsHexBlocked = blocker ? std::move(blocker) : [](mpos /*hex*/) -> bool { return false; };
         return settings;

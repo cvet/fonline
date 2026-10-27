@@ -47,6 +47,8 @@
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
+// LibreSSL intentionally replaces overlapping WinCrypt names, including after Windows.h in a unity batch
+#define LIBRESSL_DISABLE_OVERRIDE_WINCRYPT_DEFINES_WARNING
 FO_DISABLE_WARNINGS_PUSH()
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"

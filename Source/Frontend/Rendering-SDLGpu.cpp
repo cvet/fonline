@@ -300,7 +300,7 @@ static auto ConvertBlendFactor(BlendFuncType blend, bool is_alpha) -> SDL_GPUBle
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
+static auto ConvertBlendOpToSdlGpu(BlendEquationType blend_op) -> SDL_GPUBlendOp
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -318,7 +318,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> SDL_GPUCullMode
+static auto ConvertCullModeToSdlGpu(CullModeType cull_mode) -> SDL_GPUCullMode
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -1641,7 +1641,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
 
-    pipeline_info.rasterizer_state.cull_mode = ConvertCullMode(cull_mode);
+    pipeline_info.rasterizer_state.cull_mode = ConvertCullModeToSdlGpu(cull_mode);
 
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -1666,10 +1666,10 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
         color_target_desc.blend_state.enable_blend = true;
         color_target_desc.blend_state.src_color_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], false);
         color_target_desc.blend_state.dst_color_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], false);
-        color_target_desc.blend_state.color_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.color_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
         color_target_desc.blend_state.src_alpha_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], true);
         color_target_desc.blend_state.dst_alpha_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], true);
-        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
     }
 
     pipeline_info.target_info.color_target_descriptions = &color_target_desc;

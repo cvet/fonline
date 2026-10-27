@@ -1471,7 +1471,7 @@ static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertDepthFunc(DepthFuncType name) -> GLenum
+static auto ConvertDepthFuncToOpenGL(DepthFuncType name) -> GLenum
 {
     switch (name) {
     case DepthFuncType::Always:
@@ -1801,7 +1801,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             _usage == EffectUsage::Model ||
 #endif
             _usage == EffectUsage::QuadSprite) {
-            GL(glDepthFunc(ConvertDepthFunc(GetDepthVariantFunc(pass, depth_slot))));
+            GL(glDepthFunc(ConvertDepthFuncToOpenGL(GetDepthVariantFunc(pass, depth_slot))));
         }
 
         if constexpr (sizeof(vindex_t) == 2) {

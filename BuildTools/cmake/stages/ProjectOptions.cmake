@@ -7,6 +7,10 @@ if(NOT ${FO_FORCE_ENABLE_3D} STREQUAL "")
 endif()
 
 # Configuration checks
+if(NOT "${FO_UNITY_BUILD_BATCH_SIZE}" MATCHES "^[1-9][0-9]*$")
+    AbortMessage("FO_UNITY_BUILD_BATCH_SIZE must be a positive integer; got '${FO_UNITY_BUILD_BATCH_SIZE}'")
+endif()
+
 if(FO_CODE_COVERAGE AND (
     FO_BUILD_CLIENT OR
     FO_BUILD_SERVER OR

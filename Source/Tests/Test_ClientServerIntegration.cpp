@@ -269,7 +269,7 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
     bool client_shutdown = false;
     int32_t shutdown_disconnected_calls = 0;
 
@@ -322,7 +322,7 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] {
@@ -372,7 +372,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     auto client_settings = MakeClientTestSettings(port);
 
     auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
@@ -403,7 +403,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     CHECK(client->IsConnected());
     CHECK(GetServerConnectionCount(server) == 1);
 
-    auto second_client = MakeClientEngine(client_settings);
+    auto second_client = TestClientServerIntegration::MakeClientEngine(client_settings);
     auto shutdown_second_client = scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); });
 
     second_client->Connect();
@@ -613,7 +613,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
     auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
@@ -701,8 +701,8 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
     BakerTests::OverrideSetting(second_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
 
     auto server = MakeServerEngine(server_settings);
-    auto first = MakeClientEngine(first_settings);
-    auto second = MakeClientEngine(second_settings);
+    auto first = TestClientServerIntegration::MakeClientEngine(first_settings);
+    auto second = TestClientServerIntegration::MakeClientEngine(second_settings);
     auto shutdown = scope_exit([&]() noexcept {
         safe_call([&] { second->Shutdown(); });
         safe_call([&] { first->Shutdown(); });

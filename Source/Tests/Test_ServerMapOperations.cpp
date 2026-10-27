@@ -43,8 +43,8 @@ using namespace ServerMapOperationsTests;
 
 TEST_CASE("MapManagerLoadsStaticMapEntities")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto settings = ServerMapOperationsTests::MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources());
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -52,7 +52,7 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
             }
         });
     });
-    string startup_error = WaitForStart(server.get());
+    string startup_error = ServerMapOperationsTests::WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -100,8 +100,8 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
 
 TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto settings = ServerMapOperationsTests::MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources());
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -109,7 +109,7 @@ TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
             }
         });
     });
-    string startup_error = WaitForStart(server.get());
+    string startup_error = ServerMapOperationsTests::WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -154,8 +154,8 @@ TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
 
 TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto settings = ServerMapOperationsTests::MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources());
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -163,7 +163,7 @@ TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
             }
         });
     });
-    string startup_error = WaitForStart(server.get());
+    string startup_error = ServerMapOperationsTests::WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));

@@ -11746,6 +11746,14 @@
           "source_sha256": "0464a01fa3fd54b2aff8e9d664caa338c62bb09782be946b2ea8948d5a3b2746",
           "translation": "Создаёт цели модульных тестов движка."
         },
+        "/options/@id=cmake.option.FO_UNITY_BUILD/description": {
+          "source_sha256": "e0b4542546e88d15fdb8bc65df9061ffc6098db66993010c396efa4cd7fa7f43",
+          "translation": "Объединяет собственные исходники C++ в пакеты CMake Unity; third-party targets исключены."
+        },
+        "/options/@id=cmake.option.FO_UNITY_BUILD_BATCH_SIZE/description": {
+          "source_sha256": "d77f675490ad96bd46f944ad200835cc94e8a7c7819ceeae5926c81561b39c50",
+          "translation": "Максимальное число собственных исходников C++ в одном пакете Unity; значение должно быть положительным целым."
+        },
         "/options/@id=cmake.option.FO_VERBOSE_BUILD/description": {
           "source_sha256": "e21912ca94fa1f32ccc9e808d5686473edf7eeeea3500fbaea2c33d494260388",
           "translation": "Включает подробный status-вывод системы сборки FOnline."

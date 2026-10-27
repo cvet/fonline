@@ -790,6 +790,7 @@ _mongoc_handshake_build_doc_with_application(const mongoc_handshake_t *md, const
 
    bson_t *doc = bson_new();
    // Optimistically include all handshake data
+   // (FOnline Patch) Split top-level groups to bound MSVC preprocessor memory usage
    bsonBuildAppend(
       *doc,
       if (appname, then(kv("application", doc(kv("name", cstr(appname)))))),
@@ -798,17 +799,21 @@ _mongoc_handshake_build_doc_with_application(const mongoc_handshake_t *md, const
          doc(kv("type", cstr(md->os_type)),
              if (md->os_name, then(kv("name", cstr(md->os_name)))),
              if (md->os_version, then(kv("version", cstr(md->os_version)))),
-             if (md->os_architecture, then(kv("architecture", cstr(md->os_architecture)))))),
-      if (env_name,
-          then(kv("env",
-                  doc(kv("name", cstr(env_name)),
-                      if (md->env_timeout_sec.set, then(kv("timeout_sec", int32(md->env_timeout_sec.value)))),
-                      if (md->env_memory_mb.set, then(kv("memory_mb", int32(md->env_memory_mb.value)))),
-                      if (md->env_region, then(kv("region", cstr(md->env_region)))))))),
-      if (md->kubernetes || md->docker,
-          then(kv("container",
-                  doc(if (md->docker, then(kv("runtime", cstr("docker")))),
-                      if (md->kubernetes, then(kv("orchestrator", cstr("kubernetes")))))))));
+             if (md->os_architecture, then(kv("architecture", cstr(md->os_architecture)))))));
+
+   if (!bsonBuildError) {
+      bsonBuildAppend(*doc,
+                      if (env_name,
+                          then(kv("env",
+                                  doc(kv("name", cstr(env_name)),
+                                      if (md->env_timeout_sec.set, then(kv("timeout_sec", int32(md->env_timeout_sec.value)))),
+                                      if (md->env_memory_mb.set, then(kv("memory_mb", int32(md->env_memory_mb.value)))),
+                                      if (md->env_region, then(kv("region", cstr(md->env_region)))))))),
+                      if (md->kubernetes || md->docker,
+                          then(kv("container",
+                                  doc(if (md->docker, then(kv("runtime", cstr("docker")))),
+                                      if (md->kubernetes, then(kv("orchestrator", cstr("kubernetes")))))))));
+   }
 
    if (md->platform) {
       _append_platform_field(doc, md, false);

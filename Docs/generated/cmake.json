@@ -28,12 +28,12 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 58,
+    "option_count": 60,
     "required_option_count": 8,
-    "optional_option_count": 50,
+    "optional_option_count": 52,
     "options_by_cache_type": {
-      "BOOL": 35,
-      "STRING": 23
+      "BOOL": 36,
+      "STRING": 24
     },
     "options_by_category": {
       "capacity": 2,
@@ -51,7 +51,7 @@
       "rendering-shape": 2,
       "scripting": 3,
       "target": 5,
-      "toolchain": 3,
+      "toolchain": 5,
       "tooling": 1
     },
     "stage_count": 10,
@@ -171,6 +171,17 @@
       "description": "C++ language standard used for project compilation; values below 20 are unsupported.",
       "affects_baking": false,
       "id": "cmake.option.FO_CXX_STANDARD"
+    },
+    {
+      "name": "FO_UNITY_BUILD_BATCH_SIZE",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "32",
+      "category": "toolchain",
+      "description": "Maximum number of first-party C++ sources combined into each unity build batch; must be a positive integer.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_UNITY_BUILD_BATCH_SIZE"
     },
     {
       "name": "FO_BINARY_OUTPUT_POSTFIX",
@@ -611,6 +622,17 @@
       "description": "Disable the SDL_GPU rendering backend.",
       "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_SDL_GPU"
+    },
+    {
+      "name": "FO_UNITY_BUILD",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "toolchain",
+      "description": "Combine first-party C++ sources into CMake unity build batches; third-party targets are excluded.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_UNITY_BUILD"
     },
     {
       "name": "FO_VERBOSE_BUILD",

@@ -215,6 +215,8 @@ generator display name. Sanitizer validators remain explicitly Linux-specific.
 `BuildTools/tests/test_native_unit_validation.py` covers platform resolution,
 configure forwarding, generator-cache checks, and unsupported hosts.
 
+CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
+
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
 ### Unit tests under sanitizers

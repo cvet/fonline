@@ -231,7 +231,7 @@ static auto ReadStagingTexturePixels(ptr<Direct3D_Renderer::Context> ctx, ptr<ID
 
 Direct3D_Renderer::Direct3D_Renderer() = default;
 
-static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
+static auto ConvertBlendToDirect3D(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
     switch (blend) {
     case BlendFuncType::Zero:
@@ -265,7 +265,7 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
+static auto ConvertBlendOpToDirect3D(BlendEquationType blend_op) -> D3D11_BLEND_OP
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -283,7 +283,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
+static auto ConvertDepthFuncToDirect3D(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
 {
     switch (depth_func) {
     case DepthFuncType::Always:
@@ -307,7 +307,7 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
+static auto ConvertCullModeToDirect3D(CullModeType cull_mode) -> D3D11_CULL_MODE
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -846,12 +846,12 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
         {
             D3D11_BLEND_DESC blend_desc = {};
             blend_desc.RenderTarget[0].BlendEnable = TRUE;
-            blend_desc.RenderTarget[0].SrcBlend = ConvertBlend(d3d_effect->_srcBlendFunc[pass], false);
-            blend_desc.RenderTarget[0].DestBlend = ConvertBlend(d3d_effect->_destBlendFunc[pass], false);
-            blend_desc.RenderTarget[0].BlendOp = ConvertBlendOp(d3d_effect->_blendEquation[pass]);
-            blend_desc.RenderTarget[0].SrcBlendAlpha = ConvertBlend(d3d_effect->_srcBlendFunc[pass], true);
-            blend_desc.RenderTarget[0].DestBlendAlpha = ConvertBlend(d3d_effect->_destBlendFunc[pass], true);
-            blend_desc.RenderTarget[0].BlendOpAlpha = ConvertBlendOp(d3d_effect->_blendEquation[pass]);
+            blend_desc.RenderTarget[0].SrcBlend = ConvertBlendToDirect3D(d3d_effect->_srcBlendFunc[pass], false);
+            blend_desc.RenderTarget[0].DestBlend = ConvertBlendToDirect3D(d3d_effect->_destBlendFunc[pass], false);
+            blend_desc.RenderTarget[0].BlendOp = ConvertBlendOpToDirect3D(d3d_effect->_blendEquation[pass]);
+            blend_desc.RenderTarget[0].SrcBlendAlpha = ConvertBlendToDirect3D(d3d_effect->_srcBlendFunc[pass], true);
+            blend_desc.RenderTarget[0].DestBlendAlpha = ConvertBlendToDirect3D(d3d_effect->_destBlendFunc[pass], true);
+            blend_desc.RenderTarget[0].BlendOpAlpha = ConvertBlendOpToDirect3D(d3d_effect->_blendEquation[pass]);
             blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
             auto d3d_create_blend_state = _ctx->D3DDevice->CreateBlendState(&blend_desc, d3d_effect->BlendState[pass].get_pp());
@@ -871,7 +871,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
             D3D11_RASTERIZER_DESC rasterizer_desc = {};
             rasterizer_desc.FillMode = D3D11_FILL_SOLID;
-            rasterizer_desc.CullMode = ConvertCullMode(cull_mode_type);
+            rasterizer_desc.CullMode = ConvertCullModeToDirect3D(cull_mode_type);
             rasterizer_desc.FrontCounterClockwise = TRUE;
             rasterizer_desc.DepthClipEnable = TRUE;
             rasterizer_desc.ScissorEnable = TRUE;
@@ -896,14 +896,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             if (usage == EffectUsage::Model) {
                 depth_stencil_desc.DepthEnable = TRUE;
                 depth_stencil_desc.DepthWriteMask = d3d_effect->GetDepthVariantWrite(slot) ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->GetDepthVariantFunc(pass, slot));
+                depth_stencil_desc.DepthFunc = ConvertDepthFuncToDirect3D(d3d_effect->GetDepthVariantFunc(pass, slot));
             }
 #endif
 
             if (usage == EffectUsage::QuadSprite) {
                 depth_stencil_desc.DepthEnable = TRUE;
                 depth_stencil_desc.DepthWriteMask = d3d_effect->GetDepthVariantWrite(slot) ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
-                depth_stencil_desc.DepthFunc = ConvertDepthFunc(d3d_effect->GetDepthVariantFunc(pass, slot));
+                depth_stencil_desc.DepthFunc = ConvertDepthFuncToDirect3D(d3d_effect->GetDepthVariantFunc(pass, slot));
             }
 
             auto d3d_create_depth_stencil_state = _ctx->D3DDevice->CreateDepthStencilState(&depth_stencil_desc, d3d_effect->DepthStencilState[pass][slot].get_pp());

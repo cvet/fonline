@@ -39,6 +39,7 @@ DeclareValueOptions(BAKING
 DeclareValueOptions(
 	FO_APP_ICON "Executable file icon" ""
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
+	FO_UNITY_BUILD_BATCH_SIZE "Sources per unity build batch (positive integer)" 32
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
@@ -77,6 +78,7 @@ DeclareBoolOptions(
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
 	FO_DISABLE_VULKAN "Force disable using of Vulkan rendering (built by default, headers vendored with SDL3, no SDK needed)" OFF
 	FO_DISABLE_SDL_GPU "Force disable using of SDL_GPU rendering (Vulkan / Metal / D3D12 via SDL3)" OFF
+	FO_UNITY_BUILD "Combine first-party C++ sources into unity build batches" OFF
 	FO_VERBOSE_BUILD "Verbose build mode" OFF
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF

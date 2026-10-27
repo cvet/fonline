@@ -306,7 +306,7 @@ TEST_CASE("ServerEngineConnectionAcceptPredicates")
 TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -316,7 +316,7 @@ TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -473,7 +473,7 @@ TEST_CASE("ServerEngineSnapshotAcceptsNamedTimeEvents")
 TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -483,7 +483,7 @@ TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->IsConnectionAdmissionOpen());
@@ -563,7 +563,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
 #endif
 
     ScriptFuncDesc event_desc {};
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
     event_desc = BakerTests::MakeNoopCallbackDesc(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
 
     auto shutdown = scope_exit([&server]() noexcept {
@@ -574,7 +574,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -798,9 +798,9 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     {
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
-        auto server = MakeServerEngine(settings);
+        auto server = ServerEngineTests::MakeServerEngine(settings);
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -846,9 +846,9 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
         auto mismatched_state = captured_state;
         mismatched_state.LastEntityId = ident_t {captured_state.LastEntityId.underlying_value() + 1};
-        auto server = MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
+        auto server = ServerEngineTests::MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         CHECK_FALSE(startup_error.empty());
         CHECK(server->IsStartingError());
@@ -860,13 +860,13 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         // An empty payload is rejected at construction rather than producing an empty world
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
-        CHECK_THROWS_AS(MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
+        CHECK_THROWS_AS(ServerEngineTests::MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
     }
 
     {
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
-        auto server = MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
+        auto server = ServerEngineTests::MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
 
         auto shutdown = scope_exit([&server]() noexcept {
             safe_call([&server] {
@@ -876,7 +876,7 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
             });
         });
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1129,7 +1129,7 @@ TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
     // The flag suppresses the script responsiveness report while the engine comes up. Leaving it set
     // would silence that report for the whole life of the server, and nothing else would say so
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1139,7 +1139,7 @@ TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1149,7 +1149,7 @@ TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
 TEST_CASE("ServerEngineStartsAndCreatesCritter")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1159,7 +1159,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1183,7 +1183,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > entity_count);
 
-    auto player = CreateLoggedPlayer(server, "UnitTestPlayer");
+    auto player = ServerEngineTests::CreateLoggedPlayer(server, "UnitTestPlayer");
 
     ident_t player_id = player->GetId();
     CHECK(player_id != ident_t {});
@@ -1205,7 +1205,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 {
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1215,7 +1215,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1232,7 +1232,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 
     // ServerEngineStartsAndCreatesCritter with every synchronization call removed: login re-syncs the context
     // onto the player, so in the multithreaded mode the critter below would be uncovered and every access throw
-    auto player = CreateLoggedPlayer(server, "UnitTestSingleThreaded");
+    auto player = ServerEngineTests::CreateLoggedPlayer(server, "UnitTestSingleThreaded");
     CHECK(player->GetId() != ident_t {});
 
     CHECK(IsEntityAccessValid(cr));
@@ -1244,7 +1244,7 @@ TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
 TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerEngineTests::MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1254,7 +1254,7 @@ TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
         });
     });
 
-    string startup_error = WaitForServerStart(server.get());
+    string startup_error = ServerEngineTests::WaitForServerStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1277,7 +1277,7 @@ TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 
     server->ScheduleDelayedCallback(timespan {std::chrono::milliseconds {1}}, [&callback_ran] { callback_ran.store(true, std::memory_order_release); });
 
-    REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&server, &callback_ran, completed_jobs] { return callback_ran.load(std::memory_order_acquire) && server->GetCompletedServerJobsCount() > completed_jobs; }));
+    REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(server.get(), locked, [&server, &callback_ran, completed_jobs] { return callback_ran.load(std::memory_order_acquire) && server->GetCompletedServerJobsCount() > completed_jobs; }));
 
     CHECK(callback_ran.load(std::memory_order_acquire));
     CHECK(server->GetCompletedServerJobsCount() > completed_jobs);
@@ -1294,7 +1294,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     BakerTests::OverrideSetting(settings.Server.WriteHealthFile, true);
     BakerTests::OverrideSetting(settings.Server.HealthFilePeriodMs, int32_t {5});
 
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerEngineTests::MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1304,7 +1304,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
         });
     });
 
-    string startup_error = WaitForServerStart(server.get());
+    string startup_error = ServerEngineTests::WaitForServerStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1320,7 +1320,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     });
 
     string health_content;
-    REQUIRE(WaitForUnlockedServerCondition(
+    REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
             auto content = fs::read_file(health_file_name);
@@ -1377,8 +1377,8 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        auto server = MakeServerEngine(settings);
-        string startup_error = WaitForServerStart(server);
+        auto server = ServerEngineTests::MakeServerEngine(settings);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1408,8 +1408,8 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        auto server = MakeServerEngine(settings);
-        string startup_error = WaitForServerStart(server);
+        auto server = ServerEngineTests::MakeServerEngine(settings);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1471,7 +1471,7 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
         INFO(attempt);
         auto settings = MakeServerTestSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, strex("JSON {}", storage_dir.generic_string()).str());
-        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources(ServerTestScriptMode::Default, metadata));
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerEngineTests::MakeServerTestResources(ServerTestScriptMode::Default, metadata));
         auto shutdown = scope_exit([&server]() noexcept {
             safe_call([&server] {
                 if (server->IsStarted()) {
@@ -1480,7 +1480,7 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
             });
         });
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1606,7 +1606,7 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
     {
         BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
 
-        auto server = MakeServerEngine(settings);
+        auto server = ServerEngineTests::MakeServerEngine(settings);
 
         auto shutdown = scope_exit([&server]() noexcept {
             safe_call([&server] {
@@ -1616,7 +1616,7 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
             });
         });
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error = ServerEngineTests::WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1653,7 +1653,7 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1663,7 +1663,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1702,7 +1702,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1712,7 +1712,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1764,7 +1764,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext());
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+        REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1813,7 +1813,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext());
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+        REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1876,7 +1876,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext());
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+        REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1897,7 +1897,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 TEST_CASE("ServerEngineSyncContextEntityCover")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1907,7 +1907,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2314,7 +2314,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2324,7 +2324,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2516,7 +2516,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2526,7 +2526,7 @@ TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2602,7 +2602,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
     // Ancestor and descendant locks exclude each other, and this pins that the exclusion never deadlocks or
     // starves: a model that turned it into a cycle would simply never join
     auto settings = MakeServerTestSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, ServerEngineTests::MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2612,7 +2612,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
         });
     });
 
-    string startup_error = WaitForServerStart(server.get());
+    string startup_error = ServerEngineTests::WaitForServerStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2679,7 +2679,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
 TEST_CASE("ServerEngineSyncContextReparentStress")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2689,7 +2689,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2835,7 +2835,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
 TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2845,7 +2845,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3004,7 +3004,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, ServerEngineTests::MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3014,7 +3014,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         });
     });
 
-    string startup_error = WaitForServerStart(server.get());
+    string startup_error = ServerEngineTests::WaitForServerStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3207,7 +3207,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3217,7 +3217,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3301,7 +3301,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3311,7 +3311,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3322,7 +3322,7 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
         (void)server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
-        (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
+        (void)ServerEngineTests::CreateLoggedPlayer(server, "UnitTestGuiPlayer");
         (void)server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
 
         shared_ptr<NetworkServerConnection> not_logged_in_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
@@ -3406,7 +3406,7 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
     settings.ApplyConfigFile(runtime_config, "");
 
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings,
-        MakeServerTestResources(ServerTestScriptMode::Default,
+        ServerEngineTests::MakeServerTestResources(ServerTestScriptMode::Default,
             BakerTests::MakeMetadataBlob({{"Setting",
                 {
                     {"TestSettings.Int32Value", "int32", "0"},
@@ -3424,7 +3424,7 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

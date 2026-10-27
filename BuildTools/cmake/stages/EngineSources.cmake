@@ -485,6 +485,11 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
+# Role stubs intentionally repeat internal registration helpers
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"

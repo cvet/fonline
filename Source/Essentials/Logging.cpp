@@ -47,16 +47,16 @@ static void flush_log_message_repeats_locked();
 static auto is_same_as_last_log_message(logging::type type, string_view message) -> bool;
 static void remember_last_log_message(logging::type type, string_view message) noexcept;
 static void clear_last_log_message() noexcept;
-static void flush_log_at_exit();
+static void flush_message_log_at_exit();
 
 struct logging_data
 {
     logging_data()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        (void)std::at_quick_exit(flush_log_at_exit);
+        (void)std::at_quick_exit(flush_message_log_at_exit);
 #else
-        ignore_unused(flush_log_at_exit);
+        ignore_unused(flush_message_log_at_exit);
 #endif
 
         main_thread_id = std::this_thread::get_id();
@@ -211,7 +211,7 @@ static void flush_log_message_repeats_locked()
     emit_log_message(*last_log_type, repeat_message, nullptr);
 }
 
-static void flush_log_at_exit()
+static void flush_message_log_at_exit()
 {
     if (log_state.is_created()) {
         std::scoped_lock locker {log_state->locker};

@@ -36,6 +36,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a>
 - [`entry-cmake-option-fo-cxx-standard-04de8a4993`](../../en/reference/cmake/options.md#entry-cmake-option-fo-cxx-standard-04de8a4993)
 
+<a id="entry-cmake-option-fo-unity-build-batch-size-42abce786f"></a>
+- [`entry-cmake-option-fo-unity-build-batch-size-42abce786f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-unity-build-batch-size-42abce786f)
+
 <a id="entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9"></a>
 - [`entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9`](../../en/reference/cmake/options.md#entry-cmake-option-fo-binary-output-postfix-3b2b5a57a9)
 
@@ -155,6 +158,9 @@ The canonical generated reference moved to locale-specific paths.
 
 <a id="entry-cmake-option-fo-disable-sdl-gpu-66c4a58024"></a>
 - [`entry-cmake-option-fo-disable-sdl-gpu-66c4a58024`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-sdl-gpu-66c4a58024)
+
+<a id="entry-cmake-option-fo-unity-build-9223dfb13f"></a>
+- [`entry-cmake-option-fo-unity-build-9223dfb13f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-unity-build-9223dfb13f)
 
 <a id="entry-cmake-option-fo-verbose-build-dad3ab415e"></a>
 - [`entry-cmake-option-fo-verbose-build-dad3ab415e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-verbose-build-dad3ab415e)

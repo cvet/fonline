@@ -39,29 +39,29 @@ FO_BEGIN_NAMESPACE
 
 // Header layout, little endian throughout. The checksum covers everything before it, so a header that survived
 // a truncated write is rejected before any offset it carries is believed
-static constexpr size_t HEADER_OFFSET_MAGIC = 0;
-static constexpr size_t HEADER_OFFSET_VERSION_MAJOR = 4;
-static constexpr size_t HEADER_OFFSET_VERSION_MINOR = 6;
-static constexpr size_t HEADER_OFFSET_PACK_HASH = 8;
-static constexpr size_t HEADER_OFFSET_INDEX_OFFSET = 16;
-static constexpr size_t HEADER_OFFSET_INDEX_STORED_SIZE = 24;
-static constexpr size_t HEADER_OFFSET_INDEX_DECODED_SIZE = 32;
-static constexpr size_t HEADER_OFFSET_INDEX_CODEC = 40;
-static constexpr size_t HEADER_OFFSET_ENTRY_COUNT = 44;
-static constexpr size_t HEADER_OFFSET_DATA_OFFSET = 48;
-static constexpr size_t HEADER_OFFSET_DATA_SIZE = 56;
-static constexpr size_t HEADER_OFFSET_CONTENT_HASH = 64;
-static constexpr size_t HEADER_OFFSET_CHECKSUM = 72;
+static constexpr size_t PACK_HEADER_OFFSET_MAGIC = 0;
+static constexpr size_t PACK_HEADER_OFFSET_VERSION_MAJOR = 4;
+static constexpr size_t PACK_HEADER_OFFSET_VERSION_MINOR = 6;
+static constexpr size_t PACK_HEADER_OFFSET_PACK_HASH = 8;
+static constexpr size_t PACK_HEADER_OFFSET_INDEX_OFFSET = 16;
+static constexpr size_t PACK_HEADER_OFFSET_INDEX_STORED_SIZE = 24;
+static constexpr size_t PACK_HEADER_OFFSET_INDEX_DECODED_SIZE = 32;
+static constexpr size_t PACK_HEADER_OFFSET_INDEX_CODEC = 40;
+static constexpr size_t PACK_HEADER_OFFSET_ENTRY_COUNT = 44;
+static constexpr size_t PACK_HEADER_OFFSET_DATA_OFFSET = 48;
+static constexpr size_t PACK_HEADER_OFFSET_DATA_SIZE = 56;
+static constexpr size_t PACK_HEADER_OFFSET_CONTENT_HASH = 64;
+static constexpr size_t PACK_HEADER_OFFSET_CHECKSUM = 72;
 
 // Entry layout inside the decoded index
-static constexpr size_t ENTRY_OFFSET_PATH_OFFSET = 0;
-static constexpr size_t ENTRY_OFFSET_PATH_LENGTH = 4;
-static constexpr size_t ENTRY_OFFSET_DATA_OFFSET = 8;
-static constexpr size_t ENTRY_OFFSET_STORED_SIZE = 16;
-static constexpr size_t ENTRY_OFFSET_DECODED_SIZE = 24;
-static constexpr size_t ENTRY_OFFSET_CODEC = 32;
-static constexpr size_t ENTRY_OFFSET_FLAGS = 36;
-static constexpr size_t ENTRY_OFFSET_CONTENT_HASH = 40;
+static constexpr size_t PACK_ENTRY_OFFSET_PATH_OFFSET = 0;
+static constexpr size_t PACK_ENTRY_OFFSET_PATH_LENGTH = 4;
+static constexpr size_t PACK_ENTRY_OFFSET_DATA_OFFSET = 8;
+static constexpr size_t PACK_ENTRY_OFFSET_STORED_SIZE = 16;
+static constexpr size_t PACK_ENTRY_OFFSET_DECODED_SIZE = 24;
+static constexpr size_t PACK_ENTRY_OFFSET_CODEC = 32;
+static constexpr size_t PACK_ENTRY_OFFSET_FLAGS = 36;
+static constexpr size_t PACK_ENTRY_OFFSET_CONTENT_HASH = 40;
 static constexpr uint32_t PATCH_MAGIC = 0x50524F46;
 static constexpr uint32_t PATCH_FOOTER_MAGIC = 0x54524F46;
 
@@ -74,50 +74,50 @@ static auto FindArchiveSeparator(string_view path) noexcept -> size_t;
 
 // The offsets above are the format. These pin the record sizes to them, so widening a field without widening
 // the record it sits in stops compiling instead of writing a file nothing can read
-static_assert(HEADER_OFFSET_CHECKSUM + sizeof(uint64_t) == RESOURCE_PACK_HEADER_SIZE);
-static_assert(ENTRY_OFFSET_CONTENT_HASH + sizeof(uint64_t) == RESOURCE_PACK_ENTRY_SIZE);
+static_assert(PACK_HEADER_OFFSET_CHECKSUM + sizeof(uint64_t) == RESOURCE_PACK_HEADER_SIZE);
+static_assert(PACK_ENTRY_OFFSET_CONTENT_HASH + sizeof(uint64_t) == RESOURCE_PACK_ENTRY_SIZE);
 static_assert(RESOURCE_PACK_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | uint32_t {'R'} << 16 | uint32_t {'S'} << 24));
 
 static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf) noexcept
 {
-    span_write_uint32(buf, HEADER_OFFSET_MAGIC, RESOURCE_PACK_MAGIC);
-    span_write_uint16(buf, HEADER_OFFSET_VERSION_MAJOR, header.VersionMajor);
-    span_write_uint16(buf, HEADER_OFFSET_VERSION_MINOR, header.VersionMinor);
-    span_write_uint64(buf, HEADER_OFFSET_PACK_HASH, header.PackHash);
-    span_write_uint64(buf, HEADER_OFFSET_INDEX_OFFSET, header.IndexOffset);
-    span_write_uint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE, header.IndexStoredSize);
-    span_write_uint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE, header.IndexDecodedSize);
-    span_write_uint32(buf, HEADER_OFFSET_INDEX_CODEC, header.IndexCodec);
-    span_write_uint32(buf, HEADER_OFFSET_ENTRY_COUNT, header.EntryCount);
-    span_write_uint64(buf, HEADER_OFFSET_DATA_OFFSET, header.DataOffset);
-    span_write_uint64(buf, HEADER_OFFSET_DATA_SIZE, header.DataSize);
-    span_write_uint64(buf, HEADER_OFFSET_CONTENT_HASH, header.ContentHash);
-    span_write_uint64(buf, HEADER_OFFSET_CHECKSUM, HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM}));
+    span_write_uint32(buf, PACK_HEADER_OFFSET_MAGIC, RESOURCE_PACK_MAGIC);
+    span_write_uint16(buf, PACK_HEADER_OFFSET_VERSION_MAJOR, header.VersionMajor);
+    span_write_uint16(buf, PACK_HEADER_OFFSET_VERSION_MINOR, header.VersionMinor);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_PACK_HASH, header.PackHash);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_INDEX_OFFSET, header.IndexOffset);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_INDEX_STORED_SIZE, header.IndexStoredSize);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_INDEX_DECODED_SIZE, header.IndexDecodedSize);
+    span_write_uint32(buf, PACK_HEADER_OFFSET_INDEX_CODEC, header.IndexCodec);
+    span_write_uint32(buf, PACK_HEADER_OFFSET_ENTRY_COUNT, header.EntryCount);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_DATA_OFFSET, header.DataOffset);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_DATA_SIZE, header.DataSize);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_CONTENT_HASH, header.ContentHash);
+    span_write_uint64(buf, PACK_HEADER_OFFSET_CHECKSUM, HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), PACK_HEADER_OFFSET_CHECKSUM}));
 }
 
 static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourcePackHeader& header) noexcept -> bool
 {
-    if (span_read_uint32(buf, HEADER_OFFSET_MAGIC) != RESOURCE_PACK_MAGIC) {
+    if (span_read_uint32(buf, PACK_HEADER_OFFSET_MAGIC) != RESOURCE_PACK_MAGIC) {
         return false;
     }
 
-    uint64_t checksum = HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), HEADER_OFFSET_CHECKSUM});
+    uint64_t checksum = HashResourceBytes(RESOURCE_PACK_HASH_SEED, const_span<uint8_t> {buf.data(), PACK_HEADER_OFFSET_CHECKSUM});
 
-    if (span_read_uint64(buf, HEADER_OFFSET_CHECKSUM) != checksum) {
+    if (span_read_uint64(buf, PACK_HEADER_OFFSET_CHECKSUM) != checksum) {
         return false;
     }
 
-    header.VersionMajor = span_read_uint16(buf, HEADER_OFFSET_VERSION_MAJOR);
-    header.VersionMinor = span_read_uint16(buf, HEADER_OFFSET_VERSION_MINOR);
-    header.PackHash = span_read_uint64(buf, HEADER_OFFSET_PACK_HASH);
-    header.IndexOffset = span_read_uint64(buf, HEADER_OFFSET_INDEX_OFFSET);
-    header.IndexStoredSize = span_read_uint64(buf, HEADER_OFFSET_INDEX_STORED_SIZE);
-    header.IndexDecodedSize = span_read_uint64(buf, HEADER_OFFSET_INDEX_DECODED_SIZE);
-    header.IndexCodec = span_read_uint32(buf, HEADER_OFFSET_INDEX_CODEC);
-    header.EntryCount = span_read_uint32(buf, HEADER_OFFSET_ENTRY_COUNT);
-    header.DataOffset = span_read_uint64(buf, HEADER_OFFSET_DATA_OFFSET);
-    header.DataSize = span_read_uint64(buf, HEADER_OFFSET_DATA_SIZE);
-    header.ContentHash = span_read_uint64(buf, HEADER_OFFSET_CONTENT_HASH);
+    header.VersionMajor = span_read_uint16(buf, PACK_HEADER_OFFSET_VERSION_MAJOR);
+    header.VersionMinor = span_read_uint16(buf, PACK_HEADER_OFFSET_VERSION_MINOR);
+    header.PackHash = span_read_uint64(buf, PACK_HEADER_OFFSET_PACK_HASH);
+    header.IndexOffset = span_read_uint64(buf, PACK_HEADER_OFFSET_INDEX_OFFSET);
+    header.IndexStoredSize = span_read_uint64(buf, PACK_HEADER_OFFSET_INDEX_STORED_SIZE);
+    header.IndexDecodedSize = span_read_uint64(buf, PACK_HEADER_OFFSET_INDEX_DECODED_SIZE);
+    header.IndexCodec = span_read_uint32(buf, PACK_HEADER_OFFSET_INDEX_CODEC);
+    header.EntryCount = span_read_uint32(buf, PACK_HEADER_OFFSET_ENTRY_COUNT);
+    header.DataOffset = span_read_uint64(buf, PACK_HEADER_OFFSET_DATA_OFFSET);
+    header.DataSize = span_read_uint64(buf, PACK_HEADER_OFFSET_DATA_SIZE);
+    header.ContentHash = span_read_uint64(buf, PACK_HEADER_OFFSET_CONTENT_HASH);
     return header.VersionMajor == RESOURCE_PACK_VERSION_MAJOR && header.VersionMinor == RESOURCE_PACK_VERSION_MINOR;
 }
 
@@ -616,14 +616,14 @@ static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<
     for (size_t i = 0; i < entries.size(); ++i) {
         const ResourcePackEntryRef& entry = entries[i];
         size_t offset = i * RESOURCE_PACK_ENTRY_SIZE;
-        span_write_uint32(index, offset + ENTRY_OFFSET_PATH_OFFSET, numeric_cast<uint32_t>(pool_offset));
-        span_write_uint32(index, offset + ENTRY_OFFSET_PATH_LENGTH, numeric_cast<uint32_t>(entry.Path.size()));
-        span_write_uint64(index, offset + ENTRY_OFFSET_DATA_OFFSET, entry.DataOffset);
-        span_write_uint64(index, offset + ENTRY_OFFSET_STORED_SIZE, entry.StoredSize);
-        span_write_uint64(index, offset + ENTRY_OFFSET_DECODED_SIZE, entry.DecodedSize);
-        span_write_uint32(index, offset + ENTRY_OFFSET_CODEC, entry.Codec);
-        span_write_uint32(index, offset + ENTRY_OFFSET_FLAGS, entry.Source);
-        span_write_uint64(index, offset + ENTRY_OFFSET_CONTENT_HASH, entry.FileContentHash);
+        span_write_uint32(index, offset + PACK_ENTRY_OFFSET_PATH_OFFSET, numeric_cast<uint32_t>(pool_offset));
+        span_write_uint32(index, offset + PACK_ENTRY_OFFSET_PATH_LENGTH, numeric_cast<uint32_t>(entry.Path.size()));
+        span_write_uint64(index, offset + PACK_ENTRY_OFFSET_DATA_OFFSET, entry.DataOffset);
+        span_write_uint64(index, offset + PACK_ENTRY_OFFSET_STORED_SIZE, entry.StoredSize);
+        span_write_uint64(index, offset + PACK_ENTRY_OFFSET_DECODED_SIZE, entry.DecodedSize);
+        span_write_uint32(index, offset + PACK_ENTRY_OFFSET_CODEC, entry.Codec);
+        span_write_uint32(index, offset + PACK_ENTRY_OFFSET_FLAGS, entry.Source);
+        span_write_uint64(index, offset + PACK_ENTRY_OFFSET_CONTENT_HASH, entry.FileContentHash);
         memory::copy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
         pool_offset += entry.Path.size();
     }
@@ -651,19 +651,19 @@ auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeade
 
     for (uint32_t i = 0; i < header.EntryCount; ++i) {
         size_t offset = numeric_cast<size_t>(i) * RESOURCE_PACK_ENTRY_SIZE;
-        uint32_t path_offset = span_read_uint32(index, offset + ENTRY_OFFSET_PATH_OFFSET);
-        uint32_t path_length = span_read_uint32(index, offset + ENTRY_OFFSET_PATH_LENGTH);
+        uint32_t path_offset = span_read_uint32(index, offset + PACK_ENTRY_OFFSET_PATH_OFFSET);
+        uint32_t path_length = span_read_uint32(index, offset + PACK_ENTRY_OFFSET_PATH_LENGTH);
         FO_VERIFY_AND_THROW(path_length > 0 && path_offset >= pool_begin && path_offset <= index.size() && path_length <= index.size() - path_offset, "Resource path lies outside catalog", i);
         ResourcePackEntryRef entry;
         entry.Path.assign(reinterpret_cast<const char*>(index.data() + path_offset), path_length);
         FO_VERIFY_AND_THROW(IsResourcePathCanonical(entry.Path), "Resource path is not canonical", entry.Path);
         FO_VERIFY_AND_THROW(entries.empty() || entries.back().Path < entry.Path, "Resource catalog paths are not unique and sorted", entry.Path);
-        entry.DataOffset = span_read_uint64(index, offset + ENTRY_OFFSET_DATA_OFFSET);
-        entry.StoredSize = span_read_uint64(index, offset + ENTRY_OFFSET_STORED_SIZE);
-        entry.DecodedSize = span_read_uint64(index, offset + ENTRY_OFFSET_DECODED_SIZE);
-        entry.Codec = span_read_uint32(index, offset + ENTRY_OFFSET_CODEC);
-        entry.Source = span_read_uint32(index, offset + ENTRY_OFFSET_FLAGS);
-        entry.FileContentHash = span_read_uint64(index, offset + ENTRY_OFFSET_CONTENT_HASH);
+        entry.DataOffset = span_read_uint64(index, offset + PACK_ENTRY_OFFSET_DATA_OFFSET);
+        entry.StoredSize = span_read_uint64(index, offset + PACK_ENTRY_OFFSET_STORED_SIZE);
+        entry.DecodedSize = span_read_uint64(index, offset + PACK_ENTRY_OFFSET_DECODED_SIZE);
+        entry.Codec = span_read_uint32(index, offset + PACK_ENTRY_OFFSET_CODEC);
+        entry.Source = span_read_uint32(index, offset + PACK_ENTRY_OFFSET_FLAGS);
+        entry.FileContentHash = span_read_uint64(index, offset + PACK_ENTRY_OFFSET_CONTENT_HASH);
         FO_VERIFY_AND_THROW(entry.Source <= 1 && (entry.Source == 0 || patch_data_end >= RESOURCE_PATCH_HEADER_SIZE), "Invalid resource source", entry.Path, entry.Source);
         uint64_t begin = entry.Source == 0 ? header.DataOffset : RESOURCE_PATCH_HEADER_SIZE;
         uint64_t extent = entry.Source == 0 ? header.DataSize : patch_data_end - RESOURCE_PATCH_HEADER_SIZE;

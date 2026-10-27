@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"91f5eb4f89c9119fe681f12cd3df4355e4915d7ae8f935d792512f7c2170a7e8"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"8b010dfa73bbf1022614751bfdaa0ff0a7196cfa56300d3e868ae0ebd42c69fc"} -->
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 
@@ -152,6 +152,26 @@ CI gate и приёмка на живом хосте принадлежат иг
 `AddExecutableApplication` в `BuildTools/cmake/helpers/Build.cmake` добавляет `/LARGEADDRESSAWARE` всем 32-битным Windows executables движка: client hosts, headless applications, servers и tools. Решение зависит от платформы и размера указателя, а не имени project target или binary postfix; shared libraries не задают предел процесса.
 
 На 64-битной Windows флаг позволяет x86-процессу использовать до 4 GB пользовательского адресного пространства вместо 2 GB. На 32-битной Windows 7 стандартный предел остаётся 2 GB; физическую RAM флаг не увеличивает. `check_windows7_imports.py --require-large-address-aware` проверяет PE flag готового EXE вместе с совместимостью imports и не требует этот flag от DLL. Обе проверки не доказывают загрузку реальных карт, устойчивое потребление памяти или приёмку на настоящей Windows 7.
+
+## Unity-сборка
+
+Unity-компиляция включается явно. Настройте встраивающий проект с `-DFO_UNITY_BUILD=ON`, чтобы объединять исходники собственных core libraries и приложений через CMake `UNITY_BUILD` в режиме `BATCH`. Значение по умолчанию `FO_UNITY_BUILD=OFF` сохраняет независимые translation units; глобальный `CMAKE_UNITY_BUILD` не переопределяется, а bundled third-party targets исключены.
+
+`FO_UNITY_BUILD_BATCH_SIZE` задаёт максимальное число исходников в пакете и по умолчанию равен `32`. Допускается только положительное десятичное целое; значение проверяется даже при выключенной Unity-компиляции. Большие пакеты могут сократить повторную компиляцию заголовков, но увеличивают потребление памяти компилятором и делают инкрементальную пересборку более крупнозернистой. Начинайте со значения по умолчанию и выбирайте размер по измеренному времени сборки и доступной памяти.
+
+Объединение translation units может выявить повторяющиеся внутренние имена или макросы, выходящие за границы исходника. Исправляйте такие конфликты во владеющих исходниках, не исключая целые подсистемы. Эти build-only опции не изменяют configuration hash запечённых ресурсов.
+
+### Инвентарь макросов Win32
+
+`Source/Essentials/WinApiUndef.inc` генерируется, а не редактируется вручную по отдельным заголовкам. `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj` читает закреплённый `Windows.Win32.winmd` и установленные SDK headers. Он добавляет только реальные macro aliases с PInvoke evidence или generic A/W alias, сохраняет существующие macro-only записи и compile-proven allowlist, а активные `#undef` из allowlist удаляет. Все активные `#undef` записываются одним непрерывным блоком в общем ordinal-порядке. Повторная генерация даёт байт-идентичный результат. Закрепляйте версию metadata-пакета и записывайте её хэш, а не используйте движущийся online-источник без фиксации.
+
+```powershell
+dotnet run --project Engine/BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj -- `
+  <path-to-Windows.Win32.winmd> `
+  "<Windows SDK Include>\10.0.26100.0" `
+  Engine/Source/Essentials/WinApiUndef.inc `
+  <output.inc>
+```
 
 ## Загрузка через собственное зеркало
 

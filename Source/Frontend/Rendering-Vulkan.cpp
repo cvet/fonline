@@ -372,7 +372,7 @@ static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf)
     VerifyVkResult(vk_result);
 }
 
-static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
+static auto ConvertBlendToVulkan(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
 {
     switch (blend) {
     case BlendFuncType::Zero:
@@ -406,7 +406,7 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
+static auto ConvertBlendOpToVulkan(BlendEquationType blend_op) -> VkBlendOp
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -424,7 +424,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
+static auto ConvertDepthFuncToVulkan(DepthFuncType depth_func) -> VkCompareOp
 {
     switch (depth_func) {
     case DepthFuncType::Always:
@@ -448,7 +448,7 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> VkCullModeFlags
+static auto ConvertCullModeToVulkan(CullModeType cull_mode) -> VkCullModeFlags
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -2066,12 +2066,12 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         VkPipelineColorBlendAttachmentState blend_attachment {};
         blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         blend_attachment.blendEnable = VK_TRUE;
-        blend_attachment.srcColorBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], false);
-        blend_attachment.dstColorBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], false);
-        blend_attachment.colorBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
-        blend_attachment.srcAlphaBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], true);
-        blend_attachment.dstAlphaBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], true);
-        blend_attachment.alphaBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcColorBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], false);
+        blend_attachment.dstColorBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], false);
+        blend_attachment.colorBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], true);
+        blend_attachment.dstAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], true);
+        blend_attachment.alphaBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
 
         VkPipelineColorBlendStateCreateInfo blend_ci {};
         blend_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -2134,7 +2134,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                     depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                     depth_ci.depthTestEnable = depth_state_used ? VK_TRUE : VK_FALSE;
                     depth_ci.depthWriteEnable = depth_state_used && vk_effect->GetDepthVariantWrite(depth_slot) ? VK_TRUE : VK_FALSE;
-                    depth_ci.depthCompareOp = ConvertDepthFunc(vk_effect->GetDepthVariantFunc(pass, depth_slot));
+                    depth_ci.depthCompareOp = ConvertDepthFuncToVulkan(vk_effect->GetDepthVariantFunc(pass, depth_slot));
                     depth_ci.depthBoundsTestEnable = VK_FALSE;
                     depth_ci.stencilTestEnable = VK_FALSE;
 
@@ -2144,7 +2144,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                         }
 
                         VkPipelineRasterizationStateCreateInfo variant_rasterization_ci = rasterization_ci;
-                        variant_rasterization_ci.cullMode = ConvertCullMode(static_cast<CullModeType>(cull_mode));
+                        variant_rasterization_ci.cullMode = ConvertCullModeToVulkan(static_cast<CullModeType>(cull_mode));
 
                         VkGraphicsPipelineCreateInfo pipeline_ci {};
                         pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

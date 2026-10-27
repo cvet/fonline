@@ -7,12 +7,24 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b6a279dbd0dc2ec11348e149bc3fdd28eb7f4476df8bab40bc11748fe74aef35"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"63010a75800d654acc2be94c8ab2ed31d14632ab6cbd45a9aa2eedfb657865f4"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-10-27
+## Current - 2026-10-28
+
+### Добавлено
+
+- Добавлена registry-backed генерация `Source/Essentials/WinApiUndef.inc` через `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj`. Генератор читает официальный `Windows.Win32.winmd` и установленные SDK headers, добавляет только реальные macro aliases с PInvoke evidence или generic A/W alias, сохраняет macro-only записи и compile-proven allowlist, а активные `#undef` из allowlist удаляет. Повторная генерация даёт байт-идентичный результат. Закрепляйте версию metadata-пакета и записывайте её хэш.
+- Добавлена отдельная job `unity` в `validate.yml` для независимой проверки CMake Unity-сборки. Job задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает configure/build fixtures, а затем обычный validator `unit-tests`. Она выполняется при `all` и доступна вручную через `job: unity`. Существующая job `unit-tests` сохраняет независимые translation units, а bundled third-party targets не объединяются.
+- Добавлена явно включаемая CMake Unity-сборка собственных core libraries и приложений. `FO_UNITY_BUILD=ON` выбирает режим `BATCH`; `FO_UNITY_BUILD_BATCH_SIZE` по умолчанию равен `32` и принимает только положительные десятичные целые. Обычные независимые translation units остаются режимом по умолчанию, а bundled third-party targets не объединяются. Повторяющиеся внутренние идентификаторы и протекание макросов между исходниками исправляются во владеющих исходниках, без исключения целых подсистем.
+
+### Миграция
+
+- База `6946ad2d1dc7b39487206d2015d1e24f63dea882` (`2026.1.75-dev`) → `2026.1.76-dev`: повторно настройте затронутые build directories. Существующие конфигурации сохраняют `FO_UNITY_BUILD=OFF`; для включения настройте проект с `-DFO_UNITY_BUILD=ON`, при необходимости задайте положительное `-DFO_UNITY_BUILD_BATCH_SIZE=<N>` и пересоберите затронутые targets. Используйте генератор при обновлении инвентаря макросов Win32, просмотрите сгенерированный файл и выполните Unity и обычную Windows-сборку. Callable APIs, сохранённые данные, resource schemas, runtime compatibility markers, Managed ABI и configuration hashes запекания не изменились; миграция исходников, сохранённых данных или runtime не требуется. Откат восстанавливает прежние ревизию Engine, входные данные генератора, конфигурации CI и сборки вместе.
+
+## 2026.1.75-dev - 2026-10-27
 
 ### Исправлено
 
@@ -241,6 +253,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 - База `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0` (`2026.1.60-dev`) → `2026.1.61-dev`. Опубликованный API master не изменён; отзыв затрагивает только пользователей прежних вершин ПР #227 `9c8237b0520041e3de78d878829c25c59ed5e030` и `6f31a6404207310332a39703ef784f26b054e644`. Удалить клиентские/мапперные вызовы `Map.BlockHex` и `Map.UnblockHex` из AngelScript/managed-кода, а также нативные обращения к `MapView::SetHexManualBlock` и флагам `Field::ManualBlock` / `ManualBlockFull`. Замены клиентского API нет: будущий серверный механизм должен синхронизировать начальное состояние и обновления до предоставления проектам. Существующие серверные методы сохраняют поведение и не заменяют клиентские вызовы.
 - Найти затронутые исходники командой `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` и проверить сторону каждого использования: клиентские/мапперные вызовы скриптов не компилируются с пересозданными bindings; нативные обращения не компилируются из-за отсутствующих объявлений. Пересоздать метаданные, пересобрать затронутые binaries и совместно перепечь соответствующие ресурсы клиента/маппера. Обычные препятствия предметов/карт и синхронизация их свойств прежние. Конверсия сохранённых данных и формата ресурсов не требуется; маркер runtime остаётся `0.0.77`, Managed ABI `9` и контейнер спрайтов v2 прежние. При откате восстанавливать binaries и baked-ресурсы вместе; прежние сборки ПР возвращают несинхронизированный API.
+
 
 ## 2026.1.60-dev - 2026-10-23
 

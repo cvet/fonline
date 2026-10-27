@@ -46,10 +46,6 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
-// Keep in sync with the default 3D_Skinned shadow pass
-static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
-static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
-static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 static constexpr timespan ANIMATION_END_EXCLUSION {std::chrono::nanoseconds {1}};
 static constexpr timespan MOVE_TRACK_TRANSITION_TIME {std::chrono::milliseconds {1}};
 

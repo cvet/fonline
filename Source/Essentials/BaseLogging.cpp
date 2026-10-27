@@ -49,17 +49,17 @@ static void start_async_worker();
 static void stop_async_worker() noexcept;
 static void async_worker_loop() noexcept;
 static void write_sync(string_view message) noexcept;
-static void flush_log_at_exit();
+static void flush_base_log_at_exit();
 
 struct base_logging_data
 {
     base_logging_data()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        int32_t result = std::at_quick_exit(flush_log_at_exit);
+        int32_t result = std::at_quick_exit(flush_base_log_at_exit);
         ignore_unused(result);
 #else
-        ignore_unused(flush_log_at_exit);
+        ignore_unused(flush_base_log_at_exit);
 #endif
 
 #if FO_WINDOWS
@@ -338,7 +338,7 @@ static void write_sync(string_view message) noexcept
     }
 }
 
-static void flush_log_at_exit()
+static void flush_base_log_at_exit()
 {
     if (base_logging.is_created()) {
         stop_async_worker();

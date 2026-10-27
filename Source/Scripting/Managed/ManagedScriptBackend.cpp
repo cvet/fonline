@@ -618,7 +618,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
 // Remote-call argument marshaling
 static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, const vector<ArgDesc>& call_args, MonoArray* args_array, string_view name) -> vector<uint8_t>;
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
 static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes, size_t alignment);
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value);
@@ -5971,7 +5971,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
     return data;
 }
 
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
 {
     if (bytes.empty()) {
         return;
@@ -5988,13 +5988,13 @@ static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> byt
         data.resize(align_up(data.size(), alignment));
     }
 
-    AppendRawBytes(data, bytes);
+    AppendManagedRawBytes(data, bytes);
 }
 
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value)
 {
-    AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
+    AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
 }
 
 template<typename T>
@@ -7141,7 +7141,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                     if (prop->IsDictOfArrayOfString()) {
                         uint32_t item_size = numeric_cast<uint32_t>(item_data.GetSize());
                         AppendAlignedRawValue(data, item_size, sizeof(uint32_t));
-                        AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+                        AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
                     }
                     else {
                         if (item_data.GetSize() != base_type.Size) {
@@ -7185,7 +7185,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             string text = ToStringAndFree(reinterpret_cast<MonoString*>(item));
             uint32_t text_size = numeric_cast<uint32_t>(text.size());
             AppendAlignedRawValue(data, text_size, sizeof(uint32_t));
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
         }
     }
     else if (prop->IsBaseTypeRefType()) {
@@ -7221,7 +7221,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                 throw ScriptSystemException("Managed property array item size mismatch", prop->GetName());
             }
 
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
         }
     }
 

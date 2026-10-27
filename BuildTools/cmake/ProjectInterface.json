@@ -129,6 +129,16 @@
       "affects_baking": false
     },
     {
+      "name": "FO_UNITY_BUILD_BATCH_SIZE",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "32",
+      "category": "toolchain",
+      "description": "Maximum number of first-party C++ sources combined into each unity build batch; must be a positive integer.",
+      "affects_baking": false
+    },
+    {
       "name": "FO_BINARY_OUTPUT_POSTFIX",
       "cache_type": "STRING",
       "value_kind": "string",
@@ -526,6 +536,16 @@
       "default": "OFF",
       "category": "rendering",
       "description": "Disable the SDL_GPU rendering backend.",
+      "affects_baking": false
+    },
+    {
+      "name": "FO_UNITY_BUILD",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "toolchain",
+      "description": "Combine first-party C++ sources into CMake unity build batches; third-party targets are excluded.",
       "affects_baking": false
     },
     {

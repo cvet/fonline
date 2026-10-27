@@ -131,6 +131,26 @@ The check parses PE imports and rejects the curated Windows 8+ exports, absent l
 
 On 64-bit Windows, this permits an x86 user address space of up to 4 GB rather than 2 GB. On 32-bit Windows 7 the default remains 2 GB; the flag adds no physical RAM. `check_windows7_imports.py --require-large-address-aware` checks the finished EXE's PE flag alongside import compatibility and does not impose that flag on DLLs. Neither gate proves representative map loading, sustained memory behavior or acceptance on an actual Windows 7 host.
 
+## Unity builds
+
+Unity compilation is opt-in. Configure the embedding project with `-DFO_UNITY_BUILD=ON` to combine first-party core-library and application sources with CMake's `UNITY_BUILD` in `BATCH` mode. The default `FO_UNITY_BUILD=OFF` preserves independent translation units; there is no global `CMAKE_UNITY_BUILD` override and bundled third-party targets are excluded.
+
+`FO_UNITY_BUILD_BATCH_SIZE` sets the maximum number of sources per batch and defaults to `32`. It must be a positive decimal integer and is validated even when Unity compilation is disabled. Larger batches can reduce repeated header compilation, but they also increase compiler memory demand and make incremental rebuilds coarser. Start with the default and choose the size from measured build time and available memory.
+
+Combining translation units can expose duplicate internal names or macros that leak across source boundaries. Fix those conflicts in the owning sources instead of excluding whole subsystems. The build-only options do not change baked-resource configuration hashes.
+
+### Win32 macro inventory
+
+`Source/Essentials/WinApiUndef.inc` is generated rather than maintained through per-header edits. `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj` reads a pinned `Windows.Win32.winmd` and installed SDK headers. It adds only actual macro aliases with PInvoke evidence or a generic A/W alias, preserves existing macro-only entries and the compile-proven allowlist, and removes allowlisted active `#undef` lines. All active `#undef` entries are emitted as one contiguous block in ordinal order. Repeating the same generation is byte-identical. Pin the metadata package version and record its hash instead of taking a moving online source implicitly.
+
+```powershell
+dotnet run --project Engine/BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj -- `
+  <path-to-Windows.Win32.winmd> `
+  "<Windows SDK Include>\10.0.26100.0" `
+  Engine/Source/Essentials/WinApiUndef.inc `
+  <output.inc>
+```
+
 ## Fetching through a mirror of your own
 
 `prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from

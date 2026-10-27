@@ -19,6 +19,7 @@ on:
         default: all
         options:
           - all
+          - unity
           - managed-apple
 
 jobs:
@@ -357,6 +358,21 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: BuildTools/validate.sh unit-tests
+  unity:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'unity'}}
+    name: Validate unity build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      FO_UNITY_BUILD: ON
+      FO_UNITY_BUILD_BATCH_SIZE: '32'
+    steps:
+    - uses: actions/checkout@v6
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: python3 -m pytest -q BuildTools/tests/test_unity_build.py
     - run: BuildTools/validate.sh unit-tests
   unit-tests-sanitizers:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}

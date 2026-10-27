@@ -12,7 +12,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-27
+## Current - 2026-10-28
+
+### Added
+
+- Add registry-backed generation of `Source/Essentials/WinApiUndef.inc` through `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj`. The generator reads the official `Windows.Win32.winmd` and installed SDK headers, adds only actual macro aliases with PInvoke evidence or a generic A/W alias, preserves macro-only entries and the compile-proven allowlist, and removes allowlisted active `#undef` lines. Repeated generation is byte-identical. Pin the metadata package version and record its hash.
+- Add a dedicated `unity` job to `validate.yml` for independent validation of CMake Unity compilation. The job sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs the Unity configure/build fixtures, and then runs the ordinary `unit-tests` validator. It runs for `all` and can be selected manually with `job: unity`. The existing `unit-tests` job retains independent translation units, and bundled third-party targets remain excluded from Unity compilation.
+- Add opt-in CMake Unity builds for first-party core libraries and applications. `FO_UNITY_BUILD=ON` selects `BATCH` mode; `FO_UNITY_BUILD_BATCH_SIZE` defaults to `32` and accepts only positive decimal integers. Ordinary independent translation units remain the default, and bundled third-party targets are not combined. Resolve duplicate internal identifiers and cross-source macro leakage in their owning sources rather than excluding whole subsystems.
+
+### Migration
+
+- Base `6946ad2d1dc7b39487206d2015d1e24f63dea882` (`2026.1.75-dev`) to `2026.1.76-dev`: reconfigure affected build directories. Existing configurations retain `FO_UNITY_BUILD=OFF`; to opt in, configure with `-DFO_UNITY_BUILD=ON` and optionally a positive `-DFO_UNITY_BUILD_BATCH_SIZE=<N>`, then rebuild affected targets. Use the generator when maintaining the Win32 macro inventory, review the generated file and run both Unity and ordinary Windows builds. No callable API, persisted data, resource schema, runtime compatibility marker, Managed ABI or baking configuration hash changes are introduced; no source, saved-data or runtime migration is required. Rollback restores the preceding Engine revision, generated inventory inputs, CI and build configuration together.
+
+## 2026.1.75-dev - 2026-10-27
 
 ### Fixed
 
@@ -239,6 +251,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 
 - Base `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0` (`2026.1.60-dev`) to `2026.1.61-dev`. The published master API is unchanged; the withdrawal affects only users of earlier PR #227 heads `9c8237b0520041e3de78d878829c25c59ed5e030` and `6f31a6404207310332a39703ef784f26b054e644`. Remove client/mapper calls to `Map.BlockHex` and `Map.UnblockHex` in AngelScript/managed sources, and native uses of `MapView::SetHexManualBlock` or its `Field::ManualBlock` / `ManualBlockFull` flags. No replacement client API is provided: a future server-driven mechanism must synchronize initial state and updates before it can be exposed. The existing server methods retain their behavior and are not substitutes for client calls.
 - Detect affected sources with `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` and review each side: client/mapper script calls fail compilation against regenerated bindings; native uses fail compilation because the declarations are absent. Regenerate metadata, rebuild affected binaries and rebake matching client/mapper resources together. Ordinary item/map obstacles and their property synchronization are unchanged. No persisted-data or resource-format conversion is required; the runtime marker remains `0.0.77`, Managed ABI `9` and sprite container v2 are unchanged. Roll back binaries and baked resources together; earlier PR builds reintroduce the unsynchronized API.
+
 
 ## 2026.1.60-dev - 2026-10-23
 
