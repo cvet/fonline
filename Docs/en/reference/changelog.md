@@ -19,7 +19,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Derive runtime-owned settings from native `SettingNames` constants in all three example configuration generators. The native lexical masker excludes comments and literals, so generated defaults no longer assign values supplied by runtime initialization.
 - Keep unloaded Mapper test maps alive through terminal inspector, undo and redo assertions, avoiding reads through destroyed map references.
 - Add `ScriptExceptions.OpenCaptureScope()` for deliberate failure-injection tests. Captured reports retain their original text and every enclosing/global exception count while avoiding native error notification and unattended application shutdown. Capture follows the logical async flow and ends on disposal; unrelated flows and deferred Task faults keep ordinary native reporting.
-- Check the shared service-start flag in registration/documentation regressions and normalize source-comment punctuation without changing the affected executable code.
+- Check the shared service-start flag in registration/documentation regressions and normalize source-comment punctuation and regression-test layout without changing the affected executable code.
 
 ### Migration
 

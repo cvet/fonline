@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9ed4f58adbb054f2e71825d3aaf3955925fd6bf7ade580473937cd800260370b"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b6a279dbd0dc2ec11348e149bc3fdd28eb7f4476df8bab40bc11748fe74aef35"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -19,7 +19,7 @@ permalink: /Docs/ru/reference/changelog.html
 - Все три генератора конфигураций примеров получают runtime-owned настройки из native-констант `SettingNames`. Native lexical masker исключает комментарии и литералы, поэтому generated defaults больше не присваивают значения, которые задаёт инициализация runtime.
 - Тесты Mapper удерживают выгруженные карты до завершающих проверок inspector, undo и redo, не читая уничтоженные карты через устаревшие ссылки.
 - Добавлен `ScriptExceptions.OpenCaptureScope()` для намеренных failure-injection сценариев. Перехваченные сообщения сохраняют исходный текст и все внешние/глобальные счётчики исключений, но не вызывают native-уведомление и автоматическое завершение unattended-приложения. Перехват следует логическому async-потоку и заканчивается при Dispose; посторонние потоки и отложенные ошибки Task сохраняют обычную native-обработку.
-- Регрессии регистрации и документации проверяют общий флаг запуска сервиса; пунктуация комментариев нормализована без изменения соответствующего исполняемого кода.
+- Регрессии регистрации и документации проверяют общий флаг запуска сервиса; пунктуация комментариев и оформление регрессионных тестов нормализованы без изменения соответствующего исполняемого кода.
 
 ### Миграция
 

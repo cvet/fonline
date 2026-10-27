@@ -578,18 +578,21 @@ internal static class Program
         using ScriptExceptions.Scope capture = ScriptExceptions.OpenCaptureScope();
         await Task.Yield();
         ScriptExceptions.Report(new InvalidOperationException("captured report"));
-        Check(Native.ReportedExceptions == reportsBefore + 1, "Captured reports must not request native error handling");
+        Check(Native.ReportedExceptions == reportsBefore + 1,
+              "Captured reports must not request native error handling");
         Check(Native.LastLog.Contains("System.InvalidOperationException: captured report", StringComparison.Ordinal),
               "Capture must preserve the reported exception's type and message in the text log");
-        using (ScriptExceptions.Scope nested = ScriptExceptions.OpenScope()) {
+        using (ScriptExceptions.Scope nested = ScriptExceptions.OpenScope())
+        {
             ScriptExceptions.Report(new InvalidOperationException("nested report"));
             Check(nested.Count == 1, "An ordinary nested scope must retain its own count");
         }
         Check(capture.Count == 2 && outer.Count == 3, "Captured reports must remain in all accounting scopes");
 
-        var foreign = new System.Threading.Thread(
-            () => ScriptExceptions.Report(new InvalidOperationException("foreign report")));
-        using (System.Threading.ExecutionContext.SuppressFlow()) {
+        var foreign =
+            new System.Threading.Thread(() => ScriptExceptions.Report(new InvalidOperationException("foreign report")));
+        using (System.Threading.ExecutionContext.SuppressFlow())
+        {
             foreign.Start();
         }
         foreign.Join();
@@ -597,10 +600,12 @@ internal static class Program
               "Capturing one flow must not hide an unrelated flow's report");
 
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task lateReport = Task.Run(async () => {
-            await release.Task;
-            ScriptExceptions.Report(new InvalidOperationException("report after capture disposal"));
-        });
+        Task lateReport =
+            Task.Run(async () =>
+                     {
+                         await release.Task;
+                         ScriptExceptions.Report(new InvalidOperationException("report after capture disposal"));
+                     });
         capture.Dispose();
         release.SetResult();
         await lateReport;
@@ -608,7 +613,8 @@ internal static class Program
         Check(Native.ReportedExceptions == reportsBefore + 4,
               "Disposed captures must not suppress parent or retained child-flow reports");
 
-        using (ScriptExceptions.Scope deferredCapture = ScriptExceptions.OpenCaptureScope()) {
+        using (ScriptExceptions.Scope deferredCapture = ScriptExceptions.OpenCaptureScope())
+        {
             TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
             ScriptExceptions.ObserveTask(pending.Task, deferred: true);
             pending.SetException(new InvalidOperationException("deferred report"));
