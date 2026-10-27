@@ -16,17 +16,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
-- Retain unloaded maps in tests; check the shared service-start flag.
-
-### Migration
-
-- `16e3b73de7` (`2026.1.74-dev`) → `2026.1.75-dev`: test fixes only. Compatibility unchanged; rebuild tests.
-
-## 2026.1.74-dev - 2026-10-26
-
-### Fixed
-
-- Fix runtime-owned settings in example generators.
+- Fix example settings, unloaded-map tests and service-flag checks.
 
 ### Migration
 
