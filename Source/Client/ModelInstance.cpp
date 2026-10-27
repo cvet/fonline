@@ -833,7 +833,7 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
 
-    // Frozen body poses own the whole skeleton. A standing one-shot also releases the movement layer until it ends.
+    // Frozen body poses own the whole skeleton. A standing one-shot also releases the movement layer until it ends
     if (is_enum_set(_playbackFlags, ModelAnimFlags::Freeze) || (!_isMoving && _playOnceAnimPlaying)) {
         _moveAnimController->ResetEvents();
         _moveAnimController->SetTrackEnable(0, false);
@@ -902,7 +902,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)) {
         if (anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
-            // Retiming must not seek, and pending speed/completion events must not restore the previous selection.
+            // Retiming must not seek, and pending speed/completion events must not restore the previous selection
             _moveAnimController->ResetEvents();
 
             int32_t previous_track = _curMoveTrack == 0 ? 1 : 0;

@@ -16,6 +16,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Derive runtime-owned settings from native `SettingNames` constants in all three example configuration generators. The native lexical masker excludes comments and literals, so generated defaults no longer assign values supplied by runtime initialization.
+- Keep unloaded Mapper test maps alive through terminal inspector, undo and redo assertions, avoiding reads through destroyed map references.
+- Add `ScriptExceptions.OpenCaptureScope()` for deliberate failure-injection tests. Captured reports retain their original text and every enclosing/global exception count while avoiding native error notification and unattended application shutdown. Capture follows the logical async flow and ends on disposal; unrelated flows and deferred Task faults keep ordinary native reporting.
+- Check the shared service-start flag in registration/documentation regressions and normalize source-comment punctuation and regression-test layout without changing the affected executable code.
+
+### Migration
+
+Base `56287b1974adcedd3d0a3ec641e9a9eb49ff5247` (`2026.1.74-dev`) to `2026.1.75-dev`: regenerate each example with its `generate_config.py`, then run `--check`. Existing callers require no source or saved-data conversion; harnesses may explicitly capture deliberate reported failures with the new CoreScripts helper and must retain exact exception assertions and acknowledgements. Rebuild native roles and rebake managed scripts/resources as a matching deployment set. Runtime `0.0.82`, Managed ABI `9`, existing APIs and data formats remain unchanged from this base; roll back matching binaries and resources together.
+
+## 2026.1.74-dev - 2026-10-27
+
+### Fixed
+
 - Stamp movement packets with monotonic send time instead of frame time, preventing false catch-up that made NPCs teleport to route endpoints.
 - Remove the full-context AI documentation byte limit so complete changelogs and owning guides remain available without abbreviation.
 

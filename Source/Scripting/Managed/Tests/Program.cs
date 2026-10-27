@@ -526,7 +526,16 @@ internal static class Program
             Console.WriteLine("FAIL exception scope follows its logical flow: " + ex.Message);
         }
 
-        Console.WriteLine($"{cases.Length + 2 - failures}/{cases.Length + 2} passed");
+        try {
+            await ExceptionReportCaptureIsBounded();
+            Console.WriteLine("PASS exception report capture is bounded to its logical flow");
+        }
+        catch (Exception ex) {
+            failures++;
+            Console.WriteLine("FAIL exception report capture is bounded to its logical flow: " + ex.Message);
+        }
+
+        Console.WriteLine($"{cases.Length + 3 - failures}/{cases.Length + 3} passed");
         return failures == 0 ? 0 : 1;
     }
 
@@ -556,6 +565,65 @@ internal static class Program
         }
 
         return innerCount == 1 && outer.Count == 2;
+    }
+
+    private static async Task ExceptionReportCaptureIsBounded()
+    {
+        int globalBefore = ScriptExceptions.GlobalCount;
+        int reportsBefore = Native.ReportedExceptions;
+        using ScriptExceptions.Scope outer = ScriptExceptions.OpenScope();
+        ScriptExceptions.Report(new InvalidOperationException("ordinary report"));
+        Check(Native.ReportedExceptions == reportsBefore + 1, "Ordinary reports must reach native notification");
+
+        using ScriptExceptions.Scope capture = ScriptExceptions.OpenCaptureScope();
+        await Task.Yield();
+        ScriptExceptions.Report(new InvalidOperationException("captured report"));
+        Check(Native.ReportedExceptions == reportsBefore + 1,
+              "Captured reports must not request native error handling");
+        Check(Native.LastLog.Contains("System.InvalidOperationException: captured report", StringComparison.Ordinal),
+              "Capture must preserve the reported exception's type and message in the text log");
+        using (ScriptExceptions.Scope nested = ScriptExceptions.OpenScope())
+        {
+            ScriptExceptions.Report(new InvalidOperationException("nested report"));
+            Check(nested.Count == 1, "An ordinary nested scope must retain its own count");
+        }
+        Check(capture.Count == 2 && outer.Count == 3, "Captured reports must remain in all accounting scopes");
+
+        var foreign =
+            new System.Threading.Thread(() => ScriptExceptions.Report(new InvalidOperationException("foreign report")));
+        using (System.Threading.ExecutionContext.SuppressFlow())
+        {
+            foreign.Start();
+        }
+        foreign.Join();
+        Check(Native.ReportedExceptions == reportsBefore + 2 && capture.Count == 2,
+              "Capturing one flow must not hide an unrelated flow's report");
+
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task lateReport =
+            Task.Run(async () =>
+                     {
+                         await release.Task;
+                         ScriptExceptions.Report(new InvalidOperationException("report after capture disposal"));
+                     });
+        capture.Dispose();
+        release.SetResult();
+        await lateReport;
+        ScriptExceptions.Report(new InvalidOperationException("ordinary report after capture"));
+        Check(Native.ReportedExceptions == reportsBefore + 4,
+              "Disposed captures must not suppress parent or retained child-flow reports");
+
+        using (ScriptExceptions.Scope deferredCapture = ScriptExceptions.OpenCaptureScope())
+        {
+            TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            ScriptExceptions.ObserveTask(pending.Task, deferred: true);
+            pending.SetException(new InvalidOperationException("deferred report"));
+            Check(System.Threading.SpinWait.SpinUntil(() => ScriptExceptions.PendingTaskCount == 0, 10000),
+                  "Deferred failure accounting must complete");
+            Check(deferredCapture.Count == 0 && Native.ReportedExceptions == reportsBefore + 5,
+                  "Deferred faults must retain global-only accounting and native notification");
+        }
+        Check(ScriptExceptions.GlobalCount == globalBefore + 7, "Capture must not remove any global fault");
     }
 
     private static void Check(bool condition, string message)
