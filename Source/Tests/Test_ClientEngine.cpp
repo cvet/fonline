@@ -2057,7 +2057,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
     auto unsubscribe = scope_exit([&client]() noexcept { client->OnCritterAnimationSprite.UnsubscribeAll(); });
     auto result = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
 
-    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory.
+    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory
     REQUIRE(observed_outer_copy);
     CHECK(result == nested);
     CHECK(client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0}) == nested);
@@ -2174,7 +2174,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         model->SetLookDir(mdir {120});
         nanotime turn_deadline = client->GameTime.GetFrameTime() + std::chrono::seconds {3};
 
-        // Bone positions include world facing; settle the turn before comparing frozen animation samples.
+        // Bone positions include world facing; settle the turn before comparing frozen animation samples
         while (!is_float_equal(model->GetMoveDirAngle(), 60.0f) && client->GameTime.GetFrameTime() < turn_deadline) {
             pose();
         }

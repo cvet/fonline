@@ -175,7 +175,7 @@ Each embedded-data or configuration patch locates the first matching marker, che
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
-Both this fixture and `Examples/MinimalMultiplayer` derive defaults from the current `SETTING(...)` declarations. After changing the settings schema, regenerate both example configurations before running their freshness checks.
+Example generators exclude runtime-owned `SettingNames` keys. Regenerate and `--check` after schema changes.
 
 In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
 submodule initialized, configure the host build and build the fixture-owned

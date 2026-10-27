@@ -779,9 +779,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {70}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, nullptr);
 
         server->GameTime.Pause();
-        auto resume = scope_exit([&server]() noexcept {
-            safe_call([&server] { server->GameTime.Resume(); });
-        });
+        auto resume = scope_exit([&server]() noexcept { safe_call([&server] { server->GameTime.Resume(); }); });
 
         coarse_sleep(std::chrono::milliseconds {250});
         test_connection->ClearReceivedMovement();

@@ -716,7 +716,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
 
         // Both scripting backends enter the same validated remote-call boundary. Native handlers keep this
-        // worker/transport regression independent of the backend's fixture compiler and call syntax.
+        // worker/transport regression independent of the backend's fixture compiler and call syntax
         server->SetRemoteCallHandler(
             server->Hashes.to_hashed_string("UnitTestLogin"),
             [&](hstring, nptr<Entity> caller, span<uint8_t>, shared_ptr<ScriptCallCompletion>) {

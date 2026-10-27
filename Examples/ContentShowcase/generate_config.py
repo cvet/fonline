@@ -19,6 +19,10 @@ def resolve_engine_root() -> Path:
 
 
 ENGINE_ROOT = resolve_engine_root()
+
+sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
+from example_config_settings import parse_runtime_managed_settings
+
 OUTPUT_PATH = PROJECT_ROOT / "FOnlineContentShowcase.fomain"
 
 OVERRIDES = {
@@ -209,15 +213,6 @@ def parse_settings(path: Path) -> list[Setting]:
             )
         )
     return settings
-
-
-def parse_runtime_managed_settings(path: Path) -> set[str]:
-    return set(
-        re.findall(
-            r'_appliedSettings\.emplace\("([^"]+)"\)',
-            path.read_text(encoding="utf-8-sig"),
-        )
-    )
 
 
 def decode_string(value: str) -> str:

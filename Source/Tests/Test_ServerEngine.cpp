@@ -3146,7 +3146,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::thread t2(cross_thread, cr_b.as_ptr(), cr_a.as_ptr());
 
     // Scheduling delays do not imply deadlock while rounds keep completing. Bound both stalled progress
-    // and the complete run; the owning critter references outlive both joins, including timeout shutdown.
+    // and the complete run; the owning critter references outlive both joins, including timeout shutdown
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
     nanotime started = nanotime::now();
     nanotime last_progress = started;
