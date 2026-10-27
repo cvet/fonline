@@ -1982,7 +1982,7 @@ BoundsMaxZ = 1 1 1 1
             rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
         }
 
-        // The synthetic project supplies its numeric animation contract; native enums contain only None.
+        // The synthetic project supplies its numeric animation contract; native enums contain only None
         rig.AddBakedFile("Metadata.fometa-client",
             BakerTests::MakeMetadataBlob({{"Enum",
                 {

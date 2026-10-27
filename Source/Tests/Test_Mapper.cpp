@@ -2535,7 +2535,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
         REQUIRE(frames);
 
-        // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles.
+        // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles
         const tuple<ipos16, int32_t, ipos32> cases[] = {
             {{3, 1}, 0, {2, 1}},
             {{3, 2}, 1, {4, 2}},
@@ -2563,7 +2563,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {3, 0});
         critter->RefreshView();
-        // Positions 2 and 4 are equally close; retain the first pose, not the later one.
+        // Positions 2 and 4 are equally close; retain the first pose, not the later one
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
         CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-39, 19});
     }
@@ -2646,7 +2646,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         spr_id = mapper->AnimAdd(turned);
         selected_action = static_cast<CritterActionAnim>(515);
         critter->RefreshView();
-        // 32767/1e9 of the new cycle rounds to (-65534,65534); the naive numerator exceeds int64_t.
+        // 32767/1e9 of the new cycle rounds to (-65534,65534); the naive numerator exceeds int64_t
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {-1999901700, 1999934467});
         CHECK(critter->GetHexOffset() == ipos16 {32767, 0});
     }

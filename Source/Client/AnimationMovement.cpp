@@ -104,7 +104,7 @@ namespace AnimationMovement
             }
 
             ipos32 cycle_offset {numeric_cast<int32_t>(cycle * total.x), numeric_cast<int32_t>(cycle * total.y)};
-            // Cancel smooth interpolation within a pose; this changes presentation only.
+            // Cancel smooth interpolation within a pose; this changes presentation only
             offset = anchor + cycle_offset + frame_offset - pos;
         }
     }
@@ -124,7 +124,7 @@ namespace AnimationMovement
         return phase < 0 ? phase + length : phase;
     }
 
-    // Multiply a proper nonnegative fraction by a signed component without overflowing its numerator.
+    // Multiply a proper nonnegative fraction by a signed component without overflowing its numerator
     static auto ScaleWalkPhase(int64_t phase, int64_t length, int32_t component) -> int32_t
     {
         uint64_t numerator = numeric_cast<uint64_t>(phase);

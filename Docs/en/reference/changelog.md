@@ -17,6 +17,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Fixed
 
 - Fix example settings, unloaded-map tests and service-flag checks.
+- Normalize source-comment punctuation for the consuming project's comment audit; executable code is unchanged.
 
 ### Migration
 

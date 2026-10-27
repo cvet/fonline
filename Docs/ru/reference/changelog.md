@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ac09669d146fd17afd0c6319df647ee677eb0531609ae44f1b1161578b1b5195"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"cf7331a4270d522dc46a892101c549274806c77b2efb6c6f69418dec4a915114"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -17,6 +17,7 @@ permalink: /Docs/ru/reference/changelog.html
 ### Исправлено
 
 - Исправлены настройки примеров, удержание выгруженных карт в тестах и проверки флага службы.
+- Приведена пунктуация комментариев к проверке проекта-потребителя; исполняемый код не изменён.
 
 ### Миграция
 

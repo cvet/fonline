@@ -575,7 +575,7 @@ void CritterHexView::Process()
             cur_anim.FrameIndex = cur_anim.Frames->GetFrameIndexAtPhase(phase);
         }
 
-        // Motion selects its pose and recomputes compensation even within the same frame.
+        // Motion selects its pose and recomputes compensation even within the same frame
         RefreshAnimOffset(cur_anim);
 
         if (cur_anim.FrameIndex != prev_frm_index) {
@@ -819,7 +819,7 @@ void CritterHexView::RefreshOffs()
 {
     auto hex_offset = GetHexOffset();
     // Logical interpolation, extra smoothing and the animation correction share the same pixel space.
-    // The selected frame's absolute draw anchor is applied separately by MapSprite.
+    // The selected frame's absolute draw anchor is applied separately by MapSprite
     _sprOffset = ipos32(hex_offset) + _offsExt.round<int32_t>() + _offsAnim;
 }
 

@@ -80,7 +80,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
                 self.assertTrue(
                     all("@index=" not in entry["locator"] for entry in status["entries"])
                 )
-        # The regenerated catalog records current locators directly, without relocation fallback.
+        # The regenerated catalog records current locators directly, without relocation fallback
         self.assertEqual(
             sum(
                 1
