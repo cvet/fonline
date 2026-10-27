@@ -16,11 +16,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
-- Stamp movement packets with monotonic send time, not frame time; prevent false catch-up.
+- Stamp movement packets with monotonic send time instead of frame time, preventing false catch-up that made NPCs teleport to route endpoints.
+- Remove the full-context AI documentation byte limit so complete changelogs and owning guides remain available without abbreviation.
 
 ### Migration
 
-Base `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) to `2026.1.74-dev`: rebuild native roles/tests; no conversion. Layouts/APIs, runtime `0.0.81`, Managed ABI `9` unchanged. Deploy matching artifacts.
+Base `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) to `2026.1.74-dev`: rebuild native roles/tests and regenerate documentation outputs; no source/data conversion. The generated documentation manifest no longer publishes `full_context.max_bytes`; consumers must not require it. Native/script APIs and data layouts are unchanged; runtime advances from `0.0.81` to `0.0.82`, while Managed ABI `9` stays unchanged. Deploy matching artifacts.
 
 ## 2026.1.73-dev - 2026-10-26
 

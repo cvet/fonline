@@ -50,20 +50,19 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                 self.assertEqual(previous, outputs)
             previous = outputs
 
-    def test_repository_full_context_uses_reviewed_budget(self) -> None:
+    def test_repository_full_context_has_no_size_limit(self) -> None:
         root = BUILDTOOLS_DIR.parent
         manifest = json.loads(
             (root / docs_ai_delivery.DEFAULT_MANIFEST).read_text(encoding="utf-8")
         )
-        max_bytes = manifest["ai_delivery"]["full_context"]["max_bytes"]
+        full_context = manifest["ai_delivery"]["full_context"]
         outputs = docs_ai_delivery.render_outputs(root)
         output_bytes = len(
             outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT].encode("utf-8")
         )
 
-        self.assertIsInstance(max_bytes, int)
-        self.assertGreater(max_bytes, 0)
-        self.assertLessEqual(output_bytes, max_bytes)
+        self.assertNotIn("max_bytes", full_context)
+        self.assertGreater(output_bytes, 0)
 
     def _document(
         self,
@@ -197,7 +196,6 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                 },
                 "full_context": {
                     "path": docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT,
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {
@@ -342,16 +340,18 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertTrue(all(content.endswith("\n") for content in first.values()))
 
-    def test_full_context_budget_is_enforced(self) -> None:
+    def test_full_context_has_no_size_limit(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
-        manifest_path = root / docs_ai_delivery.DEFAULT_MANIFEST
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["ai_delivery"]["full_context"]["max_bytes"] = 100
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        large_text = "Complete documentation without a byte cap.\n" * 2000
+        (root / "Docs/Guide.md").write_text(large_text, encoding="utf-8")
 
-        with self.assertRaisesRegex(ValueError, "full-context bundle is .* limit is 100"):
-            docs_ai_delivery.render_outputs(root)
+        try:
+            outputs = docs_ai_delivery.render_outputs(root)
+        except ValueError as exception:
+            self.fail(f"Full-context generation retained a size limit: {exception}")
+
+        self.assertIn(large_text, outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT])
 
     def test_reviewed_full_context_exclusion_retains_discovery_routes(self) -> None:
         temporary_directory, root = self._create_fixture()
