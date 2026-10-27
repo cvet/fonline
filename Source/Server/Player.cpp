@@ -554,7 +554,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetMovingUid());
     out_buf->Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
-    out_buf->Write(_engine->GameTime.GetFrameTime().milliseconds());
+    out_buf->Write(nanotime::now().milliseconds());
 }
 
 void Player::Send_Dir(ptr<const Critter> from_cr)
@@ -1046,9 +1046,9 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
     out_buf.Write(cr->GetMovingUid());
     out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
-    // The frame the elapsed time above was taken at, by the server's clock: the receiver tells from it how much
+    // The actual send time by the server's monotonic clock: the receiver tells from it how much
     // later than usual the plan reached it
-    out_buf.Write(_engine->GameTime.GetFrameTime().milliseconds());
+    out_buf.Write(nanotime::now().milliseconds());
 }
 
 FO_END_NAMESPACE

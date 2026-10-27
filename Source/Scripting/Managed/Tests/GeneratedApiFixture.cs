@@ -23,11 +23,15 @@ internal static class Native
         FallbackCalls++;
         return false;
     }
+    public static string LastLog = "";
     public static void Log(string text)
     {
+        LastLog = text;
     }
+    public static int ReportedExceptions;
     public static void ReportException(Exception exception)
     {
+        System.Threading.Interlocked.Increment(ref ReportedExceptions);
     }
     public static int ContinuationSignals;
     public static void SignalContinuationsReady() => ContinuationSignals++;

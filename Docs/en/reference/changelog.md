@@ -17,11 +17,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Fixed
 
 - Fix example settings, unloaded-map tests and service-flag checks.
-- Normalize source-comment punctuation for the consuming project's comment audit; executable code is unchanged.
+- Capture deliberate managed test reports without native shutdown; preserve exception accounting and async-flow isolation.
+- Normalize source-comment punctuation; executable code is unchanged.
 
 ### Migration
 
-- `497af3a8d7` (`2026.1.73-dev`) → `2026.1.74-dev`: run each example's `generate_config.py`, then `--check`. Compatibility unchanged (runtime `0.0.81`, Managed ABI `9`). Rebuild/rebake; roll back matching artifacts.
+- `ecf9f4fe8b` (`2026.1.74-dev`) → `2026.1.75-dev`: run each example's `generate_config.py`, then `--check`. Adds `ScriptExceptions.OpenCaptureScope()`; existing callers need no changes. Formats, runtime `0.0.81` and Managed ABI `9` unchanged. Rebuild/rebake; roll back matching artifacts.
+
+## 2026.1.74-dev - 2026-10-27
+
+### Fixed
+
+- Stamp movement packets with monotonic send time, not frame time; prevent false catch-up.
+
+### Migration
+
+Base `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) to `2026.1.74-dev`: rebuild native roles/tests; no conversion. Layouts/APIs, runtime `0.0.81`, Managed ABI `9` unchanged. Deploy matching artifacts.
 
 ## 2026.1.73-dev - 2026-10-26
 

@@ -88,7 +88,57 @@ namespace
         {
             scoped_lock locker {_clientChannelLocker};
 
-            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
+            return numeric_cast<size_t>(std::ranges::count_if(_receivedMovement, [message, cr_id](const ReceivedMovement& received) { return received.Message == message && received.CritterId == cr_id; }));
+        }
+
+        [[nodiscard]] auto ReadReceivedSenderTime(NetMessage message, ident_t cr_id) -> int64_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            for (auto it = _receivedMovement.rbegin(); it != _receivedMovement.rend(); ++it) {
+                const ReceivedMovement& received = *it;
+
+                if (received.Message != message || received.CritterId != cr_id) {
+                    continue;
+                }
+
+                NetInBuffer packet {numeric_cast<size_t>(_settings->Network.NetBufferSize)};
+                packet.AddData(received.Data);
+                REQUIRE(packet.ReadMsg() == message);
+                REQUIRE(packet.Read<ident_t>() == cr_id);
+
+                if (message == NetMessage::CritterMove) {
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint16_t>();
+                    (void)packet.Read<mpos>();
+
+                    uint16_t steps_count = packet.Read<uint16_t>();
+
+                    for (uint16_t i = 0; i < steps_count; i++) {
+                        (void)packet.Read<hdir>();
+                    }
+
+                    uint16_t control_steps_count = packet.Read<uint16_t>();
+
+                    for (uint16_t i = 0; i < control_steps_count; i++) {
+                        (void)packet.Read<uint16_t>();
+                    }
+
+                    (void)packet.Read<ipos16>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+                else {
+                    REQUIRE(message == NetMessage::CritterMoveLease);
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+
+                return packet.Read<int64_t>();
+            }
+
+            FO_VERIFY_AND_THROW(false, "Movement message was not received", message, cr_id);
         }
 
         void ClearReceivedMovement()
@@ -115,6 +165,13 @@ namespace
         void DisconnectImpl() override { }
 
     private:
+        struct ReceivedMovement
+        {
+            NetMessage Message {};
+            ident_t CritterId {};
+            vector<uint8_t> Data {};
+        };
+
         // The compressed stream is continuous, so every packet is unpacked in order even when nothing in it is recorded
         void RecordMovementMessages()
         {
@@ -142,12 +199,13 @@ namespace
 
                 FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
 
-                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos) {
+                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos || message == NetMessage::CritterMoveLease) {
                     FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(ident_t), "Truncated outgoing movement message", message_size);
 
                     ident_t cr_id {};
                     memory::copy(&cr_id, data.data() + offset + header_size, sizeof(cr_id));
-                    _receivedMovement.emplace_back(message, cr_id);
+                    const_span<uint8_t> message_data = data.subspan(offset, message_size);
+                    _receivedMovement.push_back(ReceivedMovement {.Message = message, .CritterId = cr_id, .Data = vector<uint8_t>(message_data.begin(), message_data.end())});
                 }
 
                 offset += message_size;
@@ -159,7 +217,7 @@ namespace
         vector<uint8_t> _plainData {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
-        vector<pair<NetMessage, ident_t>> _receivedMovement {};
+        vector<ReceivedMovement> _receivedMovement {};
     };
 
     auto MakeSettings() -> GlobalSettings
@@ -704,6 +762,44 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         observer->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(mover);
         server->CrMngr.DestroyCritter(observer);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
+    SECTION("MovementMessagesAreStampedAtSendTime")
+    {
+        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "MovementSendTime");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->StartCritterMoving(cr, uint16_t {70}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, nullptr);
+
+        server->GameTime.Pause();
+        auto resume = scope_exit([&server]() noexcept {
+            safe_call([&server] { server->GameTime.Resume(); });
+        });
+
+        coarse_sleep(std::chrono::milliseconds {250});
+        test_connection->ClearReceivedMovement();
+
+        // A frame snapshot can be old, but its link timestamp belongs to the actual send, not that frame
+        int64_t before_send_ms = nanotime::now().milliseconds();
+        player->Send_Moving(cr);
+        player->Send_MovingLease(cr);
+        int64_t after_send_ms = nanotime::now().milliseconds();
+        test_connection->Dispatch();
+
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) <= after_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) <= after_send_ms);
+
+        server->StopCritterMoving(cr);
+        server->CrMngr.DestroyCritter(cr);
         server->MapMngr.DestroyLocation(loc);
     }
 
