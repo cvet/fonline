@@ -340,7 +340,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                 },
                 "full_context": {
                     "path": docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT,
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {

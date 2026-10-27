@@ -236,9 +236,6 @@ def _delivery_config(manifest: dict[str, object]) -> dict[str, object]:
         DEFAULT_FULL_CONTEXT_OUTPUT,
         "ai_delivery full_context path",
     )
-    max_bytes = full_context.get("max_bytes")
-    if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
-        raise ValueError("ai_delivery full_context max_bytes must be a positive integer")
     if full_context.get("generated_pages") != "indexes-only":
         raise ValueError("ai_delivery full_context generated_pages must be indexes-only")
     exclude_document_ids = full_context.get("exclude_document_ids", [])
@@ -447,7 +444,7 @@ def render_llms(root: Path, manifest: dict[str, object], records: list[dict[str,
         f"Current documentation: `{current_version['source_ref']}` rolling branch.",
         f"Engine version source: {base_url.rstrip('/')}/VERSION (CalVer; read for the current value).",
         f"Machine-readable document index: {base_url.rstrip('/')}/{DEFAULT_PUBLIC_MANIFEST_OUTPUT}",
-        f"Bounded full-context bundle: {base_url.rstrip('/')}/{DEFAULT_FULL_CONTEXT_OUTPUT}",
+        f"Full-context bundle: {base_url.rstrip('/')}/{DEFAULT_FULL_CONTEXT_OUTPUT}",
         "",
         "## Start here",
         "",
@@ -568,12 +565,7 @@ def render_full_context(
                 "",
             ]
         )
-    rendered = "\n".join(lines).rstrip("\n") + "\n"
-    byte_size = len(rendered.encode("utf-8"))
-    max_bytes = int(full_context["max_bytes"])
-    if byte_size > max_bytes:
-        raise ValueError(f"generated full-context bundle is {byte_size} bytes; limit is {max_bytes}")
-    return rendered
+    return "\n".join(lines).rstrip("\n") + "\n"
 
 
 def _artifact_record(artifact_id: str, path: str, content: str, base_url: str) -> dict[str, object]:
@@ -664,7 +656,6 @@ def render_public_manifest(
             "locales": [dict(locale) for locale in localization["locales"]],
         },
         "full_context": {
-            "max_bytes": delivery["full_context"]["max_bytes"],
             "generated_pages": delivery["full_context"]["generated_pages"],
             "excluded_document_ids": list(
                 delivery["full_context"].get("exclude_document_ids", [])
