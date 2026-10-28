@@ -131,7 +131,7 @@ Important responsibilities:
 - `CreateNetworkConnection(bool use_udp)` selects socket or UDP socket transport;
 - `Process()` advances connect, receive, dispatch, and send work;
 - `Disconnect()` tears down active transport and raises the configured disconnect handler;
-- `TryFallbackToTcp()` provides a fallback path when UDP setup fails;
+- `TryFallbackToTcp()` provides a fallback path while the connection is still being established, from the UDP connect until the server answers the handshake. A transport failure after that answer ends the session through the disconnect handler: a TCP connection would be a new server session, and the state built on the first one cannot continue on it;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()`, and `Net_OnPing()` handle connection-level protocol messages;
 - `AddMessageHandler(NetMessage, MessageCallback)` binds protocol messages to `ClientEngine::Net_On...` handlers.
 

@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"890f5da56c0c61d9675016ac14a9e4db0cf6ff32451f2e6111bab575705dd959"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"a6bf832a532d2dee99e88ae80dcceb48453186564179cf397ab81c7c5244afc3"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -404,7 +404,7 @@ Backward-compatible fallback отсутствует. Старый протоко
 state, file index и portion counter удалён при введении `FO_UPDATER_VERSION`.
 Client и server обязаны использовать одно поколение.
 
-Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`.
+Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`. Сбой транспорта после ответа сервера на рукопожатие, например ошибка отправки UDP посреди скачивания, идёт тем же путём: `ClientConnection` не открывает сессию заново по TCP, потому что новое соединение — это новая серверная сессия, список обновления которой этот updater уже принял. Updater завершается с `ConnectionFailed`, подтверждённые байты временного файла остаются на диске, а следующий запуск докачивает их с обычными проверками докачки.
 
 ## Серверная сторона: `UpdaterBackend`
 

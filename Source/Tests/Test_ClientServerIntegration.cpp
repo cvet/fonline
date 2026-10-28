@@ -312,6 +312,231 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 
+TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
+{
+    using namespace TestClientServerIntegration;
+
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+
+    // The server listens on both transports, so a wrong fallback would find a TCP listener waiting
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
+
+    // The largest payload the packet header can carry does not fit one IP datagram together with that header: small messages
+    // go through, and the first packet of a big one fails to send, which is how a UDP send error looks to the client
+    auto client_settings = MakeClientTestSettings(port);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
+    BakerTests::OverrideSetting(client_settings.Network.UdpPacketSize, 65535);
+
+    std::mutex log_locker;
+    vector<string> log_lines;
+    logging::set_callback("udp-session-end", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+        std::scoped_lock locker {log_locker};
+        log_lines.emplace_back(message);
+    });
+    auto restore_logger = scope_exit([]() noexcept { logging::set_callback("udp-session-end", {}); });
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
+    int32_t connected_calls = 0;
+    int32_t disconnected_calls = 0;
+
+    auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    Entity::EventCallbackData connect_observer;
+    connect_observer.Callback = [&connected_calls](FuncCallData&) {
+        connected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    connect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&connected_calls);
+    client->OnConnected.Subscribe(std::move(connect_observer));
+
+    Entity::EventCallbackData disconnect_observer;
+    disconnect_observer.Callback = [&disconnected_calls](FuncCallData&) {
+        disconnected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&disconnected_calls);
+    client->OnDisconnected.Subscribe(std::move(disconnect_observer));
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+    CHECK(connected_calls == 1);
+
+    {
+        std::scoped_lock locker {log_locker};
+        CHECK(std::ranges::count_if(log_lines, [](const string& line) { return line.find("Connected to server") != string::npos && line.find("over UDP") != string::npos; }) == 1);
+    }
+
+    // The message is never delivered: its first packet already fails to send
+    client->GetConnection()->OutBuf->StartMsg(NetMessage::Ping);
+    client->GetConnection()->OutBuf->Push(vector<uint8_t>(80000, uint8_t {0}));
+    client->GetConnection()->OutBuf->EndMsg();
+
+    // A session that the transport lost is over: the server would see a second one on a new connection, and
+    // everything the client built from the first would then be stale
+    for (int32_t i = 0; i < 2000 && disconnected_calls == 0; i++) {
+        REQUIRE_NOTHROW(client->MainLoop());
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+    }
+
+    CHECK(WaitForDisconnected(client, server));
+    CHECK(connected_calls == 1);
+    CHECK(disconnected_calls == 1);
+
+    std::scoped_lock locker {log_locker};
+    CHECK(std::ranges::count_if(log_lines, [](const string& line) { return line.find("fallback to TCP") != string::npos; }) == 0);
+}
+
+TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheNextRun")
+{
+    using namespace TestClientServerIntegration;
+
+    string install = PrepareClientUpdaterBakeOutput();
+    string published = MakeTempClientUpdaterBakeDir("published");
+    string writable = MakeTempClientUpdaterBakeDir("writable");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    // Incompressible and served in small portions, so the transfer is still running when the server goes away
+    vector<uint8_t> payload(512 * 1024);
+    random_generator generator {7};
+
+    for (uint8_t& value : payload) {
+        value = numeric_cast<uint8_t>(generator.next_between(0, 255));
+    }
+
+    string published_pack = strex(published).combine_path("Art.fores").str();
+
+    {
+        ResourcePackWriter writer {published_pack, {0, 100}};
+        writer.AddFile("Payload.bin", payload);
+        writer.Finish();
+    }
+
+    auto published_bytes = fs::read_file(published_pack);
+    REQUIRE(published_bytes);
+
+    string writable_resources = strex(writable).combine_path("Resources").str();
+    string temp_pack = strex(writable_resources).combine_path("~Art.fores").str();
+    string final_pack = strex(writable_resources).combine_path("Art.fores").str();
+
+    std::mutex log_locker;
+    vector<string> log_lines;
+    logging::set_callback("updater-resume", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+        std::scoped_lock locker {log_locker};
+        log_lines.emplace_back(message);
+    });
+    auto restore_logger = scope_exit([]() noexcept { logging::set_callback("updater-resume", {}); });
+
+    auto count_log_lines = [&](string_view part) {
+        std::scoped_lock locker {log_locker};
+        return std::ranges::count_if(log_lines, [part](const string& line) { return line.find(part) != string::npos; });
+    };
+
+    // One run of the player's client against a server that stops after the given number of iterations of
+    // the transfer, or never when the count is zero
+    auto synchronize = [&](int32_t stop_server_after) -> UpdaterResult {
+        uint16_t port = IntegrationTestPort.fetch_add(1);
+        GlobalSettings server_settings = MakeServerTestSettings(port);
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        server_settings.ApplyConfigFile(server_pack_config, "");
+        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
+        BakerTests::OverrideSetting(server_settings.Network.UpdateFileMaxPortionSize, 8192);
+        auto server = MakeServerEngine(server_settings);
+        auto shutdown = scope_exit([&]() noexcept {
+            safe_call([&] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+        string error = WaitForServerStart(server);
+        INFO(error);
+        REQUIRE(error.empty());
+
+        GlobalSettings client_settings = MakeClientTestSettings(port);
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        client_settings.ApplyConfigFile(client_pack_config, "");
+        client_settings.ApplyWritableRoot(writable);
+
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        int32_t transfer_iterations = 0;
+        bool finished = false;
+
+        for (int32_t i = 0; i < 6000 && !finished; i++) {
+            finished = updater.Process();
+
+            if (!finished && stop_server_after != 0 && count_log_lines("Client updater: requesting file Art.fores") != 0 && ++transfer_iterations == stop_server_after) {
+                server->Shutdown();
+            }
+
+            if (!finished) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {2});
+            }
+        }
+
+        REQUIRE(finished);
+        return updater.GetResult();
+    };
+
+    // The server goes away in the middle of the pack: the player sees a lost connection, not a broken client
+    CHECK(synchronize(10) == UpdaterResult::ConnectionFailed);
+    CHECK(count_log_lines("Update file list was already received") == 0);
+    CHECK_FALSE(fs::exists(final_pack));
+
+    // What the run confirmed stays on disk and is the true prefix of the published pack
+    auto kept = fs::read_file(temp_pack);
+    REQUIRE(kept);
+    REQUIRE_FALSE(kept->empty());
+    REQUIRE(kept->size() < published_bytes->size());
+    CHECK(published_bytes->starts_with(*kept));
+
+    // An ordinary new run continues from those bytes instead of starting over
+    CHECK(synchronize(0) == UpdaterResult::ResourcesReady);
+    CHECK(count_log_lines("Client updater: resuming temp file") == 1);
+    CHECK(fs::read_file(final_pack) == published_bytes);
+    CHECK_FALSE(fs::exists(temp_pack));
+}
+
 TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
 {
     using namespace TestClientServerIntegration;

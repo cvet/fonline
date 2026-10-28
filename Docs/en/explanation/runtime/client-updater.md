@@ -378,6 +378,8 @@ The updater holds the writable resource directory lock for its whole run. A seco
 
 A handler failure during update processing is `Failed`, not `ConnectionFailed`, even when that handler's exception causes the transport to disconnect. A genuinely silent server is bounded by `ClientNetwork.PingTimeout` through the ordinary disconnect route and reports `ConnectionFailed`.
 
+A transport failure after the server answered the handshake, such as a UDP send error in the middle of a download, takes the same route. `ClientConnection` does not reopen the session over TCP, because a new connection is a new server session whose update list this updater has already consumed. The updater ends with `ConnectionFailed`, the confirmed bytes of the temporary file stay on disk, and the next launch resumes from them under the usual resume checks.
+
 ## Server-side: `UpdaterBackend`
 
 [Server/UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as an `optional`. When `_updaterBackend` is empty (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` — there is nothing to serve.

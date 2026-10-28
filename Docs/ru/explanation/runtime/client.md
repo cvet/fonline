@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"bba57bb39769f55f07a1a0c19d99e5cca3e75c4c4ac6992915be391aa8722498"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"f3bf74d7049f719e70a87bbd0635f3ea0bf3dea9682b16347fc2fcc61229f4ca"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -131,7 +131,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `CreateNetworkConnection(bool use_udp)` выбирает socket или UDP socket transport;
 - `Process()` продвигает connect, receive, dispatch и send;
 - `Disconnect()` завершает активный transport и вызывает настроенный disconnect handler;
-- `TryFallbackToTcp()` предоставляет fallback при ошибке настройки UDP;
+- `TryFallbackToTcp()` предоставляет fallback, пока соединение ещё устанавливается: от подключения по UDP до ответа сервера на рукопожатие. Сбой транспорта после этого ответа завершает сессию через обработчик отключения: соединение по TCP стало бы новой серверной сессией, и состояние, построенное на первой, на ней продолжиться не может;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()` и `Net_OnPing()` обрабатывают protocol messages уровня соединения;
 - `AddMessageHandler(NetMessage, MessageCallback)` связывает protocol messages с handlers `ClientEngine::Net_On...`.
 

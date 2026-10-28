@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- End an established UDP session as a lost connection when the transport fails after the server answered the handshake. `ClientConnection` used to keep treating that session as still connecting, so a UDP send error in the middle of a download or of play opened a new TCP connection over it; the server saw a second session, the game client raised "Cur player is already set", and the updater was rejected with "Update file list was already received" and ended as `Failed`. The UDP-to-TCP fallback now covers only the connection phase, from the UDP connect until the handshake answer. A later transport failure takes the ordinary disconnect route: the updater reports `ConnectionFailed`, keeps the confirmed bytes of its temporary file and resumes from them on the next launch. The updater's own once-per-session file-list check is unchanged.
+
+### Migration
+
+Base `fcac7eb0824ea23a67fa4e2bd8804d4e03fdda98` (`2026.1.80-dev`) to `2026.1.81-dev`: client-side connection behavior fix. No source, settings, data or save conversion is required. Rebuild and redeploy client roles; a client without the fix keeps working against a fixed server and the other way round. Network protocol, runtime `0.0.82`, Managed ABI `9`, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous behavior.
+
+## 2026.1.80-dev - 2026-10-28
+
+### Fixed
+
 - Give the AngelScript attribute validator distinct translation-unit-local names for its preprocessor user-data slot and diagnostic helpers, allowing it to share a Unity batch with the backend and remote-call implementation. The slot value, script declaration text and source-location mapping retain their meanings.
 
 - Give translation-unit-local AngelScript test helpers distinct names and explicitly select shared fixture owners in Unity batches. Keep test names, assertions and embedded script sources unchanged; give the advanced-operation test macros distinct names as well.
