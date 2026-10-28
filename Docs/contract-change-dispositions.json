@@ -14112,6 +14112,42 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md document the additive Map query and coordinated regeneration.",
       "compatibility": "The generated API/metadata contract changes. Inherited runtime 0.0.82 and Managed ABI 9 remain unchanged. Existing wire and stored values are not reinterpreted; adopt matching binaries, assemblies and resources together.",
       "owner": "scripting-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.859c75bdeb31f57f",
+      "baseline_contract_sha256": "d7bee516bc4cc297864c9d7a0d2769220febf747bc1e5db36062c57946e40189",
+      "current_contract_sha256": "5fe1d30dd9052efacfe3e8204048ca992251c708d37f53111a6e3b03ce042046",
+      "classification": "breaking",
+      "rationale": "The published movement fix advances the runtime compatibility marker from 0.0.81 to 0.0.82. Critter movement and lease messages now stamp the actual monotonic send time instead of a potentially paused or stale frame snapshot, so peers must adopt the same movement-clock contract. The wire field types and existing serialized values retain their meaning.",
+      "migration": "Docs/en/how-to/migration/engine-upgrade.md#protect-network-and-client-compatibility; Docs/ru/how-to/migration/engine-upgrade.md. Rebuild all native roles and regenerate/rebake script metadata and project resources from one selected Engine revision. No authored-source or saved-data conversion is required for this marker transition.",
+      "release_note": "Docs/en/reference/changelog.md#2026174-dev---2026-10-27; Docs/ru/reference/changelog.md#2026174-dev---2026-10-27",
+      "compatibility": "Do not mix runtime 0.0.81 and 0.0.82 client/server binaries or baked metadata. Deploy and roll back the matching binaries and resources together. Managed ABI remains 9; this disposition records the already published boundary and does not introduce a new runtime change.",
+      "owner": "runtime-networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.f30662f73d1c2847",
+      "baseline_contract_sha256": "d7bee516bc4cc297864c9d7a0d2769220febf747bc1e5db36062c57946e40189",
+      "current_contract_sha256": "ecf698c963e6fcc6a594f85d043486f95e2672f5adc791ee67d9caca4b6db266",
+      "classification": "breaking",
+      "rationale": "Cumulative adoption from the 2026.1.73-dev API model includes the reviewed additive server Map.GetMovableHexesInSight query and intentionally advances the native-codegen inventory from 2585 to 2586. Existing scalar geometry calls, signatures, values and side effects retain their meanings. The earlier movement-clock transition is also part of this exact revision pair.",
+      "migration": "Apply the 2026.1.74-dev and 2026.1.77-dev entries in Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md in order. Follow Docs/en/how-to/migration/engine-upgrade.md#protect-network-and-client-compatibility and Docs/en/explanation/maps-and-movement.md#line-tracing. Regenerate bindings/metadata, rebuild native roles, and rebake project resources together. Existing scalar calls remain valid; no save conversion is needed.",
+      "release_note": "Docs/en/reference/changelog.md#2026174-dev---2026-10-27 and #2026177-dev---2026-10-28; matching dated entries in Docs/ru/reference/changelog.md.",
+      "compatibility": "This cumulative pair crosses runtime 0.0.81 -> 0.0.82 and the reviewed API inventory pin; Managed ABI remains 9. Adopt and roll back matching binaries, assemblies and resources together. The Map query adds capability without reinterpreting existing wire or stored values.",
+      "owner": "scripting-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.859c75bdeb31f57f",
+      "baseline_contract_sha256": "d7bee516bc4cc297864c9d7a0d2769220febf747bc1e5db36062c57946e40189",
+      "current_contract_sha256": "ecf698c963e6fcc6a594f85d043486f95e2672f5adc791ee67d9caca4b6db266",
+      "classification": "breaking",
+      "rationale": "The cumulative 2026.1.73-dev-to-current API pair includes the published movement-clock boundary from runtime 0.0.81 to 0.0.82. Player::Send_MovingLease and Player::SendCritterMoving use nanotime::now().milliseconds() instead of a stale or paused GameTime frame snapshot; field types and units stay unchanged. The later additive Map query changes this pair's overall API digest, so the earlier step-specific disposition alone cannot bind it.",
+      "migration": "Apply Docs/en/reference/changelog.md#2026174-dev---2026-10-27 followed by #2026177-dev---2026-10-28, and the matching Russian entries. Follow Docs/en/how-to/migration/engine-upgrade.md#protect-network-and-client-compatibility: rebuild native applications, regenerate/rebake every script role and project resource set from the selected Engine. No authored-source or saved-data conversion is required for this clock marker transition.",
+      "release_note": "Docs/en/reference/changelog.md#2026174-dev---2026-10-27; Docs/ru/reference/changelog.md#2026174-dev---2026-10-27",
+      "compatibility": "Do not mix runtime 0.0.81 with 0.0.82 binaries or baked metadata. Deploy and roll back native binaries, managed assemblies and resources as one matching set. Managed ABI stays 9; this entry records an existing published boundary and introduces no additional runtime marker change.",
+      "owner": "runtime-networking"
     }
   ]
 }

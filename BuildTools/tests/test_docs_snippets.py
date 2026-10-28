@@ -58,12 +58,12 @@ class DocumentationSnippetTests(unittest.TestCase):
         report = docs_snippets.evaluate(BUILDTOOLS_DIR.parent)
 
         self.assertEqual(report["error_count"], 0)
-        self.assertEqual(report["snippet_count"], 470)
-        self.assertEqual(report["normative_count"], 314)
-        self.assertEqual(report["normative_validated_count"], 314)
+        self.assertEqual(report["snippet_count"], 471)
+        self.assertEqual(report["normative_count"], 315)
+        self.assertEqual(report["normative_validated_count"], 315)
         self.assertEqual(report["normative_coverage"], 1.0)
         self.assertEqual(report["evidence_count"], 156)
-        self.assertEqual(report["external_parser_required_count"], 184)
+        self.assertEqual(report["external_parser_required_count"], 185)
 
     def test_corpus_hash_is_independent_of_line_endings(self) -> None:
         temporary_directory, root = self._create_fixture(

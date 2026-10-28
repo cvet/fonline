@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import re
 import shutil
@@ -18,6 +19,8 @@ class UnityProject:
     def __init__(self, source: Path) -> None:
         self.source = source
         self.build_dir = source / 'build'
+        self.environment = {name: value for name, value in os.environ.items()
+                            if name not in ('FO_UNITY_BUILD', 'FO_UNITY_BUILD_BATCH_SIZE')}
         core_sources = []
         for index in range(40):
             path = source / f'core_{index:02}.cpp'
@@ -73,12 +76,14 @@ endforeach()
                 '-DCMAKE_UNITY_BUILD=OFF', f'-DFO_UNITY_BUILD={unity}']
         if batch_size is not None:
             args.append(f'-DFO_UNITY_BUILD_BATCH_SIZE={batch_size}')
-        return subprocess.run(args, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+        return subprocess.run(args, env=self.environment, capture_output=True, text=True,
+                              encoding='utf-8', errors='replace', timeout=180)
 
     def build(self) -> subprocess.CompletedProcess[str]:
         return subprocess.run(['cmake', '--build', str(self.build_dir), '--config', 'Release',
                                '--target', 'AppFixture', '--parallel', '1'],
-                              capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+                              env=self.environment, capture_output=True, text=True,
+                              encoding='utf-8', errors='replace', timeout=180)
 
     def unity_includes(self, target: str) -> list[int]:
         files = sorted(path for path in self.build_dir.rglob('unity_*.cxx') if f'{target}.dir' in path.as_posix())

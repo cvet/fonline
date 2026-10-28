@@ -143,6 +143,8 @@ Combining translation units can expose duplicate internal names or macros that l
 
 `Source/Essentials/WinApiUndef.inc` is generated rather than maintained through per-header edits. `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj` reads a pinned `Windows.Win32.winmd` and installed SDK headers. It adds only actual macro aliases with PInvoke evidence or a generic A/W alias, preserves existing macro-only entries and the compile-proven allowlist, and removes allowlisted active `#undef` lines. All active `#undef` entries are emitted as one contiguous block in ordinal order. Repeating the same generation is byte-identical. Pin the metadata package version and record its hash instead of taking a moving online source implicitly.
 
+Header discovery recognizes continued directives and treats comments as whitespace, while ignoring directive-like text inside comments and literals. Raw-string contents retain their physical backslash-newline pairs. Definitions in conditional branches are inventoried without evaluating a target preprocessor configuration. The Engine update CI job runs `dotnet run --project BuildTools/WinApiUndefGenerator/GeneratorTests.csproj --configuration Release` with .NET 10; its registry/header fixtures require no installed Windows SDK and do not replace validation of a generated inventory against the pinned SDK.
+
 ```powershell
 dotnet run --project Engine/BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj -- `
   <path-to-Windows.Win32.winmd> `

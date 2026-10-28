@@ -125,7 +125,7 @@ provenance, locale mirrors and rendered-site checks together.
 
 GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `Docs/Site/_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
 
-Managed `bin` and `obj` directories below `Source/Scripting/Managed/` are build outputs at any project depth. Exclude them with directory globs without a trailing slash; the artifact audit rejects any published file inside them while retaining authored source files.
+Managed `bin` and `obj` directories below `Source/Scripting/Managed/` and `BuildTools/` are build outputs at any project depth. Exclude them with directory globs without a trailing slash; the artifact audit rejects any published file inside them while retaining authored source files.
 
 Ordinary `index.md` pages use Jekyll's canonical directory URL (`/path/`), while
 their artifact remains `/path/index.html`. `BuildTools/docs_site.py` records the

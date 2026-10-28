@@ -225,12 +225,15 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "Source/Common/Example.h",
             "Source/Scripting/Managed/Compiler/Program.cs",
             "Source/Scripting/Managed/Deep/Project/Owner.cs",
+            "BuildTools/WinApiUndefGenerator/Program.cs",
         )
         generated = (
             "Source/Scripting/Managed/Compiler/bin/Debug/compiler.dll",
             "Source/Scripting/Managed/Compiler/obj/Debug/compiler.pdb",
             "Source/Scripting/Managed/Deep/Project/bin/Release/compiler.dll",
             "Source/Scripting/Managed/Deep/Project/obj/Release/generated.cs",
+            "BuildTools/WinApiUndefGenerator/bin/Release/GeneratorTests.dll",
+            "BuildTools/WinApiUndefGenerator/obj/GeneratorTests/project.assets.json",
         )
         for relative_path in sources + generated:
             path = site / relative_path

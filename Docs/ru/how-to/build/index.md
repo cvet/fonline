@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"8b010dfa73bbf1022614751bfdaa0ff0a7196cfa56300d3e868ae0ebd42c69fc"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"fdbae80b2246a28af4ddf67918240c7bdc79faf89e0dad5f029bbe2233ba494b"} -->
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 
@@ -164,6 +164,8 @@ Unity-компиляция включается явно. Настройте в�
 ### Инвентарь макросов Win32
 
 `Source/Essentials/WinApiUndef.inc` генерируется, а не редактируется вручную по отдельным заголовкам. `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj` читает закреплённый `Windows.Win32.winmd` и установленные SDK headers. Он добавляет только реальные macro aliases с PInvoke evidence или generic A/W alias, сохраняет существующие macro-only записи и compile-proven allowlist, а активные `#undef` из allowlist удаляет. Все активные `#undef` записываются одним непрерывным блоком в общем ordinal-порядке. Повторная генерация даёт байт-идентичный результат. Закрепляйте версию metadata-пакета и записывайте её хэш, а не используйте движущийся online-источник без фиксации.
+
+Сканирование заголовков распознаёт продолженные директивы и считает комментарии пробелами, игнорируя похожий на директивы текст внутри комментариев и литералов. Содержимое raw-строк сохраняет физические пары обратного слеша и переноса строки. Определения из условных ветвей включаются в инвентарь без вычисления конфигурации целевого препроцессора. Задание CI проверки обновления Engine выполняет `dotnet run --project BuildTools/WinApiUndefGenerator/GeneratorTests.csproj --configuration Release` с .NET 10; его registry/header-фикстуры не требуют установленного Windows SDK и не заменяют проверку сгенерированного инвентаря по закреплённому SDK.
 
 ```powershell
 dotnet run --project Engine/BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj -- `

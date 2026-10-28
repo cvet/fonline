@@ -14,6 +14,23 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-28
 
+### Fixed
+
+- Preserve the FOFRM grammar and script-owned critter animation fragment IDs in the Russian image guide, restoring links from the changelog and sprite root motion guide.
+- Record the published movement-clock compatibility transition from runtime `0.0.81` to `0.0.82` in the aggregate contract ledger, including coordinated rebuild, deployment and rollback requirements.
+
+- Isolate Unity fixtures from inherited CI overrides, supply the web/database option fixture with the required valid batch size, update the reviewed snippet-corpus counts for the new build example, normalize the new test comment punctuation, and qualify the added Map visibility test helpers for Unity compilation.
+
+- Exclude managed build-tool bin/obj output from the rendered documentation site and reject it in the artifact audit while retaining authored tool sources.
+
+- Discover SDK macro definitions through continued lines, comments and C/C++ literals without admitting directive-like documentation or losing genuine commented-prefix directives. Preserve raw-string line pairs and numeric separators, and run the registry/header regressions in the Engine update CI job. Macro selection, allowlists and output formatting retain their existing contracts.
+
+### Migration
+
+Base `248465a278cadec22004b9c461c2f3be41659a5e` (`2026.1.77-dev`) to `2026.1.78-dev`: SDK-header discovery, CI regression-fixture and documentation corrections. Rebuild the generator and run its registry/header tests; regenerate the documentation site and AI delivery, then rerun the focused Unity, temporary-compatibility and snippet checks. Refresh any SDK inventory only against pinned metadata and SDK inputs, preserving the existing allowlist. No source, settings, data or save conversion is required. Runtime `0.0.82` and Managed ABI `9` remain unchanged; matching deployment and rollback sets remain compatible.
+
+## 2026.1.77-dev - 2026-10-28
+
 ### Added
 
 - Add server `Map.GetMovableHexesInSight(origin, radius)`; see the [query contract](../explanation/maps-and-movement.md#line-tracing).

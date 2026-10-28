@@ -217,6 +217,7 @@ function(AbortMessage text)
     message(FATAL_ERROR "${{text}}")
 endfunction()
 set(FO_FORCE_ENABLE_3D "")
+set(FO_UNITY_BUILD_BATCH_SIZE 32)
 '''
 
         for web, server, mongo, sqlite in ((0, 1, 1, 1), (1, 0, 1, 1), (1, 1, 0, 0), (1, 1, 1, 0), (1, 1, 0, 1), (1, 1, 1, 1)):

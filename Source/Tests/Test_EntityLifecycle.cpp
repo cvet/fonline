@@ -1317,7 +1317,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
     auto has_connection_count = [&](size_t count) { return server->GetHealthInfo().find(strex("Connections: {}\n", count).str()) != string::npos; };
 
     if (refusal >= 3 && route == 0) {
-        // Observe the occupied slot before destruction, so a stale initial zero cannot satisfy cleanup.
+        // Observe the occupied slot before destruction, so a stale initial zero cannot satisfy cleanup
         REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count + 1); }, std::chrono::milliseconds {3000}));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
     }
