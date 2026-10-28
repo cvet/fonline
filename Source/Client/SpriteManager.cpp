@@ -44,6 +44,20 @@ static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET = 0.5f;
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS = static_cast<size_t>(DrawOrderType::Last) + 1;
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS = MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS);
 
+// Shared rotation and map-projected flattening around the bitmap rectangle center
+struct MapSpriteTransform
+{
+    bool Enabled {};
+    float32_t Cos {};
+    float32_t Sin {};
+    float32_t YScale {};
+    float32_t CenterX {};
+    float32_t CenterY {};
+};
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform;
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform);
+
 Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {spr_mngr},
     _size {size},
@@ -1089,6 +1103,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr);
         nptr<const Sprite> overlay_spr = spr->GetUnlitOverlay();
         array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
+        MapSpriteTransform transform = MakeMapSpriteTransform(angle_deg, use_map_projected, xf + wf * 0.5f, yf + hf * 0.5f, _settings->Geometry.MapCameraAngle);
 
         // Fill both layers into the same map rectangle and run them through the same map pipeline
         for (size_t layer_index = 0; layer_index < layers.size(); layer_index++) {
@@ -1111,19 +1126,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             }
 
             // Rotation and map-projected flattening
-            if (angle_deg != 0 || use_map_projected) {
-                float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
-                float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
-                float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-                float32_t y_scale = use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
-                float32_t cx = xf + wf * 0.5f;
-                float32_t cy = yf + hf * 0.5f;
-
+            if (transform.Enabled) {
                 for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                    float32_t dx = vbuf[j].PosX - cx;
-                    float32_t dy = vbuf[j].PosY - cy;
-                    vbuf[j].PosX = cx + dx * cs - dy * sn;
-                    vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
+                    ApplyMapSpriteTransform(vbuf[j].PosX, vbuf[j].PosY, transform);
                 }
             }
 
@@ -1191,6 +1196,107 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
     }
 
     return spr->IsHitTest(pos);
+}
+
+// Converts a draw-root-relative logical sprite point into holder map pixels and a depth-only correction for the submitted plane.
+// Returns no value for entries without a bitmap plane or results that are not representable
+auto SpriteManager::GetMapSpritePointAnchor(ptr<const MapSprite> mspr, ipos32 local_point) const -> optional<pair<ipos32, float32_t>>
+{
+    if (!mspr->IsValid() || mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    nptr<const Sprite> spr = mspr->GetSprite();
+
+    if (!spr || spr->IsDirectDraw() || spr->GetSize().width <= 0 || spr->GetSize().height <= 0) {
+        return std::nullopt;
+    }
+
+    isize32 spr_size = spr->GetSize();
+    ipos32 sprite_root_offset = mspr->GetSpriteRootOffset();
+    int16_t angle_deg = mspr->GetAngle();
+    bool use_map_projected = mspr->GetMapProjected();
+    ipos32 local_displacement;
+
+    if (angle_deg == 0 && !use_map_projected) {
+        local_displacement = local_point;
+    }
+    else {
+        float32_t center_x = numeric_cast<float32_t>(spr_size.width) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.x);
+        float32_t center_y = numeric_cast<float32_t>(spr_size.height) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.y);
+        MapSpriteTransform transform = MakeMapSpriteTransform(angle_deg, use_map_projected, center_x, center_y, _settings->Geometry.MapCameraAngle);
+        float32_t point_x = numeric_cast<float32_t>(local_point.x);
+        float32_t point_y = numeric_cast<float32_t>(local_point.y);
+
+        ApplyMapSpriteTransform(point_x, point_y, transform);
+
+        float32_t int32_min = numeric_cast<float32_t>(std::numeric_limits<int32_t>::min());
+        float32_t int32_max = numeric_cast<float32_t>(std::numeric_limits<int32_t>::max());
+
+        if (!std::isfinite(point_x) || !std::isfinite(point_y) || point_x < int32_min || point_x >= int32_max || point_y < int32_min || point_y >= int32_max) {
+            return std::nullopt;
+        }
+
+        local_displacement = ipos32 {iround<int32_t>(point_x), iround<int32_t>(point_y)};
+    }
+
+    nptr<const ipos32> spr_offset_ptr = mspr->GetPSprOffset();
+    ipos32 spr_offset = spr_offset_ptr ? *spr_offset_ptr : ipos32 {};
+    int32_t elevation_offset = 0;
+
+    if (mspr->GetElevation() != 0) {
+        float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
+        float32_t elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        elevation_offset = iround<int32_t>(elevation_y);
+    }
+
+    constexpr int32_t CENTER_X = GameSettings::MAP_HEX_WIDTH / 2;
+    constexpr int32_t CENTER_Y = GameSettings::MAP_HEX_HEIGHT / 2;
+    ipos32 hex_offset = mspr->GetHexOffset();
+    int64_t offset_x = numeric_cast<int64_t>(hex_offset.x) + numeric_cast<int64_t>(spr_offset.x) + numeric_cast<int64_t>(local_displacement.x) - CENTER_X;
+    int64_t offset_y = numeric_cast<int64_t>(hex_offset.y) + numeric_cast<int64_t>(spr_offset.y) + numeric_cast<int64_t>(local_displacement.y) - CENTER_Y - elevation_offset;
+
+    int64_t center_offset_x = offset_x + CENTER_X;
+    int64_t center_offset_y = offset_y + CENTER_Y;
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder
+    if (offset_x < std::numeric_limits<int32_t>::min() || offset_x > std::numeric_limits<int32_t>::max() || //
+        offset_y < std::numeric_limits<int32_t>::min() || offset_y > std::numeric_limits<int32_t>::max() || //
+        center_offset_x < std::numeric_limits<int32_t>::min() || center_offset_x > std::numeric_limits<int32_t>::max() || //
+        center_offset_y < std::numeric_limits<int32_t>::min() || center_offset_y > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    ipos32 holder_offset {numeric_cast<int32_t>(offset_x), numeric_cast<int32_t>(offset_y)};
+    ipos32 ground_offset {numeric_cast<int32_t>(center_offset_x), numeric_cast<int32_t>(center_offset_y)};
+    vec3 carrier = mspr->GetMapRootProjection();
+    DrawOrderType draw_order = mspr->GetDrawOrder();
+    float32_t target_depth = carrier.z;
+
+    if (draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd) {
+        float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+        float32_t sin_a = std::sin(angle_rad);
+        float32_t cos_a = std::cos(angle_rad);
+        float32_t tan_a = sin_a / cos_a;
+        int64_t depth_y = numeric_cast<int64_t>(local_displacement.y) + numeric_cast<int64_t>(mspr->GetRootOffset().y);
+
+        target_depth = carrier.z - numeric_cast<float32_t>(depth_y) * tan_a;
+    }
+
+    vec3 ground_world = GeometryHelper::GetHexWorldPos(mspr->GetHex(), ground_offset, 0.0f);
+    float32_t ground_depth = GeometryHelper::ProjectWorldToMap(ground_world).z;
+
+    if (!std::isfinite(target_depth) || !std::isfinite(ground_depth)) {
+        return std::nullopt;
+    }
+
+    float32_t depth_correction = target_depth - ground_depth;
+
+    if (!std::isfinite(depth_correction)) {
+        return std::nullopt;
+    }
+
+    return pair<ipos32, float32_t> {holder_offset, depth_correction};
 }
 
 auto SpriteManager::IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool
@@ -1409,6 +1515,38 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     else {
         return color;
     }
+}
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform
+{
+    MapSpriteTransform transform;
+
+    if (angle_deg == 0 && !use_map_projected) {
+        return transform;
+    }
+
+    transform.Enabled = true;
+
+    float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
+    transform.Cos = angle_deg != 0 ? std::cos(rad) : 1.0f;
+    transform.Sin = angle_deg != 0 ? std::sin(rad) : 0.0f;
+    transform.YScale = use_map_projected ? std::cos(map_camera_angle * (3.14159265f / 180.0f)) : 1.0f;
+    transform.CenterX = center_x;
+    transform.CenterY = center_y;
+
+    return transform;
+}
+
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform)
+{
+    if (!transform.Enabled) {
+        return;
+    }
+
+    float32_t dx = pos_x - transform.CenterX;
+    float32_t dy = pos_y - transform.CenterY;
+    pos_x = transform.CenterX + dx * transform.Cos - dy * transform.Sin;
+    pos_y = transform.CenterY + (dx * transform.Sin + dy * transform.Cos) * transform.YScale;
 }
 
 FO_END_NAMESPACE

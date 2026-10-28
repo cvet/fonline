@@ -349,6 +349,11 @@ includes drawn multihex copies whose primary sprite is hidden or outside the
 viewport. The requested hex must be inside the bounded view area; the item's
 origin may be outside it. Zero IDs and invalid hexes throw; unknown IDs, hidden
 or invalid copies, physical-only mesh cells and removed items return null.
+`item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` uses the
+item's owning map and the same exact-copy visibility rule. It returns a logical
+pixel offset and depth correction for an independent map holder on that bitmap
+plane; see [particle anchors](../../how-to/content/particle-format.md#integration).
+
 This query checks render entries, not pixel alpha or frontmost screen picking.
 
 Existing `GetItem`, `GetItemOnHex`, `GetItems` and `GetItemsOnHex` retain their

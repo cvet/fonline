@@ -43,6 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
+auto Client_Item_GetSpriteOffset(ptr<ItemView> self) -> ipos32;
+auto Client_Item_GetSpriteMapAnchor(ptr<ItemView> self, mpos hex, ipos32 localOffset, ipos32& mapOffset, float32_t& depthOffset) -> bool;
 auto Client_Map_GetItems(ptr<MapView> self) -> vector<ptr<ItemView>>;
 auto Client_Map_GetItem(ptr<MapView> self, ident_t item_id) -> nptr<ItemView>;
 auto Client_Map_GetVisibleItemOnHex(ptr<MapView> self, ident_t item_id, mpos hex) -> nptr<ItemView>;
@@ -301,6 +303,7 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
 
     REQUIRE(contact_sprite);
     REQUIRE(other_sprite);
+    ipos32 local_anchor {5, -20};
     CHECK_FALSE(contact_sprite->IsHidden());
     CHECK_FALSE(other_sprite->IsHidden());
     CHECK(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
@@ -314,6 +317,14 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(std::ranges::find(map->GetItemsOnHex(contact), wall) != map->GetItemsOnHex(contact).end());
     CHECK(Client_Map_GetItem(map, wall->GetId()) == wall);
 
+    ipos32 anchor_offset {1234, -5678};
+    float32_t anchor_depth {64.0f};
+    CHECK(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
+    optional<pair<ipos32, float32_t>> expected_anchor = client->SprMngr.GetMapSpritePointAnchor(contact_sprite.as_ptr(), local_anchor);
+    REQUIRE(expected_anchor.has_value());
+    CHECK(anchor_offset == expected_anchor->first);
+    CHECK(is_float_equal(anchor_depth, expected_anchor->second));
+
     wall->GetMapSprite()->SetHidden(true);
     CHECK_FALSE(wall->IsMapSpriteVisible());
     CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
@@ -325,6 +336,18 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(wall->IsMapSpriteVisibleAtHex(contact));
     CHECK_FALSE(contact_sprite->IsHidden());
 
+    anchor_offset = {1234, -5678};
+    anchor_depth = 64.0f;
+    CHECK_FALSE(Client_Item_GetSpriteMapAnchor(wall, other_contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == ipos32 {});
+    CHECK(anchor_depth == 0.0f);
+
+    anchor_offset = {1234, -5678};
+    anchor_depth = 64.0f;
+    CHECK_FALSE(Client_Item_GetSpriteMapAnchor(wall, mpos {9, 9}, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == ipos32 {});
+    CHECK(anchor_depth == 0.0f);
+
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), other_contact));
 
     map->SetViewArea(contact, 1);
@@ -334,6 +357,9 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact) == wall);
     CHECK(Client_Map_GetItemsOnHex(map, contact).empty());
     CHECK(std::ranges::find(map->GetItemsOnHex(contact), wall) != map->GetItemsOnHex(contact).end());
+    CHECK(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == expected_anchor->first);
+    CHECK(is_float_equal(anchor_depth, expected_anchor->second));
 
     map->SetViewArea(wall->GetHex(), 1);
     CHECK(map->IsHexInViewArea(wall->GetHex()));
@@ -343,6 +369,12 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), wall->GetHex()));
     CHECK(Client_Map_GetItemsOnHex(map, contact).size() == 1);
 
+    anchor_offset = {1234, -5678};
+    anchor_depth = 64.0f;
+    CHECK_FALSE(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == ipos32 {});
+    CHECK(anchor_depth == 0.0f);
+
     map->SetViewArea(contact, 0);
     CHECK_THROWS(Client_Map_GetItem(map, ident_t {}));
     CHECK_THROWS(Client_Map_GetItemsOnHex(map, mpos {20, 0}));
@@ -351,6 +383,12 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK_THROWS(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {20, 0}));
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, ident_t {999999}, contact));
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), mpos {9, 9}));
+
+    ipos32 rejected_offset {7777, -8888};
+    float32_t rejected_depth {-55.5f};
+    CHECK_THROWS(Client_Item_GetSpriteMapAnchor(wall, mpos {20, 0}, local_anchor, rejected_offset, rejected_depth));
+    CHECK(rejected_offset == ipos32 {7777, -8888});
+    CHECK(rejected_depth == -55.5f);
 
     ptr<ItemHexView> physical = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestPhysicalMeshWall"), mpos {8, 8}, nullptr);
     wall->RefreshSprite();
@@ -364,11 +402,20 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical->GetId(), contact));
     CHECK(std::ranges::find(map->GetItemsOnHex(contact), physical) != map->GetItemsOnHex(contact).end());
 
+    anchor_offset = {1234, -5678};
+    anchor_depth = 64.0f;
+    CHECK_FALSE(Client_Item_GetSpriteMapAnchor(physical, contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == ipos32 {});
+    CHECK(anchor_depth == 0.0f);
+
     wall->GetMapSprite()->Invalidate();
     CHECK_FALSE(wall->IsMapSpriteValid());
     CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(mpos {8, 8}));
     CHECK(wall->IsMapSpriteVisibleAtHex(contact));
     CHECK(wall->IsMapSpriteVisibleAtHex(other_contact));
+    CHECK(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == expected_anchor->first);
+    CHECK(is_float_equal(anchor_depth, expected_anchor->second));
     auto current_extras = wall->GetExtraMapSprites();
     REQUIRE(current_extras);
     auto contact_entry = std::ranges::find_if(*current_extras, [contact](auto&& entry) {
@@ -387,8 +434,32 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK_FALSE(wall->IsMapSpriteVisibleAtHex(contact));
     CHECK(wall->IsMapSpriteVisibleAtHex(other_contact));
 
+    anchor_offset = {1234, -5678};
+    anchor_depth = 64.0f;
+    CHECK_FALSE(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
+    CHECK(anchor_offset == ipos32 {});
+    CHECK(anchor_depth == 0.0f);
+
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), contact));
     CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), other_contact) == wall);
+
+    {
+        auto off_map = wall->CreateRefClone();
+        auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
+        bool clone_has_hex = !!off_map.dyn_cast<ItemHexView>();
+        bool original_has_hex = !!ptr<ItemView>(wall).dyn_cast<ItemHexView>();
+        CHECK_FALSE(clone_has_hex);
+        CHECK(original_has_hex);
+        CHECK_THROWS(Client_Item_GetSpriteOffset(off_map));
+
+        ipos32 off_map_offset {7777, -8888};
+        float32_t off_map_depth {-55.5f};
+        CHECK_THROWS(Client_Item_GetSpriteMapAnchor(off_map, mpos {8, 8}, local_anchor, off_map_offset, off_map_depth));
+        CHECK(off_map_offset == ipos32 {7777, -8888});
+        CHECK(off_map_depth == -55.5f);
+    }
+
+    CHECK(map->GetItem(wall->GetId()) == wall);
 
     ident_t physical_id = physical->GetId();
     map->DestroyItem(physical);

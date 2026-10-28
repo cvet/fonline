@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"784b4da35088de8ac1a803d6fb4a845eda8d371f66ced91b51e14d2ce2d9b276"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"ea5a2139a4639a389216f1e58a71d74f2ed9ac8c54c3eeed170bbd928d780c61"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -316,6 +316,17 @@ NaN/бесконечность дают исключение до любой о�
 со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение.
 Прежние 2D-методы не меняются. Независимые спрайты следуют дальнейшему движению
 только при явном обновлении.
+
+`Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` выбирает
+видимую bitmap-копию на гексе `hex`. `localOffset` измеряется в логических пикселях
+спрайта относительно опоры отрисовки до вращения и проекции на карту. Задавайте
+holder тот же `Hex` и оба выхода как `Offset` и `DepthOffset`. Запрос учитывает
+отрисованную плоскость, включая плоские слои, авторские корни и округление высоты.
+Действительный гекс вне обзора, недоступная копия, direct scene sprite, пустой bitmap
+и некорректный/непредставимый результат дают `false` с нулевыми выходами. Предмет
+вне карты и неверный гекс вызывают исключение до изменения выходов. Проверки alpha
+и верхней поверхности принадлежат вызывающему коду; при необходимости обновляйте
+и заново прикрепляйте независимые holder.
 
 Описания моделей прикрепляют запечённую частицу через `AttachParticles`:
 

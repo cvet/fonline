@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"a3dbbf0f987bbf902ec282084331030125a619005e237bca600ff40835d4800d"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"c7e82e4143bfac0ad29d4938428cfe6bfdef4fdd8aa057c360b904c17ef11335"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -282,6 +282,11 @@ C#; режимы ввода, включающие опцию, принадлеж
 обзора; исходная клетка предмета может быть снаружи. Нулевой ID и неверный гекс
 вызывают исключение; неизвестный ID, скрытая или недействительная копия,
 физическая клетка без изображения и удалённый предмет дают null.
+`item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` использует
+карту владельца предмета и то же правило видимости точной копии. Результат —
+смещение в логических пикселях и поправка к глубине для независимого holder
+на этой bitmap-плоскости; см. [привязки частиц](../../how-to/content/particle-format.md#интеграция).
+
 Проверяется запись отрисовки, а не alpha отдельных пикселей или верхний
 предмет в экранной точке.
 

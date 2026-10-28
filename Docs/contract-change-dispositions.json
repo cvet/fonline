@@ -15480,6 +15480,18 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; Docs/en/explanation/runtime/client.md documents the visible-copy query. This feature-branch change retains the published version; a new dated minor belongs to authorized master integration.",
       "compatibility": "The added export changes codegen compatibility identity and the generated method manifest. The manual migration marker, Managed ABI and persisted/network field layouts are unchanged. Deploy or roll back matching binaries, bindings, metadata, assemblies and baked resources together; mixed sets remain rejected. Native visibility tests do not qualify rendering on other platforms.",
       "owner": "scripting-rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.63cfb0289d3767d4",
+      "baseline_contract_sha256": "5e6fb9bd3482e972f2f0b982a90981efee9dab8042fa0b3b81ec426ade03e349",
+      "current_contract_sha256": "79dc3702c22b51edb266444b5115d7b8d6736481b0345626303c152d49cdd360",
+      "classification": "breaking",
+      "rationale": "Review the complete native-codegen inventory from 2585 to 2586 symbols: the sole API addition is client/mapper Item.GetSpriteMapAnchor. Existing IDs, signatures, valid inputs, units and defaults remain intact; the strict scope fingerprint intentionally includes the added export.",
+      "migration": "Regenerate native and Managed/AngelScript bindings and metadata, rebuild enabled native roles and script assemblies, and bake one matching server/client resource set. Use the contact hex and both returned holder values together. No saved-data conversion is required.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and the Russian mirror; Docs/en/how-to/content/particle-format.md#integration owns the point, result and error contract.",
+      "compatibility": "The added export changes generated compatibility identity and method manifests. The central MigrationRule Version marker, Managed ABI, persisted data and resource formats remain unchanged. Deploy or roll back matching binaries, generated APIs, metadata, assemblies and baked resources together; mixed sets remain rejected.",
+      "owner": "scripting-rendering"
     }
   ]
 }

@@ -43,7 +43,7 @@ class ParticleFormatDocumentationTests(unittest.TestCase):
             outputs["bake_transforms"], {"spark": "spk", "efkproj": "efk"}
         )
         self.assertTrue(outputs["authored_binaries_rejected"])
-        self.assertEqual(self.model["summary"]["entry_count"], 120)
+        self.assertEqual(self.model["summary"]["entry_count"], 121)
         self.assertEqual(self.model["summary"]["format_count"], 4)
         self.assertEqual(self.model["summary"]["graph_object_count"], 37)
 

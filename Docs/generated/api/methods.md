@@ -701,6 +701,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-getmappos-7b7a1139c2"></a>
 - [`symbol-script-method-client-item-getmappos-7b7a1139c2`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getmappos-7b7a1139c2)
 
+<a id="symbol-script-method-client-item-getspritemapanchor-c5c1d1645e"></a>
+- [`symbol-script-method-client-item-getspritemapanchor-c5c1d1645e`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspritemapanchor-c5c1d1645e)
+
 <a id="symbol-script-method-client-item-getspriteoffset-b58872333c"></a>
 - [`symbol-script-method-client-item-getspriteoffset-b58872333c`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspriteoffset-b58872333c)
 

@@ -65,6 +65,48 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
     return hex_item->GetSpriteOffset();
 }
 
+// Projects a draw-root-relative local sprite point of the visible copy at the requested hex into holder map pixels and depth correction.
+// Returns false with zero outputs when the hex is outside the bounded view or the copy/anchor is unavailable; throws for off-map items or invalid hexes
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Item_GetSpriteMapAnchor(ptr<ItemView> self, mpos hex, ipos32 localOffset, ipos32& mapOffset, float32_t& depthOffset)
+{
+    auto hex_item = self.dyn_cast<ItemHexView>();
+
+    if (!hex_item) {
+        throw ScriptException("Item is not on map");
+    }
+
+    auto map = hex_item->GetMap();
+    msize map_size = map->GetSize();
+
+    if (!map_size.is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+
+    optional<pair<ipos32, float32_t>> anchor;
+
+    if (map->IsHexInViewArea(hex)) {
+        nptr<const MapSprite> visible_spr = hex_item->GetVisibleMapSpriteAtHex(hex);
+
+        if (visible_spr) {
+            anchor = map->GetEngine()->SprMngr.GetMapSpritePointAnchor(visible_spr.as_ptr(), localOffset);
+        }
+    }
+
+    ipos32 result_offset {};
+    float32_t result_depth {};
+
+    if (anchor) {
+        result_offset = anchor->first;
+        result_depth = anchor->second;
+    }
+
+    mapOffset = result_offset;
+    depthOffset = result_depth;
+
+    return anchor.has_value();
+}
+
 // Creates a standalone client-side clone with the same id, prototype, and property values without inserting it into a map or inventory
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)

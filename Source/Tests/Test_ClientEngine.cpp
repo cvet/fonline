@@ -176,7 +176,222 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
             }
         }
     }
+
+    SECTION("PointAnchorRejectsInvalidHiddenAndDirectSceneSprites")
+    {
+        auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+        REQUIRE(visual);
+        MapSpriteList list;
+        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        sprite->SetHidden(true);
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+        sprite->SetHidden(false);
+        sprite->Invalidate();
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        auto unavailable = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(unavailable, ipos32 {}).has_value());
+
+        RecordingSceneSprite direct {&client->SprMngr};
+        auto scene = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, &direct, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(scene, ipos32 {}).has_value());
+    }
+
+    SECTION("PointAnchorRejectsNonFiniteDepthAndUnrepresentableSums")
+    {
+        auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+        REQUIRE(visual);
+        MapSpriteList list;
+        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        optional<pair<ipos32, float32_t>> anchor;
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
+                 std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+            sprite->SetDepthOffset(invalid);
+            CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}));
+            CHECK_FALSE(anchor.has_value());
+        }
+
+        sprite->SetDepthOffset(0.0f);
+        CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        ipos32 safe_base {std::numeric_limits<int32_t>::max() - 1024, std::numeric_limits<int32_t>::min() + 1024};
+        auto large = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, safe_base,
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        ipos32 safe_local {123, -456};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(large, safe_local));
+        REQUIRE(anchor.has_value());
+        CHECK(anchor->first == ipos32 {safe_base.x + safe_local.x - GameSettings::MAP_HEX_WIDTH / 2,
+                  safe_base.y + safe_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+
+        // The identity path must preserve integers above float32's exact range
+        ipos32 exact_local {16777217, -16777219};
+        auto exact = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {},
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(exact, exact_local));
+        REQUIRE(anchor.has_value());
+        CHECK(anchor->first == ipos32 {exact_local.x - GameSettings::MAP_HEX_WIDTH / 2,
+                  exact_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+
+        auto overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
+            ipos32 {std::numeric_limits<int32_t>::max() - 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(overflow, ipos32 {100, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto center_overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
+            ipos32 {std::numeric_limits<int32_t>::max() - 2, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(center_overflow, ipos32 {4, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto underflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
+            ipos32 {std::numeric_limits<int32_t>::min() + 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(underflow, ipos32 {-100, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto rotated = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {},
+            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        rotated->SetAngle(45);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(rotated,
+            ipos32 {std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::max()}));
+        CHECK_FALSE(anchor.has_value());
+    }
 }
+
+TEST_CASE("MapSpriteStandingPointAnchorOracle")
+{
+    struct PointTransform
+    {
+        int16_t Angle {};
+        bool Flat {};
+        bool MapProjected {};
+    };
+
+    auto settings = MakeClientTestSettings();
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back("StandingAnchor.png", BakerTests::MakeMinimalBakedSprite(32, 96));
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("StandingAnchor.png"), AtlasType::MapSprites);
+    REQUIRE(visual);
+    REQUIRE(visual->GetSize() == isize32 {32, 96});
+
+    visual->SetOffset(ipos32 {4, -3});
+    RecordingQuadEffect effect;
+    ipos32 center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 sprite_offset {12, -9};
+    ipos32 root_offset {7, -11};
+    ipos32 local_point {3, -36};
+    array<PointTransform, 6> transforms {{{0, false, false}, {37, false, false}, {-23, false, true},
+        {0, true, false}, {37, true, false}, {-23, true, true}}};
+
+    for (mpos contact : {mpos {8, 8}, mpos {10, 8}}) {
+        ipos32 field_offset = ipos32 {180, 160} + GeometryHelper::GetHexOffset(mpos {8, 8}, contact);
+
+        for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-13}}) {
+            for (auto transform : transforms) {
+                DrawOrderType order = transform.Flat ? DrawOrderType::FlatItemAfterLight : DrawOrderType::Item;
+                MapSpriteList walls;
+                auto wall = walls.AddSprite(order, contact, center, &field_offset,
+                    visual.get(), nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0);
+                wall->SetElevation(elevation);
+                wall->SetDepthOffset(7.5f);
+                wall->SetAngle(transform.Angle);
+                wall->SetMapProjected(transform.MapProjected);
+                effect.Draws.clear();
+                client->SprMngr.DrawSprites(walls, irect32 {0, 0, 640, 400}, false,
+                    order, order, ucolor {255, 255, 255}, &effect);
+                REQUIRE(effect.Draws.size() == 1);
+                vector<Vertex2D> vertices = ReadRecordedLayerQuad(effect.Draws.front());
+                REQUIRE(vertices[1].TexU == vertices[0].TexU);
+                REQUIRE(vertices[1].TexU < vertices[2].TexU);
+                REQUIRE(vertices[1].TexV == vertices[2].TexV);
+                REQUIRE(vertices[1].TexV < vertices[0].TexV);
+                REQUIRE(wall->GetSpriteRootOffset() == ipos32 {12, 99});
+
+                // Texture coordinates identify the original corners after the renderer transforms their positions
+                float32_t u = 15.0f / 32.0f;
+                float32_t v = 63.0f / 96.0f;
+                fpos32 precise {
+                    vertices[1].PosX + u * (vertices[2].PosX - vertices[1].PosX) + v * (vertices[0].PosX - vertices[1].PosX),
+                    vertices[1].PosY + u * (vertices[2].PosY - vertices[1].PosY) + v * (vertices[0].PosY - vertices[1].PosY)};
+                float32_t precise_depth = vertices[1].PosZ + u * (vertices[2].PosZ - vertices[1].PosZ) + v * (vertices[0].PosZ - vertices[1].PosZ);
+                auto top = std::ranges::min_element(vertices, {}, &Vertex2D::PosY);
+                auto bottom = std::ranges::max_element(vertices, {}, &Vertex2D::PosY);
+                REQUIRE(top->PosY < bottom->PosY);
+                float32_t slope = (bottom->PosZ - top->PosZ) / (bottom->PosY - top->PosY);
+
+                ipos32 draw_root = wall->GetDrawRootPos();
+                ipos32 point = draw_root + ipos32 {
+                    iround<int32_t>(precise.x - numeric_cast<float32_t>(draw_root.x)),
+                    iround<int32_t>(precise.y - numeric_cast<float32_t>(draw_root.y))};
+                float32_t target_depth = precise_depth + (numeric_cast<float32_t>(point.y) - precise.y) * slope;
+                REQUIRE(std::isfinite(target_depth));
+
+                ipos32 offset = point - field_offset - center;
+                MapSpriteList points;
+                auto marker = points.AddSprite(DrawOrderType::Particles, contact, center, &field_offset,
+                    visual.get(), nullptr, &offset, nullptr, nullptr, nullptr, nullptr, 0);
+                CHECK(marker->GetDrawRootPos() == point);
+                vec3 ground_projection = marker->GetMapRootProjection();
+                REQUIRE(std::abs(ground_projection.z - target_depth) > 1.0f);
+
+                float32_t correction = target_depth - ground_projection.z;
+                marker->SetDepthOffset(correction);
+                CHECK(std::abs(marker->GetMapRootProjection().z - target_depth) < 0.002f);
+                CHECK(marker->GetDrawRootPos() == point);
+
+                optional<pair<ipos32, float32_t>> native_anchor = client->SprMngr.GetMapSpritePointAnchor(wall, local_point);
+                REQUIRE(native_anchor.has_value());
+                CHECK(native_anchor->first == offset);
+                CHECK(field_offset + center + native_anchor->first == point);
+                CHECK(std::abs(native_anchor->second - correction) < 0.002f);
+                CHECK(std::abs(ground_projection.z + native_anchor->second - target_depth) < 0.002f);
+
+                vec3 carrier_projection = wall->GetMapRootProjection();
+
+                if (transform.Flat) {
+                    CHECK(std::abs(target_depth - carrier_projection.z) < 0.002f);
+                }
+                else if (transform.Angle == 0 && !transform.MapProjected) {
+                    float32_t without_root = GeometryHelper::ProjectMapYToVerticalDepth(
+                        carrier_projection.y + numeric_cast<float32_t>(local_point.y),
+                        carrier_projection.y, carrier_projection.z);
+                    REQUIRE(std::abs(without_root - target_depth) > 1.0f);
+
+                    if (elevation != 0) {
+                        ipos32 old_offset = sprite_offset + local_point;
+                        CHECK(field_offset + center + old_offset != point);
+                        float32_t without_rounding = GeometryHelper::ProjectMapYToVerticalDepth(
+                            ground_projection.y, carrier_projection.y, carrier_projection.z);
+                        REQUIRE(std::abs(without_rounding - target_depth) > 0.02f);
+                    }
+                }
+
+                if (transform.Angle != 0 || transform.MapProjected) {
+                    CHECK(point != draw_root + local_point);
+                }
+
+                string quad;
+
+                for (auto&& vertex : vertices) {
+                    quad += strex("|v={:.9g},{:.9g},{:.9g}", vertex.PosX, vertex.PosY, vertex.PosZ).str();
+                }
+
+                INFO(strex("POINT_MATRIX|hex={},{}|elevation={}|angle={}|flat={}|projected={}|x={}|y={}|depth={:.9g}|correction={:.9g}{}",
+                    contact.x, contact.y, elevation, transform.Angle, transform.Flat ? 1 : 0,
+                    transform.MapProjected ? 1 : 0, point.x, point.y, target_depth, correction, quad).str());
+                CHECK(std::isfinite(correction));
+            }
+        }
+    }
+}
+
 
 TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
 {

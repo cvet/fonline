@@ -60,6 +60,7 @@ public:
     [[nodiscard]] auto IsMapSpriteValid() const noexcept -> bool { return _mapSprValid; }
     [[nodiscard]] auto IsMapSpriteVisible() const noexcept -> bool { return _mapSprValid && !_mapSpr->IsHidden(); }
     [[nodiscard]] auto IsMapSpriteVisibleAtHex(mpos hex) const noexcept -> bool;
+    [[nodiscard]] auto GetVisibleMapSpriteAtHex(mpos hex) const noexcept -> nptr<const MapSprite>;
     [[nodiscard]] auto GetMapSprite() const -> ptr<const MapSprite>;
     [[nodiscard]] auto GetMapSprite() -> ptr<MapSprite>;
     [[nodiscard]] auto HasExtraMapSprites() const noexcept -> bool { return !!_extraMapSpr; }

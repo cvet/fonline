@@ -198,19 +198,24 @@ void HexView::RefreshSprite()
 
 auto HexView::IsMapSpriteVisibleAtHex(mpos hex) const noexcept -> bool
 {
+    return !!GetVisibleMapSpriteAtHex(hex);
+}
+
+auto HexView::GetVisibleMapSpriteAtHex(mpos hex) const noexcept -> nptr<const MapSprite>
+{
     if (_mapSprValid && _mapSpr && _mapSpr->GetHex() == hex && !_mapSpr->IsHidden()) {
-        return true;
+        return _mapSpr;
     }
 
     if (_extraMapSpr) {
         for (auto&& [mspr, valid] : *_extraMapSpr) {
             if (valid && mspr && mspr->GetHex() == hex && !mspr->IsHidden()) {
-                return true;
+                return mspr;
             }
         }
     }
 
-    return false;
+    return nullptr;
 }
 
 auto HexView::GetMapSprite() const -> ptr<const MapSprite>

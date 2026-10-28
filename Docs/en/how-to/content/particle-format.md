@@ -307,6 +307,16 @@ Missing models/bones, detached sprites and invalid/unrepresentable points return
 `false` with sprite offset/zero depth; off-map throws. Existing 2D methods stay
 unchanged. Independent sprites follow later movement only if updated.
 
+`Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` resolves the
+visible bitmap copy at `hex`. `localOffset` is in logical sprite pixels relative
+to its draw root before rotation and map projection. Set a holder's `Hex` to that
+same hex and use both outputs as `Offset` and `DepthOffset`. The query follows the
+submitted bitmap plane, including flat layers, authored roots and rounded elevation.
+A valid out-of-view hex, unavailable copy, direct scene sprite, empty bitmap or
+invalid/unrepresentable result returns `false` with zero outputs. Off-map items
+and invalid hexes throw before changing the outputs. Pixel alpha and frontmost
+picking remain caller-owned; refresh and reattach independent holders as required.
+
 Model descriptions attach a baked particle with `AttachParticles`:
 
 ```text

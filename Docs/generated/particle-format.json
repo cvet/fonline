@@ -2892,6 +2892,42 @@
       ]
     },
     {
+      "id": "particle-format.integration.item-map-anchor",
+      "name": "Independent map sprite on a visible item bitmap",
+      "stability": "experimental",
+      "requirement": "Call Item.GetSpriteMapAnchor for the exact visible copy's hex. localOffset uses logical sprite pixels relative to the draw root before rotation/projection. Set one MapSpriteHolder's Hex to that same hex and use both outputs as Offset and DepthOffset. Flat/standing planes, authored roots and rounded elevation follow the renderer. Valid out-of-view hexes, unavailable/empty/direct-scene sprites and invalid or unrepresentable results return false with zero outputs. Off-map items or invalid hexes throw before changing outputs. Pixel alpha and frontmost picking remain caller-owned.",
+      "rationale": "A separate holder needs the visible copy's transformed point and plane depth; origin-only offsets and ground depth cannot represent them.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientItemScriptMethods.cpp",
+          "anchors": [
+            "Client_Item_GetSpriteMapAnchor",
+            "GetVisibleMapSpriteAtHex"
+          ]
+        },
+        {
+          "path": "Source/Client/HexView.cpp",
+          "anchors": [
+            "HexView::GetVisibleMapSpriteAtHex"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "MakeMapSpriteTransform",
+            "SpriteManager::GetMapSpritePointAnchor",
+            "GetMapRootProjection"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "MapSpriteStandingPointAnchorOracle"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.integration.project-boundary",
       "name": "Embedding-project ownership",
       "stability": "stable",
@@ -3106,7 +3142,7 @@
     }
   ],
   "summary": {
-    "entry_count": 120,
+    "entry_count": 121,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
@@ -3114,14 +3150,14 @@
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
     "runtime_rule_count": 19,
-    "integration_rule_count": 8,
+    "integration_rule_count": 9,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 113,
+      "experimental": 114,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "7093afda3a1e701d940b6c0f0b93103885e467425e88c81aa7adf7bd29d427cf"
+  "contract_digest": "ab9d42d9e9197574ef966380555cbd1d8f3053a9643b3ee0693f5d0e6192c88c"
 }

@@ -5378,6 +5378,10 @@
           "source_sha256": "62fe94b1bb8c20978d1bd63c1e0c11aef117df87d6762fca7bb5b8a7c0d7d20c",
           "translation": "Определяет гекс предмета на карте по прямому владению картой, владеющему криттеру или рекурсивно через содержащие его предметы; выбрасывает исключение при некорректной карте или цепочке владения."
         },
+        "/symbols/@id=script.method.client.Item.GetSpriteMapAnchor/description": {
+          "source_sha256": "f67da9552ac00c283129cd1c4552494602b21d3fb8bf304afb15af19f51aeaa7",
+          "translation": "Проецирует локальную точку спрайта относительно опоры отрисовки видимой копии в запрошенном гексе в смещение holder на карте и поправку к глубине. Возвращает false с нулевыми выходами, если гекс вне ограниченной области обзора либо копия или привязка недоступна; предмет вне карты или неверный гекс вызывает исключение."
+        },
         "/symbols/@id=script.method.client.Item.GetSpriteOffset/description": {
           "source_sha256": "7cab4238c43f01415a6ac15bd12f77c116b3c37e51db7d2eaf4ed2e094c3bf07",
           "translation": "Возвращает текущее отображаемое смещение спрайта предмета на карте в пикселях; выбрасывает исключение, если предмет не находится на загруженной карте."
@@ -16943,6 +16947,18 @@
         "/integration_rules/@id=particle-format.integration.model/requirement": {
           "source_sha256": "91a319068de852ab119bd238831c967b07499ae810b3598860597608a2ba6fa7",
           "translation": "Используйте AttachParticles с запечённым runtime-ресурсом и допустимой костью модели, затем проверяйте трансформации и время жизни в видимой сцене."
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/name": {
+          "source_sha256": "7ca1e8e044cf75231a6a4b4d3237e32788dffb591c551d1c2be8b5a2f0917d97",
+          "translation": "Независимый спрайт карты на видимом bitmap предмета"
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/rationale": {
+          "source_sha256": "f7ae24fb17d3b529f2d2371b852a31c19a021521b245a4a71aff8ef117e8da0e",
+          "translation": "Отдельному holder нужны преобразованная точка и глубина плоскости видимой копии; смещение только по исходной клетке и глубина земли их не представляют."
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/requirement": {
+          "source_sha256": "e0e6a830811eaf69ea270e6ab060dba583c4593f09a026d1ba0a765a929ab9d2",
+          "translation": "Вызывайте Item.GetSpriteMapAnchor для гекса точной видимой копии. localOffset задаётся в логических пикселях спрайта относительно опоры отрисовки до вращения/проекции. Задавайте одному MapSpriteHolder тот же Hex и используйте оба выхода как Offset и DepthOffset. Плоские и вертикальные плоскости, авторские корни и округлённая высота соответствуют renderer. Действительные гексы вне обзора, недоступные, пустые и direct-scene спрайты, некорректные или непредставимые результаты дают false с нулевыми выходами. Предмет вне карты или неверный гекс вызывает исключение до изменения выходов. Alpha пикселей и выбор верхней поверхности принадлежат вызывающему коду."
         },
         "/integration_rules/@id=particle-format.integration.project-boundary/name": {
           "source_sha256": "4cf76ef47eaad3078ccbb182cd4fc98c1533e973dc89cf697c2ba3f5762001d5",

@@ -14,6 +14,12 @@ The `ViewMap` packet carries a focal hex and signed 32-bit radius. Zero preserve
 
 After map sprites and fog, before the final map flush, `MapView` draws the bounded-view fog with `Effects/Primitive_ViewAreaFog.fofx`. The core effect smoothly fades inward from the inclusive hex boundary and stays opaque outside, independently of regular fog settings, under both direct and offscreen map drawing. An embedding project may override the same effect path. Vertex color red encodes the hex radius fraction (zero at the center, one at the boundary and outside); texture coordinates encode the normalized ellipse position; egg coordinates encode absolute world pixels for camera-independent edge noise. Any override must preserve full opacity outside the hex boundary. Dynamic subject visibility is enforced separately by the server; static baked resources remain in the client package. Hex and item screen queries exclude cells outside the radius. Ordinary map item lookup APIs filter by the item's origin; `GetVisibleItemOnHex` instead checks the requested occupied cell and its actual visible sprite copy. These restrictions also apply to statically baked items.
 
+For an independent holder on an item's visible bitmap copy, use
+`Item.GetSpriteMapAnchor` with its contact hex. SpriteManager shares the actual
+rotation/projected transform with the query; the returned integer offset and
+depth correction belong to that submitted plane. Direct scene sprites have no
+bitmap plane for this query. See [particle anchors](../../how-to/content/particle-format.md#integration).
+
 For the experimental Ogg/Theora decoder, fullscreen draw order, embedded
 `RenderIface` presentation, texture upload, aspect behavior, and visible
 acceptance boundary, see [Video](../../how-to/content/video.md). This page owns the generic
