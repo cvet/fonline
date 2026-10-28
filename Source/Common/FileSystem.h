@@ -97,7 +97,6 @@ public:
     [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
 
-    // ReSharper disable CppInconsistentNaming
     auto ReadStrNT() -> string; // Null terminated
     auto ReadUInt8() -> uint8_t;
     auto ReadInt8() -> int8_t { return std::bit_cast<int8_t>(ReadUInt8()); }
@@ -109,7 +108,6 @@ public:
     auto ReadBEInt32() -> int32_t { return std::bit_cast<int32_t>(ReadBEUInt32()); }
     auto ReadLEUInt32() -> uint32_t;
     auto ReadLEInt32() -> int32_t { return std::bit_cast<int32_t>(ReadLEUInt32()); }
-    // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
     void CopyData(span<uint8_t> buf);

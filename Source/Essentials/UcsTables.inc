@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppMissingIncludeGuard
-
 static constexpr uint16_t UCS_TABLE_0041[] = {
     /* U+0041 */ 0x0061,
     /* U+0042 */ 0x0062,

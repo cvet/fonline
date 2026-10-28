@@ -63,7 +63,6 @@ public:
     constexpr auto operator=(hstring&& other) noexcept -> hstring& = default;
     ~hstring() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     [[nodiscard]] operator string_view() const noexcept { return as_str(); }
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return _entry != nullptr; }
     [[nodiscard]] constexpr auto operator==(const hstring& other) const noexcept -> bool { return as_hash() == other.as_hash(); }

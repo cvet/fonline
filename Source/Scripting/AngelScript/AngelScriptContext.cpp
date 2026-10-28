@@ -44,7 +44,6 @@
 #if FO_TRACE_CATEGORY_ENABLED(Script)
 #include <as_context.h> // For AngelScript::asCContext::BeginScriptCall / EndScriptCall hooks
 #endif
-// ReSharper disable CppRedundantQualifier
 
 #include "WinApiUndef.inc" // Remove garbage from includes above
 

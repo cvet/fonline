@@ -166,7 +166,6 @@ FO_SCRIPT_API void Common_ImGui_End([[maybe_unused]] ptr<ScriptImGui> self)
     ImGui::End();
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Pushes a required nonempty string component onto the ImGui ID stack
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ptr<ScriptImGui> self, string_view strId)
@@ -178,7 +177,6 @@ FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ptr<ScriptImGui> self, s
     ImGui::PushID(string(strId).c_str());
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Pushes an integer component onto the ImGui ID stack
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ptr<ScriptImGui> self, int32_t intId)
@@ -186,7 +184,6 @@ FO_SCRIPT_API void Common_ImGui_PushID([[maybe_unused]] ptr<ScriptImGui> self, i
     ImGui::PushID(intId);
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Pops the most recently pushed component from the ImGui ID stack
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_PopID([[maybe_unused]] ptr<ScriptImGui> self)
@@ -1836,7 +1833,6 @@ FO_SCRIPT_API void Common_ImGui_SetTabItemClosed([[maybe_unused]] ptr<ScriptImGu
     ImGui::SetTabItemClosed(string(tabLabel).c_str());
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Starts automatic ImGui text logging to the terminal, optionally auto-opening tree nodes to the supplied depth
 ///@ ExportMethod
 FO_SCRIPT_API void Common_ImGui_LogToTTY([[maybe_unused]] ptr<ScriptImGui> self, int32_t autoOpenDepth = -1)
@@ -1962,7 +1958,6 @@ FO_SCRIPT_API bool Common_ImGui_TextLink([[maybe_unused]] ptr<ScriptImGui> self,
     return ImGui::TextLink(string(label).c_str());
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Draws a required nonempty-label link, asks ImGui's platform URL handler to open the label when activated, and reports activation
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_TextLinkOpenURL([[maybe_unused]] ptr<ScriptImGui> self, string_view label)
@@ -1974,7 +1969,6 @@ FO_SCRIPT_API bool Common_ImGui_TextLinkOpenURL([[maybe_unused]] ptr<ScriptImGui
     return ImGui::TextLinkOpenURL(string(label).c_str());
 }
 
-// ReSharper disable once CppInconsistentNaming
 // Draws a required nonempty-label link, asks ImGui's platform URL handler to open the required URL when activated, and reports activation
 ///@ ExportMethod
 FO_SCRIPT_API bool Common_ImGui_TextLinkOpenURL([[maybe_unused]] ptr<ScriptImGui> self, string_view label, string_view url)

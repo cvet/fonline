@@ -390,7 +390,6 @@ void FileReader::ReadBytes(span<uint8_t> out)
     CopyData(out);
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto FileReader::ReadStrNT() -> string
 {
     if (_curPos == _buf.size()) {
@@ -434,7 +433,6 @@ auto FileReader::ReadUInt8() -> uint8_t
     return _buf[_curPos++];
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto FileReader::ReadBEUInt16() -> uint16_t
 {
     if (sizeof(uint16_t) > _buf.size() - _curPos) {
@@ -446,7 +444,6 @@ auto FileReader::ReadBEUInt16() -> uint16_t
     return numeric_cast<uint16_t>((high_byte << 8) | low_byte);
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto FileReader::ReadLEUInt16() -> uint16_t
 {
     if (sizeof(uint16_t) > _buf.size() - _curPos) {
@@ -458,7 +455,6 @@ auto FileReader::ReadLEUInt16() -> uint16_t
     return numeric_cast<uint16_t>(low_byte | (high_byte << 8));
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto FileReader::ReadBEUInt32() -> uint32_t
 {
     if (sizeof(uint32_t) > _buf.size() - _curPos) {
@@ -474,7 +470,6 @@ auto FileReader::ReadBEUInt32() -> uint32_t
     return res;
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto FileReader::ReadLEUInt32() -> uint32_t
 {
     if (sizeof(uint32_t) > _buf.size() - _curPos) {

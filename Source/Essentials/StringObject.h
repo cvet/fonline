@@ -100,7 +100,6 @@ public:
         assign_chars(s, count);
     }
 
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr basic_string(const CharT* s)
     {
         reset_to_empty();
@@ -273,7 +272,6 @@ public:
     [[nodiscard]] constexpr auto data() const noexcept -> const CharT* { return is_inlined() ? _data.inlined : _data.heap; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const CharT* { return data(); }
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     [[nodiscard]] constexpr operator view_type() const noexcept { return view_type(data(), _size); }
 
     [[nodiscard]] constexpr auto begin() noexcept -> iterator { return mutable_data(); }

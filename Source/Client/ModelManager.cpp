@@ -304,7 +304,6 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hash
     return bone;
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
 {
     if (bone->AttachedMesh) {

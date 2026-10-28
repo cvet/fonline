@@ -172,7 +172,6 @@ class mdir
 public:
     constexpr mdir() noexcept = default;
     explicit mdir(int32_t angle) noexcept;
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     mdir(hdir dir) noexcept;
 
     [[nodiscard]] constexpr auto operator==(const mdir& other) const noexcept -> bool { return _value == other._value; }

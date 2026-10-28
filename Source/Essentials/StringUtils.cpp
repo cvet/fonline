@@ -69,7 +69,6 @@ auto strex::str() noexcept -> string&&
     return std::move(_s);
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto strex::c_str() noexcept -> const char*
 {
     own_storage();
@@ -1174,8 +1173,6 @@ auto strex::to_wide_char() const noexcept -> wstring
     return result;
 }
 #endif
-
-// ReSharper restore CppInconsistentNaming
 
 // 0xFFFD - Unicode REPLACEMENT CHARACTER
 static constexpr uint32_t UNICODE_BAD_CHAR = 0xFFFD;

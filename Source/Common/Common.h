@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-
 #pragma once
 
 #ifndef FO_PRECOMPILED_HEADER_GUARD

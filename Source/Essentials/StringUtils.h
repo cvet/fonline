@@ -60,7 +60,6 @@ public:
     auto operator=(strvex&&) noexcept -> strvex& = delete;
     constexpr ~strvex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strvex& other) const noexcept -> bool { return _sv == other._sv; }
@@ -195,15 +194,12 @@ public:
     auto operator=(strex&&) noexcept -> strex& = delete;
     constexpr ~strex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&() noexcept;
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strex& other) const noexcept -> bool { return _sv == other._sv; }
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;
     [[nodiscard]] auto strv() const noexcept -> string_view { return strvex::strv(); }
@@ -278,8 +274,6 @@ private:
 };
 static_assert(!std::is_polymorphic_v<strex>);
 
-// ReSharper restore CppInconsistentNaming
-
 namespace utf8
 {
     [[nodiscard]] auto is_valid(uint32_t ucs) noexcept -> bool;
@@ -296,7 +290,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strvex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strvex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);
@@ -307,7 +300,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);

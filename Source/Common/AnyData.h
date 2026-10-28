@@ -60,7 +60,6 @@ public:
     class Value
     {
     public:
-        // ReSharper disable CppNonExplicitConvertingConstructor
         Value(int64_t value) :
             _value(value)
         {
@@ -85,7 +84,6 @@ public:
             _value(safe_alloc::make_unique<Dict>(std::move(value)))
         {
         }
-        // ReSharper restore CppNonExplicitConvertingConstructor
 
         Value() = delete;
         Value(const Value&) = delete;

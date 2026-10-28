@@ -1681,7 +1681,6 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Draw indexed or non-indexed
         if (vk_dbuf->IndCount != 0 && vk_dbuf->CurrentIndexBuffer != VK_NULL_HANDLE) {
             // Bind index buffer and draw indexed
-            // ReSharper disable once CppUnreachableCode
             constexpr auto index_type = sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
             vkCmdBindIndexBuffer(_ctx->CommandBuffer, vk_dbuf->CurrentIndexBuffer, 0, index_type);
 

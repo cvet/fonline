@@ -227,7 +227,6 @@ int main(int argc, char** argv)
 
             // Change executable path, if changed
             if (service != nullptr) {
-                // ReSharper disable once CppLocalVariableMayBeConst
                 alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] = {};
                 auto service_cfg_storage = make_ptr(service_cfg_buf);
                 auto service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();

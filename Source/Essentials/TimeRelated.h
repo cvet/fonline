@@ -61,7 +61,6 @@ public:
     ~timespan() = default;
 
     template<typename T, typename U>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr timespan(const std::chrono::duration<T, U>& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other).count()}
     {
@@ -150,7 +149,6 @@ public:
     auto operator=(nanotime&& other) noexcept -> nanotime& = default;
     ~nanotime() = default;
 
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr nanotime(const steady_time_point& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.time_since_epoch()).count()}
     {

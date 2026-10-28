@@ -86,7 +86,6 @@ public:
         // constructor would suppress for the mutable instantiation
         template<bool OtherConst>
             requires(IsConst && !OtherConst)
-        // ReSharper disable once CppNonExplicitConvertingConstructor
         constexpr basic_iterator(const basic_iterator<OtherConst>& other) noexcept :
             _owner {other._owner},
             _index {other._index}

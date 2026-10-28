@@ -41,7 +41,6 @@
 #include <angelscript.h>
 #include <as_datatype.h>
 #include <as_scriptengine.h>
-// ReSharper disable CppRedundantQualifier
 
 #include "WinApiUndef.inc" // Remove garbage from includes above
 

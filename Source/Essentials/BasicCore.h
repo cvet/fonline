@@ -344,13 +344,11 @@ namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 class string_view_nt : public string_view
 {
 public:
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr string_view_nt(const char* str) noexcept :
         string_view(str)
     {
     }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
@@ -371,7 +369,6 @@ FO_BEGIN_NAMESPACE
 template<size_t N>
 struct fixed_string
 {
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr fixed_string(const char (&s)[N]) noexcept { std::copy_n(s, N, data); }
     constexpr auto operator<=>(const fixed_string&) const noexcept = default;
     [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return data; }

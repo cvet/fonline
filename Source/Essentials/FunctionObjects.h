@@ -228,12 +228,10 @@ public:
     using result_type = R;
 
     move_only_function() noexcept { }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(std::nullptr_t) noexcept { }
 
     template<typename T>
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(T&& target)
     {
         adopt_target<false>(std::forward<T>(target));
@@ -266,9 +264,7 @@ public:
     }
 
     // A copyable wrapper narrows to the move-only one by adopting its target in place, never by wrapping it
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(copyable_function<R(Args...)>&& other) noexcept { steal_from(other); }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(const copyable_function<R(Args...)>& other) { clone_from(other); }
     auto operator=(copyable_function<R(Args...)>&& other) noexcept -> move_only_function&
     {
@@ -388,12 +384,10 @@ public:
     using result_type = R;
 
     copyable_function() noexcept { }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     copyable_function(std::nullptr_t) noexcept { }
 
     template<typename T>
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...> && std::is_copy_constructible_v<std::decay_t<T>>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     copyable_function(T&& target)
     {
         adopt_target<true>(std::forward<T>(target));

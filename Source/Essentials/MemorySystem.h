@@ -91,7 +91,6 @@ public:
 
     safe_allocator() noexcept = default;
     template<typename U>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr safe_allocator(const safe_allocator<U>& other) noexcept
     {
         (void)other;

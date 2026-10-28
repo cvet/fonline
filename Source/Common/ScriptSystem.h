@@ -45,7 +45,6 @@ FO_DECLARE_EXCEPTION(ScriptCoreException);
 FO_DECLARE_EXCEPTION(ScriptCallException);
 FO_DECLARE_EXCEPTION(ScriptCompilerException);
 
-// ReSharper disable CppInconsistentNaming
 enum class ScriptEnum_uint8 : uint8_t
 {
 };
@@ -58,7 +57,6 @@ enum class ScriptEnum_int32 : int32_t
 enum class ScriptEnum_uint32 : uint32_t
 {
 };
-// ReSharper restore CppInconsistentNaming
 
 using GameProperty = ScriptEnum_uint16;
 using PlayerProperty = ScriptEnum_uint16;

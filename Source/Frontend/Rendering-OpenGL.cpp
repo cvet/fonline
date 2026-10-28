@@ -255,7 +255,6 @@ struct OpenGL_Renderer::Context
     GLint UniformOffsetAlignment {1};
     vector<uint8_t> UniformScratch {};
 
-    // ReSharper disable CppInconsistentNaming
     bool OGL_version_2_0 {};
     bool OGL_vertex_buffer_object {};
     bool OGL_framebuffer_object {};
@@ -263,7 +262,6 @@ struct OpenGL_Renderer::Context
     bool OGL_vertex_array_object {};
     bool OGL_uniform_buffer_object {};
     bool OGL_async_readback {};
-    // ReSharper restore CppInconsistentNaming
 };
 
 static auto GetOpenGlContext(nptr<OpenGL_Renderer::Context> ctx) -> ptr<OpenGL_Renderer::Context>
