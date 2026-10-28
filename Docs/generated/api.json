@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2588,
-      "inventory_sha256": "fa9afd1d7fef8a1eb1a191536e9fb8748baea17e6a87ac09057b57b7eefedca3",
+      "symbol_count": 2590,
+      "inventory_sha256": "795294f5ce6cdc76c5b6378b0b135a3f3bf4a2577608513f94bdb7e13df5f104",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,16 +72,16 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2588,
+    "symbol_count": 2590,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 769,
       "event": 121,
-      "method": 1015,
+      "method": 1016,
       "migration-rule": 27,
       "property": 133,
-      "ref-field": 41,
+      "ref-field": 42,
       "ref-method": 28,
       "ref-type": 6,
       "setting": 297,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2587,
+      "experimental": 2589,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2588,
+    "explicit_contract_symbol_count": 2590,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2587,
+      "experimental": 2589,
       "internal": 1
     },
-    "described_symbol_count": 2588,
+    "described_symbol_count": 2590,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -1098,7 +1098,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 83",
+      "signature": "Version 0 0 84",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1120,7 +1120,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "83"
+      "replacement": "84"
     },
     {
       "id": "script.entity.Critter",
@@ -48624,7 +48624,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 993
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -48686,7 +48686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1006
+        "line": 1007
       },
       "contract": {
         "explicit": true,
@@ -48748,7 +48748,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 731
+        "line": 732
       },
       "contract": {
         "explicit": true,
@@ -48810,7 +48810,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 782
+        "line": 783
       },
       "contract": {
         "explicit": true,
@@ -48858,7 +48858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 884
+        "line": 885
       },
       "contract": {
         "explicit": true,
@@ -48906,7 +48906,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1042
+        "line": 1043
       },
       "contract": {
         "explicit": true,
@@ -48961,7 +48961,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 148
+        "line": 149
       },
       "contract": {
         "explicit": true,
@@ -49118,7 +49118,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 313
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -49166,7 +49166,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 900
+        "line": 901
       },
       "contract": {
         "explicit": true,
@@ -49221,7 +49221,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 349
+        "line": 350
       },
       "contract": {
         "explicit": true,
@@ -49283,7 +49283,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 325
+        "line": 326
       },
       "contract": {
         "explicit": true,
@@ -49338,7 +49338,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 393
+        "line": 394
       },
       "contract": {
         "explicit": true,
@@ -49393,7 +49393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 373
+        "line": 374
       },
       "contract": {
         "explicit": true,
@@ -49441,7 +49441,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 411
+        "line": 412
       },
       "contract": {
         "explicit": true,
@@ -49496,7 +49496,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 468
+        "line": 469
       },
       "contract": {
         "explicit": true,
@@ -49572,7 +49572,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 449
+        "line": 450
       },
       "contract": {
         "explicit": true,
@@ -49634,7 +49634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 430
+        "line": 431
       },
       "contract": {
         "explicit": true,
@@ -49689,7 +49689,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 484
+        "line": 485
       },
       "contract": {
         "explicit": true,
@@ -49779,7 +49779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 913
+        "line": 914
       },
       "contract": {
         "explicit": true,
@@ -49834,7 +49834,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 844
+        "line": 845
       },
       "contract": {
         "explicit": true,
@@ -49896,7 +49896,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 837
+        "line": 838
       },
       "contract": {
         "explicit": true,
@@ -49951,7 +49951,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1035
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -49999,7 +49999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 500
+        "line": 501
       },
       "contract": {
         "explicit": true,
@@ -50068,7 +50068,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 812
+        "line": 813
       },
       "contract": {
         "explicit": true,
@@ -50116,7 +50116,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 799
+        "line": 800
       },
       "contract": {
         "explicit": true,
@@ -50164,7 +50164,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 823
+        "line": 824
       },
       "contract": {
         "explicit": true,
@@ -50212,7 +50212,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1077
+        "line": 1080
       },
       "contract": {
         "explicit": true,
@@ -50252,7 +50252,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 242
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -50300,7 +50300,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 891
+        "line": 892
       },
       "contract": {
         "explicit": true,
@@ -50348,7 +50348,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 259
+        "line": 260
       },
       "contract": {
         "explicit": true,
@@ -50396,7 +50396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 276
+        "line": 277
       },
       "contract": {
         "explicit": true,
@@ -50436,7 +50436,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 293
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -50484,7 +50484,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 207
+        "line": 208
       },
       "contract": {
         "explicit": true,
@@ -50524,7 +50524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 516
+        "line": 517
       },
       "contract": {
         "explicit": true,
@@ -50586,7 +50586,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 596
+        "line": 597
       },
       "contract": {
         "explicit": true,
@@ -50655,7 +50655,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 555
+        "line": 556
       },
       "contract": {
         "explicit": true,
@@ -50717,7 +50717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 639
+        "line": 640
       },
       "contract": {
         "explicit": true,
@@ -50779,7 +50779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 674
+        "line": 675
       },
       "contract": {
         "explicit": true,
@@ -50841,7 +50841,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1066
+        "line": 1067
       },
       "contract": {
         "explicit": true,
@@ -50889,7 +50889,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 179
+        "line": 180
       },
       "contract": {
         "explicit": true,
@@ -50929,7 +50929,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 928
+        "line": 929
       },
       "contract": {
         "explicit": true,
@@ -50969,7 +50969,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 221
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -51009,7 +51009,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 738
+        "line": 739
       },
       "contract": {
         "explicit": true,
@@ -51049,7 +51049,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 960
+        "line": 961
       },
       "contract": {
         "explicit": true,
@@ -51097,7 +51097,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 971
+        "line": 972
       },
       "contract": {
         "explicit": true,
@@ -51145,7 +51145,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 921
+        "line": 922
       },
       "contract": {
         "explicit": true,
@@ -51193,7 +51193,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 949
+        "line": 950
       },
       "contract": {
         "explicit": true,
@@ -51241,7 +51241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 982
+        "line": 983
       },
       "contract": {
         "explicit": true,
@@ -51289,7 +51289,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 193
+        "line": 194
       },
       "contract": {
         "explicit": true,
@@ -51329,7 +51329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 745
+        "line": 746
       },
       "contract": {
         "explicit": true,
@@ -51384,7 +51384,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 757
+        "line": 758
       },
       "contract": {
         "explicit": true,
@@ -51446,7 +51446,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 712
+        "line": 713
       },
       "contract": {
         "explicit": true,
@@ -51515,7 +51515,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 165
+        "line": 166
       },
       "contract": {
         "explicit": true,
@@ -51555,7 +51555,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 775
+        "line": 776
       },
       "contract": {
         "explicit": true,
@@ -51595,7 +51595,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1023
+        "line": 1024
       },
       "contract": {
         "explicit": true,
@@ -51650,7 +51650,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 172
+        "line": 173
       },
       "contract": {
         "explicit": true,
@@ -51719,7 +51719,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 235
+        "line": 236
       },
       "contract": {
         "explicit": true,
@@ -51767,7 +51767,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1059
+        "line": 1060
       },
       "contract": {
         "explicit": true,
@@ -51815,7 +51815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 214
+        "line": 215
       },
       "contract": {
         "explicit": true,
@@ -51863,7 +51863,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 186
+        "line": 187
       },
       "contract": {
         "explicit": true,
@@ -51911,7 +51911,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 200
+        "line": 201
       },
       "contract": {
         "explicit": true,
@@ -51959,7 +51959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 851
+        "line": 852
       },
       "contract": {
         "explicit": true,
@@ -52035,7 +52035,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 858
+        "line": 859
       },
       "contract": {
         "explicit": true,
@@ -52090,7 +52090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 228
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -77894,7 +77894,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1539
+        "line": 1558
       },
       "contract": {
         "explicit": true,
@@ -77962,7 +77962,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 343
+        "line": 362
       },
       "contract": {
         "explicit": true,
@@ -78323,6 +78323,60 @@
       ]
     },
     {
+      "id": "script.method.server.Game.CreateItem#95d49151f6d1acf8",
+      "family_id": "script.method.server.Game.CreateItem",
+      "kind": "method",
+      "name": "CreateItem",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "Item Game.CreateItem(hstring protoId, ItemProperty=>any props)",
+      "description": "Creates an item with mutable property overrides applied before OnItemInit and returns it with synchronization cover",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 343
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "Item",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "protoId",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "props",
+          "type": "ItemProperty=>any",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.CreateItem#ba49673cbfedbc07",
       "family_id": "script.method.server.Game.CreateItem",
       "kind": "method",
@@ -78387,7 +78441,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 623
+        "line": 642
       },
       "contract": {
         "explicit": true,
@@ -78448,7 +78502,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 608
+        "line": 627
       },
       "contract": {
         "explicit": true,
@@ -78502,7 +78556,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 571
+        "line": 590
       },
       "contract": {
         "explicit": true,
@@ -78549,7 +78603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 563
+        "line": 582
       },
       "contract": {
         "explicit": true,
@@ -78596,7 +78650,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 579
+        "line": 598
       },
       "contract": {
         "explicit": true,
@@ -78650,7 +78704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 587
+        "line": 606
       },
       "contract": {
         "explicit": true,
@@ -78704,7 +78758,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 709
+        "line": 728
       },
       "contract": {
         "explicit": true,
@@ -78743,7 +78797,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1235
+        "line": 1254
       },
       "contract": {
         "explicit": true,
@@ -78818,7 +78872,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1255
+        "line": 1274
       },
       "contract": {
         "explicit": true,
@@ -78893,7 +78947,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1050
+        "line": 1069
       },
       "contract": {
         "explicit": true,
@@ -78940,7 +78994,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1061
+        "line": 1080
       },
       "contract": {
         "explicit": true,
@@ -78987,7 +79041,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1081
+        "line": 1100
       },
       "contract": {
         "explicit": true,
@@ -79034,7 +79088,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1148
+        "line": 1167
       },
       "contract": {
         "explicit": true,
@@ -79088,7 +79142,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1127
+        "line": 1146
       },
       "contract": {
         "explicit": true,
@@ -79142,7 +79196,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1072
+        "line": 1091
       },
       "contract": {
         "explicit": true,
@@ -79189,7 +79243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1113
+        "line": 1132
       },
       "contract": {
         "explicit": true,
@@ -79243,7 +79297,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1099
+        "line": 1118
       },
       "contract": {
         "explicit": true,
@@ -79297,7 +79351,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1275
+        "line": 1294
       },
       "contract": {
         "explicit": true,
@@ -79358,7 +79412,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1312
+        "line": 1331
       },
       "contract": {
         "explicit": true,
@@ -79419,7 +79473,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1453
+        "line": 1472
       },
       "contract": {
         "explicit": true,
@@ -79473,7 +79527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1469
+        "line": 1488
       },
       "contract": {
         "explicit": true,
@@ -79527,7 +79581,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1202
+        "line": 1221
       },
       "contract": {
         "explicit": true,
@@ -79588,7 +79642,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1169
+        "line": 1188
       },
       "contract": {
         "explicit": true,
@@ -79649,7 +79703,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1439
+        "line": 1458
       },
       "contract": {
         "explicit": true,
@@ -79717,7 +79771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1446
+        "line": 1465
       },
       "contract": {
         "explicit": true,
@@ -79785,7 +79839,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1425
+        "line": 1444
       },
       "contract": {
         "explicit": true,
@@ -79853,7 +79907,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1432
+        "line": 1451
       },
       "contract": {
         "explicit": true,
@@ -79921,7 +79975,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1418
+        "line": 1437
       },
       "contract": {
         "explicit": true,
@@ -79989,7 +80043,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1411
+        "line": 1430
       },
       "contract": {
         "explicit": true,
@@ -80057,7 +80111,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1397
+        "line": 1416
       },
       "contract": {
         "explicit": true,
@@ -80125,7 +80179,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1404
+        "line": 1423
       },
       "contract": {
         "explicit": true,
@@ -80193,7 +80247,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 531
+        "line": 550
       },
       "contract": {
         "explicit": true,
@@ -80240,7 +80294,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 546
+        "line": 565
       },
       "contract": {
         "explicit": true,
@@ -80287,7 +80341,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 491
+        "line": 510
       },
       "contract": {
         "explicit": true,
@@ -80334,7 +80388,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 479
+        "line": 498
       },
       "contract": {
         "explicit": true,
@@ -80381,7 +80435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 505
+        "line": 524
       },
       "contract": {
         "explicit": true,
@@ -80428,7 +80482,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 517
+        "line": 536
       },
       "contract": {
         "explicit": true,
@@ -80475,7 +80529,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 644
+        "line": 663
       },
       "contract": {
         "explicit": true,
@@ -80522,7 +80576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 656
+        "line": 675
       },
       "contract": {
         "explicit": true,
@@ -80618,7 +80672,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1001
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -80667,7 +80721,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 981
+        "line": 1000
       },
       "contract": {
         "explicit": true,
@@ -80714,7 +80768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1493
+        "line": 1512
       },
       "contract": {
         "explicit": true,
@@ -80761,7 +80815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1512
+        "line": 1531
       },
       "contract": {
         "explicit": true,
@@ -80808,7 +80862,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1485
+        "line": 1504
       },
       "contract": {
         "explicit": true,
@@ -80847,7 +80901,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1846
+        "line": 1865
       },
       "contract": {
         "explicit": true,
@@ -80888,7 +80942,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 668
+        "line": 687
       },
       "contract": {
         "explicit": true,
@@ -80935,7 +80989,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1883
+        "line": 1902
       },
       "contract": {
         "explicit": true,
@@ -80976,7 +81030,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 692
+        "line": 711
       },
       "contract": {
         "explicit": true,
@@ -81457,7 +81511,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 680
+        "line": 699
       },
       "contract": {
         "explicit": true,
@@ -81504,7 +81558,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1855
+        "line": 1874
       },
       "contract": {
         "explicit": true,
@@ -81543,7 +81597,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1803
+        "line": 1822
       },
       "contract": {
         "explicit": true,
@@ -81631,7 +81685,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1890
+        "line": 1909
       },
       "contract": {
         "explicit": true,
@@ -81670,7 +81724,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1898
+        "line": 1917
       },
       "contract": {
         "explicit": true,
@@ -81711,7 +81765,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 860
+        "line": 879
       },
       "contract": {
         "explicit": true,
@@ -81760,7 +81814,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 876
+        "line": 895
       },
       "contract": {
         "explicit": true,
@@ -81816,7 +81870,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 868
+        "line": 887
       },
       "contract": {
         "explicit": true,
@@ -81872,7 +81926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 885
+        "line": 904
       },
       "contract": {
         "explicit": true,
@@ -81926,7 +81980,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1869
+        "line": 1888
       },
       "contract": {
         "explicit": true,
@@ -81967,7 +82021,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 901
+        "line": 920
       },
       "contract": {
         "explicit": true,
@@ -82008,7 +82062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 936
+        "line": 955
       },
       "contract": {
         "explicit": true,
@@ -82057,7 +82111,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 916
+        "line": 935
       },
       "contract": {
         "explicit": true,
@@ -82106,7 +82160,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 963
+        "line": 982
       },
       "contract": {
         "explicit": true,
@@ -82162,7 +82216,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 784
+        "line": 803
       },
       "contract": {
         "explicit": true,
@@ -82218,7 +82272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 776
+        "line": 795
       },
       "contract": {
         "explicit": true,
@@ -82267,7 +82321,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 792
+        "line": 811
       },
       "contract": {
         "explicit": true,
@@ -82321,7 +82375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1876
+        "line": 1895
       },
       "contract": {
         "explicit": true,
@@ -82360,7 +82414,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 809
+        "line": 828
       },
       "contract": {
         "explicit": true,
@@ -82407,7 +82461,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 801
+        "line": 820
       },
       "contract": {
         "explicit": true,
@@ -82446,7 +82500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 831
+        "line": 850
       },
       "contract": {
         "explicit": true,
@@ -82495,7 +82549,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1028
+        "line": 1047
       },
       "contract": {
         "explicit": true,
@@ -82536,7 +82590,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 764
+        "line": 783
       },
       "contract": {
         "explicit": true,
@@ -82583,7 +82637,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1862
+        "line": 1881
       },
       "contract": {
         "explicit": true,
@@ -82622,7 +82676,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1837
+        "line": 1856
       },
       "contract": {
         "explicit": true,
@@ -82661,7 +82715,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1566
+        "line": 1585
       },
       "contract": {
         "explicit": true,
@@ -82708,7 +82762,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1043
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -82747,7 +82801,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1557
+        "line": 1576
       },
       "contract": {
         "explicit": true,
@@ -82794,7 +82848,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1591
+        "line": 1610
       },
       "contract": {
         "explicit": true,
@@ -82841,7 +82895,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1812
+        "line": 1831
       },
       "contract": {
         "explicit": true,
@@ -82888,7 +82942,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1584
+        "line": 1603
       },
       "contract": {
         "explicit": true,
@@ -83050,7 +83104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1821
+        "line": 1840
       },
       "contract": {
         "explicit": true,
@@ -83089,7 +83143,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 747
+        "line": 766
       },
       "contract": {
         "explicit": true,
@@ -83143,7 +83197,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 718
+        "line": 737
       },
       "contract": {
         "explicit": true,
@@ -83190,7 +83244,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 732
+        "line": 751
       },
       "contract": {
         "explicit": true,
@@ -83237,7 +83291,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 383
+        "line": 402
       },
       "contract": {
         "explicit": true,
@@ -83298,7 +83352,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 367
+        "line": 386
       },
       "contract": {
         "explicit": true,
@@ -83359,7 +83413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 356
+        "line": 375
       },
       "contract": {
         "explicit": true,
@@ -83413,7 +83467,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 394
+        "line": 413
       },
       "contract": {
         "explicit": true,
@@ -83467,7 +83521,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 452
+        "line": 471
       },
       "contract": {
         "explicit": true,
@@ -83528,7 +83582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 421
+        "line": 440
       },
       "contract": {
         "explicit": true,
@@ -83589,7 +83643,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1531
+        "line": 1550
       },
       "contract": {
         "explicit": true,
@@ -83638,7 +83692,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1683
+        "line": 1702
       },
       "contract": {
         "explicit": true,
@@ -83688,7 +83742,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1715
+        "line": 1734
       },
       "contract": {
         "explicit": true,
@@ -83752,7 +83806,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1737
+        "line": 1756
       },
       "contract": {
         "explicit": true,
@@ -83802,7 +83856,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1697
+        "line": 1716
       },
       "contract": {
         "explicit": true,
@@ -83856,7 +83910,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1787
+        "line": 1806
       },
       "contract": {
         "explicit": true,
@@ -83898,7 +83952,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1762
+        "line": 1781
       },
       "contract": {
         "explicit": true,
@@ -83947,7 +84001,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1795
+        "line": 1814
       },
       "contract": {
         "explicit": true,
@@ -83986,7 +84040,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1650
+        "line": 1669
       },
       "contract": {
         "explicit": true,
@@ -84040,7 +84094,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1640
+        "line": 1659
       },
       "contract": {
         "explicit": true,
@@ -84089,7 +84143,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1666
+        "line": 1685
       },
       "contract": {
         "explicit": true,
@@ -84183,7 +84237,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1829
+        "line": 1848
       },
       "contract": {
         "explicit": true,
@@ -96416,6 +96470,40 @@
       "mutability": "mutable"
     },
     {
+      "id": "script.ref-field.client.MapSpriteHolder.Elevation",
+      "family_id": "script.ref-field.client.MapSpriteHolder.Elevation",
+      "kind": "ref-field",
+      "name": "Elevation",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "MapSpriteHolder",
+      "signature": "int16 MapSpriteHolder.Elevation",
+      "description": "Vertical map elevation applied at attachment, independently of the sprite pixel offset",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/MapSprite.h",
+        "line": 233
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.ref-type.client.MapSpriteHolder",
+      "type": "int16",
+      "mutability": "mutable"
+    },
+    {
       "id": "script.ref-field.client.MapSpriteHolder.Hex",
       "family_id": "script.ref-field.client.MapSpriteHolder.Hex",
       "kind": "ref-field",
@@ -98279,6 +98367,8 @@
         "ProtoId",
         ",",
         "Offset",
+        ",",
+        "Elevation",
         ",",
         "IsFlat",
         ",",

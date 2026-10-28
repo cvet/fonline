@@ -159,6 +159,8 @@ A `Properties` instance can have base properties. This is used heavily by protot
 - `StoreData()` can include or exclude protected data depending on sync/persistence needs;
 - `RemoveSyncedOverlayEntries()` and related overlay helpers keep replicated state compact.
 
+`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable, and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
+
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
 
 Proto-derived overlays keep the dense property index lazy: small overlays use a linear scan over their sorted entries, and `_overlayEntryIndex` is built only after the overlay entry count reaches the engine threshold. This avoids allocating an index sized to every registered property for the common low-entry overlay case while keeping dense lookup for larger overlays.

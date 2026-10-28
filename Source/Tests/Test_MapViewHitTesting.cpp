@@ -77,6 +77,12 @@ namespace
             proto.SetIsTile(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
         });
+        items.emplace_back("HitTestRoof", [&proto_engine](ProtoItem& proto) {
+            proto.SetIsTile(true);
+            proto.SetIsRoofTile(true);
+            proto.SetNoBlock(true);
+            proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
+        });
         source->AddFile("HitTestItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), items));
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
 
@@ -313,6 +319,56 @@ TEST_CASE("MapViewPathfindingUsesProjectObstacleProperty")
 
     cr->SetPathfindingObstacle(false);
     check_path(true);
+}
+
+TEST_CASE("MapViewDynamicRoofGroupsFollowCoverageChanges")
+{
+    GlobalSettings settings(false);
+    settings.ApplyDefaultSettings();
+    settings.ApplyAutoSettings();
+    BakerTests::ApplySelfContainedClientSettings(settings);
+    BakerTests::OverrideSetting(settings.Common.Packaged, false);
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
+    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    map->EnableMapperMode();
+    hstring roof_pid = client->Hashes.to_hashed_string("HitTestRoof");
+    int16_t step = numeric_cast<int16_t>(settings.Geometry.MapTileStep);
+
+    for (int16_t parity = 0; parity < 2; parity++) {
+        mpos left {static_cast<int16_t>(6 + parity), static_cast<int16_t>(6 + parity)};
+        mpos middle {static_cast<int16_t>(left.x + step), left.y};
+        mpos right {static_cast<int16_t>(middle.x + step), left.y};
+        auto a = map->AddMapperItem(roof_pid, left, nullptr);
+        auto b = map->AddMapperItem(roof_pid, middle, nullptr);
+        auto c = map->AddMapperItem(roof_pid, right, nullptr);
+        map->SetHiddenRoof(left);
+        REQUIRE(map->GetField(left).RoofNum != 0);
+        CHECK(map->GetField(left).RoofNum == map->GetField(right).RoofNum);
+        CHECK(map->GetHiddenRoofNum() == map->GetField(left).RoofNum);
+
+        map->DestroyItem(b);
+        map->EnsureRoofNums();
+        CHECK(map->GetField(middle).RoofNum == 0);
+        CHECK(map->GetField(left).RoofNum != map->GetField(right).RoofNum);
+        CHECK(map->GetHiddenRoofNum() == map->GetField(left).RoofNum);
+
+        b = map->AddMapperItem(roof_pid, middle, nullptr);
+        map->EnsureRoofNums();
+        CHECK(map->GetField(left).RoofNum == map->GetField(right).RoofNum);
+        map->MoveItem(b, mpos {middle.x, static_cast<int16_t>(middle.y + 3 * step)});
+        map->EnsureRoofNums();
+        CHECK(map->GetField(middle).RoofNum == 0);
+        CHECK(map->GetField(left).RoofNum != map->GetField(right).RoofNum);
+        map->DestroyItem(a);
+        CHECK(map->GetHiddenRoofNum() == 0);
+        map->DestroyItem(b);
+        map->DestroyItem(c);
+        map->EnsureRoofNums();
+        CHECK(map->GetField(right).RoofNum == 0);
+    }
 }
 
 FO_END_NAMESPACE

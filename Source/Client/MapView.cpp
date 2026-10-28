@@ -415,7 +415,30 @@ void MapView::LoadStaticData()
 
     reader.verify_end();
 
-    // Index roof
+    EnsureRoofNums();
+    RebuildMapNow();
+}
+
+void MapView::EnsureRoofNums()
+{
+    FO_TRACE_ZONE(Map);
+
+    if (!_roofNumsDirty) {
+        return;
+    }
+
+    _roofNumsDirty = false;
+
+    for (int16_t hx = 0; hx < _mapSize.width; hx++) {
+        for (int16_t hy = 0; hy < _mapSize.height; hy++) {
+            mpos hex(hx, hy);
+
+            if (_hexField->GetCellForReading(hex).RoofNum != 0) {
+                _hexField->GetCellForWriting(hex)->RoofNum = 0;
+            }
+        }
+    }
+
     auto mark_roof_num = [this](ipos32 raw_hex, int32_t num) {
         std::stack<ipos32, vector<ipos32>> next_raw_hexes;
         next_raw_hexes.push(raw_hex);
@@ -459,7 +482,11 @@ void MapView::LoadStaticData()
         }
     }
 
-    RebuildMapNow();
+    if (_hiddenRoofHex) {
+        SetHiddenRoof(*_hiddenRoofHex);
+    }
+
+    RebuildMap();
 }
 
 void MapView::ApplyStaticItemRemovals()
@@ -496,6 +523,8 @@ void MapView::ApplyStaticItemRemovals()
 void MapView::Process()
 {
     FO_TRACE_ZONE(Map);
+
+    EnsureRoofNums();
 
     // Critters
     {
@@ -1125,6 +1154,8 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
 void MapView::RebuildMapNow()
 {
     FO_TRACE_ZONE(Map);
+
+    EnsureRoofNums();
 
     HideHexLines(0, _hVisible);
     FO_VERIFY_AND_THROW(!_mapSprites.HasActiveSprites(), "Map sprites must be cleared before reinitializing the view");
@@ -2081,8 +2112,17 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
     FO_VERIFY_AND_THROW(points.size() % 3 == 0, "Client map border polygon points must be grouped into render triangles", GetId(), points.size(), 3);
 }
 
+auto MapView::GetHiddenRoofNum() -> int32_t
+{
+    EnsureRoofNums();
+    return _hiddenRoofNum;
+}
+
 void MapView::SetHiddenRoof(mpos hex)
 {
+    _hiddenRoofHex = hex;
+    EnsureRoofNums();
+
     // The lattice may be authored on any parity, so instead of the even-snapped hex this scans the
     // MapTileStep block below-and-left, which contains the covering hex whichever parity was used
     int32_t step = _engine->Settings->Geometry.MapTileStep;
@@ -2148,6 +2188,7 @@ void MapView::RecacheHexFlags(mpos hex)
 
 void MapView::RecacheHexFlags(ptr<Field> field)
 {
+    bool had_roof = field->HasRoof;
     field->HasWall = false;
     field->HasTransparentWall = false;
     field->HasScenery = false;
@@ -2203,6 +2244,7 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     }
 
     field->MovableWithGag = field->MovableWithGag && field->MoveBlocked;
+    _roofNumsDirty = _roofNumsDirty || had_roof != field->HasRoof;
 }
 
 void MapView::RecacheScrollBlocks()

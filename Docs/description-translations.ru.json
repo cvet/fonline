@@ -1082,6 +1082,10 @@
           "source_sha256": "ebd419983111f7906eff2205cb0db3ef0b2229bcfefbde6d510b415dc1d2fb1f",
           "translation": "Новый вход той же учётной записи заменил этот сеанс."
         },
+        "/symbols/@id=script.enum-value.DisconnectReason.RpcRuntimeLimit/description": {
+          "source_sha256": "2edbefcb229d2c86c2847671939ce21fd2313ba168bfd50545f2c4f61eff7e8c",
+          "translation": "Входящий RPC или готовая входная очередь превысили настроенный предел времени выполнения."
+        },
         "/symbols/@id=script.enum-value.DisconnectReason.ScriptRequest/description": {
           "source_sha256": "9d53323ab89205ed876645b867fd9475a609890bf0b8ed501beddea97d595e53",
           "translation": "Серверный скрипт вызвал Player.HardDisconnect()."
@@ -4646,6 +4650,26 @@
           "source_sha256": "824be16c41c9b423790495891e9f6d306d91b6580db59f79e38189543b39ef44",
           "translation": "Останавливает текущее клиентское перемещение криттера на карте; выбрасывает исключение, если криттер не находится на загруженной карте."
         },
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%233032339c32e34b9d/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23417e7527b8152349/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
         "/symbols/@id=script.method.client.Entity.RepeatTimeEvent%2328154675b58100aa/description": {
           "source_sha256": "e77aa37addb49c72b050667f14e600cc1d1f4465538f18cd6b8cb103cf0390ed",
           "translation": "Задает интервал повтора события с этим идентификатором и перепланирует его следующее срабатывание от текущего момента; ничего не делает, если событие отсутствует."
@@ -5681,6 +5705,26 @@
         "/symbols/@id=script.method.common.Game.CheckProtoMap/description": {
           "source_sha256": "35c1249228e398b1ab9c790a553f983f27416fa5b4fe5ed1fef9449b1fc737cc",
           "translation": "Возвращает, зарегистрирован ли прототип карты с заданным идентификатором."
+        },
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%238ab623cddbdc14b4/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23a4ca2eed35c3f8a4/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23c565a82cf065f89e/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
+        },
+        "/symbols/@id=script.method.common.Game.CountTimeEvent%23fcb2bac4ef3be7f7/description": {
+          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
+          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
         },
         "/symbols/@id=script.method.common.Game.CurrentLanguage/description": {
           "source_sha256": "f18efaaf80322525d0ca917530b0bbe5c132cc7a8e0ba7fb89695dc49c69b6a6",
@@ -7430,6 +7474,26 @@
           "source_sha256": "3068db6838f7662e48b8ee4811a59573ee1fc301496fb10682813ddcb1a7dc50",
           "translation": "SyncScope: требует self, исходную карту при наличии размещения, целевую карту и целевую локацию; скриптам следует использовать Sync::LockForTransferToMap(self, map)."
         },
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%233032339c32e34b9d/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
+        },
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23417e7527b8152349/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
+        },
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
+        },
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
+        },
+        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
+          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
+          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
+        },
         "/symbols/@id=script.method.server.Entity.GetRefCount/description": {
           "source_sha256": "27650121b0c576045ec40a6189271d610b143de37a683bee73cb1cc5dafa2923",
           "translation": "Диагностика утечки ссылок: учитываются каждая script-обёртка и каждый активный нативный pin, поэтому значима только разница, измеренная вокруг контролируемой последовательности вызовов."
@@ -7585,6 +7649,10 @@
         "/symbols/@id=script.method.server.Game.CreateItem%236029176d1f44719d/description": {
           "source_sha256": "5a340df363ae0caa4d0223191d0b246e5342992c2321217b2473318380c67aaf",
           "translation": "Создаёт предмет по указанному дескриптору прототипа и возвращает его с покрытием синхронизации."
+        },
+        "/symbols/@id=script.method.server.Game.CreateItem%2395d49151f6d1acf8/description": {
+          "source_sha256": "6d6925ec794aa43c6a821b53ed3d2e1a048568c6dab908007a3bc38939926ce3",
+          "translation": "Создаёт предмет с изменяемыми переопределениями свойств до OnItemInit и возвращает его с покрытием синхронизации"
         },
         "/symbols/@id=script.method.server.Game.CreateItem%23ba49673cbfedbc07/description": {
           "source_sha256": "8668419e3e6c962eba132603f26f7a07cf05aa92bc51202f1584b19a9656ef3c",
@@ -7945,6 +8013,14 @@
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
           "source_sha256": "26f6d7d297b25593b56e43b430ecb0e8c24e54c437df8df2452632abf8c87cae",
           "translation": "SyncScope: только читает языковой пакет; покрытие сущности не требуется."
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23e4b9bdc5bdeb7919/description": {
+          "source_sha256": "aab4e9891b8975000d2347719aef6e119afb435b8aa372ed23cb9a91da44c1af",
+          "translation": "SyncScope: вновь загруженный криттер захватывается до публикации и остаётся покрытым при возврате"
+        },
+        "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
+          "source_sha256": "e8fdf0cf39290e6fc1aaf91f1bff3f7be1ac43ac61f91641ba5e557dc1eb4cc1",
+          "translation": "SyncScope: требуется покрытие целевой карты; вновь восстановленный криттер захватывается до публикации"
         },
         "/symbols/@id=script.method.server.Game.Lock/description": {
           "source_sha256": "64a25b440f2591e93a0e417113f5918ad7f7b8637487f4799bcfbb77c2ec1699",
@@ -9122,6 +9198,10 @@
           "source_sha256": "bf909dec6a1fc9d6da5f9bc3c597b06796a5ca59e0ecd54b2cdaa5592862d7fe",
           "translation": "Точный порядок внутри DrawOrder, используемый при пустом ProtoId."
         },
+        "/symbols/@id=script.ref-field.client.MapSpriteHolder.Elevation/description": {
+          "source_sha256": "ddafc3d7a962132eeecbb781391812899ba90484c1e0fa5f56be07c2c15af953",
+          "translation": "Вертикальное смещение на карте, применяемое при прикреплении независимо от смещения спрайта в пикселях"
+        },
         "/symbols/@id=script.ref-field.client.MapSpriteHolder.Hex/description": {
           "source_sha256": "ca6b06b6b793f657fc61139cafe151036b6a0c98be2429d1aebc1fb5b488391d",
           "translation": "Гекс карты, используемый как якорь спрайта и точка проверки видимости."
@@ -9790,6 +9870,10 @@
           "source_sha256": "4d4135dc3ab09b95118997126d03ec157241d2074093ff54250c4c42092c43cf",
           "translation": "Имя пользователя proxy"
         },
+        "/symbols/@id=setting.client.ClientNetwork.RequireInterthreadTransport/description": {
+          "source_sha256": "d97ac5d8fbe1a7b25c26abab7fdec01a1c9d8f552696362982f7b6a3a388e74c",
+          "translation": "Если true, отсутствие внутрипроцессного listener отклоняет подключение вместо попыток UDP/TCP"
+        },
         "/symbols/@id=setting.client.ClientNetwork.ServerHost/description": {
           "source_sha256": "0c6680f7bfb8df70a10762372a852f08622c484ec3ea0b9682942df1efea66a7",
           "translation": "Адрес хоста сервера"
@@ -10026,6 +10110,10 @@
           "source_sha256": "c5f0bcdce449a6108e365ad6a097523424836f7fc952d408a832cef7b52b0d7b",
           "translation": "Если true, эффекты Direct3D, кроме модельных, также содержат код для уровня 9.3, а сборка без 3D принимает устройства feature level 9.3; эффект, не укладывающийся в уровень 9.3, прерывает запекание"
         },
+        "/symbols/@id=setting.common.Baking.FilterResources/description": {
+          "source_sha256": "c5c4c0f81be21df276e88fb9bc934209ee82be2a95fc4012acc3b597bcf49a78",
+          "translation": "Если true, пакеты включают только необходимые ресурсы по типизированным корням и runtime-зависимостям; если false, включаются все доступные выходы текущих baker-ов"
+        },
         "/symbols/@id=setting.common.Baking.ForceBaking/description": {
           "source_sha256": "4db6ccbe94bccb8b5aaada22144eec3f24de082096ddf1fad3825ff7c38c1883",
           "translation": "Если true, принудительно запекаются все пакеты"
@@ -10093,6 +10181,10 @@
         "/symbols/@id=setting.common.Common.GameVersion/description": {
           "source_sha256": "21b6c6a6ccd530ca9f1b91014c55e19d66336de1e4b39ce8391fb016542532c6",
           "translation": "Версия игры, используемая в логах и заголовке окна"
+        },
+        "/symbols/@id=setting.common.Common.NonInteractive/description": {
+          "source_sha256": "d06b070108556117ed6ca74002d367999efdcfa2428647c1e386654e6291e0ce",
+          "translation": "При True системные окна ошибок записывают сообщение в лог и запрашивают завершение с ошибкой без ожидания пользовательского ввода."
         },
         "/symbols/@id=setting.common.Common.Packaged/description": {
           "source_sha256": "ce8c99725bab653a35c82f3c3fc3c6a5ea92b9cd34d1c0cdc9a3312b4559d2d3",
@@ -10798,6 +10890,10 @@
           "source_sha256": "5e83f40d54608067eb789080a7392ba3cfb14d2418a6c43f567ca003954e887b",
           "translation": "Максимальное число сообщений, извлекаемых из одного соединения за проход задания worker-а (0 = без ограничения)"
         },
+        "/symbols/@id=setting.server.ServerNetwork.MaxPendingRemoteCalls/description": {
+          "source_sha256": "422385a2d0058c78af5fed254604f0a6b169d731033a0e4552a5900827b2fada",
+          "translation": "Число одновременно принятых обработчиков RPC на соединение; следующий вызов отключает клиента (0 = без ограничения)."
+        },
         "/symbols/@id=setting.server.ServerNetwork.MaxPlayers/description": {
           "source_sha256": "ad0b40cccc89c090046777b0a7244e3e320502281206d088671be349d3ab88d9",
           "translation": "Максимальное число одновременно вошедших игроков (0 = без ограничения); сверх лимита новые соединения отклоняются при accept"
@@ -10818,98 +10914,6 @@
           "source_sha256": "4093000d0f4cf919d3953312155fdbec58477fa9db1a5d574f31bff3f2258f4c",
           "translation": "Если true, listener UDP без ответа отбрасывает входящие пакеты Connect, чтобы клиенты перешли на TCP; предназначено для отладки"
         },
-        "/symbols/@id=setting.server.ServerNetwork.UpdateFilesInMemory/description": {
-          "source_sha256": "9b6391264a204d9b382df76c411e871aee19babc3c0518090d8c8bef2925270e",
-          "translation": "Если true, файлы updater-а отдаются из памяти, иначе с диска"
-        },
-        "/symbols/@id=setting.server.ServerNetwork.WssCertificate/description": {
-          "source_sha256": "bc5f837071cf65677490231703f54f00cd3a0f9805ec11517d1713818c8c3fe2",
-          "translation": "Сертификат защищенного WebSocket"
-        },
-        "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
-          "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
-          "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.server.Game.LoadCritter%23e4b9bdc5bdeb7919/description": {
-          "source_sha256": "aab4e9891b8975000d2347719aef6e119afb435b8aa372ed23cb9a91da44c1af",
-          "translation": "SyncScope: вновь загруженный криттер захватывается до публикации и остаётся покрытым при возврате"
-        },
-        "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
-          "source_sha256": "e8fdf0cf39290e6fc1aaf91f1bff3f7be1ac43ac61f91641ba5e557dc1eb4cc1",
-          "translation": "SyncScope: требуется покрытие целевой карты; вновь восстановленный криттер захватывается до публикации"
-        },
-        "/symbols/@id=setting.client.ClientNetwork.RequireInterthreadTransport/description": {
-          "source_sha256": "d97ac5d8fbe1a7b25c26abab7fdec01a1c9d8f552696362982f7b6a3a388e74c",
-          "translation": "Если true, отсутствие внутрипроцессного listener отклоняет подключение вместо попыток UDP/TCP"
-        },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%233032339c32e34b9d/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23417e7527b8152349/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.client.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%238ab623cddbdc14b4/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23a4ca2eed35c3f8a4/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23c565a82cf065f89e/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23db3b98741c5df44b/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.common.Game.CountTimeEvent%23fcb2bac4ef3be7f7/description": {
-          "source_sha256": "356cb69f440e68c4cc103e016c616bac260f40911423bd001852f614e957f5c4",
-          "translation": "Подсчитывает подходящие зарегистрированные события времени; excludeExecuting исключает выполняющиеся callback"
-        },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%233032339c32e34b9d/description": {
-          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
-          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
-        },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23417e7527b8152349/description": {
-          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
-          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
-        },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%2345d21a68801eb4f0/description": {
-          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
-          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
-        },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%237ed3553b71048a0d/description": {
-          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
-          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
-        },
-        "/symbols/@id=script.method.server.Entity.CountTimeEvent%23db3b98741c5df44b/description": {
-          "source_sha256": "bcddd4bc8a0899179f6aa4311c4807d0aa123a0c20fdf4553d0197ebfb1e7cc0",
-          "translation": "SyncScope: требуется self; подсчитывает зарегистрированные записи, по выбору исключая выполняющиеся callback; покрытие не меняется"
-        },
-        "/symbols/@id=script.enum-value.DisconnectReason.RpcRuntimeLimit/description": {
-          "source_sha256": "2edbefcb229d2c86c2847671939ce21fd2313ba168bfd50545f2c4f61eff7e8c",
-          "translation": "Входящий RPC или готовая входная очередь превысили настроенный предел времени выполнения."
-        },
-        "/symbols/@id=setting.server.ServerNetwork.MaxPendingRemoteCalls/description": {
-          "source_sha256": "422385a2d0058c78af5fed254604f0a6b169d731033a0e4552a5900827b2fada",
-          "translation": "Число одновременно принятых обработчиков RPC на соединение; следующий вызов отключает клиента (0 = без ограничения)."
-        },
         "/symbols/@id=setting.server.ServerNetwork.RemoteCallDisconnectTimeMs/description": {
           "source_sha256": "8695ab76071e643d71b208f5497ded0561523e124182ec36bb5a5b2d259e22aa",
           "translation": "Возраст незавершённых RPC или готовых входных фреймов для отключения клиента (0 = отключено)."
@@ -10922,13 +10926,17 @@
           "source_sha256": "f25a0430bdca29b47f86c17684b4d68e0413c4babf0e985eabd522d30112ad44",
           "translation": "Возраст незавершённых RPC или готовых входных фреймов для предупреждения (0 = отключено)."
         },
-        "/symbols/@id=setting.common.Common.NonInteractive/description": {
-          "source_sha256": "d06b070108556117ed6ca74002d367999efdcfa2428647c1e386654e6291e0ce",
-          "translation": "При True системные окна ошибок записывают сообщение в лог и запрашивают завершение с ошибкой без ожидания пользовательского ввода."
+        "/symbols/@id=setting.server.ServerNetwork.UpdateFilesInMemory/description": {
+          "source_sha256": "9b6391264a204d9b382df76c411e871aee19babc3c0518090d8c8bef2925270e",
+          "translation": "Если true, файлы updater-а отдаются из памяти, иначе с диска"
         },
-        "/symbols/@id=setting.common.Baking.FilterResources/description": {
-          "source_sha256": "c5c4c0f81be21df276e88fb9bc934209ee82be2a95fc4012acc3b597bcf49a78",
-          "translation": "Если true, пакеты включают только необходимые ресурсы по типизированным корням и runtime-зависимостям; если false, включаются все доступные выходы текущих baker-ов"
+        "/symbols/@id=setting.server.ServerNetwork.WssCertificate/description": {
+          "source_sha256": "bc5f837071cf65677490231703f54f00cd3a0f9805ec11517d1713818c8c3fe2",
+          "translation": "Сертификат защищенного WebSocket"
+        },
+        "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
+          "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
+          "translation": "Закрытый ключ защищенного WebSocket"
         }
       }
     },

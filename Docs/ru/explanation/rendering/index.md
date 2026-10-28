@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"97dce7146a828ceca7847aeef29b4a4453a7cfb3aaa2d303047fe0382dd5010d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"1d91de6ec0300b02338d4235770b55679cc02c78947272613f2c2f39683c6643"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1221,3 +1221,5 @@ ResourceManager подписывается на начало сцены в пр�
 - orientation учитывает `IsRenderTargetFlipped()`: OpenGL flipped, Direct3D/Vulkan/SDL_GPU not flipped;
 - effect changes описывают parsing config, shader files и script-value buffers; Vulkan resources соблюдают set-0-UBO/set-1-sampler;
 - Web changes связаны со [сборкой, упаковкой и отладкой в браузере](../../how-to/platforms/web-debugging.md), Android — со [сборкой, упаковкой и отладкой на Android](../../how-to/platforms/android-debugging.md), native/script attach/debug — с [нативной, AngelScript и Managed отладкой](../../troubleshooting/debugging.md).
+
+Группы крыши пересчитываются по признаку изменения покрытия, включая динамическое добавление, удаление и перемещение. Запросы и перестроение карты вызывают `EnsureRoofNums`; кадры без изменений не сканируют всю карту. Последний гекс `SetHiddenRoof` сохраняется и повторно разрешается после перенумерации, поэтому разрыв или объединение группы не скрывает постороннюю крышу. Решётка начинается от действительного якоря плитки, включая нечётные координаты.

@@ -99,6 +99,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
     mapSpr->MSpr = mspr;
+    mspr->SetElevation(mapSpr->Elevation);
 
     if (mapSpr->Angle != 0) {
         mspr->SetAngle(mapSpr->Angle);
@@ -1066,6 +1067,8 @@ FO_SCRIPT_API void Client_Map_SetHiddenRoof(ptr<MapView> self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetRoofNum(ptr<MapView> self, mpos hex)
 {
+    self->EnsureRoofNums();
+
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }

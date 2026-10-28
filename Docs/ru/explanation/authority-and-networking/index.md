@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"21e36e86d485b3661053feb2e4963045c9691f93a5c6ecd8bd0ca54ce756476d"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"f6df139f601de5032ee337a3d4ce2563e67efa4ccb514ec60a1b621794cd169c"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -17,6 +17,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 Движок владеет защищённым каналом, транспортами, framing сообщений, упорядоченным UDP и интерфейсами соединений. Подключающий проект владеет топологией развёртывания, закреплёнными боевыми ключами, ротацией, эксплуатационной политикой и проектным использованием команд.
 
 Не документируйте здесь хосты, порты или инфраструктуру релиза конкретного проекта.
+
+Начальные снимки динамических предметов передают только свойства с объявленной синхронизацией. Доступность Common сама по себе не разрешает передачу; неизменяемые значения и NoSync остаются локальными либо берутся из общего прототипа. Правила синхронизации и фильтрации владельческих/частных данных определяет [Entity Model](../entity-and-property-model/).
 
 ## Проверенные пути исходного кода
 

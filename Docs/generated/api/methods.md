@@ -2442,6 +2442,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904"></a>
 - [`symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904)
 
+<a id="symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d"></a>
+- [`symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d)
+
 <a id="symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4"></a>
 - [`symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4)
 

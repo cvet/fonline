@@ -1097,3 +1097,5 @@ When changing frontend or rendering behavior, verify:
 - Web changes cross-link to [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md); Android
   changes cross-link to [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md);
   native attach/debug changes cross-link to [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
+
+Roof groups are rebuilt lazily after roof coverage changes, including dynamic insertion, removal and movement. Queries and map rebuilding call `EnsureRoofNums`; unchanged frames do not scan the entire map. The last hex passed to `SetHiddenRoof` is retained and resolved again after renumbering, so splitting or merging a group does not hide an unrelated roof. Roof lattices start at each actual tile anchor, including odd coordinates.

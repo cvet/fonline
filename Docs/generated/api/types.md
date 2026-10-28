@@ -3193,6 +3193,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070)
 
+<a id="symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5"></a>
+- [`symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5)
+
 <a id="symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43)
 

@@ -39,6 +39,8 @@ FO_BEGIN_NAMESPACE
 
 using namespace ServerEngineTests;
 
+auto Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId, readonly_map<ItemProperty, any_t> props) -> ptr<Item>;
+
 class BoundaryArgAccessor final : public DataAccessor
 {
 public:
@@ -3437,6 +3439,66 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
     CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
     CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
     CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
+}
+
+TEST_CASE("ServerItemCreationAnyPropertiesRespectMutability")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    hstring pid = server->Hashes.to_hashed_string("TestItem");
+    auto proto = server->GetProtoItem(pid);
+    REQUIRE(proto);
+
+    auto registrar = proto->GetProperties()->GetRegistrar();
+    auto elevation_prop = registrar->FindProperty("Elevation");
+    auto offset_prop = registrar->FindProperty("Offset");
+    auto layer_prop = registrar->FindProperty("TileLayer");
+    REQUIRE(elevation_prop);
+    REQUIRE(offset_prop);
+    REQUIRE(layer_prop);
+    REQUIRE(elevation_prop->IsMutable());
+    REQUIRE(offset_prop->IsMutable());
+    REQUIRE_FALSE(layer_prop->IsMutable());
+
+    int16_t proto_elevation = proto->GetElevation();
+    ipos16 proto_offset = proto->GetOffset();
+    uint8_t proto_layer = proto->GetTileLayer();
+    map<ItemProperty, any_t> valid_props {
+        {static_cast<ItemProperty>(elevation_prop->GetRegIndex()), any_t {string {"3"}}},
+        {static_cast<ItemProperty>(offset_prop->GetRegIndex()), any_t {string {"7 -11"}}},
+    };
+    auto item = Server_Game_CreateItem(server, pid, valid_props);
+    CHECK(item->GetElevation() == 3);
+    CHECK(item->GetOffset() == ipos16 {7, -11});
+    CHECK(proto->GetElevation() == proto_elevation);
+    CHECK(proto->GetOffset() == proto_offset);
+    auto another_item = server->ItemMngr.CreateItem(pid, nullptr);
+    CHECK(another_item->GetElevation() == proto_elevation);
+    CHECK(another_item->GetOffset() == proto_offset);
+    server->ItemMngr.DestroyItem(another_item);
+    server->ItemMngr.DestroyItem(item);
+
+    size_t item_count = server->EntityMngr.GetItemsCount();
+    map<ItemProperty, any_t> invalid_props {
+        {static_cast<ItemProperty>(layer_prop->GetRegIndex()), any_t {string {"2"}}},
+    };
+    CHECK_THROWS_AS(Server_Game_CreateItem(server, pid, invalid_props), PropertiesException);
+    CHECK(server->EntityMngr.GetItemsCount() == item_count);
+    CHECK(proto->GetTileLayer() == proto_layer);
 }
 
 FO_END_NAMESPACE

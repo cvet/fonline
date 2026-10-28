@@ -10,6 +10,13 @@ permalink: /Docs/en/how-to/scripting/managed-csharp.html
 
 > Engine-owned Managed C# guide; game modules and policy belong to the embedding project.
 
+
+Native ref-type wrappers with `HasFactory` expose a public empty constructor that calls their native factory; wrappers without a factory expose only internal pointer construction. `new MapSpriteHolder()` therefore returns a valid native holder before field access. Keep that holder alive through the last rendered frame, then call `StopDraw()` and `Dispose()` on the client thread. The current Managed lifetime lease also permits garbage collection to release ownership, but its timing is unspecified; deterministic drawing cleanup uses `Dispose()` or a correctly scoped `using`. Its `Elevation` is applied when the sprite is attached, independently of `Offset`.
+
+`Game.CreateItem(protoId, properties)` accepts `Dictionary<ItemProperty, any>` and applies overrides to a prototype copy through `Properties::SetValueAsAnyProps` before `OnItemInit` and `InitScript`. Each key must identify an enabled, stored, Mutable property; immutable, disabled and virtual properties are rejected before item registration. Values use the existing property text parser, including complex values such as `Offset`. Creation resets native placement/ownership fields; place the resulting item with `MoveItem`. Existing integer-property overloads retain their semantics. Give the dictionary an explicit value type when selecting an overload.
+
+Initial item snapshots obey the ordinary declared synchronization filter. `PicMap` and `Offset` are Mutable PublicSync and arrive before sprite setup. Immutable Common values, Common NoSync values and server-only values are not transferred; OwnerSync remains owner-only. `CreateItem` does not change those rules: initialize synchronized instance values there, and define shared unsynchronized structure in the item prototype.
+
 ## Contract status
 
 Managed C# embeds Mono and compiles scripts with the configured .NET SDK for server, client, Mapper, bakers and tests. It shares backend-neutral metadata with AngelScript. Native scripting is an unimplemented source-root placeholder.

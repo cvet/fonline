@@ -444,6 +444,8 @@ Relevant property flags from [Entity Model](../entity-and-property-model/):
 - `ModifiableByClient`
 - `ModifiableByAnyClient`
 
+Initial dynamic-item snapshots transfer only declared synchronized properties. Common availability alone never enables network transfer; immutable and NoSync values remain local or come from the shared prototype. The [Entity Model](../entity-and-property-model/) owns the synchronization and owner/private filtering rules.
+
 A network change that affects property replication should be reviewed together with entity/property docs and tests.
 
 ## Transport selection

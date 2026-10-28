@@ -14,6 +14,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-29
 
+### Added
+
+- Add the `Game.CreateItem(protoId, properties)` overload for `Dictionary<ItemProperty, any>`. It uses `SetValueAsAnyProps` to apply mutable overrides, including complex values, to a prototype copy before `OnItemInit` and `InitScript`. Immutable, disabled and virtual keys are rejected before item registration; an unknown prototype fails before creation.
+- Expose `MapSpriteHolder.Elevation`, applied when attaching the client-local sprite independently of `Offset`.
+
+### Fixed
+
+- Remove the unpublished Common-property snapshot bypass. Initial item packets again use ordinary PublicSync/OwnerSync filtering and two visibility caches; immutable Common and NoSync values are excluded.
+- Rebuild dynamic roof groups after coverage changes and preserve the selected hidden-roof hex. Clearing old groups reads absent chunked-map cells without allocating their storage.
+
+### Migration
+
+- Baseline `f116c907c192b1ca3e243d1538705c831a7dd362` (`2026.1.86-dev`); this unpublished working change is `2026.1.87-dev`. Existing integer-property `CreateItem` overloads and `StoreData(with_protected)` retain their semantics. Replace the unpublished `CreateItemWithInitialProperties` name with `Game.CreateItem(pid, new Dictionary<ItemProperty, any> { [ItemProperty.Offset] = "7 -11" })`; the old callable is removed. This overload enforces Mutable through the ordinary property setter: define immutable structure in the shared prototype. Keep ordinary mutable integer overrides on the existing integer overload. Native item initialization still resets ownership and placement fields; call `MoveItem` to place the returned item. Existing prefab/save-layout business transformations remain project-owned.
+- `Entity::StoreData(with_protected)` and `Properties::StoreData(with_protected)` retain their ordinary signature and synchronization semantics. Drop the unpublished second inclusion argument and any reliance on unsynchronized Common transport. `PicMap`/`Offset` already have PublicSync; unsynchronized structure must match shared prototypes. The working compatibility gate advances from the published `0.0.83` to `0.0.84`; rebuild and deploy the matching artifact set rather than mixing earlier local experiments with this corrected build.
+- Regenerate API models/references and metadata; rebuild native Baker, server, client, Mapper and tests, then rebake all affected script/resource roles and package the matching set. The new public field changes the private/native holder layout: do not mix old object files and new headers. Deploy matching binaries/resources together; old/new mixed artifacts must fail compatibility. Managed ABI `9` and database/resource schemas stay unchanged; no saved-data conversion is required for these additions. Rollback restores the complete matching baseline artifact set and the project's previous compatible snapshot/layout data when project migrations changed it.
+- Retain the current `HasFactory`/`NativeRefTypeLifetime` implementation from published `.29` and later fixes: `new MapSpriteHolder()` uses the native factory, and drawing cleanup is `StopDraw()` followed by `Dispose()`. Do not restore public `__Factory`, `__AddRef`, `__Release` or the superseded temporary-wrapper constructor. This reconciliation adds no new ownership API.
+- Acceptance owners are `ServerItemCreationAnyPropertiesRespectMutability` (mutable scalar/complex overrides, prototype and sibling isolation, immutable-input rejection before registration), `PropertiesSnapshotNeverTransmitsUnsyncedProperties` (public/owner filtering, immutable Common and NoSync exclusion, prototype-backed/full storage, cache alternation and invalidation), `PropertiesOverlayFiltersAndCopies`, `MapViewDynamicRoofGroupsFollowCoverageChanges`, Managed ref-type constructor/lifetime tests, and the embedding project's item-init, preview, migration and restore routes.
+
+## 2026.1.86-dev - 2026-10-29
+
 ### Fixed
 
 - Correct the migration record of the `Client.UserWritablePath` replacement in `Docs/contract-change-dispositions.json`. It told projects to supply `--UserWritablePath <path>`, a spelling `ResolveWritableRoot` never recognized: the early writable-root scan matches only the fully qualified `Common.UserWritablePath` option, so the unqualified flag was accepted as an unrelated custom setting and the process kept the portable working-directory layout. The record now names `--Common.UserWritablePath <path>`, as the configuration reference, the release operations guide and the client updater guide already did. No unqualified alias is added; the supported spellings, `*`, the installer marker and the portable fallback are unchanged. A documentation test now ties the supported spelling to `ResolveWritableRoot` and rejects the unqualified spelling in the English and Russian guides and in the ledger.
