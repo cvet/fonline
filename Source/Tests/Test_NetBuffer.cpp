@@ -264,6 +264,101 @@ TEST_CASE("NetBuffer")
         CHECK_THROWS_AS(in_buf.AddData(second), NetBufferException);
         CHECK(in_buf.GetDataSize() == 0);
     }
+
+    SECTION("ShortFrameReadReportsPositionsFromBeforeReset")
+    {
+        // A ping that carries only the answer flag: the frame ends right after it, so the sender clock cannot be read
+        NetOutBuffer out_buf {16};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write(true);
+        out_buf.EndMsg();
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+        REQUIRE(in_buf.NeedProcess());
+        REQUIRE(in_buf.ReadMsg() == NetMessage::Ping);
+        CHECK(in_buf.Read<bool>());
+
+        bool thrown = false;
+
+        try {
+            (void)in_buf.Read<int64_t>();
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            // Requested length, read position, frame end and buffered end, as they were when the read failed
+            const_span<string> params = ex.params();
+            REQUIRE(params.size() == 4);
+            CHECK(params[0] == "8");
+            CHECK(params[1] == "10");
+            CHECK(params[2] == "10");
+            CHECK(params[3] == "10");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("FrameBeyondBufferedDataReportsEndFromBeforeReset")
+    {
+        NetOutBuffer out_buf {32};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write(false);
+        out_buf.Write<int64_t>(1);
+        out_buf.EndMsg();
+
+        // The header announces the whole frame while only its first twelve bytes arrived
+        NetInBuffer in_buf {32};
+        in_buf.AddData(out_buf.GetData().subspan(0, 12));
+
+        bool thrown = false;
+
+        try {
+            (void)in_buf.ReadMsg();
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            const_span<string> params = ex.params();
+            REQUIRE(params.size() == 3);
+            CHECK(params[0] == "18");
+            CHECK(params[1] == "0");
+            CHECK(params[2] == "12");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("PropsCountBeyondFrameReportsUnreadFromBeforeReset")
+    {
+        NetOutBuffer out_buf {16};
+        out_buf.Write<uint16_t>(5);
+        out_buf.Write<uint16_t>(0);
+        out_buf.Write<uint8_t>(0);
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+
+        vector<vector<uint8_t>> props_data;
+        bool thrown = false;
+
+        try {
+            in_buf.ReadPropsData(props_data);
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            const_span<string> params = ex.params();
+            REQUIRE(params.size() == 2);
+            CHECK(params[0] == "5");
+            CHECK(params[1] == "3");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
 }
 
 TEST_CASE("NetBufferAdversarial")

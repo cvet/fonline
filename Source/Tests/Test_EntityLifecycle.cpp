@@ -1457,6 +1457,94 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     CHECK(refused_unread == one_message_size * 2);
 }
 
+TEST_CASE("PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport", "[player][admission]")
+{
+    // A ping body is the answer flag and the sender clock; the sizes cover a missing flag, a clock cut short (the
+    // frame read in the field is the flag alone) and bytes left over after the clock
+    size_t ping_body_size = GENERATE(size_t {0}, size_t {1}, size_t {5}, size_t {10});
+    CAPTURE(ping_body_size);
+
+    auto settings = EntityLifecycleTests::MakeSettings();
+    auto server = EntityLifecycleTests::MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    });
+
+    auto previous_exception_callback = exceptions::get_callback();
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    auto faulty_transport = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+    auto live_transport = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
+    auto faulty_player = EntityLifecycleTests::CreateLoggedPlayer(server, faulty_transport, "FaultyPing").hold_ref();
+    auto live_player = EntityLifecycleTests::CreateLoggedPlayer(server, live_transport, "LivePing").hold_ref();
+    auto faulty_connection = faulty_player->GetConnection();
+    auto live_connection = live_player->GetConnection();
+
+    auto make_ping = [](optional<size_t> body_size) {
+        NetOutBuffer packet {64};
+        packet.StartMsg(NetMessage::Ping);
+
+        if (body_size) {
+            vector<uint8_t> body(*body_size);
+            packet.Push(body);
+        }
+        else {
+            packet.Write(false);
+            packet.Write(nanotime::now().milliseconds());
+        }
+
+        packet.EndMsg();
+
+        const_span<uint8_t> data = packet.GetData();
+        return vector<uint8_t>(data.begin(), data.end());
+    };
+
+    // Each answered ping ends with a time sync, which only a processed ping produces
+    auto wait_for_time_syncs = [](ptr<TestNetworkConnection> transport, size_t expected_count) {
+        for (int32_t i = 0; i < 400; i++) {
+            if (transport->GetSentMessageCount(NetMessage::TimeSync) >= expected_count) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {5});
+        }
+
+        return false;
+    };
+
+    server->Unlock();
+    locked = false;
+
+    live_transport->Receive(make_ping({}));
+    REQUIRE(wait_for_time_syncs(live_transport, 1));
+
+    faulty_transport->Receive(make_ping(ping_body_size));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+    REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return faulty_player->IsDestroyed(); }));
+
+    CHECK(exception_reports.load() == 0);
+    CHECK(faulty_connection->IsHardDisconnected());
+    CHECK_FALSE(live_connection->IsHardDisconnected());
+    CHECK_FALSE(live_player->IsDestroyed());
+    CHECK(server->EntityMngr.GetPlayersCount() == 1);
+
+    server->Unlock();
+    locked = false;
+
+    live_transport->Receive(make_ping({}));
+    CHECK(wait_for_time_syncs(live_transport, 2));
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 {
     int32_t scenario = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);

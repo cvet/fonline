@@ -412,9 +412,10 @@ private:
     void RestoreSimulationWork();
     void RestoreSnapshotTimeEvents();
     void RestoreSnapshotCritterMovements();
-    [[nodiscard]] auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
-    [[nodiscard]] auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
+    auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
+    auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
     auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
+    void ValidateServerSnapshotState(const ServerSnapshotState& state);
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
@@ -494,6 +495,7 @@ private:
     auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;
     void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
+    void RejectMalformedInput(ptr<ServerConnection> connection, const NetBufferException& ex);
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(work_thread::job body) -> work_thread::job;
     void CountServerStatsJob() noexcept;

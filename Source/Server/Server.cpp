@@ -64,7 +64,6 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-static void ValidateServerSnapshotState(const ServerSnapshotState& state);
 ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot) :
     BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(make_ptr(this)),
@@ -933,14 +932,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
         connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const NetBufferException& ex) {
-        if (!connection->IsHandshakeComplete()) {
-            logging::write(logging::type::warning, "Invalid handshake data from host {}:{}", connection->GetHost(), connection->GetPort());
-        }
-        else {
-            exceptions::report_and_continue(ex);
-        }
-
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -992,8 +984,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         ProcessPlayer(player);
     }
     catch (const NetBufferException& ex) {
-        exceptions::report_and_continue(ex);
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -1004,6 +995,16 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     }
 
     return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
+}
+
+// A peer's broken framing is dropped with its connection, not reported: headless reports end the whole application
+void ServerEngine::RejectMalformedInput(ptr<ServerConnection> connection, const NetBufferException& ex)
+{
+    string_view stage = connection->IsHandshakeComplete() ? "network" : "handshake";
+
+    logging::write(logging::type::warning, "Invalid {} data from host {}:{}: {} ({})", stage, connection->GetHost(), connection->GetPort(), ex.message(), strex(", ").join(ex.params()).str());
+
+    connection->HardDisconnect(DisconnectReason::ProtocolError);
 }
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
@@ -5725,7 +5726,7 @@ auto ServerEngine::CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) cons
     return false;
 }
 
-static void ValidateServerSnapshotState(const ServerSnapshotState& state)
+void ServerEngine::ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
     if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
         throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);

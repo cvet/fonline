@@ -80,6 +80,84 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    // A ping body is the answer flag and the sender clock; the sizes cover a missing flag, a clock cut short (the
+    // frame read in the field is the flag alone) and bytes left over after the clock
+    size_t ping_body_size = GENERATE(size_t {0}, size_t {1}, size_t {5}, size_t {10});
+    CAPTURE(ping_body_size);
+
+    auto port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server = MakeServerEngine(server_settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    auto previous_exception_callback = exceptions::get_callback();
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    auto send_ping = [](RawChannelClient& client, optional<size_t> body_size) {
+        NetOutBuffer ping {64};
+        ping.StartMsg(NetMessage::Ping);
+
+        if (body_size) {
+            vector<uint8_t> body(*body_size);
+            ping.Push(body);
+        }
+        else {
+            ping.Write(false);
+            ping.Write(nanotime::now().milliseconds());
+        }
+
+        ping.EndMsg();
+        client.Send(ping.GetData());
+    };
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+
+    SendCompatibleHandshake(live_client, server);
+    SendCompatibleHandshake(faulty_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::InitData, 1));
+
+    // Control: a valid ping on the same completed handshake is answered, so the fault below is the ping itself
+    send_ping(live_client, {});
+    send_ping(faulty_client, {});
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::TimeSync, 1));
+
+    send_ping(faulty_client, ping_body_size);
+
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+
+    // The independent connection keeps being served after the faulty one is gone
+    CHECK_FALSE(live_client.IsDisconnected());
+    send_ping(live_client, {});
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 2));
+    CHECK(GetServerConnectionCount(server) == 1);
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 {
     using namespace TestClientServerIntegration;

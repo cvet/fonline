@@ -1266,6 +1266,60 @@ End
         InterthreadDataCallback _send {};
     };
 
+    // The handshake a compatible client opens with, so the raw connection stays on the server as a not logged in session
+    inline void SendCompatibleHandshake(RawChannelClient& client, ptr<ServerEngine> server)
+    {
+        auto handshake = NetOutBuffer(128);
+        handshake.StartMsg(NetMessage::Handshake);
+        handshake.Write(server->Settings->Network.CompatibilityVersion);
+        handshake.Write(server->GetMetadataVersion());
+        handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+        handshake.Write<string_view>("Linux-x64");
+        handshake.EndMsg();
+        client.Send(handshake.GetData());
+    }
+
+    // Counts what the server has written so far; the stream is unpacked only when compression is off
+    inline auto CountServerMessages(RawChannelClient& client, NetMessage message) -> size_t
+    {
+        vector<uint8_t> stream = client.GetPlaintext();
+        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+        size_t count = 0;
+        size_t offset = 0;
+
+        while (stream.size() - offset >= header_size) {
+            uint32_t message_size {};
+            NetMessage current {};
+            memory::copy(&message_size, stream.data() + offset + sizeof(uint32_t), sizeof(message_size));
+            memory::copy(&current, stream.data() + offset + sizeof(uint32_t) + sizeof(message_size), sizeof(current));
+
+            if (message_size < header_size || message_size > stream.size() - offset) {
+                break;
+            }
+
+            if (current == message) {
+                count++;
+            }
+
+            offset += message_size;
+        }
+
+        return count;
+    }
+
+    inline auto WaitForServerMessageCount(RawChannelClient& client, NetMessage message, size_t expected_count) -> bool
+    {
+        for (int32_t i = 0; i < 2000; i++) {
+            if (CountServerMessages(client, message) >= expected_count) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
     inline auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
         for (int32_t i = 0; i < 2000; i++) {

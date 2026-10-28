@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Drop only the offending connection when a peer sends a malformed or truncated frame after the handshake or after login, instead of reporting it as an engine exception. `NotLoggedInPlayerJob()` and `PlayerJob()` now treat every `NetBufferException` (including `UnknownMessageException`) as a protocol fault of that peer: one warning with the remote host/port and the exception's message and context values, then a `ProtocolError` hard disconnect. In non-interactive and headless mode a reported exception requests application quit, so a single `Ping` frame with a missing sender clock used to stop the whole server; other connections and other exception types are unaffected, and the application exception policy is unchanged.
+- Report the real read position, frame end and buffered end in `NetBufferException` context values. `NetInBuffer` and `NetOutBuffer` captured them after `ResetBuf()` had zeroed them, so `Invalid read length`, `Invalid shrink pos`, `Invalid discard length`, `Incoming network message extends past buffered data` and `Property data count exceeds remaining buffer` printed zeros.
+
+### Migration
+
+Base `843a470bb47c20cb7be609e40c461646dbfdab66` (`2026.1.84-dev`) to `2026.1.85-dev`: server-side handling of malformed peer frames and exception context values. Rebuild the server roles and the unit-test target; no client, source, settings, data, resource or save conversion is required, and no scripting API changes. A malformed `Ping` (or any other `NetBufferException` raised while a not-logged-in or logged-in player's input is read) no longer reaches the exception reporter, so log monitors that count `NetBufferException` console records for peer framing faults will instead see the `Invalid network data from host <host>:<port>: <message> (<context>)` warning (`Invalid handshake data` before the handshake completes); internal exceptions keep their reports. Detection: search server logs for those warnings; to prove the project does not depend on the old behavior, search custom monitors for the exception name. Network compatibility marker, runtime `0.0.82` and Managed ABI `9` remain unchanged; client and server builds of the same compatibility set interoperate in either order and roll back independently.
+
+## 2026.1.84-dev - 2026-10-29
+
+### Fixed
+
 - Correct the BuildTools README for the current documentation pipeline. It named 20 generated contract models for `docs_description_translations.py`, which inventories the 19 models of `MODEL_PATHS`; it promised a later switch of the description catalog from `registered-translations-current` to `complete`, although the committed catalog already enforces `complete`; and it said that all generated JSON and Markdown is checked in, although the `llms` endpoints, shared manifest, navigation/search indexes and validation catalogs are ignored outputs that `docs_prepare.py` rebuilds, with the public root endpoints under `Workspace/Documentation/`. Both language editions now state the actual model count and separate the versioned contract models, references, images and translations from those build outputs. `test_docs_description_translations.py` compares the model count stated in both READMEs with `MODEL_PATHS`, and the Russian README carries the translation hash of the new English text. The strict localization check, which rejects any stale hash, is unchanged.
 
 ### Migration
