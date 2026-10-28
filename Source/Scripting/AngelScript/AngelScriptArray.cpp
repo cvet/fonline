@@ -181,7 +181,7 @@ static auto ScriptArray_CreateWithDefault(AngelScript::asITypeInfo* ti, int32_t 
     return arr.release_ownership();
 }
 
-[[nodiscard]] static auto RequireScriptArrayValue(nptr<void> value) -> ptr<void>
+static auto RequireScriptArrayValue(nptr<void> value) -> ptr<void>
 {
     FO_VERIFY_AND_THROW(value, "Array value is null");
     return value;

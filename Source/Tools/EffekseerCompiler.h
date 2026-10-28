@@ -47,8 +47,8 @@ struct EffekseerCompilerOutput final
     vector<string> Dependencies {};
 };
 
-[[nodiscard]] auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput;
-[[nodiscard]] auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_t> project_data) -> vector<string>;
+auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput;
+auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_t> project_data) -> vector<string>;
 
 FO_END_NAMESPACE
 

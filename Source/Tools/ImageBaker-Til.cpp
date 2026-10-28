@@ -58,15 +58,15 @@ namespace ImageBakerTil
             throw ImageBakerException("Invalid TIL file header", fname);
         }
 
-        while (reader.GetUInt8() != 0) {
+        while (reader.ReadUInt8() != 0) {
             // Nop
         }
 
         reader.GoForward(7 + 4); // Unknown
 
-        int32_t width = reader.GetLEInt32();
+        int32_t width = reader.ReadLEInt32();
         ignore_unused(width);
-        int32_t height = reader.GetLEInt32();
+        int32_t height = reader.ReadLEInt32();
         ignore_unused(height);
 
         if (!reader.SeekFragment("<tiledata>")) {
@@ -74,7 +74,7 @@ namespace ImageBakerTil
         }
 
         reader.GoForward(10 + 3); // Signature
-        int32_t frames_count = reader.GetLEInt32();
+        int32_t frames_count = reader.ReadLEInt32();
         FO_VERIFY_AND_THROW(frames_count > 0 && frames_count <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "TIL frame count is outside the serialized range", fname, frames_count);
 
         FrameCollection collection;

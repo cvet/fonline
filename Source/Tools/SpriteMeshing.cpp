@@ -85,7 +85,7 @@ struct SpriteMeshBuildAttempt
     SpriteMeshBuildFailure Failure {SpriteMeshBuildFailure::None};
 };
 
-[[nodiscard]] static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vector<uint8_t>& dilated_mask, const vector<SpriteContour>& simplified_contours, const vector<SpriteContour>& exact_contours, const vector<SpriteContour>& allowed_contours, int32_t width, int32_t height, float32_t simplify_tolerance, int32_t dilation, int64_t& mesh_double_area) -> SpriteMeshBuildAttempt;
+static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vector<uint8_t>& dilated_mask, const vector<SpriteContour>& simplified_contours, const vector<SpriteContour>& exact_contours, const vector<SpriteContour>& allowed_contours, int32_t width, int32_t height, float32_t simplify_tolerance, int32_t dilation, int64_t& mesh_double_area) -> SpriteMeshBuildAttempt;
 
 struct SpriteMeshCandidate
 {

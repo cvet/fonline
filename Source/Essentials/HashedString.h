@@ -120,12 +120,12 @@ public:
     using hash_func = uint64_t (*)(const_span<uint8_t> data);
     using resolve_hash_failure_handler = function<void(hstring::hash_t hash)>;
 
-    static auto default_hash(const_span<uint8_t> data) noexcept -> uint64_t;
+    [[nodiscard]] static auto default_hash(const_span<uint8_t> data) noexcept -> uint64_t;
     explicit hash_storage(hash_func func = default_hash);
-    auto check_hashed_string(string_view s) const noexcept -> bool;
-    auto to_hashed_string(string_view s) -> hstring override;
-    auto resolve_hash(hstring::hash_t h) const -> hstring override;
-    auto resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
+    [[nodiscard]] auto check_hashed_string(string_view s) const noexcept -> bool;
+    [[nodiscard]] auto to_hashed_string(string_view s) -> hstring override;
+    [[nodiscard]] auto resolve_hash(hstring::hash_t h) const -> hstring override;
+    [[nodiscard]] auto resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
     void set_resolve_hash_failure_handler(resolve_hash_failure_handler handler);
 
 private:

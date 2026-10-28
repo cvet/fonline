@@ -157,18 +157,7 @@ public:
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
-    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override
-    {
-        auto custom_entity = EntityMngr.GetCustomEntity(type_name, id);
-
-        if (!custom_entity) {
-            return nullptr;
-        }
-
-        auto custom_entity_holder = std::move(custom_entity).take_not_null();
-        refcount_ptr<Entity> entity = std::move(custom_entity_holder);
-        return std::move(entity);
-    }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override;
     void DestroyEntity(ptr<Entity> entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;

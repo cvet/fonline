@@ -143,12 +143,12 @@ namespace ImageBakerSpr
                 throw ImageBakerException("Invalid SPR header", fname);
             }
 
-            float32_t dimension_left = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
-            float32_t dimension_up = numeric_cast<float32_t>(reader.GetUInt8()) * 7.6f;
+            float32_t dimension_left = numeric_cast<float32_t>(reader.ReadUInt8()) * 6.7f;
+            float32_t dimension_up = numeric_cast<float32_t>(reader.ReadUInt8()) * 7.6f;
             ignore_unused(dimension_up);
-            float32_t dimension_right = numeric_cast<float32_t>(reader.GetUInt8()) * 6.7f;
-            int32_t center_x = reader.GetLEInt32();
-            int32_t center_y = reader.GetLEInt32();
+            float32_t dimension_right = numeric_cast<float32_t>(reader.ReadUInt8()) * 6.7f;
+            int32_t center_x = reader.ReadLEInt32();
+            int32_t center_y = reader.ReadLEInt32();
             reader.GoForward(2); // uint16 unknown1  sometimes it is 0, and sometimes it is 3
             reader.GoForward(1); // CHAR unknown2  0x64, other values were not observed
 
@@ -162,25 +162,25 @@ namespace ImageBakerSpr
 
             // Find sequence
             bool seq_founded = false;
-            int32_t seq_cnt = reader.GetLEInt32();
+            int32_t seq_cnt = reader.ReadLEInt32();
 
             for (int32_t seq = 0; seq < seq_cnt; seq++) {
                 // Find by name
-                int32_t item_cnt = reader.GetLEInt32();
+                int32_t item_cnt = reader.ReadLEInt32();
                 FO_VERIFY_AND_THROW(item_cnt >= 0, "SPR sequence item count is negative", fname, item_cnt);
 
                 size_t item_count = numeric_cast<size_t>(item_cnt);
                 reader.GoForward(checked_mul(item_count, sizeof(int16_t)));
                 reader.GoForward(checked_mul(item_count, sizeof(int32_t)));
 
-                int32_t name_len = reader.GetLEInt32();
+                int32_t name_len = reader.ReadLEInt32();
                 FO_VERIFY_AND_THROW(name_len >= 0, "ART sequence name length is negative", name_len);
 
                 size_t name_length = numeric_cast<size_t>(name_len);
                 const_span<uint8_t> name_data = reader.GetCurDataSpan(name_length);
                 string name = string(!name_data.empty() ? make_ptr(name_data.data()).reinterpret_as<const char>().get() : "", name_data.size());
                 reader.GoForward(name_data.size());
-                uint16_t index = reader.GetLEUInt16();
+                uint16_t index = reader.ReadLEUInt16();
 
                 if (seq_name.empty() || strvex(seq_name).compare_ignore_case(name)) {
                     anim_index = numeric_cast<int32_t>(index);
@@ -190,7 +190,7 @@ namespace ImageBakerSpr
                     reader.GoBack(rewind_size);
 
                     for (int32_t i = 0; i < item_cnt; i++) {
-                        int16_t val = reader.GetLEInt16();
+                        int16_t val = reader.ReadLEInt16();
 
                         if (val >= 0) {
                             anim_frames.push_back(numeric_cast<int32_t>(val));
@@ -222,15 +222,15 @@ namespace ImageBakerSpr
                 reader.GoForward(12);
             }
 
-            int32_t file_offset = reader.GetLEInt32();
+            int32_t file_offset = reader.ReadLEInt32();
             FO_VERIFY_AND_THROW(file_offset >= 0, "SPR image file offset is negative", fname, file_offset);
 
-            int32_t collection_name_len = reader.GetLEInt32(); // Collection name
+            int32_t collection_name_len = reader.ReadLEInt32(); // Collection name
             FO_VERIFY_AND_THROW(collection_name_len >= 0, "SPR collection name length is negative", fname, collection_name_len);
 
             reader.GoForward(numeric_cast<size_t>(collection_name_len));
-            int32_t frame_cnt = reader.GetLEInt32();
-            int32_t dir_cnt = reader.GetLEInt32();
+            int32_t frame_cnt = reader.ReadLEInt32();
+            int32_t dir_cnt = reader.ReadLEInt32();
             FO_VERIFY_AND_THROW(frame_cnt > 0 && dir_cnt > 0, "Invalid SPR frame or direction count", fname, frame_cnt, dir_cnt);
 
             int64_t frame_slot_count_wide = checked_mul(checked_mul(numeric_cast<int64_t>(frame_cnt), numeric_cast<int64_t>(dir_cnt)), int64_t {4});
@@ -265,7 +265,7 @@ namespace ImageBakerSpr
             // Get images file
             reader.SetCurPos(numeric_cast<size_t>(file_offset));
             reader.GoForward(14); // <spranim_img>\0
-            uint8_t type = reader.GetUInt8();
+            uint8_t type = reader.ReadUInt8();
             reader.GoForward(1); // \0
 
             size_t data_len = 0;
@@ -285,7 +285,7 @@ namespace ImageBakerSpr
 
             if (packed) {
                 // Unpack with zlib
-                uint32_t unpacked_len = reader.GetLEUInt32();
+                uint32_t unpacked_len = reader.ReadLEUInt32();
                 FO_VERIFY_AND_THROW(data_len != 0, "Packed SPR frame has zero data length");
                 const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
                 size_t unpacked_size_hint = checked_add(numeric_cast<size_t>(unpacked_len) / data_len, size_t {1});
@@ -313,7 +313,7 @@ namespace ImageBakerSpr
             Palette palette[4];
 
             for (auto& i : palette) {
-                uint32_t palette_count = fm_images.GetLEUInt32();
+                uint32_t palette_count = fm_images.ReadLEUInt32();
 
                 if (palette_count <= 256) {
                     fm_images.ReadObjectArray(span<ucolor> {i, numeric_cast<size_t>(palette_count)});
@@ -326,13 +326,13 @@ namespace ImageBakerSpr
 
             for (size_t cur = 0; fm_images.GetCurPos() != fm_images.GetSize();) {
                 FO_VERIFY_AND_THROW(cur < image_indices.size(), "SPR frame index table exceeds its slot count", fname);
-                uint8_t tag = fm_images.GetUInt8();
+                uint8_t tag = fm_images.ReadUInt8();
 
                 if (tag == 1) {
                     // Valid index
                     image_indices[cur] = fm_images.GetCurPos();
                     fm_images.GoForward(8 + 8 + 8 + 1);
-                    uint32_t frame_data_len = fm_images.GetLEUInt32();
+                    uint32_t frame_data_len = fm_images.ReadLEUInt32();
                     fm_images.GoForward(numeric_cast<size_t>(frame_data_len));
                     cur++;
                 }
@@ -406,11 +406,11 @@ namespace ImageBakerSpr
 
                     fm_images.SetCurPos(image_indices[frm_index]);
 
-                    int32_t posx = fm_images.GetLEInt32();
-                    int32_t posy = fm_images.GetLEInt32();
+                    int32_t posx = fm_images.ReadLEInt32();
+                    int32_t posy = fm_images.ReadLEInt32();
                     fm_images.GoForward(8);
-                    int32_t width = fm_images.GetLEInt32();
-                    int32_t height = fm_images.GetLEInt32();
+                    int32_t width = fm_images.ReadLEInt32();
+                    int32_t height = fm_images.ReadLEInt32();
                     FO_VERIFY_AND_THROW(posx >= 0 && posy >= 0 && width >= 0 && height >= 0, "Invalid SPR part placement or dimensions", fname, posx, posy, width, height);
 
                     whole_width = std::max(checked_add(width, posx), whole_width);
@@ -446,18 +446,18 @@ namespace ImageBakerSpr
 
                     fm_images.SetCurPos(image_indices[frm_index]);
 
-                    int32_t posx = fm_images.GetLEInt32();
-                    int32_t posy = fm_images.GetLEInt32();
+                    int32_t posx = fm_images.ReadLEInt32();
+                    int32_t posy = fm_images.ReadLEInt32();
 
                     char zar[8] = {0};
                     fm_images.ReadObjectArray<char>(zar);
                     uint8_t subtype = zar[6];
 
-                    int32_t width = fm_images.GetLEInt32();
-                    int32_t height = fm_images.GetLEInt32();
+                    int32_t width = fm_images.ReadLEInt32();
+                    int32_t height = fm_images.ReadLEInt32();
                     ignore_unused(height);
-                    uint8_t palette_present = fm_images.GetUInt8();
-                    uint32_t rle_size = fm_images.GetLEUInt32();
+                    uint8_t palette_present = fm_images.ReadUInt8();
+                    uint32_t rle_size = fm_images.ReadLEUInt32();
                     size_t rle_size_value = numeric_cast<size_t>(rle_size);
                     const_span<uint8_t> rle_data = fm_images.GetCurDataSpan(rle_size_value);
                     fm_images.GoForward(rle_size_value);

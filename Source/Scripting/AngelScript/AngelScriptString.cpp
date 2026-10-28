@@ -292,7 +292,7 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
                 if (!str.empty()) {
                     size_t decode_length = str.length();
                     auto str_begin = ScriptStringCStrAt(str, 0);
-                    utf8::decode(str_begin.get(), decode_length);
+                    (void)utf8::decode(str_begin.get(), decode_length);
                     *length = numeric_cast<int32_t>(decode_length);
                 }
                 else {
@@ -311,7 +311,7 @@ static auto IndexUtf8ToRaw(const string& str, int32_t& index, nptr<int32_t> leng
     while (raw_offset < str.length()) {
         auto char_begin = ScriptStringCStrAt(str, raw_offset);
         size_t decode_length = str.length() - raw_offset;
-        utf8::decode(char_begin.get(), decode_length);
+        (void)utf8::decode(char_begin.get(), decode_length);
 
         if (index > 0) {
             raw_offset += decode_length;
@@ -344,7 +344,7 @@ static auto IndexRawToUtf8(const string& str, int32_t index) -> int32_t
     for (size_t i = 0; i < str.length() && index > 0;) {
         auto char_begin = ScriptStringCStrAt(str, i);
         size_t decode_length = str.length() - i;
-        utf8::decode(char_begin.get(), decode_length);
+        (void)utf8::decode(char_begin.get(), decode_length);
         i += decode_length;
         index -= numeric_cast<int32_t>(decode_length);
         result++;

@@ -401,8 +401,6 @@ namespace
             throw EnumResolveException("Enum name is not supported in test resolver");
         }
 
-        void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
-
         [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override
         {
             if (auto it = _migration_rules.find(rule_name); it != _migration_rules.end()) {
@@ -415,6 +413,7 @@ namespace
 
             return std::nullopt;
         }
+
         [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> override
         {
             auto type_it = _protos.find(type_name.as_hash());
@@ -430,6 +429,8 @@ namespace
 
             return nullptr;
         }
+
+        void AddMigrationRule(hstring rule_name, hstring extra_info, hstring target, hstring replacement) { _migration_rules[rule_name][extra_info][target] = replacement; }
 
         void AddProto(string_view type_name, string_view proto_id)
         {
@@ -480,14 +481,14 @@ namespace
         return result;
     }
 
-    [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
+    auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
         memory::copy(result.data(), &value, sizeof(value));
         return result;
     }
 
-    [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<uint8_t>
+    auto MakeRawInt32(int32_t value) -> vector<uint8_t>
     {
         vector<uint8_t> result(sizeof(value));
         memory::copy(result.data(), &value, sizeof(value));
@@ -593,13 +594,6 @@ namespace
             FullSource.StoreAllData(FullAllData, str_hashes);
         }
 
-        void ApplyOverrides(Properties& props) const
-        {
-            for (const auto& spec : OverrideProps) {
-                SetOverrideValue(props, spec);
-            }
-        }
-
         [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
@@ -610,37 +604,6 @@ namespace
         {
             FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
             return ProbeStringProp;
-        }
-
-        [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
-        {
-            size_t total = 0;
-
-            for (const auto& chunk : chunks) {
-                total += chunk.size();
-            }
-
-            return total;
-        }
-
-        [[nodiscard]] auto TryBuildTextData(const Properties& props, map<string, string>& text_data, size_t& text_chars, string& error) -> bool
-        {
-            try {
-                text_data = props.SaveToText(nullptr);
-                text_chars = 0;
-
-                for (const auto& [name, value] : text_data) {
-                    text_chars += name.size();
-                    text_chars += value.size();
-                }
-
-                error.clear();
-                return true;
-            }
-            catch (const std::exception& ex) {
-                error = ex.what();
-                return false;
-            }
         }
 
         [[nodiscard]] auto DiagnoseTextSerializationFailure(const Properties& props) -> string
@@ -662,6 +625,44 @@ namespace
             }
 
             return {};
+        }
+
+        void ApplyOverrides(Properties& props) const
+        {
+            for (const auto& spec : OverrideProps) {
+                SetOverrideValue(props, spec);
+            }
+        }
+
+        static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
+        {
+            size_t total = 0;
+
+            for (const auto& chunk : chunks) {
+                total += chunk.size();
+            }
+
+            return total;
+        }
+
+        auto TryBuildTextData(const Properties& props, map<string, string>& text_data, size_t& text_chars, string& error) -> bool
+        {
+            try {
+                text_data = props.SaveToText(nullptr);
+                text_chars = 0;
+
+                for (const auto& [name, value] : text_data) {
+                    text_chars += name.size();
+                    text_chars += value.size();
+                }
+
+                error.clear();
+                return true;
+            }
+            catch (const std::exception& ex) {
+                error = ex.what();
+                return false;
+            }
         }
 
     private:
@@ -1074,6 +1075,7 @@ namespace
             FO_VERIFY_AND_THROW(PatrolWaypointsValue.has_value(), "Patrol waypoints value not computed");
             return &*PatrolWaypointsValue;
         }
+
     };
 }
 

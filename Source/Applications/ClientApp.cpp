@@ -92,7 +92,7 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(CommandLineArgs args) -> int
 #endif
 {
-    global_data::create();
+    (void)global_data::create();
 
 #if !FO_TESTING_APP
     ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
@@ -536,7 +536,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     bool final_exists = fs::exists(final_path);
 
     logging::write("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");
-    fs::remove_file(backup_path);
+    (void)fs::remove_file(backup_path);
 
     if (final_exists && !fs::rename(final_path, backup_path)) {
         logging::write(logging::type::warning, "Client runtime host: failed to move live DLL {} to backup {}", final_path, backup_path);
@@ -547,14 +547,14 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
         logging::write(logging::type::warning, "Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
 
         if (final_exists) {
-            fs::rename(backup_path, final_path);
+            (void)fs::rename(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs::remove_file(backup_path);
+        (void)fs::remove_file(backup_path);
     }
 
     PromoteStagedRuntimeCompanions(binary_dir);

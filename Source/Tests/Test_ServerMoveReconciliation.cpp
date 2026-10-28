@@ -69,6 +69,13 @@ namespace
         auto operator=(MoveReconciliationConnection&&) noexcept = delete;
         ~MoveReconciliationConnection() override = default;
 
+        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
+        }
+
         void Receive(const_span<uint8_t> buf)
         {
             vector<uint8_t> sealed;
@@ -80,13 +87,6 @@ namespace
             }
 
             ReceiveCallback(sealed);
-        }
-
-        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
-        {
-            scoped_lock locker {_clientChannelLocker};
-
-            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
         }
 
         void ClearReceivedMovement()

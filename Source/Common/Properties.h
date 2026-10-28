@@ -331,7 +331,6 @@ public:
     [[nodiscard]] auto GetEntity() const noexcept -> nptr<Entity> { return _entity; }
     [[nodiscard]] auto HasBaseProperties() const noexcept -> bool { return !!_baseProps; }
     [[nodiscard]] auto GetBaseProperties() const noexcept -> nptr<const Properties> { return _baseProps; }
-    [[nodiscard]] auto Copy() const noexcept -> Properties;
     [[nodiscard]] auto GetRawData(ptr<const Property> prop) const noexcept -> span<const uint8_t>;
     [[nodiscard]] auto GetRawDataSize(ptr<const Property> prop) const noexcept -> size_t;
     [[nodiscard]] auto GetPlainDataValueAsInt(ptr<const Property> prop) const -> int32_t;
@@ -342,6 +341,38 @@ public:
     [[nodiscard]] auto SaveToText(nptr<const Properties> base) const -> map<string, string>;
     [[nodiscard]] auto CompareData(const Properties& other, const_span<ptr<const Property>> ignore_props, bool ignore_temporary) const -> bool;
 
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(vector_collection<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
+    template<typename T>
+        requires(map_collection<T>)
+    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T = delete;
+    template<typename T>
+        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, hstring>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(std::same_as<T, string> || std::same_as<T, any_t>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> string_view;
+    template<typename T>
+        requires(vector_collection<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
+    template<typename T>
+        requires(map_collection<T>)
+    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const -> T = delete;
+
+    auto Copy() const noexcept -> Properties;
     void AllocData() noexcept;
     void SetEntity(ptr<Entity> entity) const noexcept { _entity = entity; }
     void CopyFrom(const Properties& other) noexcept;
@@ -383,38 +414,6 @@ public:
     void RemoveSyncedOverlayEntries() noexcept;
     void RemoveOverlayEntry(ptr<const Property> prop) noexcept;
     void ResetOverlayData() noexcept;
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(vector_collection<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T;
-    template<typename T>
-        requires(map_collection<T>)
-    [[nodiscard]] auto GetValue(ptr<const Property> prop) const -> T = delete;
-
-    template<typename T>
-        requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(std::same_as<T, string> || std::same_as<T, any_t>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> string_view;
-    template<typename T>
-        requires(vector_collection<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const noexcept -> T;
-    template<typename T>
-        requires(map_collection<T>)
-    [[nodiscard]] auto GetValueFast(ptr<const Property> prop) const -> T = delete;
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)

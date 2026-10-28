@@ -55,7 +55,7 @@ protected:
     void DisconnectImpl() noexcept override;
 
 private:
-    [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
+    auto MakeOptions() const -> UdpTransportOptions;
     void PumpInput();
     void SendPackets(const vector<vector<uint8_t>>& packets);
     void ServiceConnect(nanotime now);
@@ -193,7 +193,7 @@ void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 
     if (_socket.is_valid() && _channel.HasSession() && _socket.can_write()) {
         auto packet = _channel.MakeDisconnectPacket();
-        _socket.send_to(_remoteHost, _remotePort, packet);
+        (void)_socket.send_to(_remoteHost, _remotePort, packet);
     }
 
     _channel.Reset();

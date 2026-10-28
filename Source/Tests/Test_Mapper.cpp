@@ -40,6 +40,8 @@ FO_BEGIN_NAMESPACE
 
 using namespace MapperTests;
 
+static_assert(std::is_aggregate_v<MapperEngine::EntityBuf>);
+
 TEST_CASE("MapperEngineClearsTheStartingUpFlagOnceItRuns")
 {
     // The client constructor deliberately does not finish start-up, because the mapper keeps coming up
@@ -1100,6 +1102,267 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 
         press("Content", "Clear", draw_content);
         CHECK(mapper->MessBox.empty());
+    }
+}
+
+TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    auto scene = mapper->LoadMapFromText("BufferSnapshot", "BufferSnapshot.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7")));
+    REQUIRE(scene);
+    mapper->ShowMap(scene.as_ptr());
+
+    auto parent = scene->GetItem(ident_t {10});
+    REQUIRE(parent);
+    auto proto = parent->GetProto().dyn_cast<const ProtoItem>();
+    REQUIRE(proto);
+    auto child = parent->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child"}, nullptr);
+    auto grandchild = child->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild"}, nullptr);
+    child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "3"}});
+    grandchild->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "5"}});
+    ident_t child_id = child->GetId();
+    ident_t grandchild_id = grandchild->GetId();
+    auto light_prop = parent->GetPropertyLightDistance();
+
+    MapperEngine::EntityBuf snapshot;
+    mapper->CaptureEntityBuf(snapshot, parent);
+    REQUIRE(snapshot.Props);
+    REQUIRE(snapshot.Children.size() == 1);
+    REQUIRE(snapshot.Children.front()->Props);
+    REQUIRE(snapshot.Children.front()->Children.size() == 1);
+    REQUIRE(snapshot.Children.front()->Children.front()->Props);
+    CHECK(snapshot.Id == ident_t {10});
+    CHECK(snapshot.Children.front()->Id == child_id);
+    CHECK(snapshot.Children.front()->Children.front()->Id == grandchild_id);
+
+    child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "9"}});
+    CHECK(child->GetLightDistance() == 9);
+    CHECK(snapshot.Props->SavePropertyToText(light_prop) == "7");
+    CHECK(snapshot.Children.front()->Props->SavePropertyToText(light_prop) == "3");
+    CHECK(snapshot.Children.front()->Children.front()->Props->SavePropertyToText(light_prop) == "5");
+
+    mapper->DeleteEntity(parent);
+    auto restored = mapper->RestoreEntityBuf(snapshot).dyn_cast<ItemView>();
+    REQUIRE(restored);
+    REQUIRE(restored->GetInnerItems().size() == 1);
+    auto restored_child = restored->GetInnerItems().front().as_ptr();
+    CHECK(restored_child->GetId() == child_id);
+    CHECK(restored_child->GetContainerStack() == "child");
+    CHECK(restored_child->GetLightDistance() == 3);
+    REQUIRE(restored_child->GetInnerItems().size() == 1);
+    CHECK(restored_child->GetInnerItems().front()->GetId() == grandchild_id);
+    CHECK(restored_child->GetInnerItems().front()->GetContainerStack() == "grandchild");
+    CHECK(restored_child->GetInnerItems().front()->GetLightDistance() == 5);
+
+    function<string()> read_snapshot = [snapshot = std::move(snapshot), light_prop] {
+        return snapshot.Children.front()->Props->SavePropertyToText(light_prop);
+    };
+    CHECK(read_snapshot() == "3");
+    CHECK(read_snapshot() == "3");
+}
+
+TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
+{
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    auto scene = mapper->LoadMapFromText("UndoRedoSnapshot", "UndoRedoSnapshot.fomap",
+        MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7") + MakeItemBlock(11, SCENERY_A, 14, 14, "Static = False\nLightDistance = 11")));
+    REQUIRE(scene);
+    mapper->ShowMap(scene.as_ptr());
+
+    auto root_a = scene->GetItem(ident_t {10});
+    auto root_b = scene->GetItem(ident_t {11});
+    REQUIRE(root_a);
+    REQUIRE(root_b);
+
+    auto proto = root_a->GetProto().dyn_cast<const ProtoItem>();
+    REQUIRE(proto);
+
+    auto child_a1 = root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a1"}, nullptr);
+    auto child_a2 = root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a2"}, nullptr);
+    auto grandchild_a = child_a1->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild_a"}, nullptr);
+    auto child_b1 = root_b->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_b1"}, nullptr);
+
+    child_a1->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "3"}});
+    child_a2->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "4"}});
+    grandchild_a->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "5"}});
+    child_b1->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "6"}});
+
+    ident_t root_a_id = root_a->GetId();
+    ident_t root_b_id = root_b->GetId();
+    ident_t child_a1_id = child_a1->GetId();
+    ident_t child_a2_id = child_a2->GetId();
+    ident_t grandchild_a_id = grandchild_a->GetId();
+
+    auto check_root_a_state = [&](nptr<ItemHexView> restored) {
+        REQUIRE(restored);
+        REQUIRE(restored->GetInnerItems().size() == 2);
+        CHECK(restored->GetLightDistance() == 7);
+
+        auto restored_child_a1 = restored->GetInnerItems().front().as_ptr();
+        CHECK(restored_child_a1->GetId() == child_a1_id);
+        CHECK(restored_child_a1->GetContainerStack() == "child_a1");
+        CHECK(restored_child_a1->GetLightDistance() == 3);
+        REQUIRE(restored_child_a1->GetInnerItems().size() == 1);
+        CHECK(restored_child_a1->GetInnerItems().front()->GetId() == grandchild_a_id);
+        CHECK(restored_child_a1->GetInnerItems().front()->GetContainerStack() == "grandchild_a");
+        CHECK(restored_child_a1->GetInnerItems().front()->GetLightDistance() == 5);
+
+        CHECK(restored->GetInnerItems()[1]->GetId() == child_a2_id);
+        CHECK(restored->GetInnerItems()[1]->GetContainerStack() == "child_a2");
+        CHECK(restored->GetInnerItems()[1]->GetLightDistance() == 4);
+    };
+
+    auto mutate_live_child = [](ptr<ItemView> child) {
+        child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "9"}});
+    };
+
+    SECTION("SingleDeleteUndoRedoCyclesKeepSnapshotState")
+    {
+        REQUIRE(scene->GetItems().size() == 2);
+
+        mapper->DeleteEntity(root_a);
+        CHECK_FALSE(scene->GetItem(root_a_id));
+        REQUIRE(scene->GetItems().size() == 1);
+
+        for (int32_t cycle = 0; cycle < 2; cycle++) {
+            INFO(cycle);
+            REQUIRE(mapper->ExecuteUndo());
+
+            auto restored = scene->GetItem(root_a_id);
+            REQUIRE(restored);
+            REQUIRE(scene->GetItems().size() == 2);
+            check_root_a_state(restored);
+
+            auto restored_child = restored->GetInnerItems().front().as_ptr();
+            mutate_live_child(restored_child);
+            CHECK(restored_child->GetLightDistance() == 9);
+
+            REQUIRE(mapper->ExecuteRedo());
+            CHECK_FALSE(scene->GetItem(root_a_id));
+            REQUIRE(scene->GetItems().size() == 1);
+        }
+
+        REQUIRE(mapper->ExecuteUndo());
+        auto restored = scene->GetItem(root_a_id);
+        REQUIRE(restored);
+        check_root_a_state(restored);
+    }
+
+    SECTION("MultiSelectionDeleteUndoRedoCyclesKeepRootsChildrenAndOrder")
+    {
+        REQUIRE(scene->GetItems().size() == 2);
+
+        mapper->SelectClear();
+        mapper->SelectAdd(root_a);
+        mapper->SelectAdd(root_b);
+        REQUIRE(mapper->SelectedEntities.size() == 2);
+
+        mapper->SelectDelete();
+        REQUIRE(scene->GetItems().empty());
+
+        for (int32_t cycle = 0; cycle < 2; cycle++) {
+            INFO(cycle);
+            REQUIRE(mapper->ExecuteUndo());
+            REQUIRE(scene->GetItems().size() == 2);
+
+            auto restored_a = scene->GetItem(root_a_id);
+            auto restored_b = scene->GetItem(root_b_id);
+            check_root_a_state(restored_a);
+            REQUIRE(restored_b);
+            CHECK(restored_b->GetLightDistance() == 11);
+            REQUIRE(restored_b->GetInnerItems().size() == 1);
+            CHECK(restored_b->GetInnerItems().front()->GetContainerStack() == "child_b1");
+            CHECK(restored_b->GetInnerItems().front()->GetLightDistance() == 6);
+
+            auto restored_child = restored_a->GetInnerItems().front().as_ptr();
+            mutate_live_child(restored_child);
+            CHECK(restored_child->GetLightDistance() == 9);
+
+            REQUIRE(mapper->ExecuteRedo());
+            REQUIRE(scene->GetItems().empty());
+        }
+
+        REQUIRE(mapper->ExecuteUndo());
+        auto restored_a = scene->GetItem(root_a_id);
+        auto restored_b = scene->GetItem(root_b_id);
+        check_root_a_state(restored_a);
+        REQUIRE(restored_b);
+        CHECK(restored_b->GetInnerItems().front()->GetLightDistance() == 6);
+    }
+
+    SECTION("PasteUndoRedoCyclesRestoreTrackedIDsAndSnapshotChildren")
+    {
+        REQUIRE(scene->GetItems().size() == 2);
+
+        mapper->SelectClear();
+        mapper->SelectAdd(root_a);
+        mapper->SelectAdd(root_b);
+        REQUIRE(mapper->SelectedEntities.size() == 2);
+
+        mapper->BufferCopy();
+        mapper->BufferPaste();
+        REQUIRE(scene->GetItems().size() == 4);
+        REQUIRE(mapper->SelectedEntities.size() == 2);
+
+        vector<ident_t> pasted_ids;
+        pasted_ids.reserve(mapper->SelectedEntities.size());
+
+        for (const auto& pasted_entity : mapper->SelectedEntities) {
+            ident_t pasted_id = pasted_entity->GetId();
+            pasted_ids.emplace_back(pasted_id);
+            REQUIRE(scene->GetItem(pasted_id));
+        }
+
+        REQUIRE(pasted_ids.size() == 2);
+
+        auto pasted_root_a = scene->GetItem(pasted_ids.front());
+        REQUIRE(pasted_root_a);
+        REQUIRE(pasted_root_a->GetInnerItems().size() == 2);
+
+        auto pasted_child_a1 = pasted_root_a->GetInnerItems().front().as_ptr();
+        ident_t pasted_child_a1_id = pasted_child_a1->GetId();
+        ident_t pasted_grandchild_a_id = pasted_child_a1->GetInnerItems().front()->GetId();
+        CHECK(pasted_child_a1->GetLightDistance() == 3);
+        CHECK(pasted_child_a1->GetInnerItems().front()->GetLightDistance() == 5);
+
+        for (int32_t cycle = 0; cycle < 2; cycle++) {
+            INFO(cycle);
+            REQUIRE(mapper->ExecuteUndo());
+            REQUIRE(scene->GetItems().size() == 2);
+
+            for (ident_t pasted_id : pasted_ids) {
+                CHECK_FALSE(scene->GetItem(pasted_id));
+            }
+
+            REQUIRE(mapper->ExecuteRedo());
+            REQUIRE(scene->GetItems().size() == 4);
+
+            for (ident_t pasted_id : pasted_ids) {
+                auto restored = scene->GetItem(pasted_id);
+                REQUIRE(restored);
+            }
+
+            auto restored_pasted_root = scene->GetItem(pasted_ids.front());
+            REQUIRE(restored_pasted_root);
+            REQUIRE(restored_pasted_root->GetInnerItems().size() == 2);
+
+            auto restored_pasted_child = restored_pasted_root->GetInnerItems().front().as_ptr();
+            CHECK(restored_pasted_child->GetId() == pasted_child_a1_id);
+            CHECK(restored_pasted_child->GetInnerItems().front()->GetId() == pasted_grandchild_a_id);
+            CHECK(restored_pasted_child->GetLightDistance() == 3);
+            CHECK(restored_pasted_child->GetInnerItems().front()->GetLightDistance() == 5);
+
+            if (cycle == 0) {
+                mutate_live_child(restored_pasted_child);
+                CHECK(restored_pasted_child->GetLightDistance() == 9);
+            }
+        }
     }
 }
 

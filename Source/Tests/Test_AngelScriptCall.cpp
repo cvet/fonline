@@ -531,7 +531,6 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
     CHECK(server->TimeEventMngr.CollectReadyTimeEvents(next).empty());
     CHECK(scheduled_contexts == 1);
 
-
     if (shutdown_pending) {
         context_manager->SetDelayedScheduler({});
         server->TimeEventMngr.ClearDispatcherHooks();

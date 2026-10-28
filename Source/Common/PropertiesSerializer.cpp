@@ -223,7 +223,7 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
 
     auto decode_char = [str](size_t char_pos, size_t& char_len) {
         char_len = utf8::decode_str_nt_len(&str[char_pos]);
-        utf8::decode(&str[char_pos], char_len);
+        (void)utf8::decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;

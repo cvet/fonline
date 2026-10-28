@@ -74,12 +74,12 @@ public:
     auto operator=(RenderTargetManager&&) noexcept -> RenderTargetManager& = delete;
     ~RenderTargetManager() = default;
 
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> ptr<RenderTarget>;
     [[nodiscard]] auto GetRenderTargetStack() const -> const_span<ptr<RenderTarget>>;
     [[nodiscard]] auto GetCurrentRenderTarget() const -> nptr<const RenderTarget>;
     [[nodiscard]] auto GetCurrentRenderTarget() -> nptr<RenderTarget>;
     [[nodiscard]] auto GetRenderTargetCount() const noexcept -> size_t { return _rtAll.size(); }
 
+    auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> ptr<RenderTarget>;
     void PushRenderTarget(ptr<RenderTarget> rt);
     void PopRenderTarget();
     void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);

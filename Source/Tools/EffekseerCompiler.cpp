@@ -50,6 +50,8 @@ struct XmlNode final
 class BinaryWriter final
 {
 public:
+    [[nodiscard]] auto GetData() const noexcept -> const vector<uint8_t>&;
+
     void WriteUInt8(uint8_t value);
     void WriteUInt16(uint16_t value);
     void WriteInt32(int32_t value);
@@ -57,8 +59,7 @@ public:
     void WriteBytes(const_span<uint8_t> value);
     void WriteSized(const BinaryWriter& value);
     void WriteUtf16(string_view value);
-    [[nodiscard]] auto MoveData() -> vector<uint8_t>;
-    [[nodiscard]] auto GetData() const noexcept -> const vector<uint8_t>&;
+    auto MoveData() -> vector<uint8_t>;
 
 private:
     vector<uint8_t> _data {};
@@ -78,9 +79,9 @@ struct CompilerContext final
     set<string> Dependencies {};
 };
 
-[[nodiscard]] static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode;
-[[nodiscard]] static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext;
-[[nodiscard]] static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput;
+static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode;
+static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext;
+static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput;
 
 auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput
 {
@@ -109,12 +110,12 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
     return vector<string> {context.Dependencies.begin(), context.Dependencies.end()};
 }
 
-[[nodiscard]] static auto IsXmlSpace(char ch) noexcept -> bool
+static auto IsXmlSpace(char ch) noexcept -> bool
 {
     return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
 }
 
-[[nodiscard]] static auto TrimXmlText(string_view value) -> string
+static auto TrimXmlText(string_view value) -> string
 {
     size_t begin = 0;
     size_t end = value.size();
@@ -129,7 +130,7 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
     return string {value.substr(begin, end - begin)};
 }
 
-[[nodiscard]] static auto DecodeXmlText(string_view value, string_view project_path) -> string
+static auto DecodeXmlText(string_view value, string_view project_path) -> string
 {
     string result;
     result.reserve(value.size());
@@ -182,7 +183,7 @@ public:
     {
     }
 
-    [[nodiscard]] auto Parse() -> XmlNode
+    auto Parse() -> XmlNode
     {
         FO_TRACE_ZONE(Baking);
 
@@ -226,9 +227,9 @@ private:
         }
     }
 
-    [[nodiscard]] auto StartsWith(string_view value) const noexcept -> bool { return _xml.substr(_position).starts_with(value); }
+    auto StartsWith(string_view value) const noexcept -> bool { return _xml.substr(_position).starts_with(value); }
 
-    [[nodiscard]] auto ParseName() -> string
+    auto ParseName() -> string
     {
         size_t begin = _position;
 
@@ -250,7 +251,7 @@ private:
         return string {_xml.substr(begin, _position - begin)};
     }
 
-    [[nodiscard]] auto ParseElement() -> XmlNode
+    auto ParseElement() -> XmlNode
     {
         if (_position >= _xml.size() || _xml[_position] != '<' || StartsWith("</") || StartsWith("<!") || StartsWith("<?")) {
             Fail("Effekseer project contains invalid XML markup");
@@ -315,13 +316,13 @@ private:
     size_t _position {};
 };
 
-[[nodiscard]] static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode
+static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode
 {
     XmlParser parser {project_path, xml};
     return parser.Parse();
 }
 
-[[nodiscard]] static auto Child(nptr<const XmlNode> node, string_view name) noexcept -> nptr<const XmlNode>
+static auto Child(nptr<const XmlNode> node, string_view name) noexcept -> nptr<const XmlNode>
 {
     if (!node) {
         return nullptr;
@@ -331,7 +332,7 @@ private:
     return it != node->Children.end() ? &*it : nullptr;
 }
 
-[[nodiscard]] static auto Find(nptr<const XmlNode> node, string_view path) noexcept -> nptr<const XmlNode>
+static auto Find(nptr<const XmlNode> node, string_view path) noexcept -> nptr<const XmlNode>
 {
     while (node && !path.empty()) {
         size_t separator = path.find('/');
@@ -348,13 +349,13 @@ private:
     return node;
 }
 
-[[nodiscard]] static auto Text(nptr<const XmlNode> node, string_view path, string_view default_value = {}) -> string_view
+static auto Text(nptr<const XmlNode> node, string_view path, string_view default_value = {}) -> string_view
 {
     nptr<const XmlNode> value = Find(node, path);
     return value ? string_view {value->Text} : default_value;
 }
 
-[[nodiscard]] static auto IntValue(nptr<const XmlNode> node, string_view path, int32_t default_value = 0) -> int32_t
+static auto IntValue(nptr<const XmlNode> node, string_view path, int32_t default_value = 0) -> int32_t
 {
     nptr<const XmlNode> value = Find(node, path);
 
@@ -374,7 +375,7 @@ private:
     return result;
 }
 
-[[nodiscard]] static auto FloatValue(nptr<const XmlNode> node, string_view path, float32_t default_value = 0.0f) -> float32_t
+static auto FloatValue(nptr<const XmlNode> node, string_view path, float32_t default_value = 0.0f) -> float32_t
 {
     nptr<const XmlNode> value = Find(node, path);
 
@@ -394,7 +395,7 @@ private:
     return result;
 }
 
-[[nodiscard]] static auto BoolValue(nptr<const XmlNode> node, string_view path, bool default_value = false) -> bool
+static auto BoolValue(nptr<const XmlNode> node, string_view path, bool default_value = false) -> bool
 {
     nptr<const XmlNode> value = Find(node, path);
 
@@ -538,7 +539,7 @@ static void WriteRandomVector3(BinaryWriter& writer, nptr<const XmlNode> node, f
     writer.WriteFloat(FloatValue(z, "Min", default_z) * multiplier);
 }
 
-[[nodiscard]] static auto EasingCoefficients(int32_t start, int32_t end) -> std::array<float32_t, 3>
+static auto EasingCoefficients(int32_t start, int32_t end) -> std::array<float32_t, 3>
 {
     float32_t gradient_start = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(start) + 45.0) / 180.0 * std::numbers::pi));
     float32_t gradient_end = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(end) + 45.0) / 180.0 * std::numbers::pi));
@@ -665,7 +666,7 @@ struct CurveKey final
     int32_t Interpolation {};
 };
 
-[[nodiscard]] static auto ReadCurveKeys(nptr<const XmlNode> channel) -> vector<CurveKey>
+static auto ReadCurveKeys(nptr<const XmlNode> channel) -> vector<CurveKey>
 {
     vector<CurveKey> keys;
     nptr<const XmlNode> keys_node = Child(channel, "Keys");
@@ -699,17 +700,17 @@ struct CurveKey final
     return keys;
 }
 
-[[nodiscard]] static auto CubicRoot(float32_t value) -> float32_t
+static auto CubicRoot(float32_t value) -> float32_t
 {
     return value == 0.0f ? 0.0f : value > 0.0f ? numeric_cast<float32_t>(std::pow(value, 1.0 / 3.0)) : -numeric_cast<float32_t>(std::pow(-value, 1.0 / 3.0));
 }
 
-[[nodiscard]] static auto IsCurveRootValid(float32_t value) noexcept -> bool
+static auto IsCurveRootValid(float32_t value) noexcept -> bool
 {
     return !std::isnan(value) && value >= -0.00000001f && value <= 1.000001f;
 }
 
-[[nodiscard]] static auto SolveCurveT(float32_t frame, float32_t x0, float32_t x1, float32_t x2, float32_t x3) -> optional<float32_t>
+static auto SolveCurveT(float32_t frame, float32_t x0, float32_t x1, float32_t x2, float32_t x3) -> optional<float32_t>
 {
     float32_t c3_source = x3 - x0 + 3.0f * (x1 - x2);
     float32_t c2_source = 3.0f * (x0 - 2.0f * x1 + x2);
@@ -783,7 +784,7 @@ struct CurveKey final
     return IsCurveRootValid(second) ? optional<float32_t> {second} : std::nullopt;
 }
 
-[[nodiscard]] static auto SampleCurve(const vector<CurveKey>& keys, int32_t frame, int32_t start_edge, int32_t end_edge, float32_t default_value) -> float32_t
+static auto SampleCurve(const vector<CurveKey>& keys, int32_t frame, int32_t start_edge, int32_t end_edge, float32_t default_value) -> float32_t
 {
     if (keys.empty()) {
         return default_value;
@@ -926,22 +927,22 @@ static void WriteScalarCurve(BinaryWriter& writer, nptr<const XmlNode> node, flo
     WriteCurveChannel(writer, Child(keys, "S"), default_value, multiplier);
 }
 
-[[nodiscard]] static auto NodeDrawingType(nptr<const XmlNode> node) -> int32_t
+static auto NodeDrawingType(nptr<const XmlNode> node) -> int32_t
 {
     return IntValue(Find(node, "DrawingValues"), "Type", 2);
 }
 
-[[nodiscard]] static auto NodeIsRendered(nptr<const XmlNode> node) -> bool
+static auto NodeIsRendered(nptr<const XmlNode> node) -> bool
 {
     return BoolValue(node, "IsRendered", true);
 }
 
-[[nodiscard]] static auto IsRenderedNode(nptr<const XmlNode> node) -> bool
+static auto IsRenderedNode(nptr<const XmlNode> node) -> bool
 {
     return (NodeIsRendered(node) && NodeDrawingType(node) != 0) || IntValue(Find(node, "SoundValues"), "Type", 0) == 1 || BoolValue(Find(node, "GpuParticles"), "Enabled", false);
 }
 
-[[nodiscard]] static auto HasRenderedNode(nptr<const XmlNode> node) -> bool
+static auto HasRenderedNode(nptr<const XmlNode> node) -> bool
 {
     if (IsRenderedNode(node)) {
         return true;
@@ -967,7 +968,7 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
     }
 }
 
-[[nodiscard]] static auto ChangeDependencyExtension(string_view path, string_view ext) -> string
+static auto ChangeDependencyExtension(string_view path, string_view ext) -> string
 {
     if (path.empty()) {
         return {};
@@ -1076,7 +1077,7 @@ static void WriteResourceTable(BinaryWriter& writer, const map<string, int32_t>&
     }
 }
 
-[[nodiscard]] static auto DynamicEquationIndex(nptr<const XmlNode> node, string_view path) -> int32_t
+static auto DynamicEquationIndex(nptr<const XmlNode> node, string_view path) -> int32_t
 {
     return IntValue(node, path, -1);
 }
@@ -1405,13 +1406,13 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     }
 }
 
-[[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, string_view path) -> string
+static auto ResolveDependencyPath(const CompilerContext& context, string_view path) -> string
 {
     std::filesystem::path resolved = (std::filesystem::path {fs::make_path(context.ProjectDirectory)} / std::filesystem::path {fs::make_path(strex(path).normalize_path_slashes())}).lexically_normal();
     return fs::path_to_string(resolved);
 }
 
-[[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
+static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
     optional<string> bytes = fs::read_file(ResolveDependencyPath(context, path));
 
@@ -1451,7 +1452,7 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
     return std::make_pair(numeric_cast<float32_t>(width), numeric_cast<float32_t>(height));
 }
 
-[[nodiscard]] static auto TextureIndex(const CompilerContext& context, string_view path, const map<string, int32_t>& indices) -> int32_t
+static auto TextureIndex(const CompilerContext& context, string_view path, const map<string, int32_t>& indices) -> int32_t
 {
     auto it = indices.find(string {path});
     return it != indices.end() && ReadTextureSize(context, path) ? it->second : -1;
@@ -1590,7 +1591,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     writer.WriteFloat(0.0f);
 }
 
-[[nodiscard]] static auto ByteValue(nptr<const XmlNode> node, string_view path, uint8_t default_value) -> uint8_t
+static auto ByteValue(nptr<const XmlNode> node, string_view path, uint8_t default_value) -> uint8_t
 {
     int32_t value = IntValue(node, path, default_value);
 
@@ -1601,7 +1602,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     return numeric_cast<uint8_t>(value);
 }
 
-[[nodiscard]] static auto HsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value) -> std::array<uint8_t, 3>
+static auto HsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value) -> std::array<uint8_t, 3>
 {
     int32_t h = hue;
     int32_t s = saturation;
@@ -2127,7 +2128,7 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
     writer.WriteInt32(IntValue(values, "WorldCoordinateSyatem", 0));
 }
 
-[[nodiscard]] static auto HasChildColorInheritance(nptr<const XmlNode> node) -> bool
+static auto HasChildColorInheritance(nptr<const XmlNode> node) -> bool
 {
     nptr<const XmlNode> children = Child(node, "Children");
 
@@ -2145,7 +2146,7 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
     });
 }
 
-[[nodiscard]] static auto OutputNodeType(nptr<const XmlNode> node, bool renderer_exported) -> int32_t
+static auto OutputNodeType(nptr<const XmlNode> node, bool renderer_exported) -> int32_t
 {
     if (!renderer_exported || NodeDrawingType(node) == 0) {
         return 0;
@@ -2233,7 +2234,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     }
 }
 
-[[nodiscard]] static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext
+static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext
 {
     FO_TRACE_ZONE(Baking);
 
@@ -2268,7 +2269,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     return context;
 }
 
-[[nodiscard]] static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput
+static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput
 {
     FO_TRACE_ZONE(Baking);
 

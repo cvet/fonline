@@ -69,7 +69,7 @@ namespace ImageBakerRix
         reader.SetCurPos(numeric_cast<size_t>(0xA + 256 * 3));
 
         for (size_t i = 0; i < pixels.size(); i++) {
-            size_t index = checked_mul(numeric_cast<size_t>(reader.GetUInt8()), size_t {3});
+            size_t index = checked_mul(numeric_cast<size_t>(reader.ReadUInt8()), size_t {3});
             uint8_t r = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {2})]) * 4);
             uint8_t g = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {1})]) * 4);
             uint8_t b = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[index]) * 4);

@@ -94,13 +94,6 @@ public:
         nptr<const ProtoEntity> Proto {};
         optional<Properties> Props {};
         vector<unique_ptr<EntityBuf>> Children {};
-        EntityBuf() = default;
-        EntityBuf(const EntityBuf& other);
-        auto operator=(const EntityBuf& other) -> EntityBuf&;
-        EntityBuf(EntityBuf&&) noexcept = default;
-        // Properties move assignment is deleted, so the defaulted variant would be implicitly deleted anyway
-        auto operator=(EntityBuf&&) noexcept -> EntityBuf& = delete;
-        [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? make_nptr(&*Props) : nullptr; }
     };
 
     struct UndoOp
@@ -182,6 +175,17 @@ public:
     auto operator=(MapperEngine&&) noexcept = delete;
     ~MapperEngine() override = default;
 
+    [[nodiscard]] auto IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool;
+    [[nodiscard]] auto IsCurInRect(const irect32& rect) const -> bool;
+    [[nodiscard]] auto IsCurInInterface() const -> bool;
+    [[nodiscard]] auto IsMapperHexOverlayVisible() const noexcept -> bool { return MapperHexOverlayVisible; }
+    [[nodiscard]] auto GetMapperTrackOverlayHexes() const noexcept -> const vector<mpos>& { return MapperTrackOverlayHexes; }
+    [[nodiscard]] auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
+    [[nodiscard]] auto IsItemMode() const -> bool { return ActiveItemProtos && ActiveProtoScroll; }
+    [[nodiscard]] auto IsCritMode() const -> bool { return ActiveCritterProtos && ActiveProtoScroll; }
+    [[nodiscard]] auto IsImGuiMouseCaptured() const -> bool;
+    [[nodiscard]] auto IsImGuiTextInputActive() const -> bool;
+
     void Shutdown() override;
 
     void InitIface();
@@ -207,9 +211,6 @@ public:
     void CommitPendingSelectionMove();
     void ResetPendingSelectionMove();
 
-    auto IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool;
-    auto IsCurInRect(const irect32& rect) const -> bool;
-    auto IsCurInInterface() const -> bool;
     auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
 
     void DrawMainPanelImGui();
@@ -229,11 +230,8 @@ public:
 
     void SetMapperHexOverlayVisible(bool visible);
     void ToggleMapperHexOverlay();
-    auto IsMapperHexOverlayVisible() const noexcept -> bool { return MapperHexOverlayVisible; }
     void ClearMapperTrackOverlay();
     void AddMapperTrackOverlayHex(mpos hex, int32_t kind);
-    auto GetMapperTrackOverlayHexes() const noexcept -> const vector<mpos>& { return MapperTrackOverlayHexes; }
-    auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
     void MarkBlockedHexes();
 
     auto GetActiveSubTab() -> nptr<SubTab>;
@@ -241,8 +239,6 @@ public:
     auto GetActiveProtoIndex() const -> int32_t;
     void SetActiveProtoIndex(int32_t index);
     void RefreshActiveProtoLists();
-    auto IsItemMode() const -> bool { return ActiveItemProtos && ActiveProtoScroll; }
-    auto IsCritMode() const -> bool { return ActiveCritterProtos && ActiveProtoScroll; }
 
     void MoveEntity(ptr<ClientEntity> entity, mpos hex);
     void DeleteEntity(ptr<ClientEntity> entity);
@@ -285,8 +281,6 @@ public:
     void DrawConsoleImGui();
     void ConsoleSubmitCommand();
     void ResetImGuiSettings();
-    auto IsImGuiMouseCaptured() const -> bool;
-    auto IsImGuiTextInputActive() const -> bool;
     auto CanUndo() const -> bool;
     auto CanRedo() const -> bool;
     auto GetUndoLabel() const -> string;

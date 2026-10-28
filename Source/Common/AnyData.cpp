@@ -313,7 +313,7 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
 
     auto decode_char = [str](size_t char_pos, size_t& char_len) {
         char_len = utf8::decode_str_nt_len(&str[char_pos]);
-        utf8::decode(&str[char_pos], char_len);
+        (void)utf8::decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;
@@ -410,7 +410,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
     for (size_t i = 0; i < str.length();) {
         auto s = make_ptr(str.data()).offset(i);
         size_t length = str.length() - i;
-        utf8::decode(s, length);
+        (void)utf8::decode(s, length);
 
         if (length == 1) {
             switch (*s) {
@@ -462,7 +462,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
 
     auto s = make_ptr(str.data());
     size_t length = str.length();
-    utf8::decode(s, length);
+    (void)utf8::decode(s, length);
 
     bool is_protected = length == 1 && *s == '\"';
     bool closing_quote_found = false;
@@ -470,7 +470,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
         s = make_ptr(str.data()).offset(i);
         length = str.length() - i;
-        utf8::decode(s, length);
+        (void)utf8::decode(s, length);
 
         if (is_protected && length == 1 && *s == '"') {
             if (i != str.length() - 1) {
@@ -490,7 +490,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
 
             s = make_ptr(str.data()).offset(i);
             length = str.length() - i;
-            utf8::decode(s, length);
+            (void)utf8::decode(s, length);
 
             switch (*s) {
             case 'r':

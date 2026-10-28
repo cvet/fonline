@@ -881,7 +881,7 @@ void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
             string_view cached_output_path = path.substr(0, path.size() - dependency_cache_suffix.size());
 
             if (expected.ResourceNames.count(ExcludeAllExt(cached_output_path)) == 0) {
-                fs::remove_file(strex(effekseer_cache_dir).combine_path(path));
+                (void)fs::remove_file(strex(effekseer_cache_dir).combine_path(path));
                 logging::write("Delete outdated baker cache {}", path);
             }
         }

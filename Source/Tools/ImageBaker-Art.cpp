@@ -234,7 +234,7 @@ namespace ImageBakerArt
                 int64_t written = 0;
 
                 while (frame_reader.GetCurPos() < frame_reader.GetSize()) {
-                    uint8_t value = frame_reader.GetUInt8();
+                    uint8_t value = frame_reader.ReadUInt8();
                     int32_t len = numeric_cast<int32_t>(value & 0x7Fu);
                     int64_t next_written = checked_add(written, numeric_cast<int64_t>(len));
 
@@ -244,7 +244,7 @@ namespace ImageBakerArt
                         frame_reader.ReadObjectArray<uint8_t>(span {indices}.subspan(numeric_cast<size_t>(written), numeric_cast<size_t>(len)));
                     }
                     else {
-                        uint8_t color_index = frame_reader.GetUInt8();
+                        uint8_t color_index = frame_reader.ReadUInt8();
                         std::fill_n(indices.begin() + numeric_cast<ptrdiff_t>(written), len, color_index);
                     }
 

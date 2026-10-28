@@ -73,6 +73,36 @@ namespace EntityLifecycleTests
         auto operator=(TestNetworkConnection&&) noexcept = delete;
         ~TestNetworkConnection() override = default;
 
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
+        {
+            switch (msg) {
+            case NetMessage::AddCritter:
+                return _sentAddCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::RemoveCritter:
+                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::Disconnect:
+                return _sentDisconnectCount.load(std::memory_order_relaxed);
+            case NetMessage::CritterDir:
+                return _sentCritterDirCount.load(std::memory_order_acquire);
+            default:
+                return 0;
+            }
+        }
+
+        [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
+        {
+            FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
+            return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
+        }
+
         void Receive(const_span<uint8_t> buf)
         {
             vector<uint8_t> sealed;
@@ -98,40 +128,6 @@ namespace EntityLifecycleTests
             _lastSentCritterDir.store(mdir {}, std::memory_order_relaxed);
             _lastSentInfoMessage.store(EngineInfoMessage::None, std::memory_order_relaxed);
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
-        }
-
-        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
-        {
-            switch (msg) {
-            case NetMessage::AddCritter:
-                return _sentAddCritterCount.load(std::memory_order_relaxed);
-            case NetMessage::RemoveCritter:
-                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
-            case NetMessage::Disconnect:
-                return _sentDisconnectCount.load(std::memory_order_relaxed);
-            case NetMessage::CritterDir:
-                return _sentCritterDirCount.load(std::memory_order_acquire);
-            default:
-                return 0;
-            }
-        }
-
-        [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
-        {
-            FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
-            return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
         }
 
     protected:

@@ -140,7 +140,7 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     uint16_t port = FindUnusedServerPort();
     GlobalSettings client_settings = MakeUpdaterClientSettings(port);
     string bake_output = PrepareUpdaterBakeOutput();
-    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { (void)fs::remove_dir_tree(bake_output); });
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
 
     // Nothing is listening on this port: the player starts the client while the server is down
@@ -169,7 +169,7 @@ TEST_CASE("ClientUpdaterGivesUpOnAServerThatStopsAnswering")
 
     GlobalSettings client_settings = MakeUpdaterClientSettings(port);
     string bake_output = PrepareUpdaterBakeOutput();
-    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { (void)fs::remove_dir_tree(bake_output); });
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
     BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 300);
 

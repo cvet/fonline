@@ -663,13 +663,13 @@ void Updater::GetNextFile()
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
                 logging::write(logging::type::warning, "Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-                fs::remove_file(temp_path);
+                (void)fs::remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
                     logging::write(logging::type::warning, "Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-                    fs::remove_file(temp_path);
+                    (void)fs::remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
@@ -698,7 +698,7 @@ void Updater::GetNextFile()
             }
             else if (!next_update_file.IsClientBinary && !IsResumablePackPrefix(temp_path, next_update_file.PackHeader)) {
                 logging::write(logging::type::warning, "Client updater: temp file {} was started from another server build, restarting download", temp_path);
-                fs::remove_file(temp_path);
+                (void)fs::remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else {
@@ -1150,7 +1150,7 @@ void Updater::Net_OnHashList()
     for (uint32_t i = 0; i < count; i++) {
         string str = _conn.InBuf->Read<string>();
 
-        _hashStorage.to_hashed_string(str);
+        (void)_hashStorage.to_hashed_string(str);
     }
 
     if (count != 0) {
@@ -1491,7 +1491,7 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
     string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs::exists(final_path);
 
-    fs::remove_file(backup_path);
+    (void)fs::remove_file(backup_path);
 
     if (final_exists && !fs::rename_durable(final_path, backup_path)) {
         return false;
@@ -1499,14 +1499,14 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 
     if (!fs::rename_durable(temp_path, final_path)) {
         if (final_exists) {
-            fs::rename_durable(backup_path, final_path);
+            (void)fs::rename_durable(backup_path, final_path);
         }
 
         return false;
     }
 
     if (final_exists) {
-        fs::remove_file(backup_path);
+        (void)fs::remove_file(backup_path);
     }
 
     return true;
@@ -1771,8 +1771,8 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
         });
 
         for (const auto& [staged, final_path] : renames) {
-            fs::remove_file(final_path);
-            fs::rename(staged, final_path);
+            (void)fs::remove_file(final_path);
+            (void)fs::rename(staged, final_path);
         }
     }
     catch (const std::exception& ex) {

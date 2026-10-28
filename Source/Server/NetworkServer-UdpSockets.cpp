@@ -160,7 +160,7 @@ void NetworkServerConnection_UdpSockets::TickSend(udp_socket& socket, nanotime n
     if (_disconnectRequested) {
         if (socket.can_write()) {
             auto packet = _channel.MakeDisconnectPacket();
-            socket.send_to(_host, _port, packet);
+            (void)socket.send_to(_host, _port, packet);
             _disconnectRequested = false;
         }
 
@@ -222,7 +222,7 @@ void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const v
             break;
         }
 
-        socket.send_to(_host, _port, packet);
+        (void)socket.send_to(_host, _port, packet);
     }
 }
 
@@ -374,7 +374,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
     }
 
     auto accept_packet = MakeUdpAcceptPacket(connection->GetSessionId(), packet.Value);
-    _socket.send_to(connection->GetHost(), connection->GetPort(), accept_packet);
+    (void)_socket.send_to(connection->GetHost(), connection->GetPort(), accept_packet);
 
     if (is_new_connection) {
         if (TrackConnection(connection)) {

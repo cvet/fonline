@@ -129,7 +129,7 @@ namespace
         {"Source/Server/Server.cpp", "OnCritterStartMoving.Fire(cr, true);", 1, "post-speed-change notification"},
     };
 
-    [[nodiscard]] static auto Trim(string_view text) noexcept -> string_view
+    static auto Trim(string_view text) noexcept -> string_view
     {
         size_t begin = 0;
 
@@ -146,7 +146,7 @@ namespace
         return text.substr(begin, end - begin);
     }
 
-    [[nodiscard]] static auto FindEngineRoot() -> std::filesystem::path
+    static auto FindEngineRoot() -> std::filesystem::path
     {
         std::filesystem::path file_path = std::filesystem::absolute(std::filesystem::path {__FILE__});
 
@@ -184,7 +184,7 @@ namespace
         FAIL("Unable to locate engine root");
     }
 
-    [[nodiscard]] static auto ReadSourceFile(const std::filesystem::path& path) -> string
+    static auto ReadSourceFile(const std::filesystem::path& path) -> string
     {
         std::ifstream file {path, std::ios::binary};
         REQUIRE(file.is_open());
@@ -230,7 +230,7 @@ namespace
         }
     }
 
-    [[nodiscard]] static auto CollectServerEventCalls() -> vector<EventCallSite>
+    static auto CollectServerEventCalls() -> vector<EventCallSite>
     {
         std::filesystem::path engine_root = FindEngineRoot();
         vector<std::filesystem::path> sources;
@@ -258,7 +258,7 @@ namespace
         return calls;
     }
 
-    [[nodiscard]] static auto MakeKey(string_view source, string_view text, size_t occurrence) -> string
+    static auto MakeKey(string_view source, string_view text, size_t occurrence) -> string
     {
         string key;
         key.reserve(source.size() + text.size() + 32);

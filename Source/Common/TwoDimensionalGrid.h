@@ -197,8 +197,8 @@ public:
     }
 
 private:
-    [[nodiscard]] auto GetChunkIndex(TPos pos) const noexcept -> size_t { return static_cast<size_t>(pos.y) / ChunkSide * _chunksPerRow + static_cast<size_t>(pos.x) / ChunkSide; }
-    [[nodiscard]] static auto GetCellIndex(TPos pos) noexcept -> size_t { return static_cast<size_t>(pos.y) % ChunkSide * ChunkSide + static_cast<size_t>(pos.x) % ChunkSide; }
+    auto GetChunkIndex(TPos pos) const noexcept -> size_t { return static_cast<size_t>(pos.y) / ChunkSide * _chunksPerRow + static_cast<size_t>(pos.x) / ChunkSide; }
+    static auto GetCellIndex(TPos pos) noexcept -> size_t { return static_cast<size_t>(pos.y) % ChunkSide * ChunkSide + static_cast<size_t>(pos.x) % ChunkSide; }
 
     size_t _chunksPerRow {};
     vector<unique_nptr<Chunk>> _chunks {};

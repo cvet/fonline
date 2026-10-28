@@ -121,16 +121,16 @@ auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> a
 void SetScriptTypeFastCompare(ptr<AngelScript::asITypeInfo> type, ScriptFastCompareFunc func);
 auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> ScriptFastCompareFunc;
 
-[[nodiscard]] auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
-[[nodiscard]] auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
+auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
+auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
 // GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable
-[[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
+auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
 // GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null
-[[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
-[[nodiscard]] auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
-[[nodiscard]] auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;
-[[nodiscard]] auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>;
-[[nodiscard]] auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
+auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
+auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
+auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;
+auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>;
+auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept;
@@ -138,7 +138,7 @@ void SetScriptObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ptr<v
 void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index, ptr<void> slot);
 
 template<typename T>
-[[nodiscard]] inline auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
+inline auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
 {
     auto object = GetGenericObject(gen);
 
@@ -151,13 +151,13 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] inline auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
+inline auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
 {
     return cast_from_void<T*>(GetGenericAuxiliary(gen).get());
 }
 
 template<typename T>
-[[nodiscard]] inline auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<T>
+inline auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<T>
 {
     auto arg_address = GetGenericAddressArg(gen, arg_index);
 
@@ -170,7 +170,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] inline auto GetGenericArgAddressAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<T>
+inline auto GetGenericArgAddressAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<T>
 {
     auto arg_address = GetGenericArgAddress(gen, arg_index);
 
@@ -183,7 +183,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] inline auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
+inline auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
 {
     return value.reinterpret_as<T>();
 }

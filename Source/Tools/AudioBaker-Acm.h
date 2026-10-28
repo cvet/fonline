@@ -62,15 +62,15 @@ namespace AudioBakerAcm
         [[nodiscard]] auto GetSampleRate() const noexcept -> int32_t { return _sampleRate; }
         [[nodiscard]] auto GetSampleCount() const noexcept -> int32_t { return _sampleCount; } // All channels together
 
-        [[nodiscard]] auto Decode() -> vector<int16_t>;
+        auto Decode() -> vector<int16_t>;
 
     private:
-        [[nodiscard]] auto ReadByte() noexcept -> uint32_t;
+        auto ReadByte() noexcept -> uint32_t;
         void PrepareBits(int32_t bits) noexcept;
-        [[nodiscard]] auto GetBits(int32_t bits) noexcept -> uint32_t;
+        auto GetBits(int32_t bits) noexcept -> uint32_t;
         void SkipBits(int32_t bits) noexcept;
-        [[nodiscard]] auto Amplitude(int32_t index) const -> int32_t;
-        [[nodiscard]] auto Cell(int32_t row, int32_t pass) -> int32_t&;
+        auto Amplitude(int32_t index) const -> int32_t;
+        auto Cell(int32_t row, int32_t pass) -> int32_t&;
 
         void MakeNewValues();
         void CreateAmplitudeDictionary();
@@ -119,7 +119,7 @@ namespace AudioBakerAcm
     };
 
     // Fallout effect headers may claim stereo over mono data; only sound/music/ uses stereo
-    [[nodiscard]] auto Load(string_view fname, FileReader reader) -> AudioBaker::PcmAudio;
+    auto Load(string_view fname, FileReader reader) -> AudioBaker::PcmAudio;
 }
 
 FO_END_NAMESPACE

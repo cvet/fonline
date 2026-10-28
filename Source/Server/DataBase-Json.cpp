@@ -57,14 +57,14 @@ public:
         _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)},
         _jsonIndent {db_settings->DataBase.JsonIndent}
     {
-        fs::create_directories(_storageDir);
+        (void)fs::create_directories(_storageDir);
         StartCommitThread();
     }
 
     ~DbJson() override { StopCommitThread(); }
 
 protected:
-    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::File; }
+    auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::File; }
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
@@ -79,7 +79,7 @@ protected:
         }
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
+    auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_TRACE_ZONE(Database);
 
@@ -130,7 +130,7 @@ protected:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
+    auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_TRACE_ZONE(Database);
 
@@ -139,7 +139,7 @@ protected:
         return ReadRecordFile(collection_name, GetCollectionKeyType(collection_name), id);
     }
 
-    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
         FO_TRACE_ZONE(Database);
 

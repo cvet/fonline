@@ -238,7 +238,7 @@ private:
 
 // Set or query the calling thread's Tracy, OS, and log name
 void set_this_thread_name(const string& name) noexcept;
-auto get_this_thread_name() noexcept -> string_view;
+[[nodiscard]] auto get_this_thread_name() noexcept -> string_view;
 
 // Sleep without std::this_thread::sleep_for, which rounds up to the OS timer tick and parks a sub-millisecond wait
 // for a full one. coarse_sleep parks and spends no CPU; precise_sleep hits the deadline by spinning the tail out
@@ -297,7 +297,7 @@ inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true,
 
 // submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
 void submit_async(string_view task_name, function<void()> task);
-auto try_submit_async(string_view task_name, function<void()> task) -> bool;
+[[nodiscard]] auto try_submit_async(string_view task_name, function<void()> task) -> bool;
 
 // Run under the selected launch mode and propagate task exceptions through future.get().
 // The bounded pool is for short jobs; use run_thread for long-lived loops

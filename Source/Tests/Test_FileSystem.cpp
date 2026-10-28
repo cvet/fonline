@@ -296,11 +296,11 @@ TEST_CASE("FileSystem")
 
         FileReader reader {{data.data(), data.size()}};
 
-        CHECK(reader.GetUInt8() == 0x01);
-        CHECK(reader.GetBEUInt16() == 0x0203);
-        CHECK(reader.GetLEUInt16() == 0x0504);
-        CHECK(reader.GetBEUInt32() == 0x06070809);
-        CHECK(reader.GetLEUInt32() == 0x0D0C0B0A);
+        CHECK(reader.ReadUInt8() == 0x01);
+        CHECK(reader.ReadBEUInt16() == 0x0203);
+        CHECK(reader.ReadLEUInt16() == 0x0504);
+        CHECK(reader.ReadBEUInt32() == 0x06070809);
+        CHECK(reader.ReadLEUInt32() == 0x0D0C0B0A);
         CHECK(reader.GetCurPos() == 13);
         CHECK(reader.SeekFragment("O"));
         CHECK(reader.GetCurPos() == 13);
@@ -319,9 +319,9 @@ TEST_CASE("FileSystem")
 
         FileReader reader {{data.data(), data.size()}};
 
-        CHECK(reader.GetStrNT() == "Hi");
+        CHECK(reader.ReadStrNT() == "Hi");
         CHECK(reader.GetCurPos() == 3);
-        CHECK(reader.GetStrNT() == "Bye");
+        CHECK(reader.ReadStrNT() == "Bye");
         CHECK(reader.GetCurPos() == 7);
         CHECK(reader.SeekFragment("OK!!"));
         CHECK(reader.GetCurPos() == 7);
@@ -354,14 +354,14 @@ TEST_CASE("FileSystem")
             CHECK(reader.GetCurPos() == 2);
         };
 
-        check_read_error([&] { (void)reader.GetLEUInt16(); }, 2);
-        check_read_error([&] { (void)reader.GetBEUInt32(); }, 4);
+        check_read_error([&] { (void)reader.ReadLEUInt16(); }, 2);
+        check_read_error([&] { (void)reader.ReadBEUInt32(); }, 4);
         check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
         array<uint8_t, 4> output {};
         // FO_FILE_READER_COPY_DATA_NEGATIVE_TEST: Exercises CopyData bounds failure and unchanged reader position
         check_read_error([&] { reader.CopyData(output); }, 4);
 
-        CHECK_THROWS(reader.GetStrNT());
+        CHECK_THROWS(reader.ReadStrNT());
         CHECK(reader.GetCurPos() == 2);
         CHECK_THROWS(reader.GoForward(std::numeric_limits<size_t>::max()));
         CHECK(reader.GetCurPos() == 2);

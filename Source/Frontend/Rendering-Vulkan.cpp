@@ -215,6 +215,8 @@ struct Vulkan_Renderer::Context
     {
     }
 
+    [[nodiscard]] auto CurrentFrameSlot() -> VulkanFrameSlot& { return FrameSlots[FrameIndex % VULKAN_FRAMES_IN_FLIGHT]; }
+
     ptr<GlobalSettings> Settings;
     nptr<const AppScreenState> Screen {};
     ptr<SDL_Window> SdlWindow;
@@ -280,8 +282,6 @@ struct Vulkan_Renderer::Context
     uint64_t FrameIndex {1};
     // Every frame up to this one has finished on the GPU, as proved by a fence or an idle wait
     uint64_t CompletedFrameIndex {};
-
-    [[nodiscard]] auto CurrentFrameSlot() -> VulkanFrameSlot& { return FrameSlots[FrameIndex % VULKAN_FRAMES_IN_FLIGHT]; }
 };
 
 class Vulkan_Texture;
@@ -518,7 +518,7 @@ public:
     auto TakePixels() -> optional<vector<ucolor>> override;
 
 private:
-    [[nodiscard]] auto IsCopyFinished() const -> bool;
+    auto IsCopyFinished() const -> bool;
 
     ptr<Vulkan_Renderer::Context> _ctx;
     VkBuffer _buffer;

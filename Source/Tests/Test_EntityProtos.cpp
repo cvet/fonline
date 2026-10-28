@@ -59,6 +59,7 @@ namespace
         ~TestLifecycleEntity() override = default;
 
         [[nodiscard]] auto GetName() const noexcept -> string_view override { return "TestLifecycleEntity"; }
+
     };
 
     static void InitEntityProtoTestMetadata(EngineMetadata& meta)

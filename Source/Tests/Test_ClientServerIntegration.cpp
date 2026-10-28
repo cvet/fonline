@@ -595,7 +595,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); });
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
@@ -644,7 +644,7 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
     uint16_t port = IntegrationTestPort.fetch_add(1);
     GlobalSettings client_settings = MakeClientTestSettings(port);
     string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs::remove_dir_tree(updater_bake_output); });
+    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); });
     string pack_name = "OutdatedClientPack";
     string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
 

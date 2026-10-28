@@ -44,7 +44,7 @@ namespace
     // A capacity of its own keeps the behavioural assertions readable and independent of the tuned build value
     using test_string = basic_string<char, 7>;
 
-    [[nodiscard]] auto MakeFilled(size_t count, char ch) -> test_string
+    auto MakeFilled(size_t count, char ch) -> test_string
     {
         return test_string(count, ch);
     }

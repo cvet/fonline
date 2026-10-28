@@ -72,9 +72,6 @@ public:
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
 
-    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
-    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
-
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFileExists(string_view path) const -> bool = 0;
@@ -82,6 +79,9 @@ public:
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
     [[nodiscard]] virtual auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> { return std::nullopt; }
+
+    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
+    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
 
     virtual auto Reindex() -> bool { return false; }
 };

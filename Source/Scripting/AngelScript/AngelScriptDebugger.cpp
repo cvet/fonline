@@ -1073,7 +1073,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
         }
 
         string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
-        _discoverySocket.send_to(remote_host, remote_port, make_const_span(response));
+        (void)_discoverySocket.send_to(remote_host, remote_port, make_const_span(response));
     }
 }
 

@@ -110,10 +110,10 @@ static_assert(sizeof(FoPalette) == 1024);
         ignore_unused(opt);
 
         reader.SetCurPos(0x4);
-        int32_t frm_fps = numeric_cast<int32_t>(reader.GetBEUInt16());
+        int32_t frm_fps = numeric_cast<int32_t>(reader.ReadBEUInt16());
 
         reader.SetCurPos(0x8);
-        int32_t frm_count = numeric_cast<int32_t>(reader.GetBEUInt16());
+        int32_t frm_count = numeric_cast<int32_t>(reader.ReadBEUInt16());
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
@@ -145,12 +145,12 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0xA}, checked_mul(dir_frm, int32_t {2}))));
-            sequence.OffsX = reader.GetBEInt16();
+            sequence.OffsX = reader.ReadBEInt16();
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x16}, checked_mul(dir_frm, int32_t {2}))));
-            sequence.OffsY = reader.GetBEInt16();
+            sequence.OffsY = reader.ReadBEInt16();
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x22}, checked_mul(dir_frm, int32_t {4}))));
-            size_t offset = numeric_cast<size_t>(reader.GetBEUInt32());
+            size_t offset = numeric_cast<size_t>(reader.ReadBEUInt32());
             offset = checked_add(size_t {0x3E}, offset);
 
             if (offset == size_t {0x3E} && dir_frm != 0) {
@@ -174,9 +174,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 auto palette_reader = palette_file.GetReader();
 
                 for (auto& color : custom_palette) {
-                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
-                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
-                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
+                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
                     color = ucolor {r, g, b, 0xFF};
                 }
 
@@ -188,15 +188,15 @@ static_assert(sizeof(FoPalette) == 1024);
                 auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
 
                 reader.SetCurPos(offset);
-                int32_t w = numeric_cast<int32_t>(reader.GetBEUInt16());
-                int32_t h = numeric_cast<int32_t>(reader.GetBEUInt16());
+                int32_t w = numeric_cast<int32_t>(reader.ReadBEUInt16());
+                int32_t h = numeric_cast<int32_t>(reader.ReadBEUInt16());
                 FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid FRM frame dimensions", fname, w, h);
 
                 shot.Width = w;
                 shot.Height = h;
                 reader.GoForward(4); // Frame size
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.NextX = reader.ReadBEInt16();
+                shot.NextY = reader.ReadBEInt16();
 
                 // Allocate data
                 int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
@@ -207,12 +207,12 @@ static_assert(sizeof(FoPalette) == 1024);
 
                 if (anim_pix_type == 0) {
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        pixels[i] = palette[numeric_cast<size_t>(reader.GetUInt8())];
+                        pixels[i] = palette[numeric_cast<size_t>(reader.ReadUInt8())];
                     }
                 }
                 else {
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.GetUInt8();
+                        uint8_t index = reader.ReadUInt8();
 
                         if (index >= 229 && index < 255) {
                             if (index >= 229 && index <= 232) {
@@ -265,7 +265,7 @@ static_assert(sizeof(FoPalette) == 1024);
                     reader.SetCurPos(checked_add(offset, size_t {12}));
 
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.GetUInt8();
+                        uint8_t index = reader.ReadUInt8();
 
                         if (index < 229 || index == 255) {
                             continue;
@@ -373,10 +373,10 @@ static_assert(sizeof(FoPalette) == 1024);
 
         // Load from frm
         reader.SetCurPos(0x4);
-        int32_t frm_fps = numeric_cast<int32_t>(reader.GetBEUInt16());
+        int32_t frm_fps = numeric_cast<int32_t>(reader.ReadBEUInt16());
 
         reader.SetCurPos(0x8);
-        int32_t frm_count = numeric_cast<int32_t>(reader.GetBEUInt16());
+        int32_t frm_count = numeric_cast<int32_t>(reader.ReadBEUInt16());
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
         FrameCollection collection;
@@ -431,12 +431,12 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0xA}, checked_mul(dir_frm, int32_t {2}))));
-            sequence.OffsX = reader.GetBEInt16();
+            sequence.OffsX = reader.ReadBEInt16();
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x16}, checked_mul(dir_frm, int32_t {2}))));
-            sequence.OffsY = reader.GetBEInt16();
+            sequence.OffsY = reader.ReadBEInt16();
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x22}, checked_mul(dir_frm, int32_t {4}))));
-            size_t offset = numeric_cast<size_t>(reader.GetBEUInt32());
+            size_t offset = numeric_cast<size_t>(reader.ReadBEUInt32());
             offset = checked_add(size_t {0x3E}, offset);
 
             if (dir == 1) {
@@ -452,9 +452,9 @@ static_assert(sizeof(FoPalette) == 1024);
                 auto palette_reader = palette_file.GetReader();
 
                 for (auto& color : custom_palette) {
-                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
-                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
-                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.GetUInt8()) * 4) & 0xFF);
+                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
                     color = ucolor {r, g, b};
                 }
 
@@ -466,8 +466,8 @@ static_assert(sizeof(FoPalette) == 1024);
                 auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
 
                 reader.SetCurPos(offset);
-                int32_t w = numeric_cast<int32_t>(reader.GetBEUInt16());
-                int32_t h = numeric_cast<int32_t>(reader.GetBEUInt16());
+                int32_t w = numeric_cast<int32_t>(reader.ReadBEUInt16());
+                int32_t h = numeric_cast<int32_t>(reader.ReadBEUInt16());
                 FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid FRM frame dimensions", fname, w, h);
 
                 shot.Width = w;
@@ -475,8 +475,8 @@ static_assert(sizeof(FoPalette) == 1024);
 
                 reader.GoForward(4); // Frame size
 
-                shot.NextX = reader.GetBEInt16();
-                shot.NextY = reader.GetBEInt16();
+                shot.NextX = reader.ReadBEInt16();
+                shot.NextY = reader.ReadBEInt16();
 
                 // Allocate data
                 int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
@@ -487,12 +487,12 @@ static_assert(sizeof(FoPalette) == 1024);
 
                 if (anim_pix_type == 0) {
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        pixels[i] = palette[numeric_cast<size_t>(reader.GetUInt8())];
+                        pixels[i] = palette[numeric_cast<size_t>(reader.ReadUInt8())];
                     }
                 }
                 else {
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.GetUInt8();
+                        uint8_t index = reader.ReadUInt8();
 
                         if (index >= 229 && index < 255) {
                             if (index >= 229 && index <= 232) {
@@ -544,7 +544,7 @@ static_assert(sizeof(FoPalette) == 1024);
                     reader.SetCurPos(checked_add(offset, size_t {12}));
 
                     for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.GetUInt8();
+                        uint8_t index = reader.ReadUInt8();
 
                         if (index < 229 || index == 255) {
                             continue;

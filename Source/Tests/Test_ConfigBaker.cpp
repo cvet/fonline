@@ -371,7 +371,7 @@ TEST_CASE("ConfigBaker")
         auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
         std::filesystem::create_directories(temp_dir);
         auto fomain_path = temp_dir / "Test.fomain";
-        fs::write_file(fs::path_to_string(fomain_path), "GameName = Test\n");
+        REQUIRE(fs::write_file(fs::path_to_string(fomain_path), "GameName = Test\n"));
 
         TestRig rig;
         rig.Settings.ApplyConfigAtPath("Test.fomain", fs::path_to_string(temp_dir));

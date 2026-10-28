@@ -122,10 +122,10 @@ class FontFormatDocumentationTests(unittest.TestCase):
 
         for variable in ("ox", "oy", "xa"):
             self.assertIn(
-                f"uint16_t {variable} = reader.GetLEUInt16();", source
+                f"uint16_t {variable} = reader.ReadLEUInt16();", source
             )
             self.assertNotIn(
-                f"int16_t {variable} = reader.GetLEInt16();", source
+                f"int16_t {variable} = reader.ReadLEInt16();", source
             )
 
         for filename in ("CourierNewSmall.fnt", "DefaultExt.fnt"):

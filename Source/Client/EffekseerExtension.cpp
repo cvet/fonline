@@ -536,8 +536,8 @@ private:
     static constexpr size_t BLEND_MODES = 3; // 0 = blend, 1 = add, 2 = subtract
     static constexpr size_t DISTORTION_BLEND_MODES = 2; // 0 = blend, 1 = add
 
-    [[nodiscard]] static auto ResolveDepthVariant(bool z_test, bool z_write) -> DepthVariantType;
-    [[nodiscard]] static auto ResolveWrap(Effekseer::TextureWrapType wrap, EffekseerNodeRenderState& state) -> bool;
+    static auto ResolveDepthVariant(bool z_test, bool z_write) -> DepthVariantType;
+    static auto ResolveWrap(Effekseer::TextureWrapType wrap, EffekseerNodeRenderState& state) -> bool;
 
     nptr<RenderEffect> _effects[BLEND_MODES] {};
     nptr<RenderEffect> _distortionEffects[DISTORTION_BLEND_MODES] {};
@@ -2176,7 +2176,7 @@ public:
     }
 
 private:
-    [[nodiscard]] auto MakeWidthTriple(const InstanceParameter& instance) const -> EffekseerStripWidthTriple
+    auto MakeWidthTriple(const InstanceParameter& instance) const -> EffekseerStripWidthTriple
     {
         FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer ribbon triple built without a bound system");
 
@@ -2373,7 +2373,7 @@ public:
     }
 
 private:
-    [[nodiscard]] auto MakeWidthChain() const -> vector<EffekseerStripWidthTriple>
+    auto MakeWidthChain() const -> vector<EffekseerStripWidthTriple>
     {
         FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer track chain built without a bound system");
         FO_VERIFY_AND_THROW(_instances.size() >= 2, "Effekseer track chain requires at least one segment", _instances.size());
@@ -2423,7 +2423,7 @@ private:
         return chain;
     }
 
-    [[nodiscard]] static auto NormalizeTrailAxis(const EffekseerTrackInstanceSnapshot& to, const EffekseerTrackInstanceSnapshot& from) -> vec3
+    static auto NormalizeTrailAxis(const EffekseerTrackInstanceSnapshot& to, const EffekseerTrackInstanceSnapshot& from) -> vec3
     {
         vec3 axis = ToVec3(to.SRTMatrix43.GetTranslation()) - ToVec3(from.SRTMatrix43.GetTranslation());
 
@@ -2762,7 +2762,7 @@ private:
     }
 
     // An animated mesh cycles through its frames, exactly as the reference renderer indexes them
-    [[nodiscard]] static auto ResolveFrame(const Effekseer::ModelRef& model, int32_t frame) -> int32_t { return frame % model->GetFrameCount(); }
+    static auto ResolveFrame(const Effekseer::ModelRef& model, int32_t frame) -> int32_t { return frame % model->GetFrameCount(); }
 
     shared_ptr<EffekseerDrawBinding> _binding;
     EffekseerParticleEffects _particleEffects;

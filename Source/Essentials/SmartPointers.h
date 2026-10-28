@@ -664,7 +664,7 @@ FO_FORCE_INLINE auto ptr<T>::dyn_cast() const noexcept -> nptr<const U>
     return nptr<const U>(dynamic_cast<const U*>(_ptr));
 }
 
-inline auto ptr_hash(const void* p) noexcept -> size_t
+[[nodiscard]] inline auto ptr_hash(const void* p) noexcept -> size_t
 {
     if constexpr (sizeof(p) == sizeof(uint64_t)) {
         return hashing_ex::hash(static_cast<uint64_t>(reinterpret_cast<size_t>(p)));

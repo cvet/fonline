@@ -82,6 +82,8 @@ FO_BEGIN_NAMESPACE
 class EntityProperties
 {
 public:
+    explicit EntityProperties(Properties& props) noexcept;
+
     // For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CustomHolderId);
@@ -91,8 +93,6 @@ public:
     // Marks an entity as independently persistent rather than persistent only through containment by another entity
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, ExplicitlyPersistent);
-
-    explicit EntityProperties(Properties& props) noexcept;
 
 protected:
     ptr<Properties> _propsRef;
@@ -219,6 +219,7 @@ public:
     [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
+    [[nodiscard]] auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     auto StoreData(bool with_protected) const -> Properties::StoredData;
     void RestoreData(const vector<vector<uint8_t>>& props_data);
@@ -241,7 +242,6 @@ public:
     void AddRef() const noexcept;
     auto TryAddRef() const noexcept -> bool;
     void Release() const noexcept;
-    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     virtual void ValidateAccess() const { }
     virtual void LockForPropertyAccess() noexcept { }

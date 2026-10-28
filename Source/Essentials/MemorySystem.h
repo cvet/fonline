@@ -69,14 +69,14 @@ namespace memory
     using bad_alloc_callback = function<void()>;
 
     void init_backup_chunks();
-    auto free_backup_chunk() noexcept -> bool;
+    [[nodiscard]] auto free_backup_chunk() noexcept -> bool;
     void set_bad_alloc_callback(bad_alloc_callback callback) noexcept;
     void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
     [[noreturn]] void report_and_exit(string_view message) noexcept;
-    auto get_in_use_bytes() noexcept -> size_t;
-    auto get_allocator_statistics() noexcept -> allocator_statistics;
+    [[nodiscard]] auto get_in_use_bytes() noexcept -> size_t;
+    [[nodiscard]] auto get_allocator_statistics() noexcept -> allocator_statistics;
     // Allocations made by the calling thread since it started; profiling builds only, false elsewhere
-    auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
+    [[nodiscard]] auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
 }
 
 template<typename T>
@@ -140,9 +140,9 @@ public:
 private:
     // An over-aligned element must take the aligned new/delete overloads. A function rather than a
     // constexpr member: alignof(T) needs a complete T, the allocator must accept an incomplete one
-    static constexpr auto is_over_aligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
+    [[nodiscard]] static constexpr auto is_over_aligned() noexcept -> bool { return alignof(T) > __STDCPP_DEFAULT_NEW_ALIGNMENT__; }
 
-    static auto allocate_raw(size_t size) noexcept -> nptr<void>
+    [[nodiscard]] static auto allocate_raw(size_t size) noexcept -> nptr<void>
     {
         if constexpr (is_over_aligned()) {
             return ::operator new(size, std::align_val_t {alignof(T)}, std::nothrow);
@@ -174,7 +174,7 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_raw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
+    [[nodiscard]] static auto make_raw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
     {
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
         return alloc_with_backup_retry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
@@ -182,7 +182,7 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_unique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
+    [[nodiscard]] static auto make_unique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
         auto ptr = alloc_with_backup_retry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T));
@@ -191,7 +191,7 @@ public:
 
     template<typename T, typename... Args>
         requires(refcountable<T>)
-    static auto make_refcounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
+    [[nodiscard]] static auto make_refcounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
         auto ptr = alloc_with_backup_retry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T));
@@ -200,7 +200,7 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto make_shared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
+    [[nodiscard]] static auto make_shared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
         auto alloc = [&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); };
         auto block = alloc_with_backup_retry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
@@ -213,7 +213,7 @@ public:
 
     template<typename T>
         requires(!refcountable<T>)
-    static auto make_raw_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
+    [[nodiscard]] static auto make_raw_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> T*
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             memory::report_bad_alloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
@@ -239,7 +239,7 @@ public:
 
     template<typename T>
         requires(!refcountable<T>)
-    static auto make_unique_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
+    [[nodiscard]] static auto make_unique_arr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             memory::report_bad_alloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
@@ -253,7 +253,7 @@ public:
 
 private:
     template<typename T, typename AllocFunc>
-    static auto alloc_with_backup_retry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
+    [[nodiscard]] static auto alloc_with_backup_retry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
         nptr<T> ptr = alloc();
 
@@ -299,13 +299,13 @@ namespace memory
         }
     }
 
-    inline auto compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
+    [[nodiscard]] inline auto compare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
     {
         return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
     }
 
     template<typename T>
-    inline auto read_unaligned(nptr<const void> src) noexcept -> T
+    [[nodiscard]] inline auto read_unaligned(nptr<const void> src) noexcept -> T
     {
         static_assert(std::is_trivially_copyable_v<T>);
         T value;

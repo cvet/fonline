@@ -77,8 +77,8 @@ struct ModelAnimationArchive
 // Wire order: magic[8], schema:u16, kind:u16, flags:u32, rig/source/cache signatures:u64,
 // revision/source/object as u32 byte length + validated UTF-8 bytes, payload length:u64, FNV-1a hash:u64,
 // then the opaque payload. Every integer is encoded field-by-field in little-endian order
-[[nodiscard]] auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationArchive(const_span<uint8_t> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive;
+auto WriteModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>;
+auto ReadModelAnimationArchive(const_span<uint8_t> data, const ModelAnimationArchiveMetadata& expected_metadata) -> ModelAnimationArchive;
 
 // Installs the engine allocation policy for the private model-animation codec.
 // Call before constructing, loading, or baking any codec-owned object
@@ -145,14 +145,14 @@ struct ModelAnimationRigData
 // Joint-remap wire order: magic[8], schema:u16, reserved:u16, duration:f32 bits,
 // canonical/source/nearest counts:u32, source-to-canonical indices:u32[],
 // canonical presence bytes, then nearest sample times as f32 bits
-[[nodiscard]] auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_view context) -> ModelAnimationJointRemap;
+auto WriteModelAnimationJointRemapPayload(const ModelAnimationJointRemap& remap, string_view context) -> vector<uint8_t>;
+auto ReadModelAnimationJointRemapPayload(const_span<uint8_t> payload, string_view context) -> ModelAnimationJointRemap;
 void ValidateModelAnimationJointRemap(const ModelAnimationJointRemap& remap, string_view context);
 
 // Wire order: magic[8], schema:u16, flags:u16, signatures:u64, counts:u32, skeleton and base-remap
 // manifests, sorted clip manifests, sorted bindings; a manifest precedes its length-prefixed LF archive
-[[nodiscard]] auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<uint8_t>;
-[[nodiscard]] auto ReadModelAnimationRigData(const_span<uint8_t> data, string_view context) -> ModelAnimationRigData;
+auto WriteModelAnimationRigData(const ModelAnimationRigData& rig, string_view context) -> vector<uint8_t>;
+auto ReadModelAnimationRigData(const_span<uint8_t> data, string_view context) -> ModelAnimationRigData;
 
 FO_END_NAMESPACE
 

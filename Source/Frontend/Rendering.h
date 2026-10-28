@@ -604,13 +604,14 @@ public:
     auto operator=(Renderer&&) noexcept -> Renderer& = delete;
     virtual ~Renderer() = default;
 
-    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() const -> irect32 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
+
+    virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
 
     virtual void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) = 0;
     virtual void Present() = 0;
@@ -625,13 +626,14 @@ public:
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return mat44 {1.0f}; }
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -660,13 +662,14 @@ public:
     OpenGL_Renderer();
     ~OpenGL_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return true; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -693,13 +696,14 @@ public:
     Direct3D_Renderer();
     ~Direct3D_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -726,13 +730,14 @@ public:
     Vulkan_Renderer();
     ~Vulkan_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -759,13 +764,14 @@ public:
     SDLGpu_Renderer();
     ~SDLGpu_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;

@@ -282,12 +282,12 @@ static_assert(!std::is_polymorphic_v<strex>);
 
 namespace utf8
 {
-    auto is_valid(uint32_t ucs) noexcept -> bool;
-    auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
-    auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
-    auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
-    auto lower(uint32_t ucs) noexcept -> uint32_t;
-    auto upper(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto is_valid(uint32_t ucs) noexcept -> bool;
+    [[nodiscard]] auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
+    [[nodiscard]] auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
+    [[nodiscard]] auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    [[nodiscard]] auto lower(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE

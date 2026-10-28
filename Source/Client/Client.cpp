@@ -957,7 +957,7 @@ void ClientEngine::Net_OnHashList()
         string str = _conn.InBuf->Read<string>();
 
         // Learn the string locally so the matching hash now resolves; same hash function as the server
-        Hashes.to_hashed_string(str);
+        (void)Hashes.to_hashed_string(str);
     }
 
     if (count != 0) {

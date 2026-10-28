@@ -393,6 +393,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
         outline(x, y, 11, 11);
         sealed_centers.emplace_back(map_size.from_raw_pos(x + 5, y + 5));
     }
+
     auto pick_open = [&]() -> mpos {
         for (;;) {
             mpos hex = map_size.from_raw_pos(random.next_between(2, side - 3), random.next_between(2, side - 3));
@@ -456,6 +457,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             critter_hexes.emplace_back(pick_open());
         }
     }
+
     auto mix = [](uint64_t hash, uint64_t value) -> uint64_t { return (hash ^ value) * 1099511628211ull; };
     auto hash_hex = [&](uint64_t hash, mpos hex) -> uint64_t { return mix(hash, numeric_cast<uint64_t>(hex.y * side + hex.x)); };
     auto hash_path = [&](uint64_t hash, const FindPathOutput& output) -> uint64_t {
@@ -701,8 +703,9 @@ public:
     auto operator=(AttachmentTeardownConnection&&) noexcept = delete;
     ~AttachmentTeardownConnection() override = default;
 
-    void ResetAttachmentCount() noexcept { _attachmentCount.store(0, std::memory_order_relaxed); }
     [[nodiscard]] auto GetAttachmentCount() const noexcept -> size_t { return _attachmentCount.load(std::memory_order_relaxed); }
+
+    void ResetAttachmentCount() noexcept { _attachmentCount.store(0, std::memory_order_relaxed); }
 
 protected:
     void DispatchImpl() override

@@ -58,7 +58,8 @@ namespace AngelScriptDocumentMigrations
         }
 
         [[nodiscard]] auto GetEntityType() const -> string { return string {_registrar->GetTypeName().as_str()}; }
-        [[nodiscard]] auto ReadEncoded(const string& key) const -> string;
+
+        auto ReadEncoded(const string& key) const -> string;
         auto Read(const string& key, ptr<void> output, int32_t output_type_id) const -> bool;
 
     private:

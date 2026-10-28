@@ -90,15 +90,13 @@ namespace SPK::FO
         static auto Create() -> Ref<SparkQuadRenderer>;
         ~SparkQuadRenderer() override = default;
 
-        [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
+        [[nodiscard]] auto GetDrawInScene() const -> bool;
+        [[nodiscard]] auto GetEffectName() const -> string_view;
+        [[nodiscard]] auto GetTextureName() const -> string_view;
 
-        auto GetDrawInScene() const -> bool;
+        auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
         void SetDrawInScene(bool draw_in_scene);
-
-        auto GetEffectName() const -> string_view;
         void SetEffectName(string_view effect_name);
-
-        auto GetTextureName() const -> string_view;
         void SetTextureName(string_view tex_name);
 
     private:

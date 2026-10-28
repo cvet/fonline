@@ -88,14 +88,14 @@ public:
     auto operator=(NoiseHandshakeNK&&) noexcept -> NoiseHandshakeNK& = default;
     ~NoiseHandshakeNK();
 
-    // The ephemeral secret is a parameter so the specification's test vectors can fix it
-    static auto CreateInitiator(const_span<uint8_t> prologue, const crypto::key_bytes& responder_public_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK;
-    static auto CreateResponder(const_span<uint8_t> prologue, const crypto::key_bytes& static_secret_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK;
-
     [[nodiscard]] auto IsInitiator() const noexcept -> bool { return _initiator; }
     [[nodiscard]] auto IsComplete() const noexcept -> bool { return _messageIndex == MESSAGE_COUNT; }
     [[nodiscard]] auto IsWriteTurn() const noexcept -> bool;
     [[nodiscard]] auto GetHandshakeHash() const noexcept -> const crypto::hash_bytes& { return _handshakeHash; }
+
+    // The ephemeral secret is a parameter so the specification's test vectors can fix it
+    static auto CreateInitiator(const_span<uint8_t> prologue, const crypto::key_bytes& responder_public_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK;
+    static auto CreateResponder(const_span<uint8_t> prologue, const crypto::key_bytes& static_secret_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK;
 
     void WriteMessage(const_span<uint8_t> payload, vector<uint8_t>& message);
     // A malformed or unauthenticated message ends the handshake, which then accepts nothing more

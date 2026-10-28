@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 #endif
 
     try {
-        platform::fork_process();
+        (void)platform::fork_process();
 
         InitApp(args, AppInitFlags::PrebakeResources);
 

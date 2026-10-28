@@ -62,7 +62,7 @@ namespace ImageBakerMos
         vector<uint8_t> unpacked_data;
 
         if (head[3] == 'C') {
-            uint32_t unpacked_len = reader.GetLEUInt32();
+            uint32_t unpacked_len = reader.ReadLEUInt32();
             size_t data_len = reader.GetSize() - size_t {12};
 
             vector<uint8_t> packed_data = reader.GetData();
@@ -87,13 +87,13 @@ namespace ImageBakerMos
         }
 
         // Read header
-        int32_t width = numeric_cast<int32_t>(reader.GetLEUInt16()); // Width (pixels)
-        int32_t height = numeric_cast<int32_t>(reader.GetLEUInt16()); // Height (pixels)
-        int32_t col = numeric_cast<int32_t>(reader.GetLEUInt16()); // Columns (blocks)
-        int32_t row = numeric_cast<int32_t>(reader.GetLEUInt16()); // Rows (blocks)
-        uint32_t block_size = reader.GetLEUInt32(); // Block size (pixels)
+        int32_t width = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Width (pixels)
+        int32_t height = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Height (pixels)
+        int32_t col = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Columns (blocks)
+        int32_t row = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Rows (blocks)
+        uint32_t block_size = reader.ReadLEUInt32(); // Block size (pixels)
         ignore_unused(block_size);
-        int64_t palette_offset_wide = numeric_cast<int64_t>(reader.GetLEUInt32()); // Offset (from start of file) to palettes
+        int64_t palette_offset_wide = numeric_cast<int64_t>(reader.ReadLEUInt32()); // Offset (from start of file) to palettes
         int64_t block_count = checked_mul(numeric_cast<int64_t>(col), numeric_cast<int64_t>(row));
         int64_t palette_data_size = checked_mul(block_count, int64_t {256 * 4});
         int64_t tile_index_size = checked_mul(block_count, int64_t {4});
@@ -125,7 +125,7 @@ namespace ImageBakerMos
                 // Set initial position
                 size_t tile_block_offset = checked_mul(numeric_cast<size_t>(block), size_t {4});
                 reader.SetCurPos(checked_add(tiles_offset, tile_block_offset));
-                size_t block_data_offset = numeric_cast<size_t>(reader.GetLEUInt32());
+                size_t block_data_offset = numeric_cast<size_t>(reader.ReadLEUInt32());
                 reader.SetCurPos(checked_add(data_offset, block_data_offset));
 
                 // Calculate current block size
@@ -146,7 +146,7 @@ namespace ImageBakerMos
 
                 for (int32_t yy = 0; yy < block_h; yy++) {
                     for (int32_t xx = 0; xx < block_w; xx++) {
-                        uint32_t color = palette[reader.GetUInt8()];
+                        uint32_t color = palette[reader.ReadUInt8()];
 
                         if (color == 0xFF00) {
                             color = 0; // Green is transparent

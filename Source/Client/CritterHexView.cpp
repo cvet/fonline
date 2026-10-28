@@ -255,7 +255,7 @@ void CritterHexView::NextAnim()
         _curAnim->FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
     }
 
-    _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem(), false);
+    _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->ContextItem, false);
 
 #if FO_ENABLE_3D
     if (_model) {
@@ -307,7 +307,7 @@ void CritterHexView::StopAnim()
 
 void CritterHexView::PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed)
 {
-    _engine->OnCritterAnimationInit.Fire(this, anim.StateAnim, anim.ActionAnim, anim.GetContextItem(), context, moving_speed, anim.Flags, anim.NormalizedTime, anim.Speed);
+    _engine->OnCritterAnimationInit.Fire(this, anim.StateAnim, anim.ActionAnim, anim.ContextItem, context, moving_speed, anim.Flags, anim.NormalizedTime, anim.Speed);
     FO_VERIFY_AND_THROW(std::isfinite(anim.NormalizedTime) && anim.NormalizedTime >= 0.0f && anim.NormalizedTime <= 1.0f, "Invalid normalized critter animation time", anim.NormalizedTime);
     FO_VERIFY_AND_THROW(std::isfinite(anim.Speed) && anim.Speed > 0.0f, "Invalid critter animation speed", anim.Speed);
 }

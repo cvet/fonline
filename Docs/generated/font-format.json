@@ -537,7 +537,7 @@
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "Font must have exactly one texture",
-            "reader.GetLEUInt16() != 1"
+            "reader.ReadLEUInt16() != 1"
           ]
         }
       ]
@@ -552,7 +552,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetStrNT()",
+            "reader.ReadStrNT()",
             "extract_dir().combine_path(image_name)"
           ]
         }
@@ -568,16 +568,16 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "reader.GetLEUInt32() / 20",
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "reader.ReadLEUInt32() / 20",
+            "uint16_t ox = reader.ReadLEUInt16()",
+            "uint16_t oy = reader.ReadLEUInt16()",
+            "uint16_t xa = reader.ReadLEUInt16()"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "GetLEUInt16()"
+            "ReadLEUInt16()"
           ]
         }
       ]
@@ -1134,21 +1134,21 @@
       "id": "font-format.validation.signed-bmfont-metrics",
       "name": "Unsigned BMFont metric limitation",
       "stability": "experimental",
-      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
       "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "uint16_t ox = reader.GetLEUInt16()",
-            "uint16_t oy = reader.GetLEUInt16()",
-            "uint16_t xa = reader.GetLEUInt16()"
+            "uint16_t ox = reader.ReadLEUInt16()",
+            "uint16_t oy = reader.ReadLEUInt16()",
+            "uint16_t xa = reader.ReadLEUInt16()"
           ]
         },
         {
           "path": "Source/Common/FileSystem.h",
           "anchors": [
-            "auto GetLEUInt16() -> uint16_t"
+            "auto ReadLEUInt16() -> uint16_t"
           ]
         }
       ]
@@ -1249,5 +1249,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "77a9b081cb1c1d3a562ef86c419f49d6fb93fe9a5d0b4eb2575ec493b688ccc2"
+  "contract_digest": "95d43e09af98c33b62dde7b6acdd2fc07522853e9afcbfdf79db7ddf39662726"
 }

@@ -94,12 +94,12 @@ public:
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
-    [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
     [[nodiscard]] virtual auto GetTime() const -> float32_t { return 0.0f; }
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
+    virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
     virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
@@ -166,7 +166,6 @@ public:
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
-    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -181,11 +180,13 @@ public:
     [[nodiscard]] auto IsAlwaysOnTop() const noexcept -> bool { return _alwaysOnTop; }
     [[nodiscard]] auto IsDrawWireframe() const noexcept -> bool { return _drawWireframe; }
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
     [[nodiscard]] auto GetOnBeginScene() noexcept -> ptr<EventObserver<>> { return &_onBeginScene; }
+
+    auto AcquireSceneBackground() -> nptr<const RenderTexture>;
+    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -235,9 +236,9 @@ private:
         fpos32 DrawOffset {};
     };
 
-    [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
-    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
-    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
+    auto ApplyColorBrightness(ucolor color) const -> ucolor;
+    auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
+    auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void FlushBatch();
     void RefreshScissor();

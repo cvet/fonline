@@ -448,9 +448,9 @@ public:
 class ModelAnimationRuntimeAccess final
 {
 public:
-    [[nodiscard]] static auto CreateClip(string source_file, string clip_name, uint64_t source_signature, ozz::animation::Animation animation, ModelAnimationJointRemap joint_remap) -> ModelAnimationRuntimeClip { return ModelAnimationRuntimeClip {safe_alloc::make_unique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))}; }
+    static auto CreateClip(string source_file, string clip_name, uint64_t source_signature, ozz::animation::Animation animation, ModelAnimationJointRemap joint_remap) -> ModelAnimationRuntimeClip { return ModelAnimationRuntimeClip {safe_alloc::make_unique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))}; }
 
-    [[nodiscard]] static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
+    static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
     {
         ValidateModelAnimationRuntimeSkeleton(skeleton, "runtime rig");
         auto rig = safe_alloc::make_unique<ModelAnimationRuntimeRig>(safe_alloc::make_unique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
@@ -458,13 +458,13 @@ public:
         return rig;
     }
 
-    [[nodiscard]] static auto GetAnimation(const ModelAnimationRuntimeClip& clip) noexcept -> const ozz::animation::Animation& { return clip._impl->Animation; }
+    static auto GetAnimation(const ModelAnimationRuntimeClip& clip) noexcept -> const ozz::animation::Animation& { return clip._impl->Animation; }
 
-    [[nodiscard]] static auto GetJointRemap(const ModelAnimationRuntimeClip& clip) noexcept -> const ModelAnimationJointRemap& { return clip._impl->JointRemap; }
+    static auto GetJointRemap(const ModelAnimationRuntimeClip& clip) noexcept -> const ModelAnimationJointRemap& { return clip._impl->JointRemap; }
 
-    [[nodiscard]] static auto GetSkeleton(const ModelAnimationRuntimeRig& rig) noexcept -> const ozz::animation::Skeleton& { return rig._impl->Skeleton; }
+    static auto GetSkeleton(const ModelAnimationRuntimeRig& rig) noexcept -> const ozz::animation::Skeleton& { return rig._impl->Skeleton; }
 
-    [[nodiscard]] static auto GetBaseJointRemap(const ModelAnimationRuntimeRig& rig) noexcept -> const ModelAnimationJointRemap& { return rig._impl->BaseJointRemap; }
+    static auto GetBaseJointRemap(const ModelAnimationRuntimeRig& rig) noexcept -> const ModelAnimationJointRemap& { return rig._impl->BaseJointRemap; }
 };
 
 class ModelAnimationRuntimePose::Impl final

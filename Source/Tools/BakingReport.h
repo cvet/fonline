@@ -234,7 +234,7 @@ private:
     map<string, BakingReportBakerStats> _aggregateBakers {};
 };
 
-[[nodiscard]] auto GetBakingReportPath(string_view bake_output) -> string;
-[[nodiscard]] auto GetFullBakingReportPath(string_view bake_output) -> string;
+auto GetBakingReportPath(string_view bake_output) -> string;
+auto GetFullBakingReportPath(string_view bake_output) -> string;
 
 FO_END_NAMESPACE

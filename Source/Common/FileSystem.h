@@ -60,16 +60,17 @@ public:
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
     auto operator=(FileHeader&&) noexcept -> FileHeader& = default;
-    explicit operator bool() const noexcept { return _isLoaded; }
     ~FileHeader() = default;
 
+    [[nodiscard]] explicit operator bool() const noexcept { return _isLoaded; }
     [[nodiscard]] auto GetNameNoExt() const -> string_view;
     [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetDiskPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64_t;
     [[nodiscard]] auto GetDataSource() const -> ptr<const DataSource>;
-    [[nodiscard]] auto Copy() const -> FileHeader;
+
+    auto Copy() const -> FileHeader;
 
 protected:
     bool _isLoaded {};
@@ -95,18 +96,19 @@ public:
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
+
     // ReSharper disable CppInconsistentNaming
-    [[nodiscard]] auto GetStrNT() -> string; // Null terminated
-    [[nodiscard]] auto GetUInt8() -> uint8_t;
-    [[nodiscard]] auto GetInt8() -> int8_t { return std::bit_cast<int8_t>(GetUInt8()); }
-    [[nodiscard]] auto GetBEUInt16() -> uint16_t;
-    [[nodiscard]] auto GetBEInt16() -> int16_t { return std::bit_cast<int16_t>(GetBEUInt16()); }
-    [[nodiscard]] auto GetLEUInt16() -> uint16_t;
-    [[nodiscard]] auto GetLEInt16() -> int16_t { return std::bit_cast<int16_t>(GetLEUInt16()); }
-    [[nodiscard]] auto GetBEUInt32() -> uint32_t;
-    [[nodiscard]] auto GetBEInt32() -> int32_t { return std::bit_cast<int32_t>(GetBEUInt32()); }
-    [[nodiscard]] auto GetLEUInt32() -> uint32_t;
-    [[nodiscard]] auto GetLEInt32() -> int32_t { return std::bit_cast<int32_t>(GetLEUInt32()); }
+    auto ReadStrNT() -> string; // Null terminated
+    auto ReadUInt8() -> uint8_t;
+    auto ReadInt8() -> int8_t { return std::bit_cast<int8_t>(ReadUInt8()); }
+    auto ReadBEUInt16() -> uint16_t;
+    auto ReadBEInt16() -> int16_t { return std::bit_cast<int16_t>(ReadBEUInt16()); }
+    auto ReadLEUInt16() -> uint16_t;
+    auto ReadLEInt16() -> int16_t { return std::bit_cast<int16_t>(ReadLEUInt16()); }
+    auto ReadBEUInt32() -> uint32_t;
+    auto ReadBEInt32() -> int32_t { return std::bit_cast<int32_t>(ReadBEUInt32()); }
+    auto ReadLEUInt32() -> uint32_t;
+    auto ReadLEInt32() -> int32_t { return std::bit_cast<int32_t>(ReadLEUInt32()); }
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
@@ -122,6 +124,7 @@ public:
     {
         CopyData(make_span(&out, sizeof(T)));
     }
+
     template<typename T>
         requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
     void ReadObjectArray(span<T> out)

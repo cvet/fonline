@@ -55,7 +55,7 @@ static_assert(sizeof(SqliteAllocHeader) == 8);
 static_assert(alignof(SqliteAllocHeader) <= 8);
 
 // The single place that steps back from the payload SQLite sees to the header in front of it
-[[nodiscard]] static auto SqliteAllocHeaderOf(void* payload) noexcept -> nptr<SqliteAllocHeader>
+static auto SqliteAllocHeaderOf(void* payload) noexcept -> nptr<SqliteAllocHeader>
 {
     auto bytes = make_nptr(payload).reinterpret_as<uint8_t>();
 
@@ -190,7 +190,7 @@ public:
         _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)}
     {
         DataBaseSQLite::InitializeRuntime();
-        fs::create_directories(_storageDir);
+        (void)fs::create_directories(_storageDir);
         OpenDataBase();
         StartCommitThread();
     }
@@ -211,7 +211,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Hex; }
+    auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Hex; }
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
@@ -228,7 +228,7 @@ protected:
         _collections.emplace(collection_name);
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
+    auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_TRACE_ZONE(Database);
 
@@ -249,7 +249,7 @@ protected:
         return ids;
     }
 
-    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
+    auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_TRACE_ZONE(Database);
 
@@ -258,7 +258,7 @@ protected:
         return GetRecordUnlocked(collection_name, id);
     }
 
-    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
         FO_TRACE_ZONE(Database);
 
@@ -510,7 +510,7 @@ private:
             }
         }
 
-        [[nodiscard]] auto Step() -> bool
+        auto Step() -> bool
         {
             int32_t step = sqlite3_step(_stmt.get());
 
@@ -524,7 +524,7 @@ private:
             throw DataBaseException("DbSQLite sqlite3_step", _context, LastError());
         }
 
-        [[nodiscard]] auto ColumnBlob(int32_t index) const -> const_span<uint8_t>
+        auto ColumnBlob(int32_t index) const -> const_span<uint8_t>
         {
             // The statement stays mutable for the C API even when read through a const accessor
             auto stmt = make_ptr(_stmt.get_no_const());
@@ -541,7 +541,7 @@ private:
         }
 
     private:
-        [[nodiscard]] auto LastError() const -> string
+        auto LastError() const -> string
         {
             auto text = make_nptr(sqlite3_errmsg(make_ptr(_db.get_no_const()).get()));
             return text ? string(text.get()) : string("unknown");
@@ -589,13 +589,13 @@ private:
         Execute("PRAGMA foreign_keys = ON", hstring());
     }
 
-    [[nodiscard]] ptr<sqlite3> GetHandle() const FO_TSA_REQUIRES(_storageLocker)
+    ptr<sqlite3> GetHandle() const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_VERIFY_AND_THROW(_db, "SQLite database is not open");
         return make_ptr(_db.get_no_const());
     }
 
-    [[nodiscard]] string LastError() const FO_TSA_REQUIRES(_storageLocker)
+    string LastError() const FO_TSA_REQUIRES(_storageLocker)
     {
         if (!_db) {
             return "database is not open";
@@ -631,7 +631,7 @@ private:
         }
     }
 
-    [[nodiscard]] AnyData::Document GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
+    AnyData::Document GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
         VerifyCollection(collection_name);
 
@@ -648,7 +648,7 @@ private:
         return DecodeRecordValue(collection_name, stmt.ColumnBlob(0));
     }
 
-    [[nodiscard]] static auto DecodeRecordValue(hstring collection_name, const_span<uint8_t> value) -> AnyData::Document
+    static auto DecodeRecordValue(hstring collection_name, const_span<uint8_t> value) -> AnyData::Document
     {
         ignore_unused(collection_name);
 
@@ -664,7 +664,7 @@ private:
 
     // Collection names come from engine metadata rather than user input, but they still reach SQL as
     // identifiers, so they are quoted properly instead of interpolated raw
-    [[nodiscard]] static auto QuoteIdentifier(string_view name) -> string
+    static auto QuoteIdentifier(string_view name) -> string
     {
         string quoted;
         quoted.reserve(name.size() + 2);

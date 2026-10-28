@@ -226,25 +226,25 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
 
         auto reader = file.GetReader();
 
-        uint8_t magic = reader.GetUInt8();
+        uint8_t magic = reader.ReadUInt8();
         FO_VERIFY_AND_THROW(magic == SPRITE_RESOURCE_MAGIC, "Sprite file header magic is invalid", magic);
 
-        uint8_t version = reader.GetUInt8();
+        uint8_t version = reader.ReadUInt8();
         FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite file version is not supported", version);
 
         // Collection header: frame count, animation ticks, direction count
-        (void)reader.GetLEUInt16();
-        (void)reader.GetLEUInt16();
-        (void)reader.GetUInt8();
+        (void)reader.ReadLEUInt16();
+        (void)reader.ReadLEUInt16();
+        (void)reader.ReadUInt8();
 
         // First frame of the first direction: shared-reference flag, then offset and size
-        (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-        uint16_t w = reader.GetLEUInt16();
-        uint16_t h = reader.GetLEUInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
+        (void)reader.ReadUInt8();
+        (void)reader.ReadLEInt16();
+        (void)reader.ReadLEInt16();
+        uint16_t w = reader.ReadLEUInt16();
+        uint16_t h = reader.ReadLEUInt16();
+        (void)reader.ReadLEInt16();
+        (void)reader.ReadLEInt16();
 
         const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
         FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");

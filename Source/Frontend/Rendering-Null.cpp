@@ -140,6 +140,10 @@ public:
     {
     }
 
+    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
+
+    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
+
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
         if (IsStatic && !StaticDataChanged) {
@@ -169,10 +173,6 @@ public:
         _lastUploadedVertices = upload_vertices;
         _lastUploadedIndices = upload_indices;
     }
-
-    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
-
-    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
 
 private:
     size_t _lastUploadedVertices {};

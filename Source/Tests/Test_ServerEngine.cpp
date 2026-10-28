@@ -43,6 +43,7 @@ class BoundaryArgAccessor final : public DataAccessor
 {
 public:
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return 0; }
+
 };
 
 TEST_CASE("ServerResourcesFollowPackagedSetting")
@@ -55,7 +56,7 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
     bool removed_before = fs::remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
-    auto cleanup = scope_exit([&temp_dir]() noexcept { fs::remove_dir_tree(temp_dir); });
+    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
 
     string baked_dir = strex(temp_dir).combine_path("Baked").str();
     string packaged_dir = strex(temp_dir).combine_path("Packaged").str();

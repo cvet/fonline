@@ -45,8 +45,7 @@ static constexpr uint64_t MODEL_ANIMATION_ARCHIVE_HASH_PRIME = 1099511628211ULL;
 class ModelAnimationAllocator final : public ozz::memory::Allocator
 {
 public:
-    [[nodiscard]] auto Allocate(size_t size, size_t alignment) -> void* override { return safe_alloc::malloc_aligned_raw(size, alignment).get(); }
-
+    auto Allocate(size_t size, size_t alignment) -> void* override { return safe_alloc::malloc_aligned_raw(size, alignment).get(); }
     void Deallocate(void* block) override { safe_alloc::free_aligned_raw(block); }
 };
 

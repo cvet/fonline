@@ -78,6 +78,7 @@ public:
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
     [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
+    [[nodiscard]] bool IsAreaView() const noexcept;
 
     void SetName(string_view name);
     void SetControlledCritter(nptr<Critter> cr);
@@ -85,7 +86,6 @@ public:
     void SwapConnection(ptr<Player> other) noexcept;
     void SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept;
     void SetViewMap(ptr<Map> map, mpos hex, int32_t radius = 0);
-    [[nodiscard]] bool IsAreaView() const noexcept;
     void ResetViewMap() noexcept;
     void ClearAllAssociations() noexcept;
 

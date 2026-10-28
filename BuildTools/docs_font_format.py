@@ -237,17 +237,17 @@ def _derive_bmfont_contract(manager_text: str) -> dict[str, object]:
     signature = re.search(
         r"make_signature\('B',\s*'M',\s*'F',\s*([0-9]+)\)", body
     )
-    padding = re.search(r"GetBEUInt32\(\)\s*!=\s*(0x[0-9A-Fa-f]+)u", body)
-    page_count = re.search(r"GetLEUInt16\(\)\s*!=\s*([0-9]+)", body)
-    record_size = re.search(r"GetLEUInt32\(\)\s*/\s*([0-9]+)", body)
+    padding = re.search(r"ReadBEUInt32\(\)\s*!=\s*(0x[0-9A-Fa-f]+)u", body)
+    page_count = re.search(r"ReadLEUInt16\(\)\s*!=\s*([0-9]+)", body)
+    record_size = re.search(r"ReadLEUInt32\(\)\s*/\s*([0-9]+)", body)
     if None in (signature, padding, page_count, record_size):
         raise ValueError("unable to derive binary BMFont constants")
     signed_fields = []
     unsigned_fields = []
     for variable, field_name in (("ox", "xoffset"), ("oy", "yoffset"), ("xa", "xadvance")):
-        if re.search(rf"int16_t {variable}\s*=\s*reader\.GetLEInt16\(\);", body):
+        if re.search(rf"int16_t {variable}\s*=\s*reader\.ReadLEInt16\(\);", body):
             signed_fields.append(field_name)
-        elif re.search(rf"uint16_t {variable}\s*=\s*reader\.GetLEUInt16\(\);", body):
+        elif re.search(rf"uint16_t {variable}\s*=\s*reader\.ReadLEUInt16\(\);", body):
             unsigned_fields.append(field_name)
         else:
             raise ValueError(f"unable to derive the BMFont {field_name} integer decoding")

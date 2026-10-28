@@ -314,11 +314,12 @@ public:
     auto operator=(ManagedScriptEntryScope&&) noexcept = delete;
     ~ManagedScriptEntryScope();
 
-    [[nodiscard]] static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
     [[nodiscard]] auto GetMethod() const noexcept -> nptr<MonoMethod> { return _method; }
     [[nodiscard]] auto GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>;
     // The frame that opened the entry saves this point itself, since the point records the registers of its caller
     [[nodiscard]] auto GetBirthPoint() noexcept -> stack_trace::resume_point* { return &_birthPoint; }
+
+    static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
 
     void CopyBirthFrames(stack_trace::script_layer& layer) const noexcept;
     void AppendBirthRuntimeFrames(MonoDomain* domain, stack_trace::script_layer& layer) const;
@@ -759,7 +760,7 @@ struct ManagedScalarValue
     refcount_nptr<DynamicRefTypeInstance> DynamicRefType {};
     nptr<void> RefTypePtr {};
 
-    [[nodiscard]] auto Alloc(const BaseTypeDesc& type) -> void*
+    auto Alloc(const BaseTypeDesc& type) -> void*
     {
         size_t size = type.Size;
 
@@ -788,6 +789,8 @@ struct ManagedObjectRoot
         }
     }
 
+    [[nodiscard]] auto GetObject() const -> MonoObject* { return _objectHandle != 0 ? mono_gchandle_get_target(_objectHandle) : nullptr; }
+
     void SetObject(MonoObject* object)
     {
         if (_objectHandle != 0) {
@@ -798,8 +801,6 @@ struct ManagedObjectRoot
             _objectHandle = NewManagedGcHandle(object, 0);
         }
     }
-
-    [[nodiscard]] auto GetObject() const -> MonoObject* { return _objectHandle != 0 ? mono_gchandle_get_target(_objectHandle) : nullptr; }
 
 private:
     uint32_t _objectHandle {};
@@ -833,6 +834,7 @@ struct ManagedCallbackBridgeData
 
 struct ManagedDataAccessor final : DataAccessor
 {
+
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::MANAGED_BACKEND_INDEX; }
 
     [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override
@@ -853,44 +855,10 @@ struct ManagedDataAccessor final : DataAccessor
         return ConvertManagedSimpleObjectToNative(array->Backend, array->Type.BaseType, item, array->Elements[index]);
     }
 
-    void ClearArray(ptr<void> data) const override
-    {
-        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        array->SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
-        array->Elements.clear();
-    }
-
-    void AddArrayElement(ptr<void> data, ptr<void> value) const override
-    {
-        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
-        AddManagedListItem(array->Backend, array->GetObject(), item);
-    }
-
     [[nodiscard]] auto ReadArrayRaw(ptr<void> data, span<uint8_t> dest) const -> bool override
     {
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         return TryReadManagedListRaw(array->Backend, array->Type.BaseType, array->GetObject(), dest);
-    }
-
-    [[nodiscard]] auto WriteArrayRaw(ptr<void> data, const_span<uint8_t> src) const -> bool override
-    {
-        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-
-        if (!IsManagedRawArrayElement(array->Type.BaseType)) {
-            return false;
-        }
-
-        // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
-        MonoObject* list = CreateManagedList(array->Backend, array->Type.BaseType);
-
-        if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
-            return false;
-        }
-
-        array->SetObject(list);
-        array->Elements.clear();
-        return true;
     }
 
     [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override
@@ -918,6 +886,40 @@ struct ManagedDataAccessor final : DataAccessor
     }
 
     [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override { return CreateManagedCallbackDesc(data.reinterpret_as<ManagedCallbackBridgeData>()); }
+
+    void ClearArray(ptr<void> data) const override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+        array->SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
+        array->Elements.clear();
+    }
+
+    void AddArrayElement(ptr<void> data, ptr<void> value) const override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+        MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
+        AddManagedListItem(array->Backend, array->GetObject(), item);
+    }
+
+    auto WriteArrayRaw(ptr<void> data, const_span<uint8_t> src) const -> bool override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+
+        if (!IsManagedRawArrayElement(array->Type.BaseType)) {
+            return false;
+        }
+
+        // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
+        MonoObject* list = CreateManagedList(array->Backend, array->Type.BaseType);
+
+        if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
+            return false;
+        }
+
+        array->SetObject(list);
+        array->Elements.clear();
+        return true;
+    }
 
     void ClearDict(ptr<void> data) const override
     {
@@ -5100,6 +5102,7 @@ static void NativeLoopbackRemoteCallImpl(void* backend_ptr, MonoObject* caller, 
     if (caller != nullptr) {
         caller_entity = ExtractEntityPtr(caller);
     }
+
     auto data = SerializeManagedRemoteCallArgs(backend, inbound_call.Args, args_array, name);
 
     engine->HandleInboundRemoteCall(name_hashed, caller_entity, data);

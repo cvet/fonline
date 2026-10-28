@@ -94,11 +94,11 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Fork the process if requested
     if (std::ranges::any_of(args, [](nptr<const char> arg) { return arg && string_view(arg.get()) == "--fork"; })) {
-        platform::fork_process();
+        (void)platform::fork_process();
     }
 
     // Create global data as soon as possible
-    global_data::create();
+    (void)global_data::create();
 
     // Write log and show message box on exception
     SetupExceptionCallback(is_enum_set(flags, AppInitFlags::ShowMessageOnException));
@@ -309,8 +309,8 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     if (!settings.Common.UserWritablePath.empty()) {
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
-        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
-        fs::create_directories(GetClientWritableResourceDir(settings));
+        (void)fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
+        (void)fs::create_directories(GetClientWritableResourceDir(settings));
         logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 

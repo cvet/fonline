@@ -86,9 +86,9 @@ public:
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return !!_context->Report; }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
+    auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
+    auto IsBakingReportEnabled() const noexcept -> bool { return !!_context->Report; }
+    auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
     void AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count = 1) const;
@@ -168,9 +168,9 @@ private:
         vector<unique_ptr<BaseBaker>> Bakers {};
     };
 
-    [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
-    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
+    auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
+    auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
+    auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
     void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);

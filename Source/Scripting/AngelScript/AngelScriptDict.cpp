@@ -1142,7 +1142,7 @@ static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
     return clone.release_ownership();
 }
 
-[[nodiscard]] static auto RequireScriptDictValue(nptr<void> value) -> ptr<void>
+static auto RequireScriptDictValue(nptr<void> value) -> ptr<void>
 {
     FO_VERIFY_AND_THROW(value, "Dictionary value is null");
     return value;

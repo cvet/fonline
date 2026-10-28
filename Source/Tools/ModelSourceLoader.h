@@ -104,7 +104,7 @@ struct ModelSourceAsset
     vector<ModelAnimationSource> Animations {};
 };
 
-[[nodiscard]] auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsset;
+auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsset;
 void ValidateModelSourceAsset(const ModelSourceAsset& asset);
 
 // One cache belongs to one immutable FileCollection/bake pass. Concurrent Get()

@@ -212,7 +212,7 @@ TEST_CASE("HashedString")
     {
         hash_storage storage {};
 
-        storage.to_hashed_string("registered_value");
+        (void)storage.to_hashed_string("registered_value");
         CHECK(storage.check_hashed_string("registered_value"));
 
         // An unregistered string is reported missing and must NOT be inserted

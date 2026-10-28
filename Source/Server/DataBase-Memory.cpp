@@ -53,7 +53,7 @@ public:
     ~DbMemory() override { StopCommitThread(); }
 
 protected:
-    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
+    auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
@@ -64,7 +64,7 @@ protected:
         _collections.try_emplace(collection_name);
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
+    auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_TRACE_ZONE(Database);
 
@@ -83,7 +83,7 @@ protected:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
+    auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_TRACE_ZONE(Database);
 
@@ -95,7 +95,7 @@ protected:
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
-    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
         FO_TRACE_ZONE(Database);
 

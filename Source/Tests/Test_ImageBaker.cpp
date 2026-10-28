@@ -149,7 +149,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     }
 }
 
-[[nodiscard]] static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<uint8_t>
+static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.reserve(18 + pixels.size());
@@ -169,7 +169,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[nodiscard]] static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& packets) -> vector<uint8_t>
+static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& packets) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.reserve(18 + packets.size());
@@ -189,7 +189,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[nodiscard]] static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t offs_x = 0, int16_t offs_y = 0) -> vector<uint8_t>
+static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t offs_x = 0, int16_t offs_y = 0) -> vector<uint8_t>
 {
     vector<uint8_t> data(0x3E);
 
@@ -203,7 +203,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<uint8_t>
+[[maybe_unused]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<uint8_t>
 {
     auto data = MakeFrm(fps, frames, 1, -1);
 
@@ -220,7 +220,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
+[[maybe_unused]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
 {
     auto data = MakeFrm(fps, frames);
     size_t dir_pos = numeric_cast<size_t>(dir) * 2;
@@ -232,7 +232,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeFrmPalette() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeFrmPalette() -> vector<uint8_t>
 {
     vector<uint8_t> palette(256 * 3);
 
@@ -247,7 +247,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return palette;
 }
 
-[[nodiscard]] static auto MakePaletteTransparencyPng() -> vector<uint8_t>
+static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 {
     return {
         0x89,
@@ -352,7 +352,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     };
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeRix() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeRix() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.resize(0xA + 256 * 3 + 1);
@@ -368,7 +368,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleZar() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeSimpleZar() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
@@ -382,7 +382,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+[[maybe_unused]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
@@ -395,7 +395,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakePaletteZar() -> vector<uint8_t>
+[[maybe_unused]] static auto MakePaletteZar() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
@@ -415,7 +415,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleMos() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeSimpleMos() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'M', 'O', 'S', ' ', '\0', '\0', '\0', '\0'});
@@ -445,7 +445,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleBam() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeSimpleBam() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
@@ -489,7 +489,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeMultiFrameBam() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeMultiFrameBam() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
@@ -545,7 +545,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     AppendLe32(data, 1);
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleTil() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeSimpleTil() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendTilPrefix(data);
@@ -571,7 +571,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeTilWithFrameCount(int32_t frames_count) -> vector<uint8_t>
+[[maybe_unused]] static auto MakeTilWithFrameCount(int32_t frames_count) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendTilPrefix(data);
@@ -581,14 +581,14 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendTilPrefix(data);
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeTilWithBadZarHeader() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeTilWithBadZarHeader() -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendTilPrefix(data);
@@ -599,7 +599,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     return data;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+[[maybe_unused]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendTilPrefix(data);
@@ -632,12 +632,12 @@ struct ArtFrameSpec
 };
 
 // Palette slot s maps color index i to 0x00RRGGBB with RR = s * 64 + i * 4, GG = i * 4 + 1, BB = i * 4 + 2
-[[nodiscard]] static auto ArtTestColor(int32_t slot, int32_t index) -> vector<uint8_t>
+static auto ArtTestColor(int32_t slot, int32_t index) -> vector<uint8_t>
 {
     return {numeric_cast<uint8_t>(slot * 64 + index * 4), numeric_cast<uint8_t>(index * 4 + 1), numeric_cast<uint8_t>(index * 4 + 2)};
 }
 
-[[nodiscard]] static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes, int32_t frame_count, const vector<ArtFrameSpec>& frames) -> vector<uint8_t>
+static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes, int32_t frame_count, const vector<ArtFrameSpec>& frames) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     AppendLe32(data, flags);
@@ -685,12 +685,12 @@ struct ArtFrameSpec
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
+static auto MakeSimpleArt() -> vector<uint8_t>
 {
     return MakeArt(0x1, 10, {true, true, false, false}, 1, {ArtFrameSpec {.Width = 2, .Height = 1, .HotX = 0, .HotY = 1, .DeltaX = 3, .DeltaY = -2, .Indices = {1, 2}}});
 }
 
-[[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<uint8_t>
+static auto MakeRleFrameRangeArt() -> vector<uint8_t>
 {
     // Frame 1 RLE: run of two index 1, then a one-byte literal of index 2
     return MakeArt(0x1, 10, {true, false, false, false}, 2,
@@ -700,7 +700,7 @@ struct ArtFrameSpec
         });
 }
 
-[[nodiscard]] static auto MakeRotationArt() -> vector<uint8_t>
+static auto MakeRotationArt() -> vector<uint8_t>
 {
     vector<ArtFrameSpec> frames;
 
@@ -735,7 +735,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     data.insert(data.end(), rle.begin(), rle.end());
 }
 
-[[nodiscard]] static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<uint8_t>
+static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'<', 's', 'p', 'r', 'i', 't', 'e', '>', '\0', '\0', '\0'});
@@ -802,7 +802,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     *it = replacement;
 }
 
-[[maybe_unused]] [[nodiscard]] static auto MakeSimpleSpr() -> vector<uint8_t>
+[[maybe_unused]] static auto MakeSimpleSpr() -> vector<uint8_t>
 {
     return MakeSprWithSequenceFrames({0});
 }
@@ -854,7 +854,7 @@ static void SkipSpriteMesh(data_reader& reader)
     ReadSpriteMesh(reader, frame);
 }
 
-[[nodiscard]] static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
+static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
 {
     data_reader reader {baked_data};
 
@@ -884,7 +884,7 @@ static void SkipSpriteMesh(data_reader& reader)
     return frame;
 }
 
-[[nodiscard]] static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedImageSequence
+static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedImageSequence
 {
     data_reader reader {baked_data};
 
@@ -928,7 +928,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     BakerTests::OverrideSetting(rig.Settings.SpriteMesh.AreaSavingsWeight, area_savings_weight);
 }
 
-[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
+static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
 {
     REQUIRE(!rows.empty());
     REQUIRE(!rows.front().empty());
@@ -984,7 +984,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     return rig.Outputs.at(string(path));
 }
 
-[[nodiscard]] static auto BakedMeshDoubleArea(const BakedImageFrame& frame) -> int64_t
+static auto BakedMeshDoubleArea(const BakedImageFrame& frame) -> int64_t
 {
     int64_t double_area = 0;
 
@@ -1000,7 +1000,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     return double_area;
 }
 
-[[nodiscard]] static auto IsPointInsideBakedMesh(const BakedImageFrame& frame, fpos32 point) -> bool
+static auto IsPointInsideBakedMesh(const BakedImageFrame& frame, fpos32 point) -> bool
 {
     for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
         ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
@@ -1020,7 +1020,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     return false;
 }
 
-[[nodiscard]] static auto SourcePointToBakedMeshPoint(const BakedImageFrame& frame, fpos32 source_point) -> fpos32
+static auto SourcePointToBakedMeshPoint(const BakedImageFrame& frame, fpos32 source_point) -> fpos32
 {
     return {source_point.x - numeric_cast<float32_t>(frame.Mesh.SourceOffset.x), source_point.y - numeric_cast<float32_t>(frame.Mesh.SourceOffset.y)};
 }
@@ -2949,7 +2949,7 @@ Frm=one.toy
         ImageBaker baker {rig.MakeContext()};
         baker.AddLoader(
             [](string_view, string_view, FileReader reader, const ImageImport::Context&) -> ImageImport::FrameCollection {
-                (void)reader.GetLEUInt32();
+                (void)reader.ReadLEUInt32();
                 ImageImport::FrameCollection collection;
                 return collection;
             },

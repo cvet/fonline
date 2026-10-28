@@ -54,8 +54,8 @@ public:
 
     [[nodiscard]] auto GetInnerItems() const noexcept -> const_span<refcount_ptr<ItemView>> { return _innerItems; }
     [[nodiscard]] auto GetInnerItems() noexcept -> span<refcount_ptr<ItemView>> { return _innerItems; }
-    [[nodiscard]] auto CreateRefClone() -> refcount_ptr<ItemView>;
 
+    auto CreateRefClone() -> refcount_ptr<ItemView>;
     auto AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, nptr<const Properties> props) -> ptr<ItemView>;
     auto AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>;
     auto AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>;

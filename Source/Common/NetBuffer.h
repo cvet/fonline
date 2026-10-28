@@ -148,7 +148,7 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto Read() -> T
+    auto Read() -> T
     {
         T result = {};
         Pop(&result, sizeof(T));
@@ -157,7 +157,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, string>)
-    [[nodiscard]] auto Read() -> string
+    auto Read() -> string
     {
         string result;
         uint32_t len = 0;
@@ -178,7 +178,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto Read(const hash_resolver& hashes) -> hstring
+    auto Read(const hash_resolver& hashes) -> hstring
     {
         return ReadHashedString(hashes);
     }
@@ -188,8 +188,8 @@ public:
     auto ReadMsg() -> NetMessage;
 
 private:
-    [[nodiscard]] auto ReadHashedString(const hash_resolver& hashes) -> hstring;
-    [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
+    auto ReadHashedString(const hash_resolver& hashes) -> hstring;
+    auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
     void FinishMessageRead();
 
     size_t _bufReadPos {};

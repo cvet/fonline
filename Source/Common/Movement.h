@@ -179,7 +179,7 @@ private:
 
 // How many steps of the path from start_hex lead to hex, when hex is among its first max_steps hexes, otherwise zero:
 // a receiver whose copy of the critter has already walked into a new plan joins it there instead of walking back
-[[nodiscard]] auto FindPathPrefixSteps(mpos start_hex, const vector<mdir>& steps, mpos hex, msize map_size, size_t max_steps) -> size_t;
+auto FindPathPrefixSteps(mpos start_hex, const vector<mdir>& steps, mpos hex, msize map_size, size_t max_steps) -> size_t;
 void DropPathPrefix(vector<mdir>& steps, vector<uint16_t>& control_steps, size_t count);
 
 // One MOVESYNC key=value line per movement synchronization event while Network.MoveSyncTrace is on, read by tooling:

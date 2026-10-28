@@ -113,8 +113,15 @@ public:
         }
     }
 
+    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
+    [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
+    [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
+    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
+    [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
+    [[nodiscard]] auto end() const noexcept { return _args.end(); }
+
     // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool
+    static auto IsOption(string_view arg) noexcept -> bool
     {
         if (!arg.starts_with('-')) {
             return false;
@@ -129,12 +136,6 @@ public:
         char first = name.front();
         return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
     }
-    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
-    [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
-    [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
-    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
-    [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
-    [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
 private:
     vector<CommandLineArg> _args {};
@@ -311,7 +312,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
+    auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
         auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
@@ -535,7 +536,8 @@ class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
-    auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
+    [[nodiscard]] auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
+
     string Name {};
     hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
@@ -585,8 +587,9 @@ enum class ComplexTypeKind : uint8_t
 
 struct ComplexTypeDesc
 {
-    explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
-    auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
+    [[nodiscard]] explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
+    [[nodiscard]] auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
+
     ComplexTypeKind Kind {};
     BaseTypeDesc BaseType {};
     optional<BaseTypeDesc> KeyType {};
@@ -928,6 +931,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
+
     virtual ~NameResolver() = default;
 };
 
@@ -1130,6 +1134,7 @@ class AnimationResolver
 public:
     [[nodiscard]] virtual auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+
     virtual ~AnimationResolver() = default;
 };
 

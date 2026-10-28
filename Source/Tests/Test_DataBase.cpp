@@ -52,7 +52,7 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     template<typename T>
-    [[nodiscard]] auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
+    auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
         return const_cast<T*>(&setting);
     }
@@ -76,6 +76,12 @@ namespace
         ~TestDataBase() override { StopCommitThread(); }
 
         [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return _stringKeyEscaping; }
+
+        [[nodiscard]] auto GetRecordReadCount(ident_t id) const -> size_t
+        {
+            scoped_lock locker {_readStatsLocker};
+            return _recordReadCount.contains(id) ? _recordReadCount.at(id) : 0;
+        }
 
         auto GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
         {
@@ -149,12 +155,6 @@ namespace
             const auto& collection = _collections.at(collection_name);
             auto it = collection.find(id);
             return it != collection.end() ? it->second.Copy() : AnyData::Document {};
-        }
-
-        [[nodiscard]] auto GetRecordReadCount(ident_t id) const -> size_t
-        {
-            scoped_lock locker {_readStatsLocker};
-            return _recordReadCount.contains(id) ? _recordReadCount.at(id) : 0;
         }
 
         void SetOnGetRecord(function<void()> callback)

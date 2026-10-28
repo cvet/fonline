@@ -48,13 +48,13 @@ using socket_t = int32_t;
 class net_sockets final
 {
 public:
-    static auto startup() noexcept -> bool;
-    static auto resolve_ipv4(string_view host) noexcept -> optional<uint32_t>;
-    static auto ipv4_to_string(uint32_t addr_net_order) noexcept -> string;
-    static auto host_to_net_u16(uint16_t value) noexcept -> uint16_t;
-    static auto last_recv_was_would_block() noexcept -> bool;
-    static auto error_text(const std::error_code& error) noexcept -> string;
-    static auto last_error_text() noexcept -> string;
+    [[nodiscard]] static auto startup() noexcept -> bool;
+    [[nodiscard]] static auto resolve_ipv4(string_view host) noexcept -> optional<uint32_t>;
+    [[nodiscard]] static auto ipv4_to_string(uint32_t addr_net_order) noexcept -> string;
+    [[nodiscard]] static auto host_to_net_u16(uint16_t value) noexcept -> uint16_t;
+    [[nodiscard]] static auto last_recv_was_would_block() noexcept -> bool;
+    [[nodiscard]] static auto error_text(const std::error_code& error) noexcept -> string;
+    [[nodiscard]] static auto last_error_text() noexcept -> string;
 };
 
 class tcp_socket final
@@ -70,14 +70,14 @@ public:
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_sock; }
     [[nodiscard]] auto native_handle() const noexcept -> socket_t { return _sock ? *_sock : socket_t {}; }
 
-    auto connect(string_view host, uint16_t port) noexcept -> bool;
-    auto connect_async(string_view host, uint16_t port) noexcept -> bool; // Use can_write(timeout) + peek_socket_error() to detect completion
-    auto can_read(timespan timeout = {}) const noexcept -> bool;
-    auto can_write(timespan timeout = {}) const noexcept -> bool;
-    auto set_nodelay(bool enabled) noexcept -> bool;
-    auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed
-    auto send(const_span<uint8_t> data) noexcept -> int32_t;
-    auto receive(span<uint8_t> data) noexcept -> int32_t;
+    [[nodiscard]] auto connect(string_view host, uint16_t port) noexcept -> bool;
+    [[nodiscard]] auto connect_async(string_view host, uint16_t port) noexcept -> bool; // Use can_write(timeout) + peek_socket_error() to detect completion
+    [[nodiscard]] auto can_read(timespan timeout = {}) const noexcept -> bool;
+    [[nodiscard]] auto can_write(timespan timeout = {}) const noexcept -> bool;
+    [[nodiscard]] auto set_nodelay(bool enabled) noexcept -> bool;
+    [[nodiscard]] auto peek_socket_error() const noexcept -> int32_t; // SO_ERROR via getsockopt; 0 if no pending error, -1 if call itself failed
+    [[nodiscard]] auto send(const_span<uint8_t> data) noexcept -> int32_t;
+    [[nodiscard]] auto receive(span<uint8_t> data) noexcept -> int32_t;
     void close() noexcept;
 
 private:
@@ -99,9 +99,9 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_listen_sock; }
 
-    auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
-    auto can_accept(timespan timeout = {}) const noexcept -> bool;
-    auto accept() noexcept -> tcp_socket;
+    [[nodiscard]] auto listen(string_view bind_host, uint16_t port, int32_t backlog = 1) noexcept -> bool;
+    [[nodiscard]] auto can_accept(timespan timeout = {}) const noexcept -> bool;
+    [[nodiscard]] auto accept() noexcept -> tcp_socket;
     void close() noexcept;
 
 private:
@@ -120,12 +120,12 @@ public:
 
     [[nodiscard]] auto is_valid() const noexcept -> bool { return !!_sock; }
 
-    auto bind(string_view bind_host, uint16_t port, bool reuse_addr = true) noexcept -> bool;
-    auto can_read(timespan timeout = {}) const noexcept -> bool;
-    auto can_write(timespan timeout = {}) const noexcept -> bool;
-    auto set_broadcast(bool enabled) noexcept -> bool;
-    auto send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t;
-    auto receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t;
+    [[nodiscard]] auto bind(string_view bind_host, uint16_t port, bool reuse_addr = true) noexcept -> bool;
+    [[nodiscard]] auto can_read(timespan timeout = {}) const noexcept -> bool;
+    [[nodiscard]] auto can_write(timespan timeout = {}) const noexcept -> bool;
+    [[nodiscard]] auto set_broadcast(bool enabled) noexcept -> bool;
+    [[nodiscard]] auto send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t;
+    [[nodiscard]] auto receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t;
     void close() noexcept;
 
 private:

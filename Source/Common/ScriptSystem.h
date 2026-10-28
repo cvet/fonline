@@ -98,8 +98,8 @@ public:
     void SetValue(ptr<const Property> prop, PropertyRawData& prop_data);
 
 private:
-    [[nodiscard]] auto GetProps() noexcept -> ptr<Properties>;
-    [[nodiscard]] auto GetProps() const noexcept -> ptr<const Properties>;
+    auto GetProps() noexcept -> ptr<Properties>;
+    auto GetProps() const noexcept -> ptr<const Properties>;
 
     ptr<const PropertyRegistrar> _registrar;
     optional<Properties> _props {};
@@ -126,9 +126,8 @@ struct DataAccessor
     virtual void AddArrayElement(ptr<void> /*data*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearDict(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddDictElement(ptr<void> /*data*/, ptr<void> /*key*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
-    // An array of plain numbers may cross as one byte block; false leaves the caller on element-wise access
-    [[nodiscard]] virtual auto ReadArrayRaw(ptr<void> /*data*/, span<uint8_t> /*dest*/) const -> bool { return false; }
-    [[nodiscard]] virtual auto WriteArrayRaw(ptr<void> /*data*/, const_span<uint8_t> /*src*/) const -> bool { return false; }
+    virtual auto ReadArrayRaw(ptr<void> /*data*/, span<uint8_t> /*dest*/) const -> bool { return false; }
+    virtual auto WriteArrayRaw(ptr<void> /*data*/, const_span<uint8_t> /*src*/) const -> bool { return false; }
     virtual ~DataAccessor() = default;
 };
 
@@ -413,7 +412,9 @@ public:
             other._returnValueCleaner = {};
         }
     }
+
     auto operator=(const ScriptFunc&) = delete;
+
     auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc&
     {
         if (this != std::addressof(other)) {
@@ -429,9 +430,11 @@ public:
 
         return *this;
     }
+
     ~ScriptFunc() noexcept { ClearStoredReturn(); }
 
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
+
     [[nodiscard]] auto IsDelegate() const noexcept -> bool
     {
         if (!_func) {
@@ -441,6 +444,7 @@ public:
         FO_STRONG_ASSERT(_func, "Script function is null");
         return _func->DelegateObj != 0;
     }
+
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName
     {
         if (_func) {
@@ -450,6 +454,7 @@ public:
 
         return ScriptFuncName();
     }
+
     [[nodiscard]] auto HasAttribute(string_view attribute) const noexcept -> bool
     {
         if (!_func) {
@@ -882,16 +887,7 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    void MapScriptTypes(ptr<EngineMetadata> meta);
-    void InitModules();
-
-    auto IsGlobalVarsFrozen() const noexcept -> bool { return _globalVarsFrozen.load(std::memory_order_acquire); }
-    void FreezeGlobalVars() noexcept { _globalVarsFrozen.store(true, std::memory_order_release); }
-    void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
-
-    void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
-    void ShutdownBackends();
-    void ProcessBackends();
+    [[nodiscard]] auto IsGlobalVarsFrozen() const noexcept -> bool { return _globalVarsFrozen.load(std::memory_order_acquire); }
 
     template<typename T>
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
@@ -952,9 +948,18 @@ public:
         return false;
     }
 
+    void MapScriptTypes(ptr<EngineMetadata> meta);
+    void InitModules();
+    void FreezeGlobalVars() noexcept { _globalVarsFrozen.store(true, std::memory_order_release); }
+    void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
+
+    void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
+    void ShutdownBackends();
+    void ProcessBackends();
+
     template<typename TRet, typename... Args>
         requires(!std::is_void_v<TRet>)
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
+    auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
 
@@ -968,7 +973,7 @@ public:
 
     template<typename TRet = void, typename... Args>
         requires(std::is_void_v<TRet>)
-    [[nodiscard]] auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
+    auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func.Call(args...);
@@ -976,7 +981,7 @@ public:
 
     template<typename TRet = void, typename... Args>
         requires(std::is_void_v<TRet>)
-    [[nodiscard]] auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
+    auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
         auto range = _globalFuncMap.equal_range(func_name);
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
@@ -993,7 +998,7 @@ public:
         return false;
     }
 
-    [[nodiscard]] auto ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
+    auto ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool;
 
     void AddGlobalScriptFunc(ptr<ScriptFuncDesc> func);
     void AddInitFunc(ScriptFunc<void> func, int32_t priority);
@@ -1075,10 +1080,10 @@ private:
 
 namespace ScriptHelpers
 {
-    [[nodiscard]] auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
+    auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
 
     template<typename T, typename U>
-    [[nodiscard]] auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
+    auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, U prop_index) -> ptr<const Property>
     {
         return GetIntConvertibleEntityProperty(engine, T::ENTITY_TYPE_NAME, static_cast<int32_t>(prop_index));
     }
@@ -1105,7 +1110,7 @@ namespace ScriptHelpers
 }
 
 template<typename T, typename TContainer, typename TResolver>
-[[nodiscard]] auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
+auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
 {
     vector<ptr<T>> result;
     result.reserve(entries.size());
@@ -1119,25 +1124,25 @@ template<typename T, typename TContainer, typename TResolver>
 }
 
 template<typename T, typename TContainer>
-[[nodiscard]] auto MakeScriptHandleVector(const TContainer& entries)
+auto MakeScriptHandleVector(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
-[[nodiscard]] auto MakeMutableScriptHandleVector(const TContainer& entries)
+auto MakeMutableScriptHandleVector(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return make_ptr(const_cast<T*>(std::addressof(*entry))); });
 }
 
 template<typename T, typename U, typename TContainer>
-[[nodiscard]] auto MakeScriptHandleVectorAs(const TContainer& entries)
+auto MakeScriptHandleVectorAs(const TContainer& entries)
 {
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>
-[[nodiscard]] auto MakeScriptRefHandleVectorAs(const TContainer& entries)
+auto MakeScriptRefHandleVectorAs(const TContainer& entries)
 {
     vector<ptr<T>> result;
     result.reserve(entries.size());

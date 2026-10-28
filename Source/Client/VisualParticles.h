@@ -94,8 +94,7 @@ public:
 private:
     explicit ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system);
 
-    [[nodiscard]] auto GetTime() const -> nanotime;
-
+    auto GetTime() const -> nanotime;
     void ApplyRuntimeSetup();
     void ResetTiming();
 

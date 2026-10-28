@@ -171,16 +171,16 @@ private:
         uint64_t LastUsedFrame {};
     };
 
-    [[nodiscard]] auto GetFont(FontType font) -> ptr<FontData>;
-    [[nodiscard]] auto GetFont(FontType font) const -> ptr<const FontData>;
+    auto GetFont(FontType font) -> ptr<FontData>;
+    auto GetFont(FontType font) const -> ptr<const FontData>;
 
     void StoreFont(int32_t index, FontData&& font_data);
     void BuildFont(int32_t index);
     static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
-    [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
-    [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
-    [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
+    static auto ResolveFontScale(float32_t scale) -> float32_t;
+    static auto IsInlineColorHex(string_view value) -> bool;
+    static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
 
     static constexpr string_view InlineColorTagPrefix = "@color";

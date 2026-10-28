@@ -44,13 +44,13 @@ class ServerEngine;
 class ServerEntity;
 class EntityManager;
 
-[[nodiscard]] auto NextSyncTicket() noexcept -> uint64_t;
+auto NextSyncTicket() noexcept -> uint64_t;
 
 // The read-path coverage check — reparenting is stricter and needs the entity's own lock. `diagnose` dumps the
 // parent chain before the caller throws, which the non-throwing Game.IsEntityLocked probe turns off
-[[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
+auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 // True when the owning engine runs its logic on a single worker, which is when the cover model is bypassed
-[[nodiscard]] auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
+auto IsSingleThreadedLogic(nptr<const ServerEntity> entity) noexcept -> bool;
 
 class EntityLock final
 {
@@ -64,6 +64,7 @@ public:
 
     [[nodiscard]] auto IsLockedByCurrentThread() const noexcept -> bool;
     [[nodiscard]] auto WaiterCount() const noexcept -> size_t;
+    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
 
     // Escalation releases a parent-held lock to zero and re-takes it this many times, restoring the parent
     // context's bookkeeping exactly
@@ -97,9 +98,8 @@ public:
     // Ensure is split into a read-only compatibility check and a no-throw commit so SyncContext can make a
     // multi-lock batch all-or-nothing; never hold the state mutex across a blocking operation
     void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
-    [[nodiscard]] bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
+    bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
     void UnlockStateMutex() noexcept FO_TSA_RELEASE(_mutex);
-    [[nodiscard]] bool IsEnsureOpCompatible(bool is_exclusive) const noexcept FO_TSA_REQUIRES(_mutex);
     void CommitEnsureOp(bool is_exclusive) noexcept FO_TSA_REQUIRES(_mutex);
 
 private:
@@ -198,14 +198,14 @@ public:
     auto operator=(SyncContext&&) noexcept = delete;
     ~SyncContext();
 
-    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
-    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
-    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
-
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
     [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
     [[nodiscard]] auto GetLockWaitDuration() const noexcept -> timespan { return _lockWaitDuration; }
+
+    static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
+    static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
+    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
 
     void Activate() noexcept;
     void Deactivate() noexcept;

@@ -52,7 +52,7 @@ public:
 
     virtual void SetString(string_view entry_name, string_view str) = 0;
     virtual void SetData(string_view entry_name, const_span<uint8_t> data) = 0;
-    [[nodiscard]] virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
+    virtual auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool = 0;
     virtual void RemoveEntry(string_view entry_name) = 0;
 };
 
@@ -74,11 +74,11 @@ public:
     auto CreateCacheStorage() const -> bool;
     void SetString(string_view entry_name, string_view str) override;
     void SetData(string_view entry_name, const_span<uint8_t> data) override;
-    [[nodiscard]] auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
+    auto SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool override;
     void RemoveEntry(string_view entry_name) override;
 
 private:
-    [[nodiscard]] auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
+    auto MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string;
 
     string _workPath {};
 };
@@ -144,7 +144,7 @@ FileCacheStorage::FileCacheStorage(string_view real_path)
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
     if (!fs::is_dir(_workPath)) {
-        fs::create_directories(_workPath);
+        (void)fs::create_directories(_workPath);
 
         if (!fs::is_dir(_workPath)) {
             logging::write(logging::type::warning, "Can't create dir for cache '{}'", _workPath);
@@ -255,7 +255,7 @@ void FileCacheStorage::RemoveEntry(string_view entry_name)
     FO_TRACE_ZONE(FileSystem);
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
-    fs::remove_file(path);
+    (void)fs::remove_file(path);
 }
 
 FO_END_NAMESPACE

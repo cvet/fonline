@@ -13275,8 +13275,8 @@
           "translation": "Значения вроде -2 сейчас интерпретируются как 65534 и могут смещать отрисованный глиф далеко от ожидаемой позиции; исправление runtime должно быть отдельным изменением кода."
         },
         "/validation_rules/@id=font-format.validation.signed-bmfont-metrics/requirement": {
-          "source_sha256": "3d66e13d231f5a82addd560733a0fb847a6ed44d870ca68d42a2886f2bdb8dcf",
-          "translation": "Учитывайте, что текущий загрузчик читает xoffset, yoffset и xadvance через GetLEUInt16, хотя поставляемые бинарные шрифты содержат отрицательные выносы."
+          "source_sha256": "f53e85ff30004a92809775806d56a0257acef966d43e28758d660750c33d456f",
+          "translation": "Учитывайте, что текущий загрузчик читает xoffset, yoffset и xadvance через ReadLEUInt16, хотя поставляемые бинарные шрифты содержат отрицательные выносы."
         }
       }
     },

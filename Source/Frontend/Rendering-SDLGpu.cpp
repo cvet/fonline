@@ -212,7 +212,7 @@ public:
     SdlPassSlots PassSlots[EFFECT_MAX_PASSES] {};
 
 private:
-    [[nodiscard]] auto GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topology, bool with_depth) -> ptr<SDL_GPUGraphicsPipeline>;
+    auto GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topology, bool with_depth) -> ptr<SDL_GPUGraphicsPipeline>;
 
     ptr<SDLGpu_Renderer::Context> _ctx;
     unordered_map<uint32_t, nptr<SDL_GPUGraphicsPipeline>> _pipelines {};

@@ -917,53 +917,6 @@ auto MapperEngine::IsImGuiTextInputActive() const -> bool
     return ImGui::GetIO().WantTextInput;
 }
 
-MapperEngine::EntityBuf::EntityBuf(const EntityBuf& other) :
-    Id(other.Id),
-    Hex(other.Hex),
-    Dir(other.Dir),
-    IsCritter(other.IsCritter),
-    IsItem(other.IsItem),
-    Slot(other.Slot),
-    StackId(other.StackId),
-    Proto(other.Proto)
-{
-    if (other.Props) {
-        Props.emplace(other.Props->Copy());
-    }
-
-    Children.reserve(other.Children.size());
-    for (const auto& child : other.Children) {
-        Children.emplace_back(safe_alloc::make_unique<EntityBuf>(*child));
-    }
-}
-
-auto MapperEngine::EntityBuf::operator=(const EntityBuf& other) -> EntityBuf&
-{
-    if (this != &other) {
-        Id = other.Id;
-        Hex = other.Hex;
-        Dir = other.Dir;
-        IsCritter = other.IsCritter;
-        IsItem = other.IsItem;
-        Slot = other.Slot;
-        StackId = other.StackId;
-        Proto = other.Proto;
-        if (other.Props) {
-            Props.emplace(other.Props->Copy());
-        }
-        else {
-            Props.reset();
-        }
-        Children.clear();
-        Children.reserve(other.Children.size());
-        for (const auto& child : other.Children) {
-            Children.emplace_back(safe_alloc::make_unique<EntityBuf>(*child));
-        }
-    }
-
-    return *this;
-}
-
 MapperEngine::UndoOp::UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
     Label(std::move(label)),
     IsSnapshot(is_snapshot),
@@ -1250,7 +1203,7 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
 void MapperEngine::RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<ItemView> item)
 {
     for (const auto& child_buf : entity_buf.Children) {
-        auto inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->StackId, child_buf->GetProps());
+        auto inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->StackId, (child_buf->Props ? make_nptr(&*child_buf->Props) : nullptr));
         RestoreEntityBufChildren(*child_buf, inner_item);
     }
 }
@@ -1263,10 +1216,10 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
 
     if (!owner) {
         if (entity_buf.IsCritter) {
-            auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.Dir, entity_buf.GetProps(), entity_buf.Id);
+            auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.Dir, (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr), entity_buf.Id);
 
             for (const auto& child_buf : entity_buf.Children) {
-                auto inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->Slot, child_buf->GetProps());
+                auto inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->Slot, (child_buf->Props ? make_nptr(&*child_buf->Props) : nullptr));
                 RestoreEntityBufChildren(*child_buf, inv_item);
             }
 
@@ -1274,7 +1227,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
         }
 
         if (entity_buf.IsItem) {
-            auto item = cur_map->AddMapperItem(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.GetProps(), entity_buf.Id);
+            auto item = cur_map->AddMapperItem(entity_buf.Proto->GetProtoId(), entity_buf.Hex, (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr), entity_buf.Id);
             RestoreEntityBufChildren(entity_buf, item);
             return item;
         }
@@ -1283,13 +1236,13 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
     }
 
     if (auto cr = owner.dyn_cast<CritterView>()) {
-        auto item = cr->AddMapperInvItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.Slot, entity_buf.GetProps());
+        auto item = cr->AddMapperInvItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.Slot, (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr));
         RestoreEntityBufChildren(entity_buf, item);
         return item;
     }
 
     if (auto item_owner = owner.dyn_cast<ItemView>()) {
-        auto item = item_owner->AddMapperInnerItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.StackId, entity_buf.GetProps());
+        auto item = item_owner->AddMapperInnerItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.StackId, (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr));
         RestoreEntityBufChildren(entity_buf, item);
         return item;
     }
@@ -3871,9 +3824,11 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 
     SetMapDirty(GetCurMap());
 
+    ident_t entity_id = entity_buf.Id;
+
     PushUndoOp(cur_map,
         UndoOp {"Delete entity",
-            [entity_buf, item_ownership, owner_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+            [entity_buf = std::move(entity_buf), item_ownership, owner_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                 nptr<ClientEntity> owner;
 
                 if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
@@ -3885,7 +3840,7 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 
                 return !!mapper->RestoreEntityBuf(entity_buf, owner);
             },
-            [entity_id = entity_buf.Id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+            [entity_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                 if (auto target = mapper->FindEntityById(*active_map, entity_id)) {
                     mapper->DeleteEntity(target);
                     return true;
@@ -4348,6 +4303,13 @@ void MapperEngine::SelectDelete()
             delete_entries.emplace_back(std::move(entry));
         }
 
+        vector<ident_t> delete_ids;
+        delete_ids.reserve(delete_entries.size());
+
+        for (const auto& entry : delete_entries) {
+            delete_ids.emplace_back(entry.Entity.Id);
+        }
+
         UndoRedoInProgress = true;
         auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
         for (ptr<ClientEntity> entity : copy_hold_ref(SelectedEntities)) {
@@ -4362,7 +4324,7 @@ void MapperEngine::SelectDelete()
 
         PushUndoOp(GetCurMap(),
             UndoOp {"Delete selection",
-                [delete_entries](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                [delete_entries = std::move(delete_entries)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                     for (const auto& entry : delete_entries) {
                         nptr<ClientEntity> owner;
 
@@ -4381,9 +4343,9 @@ void MapperEngine::SelectDelete()
                     mapper->SetMapDirty(*active_map);
                     return true;
                 },
-                [delete_entries](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
-                    for (auto it = delete_entries.rbegin(); it != delete_entries.rend(); ++it) {
-                        if (auto target = mapper->FindEntityById(*active_map, it->Entity.Id)) {
+                [delete_ids = std::move(delete_ids)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                    for (auto it = delete_ids.rbegin(); it != delete_ids.rend(); ++it) {
+                        if (auto target = mapper->FindEntityById(*active_map, *it)) {
                             mapper->DeleteEntity(target);
                         }
                     }
@@ -4438,7 +4400,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>
                 }
                 return false;
             },
-            [entity_buf](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+            [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                 ignore_unused(active_map);
                 return !!mapper->RestoreEntityBuf(entity_buf);
             }});
@@ -4526,7 +4488,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
                     }
                     return false;
                 },
-                [entity_buf, item_ownership, owner_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                [entity_buf = std::move(entity_buf), item_ownership, owner_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                     nptr<ClientEntity> restore_owner;
 
                     if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
@@ -4577,7 +4539,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
                     }
                     return false;
                 },
-                [entity_buf](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                     ignore_unused(active_map);
                     return !!mapper->RestoreEntityBuf(entity_buf);
                 }});
@@ -4604,7 +4566,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
                     }
                     return false;
                 },
-                [entity_buf](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                     ignore_unused(active_map);
                     return !!mapper->RestoreEntityBuf(entity_buf);
                 }});
@@ -5329,16 +5291,16 @@ void MapperEngine::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, &cur_map](const EntityBuf& item_entity_buf, ptr<ItemView> item) {
             for (const auto& child_buf : item_entity_buf.Children) {
-                auto inner_item = item->AddMapperInnerItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), {}, child_buf->GetProps());
+                auto inner_item = item->AddMapperInnerItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), {}, (child_buf->Props ? make_nptr(&*child_buf->Props) : nullptr));
                 add_item_inner_items(*child_buf, inner_item);
             }
         };
 
         if (entity_buf.IsCritter) {
-            auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, mdir(), entity_buf.GetProps());
+            auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, mdir(), (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr));
 
             for (const auto& child_buf : entity_buf.Children) {
-                auto inv_item = cr->AddMapperInvItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), CritterItemSlot::Inventory, child_buf->GetProps());
+                auto inv_item = cr->AddMapperInvItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), CritterItemSlot::Inventory, (child_buf->Props ? make_nptr(&*child_buf->Props) : nullptr));
                 add_item_inner_items(*child_buf, inv_item);
             }
 
@@ -5348,7 +5310,7 @@ void MapperEngine::BufferPaste()
             CaptureEntityBuf(pasted_entities.back(), cr);
         }
         else if (entity_buf.IsItem) {
-            auto item = cur_map->AddMapperItem(entity_buf.Proto->GetProtoId(), hex, entity_buf.GetProps());
+            auto item = cur_map->AddMapperItem(entity_buf.Proto->GetProtoId(), hex, (entity_buf.Props ? make_nptr(&*entity_buf.Props) : nullptr));
             add_item_inner_items(entity_buf, item);
             SelectAdd(item);
 
@@ -5357,19 +5319,26 @@ void MapperEngine::BufferPaste()
         }
     }
 
+    vector<ident_t> pasted_ids;
+    pasted_ids.reserve(pasted_entities.size());
+
+    for (const auto& entity_buf : pasted_entities) {
+        pasted_ids.emplace_back(entity_buf.Id);
+    }
+
     if (!pasted_entities.empty()) {
         PushUndoOp(GetCurMap(),
             UndoOp {"Paste selection",
-                [pasted_entities](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
-                    for (auto it = pasted_entities.rbegin(); it != pasted_entities.rend(); ++it) {
-                        if (auto target = mapper->FindEntityById(*active_map, it->Id)) {
+                [pasted_ids = std::move(pasted_ids)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                    for (auto it = pasted_ids.rbegin(); it != pasted_ids.rend(); ++it) {
+                        if (auto target = mapper->FindEntityById(*active_map, *it)) {
                             mapper->DeleteEntity(target);
                         }
                     }
 
                     return true;
                 },
-                [pasted_entities](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
+                [pasted_entities = std::move(pasted_entities)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                     for (const auto& entity_buf : pasted_entities) {
                         if (!mapper->RestoreEntityBuf(entity_buf)) {
                             return false;
@@ -6944,7 +6913,7 @@ auto MapperEngine::ReadInspectorToken(nptr<const char> str, string& result) cons
 
     auto decode_char = [str](size_t char_pos, size_t& char_len) {
         char_len = utf8::decode_str_nt_len(&str[char_pos]);
-        utf8::decode(&str[char_pos], char_len);
+        (void)utf8::decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;

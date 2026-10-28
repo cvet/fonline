@@ -52,6 +52,8 @@ namespace
         {
         }
 
+        [[nodiscard]] auto GetDisconnectCount() const noexcept -> size_t { return _disconnectCount; }
+
         void SetConnectingState() noexcept
         {
             _isConnecting = true;
@@ -67,8 +69,6 @@ namespace
         void ThrowOnCheck() noexcept { _throwOnCheck = true; }
         void ThrowOnSend() noexcept { _throwOnSend = true; }
         void ThrowOnReceive() noexcept { _throwOnReceive = true; }
-
-        [[nodiscard]] auto GetDisconnectCount() const noexcept -> size_t { return _disconnectCount; }
 
     protected:
         auto CheckStatusImpl(bool for_write) -> bool override

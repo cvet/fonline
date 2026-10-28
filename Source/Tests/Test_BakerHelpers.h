@@ -50,7 +50,7 @@ FO_BEGIN_NAMESPACE
 namespace BakerTests
 {
     template<typename T>
-    [[nodiscard]] inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
+    inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
         return const_cast<T*>(&setting);
     }
@@ -402,10 +402,6 @@ namespace BakerTests
         [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
         [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
 
-        void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
-
-        void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
-
         [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _entries.contains(string(path)); }
 
         [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
@@ -475,6 +471,10 @@ namespace BakerTests
             return result;
         }
 
+        void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
+
+        void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
+
     private:
         string _packName {};
         unordered_map<string, Entry> _entries {};
@@ -490,13 +490,13 @@ namespace BakerTests
             _fileSystem.AddCustomSource(std::move(ds));
         }
 
-        void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
-
-        void AddBinaryFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
-
         [[nodiscard]] auto ReadFile(string_view path) const -> File { return _fileSystem.ReadFile(path); }
 
         [[nodiscard]] auto GetFileSystem() const -> const FileSystem& { return _fileSystem; }
+
+        void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
+
+        void AddBinaryFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
 
     private:
         nptr<MemoryDataSource> _dataSource {};
@@ -563,6 +563,15 @@ namespace BakerTests
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
 
+        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
+
+        [[nodiscard]] auto GetOutputText(string_view path) const -> string
+        {
+            auto it = Outputs.find(string(path));
+            FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
+            return string {it->second.begin(), it->second.end()};
+        }
+
         void AddSourceFile(string_view path, string_view content, uint64_t write_time = 1) { _sourceData->AddFile(path, content, write_time); }
 
         void AddSourceFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _sourceData->AddFile(path, std::move(content), write_time); }
@@ -571,9 +580,7 @@ namespace BakerTests
 
         void AddBakedFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }
 
-        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
-
-        [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
+        static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
 
         auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext>
         {
@@ -598,13 +605,6 @@ namespace BakerTests
                 .BakedFiles = baked_files_ptr,
                 .ForceSyncMode = true,
             });
-        }
-
-        [[nodiscard]] auto GetOutputText(string_view path) const -> string
-        {
-            auto it = Outputs.find(string(path));
-            FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
-            return string {it->second.begin(), it->second.end()};
         }
 
         GlobalSettings Settings;

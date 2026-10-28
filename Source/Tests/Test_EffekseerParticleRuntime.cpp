@@ -103,12 +103,14 @@ public:
     explicit CapturingAppRender(ptr<GlobalSettings> settings);
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+    [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -117,7 +119,6 @@ public:
     void DisableScissor() override;
 
     void ClearDraws();
-    [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
 
 private:
     Null_Renderer _renderer;
@@ -140,18 +141,20 @@ public:
     // Extra resources an effect loads by itself, such as the .efkmodel payloads a model node references
     EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture = true);
 
-    [[nodiscard]] auto CreateSystem() -> unique_ptr<ParticleRuntimeSystem>;
-    [[nodiscard]] auto CreateManagedSystem() -> optional<ParticleSystem>;
     [[nodiscard]] auto CanCreateSystem() -> bool;
-    [[nodiscard]] auto TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>;
+
     [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
     [[nodiscard]] auto GetTextureRequests() const -> const vector<string>&;
     [[nodiscard]] auto GetSceneBackground() const -> nptr<const RenderTexture>;
+
+    auto CreateSystem() -> unique_ptr<ParticleRuntimeSystem>;
+    auto CreateManagedSystem() -> optional<ParticleSystem>;
+    auto TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>;
     void SetSceneBackgroundMode(TestSceneBackgroundMode mode);
     void ClearDraws();
 
 private:
-    [[nodiscard]] auto ProvideSceneBackground() const -> ParticleSceneBackgroundResult;
+    auto ProvideSceneBackground() const -> ParticleSceneBackgroundResult;
 
     EffekseerRuntimeTestSettings _settings {};
     string _effectPath;

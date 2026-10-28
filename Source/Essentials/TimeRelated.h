@@ -131,8 +131,8 @@ struct time_desc_t
     int32_t nanosecond {}; // 0..999
 };
 
-auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
-auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
+[[nodiscard]] auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
+[[nodiscard]] auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
 // Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time
 // value: Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time
@@ -197,7 +197,7 @@ public:
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
-    static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
+    [[nodiscard]] static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
 
     static const nanotime zero;
 

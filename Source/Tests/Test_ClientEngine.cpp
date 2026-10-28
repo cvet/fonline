@@ -111,8 +111,8 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     ignore_unused(removed_writable_before);
 
     auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs::remove_dir_tree(unique_name);
-        fs::remove_dir_tree(writable_root);
+        (void)fs::remove_dir_tree(unique_name);
+        (void)fs::remove_dir_tree(writable_root);
     });
 
     string pack_name = "ClientPack";
@@ -232,8 +232,8 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
     ignore_unused(removed_writable_before);
 
     auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs::remove_dir_tree(unique_name);
-        fs::remove_dir_tree(writable_root);
+        (void)fs::remove_dir_tree(unique_name);
+        (void)fs::remove_dir_tree(writable_root);
     });
 
     string writable_resources = fs::make_writable_path(writable_root, unique_name);

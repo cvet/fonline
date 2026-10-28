@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 // cannot predict, so a test records the set present up front and drops only what its own run produced
 namespace TexDumpArtifacts
 {
-    [[nodiscard]] inline auto CollectDumpDirs() -> set<string>
+    inline auto CollectDumpDirs() -> set<string>
     {
         set<string> dirs;
         std::error_code ec;

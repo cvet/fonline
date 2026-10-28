@@ -548,7 +548,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     auto reader = file.GetReader();
 
-    uint32_t signature = reader.GetLEUInt32();
+    uint32_t signature = reader.ReadLEUInt32();
     auto make_signature = [](uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t { return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24; };
 
     if (signature != make_signature('B', 'M', 'F', 3)) {
@@ -557,51 +557,51 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Info
     reader.GoForward(1);
-    uint32_t block_len = reader.GetLEUInt32();
+    uint32_t block_len = reader.ReadLEUInt32();
     size_t next_block = block_len + reader.GetCurPos() + 1;
 
     reader.GoForward(7);
 
-    if (reader.GetBEUInt32() != 0x01010101u) {
+    if (reader.ReadBEUInt32() != 0x01010101u) {
         throw FontManagerException("Wrong padding in font", font_path);
     }
 
     // Common
     reader.SetCurPos(next_block);
-    block_len = reader.GetLEUInt32();
+    block_len = reader.ReadLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    int32_t line_height = reader.GetLEUInt16();
-    int32_t base_height = reader.GetLEUInt16();
+    int32_t line_height = reader.ReadLEUInt16();
+    int32_t base_height = reader.ReadLEUInt16();
     reader.GoForward(2); // Texture width
     reader.GoForward(2); // Texture height
 
-    if (reader.GetLEUInt16() != 1) {
+    if (reader.ReadLEUInt16() != 1) {
         throw FontManagerException("Font must have exactly one texture", font_path);
     }
 
     // Pages
     reader.SetCurPos(next_block);
-    block_len = reader.GetLEUInt32();
+    block_len = reader.ReadLEUInt32();
     next_block = block_len + reader.GetCurPos() + 1;
 
-    string image_name = reader.GetStrNT();
+    string image_name = reader.ReadStrNT();
     image_name = strex(font_path).extract_dir().combine_path(image_name);
 
     // Chars
     reader.SetCurPos(next_block);
-    uint32_t count = reader.GetLEUInt32() / 20;
+    uint32_t count = reader.ReadLEUInt32() / 20;
 
     for (uint32_t i = 0; i < count; i++) {
         // Read data
-        uint32_t id = reader.GetLEUInt32();
-        uint16_t x = reader.GetLEUInt16();
-        uint16_t y = reader.GetLEUInt16();
-        uint16_t w = reader.GetLEUInt16();
-        uint16_t h = reader.GetLEUInt16();
-        uint16_t ox = reader.GetLEUInt16();
-        uint16_t oy = reader.GetLEUInt16();
-        uint16_t xa = reader.GetLEUInt16();
+        uint32_t id = reader.ReadLEUInt32();
+        uint16_t x = reader.ReadLEUInt16();
+        uint16_t y = reader.ReadLEUInt16();
+        uint16_t w = reader.ReadLEUInt16();
+        uint16_t h = reader.ReadLEUInt16();
+        uint16_t ox = reader.ReadLEUInt16();
+        uint16_t oy = reader.ReadLEUInt16();
+        uint16_t xa = reader.ReadLEUInt16();
         reader.GoForward(2);
 
         // Fill data

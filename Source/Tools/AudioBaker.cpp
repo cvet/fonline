@@ -231,7 +231,7 @@ auto AudioBaker::LoadWav(string_view fname, FileReader reader) const -> PcmAudio
     // Chunks come in any order and metadata chunks are common, so the walk skips whatever it does not know
     while (reader.GetCurPos() + chunk_header_size <= file_size) {
         string chunk_id = ReadFourcc(reader);
-        size_t chunk_size = reader.GetLEUInt32();
+        size_t chunk_size = reader.ReadLEUInt32();
         size_t chunk_start = reader.GetCurPos();
 
         // A streamed export leaves a placeholder size in the data chunk, so the file end wins over the header
@@ -241,18 +241,18 @@ auto AudioBaker::LoadWav(string_view fname, FileReader reader) const -> PcmAudio
             FO_VERIFY_AND_THROW(chunk_avail >= fmt_base_size, "WAV format chunk is truncated", fname, chunk_avail);
 
             WavFormat wav_format;
-            wav_format.Tag = reader.GetLEUInt16();
-            wav_format.Channels = reader.GetLEUInt16();
-            wav_format.SampleRate = numeric_cast<int32_t>(reader.GetLEUInt32());
+            wav_format.Tag = reader.ReadLEUInt16();
+            wav_format.Channels = reader.ReadLEUInt16();
+            wav_format.SampleRate = numeric_cast<int32_t>(reader.ReadLEUInt32());
             reader.GoForward(4);
-            wav_format.BlockAlign = reader.GetLEUInt16();
-            wav_format.BitsPerSample = reader.GetLEUInt16();
+            wav_format.BlockAlign = reader.ReadLEUInt16();
+            wav_format.BitsPerSample = reader.ReadLEUInt16();
 
             // The extensible header repeats the real format tag as the first word of its sub-format GUID
             if (wav_format.Tag == WAVE_FORMAT_EXTENSIBLE) {
                 FO_VERIFY_AND_THROW(chunk_avail >= fmt_extensible_size, "WAV extensible format chunk is truncated", fname, chunk_avail);
                 reader.GoForward(8);
-                wav_format.Tag = reader.GetLEUInt16();
+                wav_format.Tag = reader.ReadLEUInt16();
             }
 
             format = wav_format;

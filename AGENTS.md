@@ -73,9 +73,20 @@ in versioned docs; sanitize evidence.
   namespace may require forward declarations, and namespaces cannot be friends.
 - **Layout:** class declarations/forward declarations precede implementations;
   high-level orchestration precedes helpers. Within a class: construction/destruction,
-  `[[nodiscard]]` informational accessors, then mutators ordered from initialization to teardown.
-  Keep existing dedicated families together. Do not hoist unrelated declarations
-  or put implementation into a forward-declaration block.
+  a public block of object-state/data queries, then operations ordered from
+  initialization to teardown. Keep dedicated families within the appropriate block.
+  Preserve the existing relative order within each block; move only what grouping requires.
+  Do not hoist unrelated declarations or put implementation into a forward-declaration block.
+- **`[[nodiscard]]`:** in Essentials, annotate meaningful result-use contracts,
+  including free functions, factories and failure statuses. Elsewhere, annotate only
+  public instance methods in the upper information block. Queries may search, read
+  storage, return copies, lock or maintain an internal cache; these implementation
+  details do not disqualify an information request. Preserve existing query attributes
+  unless the method's purpose gives a concrete reason to change them. Mutations,
+  consuming reads, resource creation and substantial processing as the main purpose
+  belong below without the attribute. Judge purpose and logical side effects, not
+  just cost, `const` or a `Get` name. No attributes on free/static/nonpublic functions or types outside
+  Essentials. See [class layout](Docs/en/contributing/coding-contracts/class-layout.md).
 - **Spacing:** separate semantic stages inside functions and lambdas with blank lines.
   Validation, resource acquisition, ownership transfer, conversion, callbacks and
   result handling form separate groups. Keep a declaration with its immediate

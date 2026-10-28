@@ -402,12 +402,13 @@ public:
     virtual ~IAppRender() = default;
 
     [[nodiscard]] virtual auto GetRenderTarget() -> nptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
+
+    virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
 
     virtual void SetRenderTarget(nptr<RenderTexture> tex) = 0;
     virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
@@ -541,8 +542,8 @@ private:
     {
     }
 
-    [[nodiscard]] auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
-    [[nodiscard]] auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
+    auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
+    auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
 
     ptr<Application> _app;
     nptr<WindowInternalHandle> _windowHandle {};
@@ -571,12 +572,13 @@ public:
     static int32_t MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -688,6 +690,7 @@ public:
     [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> nptr<AppWindow> { return _activeWindow; }
     [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
+
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> nptr<AppWindow>
     {
         if (index < _childWindows.size()) {
@@ -696,6 +699,7 @@ public:
 
         return nullptr;
     }
+
     [[nodiscard]] auto TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;

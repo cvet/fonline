@@ -69,47 +69,17 @@ public:
     auto operator=(ScriptArray&&) noexcept -> ScriptArray& = delete;
 
     auto operator=(const ScriptArray& other) -> ScriptArray&;
-    auto operator==(const ScriptArray& other) const -> bool;
 
-    void AddRef() const;
-    void Release() const;
-
-    auto GetArrayObjectType() -> ptr<AngelScript::asITypeInfo>;
-    auto GetArrayObjectType() const -> ptr<const AngelScript::asITypeInfo>;
-    auto GetArrayTypeId() const -> int32_t;
-    auto GetElementTypeId() const -> int32_t;
-
-    auto GetSize() const -> int32_t { return static_cast<int32_t>(_buffer.size() / _elementSize); }
-    auto GetCapacity() const -> int32_t { return static_cast<int32_t>(_buffer.capacity() / _elementSize); }
-    auto IsEmpty() const -> bool { return _buffer.empty(); }
-    void Reserve(int32_t max_elements);
-    void Resize(int32_t num_elements);
-    auto At(int32_t index) const -> ptr<void>;
-    void SetValue(int32_t index, ptr<void> value);
-    void InsertAt(int32_t index, ptr<void> value);
-    void InsertAt(int32_t index, const ScriptArray& other);
-    void InsertLast(ptr<void> value);
-    void RemoveAt(int32_t index);
-    void RemoveLast();
-    void RemoveRange(int32_t start, int32_t num_elements);
-    void SortAsc();
-    void SortDesc();
-    void SortAsc(int32_t start_at, int32_t count);
-    void SortDesc(int32_t start_at, int32_t count);
-    void Sort(int32_t start_at, int32_t count, bool asc);
-    void Reverse();
-    auto Find(ptr<void> value) const -> int32_t;
-    auto Find(int32_t start_at, ptr<void> value) const -> int32_t;
-    auto FindByRef(ptr<void> ref) const -> int32_t;
-    auto FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t;
-    auto GetBuffer() -> nptr<void>;
-    auto GetBuffer() const -> nptr<void>;
-
-    auto GetRefCount() const -> int32_t;
-    void SetFlag() const;
-    auto GetFlag() const -> bool;
-    void EnumReferences(ptr<AngelScript::asIScriptEngine> engine);
-    void ReleaseAllHandles();
+    [[nodiscard]] auto GetArrayObjectType() -> ptr<AngelScript::asITypeInfo>;
+    [[nodiscard]] auto GetArrayObjectType() const -> ptr<const AngelScript::asITypeInfo>;
+    [[nodiscard]] auto GetArrayTypeId() const -> int32_t;
+    [[nodiscard]] auto GetElementTypeId() const -> int32_t;
+    [[nodiscard]] auto GetSize() const -> int32_t { return static_cast<int32_t>(_buffer.size() / _elementSize); }
+    [[nodiscard]] auto GetCapacity() const -> int32_t { return static_cast<int32_t>(_buffer.capacity() / _elementSize); }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _buffer.empty(); }
+    [[nodiscard]] auto At(int32_t index) const -> ptr<void>;
+    [[nodiscard]] auto GetRefCount() const -> int32_t;
+    [[nodiscard]] auto GetFlag() const -> bool;
 
     template<typename T, typename Index>
         requires(IsHandleAtType<T>)
@@ -131,6 +101,37 @@ public:
 
         return cast_from_void<T*>(value.get());
     }
+
+    auto operator==(const ScriptArray& other) const -> bool;
+
+    void AddRef() const;
+    void Release() const;
+
+    void Reserve(int32_t max_elements);
+    void Resize(int32_t num_elements);
+    void SetValue(int32_t index, ptr<void> value);
+    void InsertAt(int32_t index, ptr<void> value);
+    void InsertAt(int32_t index, const ScriptArray& other);
+    void InsertLast(ptr<void> value);
+    void RemoveAt(int32_t index);
+    void RemoveLast();
+    void RemoveRange(int32_t start, int32_t num_elements);
+    void SortAsc();
+    void SortDesc();
+    void SortAsc(int32_t start_at, int32_t count);
+    void SortDesc(int32_t start_at, int32_t count);
+    void Sort(int32_t start_at, int32_t count, bool asc);
+    void Reverse();
+    auto Find(ptr<void> value) const -> int32_t;
+    auto Find(int32_t start_at, ptr<void> value) const -> int32_t;
+    auto FindByRef(ptr<void> ref) const -> int32_t;
+    auto FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t;
+    auto GetBuffer() -> nptr<void>;
+    auto GetBuffer() const -> nptr<void>;
+
+    void SetFlag() const;
+    void EnumReferences(ptr<AngelScript::asIScriptEngine> engine);
+    void ReleaseAllHandles();
 
 private:
     explicit ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list);

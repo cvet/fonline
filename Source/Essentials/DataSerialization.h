@@ -305,14 +305,14 @@ public:
 
     template<typename T>
         requires(std::is_standard_layout_v<T>)
-    auto read() -> T
+    [[nodiscard]] auto read() -> T
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
         return span_read_object<T>(_data_buf, _read_pos);
     }
 
-    auto read_bytes(size_t size) -> const_span<uint8_t> { return span_read_bytes(_data_buf, _read_pos, size); }
+    [[nodiscard]] auto read_bytes(size_t size) -> const_span<uint8_t> { return span_read_bytes(_data_buf, _read_pos, size); }
 
     void read_bytes(span<uint8_t> out)
     {
@@ -328,7 +328,7 @@ public:
     }
 
     // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer
-    auto read_string_view(size_t size) -> string_view
+    [[nodiscard]] auto read_string_view(size_t size) -> string_view
     {
         const_span<uint8_t> bytes = read_bytes(size);
 
@@ -342,7 +342,7 @@ public:
     }
 
     // Reads a self-describing string written with write_string (uint32 length prefix + bytes)
-    auto read_string() -> string
+    [[nodiscard]] auto read_string() -> string
     {
         uint32_t len = read<uint32_t>();
 
@@ -357,7 +357,7 @@ public:
     }
 
     // Reads a self-describing vector of strings written with write_string_vector (uint32 count + each element via read_string)
-    auto read_string_vector() -> vector<string>
+    [[nodiscard]] auto read_string_vector() -> vector<string>
     {
         uint32_t count = read<uint32_t>();
 
@@ -392,7 +392,7 @@ public:
     // Reads a self-describing vector of trivially-copyable objects written with write_sized_object_vector (uint32 count + elements)
     template<typename T>
         requires(std::is_standard_layout_v<T>)
-    auto read_sized_object_vector() -> vector<T>
+    [[nodiscard]] auto read_sized_object_vector() -> vector<T>
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
@@ -408,7 +408,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, uint8_t> || std::same_as<T, char> || std::is_void_v<T>)
-    auto read_ptr(size_t size) -> nptr<const T>
+    [[nodiscard]] auto read_ptr(size_t size) -> nptr<const T>
     {
         const_span<uint8_t> bytes = read_bytes(size);
 
@@ -449,7 +449,7 @@ private:
 
     template<typename T>
         requires(std::is_standard_layout_v<T>)
-    static auto mutable_objects_ptr(span<T> data) -> ptr<T>
+    [[nodiscard]] static auto mutable_objects_ptr(span<T> data) -> ptr<T>
     {
         static_assert(std::is_trivially_copyable_v<T>);
         FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");
@@ -568,7 +568,7 @@ public:
     }
 
 private:
-    auto append_bytes(size_t size) -> span<uint8_t>
+    [[nodiscard]] auto append_bytes(size_t size) -> span<uint8_t>
     {
         FO_VERIFY_AND_THROW(size != 0, "Append size is zero");
 
@@ -582,7 +582,7 @@ private:
 
     template<typename T>
         requires(std::is_standard_layout_v<T>)
-    static auto source_objects_ptr(const_span<T> data) -> ptr<const T>
+    [[nodiscard]] static auto source_objects_ptr(const_span<T> data) -> ptr<const T>
     {
         static_assert(std::is_trivially_copyable_v<T>);
         FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");

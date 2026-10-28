@@ -51,18 +51,18 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
         throw ImageBakerException("Invalid ZAR header", fname);
     }
 
-    uint8_t type = reader.GetUInt8();
+    uint8_t type = reader.ReadUInt8();
     reader.GoForward(1); // \0
-    int32_t width = reader.GetLEInt32();
-    int32_t height = reader.GetLEInt32();
-    uint8_t palette_present = reader.GetUInt8();
+    int32_t width = reader.ReadLEInt32();
+    int32_t height = reader.ReadLEInt32();
+    uint8_t palette_present = reader.ReadUInt8();
 
     // Read palette
     uint32_t palette[256] = {};
     uint8_t def_color = 0;
 
     if (palette_present != 0) {
-        int32_t palette_count = reader.GetLEInt32();
+        int32_t palette_count = reader.ReadLEInt32();
 
         if (palette_count < 0 || palette_count > 256) {
             throw ImageBakerException("Invalid ZAR palette count", fname);
@@ -71,12 +71,12 @@ auto ImageBakerZarDecoder::Decode(string_view fname, FileReader& reader, bool sw
         reader.ReadObjectArray(span<uint32_t> {palette, numeric_cast<size_t>(palette_count)});
 
         if (type == 0x34) {
-            def_color = reader.GetUInt8();
+            def_color = reader.ReadUInt8();
         }
     }
 
     // Read image
-    uint32_t rle_size = reader.GetLEUInt32();
+    uint32_t rle_size = reader.ReadLEUInt32();
     size_t rle_size_value = numeric_cast<size_t>(rle_size);
     const_span<uint8_t> rle_data = reader.GetCurDataSpan(rle_size_value);
     reader.GoForward(rle_size_value);

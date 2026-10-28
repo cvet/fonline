@@ -220,7 +220,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1071
+        "line": 1075
       }
     },
     {
@@ -240,7 +240,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1072
+        "line": 1076
       }
     },
     {
@@ -260,7 +260,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1073
+        "line": 1077
       }
     },
     {
@@ -279,7 +279,7 @@
       },
       "enum_source": {
         "path": "Source/Common/Common.h",
-        "line": 1074
+        "line": 1078
       }
     }
   ],
@@ -666,7 +666,7 @@
       "description": "For a custom entity, names the holder entry through which it is attached",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 89
+        "line": 91
       }
     },
     {
@@ -694,7 +694,7 @@
       "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 86
+        "line": 88
       }
     },
     {
@@ -807,7 +807,7 @@
       "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 92
+        "line": 94
       }
     },
     {
@@ -1816,7 +1816,7 @@
       "description": "For a custom entity, names the holder entry through which it is attached",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 89
+        "line": 91
       }
     },
     {
@@ -1844,7 +1844,7 @@
       "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 86
+        "line": 88
       }
     },
     {
@@ -2040,7 +2040,7 @@
       "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 92
+        "line": 94
       }
     },
     {
@@ -3039,7 +3039,7 @@
       "description": "For a custom entity, names the holder entry through which it is attached",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 89
+        "line": 91
       }
     },
     {
@@ -3067,7 +3067,7 @@
       "description": "For a custom entity, stores the persistent identifier of its owning holder; zero when the holder has no persistent identifier",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 86
+        "line": 88
       }
     },
     {
@@ -3153,7 +3153,7 @@
       "description": "Marks an entity as independently persistent rather than persistent only through containment by another entity",
       "source": {
         "path": "Source/Common/Entity.h",
-        "line": 92
+        "line": 94
       }
     },
     {
@@ -3621,5 +3621,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "07431a7209c6beff0e6b2d828070b596d7a4f7ac0d6a2859c79bfb23effe732a"
+  "contract_digest": "2c848d6b50188686a1d5e07e834b75f147e196663db78fda9960e18e8e036988"
 }

@@ -44,21 +44,21 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 
     FileReader reader {data};
 
-    uint8_t header_magic = reader.GetUInt8();
+    uint8_t header_magic = reader.ReadUInt8();
     FO_VERIFY_AND_THROW(header_magic == SPRITE_RESOURCE_MAGIC, "Sprite resource header magic is invalid", header_magic, SPRITE_RESOURCE_MAGIC);
 
-    uint8_t version = reader.GetUInt8();
+    uint8_t version = reader.ReadUInt8();
     FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite resource version is unsupported", version, SPRITE_RESOURCE_VERSION);
 
     SpriteResourceData resource;
     resource.Animation.Sprite.emplace();
     SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    int32_t frame_count = numeric_cast<int32_t>(reader.GetLEUInt16());
+    int32_t frame_count = numeric_cast<int32_t>(reader.ReadLEUInt16());
     FO_VERIFY_AND_THROW(frame_count != 0, "Sprite resource contains no frames");
     sprite_info.FrameCount = frame_count;
-    sprite_info.Duration = std::chrono::milliseconds {numeric_cast<std::chrono::milliseconds::rep>(reader.GetLEUInt16())};
+    sprite_info.Duration = std::chrono::milliseconds {numeric_cast<std::chrono::milliseconds::rep>(reader.ReadLEUInt16())};
 
-    int32_t direction_count = numeric_cast<int32_t>(reader.GetUInt8());
+    int32_t direction_count = numeric_cast<int32_t>(reader.ReadUInt8());
     FO_VERIFY_AND_THROW(direction_count != 0, "Sprite resource contains no directions");
     resource.Directions.resize(numeric_cast<size_t>(direction_count));
     sprite_info.Directions.resize(numeric_cast<size_t>(direction_count));
@@ -86,11 +86,11 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
         for (int32_t frame_index = 0; frame_index < frame_count; frame_index++) {
             SpriteResourceFrameData& frame = direction.Frames[numeric_cast<size_t>(frame_index)];
             SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(frame_index)];
-            uint8_t is_shared = reader.GetUInt8();
+            uint8_t is_shared = reader.ReadUInt8();
             FO_VERIFY_AND_THROW(is_shared <= 1, "Sprite frame reference flag is invalid", is_shared, direction_index, frame_index);
 
             if (is_shared != 0) {
-                int32_t shared_frame_index = numeric_cast<int32_t>(reader.GetLEUInt16());
+                int32_t shared_frame_index = numeric_cast<int32_t>(reader.ReadLEUInt16());
                 FO_VERIFY_AND_THROW(shared_frame_index < frame_index, "Sprite frame reference points outside previously decoded frames", shared_frame_index, direction_index, frame_index);
                 frame.SharedFrameIndex = shared_frame_index;
                 frame_info = direction_info.Frames[numeric_cast<size_t>(shared_frame_index)];
@@ -98,12 +98,12 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
                 continue;
             }
 
-            frame.Offset.x = numeric_cast<int32_t>(reader.GetLEInt16());
-            frame.Offset.y = numeric_cast<int32_t>(reader.GetLEInt16());
-            frame.Size.width = numeric_cast<int32_t>(reader.GetLEUInt16());
-            frame.Size.height = numeric_cast<int32_t>(reader.GetLEUInt16());
-            frame.NextOffset.x = numeric_cast<int32_t>(reader.GetLEInt16());
-            frame.NextOffset.y = numeric_cast<int32_t>(reader.GetLEInt16());
+            frame.Offset.x = numeric_cast<int32_t>(reader.ReadLEInt16());
+            frame.Offset.y = numeric_cast<int32_t>(reader.ReadLEInt16());
+            frame.Size.width = numeric_cast<int32_t>(reader.ReadLEUInt16());
+            frame.Size.height = numeric_cast<int32_t>(reader.ReadLEUInt16());
+            frame.NextOffset.x = numeric_cast<int32_t>(reader.ReadLEInt16());
+            frame.NextOffset.y = numeric_cast<int32_t>(reader.ReadLEInt16());
             frame_info.Offset = frame.Offset;
             frame_info.Size = frame.Size;
             frame_info.NextOffset = frame.NextOffset;
@@ -112,7 +112,7 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
         }
     }
 
-    uint8_t footer_magic = reader.GetUInt8();
+    uint8_t footer_magic = reader.ReadUInt8();
     FO_VERIFY_AND_THROW(footer_magic == SPRITE_RESOURCE_MAGIC, "Sprite resource footer magic is invalid", footer_magic, SPRITE_RESOURCE_MAGIC);
     FO_VERIFY_AND_THROW(reader.GetCurPos() == reader.GetSize(), "Sprite resource contains trailing data", reader.GetCurPos(), reader.GetSize());
 
@@ -154,7 +154,7 @@ auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteRes
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>
 {
-    uint8_t raw_kind = reader.GetUInt8();
+    uint8_t raw_kind = reader.ReadUInt8();
 
     if (raw_kind == static_cast<uint8_t>(SpriteMeshKind::Quad)) {
         return std::nullopt;
@@ -165,8 +165,8 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
 
     FO_VERIFY_AND_THROW(raw_kind == static_cast<uint8_t>(SpriteMeshKind::Mesh), "Sprite mesh kind is invalid", raw_kind);
 
-    int32_t vertex_count = numeric_cast<int32_t>(reader.GetLEUInt16());
-    int64_t serialized_index_count = numeric_cast<int64_t>(reader.GetLEUInt32());
+    int32_t vertex_count = numeric_cast<int32_t>(reader.ReadLEUInt16());
+    int64_t serialized_index_count = numeric_cast<int64_t>(reader.ReadLEUInt32());
     FO_VERIFY_AND_THROW(vertex_count >= 3, "Sprite mesh must contain at least three vertices", vertex_count);
     FO_VERIFY_AND_THROW(serialized_index_count >= 3 && serialized_index_count % 3 == 0, "Sprite mesh index count must contain complete triangles", serialized_index_count);
     FO_VERIFY_AND_THROW(serialized_index_count <= numeric_cast<int64_t>(vertex_count) * int64_t {6}, "Sprite mesh contains implausibly many indices", vertex_count, serialized_index_count);
@@ -180,10 +180,10 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
     FO_VERIFY_AND_THROW(payload_size <= remaining_size, "Sprite mesh payload is truncated", payload_size, remaining_size, vertex_count, index_count);
 
     SpriteMeshData mesh;
-    mesh.SourceSize.width = numeric_cast<int32_t>(reader.GetLEUInt16());
-    mesh.SourceSize.height = numeric_cast<int32_t>(reader.GetLEUInt16());
-    mesh.SourceOffset.x = reader.GetLEInt32();
-    mesh.SourceOffset.y = reader.GetLEInt32();
+    mesh.SourceSize.width = numeric_cast<int32_t>(reader.ReadLEUInt16());
+    mesh.SourceSize.height = numeric_cast<int32_t>(reader.ReadLEUInt16());
+    mesh.SourceOffset.x = reader.ReadLEInt32();
+    mesh.SourceOffset.y = reader.ReadLEInt32();
     FO_VERIFY_AND_THROW(mesh.SourceSize.width > 0 && mesh.SourceSize.height > 0, "Sprite mesh logical source dimensions must be positive", mesh.SourceSize);
 
     int64_t source_end_x = numeric_cast<int64_t>(mesh.SourceOffset.x) + numeric_cast<int64_t>(size.width);
@@ -195,8 +195,8 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
     ipos32 maximum_vertex {};
 
     for (int32_t i = 0; i < vertex_count; i++) {
-        int32_t x = numeric_cast<int32_t>(reader.GetLEUInt16());
-        int32_t y = numeric_cast<int32_t>(reader.GetLEUInt16());
+        int32_t x = numeric_cast<int32_t>(reader.ReadLEUInt16());
+        int32_t y = numeric_cast<int32_t>(reader.ReadLEUInt16());
         FO_VERIFY_AND_THROW(x <= size.width && y <= size.height, "Sprite mesh vertex is outside the sprite frame", i, x, y, size);
         mesh.Vertices.emplace_back(x, y);
         minimum_vertex.x = std::min(minimum_vertex.x, x);
@@ -212,7 +212,7 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
     mesh.Indices.resize(numeric_cast<size_t>(index_count));
 
     for (int32_t i = 0; i < index_count; i++) {
-        uint16_t index = reader.GetLEUInt16();
+        uint16_t index = reader.ReadLEUInt16();
         FO_VERIFY_AND_THROW(numeric_cast<int32_t>(index) < vertex_count, "Sprite mesh index is outside the vertex array", i, index, vertex_count);
         mesh.Indices[numeric_cast<size_t>(i)] = index;
     }

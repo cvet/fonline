@@ -74,6 +74,7 @@ struct msize : isize<int16_t>
         auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
+
     [[nodiscard]] constexpr auto clamp_pos(pos_type auto pos) const -> mpos
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
@@ -82,6 +83,7 @@ struct msize : isize<int16_t>
         auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
+
     [[nodiscard]] constexpr auto from_raw_pos(std::integral auto x, std::integral auto y) const -> mpos
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
@@ -92,6 +94,7 @@ struct msize : isize<int16_t>
         FO_VERIFY_AND_THROW(y < height, "Y is outside allowed range", y, height);
         return {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
     }
+
     [[nodiscard]] constexpr auto from_raw_pos(pos_type auto pos) const -> mpos
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
@@ -174,7 +177,6 @@ public:
 
     [[nodiscard]] constexpr auto operator==(const mdir& other) const noexcept -> bool { return _value == other._value; }
     [[nodiscard]] constexpr auto operator!=(const mdir& other) const noexcept -> bool { return _value != other._value; }
-
     [[nodiscard]] constexpr auto angle() const noexcept -> int16_t { return _value; }
     [[nodiscard]] auto hex() const noexcept -> hdir;
     [[nodiscard]] auto incHex() const noexcept -> mdir;
@@ -192,42 +194,42 @@ FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mdir);
 
 namespace GeometryHelper
 {
-    [[nodiscard]] auto GetYProj() -> float32_t;
-    [[nodiscard]] auto GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
-    [[nodiscard]] auto GetHexPos(mpos hex) -> ipos32;
-    [[nodiscard]] auto GetHexPos(ipos32 raw_hex) -> ipos32;
-    [[nodiscard]] auto GetHexScreenRow(mpos hex) noexcept -> int32_t;
-    [[nodiscard]] auto GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
-    [[nodiscard]] auto GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
-    [[nodiscard]] auto ProjectWorldToMap(vec3 world_pos) -> vec3;
-    [[nodiscard]] auto ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation = 0.0f) -> float32_t;
-    [[nodiscard]] auto ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t;
-    [[nodiscard]] auto MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44;
-    [[nodiscard]] auto MakeMapAnchoredProj(const mat44& base_proj, const mat44& map_ortho, fpos32 anchor_pos, float32_t anchor_depth) -> mat44;
-    [[nodiscard]] auto GetHexAxialCoord(mpos hex) -> ipos32;
-    [[nodiscard]] auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
-    [[nodiscard]] auto GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset = nullptr) -> ipos32;
-    [[nodiscard]] auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool;
-    [[nodiscard]] auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size, const function<bool(mpos)>& is_movable) -> bool;
-    [[nodiscard]] auto GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32;
-    [[nodiscard]] auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32;
-    [[nodiscard]] auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;
-    [[nodiscard]] auto GetDistance(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> int32_t;
-    [[nodiscard]] auto GetDistance(mpos hex1, mpos hex2) -> int32_t;
-    [[nodiscard]] auto GetDistance(ipos32 hex1, ipos32 hex2) -> int32_t;
-    [[nodiscard]] auto GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> hdir;
-    [[nodiscard]] auto GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, float32_t offset) -> hdir;
-    [[nodiscard]] auto GetHexDir(mpos from_hex, mpos to_hex) -> hdir;
-    [[nodiscard]] auto GetHexDir(mpos from_hex, mpos to_hex, float32_t offset) -> hdir;
-    [[nodiscard]] auto GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
-    [[nodiscard]] auto GetDirAngle(mpos from_hex, mpos to_hex) -> float32_t;
-    [[nodiscard]] auto GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t;
-    [[nodiscard]] auto GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32_t;
-    [[nodiscard]] auto CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool;
-    [[nodiscard]] auto HexesInRadius(int32_t radius) noexcept -> int32_t;
-    [[nodiscard]] auto IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius, int32_t x1, int32_t y1, int32_t x2, int32_t y2) noexcept -> bool;
-    [[nodiscard]] auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
-    [[nodiscard]] auto ChangeStepsCoords(fpos32 pos, float32_t deq) noexcept -> fpos32;
+    auto GetYProj() -> float32_t;
+    auto GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
+    auto GetHexPos(mpos hex) -> ipos32;
+    auto GetHexPos(ipos32 raw_hex) -> ipos32;
+    auto GetHexScreenRow(mpos hex) noexcept -> int32_t;
+    auto GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
+    auto GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
+    auto ProjectWorldToMap(vec3 world_pos) -> vec3;
+    auto ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation = 0.0f) -> float32_t;
+    auto ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t;
+    auto MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44;
+    auto MakeMapAnchoredProj(const mat44& base_proj, const mat44& map_ortho, fpos32 anchor_pos, float32_t anchor_depth) -> mat44;
+    auto GetHexAxialCoord(mpos hex) -> ipos32;
+    auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
+    auto GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset = nullptr) -> ipos32;
+    auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool;
+    auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size, const function<bool(mpos)>& is_movable) -> bool;
+    auto GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32;
+    auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32;
+    auto GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>;
+    auto GetDistance(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> int32_t;
+    auto GetDistance(mpos hex1, mpos hex2) -> int32_t;
+    auto GetDistance(ipos32 hex1, ipos32 hex2) -> int32_t;
+    auto GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> hdir;
+    auto GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, float32_t offset) -> hdir;
+    auto GetHexDir(mpos from_hex, mpos to_hex) -> hdir;
+    auto GetHexDir(mpos from_hex, mpos to_hex, float32_t offset) -> hdir;
+    auto GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t;
+    auto GetDirAngle(mpos from_hex, mpos to_hex) -> float32_t;
+    auto GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t;
+    auto GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32_t;
+    auto CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool;
+    auto HexesInRadius(int32_t radius) noexcept -> int32_t;
+    auto IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius, int32_t x1, int32_t y1, int32_t x2, int32_t y2) noexcept -> bool;
+    auto GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32;
+    auto ChangeStepsCoords(fpos32 pos, float32_t deq) noexcept -> fpos32;
 
     auto MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool;
     void MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept;

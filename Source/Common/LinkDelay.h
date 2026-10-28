@@ -59,7 +59,7 @@ private:
         int64_t OffsetMs {};
     };
 
-    [[nodiscard]] auto EvaluateUsualOffset() const -> int64_t;
+    auto EvaluateUsualOffset() const -> int64_t;
 
     int64_t _windowMs;
     int64_t _exceptionalMs;
@@ -72,6 +72,6 @@ private:
 
 // How far ahead a late movement plan is played: not at all below the lateness an ordinary jittery link produces, the
 // lateness itself above it, never more than the upper bound
-[[nodiscard]] auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
+auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
 
 FO_END_NAMESPACE

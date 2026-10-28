@@ -167,7 +167,7 @@ Use a BMFont exporter with these settings:
 The client expects 20-byte character records. BMFont defines `xoffset`,
 `yoffset`, and `xadvance` as signed little-endian 16-bit fields, and negative
 bearings occur in the bundled fonts. The current loader nevertheless reads all
-three with `GetLEUInt16`; negative values are therefore reinterpreted near
+three with `ReadLEUInt16`; negative values are therefore reinterpreted near
 65535 and can move glyphs far outside their intended position. Treat this as a
 known runtime limitation and avoid negative metrics until the code fix lands in
 a separate change.

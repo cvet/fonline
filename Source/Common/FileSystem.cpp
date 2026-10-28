@@ -391,7 +391,7 @@ void FileReader::ReadBytes(span<uint8_t> out)
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetStrNT() -> string
+auto FileReader::ReadStrNT() -> string
 {
     if (_curPos == _buf.size()) {
         throw FileSystemExeption("Invalid read pos", _curPos, _buf.size());
@@ -425,7 +425,7 @@ auto FileReader::GetStrNT() -> string
     return str;
 }
 
-auto FileReader::GetUInt8() -> uint8_t
+auto FileReader::ReadUInt8() -> uint8_t
 {
     if (sizeof(uint8_t) > _buf.size() - _curPos) {
         throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint8_t), _buf.size());
@@ -435,7 +435,7 @@ auto FileReader::GetUInt8() -> uint8_t
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt16() -> uint16_t
+auto FileReader::ReadBEUInt16() -> uint16_t
 {
     if (sizeof(uint16_t) > _buf.size() - _curPos) {
         throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint16_t), _buf.size());
@@ -447,7 +447,7 @@ auto FileReader::GetBEUInt16() -> uint16_t
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt16() -> uint16_t
+auto FileReader::ReadLEUInt16() -> uint16_t
 {
     if (sizeof(uint16_t) > _buf.size() - _curPos) {
         throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint16_t), _buf.size());
@@ -459,7 +459,7 @@ auto FileReader::GetLEUInt16() -> uint16_t
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetBEUInt32() -> uint32_t
+auto FileReader::ReadBEUInt32() -> uint32_t
 {
     if (sizeof(uint32_t) > _buf.size() - _curPos) {
         throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint32_t), _buf.size());
@@ -475,7 +475,7 @@ auto FileReader::GetBEUInt32() -> uint32_t
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto FileReader::GetLEUInt32() -> uint32_t
+auto FileReader::ReadLEUInt32() -> uint32_t
 {
     if (sizeof(uint32_t) > _buf.size() - _curPos) {
         throw FileSystemExeption("Invalid read size", _curPos, sizeof(uint32_t), _buf.size());

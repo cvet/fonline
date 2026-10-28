@@ -116,11 +116,11 @@ namespace stack_trace
     using script_provider = std::function<void(const data& st, std::vector<script_layer>& out_layers)>;
 
     void set_script_provider(std::string_view name, script_provider provider) noexcept;
-    auto has_script_provider(std::string_view name) noexcept -> bool;
-    auto get() noexcept -> data;
+    [[nodiscard]] auto has_script_provider(std::string_view name) noexcept -> bool;
+    [[nodiscard]] auto get() noexcept -> data;
     // The stack of a crash: a POSIX signal's ucontext_t, or a Windows exception CONTEXT and the thread that raised it
     // when the walk runs on another one. The faulting instruction is the first frame
-    auto get_from_context(const void* os_context, void* os_thread) noexcept -> data;
+    [[nodiscard]] auto get_from_context(const void* os_context, void* os_thread) noexcept -> data;
     void add_unwound_script_frames(data& st, script_layer layer);
     void splice_caught_script_frames(data& st, script_layer layer);
     // Starts at the caller and leaves out the next skip frames; every frame but a faulting one is recorded at its call
@@ -132,13 +132,13 @@ namespace stack_trace
 #elif FO_STACK_TRACE_RESUME_CONTEXT && !FO_WINDOWS
     extern "C" int save_resume_point(resume_point* point) noexcept __asm__("unw_getcontext");
 #else
-    auto save_resume_point(resume_point* point) noexcept -> int;
+    [[nodiscard]] auto save_resume_point(resume_point* point) noexcept -> int;
 #endif
     void resolve_resume_point(const resume_point& point, std::array<native_frame_address, MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept;
     void clear_resolved_cache() noexcept;
-    auto get_resolved_cache_size() noexcept -> size_t;
-    auto resolve(const data& st) -> std::vector<frame>;
-    auto get_entry(uint32_t deep) noexcept -> std::optional<frame>;
+    [[nodiscard]] auto get_resolved_cache_size() noexcept -> size_t;
+    [[nodiscard]] auto resolve(const data& st) -> std::vector<frame>;
+    [[nodiscard]] auto get_entry(uint32_t deep) noexcept -> std::optional<frame>;
     auto format(const data& st) -> std::string;
     auto format(const catched_data& st) -> std::string;
 }

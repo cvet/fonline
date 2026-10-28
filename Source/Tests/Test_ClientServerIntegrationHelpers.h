@@ -258,7 +258,6 @@ namespace ClientServerIntegrationServer
         return WorldSteps;
     }
 
-
     int EveryArgCalls = 0;
     int EveryArgMismatch = 0;
 
@@ -292,7 +291,6 @@ namespace ClientServerIntegrationServer
     {
         return EveryArgMismatch;
     }
-
 
     int SwitchedCritters = 0;
 

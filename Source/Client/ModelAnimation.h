@@ -79,7 +79,6 @@ public:
     auto operator=(ModelAnimationController&&) noexcept = delete;
     ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Copy() const -> ModelAnimationController;
     [[nodiscard]] auto GetAnimDuration(int32_t index) const -> float32_t;
     [[nodiscard]] auto GetTrackEnable(int32_t track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(int32_t track) const -> float32_t;
@@ -88,6 +87,7 @@ public:
     [[nodiscard]] auto IsTrackBoneEnabled(int32_t track, hstring bone_name) const -> bool;
     [[nodiscard]] auto GetAnimationsCount() const -> int32_t;
 
+    auto Copy() const -> ModelAnimationController;
     auto RegisterAnimation(uint32_t clip_index, float32_t duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t;
     void SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones);
     void ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names);
@@ -281,11 +281,11 @@ private:
     unique_ptr<Impl> _impl;
 };
 
-[[nodiscard]] auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>;
+auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_description, string_view base_model, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>;
 void ValidateModelAnimationRuntimeBaseJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> source_joints, string_view context);
-[[nodiscard]] auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> hierarchy_joints, string_view context) -> vector<uint32_t>;
-[[nodiscard]] auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view context) -> unordered_map<hstring, uint32_t>;
-[[nodiscard]] auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_joint_indexes, const_span<hstring> child_runtime_names) -> vector<ModelPoseJointLink>;
+auto ResolveModelAnimationRuntimeCanonicalJoints(const ModelAnimationRuntimeRig& rig, const_span<ModelAnimationRuntimeJoint> hierarchy_joints, string_view context) -> vector<uint32_t>;
+auto BuildModelPoseJointNameIndex(const_span<hstring> runtime_names, string_view context) -> unordered_map<hstring, uint32_t>;
+auto ResolveModelPoseJointLinks(const unordered_map<hstring, uint32_t>& parent_joint_indexes, const_span<hstring> child_runtime_names) -> vector<ModelPoseJointLink>;
 void BuildModelRestWorldMatrices(const_span<ModelPoseJoint> joints, const mat44& root_matrix, span<mat44> world_matrices);
 
 FO_END_NAMESPACE

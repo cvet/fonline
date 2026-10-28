@@ -47,7 +47,7 @@ namespace global_data
 
     // True when this call built the set, false when it already existed: an entry point that did not build the set
     // must not tear it down, since whoever did is still using it
-    auto create() -> bool;
+    [[nodiscard]] auto create() -> bool;
     void destroy(teardown_observer observer = nullptr, void* observer_context = nullptr);
 
     // Reaching for global data outside its lifetime is a startup or teardown ordering defect, and carrying on
