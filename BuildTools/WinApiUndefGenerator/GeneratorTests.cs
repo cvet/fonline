@@ -12,7 +12,8 @@ static void Check(bool condition, string message)
 
 static string Header(string body)
 {
-    return body + "\n";
+    // Raw literals inherit checkout line endings; construct LF fixtures before explicit CRLF conversion
+    return body.ReplaceLineEndings("\n") + "\n";
 }
 
 static void CheckHeaderCase(string temporary, string assemblyPath, string existingPath, string name, string header, bool hasFoo, bool hasOther)

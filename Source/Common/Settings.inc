@@ -310,6 +310,7 @@ SETTING_GROUP_END(Timer);
 ///@ ExportSettings Common
 SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
+SETTING(bool, Baking, FilterResources, false); // If true, resource packs contain only outputs reachable from authored resource references instead of every baked output
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
 SETTING(bool, Baking, PrebakeOnStartup, true); // If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout

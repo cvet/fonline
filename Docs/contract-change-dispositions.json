@@ -14148,6 +14148,18 @@
       "release_note": "Docs/en/reference/changelog.md#2026174-dev---2026-10-27; Docs/ru/reference/changelog.md#2026174-dev---2026-10-27",
       "compatibility": "Do not mix runtime 0.0.81 with 0.0.82 binaries or baked metadata. Deploy and roll back native binaries, managed assemblies and resources as one matching set. Managed ABI stays 9; this entry records an existing published boundary and introduces no additional runtime marker change.",
       "owner": "runtime-networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.0a67b7336eef4d2c",
+      "baseline_contract_sha256": "ecf698c963e6fcc6a594f85d043486f95e2672f5adc791ee67d9caca4b6db266",
+      "current_contract_sha256": "d1a2bfa664c8e47e1724b452dce37cc2274f60be2a6239656fc2a9ce3deba98b",
+      "classification": "breaking",
+      "rationale": "Baking.FilterResources adds one common readonly setting to the published 2026.1.78-dev surface, increasing the strict inventory from 2586 to 2587 while retaining Map.GetMovableHexesInSight. The comparator conservatively treats this intentional inventory change as model-scope breaking; existing symbols retain their types and units.",
+      "migration": "Docs/en/reference/changelog.md Current 2026-10-28 / 2026.1.79-dev: reconfigure, rebuild and rebake. Set Baking.FilterResources=True for typed-root/dependency selection; False or omission exports every current available output and allows removal of filtering-only catalogs. Native ResourceUsage::CreateManifest callers pass the explicit filter_resources boolean after build_hash and config_hash.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md Current 2026-10-28 document the default-off switch and explicit opt-in; the bilingual baking guide and generated settings/package references own the behavior.",
+      "compatibility": "The additive setting intentionally changes the default export policy. Both modes require current-bake manifests and retain target/pack-role exclusions. Runtime 0.0.82, Managed ABI 9 and usage manifest version 1 remain unchanged from published 2026.1.78-dev; no save conversion. Deploy or roll back matching configuration, generated bindings, binaries and bakes together.",
+      "owner": "build-content"
     }
   ]
 }

@@ -58,7 +58,7 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering."
   },
   "targets": [
     {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary plus server resources and client update resource packs."},

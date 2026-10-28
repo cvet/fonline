@@ -360,6 +360,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7"></a>
 - [`symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7)
 
+<a id="symbol-setting-common-baking-filterresources-cc409dd914"></a>
+- [`symbol-setting-common-baking-filterresources-cc409dd914`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-filterresources-cc409dd914)
+
 <a id="symbol-setting-common-baking-forcebaking-70ea452460"></a>
 - [`symbol-setting-common-baking-forcebaking-70ea452460`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-forcebaking-70ea452460)
 

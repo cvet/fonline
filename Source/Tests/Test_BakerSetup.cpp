@@ -1458,6 +1458,7 @@ TEST_CASE("BakerMasterResourceUsageRebuildsCompleteManifest")
     settings.ApplyDefaultSettings();
     ConfigFile config {strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = True
+Baking.FilterResources = True
 [ResourcePack]
 Name = Art
 InputDirs = input
@@ -1488,6 +1489,146 @@ Bakers = RawCopy
     CHECK_FALSE(fs::exists(usage_path));
 }
 
+TEST_CASE("BakerMasterResourceFilteringModes")
+{
+    string temp_dir = MakeTempBakerSetupDir("master_baker_resource_filtering_modes");
+    string input_dir = strex(temp_dir).combine_path("input").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string referenced_path = strex(input_dir).combine_path("Data/Referenced.json").str();
+    string unused_path = strex(input_dir).combine_path("Data/Unused.json").str();
+    string referenced_output_path = strex(output_dir).combine_path("Art/Data/Referenced.json").str();
+    string unused_output_path = strex(output_dir).combine_path("Art/Data/Unused.json").str();
+    string usage_path = strex(output_dir).combine_path("Resources.usage.json").str();
+
+    scope_exit cleanup {[&]() noexcept { (void)fs::remove_dir_tree(temp_dir); }};
+
+    REQUIRE(fs::write_file(referenced_path, string_view {"referenced"}));
+    REQUIRE(fs::write_file(unused_path, string_view {"unused"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+    CHECK_FALSE(settings.Baking.FilterResources);
+
+    ConfigFile config {strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = True
+Baking.RawCopyFileExtensions = json
+Render.ImGuiDefaultEffect = Data/Referenced.json
+[ResourcePack]
+Name = Art
+InputDirs = input
+Bakers = RawCopy
+)",
+        output_dir)
+            .str()};
+    settings.ApplyConfigFile(config, temp_dir);
+
+    auto read_manifest = [&]() -> nlohmann::json {
+        auto usage = fs::read_file(usage_path);
+        REQUIRE(usage.has_value());
+        return nlohmann::json::parse(*usage);
+    };
+
+    MasterBaker default_baker {&settings};
+    REQUIRE(default_baker.BakeAll());
+    CHECK(read_manifest().at("Packs").at("Art") == nlohmann::json::array({"Data/Referenced.json", "Data/Unused.json"}));
+    auto default_usage = fs::read_file(usage_path);
+    REQUIRE(default_usage.has_value());
+
+    MasterBaker repeated_default_baker {&settings};
+    REQUIRE(repeated_default_baker.BakeAll());
+    CHECK(fs::read_file(usage_path) == default_usage);
+
+    BakerTests::OverrideSetting(settings.Baking.FilterResources, false);
+    MasterBaker explicit_false_baker {&settings};
+    REQUIRE(explicit_false_baker.BakeAll());
+    CHECK(read_manifest().at("Packs").at("Art") == nlohmann::json::array({"Data/Referenced.json", "Data/Unused.json"}));
+    CHECK(fs::read_file(usage_path) == default_usage);
+
+    BakerTests::OverrideSetting(settings.Baking.FilterResources, true);
+    MasterBaker filtered_baker {&settings};
+    REQUIRE(filtered_baker.BakeAll());
+    CHECK(read_manifest().at("Packs").at("Art") == nlohmann::json::array({"Data/Referenced.json"}));
+    CHECK(fs::read_file(unused_output_path).has_value());
+    auto filtered_usage = fs::read_file(usage_path);
+    REQUIRE(filtered_usage.has_value());
+    CHECK(filtered_usage != default_usage);
+
+    MasterBaker repeated_filtered_baker {&settings};
+    REQUIRE(repeated_filtered_baker.BakeAll());
+    CHECK(fs::read_file(usage_path) == filtered_usage);
+
+    BakerTests::OverrideSetting(settings.Baking.FilterResources, false);
+    MasterBaker restored_baker {&settings};
+    REQUIRE(restored_baker.BakeAll());
+    CHECK(read_manifest().at("Packs").at("Art") == nlohmann::json::array({"Data/Referenced.json", "Data/Unused.json"}));
+    CHECK(fs::read_file(usage_path) == default_usage);
+    CHECK(fs::read_file(referenced_output_path).has_value());
+    CHECK(fs::read_file(unused_output_path).has_value());
+}
+
+TEST_CASE("ResourceUsageFilteringModes")
+{
+    ResourceUsage usage;
+    usage.RegisterPack("Empty");
+    usage.RegisterOutput("Required", "Metadata.fometa-client", "Metadata", BakingOutputKind::Required);
+    usage.RegisterOutput("Art", "Z.png", "Image", BakingOutputKind::Resource);
+    usage.RegisterOutput("Art", "Unavailable.png", "Image", BakingOutputKind::Resource);
+    usage.RegisterOutput("Art", "A.png", "Image", BakingOutputKind::Resource);
+    usage.RegisterOutput("Other", "B.png", "Image", BakingOutputKind::Resource);
+
+    auto available = [](const ResourceOutput& output) { return output.Path != "Unavailable.png"; };
+    size_t dependency_calls = 0;
+    auto dependencies = [&dependency_calls](const ResourceOutput& output) -> vector<string> {
+        dependency_calls++;
+
+        if (output.Path == "A.png") {
+            return {"Z.png"};
+        }
+
+        return {};
+    };
+
+    SECTION("DisabledSelectsEveryAvailableOutput")
+    {
+        nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", false, available, dependencies));
+        CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"A.png", "Z.png"}));
+        CHECK(manifest.at("Packs").at("Other") == nlohmann::json::array({"B.png"}));
+        CHECK(manifest.at("Packs").at("Required") == nlohmann::json::array({"Metadata.fometa-client"}));
+        CHECK(manifest.at("Packs").at("Empty").empty());
+        CHECK(dependency_calls == 0);
+    }
+    SECTION("DisabledIgnoresDanglingReferences")
+    {
+        usage.AddReference("Dangling.png", "Filtering-only root");
+        CHECK_NOTHROW(usage.CreateManifest("build", "config", false, available, dependencies));
+        CHECK(dependency_calls == 0);
+    }
+    SECTION("DisabledRejectsUnavailableRequiredOutput")
+    {
+        auto unavailable_required = [](const ResourceOutput& output) { return output.Path != "Metadata.fometa-client"; };
+        CHECK_THROWS_WITH(usage.CreateManifest("build", "config", false, unavailable_required, dependencies), Catch::Matchers::ContainsSubstring("Required baked output is missing"));
+        CHECK(dependency_calls == 0);
+    }
+    SECTION("EnabledUsesRootsAndDependencies")
+    {
+        usage.AddReference("A.png", "Root A");
+        nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", true, available, dependencies));
+        CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"A.png", "Z.png"}));
+        CHECK(manifest.at("Packs").at("Other").empty());
+        CHECK(manifest.at("Packs").at("Required") == nlohmann::json::array({"Metadata.fometa-client"}));
+        CHECK(manifest.at("Packs").at("Empty").empty());
+        CHECK(manifest.at("Reasons").at("Art/A.png") == nlohmann::json::array({"Root A"}));
+        CHECK(manifest.at("Reasons").at("Art/Z.png") == nlohmann::json::array({"Dependency of Art/A.png"}));
+        CHECK(dependency_calls == 3);
+    }
+    SECTION("EnabledRejectsMissingRoots")
+    {
+        usage.AddReference("Dangling.png", "Filtering-only root");
+        CHECK_THROWS_WITH(usage.CreateManifest("build", "config", true, available, dependencies), Catch::Matchers::ContainsSubstring("Dangling.png"));
+        CHECK(dependency_calls == 0);
+    }
+}
+
 TEST_CASE("ResourceUsageFollowsRuntimeClosureAndPreservesRequiredOutputs")
 {
     ResourceUsage usage;
@@ -1509,7 +1650,7 @@ TEST_CASE("ResourceUsageFollowsRuntimeClosureAndPreservesRequiredOutputs")
         }
         return {};
     };
-    nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", available, dependencies));
+    nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", true, available, dependencies));
     CHECK(manifest.at("Packs").at("Empty").empty());
     CHECK(manifest.at("Packs").at("Metadata") == nlohmann::json::array({"Metadata.fometa-client"}));
     CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"A.fofrm"}));
@@ -1519,17 +1660,17 @@ TEST_CASE("ResourceUsageFollowsRuntimeClosureAndPreservesRequiredOutputs")
     SECTION("ExplicitSourceReferenceKeepsStandaloneOutput")
     {
         usage.AddReference("Source.png", "ResourceSet Direct");
-        manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", available, dependencies));
+        manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", true, available, dependencies));
         CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"A.fofrm", "Source.png"}));
     }
     SECTION("MissingReferenceIsAnError")
     {
         usage.AddReference("Missing.png", "ResourceSet Typo");
-        CHECK_THROWS_WITH(usage.CreateManifest("build", "config", available, dependencies), Catch::Matchers::ContainsSubstring("Missing.png"));
+        CHECK_THROWS_WITH(usage.CreateManifest("build", "config", true, available, dependencies), Catch::Matchers::ContainsSubstring("Missing.png"));
     }
     SECTION("UnavailableRequiredOutputIsAnError")
     {
-        CHECK_THROWS(usage.CreateManifest("build", "config", [](const ResourceOutput&) { return false; }, dependencies));
+        CHECK_THROWS(usage.CreateManifest("build", "config", true, [](const ResourceOutput&) { return false; }, dependencies));
     }
 }
 
@@ -1580,7 +1721,7 @@ ClientFile = Client.png
         usage.RegisterOutput("Art", "Server.png", "Image", BakingOutputKind::Resource);
         usage.RegisterOutput("Art", "Client.png", "Image", BakingOutputKind::Resource);
         usage.CollectReferences(rig.BakedFiles);
-        nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", [](const ResourceOutput&) { return true; }, [](const ResourceOutput&) { return vector<string> {}; }));
+        nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", true, [](const ResourceOutput&) { return true; }, [](const ResourceOutput&) { return vector<string> {}; }));
         CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"Client.png", "Image With Space.png", "Server.png"}));
         CHECK(manifest.at("Packs").at("Sound") == nlohmann::json::array({"Music.ogg"}));
     }
@@ -1643,7 +1784,7 @@ PicMap = Placed.png
     }
 
     usage.CollectReferences(rig.BakedFiles);
-    nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", [](const ResourceOutput&) { return true; }, [](const ResourceOutput&) { return vector<string> {}; }));
+    nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", true, [](const ResourceOutput&) { return true; }, [](const ResourceOutput&) { return vector<string> {}; }));
     CHECK(manifest.at("Packs").at("Art") == nlohmann::json::array({"Inherited.png", "Inventory.png", "Placed.png"}));
     CHECK(manifest.at("Reasons").at("Art/Placed.png") == nlohmann::json::array({"Map Example.fomap-bin-server Item property PicMap"}));
 }

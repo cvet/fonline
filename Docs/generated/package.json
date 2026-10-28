@@ -87,7 +87,7 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering."
   },
   "targets": [
     {
@@ -906,5 +906,5 @@
     "artifact_pack_count": 8,
     "cli_argument_count": 17
   },
-  "contract_digest": "eddfe1395ddf308c3626f977b13e24189189dfc3fcc88ea58665ce2676561d54"
+  "contract_digest": "9b7ee7503482fcd68637cfa9957ff420cce81dbb15cc97b09b33bf255ee976b9"
 }

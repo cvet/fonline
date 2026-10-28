@@ -30,11 +30,12 @@ def configure(root: Path) -> Path:
 
 
 def wiring_project(root: Path, *, unit_tests: bool = True, baker: bool = True,
-                   cross: bool = False) -> Path:
+                   cross: bool = False, angelscript: bool = False) -> Path:
     script = root / "Engine/BuildTools/tests/check_resource_usage_pipeline.py"
     script.parent.mkdir(parents=True)
     script.write_text("from pathlib import Path\nimport sys\n"
                       f"assert Path(sys.argv[sys.argv.index('--baker') + 1]) == Path({sys.executable!r})\n"
+                      f"assert sys.argv.count('--angelscript') == {1 if angelscript else 0}\n"
                       "Path('pipeline.marker').write_text('ran')\n", encoding="utf-8")
     (root / "unit.py").write_text("from pathlib import Path\n"
                                   "assert Path('pipeline.marker').read_text() == 'ran'\n"
@@ -46,6 +47,7 @@ def wiring_project(root: Path, *, unit_tests: bool = True, baker: bool = True,
         'cmake_minimum_required(VERSION 3.22)\nproject(Probe LANGUAGES NONE)\n'
         f'set(FO_DEV_NAME Probe)\nset(FO_ENGINE_ROOT Engine)\nset(FO_UNIT_TESTS {"ON" if unit_tests else "OFF"})\n'
         f'set(CMAKE_CROSSCOMPILING {"TRUE" if cross else "FALSE"})\n'
+        f'set(FO_ANGELSCRIPT_SCRIPTING {"ON" if angelscript else "OFF"})\n'
         f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
         + imported +
         'add_custom_target(RunUnitTests COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unit.py")\n'
@@ -55,8 +57,9 @@ def wiring_project(root: Path, *, unit_tests: bool = True, baker: bool = True,
     return configure(root)
 
 
-def test_unit_target_requires_and_executes_pipeline_first(tmp_path: Path) -> None:
-    build = wiring_project(tmp_path)
+@pytest.mark.parametrize("angelscript", [False, True])
+def test_unit_target_requires_and_executes_pipeline_first(tmp_path: Path, angelscript: bool) -> None:
+    build = wiring_project(tmp_path, angelscript=angelscript)
     assert "RunResourceUsageIntegrationTests" in (build / "dependencies.txt").read_text()
     result = subprocess.run([shutil.which("cmake"), "--build", str(build), "--config", "Release",
                              "--target", "RunUnitTests"], capture_output=True, text=True, timeout=60)
@@ -65,9 +68,11 @@ def test_unit_target_requires_and_executes_pipeline_first(tmp_path: Path) -> Non
     assert (build / "unit.marker").read_text() == "ran"
 
 
+@pytest.mark.parametrize("angelscript", [False, True])
 @pytest.mark.parametrize("settings", [{"unit_tests": False}, {"baker": False}, {"cross": True}])
-def test_unavailable_native_pipeline_does_not_change_other_profiles(tmp_path: Path, settings: dict) -> None:
-    build = wiring_project(tmp_path, **settings)
+def test_unavailable_native_pipeline_does_not_change_other_profiles(tmp_path: Path, settings: dict,
+                                                                    angelscript: bool) -> None:
+    build = wiring_project(tmp_path, angelscript=angelscript, **settings)
     assert "RunResourceUsageIntegrationTests" not in (build / "dependencies.txt").read_text()
 
 

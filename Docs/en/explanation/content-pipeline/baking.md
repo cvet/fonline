@@ -176,19 +176,19 @@ over the produced resource set.
 
 ## Resource usage manifest
 
-A successful bake does not export its whole output tree. `MasterBaker::BakeAllInternal()` registers every configured pack into a `ResourceUsage` collector (`Source/Tools/ResourceUsage.h` / `.cpp`) and, after all pack bakers finish, publishes `Resources.usage.json` into the output directory. That manifest is the packaging-side contract of the bake: `BuildTools/resource_usage.py` validates and loads it, and `BuildTools/package.py` packages only the files it lists.
+`Baking.FilterResources` defaults to `False`: export every available output registered by current bakers. `True` enables typed-root/runtime-dependency filtering. `MasterBaker::BakeAllInternal()` registers each pack in `ResourceUsage` (`Source/Tools/ResourceUsage.h` / `.cpp`) and publishes `Resources.usage.json` after baking. In both modes, `BuildTools/resource_usage.py` validates it and `package.py` packages its lists, subject to pack roles and target suffix restrictions.
 
-The manifest carries `Version` (the integer `1`), `BuildHash` and `BakingConfigHash`, plus a `Packs` object mapping every configured pack name to its sorted, exact, pack-relative file list; an empty selection stays listed as an empty array. `Reasons` is a diagnostic object keyed by `<pack>/<path>` that records why each selected output was chosen; packaging ignores it.
+The manifest carries integer `Version = 1`, `BuildHash` and `BakingConfigHash`. `Packs` maps every configured pack to sorted, exact pack-relative paths, retaining empty arrays. Diagnostic `Reasons` maps `<pack>/<path>` to inclusion reasons; packaging ignores it.
 
 ### Manifest lifecycle
 
-The previous manifest is deleted only after `BakeAll()` has acquired the exclusive output lock and before the run mutates any baked output, so a refused lock leaves it, the markers, the reports and the resources unchanged, and an interrupted run cannot leave the previous run's manifest usable. On success the new manifest is written to `Resources.usage.json.tmp` and renamed into place before `Resources.baking-config-hash` and `Resources.build-hash` are written: the success markers cannot appear unless the manifest of that run has been published. Packaging consumes the manifest only together with both markers and fails on any mismatch.
+`BakeAll()` acquires the exclusive output lock before deleting the previous manifest or mutating outputs. A refused lock preserves resources, reports, manifest and markers. Success writes `Resources.usage.json.tmp`, renames it into place, then writes `Resources.baking-config-hash` and `Resources.build-hash`. Interrupted runs cannot reuse the old manifest; packaging requires both matching markers.
 
-The manifest is selection over the full loose output of a normal (incremental or forced) bake. It is not a bake speedup and it does not delete source art: baking still produces the complete local tree, including a complete local image cache, and the outdated-output sweep still removes outputs no baker addressed. Only packaging is narrowed — an output present on disk is exported only when the selection below includes it.
+Both incremental and forced bakes produce the complete loose tree. Disabled filtering includes unreferenced assets and standalone image outputs without root/dependency traversal. Unrelated files and private caches are not outputs; the sweep removes outputs no baker addressed. Required outputs must exist in both modes. Rebuild/rebake after changing the setting for coherent manifests and markers.
 
 ### Root references
 
-`ResourceUsage::CollectReferences()` re-reads root references from the baked output on every run, including cache hits; a previous manifest is never reused as a source. Roots are:
+With `Baking.FilterResources = True`, `ResourceUsage::CollectReferences()` re-reads root references from the baked output on every run, including cache hits; a previous manifest is never reused as a source. Roots are:
 
 - the `Render.ImGuiDefaultEffect`, `Render.CritterStubSpriteName` and `Render.ItemStubSpriteName` settings, from the applied config and the baked client config;
 - every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from `.foinfo` files — through `ResourceUsage::AddProperties()`;
@@ -202,16 +202,16 @@ Each metadata pass skips properties disabled for its role. A server-only or clie
 
 Every baker output is registered as `Required` or `Resource`:
 
-- `BakingContext::CheckOutput()` registers each path the incremental checker is asked about — including paths answered up to date — and `WriteData()` registers each write, so cache hits and fresh writes both count as outputs. Re-registering one path under a second baker fails, and a later `Required` registration upgrades a `Resource` one.
-- Custom bakers default to `Required`: the per-baker `BakingContext` copy defaults its output kind to `Required`, and outputs of the `Embedded` pack are forced to `Required` regardless of the requested kind. Built-in image, audio, effect, particle, model and raw-copy outputs are `Resource` unless the baker explicitly calls `KeepOutput()`, which registers a path as `Required`; the structural outputs that must always ship — `SpriteInfo` and `ModelAnimationInfo` indexes, default effects and embedded content — are preserved that way.
+- `BakingContext::CheckOutput()` registers paths even on cache hits; `WriteData()` registers writes. A second baker claiming the same path fails; `Required` upgrades `Resource`.
+- Per-baker context copies default custom outputs to `Required`; `Embedded` forces that kind. Built-in image, audio, effect, particle, model and raw-copy outputs are `Resource` unless `KeepOutput()` marks them `Required`. This preserves structural `SpriteInfo`/`ModelAnimationInfo` indexes, default effects and embedded content.
 
 ### Selection and dependency closure
 
-`ResourceUsage::CreateManifest()` selects in three steps. First, every `Required` output must be present in its pack's output directory, or the bake fails with `Required baked output is missing`. Second, every root reference selects all available outputs that provide that path — one logical reference preserves pack identity and selects every matching provider across packs. Third, each selected output contributes the dependencies its owning baker returns from `CollectResourceDependencies()`, followed transitively to a fixed point.
+With filtering enabled, `ResourceUsage::CreateManifest()` first checks `Required` outputs, failing with `Required baked output is missing` when absent. Roots select every available provider of their path, preserving pack identity. Selected outputs contribute their owner's `CollectResourceDependencies()` transitively to a fixed point.
 
 That dependency edge is the runtime closure: what the output loads at runtime beyond itself. The default implementation returns no dependencies, so a custom baker that owns runtime companions must override it; the built-in closure covers font pages, effect current-pass companions, model meshes, attachments, textures, effects and cuts, and particle external dependencies. FOFRM composition inputs are bake-time dependencies only: after flattening, the composed `.fofrm` output is the export edge, and a source image a flattened sprite consumed does not become an export edge merely by having been read.
 
-A complete local cache therefore does not imply export. An output that stays baked and up to date is dropped from the manifest as soon as nothing requires it: removing the last reference removes the file from packaging on the next bake even though the cached asset remains in the local tree, and flattening an FOFRM never ships its input PNG merely because the image cache consumed it. The reverse also holds — a standalone consumed source is exported when an independent `Resource` reference or a model-texture dependency names its path, while unreferenced source copies in the cache are absent from package lists.
+In this opt-in mode, a complete local cache therefore does not imply export. An output that stays baked and up to date is dropped from the manifest as soon as nothing requires it: removing the last reference removes the file from packaging on the next bake even though the cached asset remains in the local tree, and flattening an FOFRM never ships its input PNG merely because the image cache consumed it. The reverse also holds — a standalone consumed source is exported when an independent `Resource` reference or a model-texture dependency names its path, while unreferenced source copies in the cache are absent from package lists.
 
 Model and particle descriptors are read from their own physical pack. A
 `ResourceProviderCallback` exposes every current, available provider of a dependency
@@ -222,9 +222,9 @@ grouped by source map, entity type and property rather than repeated for placeme
 
 ### Forced inclusion for opaque runtime names
 
-Resources addressed only by embedding-project data the typed-property collector cannot see — JSON/INI files, Spine data, script-composed dynamic names — have no root and are not exported by guessing. The Engine provides no wildcard expansion, directory recursion, arbitrary-string scanning, or script-constructor interception for this registry, and it never silently falls back to exporting everything. The supported route is an embedding-project `FixedType` — for example a `ResourceSet` carrying an `hstring[] Resource` `Files` property, declared with ordinary `///@ FixedType` metadata and populated by ordinary `.foinfo` rows — whose resource properties are read as roots by the same collector. The Engine has no special parser for that name and executes no script constructors for it: any such type is an ordinary typed definition whose references resolve like every other root.
+With filtering enabled, opaque JSON/INI, Spine and script-composed names need explicit roots. The registry has no wildcards, recursion, arbitrary-string scanning, constructor interception or silent full-export fallback. Declare an ordinary `FixedType`, such as `ResourceSet` with an `hstring[] Resource` `Files` property, and populate `.foinfo` rows: the same collector reads their typed resource properties. No type name has special parsing and no constructors execute. With default `False`, all current outputs ship and these catalogs are unnecessary.
 
-For example, declare:
+Declare:
 
 ```text
 ///@ FixedType Common ResourceSet

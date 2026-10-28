@@ -777,19 +777,23 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
 auto MasterBaker::CreateResourceUsageManifest(const vector<unique_ptr<PackBakeContext>>& contexts, const FileSystem& resources) const -> string
 {
     shared_ptr<ResourceUsage> usage = _resourceUsage;
-    usage->CollectReferences(resources);
+
+    if (_settings->Baking.FilterResources) {
+        usage->CollectReferences(resources);
+
+        for (string_view name : {"Render.ImGuiDefaultEffect", "Render.CritterStubSpriteName", "Render.ItemStubSpriteName"}) {
+            auto value = _settings->FindSettingValue(name);
+
+            if (value && !value->empty() && resources.IsFileExists(*value)) {
+                usage->AddReference(*value, strex("Setting {}", name));
+            }
+        }
+    }
+
     map<string, ptr<const PackBakeContext>> packs;
 
     for (const auto& context : contexts) {
         packs.emplace(context->PackName, context);
-    }
-
-    for (string_view name : {"Render.ImGuiDefaultEffect", "Render.CritterStubSpriteName", "Render.ItemStubSpriteName"}) {
-        auto value = _settings->FindSettingValue(name);
-
-        if (value && !value->empty() && resources.IsFileExists(*value)) {
-            usage->AddReference(*value, strex("Setting {}", name));
-        }
     }
 
     map<string, vector<ptr<const FileSystem>>> providers;
@@ -808,7 +812,7 @@ auto MasterBaker::CreateResourceUsageManifest(const vector<unique_ptr<PackBakeCo
     };
 
     return _resourceUsage->CreateManifest(
-        FO_BUILD_HASH, FO_BAKING_CONFIG_HASH, [&](const ResourceOutput& output) { return packs.at(output.Pack)->PackBakedFiles.IsFileExists(output.Path); },
+        FO_BUILD_HASH, FO_BAKING_CONFIG_HASH, _settings->Baking.FilterResources, [&](const ResourceOutput& output) { return packs.at(output.Pack)->PackBakedFiles.IsFileExists(output.Path); },
         [&](const ResourceOutput& output) {
             auto pack = packs.at(output.Pack);
             auto owner = std::ranges::find_if(pack->Bakers, [&](const auto& baker) { return baker->GetName() == output.Baker; });

@@ -101,7 +101,7 @@ TEST_CASE("ImageDependencyPipeline")
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Art\nInputDirs = input\n{}Bakers = Image\n", output_dir, output_filter).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Art\nInputDirs = input\n{}Bakers = Image\n", output_dir, output_filter).str()};
     settings.ApplyConfigFile(config, temp_dir);
 
     MasterBaker initial {&settings};
@@ -172,6 +172,7 @@ TEST_CASE("ImageDependenciesAcrossPacks")
     settings.ApplyDefaultSettings();
     ConfigFile config {strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = True
+Baking.FilterResources = True
 Baking.RawCopyFileExtensions = tga
 [ResourcePack]
 Name = Lower
@@ -384,7 +385,7 @@ TEST_CASE("ImageDependenciesExposeTextureMetadataBeforeModelBaking")
     REQUIRE(fs::write_file(strex(input_dir).combine_path("Model.fo3d"), string_view {"Model Body.obj\nTexture 0 Root.fofrm\n"}));
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = input\nBakers = Image ModelMesh ModelInfo\n", output_dir).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = input\nBakers = Image ModelMesh ModelInfo\n", output_dir).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());
@@ -420,7 +421,7 @@ TEST_CASE("ImageDependenciesPreserveIndependentModelTexturesWhenSourceIsConsumed
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker initial {&settings};
     REQUIRE(initial.BakeAll());
@@ -486,7 +487,7 @@ TEST_CASE("ResourceUsagePreservesPhysicalModelProviders")
 
     GlobalSettings settings {true};
     settings.ApplyDefaultSettings();
-    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers, common_pack).str()};
+    ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers, common_pack).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};
     REQUIRE(baker.BakeAll());

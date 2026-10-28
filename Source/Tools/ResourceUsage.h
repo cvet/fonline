@@ -65,8 +65,8 @@ public:
     void AddReference(string_view path, string_view reason);
     void AddProperties(const Properties& properties, string_view owner);
     void CollectReferences(const FileSystem& resources);
-    [[nodiscard]] auto GetOutputs() const -> vector<ResourceOutput>;
-    [[nodiscard]] auto CreateManifest(string_view build_hash, string_view config_hash, const OutputAvailable& available, const Dependencies& dependencies) const -> string;
+    auto GetOutputs() const -> vector<ResourceOutput>;
+    auto CreateManifest(string_view build_hash, string_view config_hash, bool filter_resources, const OutputAvailable& available, const Dependencies& dependencies) const -> string;
 
 private:
     mutable mutex _locker {};

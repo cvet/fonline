@@ -14,6 +14,28 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-28
 
+### Changed
+
+- `Baking.FilterResources` defaults to `False`: package all available current
+  outputs without root catalogs. `True` retains typed-root/dependency filtering.
+  Both retain manifest/required-output validation and target/pack-role exclusions.
+
+### Fixed
+
+- Normalize WinAPI generator header fixtures before explicit CRLF conversion so continued-comment tests exercise valid LF and CRLF headers on either checkout line ending.
+
+### Migration
+
+- Base `a015f258b6e4cfe1c35e53f5439d7d6bf438276d` (`2026.1.78-dev`). Reconfigure,
+  rebuild/rebake. Set `Baking.FilterResources = True` for the previous selection;
+  omit it or use `False` for all outputs, removing filtering-only catalogs.
+  FixedType uses `.foinfo`. No save conversion; manifest `1`, runtime `0.0.82`
+  and Managed ABI `9` unchanged. Roll back matching config/binaries/bakes.
+- Native `ResourceUsage::CreateManifest` now takes `filter_resources` after
+  `build_hash, config_hash`, before callbacks; `true` preserves old selection.
+
+## 2026.1.78-dev - 2026-10-28
+
 ### Fixed
 
 - Preserve the FOFRM grammar and script-owned critter animation fragment IDs in the Russian image guide, restoring links from the changelog and sprite root motion guide.

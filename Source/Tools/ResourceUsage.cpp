@@ -215,7 +215,7 @@ auto ResourceUsage::GetOutputs() const -> vector<ResourceOutput>
     return result;
 }
 
-auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_hash, const OutputAvailable& available, const Dependencies& dependencies) const -> string
+auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_hash, bool filter_resources, const OutputAvailable& available, const Dependencies& dependencies) const -> string
 {
     map<string, ResourceOutput> outputs;
     map<string, set<string>> references;
@@ -263,19 +263,29 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
         }
     }
 
-    for (const auto& [path, owners] : references) {
-        for (const string& owner : owners) {
-            reference(path, owner);
+    if (filter_resources) {
+        for (const auto& [path, owners] : references) {
+            for (const string& owner : owners) {
+                reference(path, owner);
+            }
+        }
+
+        while (!pending.empty()) {
+            string key = std::move(pending.front());
+            pending.pop_front();
+
+            for (const string& path : dependencies(outputs.at(key))) {
+                ValidateUsagePath(path);
+                reference(path, strex("Dependency of {}", key));
+            }
         }
     }
-
-    while (!pending.empty()) {
-        string key = std::move(pending.front());
-        pending.pop_front();
-
-        for (const string& path : dependencies(outputs.at(key))) {
-            ValidateUsagePath(path);
-            reference(path, strex("Dependency of {}", key));
+    else {
+        for (const auto& [key, output] : outputs) {
+            if (available(output)) {
+                selected.emplace(key);
+                reasons[key].emplace("All available outputs");
+            }
         }
     }
 

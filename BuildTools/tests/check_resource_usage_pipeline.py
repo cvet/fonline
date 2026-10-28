@@ -21,6 +21,7 @@ FORCED = "Data/Forced asset.json"
 FONT_PAGE = "Fonts/Atlas.tga"
 ROOT_IMAGE = "Props/Visible.fofrm"
 EXPECTED = {ROOT_IMAGE, "Fonts/Test.fofnt", FONT_PAGE, FORCED, "SpriteInfo/Art.foinfo"}
+FULL = EXPECTED | {"Data/Unused.json", "Props/Plate source.tga"}
 TGA_HEADER = bytes([0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 32, 8])
 
 
@@ -34,6 +35,17 @@ def write(path: Path, data: str | bytes) -> None:
     path.write_bytes(data if isinstance(data, bytes) else data.encode("utf-8"))
 
 
+def configure_filtering(config: Path, value: bool | None) -> None:
+    lines = [line for line in config.read_text(encoding="utf-8").splitlines()
+             if not line.startswith("Baking.FilterResources")]
+
+    if value is not None:
+        setting_index = lines.index("Baking.SingleThreadBaking = True")
+        lines.insert(setting_index + 1, f"Baking.FilterResources = {value}")
+
+    write(config, "\n".join(lines) + "\n")
+
+
 def bake(baker: Path, config: Path, work: Path, label: str) -> None:
     result = subprocess.run(
         [str(baker), "-ApplyConfig", str(config), "-ApplySubConfig", "NONE"],
@@ -44,7 +56,7 @@ def bake(baker: Path, config: Path, work: Path, label: str) -> None:
     require(result.returncode == 0, f"{label} failed ({result.returncode}):\n{output[-12000:]}")
 
 
-def create_fixture(work: Path) -> tuple[Path, Path, Path]:
+def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, Path]:
     art = work / "inputs/art"
     definitions = work / "inputs/definitions"
     baked = work / "baked"
@@ -58,16 +70,24 @@ def create_fixture(work: Path) -> tuple[Path, Path, Path]:
     write(definitions / "Definitions.cs", "///@ FixedType Common ResourceSet\n"
           "///@ Property ResourceSet Common hstring[] Files Resource\n")
     write(definitions / "Resources.fopro", "[ProtoItem]\n$Name = Visible\n"
-          f"PicMap = {ROOT_IMAGE}\n[ResourceSet]\n$Name = Forced\n"
+          f"PicMap = {ROOT_IMAGE}\n")
+    write(definitions / "Resources.foinfo", "[ResourceSet]\n$Name = Forced\n"
           f'Files = Fonts/Test.fofnt "{FORCED}"\n')
+
+    metadata_bakers = "Metadata Proto"
+
+    if angelscript:
+        write(definitions / "Fixture.fos", "namespace SharedDiagnostics { int Value() { return 42; } }\n")
+        metadata_bakers = "Metadata AngelScript Proto"
 
     # Pack paths use space-separated tokens, so keep them relative to the config.
     # Metadata.fometa-* is the native metadata registration entry point
     config = work / "Producer.fomain"
     write(config, f"Baking.BakeOutput = {baked.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
+          "Baking.ProtoFileExtensions = fopro foinfo\n"
           "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
-          "[ResourcePack]\nName = Metadata\nInputDirs = inputs/definitions\nBakers = Metadata Proto\n"
+          f"[ResourcePack]\nName = Metadata\nInputDirs = inputs/definitions\nBakers = {metadata_bakers}\n"
           "[ResourcePack]\nName = Art\nInputDirs = inputs/art\nBakers = Image RawCopy\n")
     return config, art, baked
 
@@ -136,18 +156,28 @@ def check_negative_controls(consumer: package.Packager, work: Path, baked: Path,
         raise AssertionError(f"Package oracle accepted wrong selection {index}")
 
 
-def run_pipeline(baker: Path, work: Path) -> None:
-    config, art, baked = create_fixture(work)
-    bake(baker, config, work, "producer")
+def run_pipeline(baker: Path, work: Path, angelscript: bool = False) -> None:
+    config, art, baked = create_fixture(work, angelscript)
+    bake(baker, config, work, "producer-default")
     consumer = make_packager(baked)
+    files = check_selection(consumer, baked, FULL)
+    physical = {path.relative_to(baked / "Art").as_posix()
+                for path in (baked / "Art").rglob("*") if path.is_file()}
+    require(physical == FULL, f"Full bake produced {sorted(physical)}, expected {sorted(FULL)}")
+    full_usage = (baked / "Resources.usage.json").read_bytes()
+
+    configure_filtering(config, False)
+    bake(baker, config, work, "producer-false")
+    files = check_selection(consumer, baked, FULL)
+    require((baked / "Resources.usage.json").read_bytes() == full_usage,
+            "Explicit False changed the default full selection")
+
+    configure_filtering(config, True)
+    bake(baker, config, work, "producer-true")
     files = check_selection(consumer, baked, EXPECTED)
-    archive = work / "Selected.fores"
-    consumer.write_resource_pack_files(str(archive), str(baked / "Art"), files)
-    package.validate_resource_pack(archive, sorted(EXPECTED))
-    check_native_readback(baker, work, baked, archive, EXPECTED, "readback")
 
     previous_root = (baked / "Art" / ROOT_IMAGE).read_bytes()
-    registry = work / "inputs/definitions/Resources.fopro"
+    registry = work / "inputs/definitions/Resources.foinfo"
     write(registry, registry.read_text(encoding="utf-8").replace(f' "{FORCED}"', ""))
     plate = art / "Props/Plate source.tga"
     source_stat = plate.stat()
@@ -159,16 +189,28 @@ def run_pipeline(baker: Path, work: Path) -> None:
     require((baked / "Art" / ROOT_IMAGE).read_bytes() != previous_root, "Same-stat source change was missed")
     require((baked / "Art" / FORCED).is_file(), "Full bake discarded a former explicit inclusion")
     files = check_selection(consumer, baked, expected)
+    archive = work / "Selected.fores"
     consumer.write_resource_pack_files(str(archive), str(baked / "Art"), files)
     package.validate_resource_pack(archive, sorted(expected))
-    check_native_readback(baker, work, baked, archive, expected, "readback-incremental")
+    check_native_readback(baker, work, baked, archive, expected, "readback-filtered")
     check_negative_controls(consumer, work, baked, files, expected)
+
+    configure_filtering(config, False)
+    bake(baker, config, work, "producer-restored")
+    files = check_selection(consumer, baked, FULL)
+    require((baked / "Resources.usage.json").read_bytes() == full_usage,
+            "Restored False did not reproduce the full selection")
+    archive = work / "SelectedFull.fores"
+    consumer.write_resource_pack_files(str(archive), str(baked / "Art"), files)
+    package.validate_resource_pack(archive, sorted(FULL))
+    check_native_readback(baker, work, baked, archive, FULL, "readback-full")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baker", type=Path, required=True, help="real native Baker executable")
     parser.add_argument("--workdir", type=Path, help="parent directory for temporary fixture files")
+    parser.add_argument("--angelscript", action="store_true", help="include AngelScript role bytecode in the fixture")
     args = parser.parse_args()
     baker = args.baker.resolve()
 
@@ -182,7 +224,7 @@ def main() -> int:
     os.environ.pop(package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, None)
 
     with tempfile.TemporaryDirectory(prefix="resource usage pipeline-", dir=args.workdir) as directory:
-        run_pipeline(baker, Path(directory))
+        run_pipeline(baker, Path(directory), args.angelscript)
 
     print("Resource usage pipeline passed: full/incremental bake, exact selection, native readback, 2 negative controls")
     return 0
