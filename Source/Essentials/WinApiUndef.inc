@@ -34,6 +34,7 @@
 #if FO_WINDOWS
 
 // Undef macros to avoid collisions, except entry points required across unity source boundaries:
+// #undef CopyMemory — Windows SDK socket headers
 // #undef CreateWaitableTimer — Asio timers
 // #undef GetExceptionCode — SEH in Asio/SQLite/Theora
 // #undef InterlockedCompareExchange — Asio/SDL/SQLite/LibreSSL/Sentry atomics
@@ -45,6 +46,9 @@
 // #undef InterlockedIncrement — Asio/SDL/AngelScript counters
 // #undef IsEqualIID — Windows SDK property headers
 // #undef GetProcessMemoryInfo — first-party memory statistics
+// #undef RtlCopyMemory — CopyMemory expansion in Windows SDK socket headers
+// #undef RtlZeroMemory — ZeroMemory expansion in Windows SDK socket headers
+// #undef ZeroMemory — Windows SDK socket headers
 
 #undef AMGetErrorText
 #undef AVIBuildFilter
@@ -266,7 +270,6 @@
 #undef CopyFile
 #undef CopyFileEx
 #undef CopyFileTransacted
-#undef CopyMemory
 #undef CopyMetaFile
 #undef CorePrinterDriverInstalled
 #undef CpuIdEx
@@ -1832,7 +1835,6 @@
 #undef RpcStringBindingCompose
 #undef RpcStringBindingParse
 #undef RpcStringFree
-#undef RtlCopyMemory
 #undef RtlDecryptMemory
 #undef RtlDrainNonVolatileFlush
 #undef RtlEncryptMemory
@@ -1856,7 +1858,6 @@
 #undef RtlIpv6StringToAddressEx
 #undef RtlMoveMemory
 #undef RtlWriteNonVolatileMemory
-#undef RtlZeroMemory
 #undef RunSetupCommand
 #undef SCardAddReaderToGroup
 #undef SCardConnect
@@ -2487,7 +2488,6 @@
 #undef XcvData
 #undef Yield
 #undef YieldProcessor
-#undef ZeroMemory
 #undef acmDriverAdd
 #undef acmDriverDetails
 #undef acmFilterChoose

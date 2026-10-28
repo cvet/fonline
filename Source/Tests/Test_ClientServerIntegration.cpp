@@ -45,7 +45,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 
     auto port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -91,7 +91,7 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     auto server_settings = MakeServerTestSettings(port);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, inactivity_timeout ? 100 : 0);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, inactivity_timeout ? 0 : 100);
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -131,7 +131,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -197,7 +197,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -268,7 +268,7 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
     bool client_shutdown = false;
     int32_t shutdown_disconnected_calls = 0;
@@ -321,7 +321,7 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
@@ -371,7 +371,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
@@ -462,7 +462,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         server_settings.ApplyConfigFile(server_pack_config, "");
         BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
-        auto server = MakeServerEngine(server_settings);
+        auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
         auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
         string error = WaitForServerStart(server);
         INFO(error);
@@ -612,7 +612,7 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
     // than about pack reading, so the client reports the version the test metadata carries
     BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
@@ -700,7 +700,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
     BakerTests::OverrideSetting(first_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
     BakerTests::OverrideSetting(second_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto first = TestClientServerIntegration::MakeClientEngine(first_settings);
     auto second = TestClientServerIntegration::MakeClientEngine(second_settings);
     auto shutdown = scope_exit([&]() noexcept {
@@ -868,7 +868,7 @@ static void CheckRpcRuntimeTransport(bool disconnect, bool deferred, bool disabl
     BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallWarningTimeMs, !disconnect && !disabled ? 1000 : 0);
     BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallDisconnectTimeMs, disconnect ? 1000 : 0);
     BakerTests::OverrideSetting(settings.ServerNetwork.MaxPendingRemoteCalls, disabled ? 0 : 8);
-    auto server = MakeServerEngine(settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(settings);
     auto shutdown = scope_exit([probe, &server]() mutable noexcept {
         probe->Release.store(true);
 

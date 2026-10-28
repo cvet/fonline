@@ -59,7 +59,7 @@ TEST_CASE("AngelScriptServerEngineStopsStartupWhenInitEventStopsChain")
 TEST_CASE("AngelScriptServerEngineScriptModuleInitAndEventsAreCallable")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -69,7 +69,7 @@ TEST_CASE("AngelScriptServerEngineScriptModuleInitAndEventsAreCallable")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -112,7 +112,7 @@ TEST_CASE("AngelScriptServerEngineScriptModuleInitAndEventsAreCallable")
 TEST_CASE("AngelScriptServerEngineModuleInitAttributePriorityIsRespected")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -122,7 +122,7 @@ TEST_CASE("AngelScriptServerEngineModuleInitAttributePriorityIsRespected")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -145,7 +145,7 @@ TEST_CASE("AngelScriptServerEngineModuleInitAttributePriorityIsRespected")
 TEST_CASE("AngelScriptServerEngineAdminRemoteCallsAreAllowlisted")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -155,7 +155,7 @@ TEST_CASE("AngelScriptServerEngineAdminRemoteCallsAreAllowlisted")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -180,7 +180,7 @@ TEST_CASE("AngelScriptServerEngineAdminRemoteCallsAreAllowlisted")
 TEST_CASE("AngelScriptServerEngineScriptCallsMarshalContainersAndEntities")
 {
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -190,7 +190,7 @@ TEST_CASE("AngelScriptServerEngineScriptCallsMarshalContainersAndEntities")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -246,7 +246,7 @@ TEST_CASE("AngelScriptServerSnapshotRejectsSuspendedScript")
     });
 
     auto settings = MakeServerTestSettings();
-    auto server = MakeServerEngine(settings);
+    auto server = ServerEngineTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -256,7 +256,7 @@ TEST_CASE("AngelScriptServerSnapshotRejectsSuspendedScript")
         });
     });
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

@@ -14,6 +14,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-28
 
+### Fixed
+
+- Give the AngelScript attribute validator distinct translation-unit-local names for its preprocessor user-data slot and diagnostic helpers, allowing it to share a Unity batch with the backend and remote-call implementation. The slot value, script declaration text and source-location mapping retain their meanings.
+
+- Give translation-unit-local AngelScript test helpers distinct names and explicitly select shared fixture owners in Unity batches. Keep test names, assertions and embedded script sources unchanged; give the advanced-operation test macros distinct names as well.
+
+- Preserve the Windows SDK socket-header memory macros and their transitive expansions across macro cleanup, so late Asio includes compile in Unity batches.
+
+### Migration
+
+Base `28c84c5d9d21f5a33b2122977314383842dfe414` (`2026.1.79-dev`) to `2026.1.80-dev`: rebuild affected AngelScript native targets in both ordinary and Unity configurations. Run the complete `RunUnitTests` target in ordinary and Unity builds so both the full test source list and its resource-usage dependency exercise the matching backend. Rebuild Windows targets and compile the real SDK socket headers after Windows macro cleanup, including Unity builds with late Asio includes. No project source, settings, save or resource-schema conversion is required; the changes affect private C++ names and Windows header macro availability. Runtime `0.0.82` and Managed ABI `9` remain unchanged; deploy and roll back the matching native revision and build configuration together.
+
+## 2026.1.79-dev - 2026-10-28
+
 ### Changed
 
 - `Baking.FilterResources` defaults to `False`: package all available current

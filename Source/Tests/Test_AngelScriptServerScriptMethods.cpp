@@ -82,7 +82,7 @@ namespace
         return found;
     }
 
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptServerScriptMethodsMakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -95,7 +95,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptServerScriptMethodsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -3006,7 +3006,7 @@ namespace ScriptMethodsTest
         return protos_data;
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptServerScriptMethodsMakeResources() -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -3027,7 +3027,7 @@ namespace ScriptMethodsTest
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
         auto fomap_blob = MakeEmptyMapBlob();
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = AngelScriptServerScriptMethodsMakeScriptBinary(compiler_resources);
 
         auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -3045,7 +3045,7 @@ namespace ScriptMethodsTest
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptServerScriptMethodsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -3061,16 +3061,16 @@ namespace ScriptMethodsTest
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptServerScriptMethodsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptServerScriptMethodsMakeResources());
     }
 }
 
 TEST_CASE("ServerCritterInventoryOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3080,7 +3080,7 @@ TEST_CASE("ServerCritterInventoryOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3125,8 +3125,8 @@ TEST_CASE("ServerCritterInventoryOperations")
 
 TEST_CASE("ServerCritterStateOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3136,7 +3136,7 @@ TEST_CASE("ServerCritterStateOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3229,8 +3229,8 @@ TEST_CASE("ServerCritterStateOperations")
 
 TEST_CASE("ServerGameCritterQueries")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3240,7 +3240,7 @@ TEST_CASE("ServerGameCritterQueries")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3277,8 +3277,8 @@ TEST_CASE("ServerGameCritterQueries")
 
 TEST_CASE("ServerGameItemOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3288,7 +3288,7 @@ TEST_CASE("ServerGameItemOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3397,8 +3397,8 @@ TEST_CASE("ServerGameItemOperations")
 
 TEST_CASE("ServerEntityLifecycle")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3408,7 +3408,7 @@ TEST_CASE("ServerEntityLifecycle")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3517,8 +3517,8 @@ TEST_CASE("ServerEntityLifecycle")
 
 TEST_CASE("ServerMiscScriptOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptServerScriptMethodsMakeSettings();
+    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3528,7 +3528,7 @@ TEST_CASE("ServerMiscScriptOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

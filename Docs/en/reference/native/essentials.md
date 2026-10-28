@@ -191,6 +191,14 @@ order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
 `StringUtils.cpp`) plus `NetSockets.*` and `ServerServiceApp.cpp`, which are OS
 wrappers themselves rather than ordinary consumers.
 
+`WinApiUndef.inc` removes Windows macro aliases after platform and third-party
+headers. Its commented `// #undef Name` entries form the generator-preserved
+allowlist for later headers in the same Unity translation unit. Windows SDK socket
+headers need `CopyMemory` and `ZeroMemory`, including their `RtlCopyMemory` and
+`RtlZeroMemory` expansions, even when `<Windows.h>` was included and cleaned up
+earlier. Qualify allowlist changes with the real SDK and compiler in that header
+order; preserving only the outer aliases leaves their expansions undefined.
+
 Darwin SDK signal-set operations can be function-like macros. Inside `Posix.cpp`,
 call `sigfillset`, `sigdelset`, `sigemptyset` and `sigaddset` without a `::`
 qualifier so those definitions expand correctly; Linux still resolves its global

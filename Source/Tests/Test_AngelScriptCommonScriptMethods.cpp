@@ -51,7 +51,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptCommonScriptMethodsMakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -63,7 +63,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptCommonScriptMethodsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -1730,7 +1730,7 @@ namespace CommonMethods
         return BakerTests::MakeMetadataBlob({{"ValueType", value_types}, {"RefType", ref_types}});
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptCommonScriptMethodsMakeResources() -> FileSystem
     {
         auto metadata_blob = MakeCommonMethodsMetadataBlob();
 
@@ -1749,7 +1749,7 @@ namespace CommonMethods
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto container_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = AngelScriptCommonScriptMethodsMakeScriptBinary(compiler_resources);
 
         auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1794,7 +1794,7 @@ BoundsMaxZ = 3.5
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptCommonScriptMethodsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -1810,9 +1810,9 @@ BoundsMaxZ = 3.5
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptCommonScriptMethodsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptCommonScriptMethodsMakeResources());
     }
 
     static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
@@ -1846,8 +1846,8 @@ BoundsMaxZ = 3.5
 }
 
 #define MAKE_CM_SERVER() \
-    auto settings = MakeSettings(); \
-    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
+    auto settings = AngelScriptCommonScriptMethodsMakeSettings(); \
+    refcount_ptr<ServerEngine> server = AngelScriptCommonScriptMethodsMakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1855,7 +1855,7 @@ BoundsMaxZ = 3.5
             } \
         }); \
     }); \
-    string startup_error = WaitForStart(server); \
+    string startup_error = AngelScriptCommonScriptMethodsWaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

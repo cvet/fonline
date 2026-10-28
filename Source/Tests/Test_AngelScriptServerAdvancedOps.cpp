@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptServerAdvancedOpsMakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -60,7 +60,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptServerAdvancedOpsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -951,7 +951,7 @@ namespace AdvOps
             });
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptServerAdvancedOpsMakeResources() -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -968,7 +968,7 @@ namespace AdvOps
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = AngelScriptServerAdvancedOpsMakeScriptBinary(compiler_resources);
 
         auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -983,7 +983,7 @@ namespace AdvOps
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptServerAdvancedOpsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -999,15 +999,15 @@ namespace AdvOps
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptServerAdvancedOpsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptServerAdvancedOpsMakeResources());
     }
 }
 
-#define MAKE_SERVER() \
-    auto settings = MakeSettings(); \
-    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
+#define MAKE_ADVANCED_OPS_SERVER() \
+    auto settings = AngelScriptServerAdvancedOpsMakeSettings(); \
+    refcount_ptr<ServerEngine> server = AngelScriptServerAdvancedOpsMakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1015,14 +1015,14 @@ namespace AdvOps
             } \
         }); \
     }); \
-    string startup_error = WaitForStart(server); \
+    string startup_error = AngelScriptServerAdvancedOpsWaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
     auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
 
-#define RUN_SCRIPT_FUNC(func_name) \
+#define RUN_ADVANCED_OPS_SCRIPT_FUNC(func_name) \
     auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \
     REQUIRE(func); \
     REQUIRE(func.Call()); \
@@ -1032,21 +1032,21 @@ namespace AdvOps
 
 TEST_CASE("LocationCreation")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Basic")
     {
-        RUN_SCRIPT_FUNC("TestCreateLocation");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCreateLocation");
     }
 
     SECTION("Lifecycle")
     {
-        RUN_SCRIPT_FUNC("TestLocationLifecycle");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestLocationLifecycle");
     }
 
     SECTION("GetById")
     {
-        RUN_SCRIPT_FUNC("TestGetLocationById");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetLocationById");
     }
 }
 
@@ -1054,26 +1054,26 @@ TEST_CASE("LocationCreation")
 
 TEST_CASE("AdvancedEntityManager")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("EntityCounts")
     {
-        RUN_SCRIPT_FUNC("TestEntityCounts");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestEntityCounts");
     }
 
     SECTION("BulkDestroyCritters")
     {
-        RUN_SCRIPT_FUNC("TestBulkDestroyCritters");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestBulkDestroyCritters");
     }
 
     SECTION("BulkDestroyItems")
     {
-        RUN_SCRIPT_FUNC("TestBulkDestroyItems");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestBulkDestroyItems");
     }
 
     SECTION("GetCritterById")
     {
-        RUN_SCRIPT_FUNC("TestGetCritterById");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetCritterById");
     }
 }
 
@@ -1081,31 +1081,31 @@ TEST_CASE("AdvancedEntityManager")
 
 TEST_CASE("AdvancedCritterOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Condition")
     {
-        RUN_SCRIPT_FUNC("TestCritterCondition");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCritterCondition");
     }
 
     SECTION("Direction")
     {
-        RUN_SCRIPT_FUNC("TestCritterDirection");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCritterDirection");
     }
 
     SECTION("MultipleItems")
     {
-        RUN_SCRIPT_FUNC("TestCritterMultipleItems");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCritterMultipleItems");
     }
 
     SECTION("ItemByPid")
     {
-        RUN_SCRIPT_FUNC("TestCritterItemByPid");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCritterItemByPid");
     }
 
     SECTION("ItemById")
     {
-        RUN_SCRIPT_FUNC("TestCritterItemById");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestCritterItemById");
     }
 }
 
@@ -1113,21 +1113,21 @@ TEST_CASE("AdvancedCritterOperations")
 
 TEST_CASE("AdvancedItemOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Creation")
     {
-        RUN_SCRIPT_FUNC("TestItemCreation");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestItemCreation");
     }
 
     SECTION("GetById")
     {
-        RUN_SCRIPT_FUNC("TestItemGetById");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestItemGetById");
     }
 
     SECTION("MoveBetweenCritters")
     {
-        RUN_SCRIPT_FUNC("TestMoveItemBetweenCritters");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestMoveItemBetweenCritters");
     }
 }
 
@@ -1135,31 +1135,31 @@ TEST_CASE("AdvancedItemOperations")
 
 TEST_CASE("ServerUtilityOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("PlayerLookup")
     {
-        RUN_SCRIPT_FUNC("TestPlayerLookup");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestPlayerLookup");
     }
 
     SECTION("ServerRandom")
     {
-        RUN_SCRIPT_FUNC("TestServerRandom");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestServerRandom");
     }
 
     SECTION("ServerGetUnixTimeAlt")
     {
-        RUN_SCRIPT_FUNC("TestServerGetUnixTimeAlt");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestServerGetUnixTimeAlt");
     }
 
     SECTION("DatabaseHasRecord")
     {
-        RUN_SCRIPT_FUNC("TestDatabaseHasRecordAdv");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDatabaseHasRecordAdv");
     }
 
     SECTION("DatabaseGetAllRecordIds")
     {
-        RUN_SCRIPT_FUNC("TestDatabaseGetAllRecordIds");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDatabaseGetAllRecordIds");
     }
 }
 
@@ -1167,16 +1167,16 @@ TEST_CASE("ServerUtilityOperations")
 
 TEST_CASE("HstringOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Equality")
     {
-        RUN_SCRIPT_FUNC("TestHstringEquality");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestHstringEquality");
     }
 
     SECTION("Empty")
     {
-        RUN_SCRIPT_FUNC("TestHstringEmpty");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestHstringEmpty");
     }
 }
 
@@ -1184,46 +1184,46 @@ TEST_CASE("HstringOperations")
 
 TEST_CASE("ExtendedArrayOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Sorting")
     {
-        RUN_SCRIPT_FUNC("TestArraySorting");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArraySorting");
     }
 
     SECTION("InsertRemove")
     {
-        RUN_SCRIPT_FUNC("TestArrayInsertRemove");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayInsertRemove");
     }
 
     SECTION("Find")
     {
-        RUN_SCRIPT_FUNC("TestArrayFind");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayFind");
     }
 
     SECTION("Reverse")
     {
-        RUN_SCRIPT_FUNC("TestArrayReverse");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayReverse");
     }
 
     SECTION("RemoveRange")
     {
-        RUN_SCRIPT_FUNC("TestArrayRemoveRange");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayRemoveRange");
     }
 
     SECTION("RemoveAll")
     {
-        RUN_SCRIPT_FUNC("TestArrayRemoveAll");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayRemoveAll");
     }
 
     SECTION("Resize")
     {
-        RUN_SCRIPT_FUNC("TestArrayResize");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestArrayResize");
     }
 
     SECTION("StringArray")
     {
-        RUN_SCRIPT_FUNC("TestStringArrayOperations");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringArrayOperations");
     }
 }
 
@@ -1231,31 +1231,31 @@ TEST_CASE("ExtendedArrayOperations")
 
 TEST_CASE("ExtendedDictOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("SetIfNotExist")
     {
-        RUN_SCRIPT_FUNC("TestDictSetIfNotExist");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDictSetIfNotExist");
     }
 
     SECTION("Clone")
     {
-        RUN_SCRIPT_FUNC("TestDictClone");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDictClone");
     }
 
     SECTION("Remove")
     {
-        RUN_SCRIPT_FUNC("TestDictRemove");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDictRemove");
     }
 
     SECTION("WithEntities")
     {
-        RUN_SCRIPT_FUNC("TestDictWithEntities");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDictWithEntities");
     }
 
     SECTION("IntKeys")
     {
-        RUN_SCRIPT_FUNC("TestDictIntKeys");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestDictIntKeys");
     }
 }
 
@@ -1263,46 +1263,46 @@ TEST_CASE("ExtendedDictOperations")
 
 TEST_CASE("ExtendedStringOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Trim")
     {
-        RUN_SCRIPT_FUNC("TestStringTrim");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringTrim");
     }
 
     SECTION("Case")
     {
-        RUN_SCRIPT_FUNC("TestStringCase");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringCase");
     }
 
     SECTION("StartsEndsWith")
     {
-        RUN_SCRIPT_FUNC("TestStringStartsEndsWith");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringStartsEndsWith");
     }
 
     SECTION("Substring")
     {
-        RUN_SCRIPT_FUNC("TestStringSubstring");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringSubstring");
     }
 
     SECTION("Replace")
     {
-        RUN_SCRIPT_FUNC("TestStringReplace");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringReplace");
     }
 
     SECTION("Split")
     {
-        RUN_SCRIPT_FUNC("TestStringSplit");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringSplit");
     }
 
     SECTION("Join")
     {
-        RUN_SCRIPT_FUNC("TestStringJoin");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringJoin");
     }
 
     SECTION("Conversions")
     {
-        RUN_SCRIPT_FUNC("TestStringConversionsAdv");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestStringConversionsAdv");
     }
 }
 
@@ -1310,21 +1310,21 @@ TEST_CASE("ExtendedStringOperations")
 
 TEST_CASE("MathGeometryOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("Random")
     {
-        RUN_SCRIPT_FUNC("TestRandomRange");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestRandomRange");
     }
 
     SECTION("HexDir")
     {
-        RUN_SCRIPT_FUNC("TestGetHexDir");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetHexDir");
     }
 
     SECTION("Distance")
     {
-        RUN_SCRIPT_FUNC("TestGetDistance");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetDistance");
     }
 }
 
@@ -1332,16 +1332,16 @@ TEST_CASE("MathGeometryOperations")
 
 TEST_CASE("TimeAndMiscOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("UnixTime")
     {
-        RUN_SCRIPT_FUNC("TestUnixTime");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestUnixTime");
     }
 
     SECTION("TimePacking")
     {
-        RUN_SCRIPT_FUNC("TestTimePacking");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestTimePacking");
     }
 }
 
@@ -1349,11 +1349,11 @@ TEST_CASE("TimeAndMiscOperations")
 
 TEST_CASE("NpcQueryOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("GetAllNpc")
     {
-        RUN_SCRIPT_FUNC("TestGetAllNpcOverloads");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetAllNpcOverloads");
     }
 }
 
@@ -1361,21 +1361,21 @@ TEST_CASE("NpcQueryOperations")
 
 TEST_CASE("ProtoAccessOperations")
 {
-    MAKE_SERVER();
+    MAKE_ADVANCED_OPS_SERVER();
 
     SECTION("ProtoCritter")
     {
-        RUN_SCRIPT_FUNC("TestGetProtoCritter");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetProtoCritter");
     }
 
     SECTION("ProtoItem")
     {
-        RUN_SCRIPT_FUNC("TestGetProtoItem");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetProtoItem");
     }
 
     SECTION("ProtoLocation")
     {
-        RUN_SCRIPT_FUNC("TestGetProtoLocation");
+        RUN_ADVANCED_OPS_SCRIPT_FUNC("TestGetProtoLocation");
     }
 }
 

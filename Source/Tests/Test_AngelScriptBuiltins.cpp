@@ -52,13 +52,13 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    struct ScriptMessages
+    struct AngelScriptBuiltinsScriptMessages
     {
         vector<string> Entries {};
 
         static void Callback(const AngelScript::asSMessageInfo* msg, void* param)
         {
-            auto self = cast_from_void<ScriptMessages*>(param);
+            auto self = cast_from_void<AngelScriptBuiltinsScriptMessages*>(param);
             FO_VERIFY_AND_THROW(self, "Script message collector is null");
 
             self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
@@ -144,13 +144,13 @@ namespace
         return ArrayComparableValueCmp(self, other);
     }
 
-    static auto MakeAngelScriptEngine(ScriptMessages& messages) -> AngelScript::asIScriptEngine*
+    static auto MakeAngelScriptEngine(AngelScriptBuiltinsScriptMessages& messages) -> AngelScript::asIScriptEngine*
     {
         auto engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
         REQUIRE(engine);
 
         REQUIRE(engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false) >= 0);
-        REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), &messages, AngelScript::asCALL_CDECL) >= 0);
+        REQUIRE(engine->SetMessageCallback(asFUNCTION(AngelScriptBuiltinsScriptMessages::Callback), &messages, AngelScript::asCALL_CDECL) >= 0);
         return engine.get();
     }
 
@@ -246,19 +246,19 @@ namespace
         return module->Build();
     }
 
-    static auto HasScriptMessage(const ScriptMessages& messages, string_view text) -> bool
+    static auto HasScriptMessage(const AngelScriptBuiltinsScriptMessages& messages, string_view text) -> bool
     {
         return std::ranges::any_of(messages.Entries, [text](const string& entry) { return entry.find(text) != string::npos; });
     }
 
-    static void ReportScriptMessages(const ScriptMessages& messages)
+    static void ReportScriptMessages(const AngelScriptBuiltinsScriptMessages& messages)
     {
         for (const string& entry : messages.Entries) {
             UNSCOPED_INFO(entry);
         }
     }
 
-    static auto RequireScriptModule(AngelScript::asIScriptEngine* engine, ScriptMessages& messages, string_view module_name, string_view source) -> ptr<AngelScript::asIScriptModule>
+    static auto RequireScriptModule(AngelScript::asIScriptEngine* engine, AngelScriptBuiltinsScriptMessages& messages, string_view module_name, string_view source) -> ptr<AngelScript::asIScriptModule>
     {
         int32_t build_result = BuildAngelScriptModule(engine, module_name, source);
         ReportScriptMessages(messages);
@@ -293,7 +293,7 @@ namespace
         CHECK(current_size == 0);
     }
 
-    static void ShutdownAndCheckGcDiagnostics(nptr<AngelScript::asIScriptEngine> engine, const ScriptMessages& messages)
+    static void ShutdownAndCheckGcDiagnostics(nptr<AngelScript::asIScriptEngine> engine, const AngelScriptBuiltinsScriptMessages& messages)
     {
         REQUIRE(engine);
         CHECK(engine->ShutDownAndRelease() >= 0);
@@ -352,7 +352,7 @@ namespace
         CHECK(values->FindByRef(0, values->At(0)) == 0);
     }
 
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptBuiltinsMakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -364,7 +364,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptBuiltinsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -3263,7 +3263,7 @@ namespace ScriptBuiltins
         return BakerTests::MakeMetadataBlob({{"Enum", enums}, {"Setting", settings}, {"Property", properties}});
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptBuiltinsMakeResources() -> FileSystem
     {
         auto metadata_blob = MakeMetadataWithGenderEnum();
 
@@ -3276,7 +3276,7 @@ namespace ScriptBuiltins
         BakerServerEngine proto_engine {compiler_resources};
         hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = AngelScriptBuiltinsMakeScriptBinary(compiler_resources);
 
         string_view config_text = "[TestSection]\nFirstKey=FirstValue\nSecondKey=SecondValue\n";
         vector<uint8_t> config_blob(config_text.begin(), config_text.end());
@@ -3293,7 +3293,7 @@ namespace ScriptBuiltins
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptBuiltinsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -3309,16 +3309,16 @@ namespace ScriptBuiltins
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptBuiltinsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptBuiltinsMakeResources());
     }
 }
 
 TEST_CASE("ScriptBuiltinsStringOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptBuiltinsMakeSettings();
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3328,7 +3328,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3557,7 +3557,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
 TEST_CASE("ScriptBuiltinsContainerReferencesAreCollectable")
 {
-    ScriptMessages messages;
+    AngelScriptBuiltinsScriptMessages messages;
     nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
     auto release_engine = scope_exit([&engine]() noexcept {
         safe_call([&engine] {
@@ -3627,7 +3627,7 @@ void BuildCycle()
 
 TEST_CASE("ScriptBuiltinsDeferredReceiverTemporaryIsReleased")
 {
-    ScriptMessages messages;
+    AngelScriptBuiltinsScriptMessages messages;
     nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
     auto release_engine = scope_exit([&engine]() noexcept {
         safe_call([&engine] {
@@ -3699,7 +3699,7 @@ void ExerciseDeferredReceiverLifetime()
 
 TEST_CASE("ScriptBuiltinsShutdownCollectsDestructorCascade")
 {
-    ScriptMessages messages;
+    AngelScriptBuiltinsScriptMessages messages;
     nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
     auto release_engine = scope_exit([&engine]() noexcept {
         safe_call([&engine] {
@@ -3754,8 +3754,8 @@ void BuildCascade()
 
 TEST_CASE("ScriptBuiltinsArrayOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptBuiltinsMakeSettings();
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -3765,7 +3765,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -3951,7 +3951,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     // Direct ScriptArray API coverage
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4184,7 +4184,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     // Array template callback diagnostics
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4202,7 +4202,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
     }
 
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4236,8 +4236,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
 TEST_CASE("ScriptBuiltinsDictOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptBuiltinsMakeSettings();
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -4247,7 +4247,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -4353,7 +4353,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // Direct ScriptDict API coverage
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4482,7 +4482,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // Dict template callback diagnostics
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4509,7 +4509,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     // Dict value comparator diagnostics for native value sub-types
     {
-        ScriptMessages messages;
+        AngelScriptBuiltinsScriptMessages messages;
         nptr<AngelScript::asIScriptEngine> as_engine = MakeAngelScriptEngine(messages);
         auto release_engine = scope_exit([&as_engine]() noexcept { safe_call([&as_engine] { as_engine->ShutDownAndRelease(); }); });
 
@@ -4563,10 +4563,10 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
 TEST_CASE("ScriptBuiltinsGlobalBindings")
 {
-    auto settings = MakeSettings();
+    auto settings = AngelScriptBuiltinsMakeSettings();
     BakerTests::OverrideSetting(settings.Critter.CritterSlotEnabled, vector<bool> {true, false, true, false});
 
-    auto server = MakeServerEngine(settings);
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -4576,7 +4576,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -4653,12 +4653,12 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
 
 TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
 {
-    auto settings = MakeSettings();
+    auto settings = AngelScriptBuiltinsMakeSettings();
     settings.SetCustomSetting("NestedSettings.Deep.Text", any_t("native-first"));
     settings.SetCustomSetting("NestedSettings.Deep.Count", any_t("41"));
     settings.SetCustomSetting("NestedSettings.Deep.Enabled", any_t("true"));
     settings.SetCustomSetting("NestedSettings.Sibling.Text", any_t("neighbor"));
-    auto server = MakeServerEngine(settings);
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -4666,7 +4666,7 @@ TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
             }
         });
     });
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -4697,8 +4697,8 @@ TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
 
 TEST_CASE("ScriptBuiltinsReflectionOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptBuiltinsMakeSettings();
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -4708,7 +4708,7 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -4757,8 +4757,8 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
 
 TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = AngelScriptBuiltinsMakeSettings();
+    auto server = AngelScriptBuiltinsMakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -4768,7 +4768,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = AngelScriptBuiltinsWaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

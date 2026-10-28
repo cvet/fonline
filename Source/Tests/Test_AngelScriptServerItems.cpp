@@ -43,8 +43,8 @@ using namespace ServerItemsTests;
 
 TEST_CASE("AngelScriptServerItemCreationAndDestruction")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = ServerItemsTests::MakeSettings();
+    auto server = ServerItemsTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -54,7 +54,7 @@ TEST_CASE("AngelScriptServerItemCreationAndDestruction")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = ServerItemsTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -108,8 +108,8 @@ TEST_CASE("AngelScriptServerItemCreationAndDestruction")
 
 TEST_CASE("AngelScriptServerItemAddedToCritterInventory")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = ServerItemsTests::MakeSettings();
+    auto server = ServerItemsTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -119,7 +119,7 @@ TEST_CASE("AngelScriptServerItemAddedToCritterInventory")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = ServerItemsTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -170,8 +170,8 @@ TEST_CASE("AngelScriptServerItemAddedToCritterInventory")
 
 TEST_CASE("AngelScriptServerCritterLifecycleOperations")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = ServerItemsTests::MakeSettings();
+    auto server = ServerItemsTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -181,7 +181,7 @@ TEST_CASE("AngelScriptServerCritterLifecycleOperations")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = ServerItemsTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -231,8 +231,8 @@ TEST_CASE("AngelScriptServerCritterLifecycleOperations")
     CHECK(is_alive_func.GetResult() == true);
 
     // Player login allocates persistent ids through the entity manager
-    auto player1 = CreateLoggedPlayer(server, "TestPlayer1");
-    auto player2 = CreateLoggedPlayer(server, "TestPlayer2");
+    auto player1 = ServerItemsTests::CreateLoggedPlayer(server, "TestPlayer1");
+    auto player2 = ServerItemsTests::CreateLoggedPlayer(server, "TestPlayer2");
     CHECK(player1->GetId() != ident_t {});
     CHECK(player2->GetId() != ident_t {});
     CHECK(player1->GetId() != player2->GetId());

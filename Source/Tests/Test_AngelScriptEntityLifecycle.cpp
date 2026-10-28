@@ -43,8 +43,8 @@ using namespace EntityLifecycleTests;
 
 TEST_CASE("AngelScriptEntityInitEvents")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = EntityLifecycleTests::MakeSettings();
+    auto server = EntityLifecycleTests::MakeServerEngine(settings);
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -53,7 +53,7 @@ TEST_CASE("AngelScriptEntityInitEvents")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = EntityLifecycleTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -418,8 +418,8 @@ TEST_CASE("AngelScriptEntityInitEvents")
 
 TEST_CASE("AngelScriptPlayerRegistrationCppApi")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = EntityLifecycleTests::MakeSettings();
+    auto server = EntityLifecycleTests::MakeServerEngine(settings);
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -428,7 +428,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = EntityLifecycleTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -461,7 +461,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server, "RejectReconnect");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, "RejectReconnect");
 
         auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
         REQUIRE(set_mode_func);
@@ -479,7 +479,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server, "FailingReconnect");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, "FailingReconnect");
 
         auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
         REQUIRE(set_mode_func);
@@ -505,7 +505,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server, "ReconnectLocalMap");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, "ReconnectLocalMap");
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
@@ -550,7 +550,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server, "ReconnectGlobalGroup");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, "ReconnectGlobalGroup");
         auto cr = server->CreateCritter(fn("TestCritter"), true);
         auto group_member = server->CreateCritter(fn("TestCritter"), false);
         server->MapMngr.RemoveCritterFromMap(group_member, nullptr);
@@ -620,7 +620,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerDestroyedAfterLoginDisconnectCalls"), destroyed_after_disconnect_calls));
         CHECK(destroyed_after_disconnect_calls == 0);
 
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 
         CHECK(server->EntityMngr.GetPlayersCount() == initial_player_count);
 
@@ -648,7 +648,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
 
         player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
 
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 
         CHECK(server->EntityMngr.GetPlayersCount() == initial_player_count);
 
@@ -663,7 +663,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server, "InitialInfoDetach");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, "InitialInfoDetach");
 
         auto prev_cr = server->CreateCritter(fn("TestCritter"), true);
         auto next_cr = server->CreateCritter(fn("TestCritter"), true);
@@ -705,7 +705,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func.Call());
 
         auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
@@ -742,7 +742,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
 
         int32_t dir_calls = 0;
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
         small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
@@ -771,7 +771,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         REQUIRE(reset_func.Call());
 
         auto test_connection = safe_alloc::make_shared<TestNetworkConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDirCorrection");
+        auto player = EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "StopMoveDirCorrection");
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
             safe_call([&server, &loc] {
@@ -814,7 +814,7 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, server_offset, client_dir);
 
         int32_t dir_calls = 0;
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
         small_vector<ptr<ServerEntity>, 3> sync_entities {player, cr, map};
@@ -841,8 +841,8 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
 
 TEST_CASE("AngelScriptScriptFunctionCalls")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = EntityLifecycleTests::MakeSettings();
+    auto server = EntityLifecycleTests::MakeServerEngine(settings);
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -851,7 +851,7 @@ TEST_CASE("AngelScriptScriptFunctionCalls")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = EntityLifecycleTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));

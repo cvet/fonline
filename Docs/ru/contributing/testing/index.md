@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"8724593bbbb8852eb7fa40bdfd796068f3e9dbb715aa06cd9790a8613aba3236"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bafa35726ee830de7b63d74e5184e023766b16ceec38abec0277762b78566d0c"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -159,6 +159,8 @@ Packager должен перечитать manifest и обновить архи
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
 ```
 
+При включённом `FO_ANGELSCRIPT_SCRIPTING` CMake передаёт этому runner флаг `--angelscript`. Изолированный пакет Metadata тогда использует `Metadata AngelScript Proto` и минимальный модуль `.fos`, создавая bytecode, необходимый для запекания прототипов. При прямой проверке AngelScript Baker добавляйте тот же флаг; для остальных бэкендов по умолчанию сохраняется фикстура только с данными.
+
 ## Запуск тестов
 
 Задача CI `engine-update` также выполняет
@@ -304,6 +306,8 @@ platform resolution, передачу configure, проверки generator cach
 неподдерживаемые hosts.
 
 Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
+
+Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
 
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
 пересекает границы подсистем.

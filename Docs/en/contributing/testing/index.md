@@ -87,6 +87,8 @@ Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exist
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
 ```
 
+When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this runner. Its isolated Metadata pack then runs `Metadata AngelScript Proto` and includes a minimal `.fos` module, supplying the bytecode required by Proto baking. Add the same flag when directly testing an AngelScript Baker; the default data-only fixture remains available for other backends.
+
 ## Running tests
 
 The `engine-update` CI job also runs
@@ -216,6 +218,8 @@ generator display name. Sanitizer validators remain explicitly Linux-specific.
 configure forwarding, generator-cache checks, and unsupported hosts.
 
 CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
+
+Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 

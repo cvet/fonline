@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"4aa5140b035bc38daa32f9a33af8a910c48780a142e2f9637a89f4e09a71613b"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"41418e40174367a960bf0cd3d34fea33d02f335b42cbe16e76b60e95e3420c14"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -193,6 +193,15 @@ test Essentials не обходит contract-change gate.
 реализации Essentials, которые не могут зависеть от этих модулей из-за порядка
 слоёв (`BasicCore.cpp`, `BaseLogging.cpp`, `StringUtils.cpp`), а также
 `NetSockets.*` и `ServerServiceApp.cpp`, сами являющиеся OS wrappers.
+
+`WinApiUndef.inc` удаляет макросы Windows после платформенных и сторонних
+заголовков. Закомментированные записи `// #undef Name` задают сохраняемый
+генератором allowlist для поздних заголовков в той же единице трансляции Unity.
+Заголовкам сокетов Windows SDK нужны `CopyMemory` и `ZeroMemory` вместе с их
+раскрытиями `RtlCopyMemory` и `RtlZeroMemory`, даже если `<Windows.h>` уже был
+подключён и очищен ранее. Изменения allowlist проверяйте настоящими SDK и
+компилятором с таким порядком заголовков; сохранение только внешних псевдонимов
+оставляет их раскрытия неопределёнными.
 
 В Darwin SDK операции над наборами сигналов могут быть функциональными макросами.
 Внутри `Posix.cpp` вызывайте `sigfillset`, `sigdelset`, `sigemptyset` и `sigaddset`

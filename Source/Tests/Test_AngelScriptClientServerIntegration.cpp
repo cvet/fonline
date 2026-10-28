@@ -50,8 +50,8 @@ TEST_CASE("AngelScriptClientAndServerHandshakeOverInterthreadTransport")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
@@ -132,8 +132,8 @@ TEST_CASE("AngelScriptClientLogsInThroughARemoteCall")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
@@ -538,9 +538,9 @@ TEST_CASE("AngelScriptTwoClientsShareOneMapSession")
     auto first_settings = MakeClientTestSettings(port);
     auto second_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
-    auto first = MakeClientEngine(first_settings);
-    auto second = MakeClientEngine(second_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
+    auto first = TestClientServerIntegration::MakeClientEngine(first_settings);
+    auto second = TestClientServerIntegration::MakeClientEngine(second_settings);
 
     auto shutdown = scope_exit([&server, &first, &second]() noexcept {
         safe_call([&second] { second->Shutdown(); });
@@ -630,8 +630,8 @@ TEST_CASE("AngelScriptClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect"
     BakerTests::OverrideSetting(server_settings.ServerNetwork.ClientPingTime, 120000);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
+    auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
 
     auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
