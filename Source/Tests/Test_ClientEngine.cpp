@@ -45,6 +45,7 @@ using namespace ClientEngineTests;
 
 void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr);
 bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
+bool Client_Critter_GetBoneSpriteMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
 
 class TestUnlitOverlaySprite final : public Sprite
 {
@@ -1280,6 +1281,9 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
         MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
     resources.emplace_back("AnchorSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
     auto settings = MakeClientTestSettings();
+    bool direct_draw = GENERATE(false, true);
+    CAPTURE(direct_draw);
+    BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, direct_draw);
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
     auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
@@ -1340,6 +1344,158 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
                 CHECK(is_float_equal(holder.MSpr->GetMapRootProjection().z, expected.z));
             }
         }
+    }
+
+    SECTION("IndependentSpritesFollowTheSubmittedCarrierDepth")
+    {
+        cr->RestoreAlpha();
+        MapSpriteHolder holder;
+        holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("AnchorSprite.png"), AtlasType::MapSprites);
+        holder.Hex = cr->GetHex();
+        REQUIRE(holder.SprId != 0);
+        auto stop_holder = scope_exit([&holder]() noexcept { holder.StopDraw(); });
+        vec3 local {0.7f, 0.4f, 0.3f};
+        RecordingQuadEffect effect;
+
+        for (ipos16 movement : {ipos16 {13, -7}, ipos16 {-18, 11}}) {
+            cr->SetHexOffset(movement);
+            cr->RefreshOffs();
+
+            for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-12}}) {
+                cr->SetElevation(elevation);
+                cr->RefreshSprite();
+
+                for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+                    model->SetDir(mdir {direction}, false);
+                    model->PoseSpriteFrame(false);
+
+                    client->SprMngr.BeginScene();
+                    client->SprMngr.EndScene();
+
+                    ipos32 offset {};
+                    float32_t depth = 0.0f;
+                    REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, local.x, local.y, local.z, offset, depth));
+
+                    ipos32 physical_offset {};
+                    float32_t physical_depth = 0.0f;
+                    REQUIRE(Client_Critter_GetBoneMapAnchor(cr, bone, local.x, local.y, local.z, physical_offset, physical_depth));
+                    CHECK(offset == physical_offset);
+
+                    holder.StopDraw();
+                    holder.Offset = offset;
+                    holder.DepthOffset = depth;
+                    Client_Map_DrawMapSprite(map, &holder);
+                    REQUIRE(holder.Valid);
+                    REQUIRE(holder.MSpr);
+
+                    if (direct_draw) {
+                        CHECK(is_float_equal(depth, physical_depth));
+                        continue;
+                    }
+
+                    auto carrier = cr->GetMapSprite();
+                    auto local_point = model->GetBonePos(bone, local);
+                    REQUIRE(local_point);
+                    ipos32 field_offset {320, 240};
+                    ipos32 root_offset = carrier->GetRootOffset();
+                    MapSpriteList carriers;
+                    auto submitted = carriers.AddSprite(DrawOrderType::Critter, cr->GetHex(), carrier->GetHexOffset(),
+                        &field_offset, carrier->GetSprite(), nullptr, carrier->GetPSprOffset(), &root_offset,
+                        nullptr, nullptr, nullptr, 0);
+                    submitted->SetElevation(elevation);
+                    submitted->SetDepthOffset(carrier->GetDepthOffset());
+                    CHECK(submitted->GetSpriteRootOffset() == carrier->GetSpriteRootOffset());
+
+                    effect.Draws.clear();
+                    client->SprMngr.DrawSprites(carriers, irect32 {0, 0, 1280, 960}, false,
+                        DrawOrderType::Critter, DrawOrderType::Critter, ucolor {255, 255, 255}, &effect);
+                    REQUIRE(effect.Draws.size() == 1);
+
+                    vector<Vertex2D> vertices = ReadRecordedLayerQuad(effect.Draws.front());
+                    auto top = std::ranges::min_element(vertices, {}, &Vertex2D::PosY);
+                    auto bottom = std::ranges::max_element(vertices, {}, &Vertex2D::PosY);
+                    REQUIRE(top->PosY < bottom->PosY);
+
+                    // The submitted vertices are the oracle, independent of the anchor helper's projection formula
+                    ipos32 point = submitted->GetDrawRootPos() + *local_point;
+                    float32_t fraction = (numeric_cast<float32_t>(point.y) - top->PosY) / (bottom->PosY - top->PosY);
+                    float32_t expected_depth = top->PosZ + fraction * (bottom->PosZ - top->PosZ);
+                    CHECK(std::abs(holder.MSpr->GetMapRootProjection().z - expected_depth) < 0.002f);
+                    CHECK(std::abs(physical_depth - depth) > 1.0f);
+                    CHECK(holder.MSpr->GetDrawRootPos() - *holder.MSpr->GetPHexOffset() ==
+                        point - field_offset);
+                }
+            }
+        }
+    }
+
+    SECTION("HiddenSpritesHaveNoRenderedAnchor")
+    {
+        cr->RestoreAlpha();
+        model->PoseSpriteFrame(false);
+
+        client->SprMngr.BeginScene();
+        client->SprMngr.EndScene();
+
+        ipos32 offset {};
+        float32_t depth = 0.0f;
+        REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+
+        cr->GetMapSprite()->SetHidden(true);
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+    }
+
+    SECTION("RenderedInvalidAndDetachedPointsLeaveDeterministicOutputs")
+    {
+        cr->RestoreAlpha();
+        model->PoseSpriteFrame(false);
+
+        client->SprMngr.BeginScene();
+        client->SprMngr.EndScene();
+
+        ipos32 offset {};
+        float32_t depth = 0.0f;
+        REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, client->Hashes.to_hashed_string("MissingBone"), 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
+                 std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+            offset = ipos32 {123, 456};
+            depth = 123.0f;
+            CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, invalid, 0.0f, 0.0f, offset, depth));
+            CHECK(offset == cr->GetSpriteOffset());
+            CHECK(depth == 0.0f);
+        }
+
+        cr->InvalidateSprite();
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto flat = map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestClientCritter"), mpos {9, 8}, mdir {}, nullptr);
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(flat, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == flat->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002},
+            client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
+        auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_THROWS_AS(Client_Critter_GetBoneSpriteMapAnchor(off_map, bone, 0.0f, 0.0f, 0.0f, offset, depth), ScriptException);
+        CHECK(offset == ipos32 {123, 456});
+        CHECK(depth == 123.0f);
     }
 
     SECTION("InvalidAndDetachedPointsLeaveDeterministicOutputs")

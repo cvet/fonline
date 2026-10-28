@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"ea5a2139a4639a389216f1e58a71d74f2ed9ac8c54c3eeed170bbd928d780c61"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"803d3fbcf9bd274a6051e26daeb8ab84f0f3568428e8aa5fc5ed5560bf44c1dd"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -316,6 +316,16 @@ NaN/бесконечность дают исключение до любой о�
 со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение.
 Прежние 2D-методы не меняются. Независимые спрайты следуют дальнейшему движению
 только при явном обновлении.
+
+Этот запрос всегда сохраняет физическую глубину точки кости. Кэшированная atlas-
+модель рисуется bitmap-плоскостью, глубина которой может отличаться в тех же XY.
+Для независимой частицы на отображаемой модели используйте
+`Critter.GetBoneSpriteMapAnchor`: точка берётся из той же позы и соответствует
+нарисованной bitmap-точке/плоскости в atlas и физической точке в direct.
+Скрытый носитель, недоступная или некорректная точка дают `false` со смещением
+спрайта и нулевой глубиной. Физический запрос сохраняет прежний смысл. Оба запроса
+принимают авторские локальные единицы кости и требуют повторного прикрепления
+после движения или перестроения карты.
 
 `Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` выбирает
 видимую bitmap-копию на гексе `hex`. `localOffset` измеряется в логических пикселях

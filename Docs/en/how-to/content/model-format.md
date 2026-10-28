@@ -301,7 +301,9 @@ The link's `MoveX`, `MoveY`, `MoveZ`, and `RotY` feed particle placement. The pa
 
 The attached resource's XML, registered SPARK objects, renderer fields, effects/textures, runtime cache, and visible validation are owned by [Particle Format And Runtime](particle-format.md). Model-bone particles use the direct 3D composition path rather than `ParticleSprite`'s atlas/direct-scene selector.
 
-Use `Critter.GetBoneMapAnchor` for independent [map effects](particle-format.md#integration).
+Use `Critter.GetBoneSpriteMapAnchor` for independent [map effects](particle-format.md#integration)
+that meet the displayed model. `Critter.GetBoneMapAnchor` preserves physical bone depth,
+which differs from the submitted plane of a cached atlas model.
 
 ## Transforms and speed
 

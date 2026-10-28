@@ -15492,6 +15492,42 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and the Russian mirror; Docs/en/how-to/content/particle-format.md#integration owns the point, result and error contract.",
       "compatibility": "The added export changes generated compatibility identity and method manifests. The central MigrationRule Version marker, Managed ABI, persisted data and resource formats remain unchanged. Deploy or roll back matching binaries, generated APIs, metadata, assemblies and baked resources together; mixed sets remain rejected.",
       "owner": "scripting-rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.69d443927a3c06d2",
+      "baseline_contract_sha256": "79dc3702c22b51edb266444b5115d7b8d6736481b0345626303c152d49cdd360",
+      "current_contract_sha256": "ca30f89452a0f18698b06f097b631005057528c7b767e88876b5b68b9b1370d1",
+      "classification": "breaking",
+      "rationale": "The reviewed experimental inventory adds exactly Critter.GetBoneSpriteMapAnchor, increasing 2586 symbols to 2587. Every previous symbol ID and physical query meaning is retained. The scope digest intentionally changes with this additive displayed-model query.",
+      "migration": "Existing physical-depth consumers need no rewrite. For independent particles meeting the displayed model, find calls with rg -n \"GetBoneMapAnchor\" <project-source> and explicitly adopt GetBoneSpriteMapAnchor with the same authored bone units, current hex and both outputs. Rebuild native client/server/Mapper/Baker/tests, regenerate script bindings, compile affected roles and rebake one matching metadata/assembly/resource set. No persisted-data conversion is required. See Docs/en/how-to/content/particle-format.md and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased: displayed-model bone anchors and compatibility 0.0.77 to 0.0.78.",
+      "compatibility": "Do not mix previous and updated native binaries, metadata, script assemblies or baked resources. Deploy the whole matching cohort and roll back the whole previous cohort. Managed ABI 9, stored identities, property defaults and resource schemas are unchanged; old query semantics are preserved. This feature-branch entry does not claim a published release.",
+      "owner": "Engine rendering, scripting and runtime compatibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.e8f8f3afd68d8c55",
+      "baseline_contract_sha256": "79dc3702c22b51edb266444b5115d7b8d6736481b0345626303c152d49cdd360",
+      "current_contract_sha256": "ca30f89452a0f18698b06f097b631005057528c7b767e88876b5b68b9b1370d1",
+      "classification": "breaking",
+      "rationale": "Advance the central compatibility marker from 0.0.77 to 0.0.78 for the new generated native/script API cohort. The marker is a compatibility input, not a reinterpretation of saved entity data or an existing query.",
+      "migration": "Existing physical-depth consumers need no rewrite. For independent particles meeting the displayed model, find calls with rg -n \"GetBoneMapAnchor\" <project-source> and explicitly adopt GetBoneSpriteMapAnchor with the same authored bone units, current hex and both outputs. Rebuild native client/server/Mapper/Baker/tests, regenerate script bindings, compile affected roles and rebake one matching metadata/assembly/resource set. No persisted-data conversion is required. See Docs/en/how-to/content/particle-format.md and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased: displayed-model bone anchors and compatibility 0.0.77 to 0.0.78.",
+      "compatibility": "Do not mix previous and updated native binaries, metadata, script assemblies or baked resources. Deploy the whole matching cohort and roll back the whole previous cohort. Managed ABI 9, stored identities, property defaults and resource schemas are unchanged; old query semantics are preserved. This feature-branch entry does not claim a published release.",
+      "owner": "Engine rendering, scripting and runtime compatibility"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.ae6a5a33a9da744d",
+      "baseline_contract_sha256": "24bb820264f72a1f81589d1b5d5bd3e3b22d7269229d14d194463726f7351f12",
+      "current_contract_sha256": "76f2f2c5bf0613da6e17abb07a80809a722a2113299db1fca1107c3635c132c3",
+      "classification": "breaking",
+      "rationale": "The conservative contract gate treats rationale changes as breaking. This rationale clarifies the existing physical-depth contract and the distinct atlas bitmap plane; existing inputs, units, outputs and false/throw meanings of GetBoneMapAnchor remain unchanged. The separate GetBoneSpriteMapAnchor is an additive capability, not an alias or a changed old meaning.",
+      "migration": "Existing physical-depth consumers need no rewrite. For independent particles meeting the displayed model, find calls with rg -n \"GetBoneMapAnchor\" <project-source> and explicitly adopt GetBoneSpriteMapAnchor with the same authored bone units, current hex and both outputs. Rebuild native client/server/Mapper/Baker/tests, regenerate script bindings, compile affected roles and rebake one matching metadata/assembly/resource set. No persisted-data conversion is required. See Docs/en/how-to/content/particle-format.md and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased: displayed-model bone anchors and compatibility 0.0.77 to 0.0.78.",
+      "compatibility": "Do not mix previous and updated native binaries, metadata, script assemblies or baked resources. Deploy the whole matching cohort and roll back the whole previous cohort. Managed ABI 9, stored identities, property defaults and resource schemas are unchanged; old query semantics are preserved. This feature-branch entry does not claim a published release.",
+      "owner": "Engine rendering, scripting and runtime compatibility"
     }
   ]
 }

@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"7eb90697227e978f6263fc01ff847a68005707244924cace37f775d6b3da06bd"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"a0fab3a2294adbb463eb5d1fa26496ffae5231fb49b59453f23029b5a9452a0f"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -260,7 +260,9 @@ Particle path является глобальным путём запечённ�
 
 `MoveX/Y/Z` и `RotY` определяют placement частицы. Instance живёт, пока активна точная пара layer/value, и удаляется при изменении композиции. XML, SPARK objects, renderer fields, effects/textures, runtime cache и визуальная проверка принадлежат [формату частиц](particle-format.md). Частицы на bones используют прямой путь 3D-композиции, а не selector atlas/direct-scene у `ParticleSprite`.
 
-Для независимых [эффектов карты](particle-format.md#интеграция) используйте `Critter.GetBoneMapAnchor`.
+Для независимых [эффектов карты](particle-format.md#интеграция) на отображаемой модели
+используйте `Critter.GetBoneSpriteMapAnchor`. `Critter.GetBoneMapAnchor` сохраняет
+физическую глубину кости, отличную от нарисованной плоскости кэшированной atlas-модели.
 
 ## Преобразования и скорость
 

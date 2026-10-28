@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-particle-format-index","locale":"ru","source_path":"Docs/en/reference/particle-format/index.md","source_sha256":"ddb025a0b8800239399e7978f701ef2822b3311227482b66815ad2a7dd99b37c"} -->
+<!-- docs-translation: {"document_id":"generated-particle-format-index","locale":"ru","source_path":"Docs/en/reference/particle-format/index.md","source_sha256":"d518e2817b4faa95c4cf92a029720244b56173de4d1be0d3210302ecffcded09"} -->
 
 # Сгенерированный справочник форматов частиц
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | SPARK и Effekseer являются независимыми необязательными backend-ами. Подключаемые проекты должны закреплять ревизию Engine и явно включать, проверять и поддерживать поставляемые ими форматы. |
 | Исходный манифест | <code>BuildTools/ParticleFormatInterface.json</code> |
-| Дайджест контракта | <code>ab9d42d9e9197574ef966380555cbd1d8f3053a9643b3ee0693f5d0e6192c88c</code> |
+| Дайджест контракта | <code>10e8619f2c1a8edbabffd001bc37029e84772cca75be515187d50819e0693b21</code> |
 | Авторские расширения | <code>spark</code>, <code>efkproj</code> |
 | Расширения runtime | <code>spk</code>, <code>efk</code> |
 | Сторона runtime | <code>client</code> |
@@ -34,7 +34,7 @@ generated: true
 | [Rendering](renderer.md) | 19 | Маршруты и поля отрисовки backend-ов. |
 | [Tooling](tooling.md) | 5 | Процессы авторинга в Mapper и отдельных инструментах. |
 | [Runtime](runtime.md) | 19 | Компоновка, маршрутизация, seed, масштаб и prewarm. |
-| [Integration](integration.md) | 9 | Границы спрайтов, моделей, скриптов и проекта. |
+| [Integration](integration.md) | 10 | Границы спрайтов, моделей, скриптов и проекта. |
 | [Validation](validation.md) | 7 | Gate документации, native-кода, запекания и видимой проверки. |
 
 ## Граница ответственности

@@ -2856,7 +2856,7 @@
       "name": "Independent map sprite at a bone point",
       "stability": "experimental",
       "requirement": "Call Critter.GetBoneMapAnchor in authored model units. Set one MapSpriteHolder's Hex, Offset and DepthOffset from the current critter hex and both outputs. DepthOffset is finite, defaults to 0, uses logical map pixels and preserves XY; positive values are nearer. Reattach after rebuild. Invalid/unavailable anchors return false with sprite offset/zero depth; off-map critters throw. Keep the old 2D methods.",
-      "rationale": "A bone point needs its posed depth; reconstructing it on the ground loses height.",
+      "rationale": "A bone point needs its posed physical depth; reconstructing it on the ground loses height. A cached model bitmap has a distinct submitted plane, so particles meeting the displayed model use GetBoneSpriteMapAnchor instead.",
       "source": [
         {
           "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
@@ -2883,6 +2883,33 @@
           "anchors": [
             "GetMapRootProjection",
             "projection.z += _depthOffset"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.bone-sprite-map-anchor",
+      "name": "Independent map sprite on the displayed model",
+      "stability": "experimental",
+      "requirement": "Call Critter.GetBoneSpriteMapAnchor in authored bone-local units. It uses the same bone pose as GetBoneMapAnchor and resolves the submitted bitmap point and plane for an atlas model or the physical bone point for a direct scene model. Apply the current hex, Offset and DepthOffset to one holder and reattach after movement/rebuild. Hidden, unavailable or invalid anchors return false with sprite offset/zero depth; off-map throws. GetBoneMapAnchor keeps physical depth in both render modes.",
+      "rationale": "An atlas model discards its physical per-pixel depth when copied to a bitmap. A physical bone depth can hide an independent particle behind its own displayed carrier.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_GetBoneSpriteMapAnchor"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "GetMapSpritePointAnchor"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "IndependentSpritesFollowTheSubmittedCarrierDepth"
           ]
         }
       ]

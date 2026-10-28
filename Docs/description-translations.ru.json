@@ -10963,8 +10963,12 @@
           "translation": "Поправка к глубине вида в логических пикселях карты, копируемая при прикреплении; положительное значение приближает, по умолчанию 0."
         },
         "/symbols/@id=script.method.client.Critter.GetBoneMapAnchor/description": {
-          "source_sha256": "3262e73d01bf1b7ca230babd23080b5f9f4bace8811dde57371bb08986ee198d",
+          "source_sha256": "e51101959da5dc3f5830f79e14e22236b74b0a1d0ea1cd0f3221c1a06811dfff",
           "translation": "Проецирует локальную точку кости в смещение спрайта карты и поправку только к глубине в логических пикселях. Возвращает false со смещением спрайта и нулевой глубиной для недоступного или некорректного якоря; выбрасывает исключение вне карты."
+        },
+        "/symbols/@id=script.method.client.Critter.GetBoneSpriteMapAnchor/description": {
+          "source_sha256": "50e10661449c00d081b8cb2c80aa8e93468bb1a46c60666094e2f09cc64a279c",
+          "translation": "Проецирует локальную точку кости в XY держателя и глубину отображаемой модели в логических пикселях. Использует bitmap-плоскость atlas либо точку direct-сцены; скрытый или недоступный якорь даёт false, криттер вне карты вызывает исключение."
         }
       }
     },
@@ -16881,8 +16885,8 @@
           "translation": "Независимый спрайт карты в точке кости"
         },
         "/integration_rules/@id=particle-format.integration.bone-map-anchor/rationale": {
-          "source_sha256": "bf62762a45977ade1334af4318367c68ce321a084829cb089ef667d5f98f6011",
-          "translation": "Точке кости нужна глубина её позы; восстановление на плоскости земли теряет высоту."
+          "source_sha256": "5c0b46bd1799b6c43252283757929a7e603ee972c48316070e2e123c6ca8c9d3",
+          "translation": "Точке кости нужна физическая глубина её позы; восстановление на плоскости земли теряет высоту. У кэшированного изображения модели отдельная нарисованная плоскость, поэтому для частиц на отображаемой модели используется GetBoneSpriteMapAnchor."
         },
         "/integration_rules/@id=particle-format.integration.bone-map-anchor/requirement": {
           "source_sha256": "5ffca7dd1a9a1f17c37b89893a6f8469c12f1cc4b47500184baecef543f8455c",
@@ -18393,6 +18397,18 @@
         "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/rationale": {
           "source_sha256": "f03650581f123c5dec77ab33aeb982d3f15545dd927daae0122c6a9517d69061",
           "translation": "Анимация нулевого масштаба не должна создавать NaN в наследуемых Track transforms; утраченная ориентация не определена однозначно."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/name": {
+          "source_sha256": "b030aafb3dda54ad350dca2c74631146d9a0f2747b955600dc423a58ea565d7b",
+          "translation": "Независимый спрайт карты на отображаемой модели"
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/requirement": {
+          "source_sha256": "e30e2f40f01f8bf2e935a66e983031bdf6e7f82421bde99542bfb1ff33332206",
+          "translation": "Вызывайте Critter.GetBoneSpriteMapAnchor в авторских локальных единицах кости. Запрос использует ту же позу кости, что и GetBoneMapAnchor, и возвращает нарисованную bitmap-точку/плоскость для atlas-модели либо физическую точку direct-модели. Применяйте текущий гекс, Offset и DepthOffset к одному держателю и заново прикрепляйте после движения или перестроения. Скрытый, недоступный или некорректный якорь даёт false со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение. GetBoneMapAnchor сохраняет физическую глубину в обоих режимах отрисовки."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/rationale": {
+          "source_sha256": "2954518f958aa8768672d4b822554725a424f07e97b72e301d2d479b821165e6",
+          "translation": "При копировании в bitmap atlas-модель теряет физическую глубину отдельных пикселей. Физическая глубина кости может скрыть независимую частицу за её отображаемым носителем."
         }
       }
     },

@@ -307,6 +307,15 @@ Missing models/bones, detached sprites and invalid/unrepresentable points return
 `false` with sprite offset/zero depth; off-map throws. Existing 2D methods stay
 unchanged. Independent sprites follow later movement only if updated.
 
+This query always preserves the bone point's physical view depth. A cached atlas
+model is drawn as a bitmap plane, whose submitted depth can differ at the same XY.
+Use `Critter.GetBoneSpriteMapAnchor` when an independent particle must meet the
+displayed model: it uses the same bone pose, follows the submitted bitmap point
+and plane in atlas mode and the physical point in direct scene mode. It returns
+`false` with sprite offset/zero depth for a hidden carrier as well as unavailable
+or invalid anchors. The physical query retains its existing meaning. Both queries
+use authored bone-local units and require reattachment after movement or rebuild.
+
 `Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` resolves the
 visible bitmap copy at `hex`. `localOffset` is in logical sprite pixels relative
 to its draw root before rotation and map projection. Set a holder's `Hex` to that
