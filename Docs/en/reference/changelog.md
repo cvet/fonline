@@ -16,6 +16,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Regenerate the MinimalMultiplayer distribution config with the declared native `Baking.FilterResources = False` default. The generated example stays current with the settings source and retains its full-output packaging policy.
+
+- Explicitly select the client/server integration fixture's server factory in the two new UDP regressions, avoiding ambiguous helper lookup when Unity batches include other server fixtures. Test names, assertions and runtime behavior remain unchanged.
+
+- Bound the UDP updater resume fixture's client silence timeout within its polling window, so losing the best-effort disconnect datagram does not outlast the test. Production timeouts, polling bounds and all partial-file/resume assertions remain unchanged.
+
+### Migration
+
+Base `59deea3d01c8ca7d306c83e7c65967bcc57d0270` (`2026.1.81-dev`) to `2026.1.82-dev`: no project source, settings or save conversion is required. The example now explicitly records the existing native default; embedding projects retain their chosen resource-filtering policy. Check the generated example with `python Examples/MinimalMultiplayer/generate_config.py --check` and run `python BuildTools/tests/test_minimal_multiplayer_package.py`. Rebuild the native test target and run the complete `RunUnitTests` target in ordinary and Unity configurations, including both UDP regressions. Reconfigure, rebuild and rebake the example with its matching Engine revision before packaging; generated metadata carries the Engine version. Runtime `0.0.82`, Managed ABI `9` and resource-usage manifest `1` remain unchanged. Deploy and roll back matching configuration, binaries and bakes together.
+
+## 2026.1.81-dev - 2026-10-28
+
+### Fixed
+
 - End an established UDP session as a lost connection when the transport fails after the server answered the handshake. `ClientConnection` used to keep treating that session as still connecting, so a UDP send error in the middle of a download or of play opened a new TCP connection over it; the server saw a second session, the game client raised "Cur player is already set", and the updater was rejected with "Update file list was already received" and ended as `Failed`. The UDP-to-TCP fallback now covers only the connection phase, from the UDP connect until the handshake answer. A later transport failure takes the ordinary disconnect route: the updater reports `ConnectionFailed`, keeps the confirmed bytes of its temporary file and resumes from them on the next launch. The updater's own once-per-session file-list check is unchanged.
 
 ### Migration

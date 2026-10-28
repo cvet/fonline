@@ -340,7 +340,7 @@ TEST_CASE("ClientEndsAnEstablishedUdpSessionInsteadOfReconnectingOverTcp")
     });
     auto restore_logger = scope_exit([]() noexcept { logging::set_callback("udp-session-end", {}); });
 
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
     auto client = TestClientServerIntegration::MakeClientEngine(client_settings);
     int32_t connected_calls = 0;
     int32_t disconnected_calls = 0;
@@ -476,7 +476,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
         BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
         BakerTests::OverrideSetting(server_settings.Network.UpdateFileMaxPortionSize, 8192);
-        auto server = MakeServerEngine(server_settings);
+        auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
         auto shutdown = scope_exit([&]() noexcept {
             safe_call([&] {
                 if (server->IsStarted()) {
@@ -494,6 +494,10 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
         BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
+
+        // A lost UDP disconnect packet must time out inside this fixture's processing window
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 1000);
+
         auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);

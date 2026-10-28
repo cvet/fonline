@@ -234,6 +234,7 @@ Timer.DeltaTimeCap = 100
 
 # Baking
 Baking.ForceBaking = False
+Baking.FilterResources = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
 Baking.PrebakeOnStartup = True
