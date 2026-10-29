@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Correct the migration record of the `Client.UserWritablePath` replacement in `Docs/contract-change-dispositions.json`. It told projects to supply `--UserWritablePath <path>`, a spelling `ResolveWritableRoot` never recognized: the early writable-root scan matches only the fully qualified `Common.UserWritablePath` option, so the unqualified flag was accepted as an unrelated custom setting and the process kept the portable working-directory layout. The record now names `--Common.UserWritablePath <path>`, as the configuration reference, the release operations guide and the client updater guide already did. No unqualified alias is added; the supported spellings, `*`, the installer marker and the portable fallback are unchanged. A documentation test now ties the supported spelling to `ResolveWritableRoot` and rejects the unqualified spelling in the English and Russian guides and in the ledger.
+
+### Migration
+
+Base `47f2e992cd0dbbb1c3bad0f8ba52140d50a0c8c4` (`2026.1.85-dev`) to `2026.1.86-dev`: documentation correction only. No source, settings, data or save conversion is required. Search launch scripts, service registrations, Android launchers and CI for the unqualified spelling with `rg -n --pcre2 '(?<![\w.])--?UserWritablePath\b'` and replace every hit with `--Common.UserWritablePath <path>` (or `-Common.UserWritablePath <path>`); `*` as the path still selects the per-user directory. A process that was started with the unqualified flag has been using the working-directory layout, so data it wrote there stays there: move it deliberately before the switch, otherwise the process starts on an empty writable root. Network protocol, the `MigrationRule Version` compatibility marker, Managed ABI, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous text only.
+
+## 2026.1.85-dev - 2026-10-29
+
+### Fixed
+
 - Drop only the offending connection when a peer sends a malformed or truncated frame after the handshake or after login, instead of reporting it as an engine exception. `NotLoggedInPlayerJob()` and `PlayerJob()` now treat every `NetBufferException` (including `UnknownMessageException`) as a protocol fault of that peer: one warning with the remote host/port and the exception's message and context values, then a `ProtocolError` hard disconnect. In non-interactive and headless mode a reported exception requests application quit, so a single `Ping` frame with a missing sender clock used to stop the whole server; other connections and other exception types are unaffected, and the application exception policy is unchanged.
 - Report the real read position, frame end and buffered end in `NetBufferException` context values. `NetInBuffer` and `NetOutBuffer` captured them after `ResetBuf()` had zeroed them, so `Invalid read length`, `Invalid shrink pos`, `Invalid discard length`, `Incoming network message extends past buffered data` and `Property data count exceeds remaining buffer` printed zeros.
 

@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f9df9525e22cc7fbc35916beaf27b2634dfb6972a82b5d8907ff93ab4b8e6268"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c8e056be0057d8dad011a6fd4aa6d37c731a030c8a78909d1ed97e5e75934411"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-29
+
+### Исправлено
+
+- Исправлена запись миграции замены `Client.UserWritablePath` в `Docs/contract-change-dispositions.json`. Она предписывала проектам передавать `--UserWritablePath <path>` — написание, которое `ResolveWritableRoot` никогда не распознавал: ранний поиск writable root сопоставляет только полностью квалифицированную опцию `Common.UserWritablePath`, поэтому неквалифицированный флаг принимался как посторонний custom setting, а процесс сохранял portable-раскладку относительно working directory. Запись теперь называет `--Common.UserWritablePath <path>`, как и справочник конфигурации, руководство по эксплуатации релиза и руководство по client updater. Неквалифицированный алиас не добавляется; поддерживаемые написания, `*`, marker установщика и portable-откат не изменены. Документационный тест теперь связывает поддерживаемое написание с `ResolveWritableRoot` и отклоняет неквалифицированное написание в английских и русских руководствах и в реестре.
+
+### Миграция
+
+База `47f2e992cd0dbbb1c3bad0f8ba52140d50a0c8c4` (`2026.1.85-dev`) → `2026.1.86-dev`: только исправление документации. Конверсия исходников, настроек, данных и сохранений не требуется. Найдите неквалифицированное написание в скриптах запуска, регистрациях служб, Android-лаунчерах и CI командой `rg -n --pcre2 '(?<![\w.])--?UserWritablePath\b'` и замените каждое вхождение на `--Common.UserWritablePath <path>` (или `-Common.UserWritablePath <path>`); `*` в качестве пути по-прежнему выбирает per-user каталог. Процесс, запущенный с неквалифицированным флагом, работал в раскладке working directory, поэтому записанные им данные остаются там: перенесите их осознанно до переключения, иначе процесс стартует с пустым writable root. Сетевой протокол, маркер совместимости `MigrationRule Version`, Managed ABI, поколение updater и схема ресурсов не меняются, поэтому смешанные развёртывания остаются совместимыми, а откат возвращает только прежний текст.
+
+## 2026.1.85-dev - 2026-10-29
 
 ### Исправлено
 

@@ -6488,7 +6488,7 @@
       "current_contract_sha256": "8c75cc749a6ba8af3d74d04ff1d1a35fef361ff0cc04d4e057bf18817679b89f",
       "classification": "breaking",
       "rationale": "Client.UserWritablePath is removed in favor of read-only Common.UserWritablePath so logs, caches, resource overlays, self-updated binaries, and server databases share one root resolved before any config is read.",
-      "migration": "Remove Client.UserWritablePath from project configs. Supply --UserWritablePath (or --Common.UserWritablePath) before startup, use * for the per-user project directory, or ship the INSTALLED marker; otherwise retain the portable working-directory layout.",
+      "migration": "Remove Client.UserWritablePath from project configs. Supply --Common.UserWritablePath <path> before startup, use * as the path for the per-user project directory, or ship the INSTALLED marker; otherwise retain the portable working-directory layout.",
       "release_note": "Document the early, settings-free writable-root selection and the replacement Common.UserWritablePath API.",
       "compatibility": "The old setting was runtime-variable and client-only; the replacement is startup-fixed, read-only, and visible to server, client, and mapper. Authored configs using the old key must migrate.",
       "owner": "runtime-application"
