@@ -1410,14 +1410,14 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
         uint32_t uid = vehicle->GetMovingUid();
         mpos held = vehicle->GetHex();
-        float32_t lease = moving->GetLeaseTime();
+        timespan lease = moving->GetLeaseTime();
         SendCritterMoveLease(passenger_net, server, map->GetId(), vehicle->GetId(), 7, 5000.0f);
         SendStopCritterMove(passenger_net, server, map->GetId(), vehicle->GetId(), held, ipos16 {}, mdir {180});
         SendCritterMoveFinished(passenger_net, server, map->GetId(), vehicle->GetId(), moving->GetEndHex(), held, ipos16 {}, mdir {180});
@@ -1441,7 +1441,7 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
@@ -1453,7 +1453,7 @@ TEST_CASE("ServerMovementAuthority")
 
         CHECK(vehicle->IsMoving());
         CHECK(vehicle->GetHex() == held);
-        CHECK(moving->GetLeaseTime() == 200.0f);
+        CHECK(moving->GetLeaseTime() == timespan {std::chrono::milliseconds {200}});
     }
 
     SECTION("StopPolicyReplacementPreservesTheNewOwnersPlan")
@@ -1463,7 +1463,7 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(6, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
@@ -1474,7 +1474,7 @@ TEST_CASE("ServerMovementAuthority")
         stop_policy.Callback = [&](FuncCallData&) {
             cover();
             refcount_ptr<MovingContext> next = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, vehicle->GetHex(), ipos16 {}, ipos16 {});
-            next->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+            next->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
             replacement = next;
             server->StartCritterMoving(vehicle, std::move(next), passenger, 9);
             return Entity::EventResult::ContinueChain;
@@ -1499,7 +1499,7 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(3, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {400}, steps, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(moving->GetWholeTime() - 5.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(moving->GetWholeTime() - timespan {std::chrono::milliseconds {5}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
@@ -1529,7 +1529,7 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
@@ -1560,7 +1560,7 @@ TEST_CASE("ServerMovementAuthority")
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
         auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
