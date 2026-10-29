@@ -655,7 +655,7 @@ static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObje
 static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend);
 static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool;
 static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool;
-static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool;
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, const ManagedObjectRoot& list_root, const_span<uint8_t> src) -> bool;
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*;
 static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*;
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t;
@@ -885,13 +885,14 @@ struct ManagedDataAccessor final : DataAccessor
         }
 
         // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
-        MonoObject* list = CreateManagedList(array->Backend, array->Type.BaseType);
+        ManagedObjectRoot list;
+        list.SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
 
         if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
             return false;
         }
 
-        array->SetObject(list);
+        array->SetObject(list.GetObject());
         array->Elements.clear();
         return true;
     }
@@ -4998,7 +4999,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                     // Plain numbers are stored on the wire exactly as in memory, so the whole block goes over at once
                     if (count != 0 && IsManagedRawArrayElement(arg_type.BaseType)) {
                         const_span<uint8_t> raw = reader.read_bytes(numeric_cast<size_t>(count) * arg_type.BaseType.Size);
-                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.GetObject(), raw);
+                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge, raw);
                         FO_VERIFY_AND_THROW(written, "Managed list rejected a raw remote call array", call_name, wire_arg_name, arg_type.BaseType.Name);
                     }
                     else {
@@ -5692,7 +5693,7 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
             vector<uint8_t> raw(size * type.BaseType.Size);
 
             if (accessor->ReadArrayRaw(data, raw)) {
-                bool written = TryWriteManagedListRaw(backend, type.BaseType, list.GetObject(), raw);
+                bool written = TryWriteManagedListRaw(backend, type.BaseType, list, raw);
                 FO_VERIFY_AND_THROW(written, "Managed list rejected a raw array block", type.BaseType.Name);
                 return list.GetObject();
             }
@@ -6441,22 +6442,24 @@ static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const
     return true;
 }
 
-static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, const ManagedObjectRoot& list_root, const_span<uint8_t> src) -> bool
 {
-    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+    if (!IsManagedRawArrayElement(element_type) || list_root.GetObject() == nullptr) {
         return false;
     }
 
     FO_VERIFY_AND_THROW(element_type.Size != 0 && src.size() % element_type.Size == 0, "Raw array block is not a whole number of elements", element_type.Name, src.size());
 
-    MonoArray* raw = mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size());
+    ManagedObjectRoot raw_root;
+    raw_root.SetObject(reinterpret_cast<MonoObject*>(mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size())));
+    MonoArray* raw = reinterpret_cast<MonoArray*>(raw_root.GetObject());
     FO_VERIFY_AND_THROW(raw != nullptr, "Can't allocate a managed raw array block", element_type.Name, src.size());
 
     if (!src.empty()) {
         memory::copy(mono_array_addr(raw, uint8_t, 0), src.data(), src.size());
     }
 
-    void* args[] = {list, raw};
+    void* args[] = {list_root.GetObject(), raw_root.GetObject()};
     MonoObject* result = InvokeNativeHelper(backend, "SetListRawBytes", 2, args);
     return result != nullptr && *static_cast<MonoBoolean*>(mono_object_unbox(result)) != 0;
 }

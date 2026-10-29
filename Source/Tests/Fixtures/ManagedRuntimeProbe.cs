@@ -432,6 +432,14 @@ public static class ManagedRuntimeProbe
     }
 
     [CallableFromNative]
+    internal static List<byte> EchoRawBytesWithCollection(List<byte> values)
+    {
+        GC.Collect();
+
+        return new List<byte>(values);
+    }
+
+    [CallableFromNative]
     internal static int SumDictionary(Dictionary<int, int> values)
     {
         int sum = 0;

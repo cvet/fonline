@@ -279,6 +279,13 @@ Arrays of primitives, enums, `hstring`, and registered value types use `GetPrope
 
 Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
 
+The raw-byte writer requires a rooted destination list and roots its temporary byte array.
+Native pointers are retrieved from those roots after allocating the byte array,
+before invoking the managed copy helper. A caller's GC handle preserves ownership
+but does not keep a previously borrowed pointer current across a moving collection.
+Proxy writeback retains the new list's root through ownership transfer; the old list
+remains attached to the bridge until the replacement is fully populated.
+
 ### Mutable event collections
 
 A synchronous `[Event]` handler may edit or replace a `ref List<T>` or `ref Dictionary<K, V>` argument whose element, key and value types are supported by the bridge. After the handler returns, the backend converts every entry of that argument before clearing the caller's collection, then writes through the caller's `DataAccessor`. Empty results clear the collection. The next subscriber sees the resulting entries; list order and the native dictionary's insertion and iteration rules are preserved.
