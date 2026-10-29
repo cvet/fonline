@@ -227,6 +227,44 @@ When changing holder behavior, inspect server/client entity managers and persist
 
 External dispatchers may measure a scheduled delay with a clock that advances differently from the engine frame clock, for example while `DeltaTimeCap` clamps a debugger or no-networking run. `TimeEventManager::FireAndAdvance()` rechecks the stored engine-clock `FireTime` before invoking script; an early dispatcher wake returns the remaining delay and keeps the callback pending.
 
+## Releasing explicit critter persistence
+
+`Critter.ReleaseExplicitPersistence(Map map)` releases a critter's explicit
+persistence request while respecting its actual current map. The caller covers
+the critter, the supplied map and every persistent child before the call. The
+method validates that the supplied map is the current parent, that `MapId`
+matches, and that the map contains this exact critter. It does not acquire
+missing cover, relocate an entity or use a global-map fallback.
+
+On a persistent current map, the method clears only the critter's
+`ExplicitlyPersistent` flag. The body and its inventory keep their existing
+database records and identities; independent explicit descendant requests remain
+unchanged. On a temporary map, releasing the request uses the existing recursive
+demotion path. A descendant with its own explicit request rejects that demotion
+before any mutation. Other holder and `MakePersistent` semantics are unchanged.
+
+The return type is `void`: normal return means the request was released or was
+already absent. An already-released call validates the same entity graph and
+otherwise changes nothing. Precondition rejections for a wrong map, unmapped
+critter, missing cover or independent persistent descendant preserve flags,
+membership and database records.
+Precondition validation precedes the flag write. The ordinary property setter
+and post-setter callbacks remain active. After that callback boundary, the method
+revalidates lifetime, cover, exact map membership and independent descendant
+intent before demotion. A callback may destroy or relocate the entity; a later
+exception signals that release did not complete nominally and leaves the valid
+state produced by that callback. This is the existing lifecycle `Basic`
+guarantee, not rollback. Only precondition rejection promises unchanged state.
+Ownership of the request remains the caller's responsibility: the Engine does
+not identify which gameplay subsystem acquired it.
+
+`CritterExplicitPersistenceRelease` in `Source/Tests/Test_EntityLifecycle.cpp`
+checks real database membership and rejection controls.
+`CritterExplicitPersistenceReleaseSurvivesHolderRestart` uses a file-backed JSON
+holder across two server instances and checks the original body and item IDs.
+An individual `UnloadCritter` is a different operation: its existing map-removal
+path demotes inherited-only critters. This API does not change that unload policy.
+
 ## Serialization relationships
 
 Entity state is serialized through property data, not by hand-copying entity fields:

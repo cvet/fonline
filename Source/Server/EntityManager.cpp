@@ -1360,21 +1360,103 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
         throw EntityManagerException("Can't change persistence of player", player->GetId());
     }
 
-    if (persistent) {
-        if (explicitly_requested) {
-            entity->SetExplicitlyPersistent(true);
+    auto entity_holder = entity.hold_ref();
+
+    if (explicitly_requested) {
+        entity->SetExplicitlyPersistent(persistent);
+
+        if (entity->IsDestroyed() || entity->IsDestroying()) {
+            throw EntityManagerException("Persistence callback ended an entity lifetime");
         }
 
-        unordered_set<ptr<ServerEntity>> processed;
+        ValidateEntityAccess(entity);
+    }
+
+    unordered_set<ptr<ServerEntity>> processed;
+
+    if (persistent) {
         MakePersistentRecursive(entity, processed);
     }
     else {
-        if (explicitly_requested) {
-            entity->SetExplicitlyPersistent(false);
+        MakeNonPersistentRecursive(entity, processed);
+    }
+}
+
+void EntityManager::ReleaseCritterExplicitPersistence(ptr<Critter> cr, ptr<Map> map)
+{
+    FO_TRACE_ZONE(Entity);
+
+    if (cr->GetEngine() != _engine || map->GetEngine() != _engine) {
+        throw EntityManagerException("Persistence release requires entities from this engine");
+    }
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(map);
+
+    if (cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying()) {
+        throw EntityManagerException("Persistence release requires live entities");
+    }
+
+    auto current_map = cr->GetParent<Map>();
+
+    if (!current_map || current_map != map || cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
+        throw EntityManagerException("Persistence release requires the actual current map", cr->GetId(), map->GetId());
+    }
+
+    bool inherited = map->IsPersistent();
+    bool release_needed = cr->IsExplicitlyPersistent();
+    unordered_set<ptr<ServerEntity>> validated;
+    function<void(ptr<ServerEntity>)> validate_tree;
+    validate_tree = [&](ptr<ServerEntity> entity) {
+        if (validated.contains(entity)) {
+            return;
         }
 
+        ValidateEntityAccess(entity);
+
+        if (entity->IsDestroyed() || entity->IsDestroying()) {
+            throw EntityManagerException("Persistence release requires live descendants", entity->GetId());
+        }
+        if (release_needed && !inherited && entity != cr && entity->IsExplicitlyPersistent()) {
+            throw EntityManagerException("Persistence release would remove an independently persistent descendant", entity->GetId());
+        }
+
+        validated.emplace(entity);
+        ForEachPersistentChildEntity(entity, validate_tree);
+    };
+    validate_tree(cr);
+
+    if (!release_needed) {
+        return;
+    }
+
+    auto cr_holder = cr.hold_ref();
+    auto map_holder = map.hold_ref();
+    cr->ServerEntity::SetExplicitlyPersistent(false);
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(map);
+
+    if (cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying()) {
+        throw EntityManagerException("Persistence release callback ended an entity lifetime");
+    }
+
+    current_map = cr->GetParent<Map>();
+
+    if (!current_map || current_map != map || cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
+        throw EntityManagerException("Persistence release callback changed the actual current map", cr->GetId(), map->GetId());
+    }
+    if (cr->IsExplicitlyPersistent()) {
+        throw EntityManagerException("Persistence release callback retained the explicit request", cr->GetId());
+    }
+
+    inherited = map->IsPersistent();
+    validated.clear();
+    validate_tree(cr);
+
+    if (!inherited) {
         unordered_set<ptr<ServerEntity>> processed;
-        MakeNonPersistentRecursive(entity, processed);
+        MakeNonPersistentRecursive(cr, processed);
     }
 }
 

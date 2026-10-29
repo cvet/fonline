@@ -136,6 +136,7 @@ public:
     void RegisterCustomEntity(ptr<CustomEntity> custom_entity);
     void UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool delete_from_db);
     void MakePersistent(ptr<ServerEntity> entity, bool persistent, bool explicitly_requested = false);
+    void ReleaseCritterExplicitPersistence(ptr<Critter> cr, ptr<Map> map);
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> ptr<CustomEntity>;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>;

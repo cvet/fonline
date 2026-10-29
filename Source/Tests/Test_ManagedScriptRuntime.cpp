@@ -453,6 +453,98 @@ TEST_CASE("ManagedPropertyCallbacksUseCanonicalNames", "[managed][scripting][pro
     }
 }
 
+TEST_CASE("ManagedCritterRegistryScanCover", "[managed][scripting][entity]")
+{
+    ManagedRuntimeTestResources assemblies;
+    auto settings = ServerEngineTests::MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, false);
+    auto resources = ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, assemblies.GetServerMetadata());
+    assemblies.AddTo(resources);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    string startup_error = ServerEngineTests::WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto ctx = server->RequireCurrentSyncContext();
+    hstring pid = server->Hashes.to_hashed_string("UnitTestRat");
+    REQUIRE(server->EntityMngr.GetCritters().empty());
+
+    auto player = server->CreateCritter(pid, true).hold_ref();
+    auto npc = server->CreateCritter(pid, false).hold_ref();
+    auto dead_npc = server->CreateCritter(pid, false).hold_ref();
+    dead_npc->SetCondition(CritterCondition::Dead);
+    vector<ptr<ServerEntity>> actors {player.get(), npc.get(), dead_npc.get()};
+    auto cleanup = scope_exit([&]() noexcept {
+        safe_call([&] {
+            ctx->SyncEntities(actors);
+            server->CrMngr.DestroyCritter(dead_npc);
+            server->CrMngr.DestroyCritter(npc);
+            server->CrMngr.DestroyCritter(player);
+        });
+    });
+    int64_t player_id = player->GetId().underlying_value();
+    int64_t npc_id = npc->GetId().underlying_value();
+    int64_t dead_npc_id = dead_npc->GetId().underlying_value();
+    auto name = [&server](string_view method) { return server->Hashes.to_hashed_string(strex("ManagedRuntimeProbe::{}", method).str()); };
+    auto raw = server->FindFunc<int32_t, int64_t, int64_t, int64_t>(name("RegistryAnyUncovered"));
+    auto reject = server->FindFunc<string, int32_t, int64_t>(name("RegistryUncoveredFailure"));
+    auto filtered = server->FindFunc<vector<int64_t>, int32_t>(name("RegistryCoveredIds"));
+    REQUIRE(raw);
+    REQUIRE(reject);
+    REQUIRE(filtered);
+    ctx->Release();
+    REQUIRE(ctx->IsEmpty());
+    REQUIRE_FALSE(IsEntityAccessValid(npc, false));
+
+    SECTION("ActualManagedRawAnyKeepsForeignActorUncovered")
+    {
+        REQUIRE(raw.Call(player_id, npc_id, dead_npc_id));
+        CHECK(raw.GetResult() == 0);
+        CHECK(ctx->IsEmpty());
+        CHECK_FALSE(IsEntityAccessValid(npc, false));
+
+        REQUIRE(reject.Call(10, npc_id));
+        CHECK(reject.GetResult().starts_with("NativeCallException|"));
+        CHECK(reject.GetResult().find("Entity access without sync") != string::npos);
+        CHECK(ctx->IsEmpty());
+    }
+
+    SECTION("ActualManagedFilteredAndAllNpcRejectGracefully")
+    {
+        for (int32_t query : {1, 2, 3, 7, 8, 9}) {
+            INFO(query);
+            REQUIRE(reject.Call(query, npc_id));
+            CHECK(reject.GetResult().starts_with("NativeCallException|"));
+            CHECK(reject.GetResult().find("Entity access without sync") != string::npos);
+            CHECK(ctx->IsEmpty());
+            CHECK_FALSE(IsEntityAccessValid(npc, false));
+        }
+    }
+
+    SECTION("ActualManagedCoveredFiltersKeepExactIdentities")
+    {
+        ctx->SyncEntities(actors);
+        vector<ptr<ServerEntity>> before = ctx->GetHeldEntities();
+        vector<vector<int64_t>> expected {
+            {player_id, npc_id, dead_npc_id}, {player_id}, {npc_id, dead_npc_id}, {dead_npc_id},
+            {npc_id}, {}, {player_id}, {npc_id, dead_npc_id}, {npc_id, dead_npc_id}, {npc_id, dead_npc_id},
+        };
+
+        for (size_t query = 0; query < expected.size(); query++) {
+            INFO(query);
+            REQUIRE(filtered.Call(numeric_cast<int32_t>(query)));
+            vector<int64_t> actual = filtered.GetResult();
+            std::ranges::sort(actual);
+            std::ranges::sort(expected[query]);
+            CHECK(actual == expected[query]);
+            CHECK(ctx->GetHeldEntities() == before);
+        }
+    }
+}
+
 FO_END_NAMESPACE
 
 #endif

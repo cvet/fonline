@@ -96,6 +96,15 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Player> Server_Critter_GetPlayer(ptr<Critte
     return player;
 }
 
+// SyncScope: requires self, its actual current map and the persistent-child tree; validates without acquiring cover
+// Releases only self's explicit request; normal return includes an already-released no-op
+///@ ApiContract script.method.server.Critter.ReleaseExplicitPersistence experimental Since=2026.1.64-dev
+///@ ExportMethod
+FO_SCRIPT_API void Server_Critter_ReleaseExplicitPersistence(ptr<Critter> self, ptr<Map> map)
+{
+    self->GetEngine()->EntityMngr.ReleaseCritterExplicitPersistence(self, map);
+}
+
 // SyncScope: requires self; returns the current parent map handle, but does not cover it for later reads
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_PARENT nptr<Map> Server_Critter_GetMap(ptr<Critter> self)

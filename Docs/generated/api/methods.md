@@ -2254,6 +2254,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-refreshvisibility-3110360f2c"></a>
 - [`symbol-script-method-server-critter-refreshvisibility-3110360f2c`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-refreshvisibility-3110360f2c)
 
+<a id="symbol-script-method-server-critter-releaseexplicitpersistence-9d6d00a6f5"></a>
+- [`symbol-script-method-server-critter-releaseexplicitpersistence-9d6d00a6f5`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-releaseexplicitpersistence-9d6d00a6f5)
+
 <a id="symbol-script-method-server-critter-sendglobalmapgroupinfo-cc1a9a25d6"></a>
 - [`symbol-script-method-server-critter-sendglobalmapgroupinfo-cc1a9a25d6`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-sendglobalmapgroupinfo-cc1a9a25d6)
 

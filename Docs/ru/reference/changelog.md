@@ -7,10 +7,27 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d61bada94ae3f066fd628c6f56f456e38ff55ea3671b07e7a02b563069bcbf1a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"a3355719696d190a870e63d1834f70e7dbeaf00643d2b0f7b640f0732bf8cb15"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+### Добавлено
+
+- Добавлен экспериментальный `Critter.ReleaseExplicitPersistence(Map map)` для обоих script backends. Операция снимает только собственный explicit-запрос critter, сохраняя унаследованную persistence на его фактической текущей карте. Caller заранее покрывает critter, карту и persistent-потомков; неверный parent и самостоятельный запрос потомка запрещают демоцию на временной карте до изменения состояния. Поведение существующих `MakePersistent` и `UnloadCritter` не меняется. См. [контракт persistence](../explanation/entity-and-property-model/index.md#снятие-явного-запроса-persistence-у-critter).
+
+### Исправлено
+
+- Сохранён registry-only snapshot handles у `Game.GetCritters(CritterFindType.Any)` без вызова защищённого `CheckFind`. До filtered scans криттеров и NPC classification проверяется caller cover: его отсутствие вызывает обычное script exception вместо завершения процесса внутри защищённого native getter. Scan не получает entity locks; значения фильтрации по роли, смерти и prototype под полным cover сохраняются. См. [registry scans](../how-to/scripting/lifecycle-and-concurrency.md#handles-реестра-и-фильтрованные-scans-криттеров).
+
+- Корень `MakePersistent` удерживается на время реакции после записи `ExplicitlyPersistent`; до рекурсии persistence повторно проверяются его lifetime и текущий доступ. Если реакция завершила lifetime корня, в том числе при уничтожении его текущей карты, операция сообщает о lifecycle-отказе без повторного создания удалённых записей БД. Валидное перемещение с сохранением сущности и гарантия `Basic` без rollback сохраняются. См. [callback персистентности](../how-to/scripting/lifecycle-and-concurrency.md#callback-свойств-персистентности).
+
+### Миграция
+
+- Добавление API не требует преобразования сохранённых свойств, переименования символов или миграции игровых данных. Прежние вызовы сохраняют смысл; новый caller самостоятельно доказывает принадлежность снимаемого explicit-запроса. Обычный возврат `void` также допускает уже отсутствующий запрос. Callback свойств сохраняют обычные lifecycle-эффекты; исключение после изменения имеет документированную гарантию `Basic` и не обещает rollback.
+- Вызывающий global critter enumeration различает unfiltered registry snapshot и фильтрацию по свойствам. Получайте handles через `Any` перед явным acquisition; filtered scans требуют cover каждого snapshot candidate. Исправление не меняет сохранённые данные, API signatures, numeric identifiers, значения фильтров или compatibility marker.
+- Считайте изменение explicit persistence в обоих направлениях lifecycle-границей с callback. Перед продолжением или повтором заново проверьте выжившую сущность, её текущий parent graph и полный cover вызывающего. Не трактуйте отказ как rollback и не повторяйте вызов с уничтоженным handle: валидные эффекты callback сохраняются, а недостающий cover вызывающий получает явно.
+- Перед использованием метода заново сгенерируйте bindings обоих script backends, пересоберите соответствующие native-роли и выпеките assemblies/resources проекта. Metadata клиента и сервера должна происходить из одной выпечки. Ручной runtime marker `0.0.77`, Managed ABI identity `9`, сохранённые идентичности и форматы ресурсов не меняются; generated API metadata отражает новый метод. Откат восстанавливает прежние согласованные binaries, bindings и resources вместе. Этот черновик не назначает и не публикует новую версию Engine.
 
 ## Current - 2026-10-23
 

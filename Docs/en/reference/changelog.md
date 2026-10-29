@@ -12,6 +12,23 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Added
+
+- Add experimental `Critter.ReleaseExplicitPersistence(Map map)` on both scripting backends. Release only the critter's own explicit persistence request while preserving inherited persistence on its actual current map. Require complete caller cover for the critter, map and persistent descendants; reject wrong parents and independent descendant requests before temporary-map demotion. Existing `MakePersistent` and `UnloadCritter` behavior remains unchanged. See [the persistence contract](../explanation/entity-and-property-model/index.md#releasing-explicit-critter-persistence).
+
+### Fixed
+
+- Keep `Game.GetCritters(CritterFindType.Any)` a registry-only handle snapshot without calling the protected `CheckFind`. Validate caller cover before filtered critter scans and NPC classification, so missing cover raises a normal script exception instead of terminating inside a protected native getter. The scan does not acquire entity locks; covered role, death and prototype filtering retain their meanings. See [registry scans](../how-to/scripting/lifecycle-and-concurrency.md#registry-handles-and-filtered-critter-scans).
+
+- Retain the `MakePersistent` root across `ExplicitlyPersistent` post-set reactions and revalidate its lifetime and current access before persistence recursion. If a reaction ends the root's lifetime, including through destruction of its current map, the operation reports a lifecycle failure without recreating deleted database records. Valid surviving relocation and the `Basic` no-rollback contract are preserved. See [persistence callbacks](../how-to/scripting/lifecycle-and-concurrency.md#persistence-property-callbacks).
+
+### Migration
+
+- This additive API needs no stored-property conversion, renamed symbol or gameplay-data migration. Existing callers keep their meanings; callers adopting the new operation must independently prove ownership of the explicit request. Its normal `void` return also covers an already-absent request. Property callbacks retain their ordinary lifecycle effects; an exception after mutation has the documented `Basic` guarantee and does not promise rollback.
+- Global critter enumeration callers must distinguish the unfiltered registry snapshot from property-based filtering. Use `Any` to obtain handles before explicit acquisition; filtered scans require every snapshot candidate covered. No stored data, API signature, numeric identifier, filter value or compatibility marker changes for this correction.
+- Treat explicit persistence changes in either direction as callback-bearing lifecycle boundaries. Before continuing or retrying, recheck the surviving entity, its current parent graph and the complete caller cover. Do not interpret a failure as rollback or retry a destroyed handle; valid callback effects remain, and missing cover must be acquired explicitly by the caller.
+- Regenerate both script backends' bindings, rebuild matching native roles and rebake the project's assemblies/resources before using the method. Keep client/server metadata from the same bake. The manual runtime marker `0.0.77`, Managed ABI identity `9`, persisted identities and resource formats are unchanged; the generated API metadata reflects the added method. Rollback restores the previous matching binaries, bindings and resources together. This draft does not assign or publish a new Engine version.
+
 ## Current - 2026-10-23
 
 ### Changed

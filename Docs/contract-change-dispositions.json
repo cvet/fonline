@@ -3,6 +3,18 @@
   "entries": [
     {
       "domain": "api",
+      "change_id": "api-change.model-scope.0d735e3dbe012699",
+      "baseline_contract_sha256": "1258c076f05c2fce3ae54141d98ebd43fca69f6d7c5904ef628593b7a2fb10c1",
+      "current_contract_sha256": "8619450951cd0dbf80839016f09609524535a7fefd921e937add973e5833ef72",
+      "classification": "breaking",
+      "rationale": "The strict native-codegen inventory increases from 2579 to 2580 for the additive experimental Critter.ReleaseExplicitPersistence(Map) method. Existing symbol identities, input meanings and scope stability remain unchanged; the model-scope digest changes intentionally.",
+      "migration": "See Docs/en/reference/changelog.md#unreleased and Docs/en/explanation/entity-and-property-model/index.md#releasing-explicit-critter-persistence. No persisted-data conversion or old-call replacement is required. Adopting callers prove ownership of the explicit request and cover the actual critter/map/child graph before the call.",
+      "release_note": "The additive API and its exact persistence/lifecycle guarantees are documented in the bilingual Unreleased notes and entity-model guides. This local draft does not assign or publish a release version.",
+      "compatibility": "Regenerate API/script bindings and update matching binaries, assemblies and baked resources together. Manual runtime marker 0.0.77, Managed ABI identity 9 and stored identities/formats remain unchanged. Strict model consumers adopt the new inventory digest; existing MakePersistent and UnloadCritter meanings remain unchanged.",
+      "owner": "entity-lifecycle"
+    },
+    {
+      "domain": "api",
       "change_id": "api-change.model-scope.021c8838668cc6d7",
       "baseline_contract_sha256": "780dea931aaf9ed3b4545f9f916a95f5c53eeebe5efedf81c1f48a0e2b5faa75",
       "current_contract_sha256": "b7716b755f5432783a3c91550a71a0f95227a2944537807ab48725c4eb4a9383",

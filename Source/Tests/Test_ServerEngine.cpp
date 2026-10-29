@@ -45,6 +45,10 @@ public:
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return 0; }
 };
 
+vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType);
+vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server);
+vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid);
+
 TEST_CASE("ServerResourcesFollowPackagedSetting")
 {
     if (IsPackaged()) {
@@ -2769,6 +2773,142 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
     CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
     CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
     CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
+}
+
+TEST_CASE("ServerCritterRegistryScanCover")
+{
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, false);
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto setup_ctx = server->RequireCurrentSyncContext();
+    hstring pid = server->Hashes.to_hashed_string("UnitTestRat");
+    REQUIRE(server->EntityMngr.GetCritters().empty());
+
+    auto player = server->CreateCritter(pid, true).hold_ref();
+    auto npc = server->CreateCritter(pid, false).hold_ref();
+    auto dead_npc = server->CreateCritter(pid, false).hold_ref();
+    dead_npc->SetCondition(CritterCondition::Dead);
+    vector<ptr<ServerEntity>> actors {player.get(), npc.get(), dead_npc.get()};
+    auto cleanup = scope_exit([&]() noexcept {
+        safe_call([&] {
+            setup_ctx->SyncEntities(actors);
+            server->CrMngr.DestroyCritter(dead_npc);
+            server->CrMngr.DestroyCritter(npc);
+            server->CrMngr.DestroyCritter(player);
+        });
+    });
+    REQUIRE(player->GetControlledByPlayer());
+    REQUIRE_FALSE(npc->GetControlledByPlayer());
+    REQUIRE(dead_npc->IsDead());
+    setup_ctx->Release();
+    REQUIRE(setup_ctx->IsEmpty());
+    REQUIRE_FALSE(IsEntityAccessValid(npc, false));
+
+    auto contains = [](const vector<ptr<Critter>>& values, ptr<Critter> expected) {
+        return std::ranges::find(values, expected) != values.end();
+    };
+
+    SECTION("RawAnyReturnsUncoveredHandlesWithoutAcquiring")
+    {
+        server->RunScriptContext([&] {
+            auto ctx = server->RequireCurrentSyncContext();
+            REQUIRE(ctx->IsEmpty());
+            REQUIRE_FALSE(IsEntityAccessValid(npc, false));
+
+            vector<ptr<Critter>> values = Server_Game_GetCritters(server, CritterFindType::Any);
+            CHECK(values.size() == 3);
+            CHECK(contains(values, player.get()));
+            CHECK(contains(values, npc.get()));
+            CHECK(contains(values, dead_npc.get()));
+            CHECK(ctx->IsEmpty());
+            CHECK_FALSE(IsEntityAccessValid(npc, false));
+            CHECK_THROWS_AS(ValidateEntityAccess(npc), ScriptException);
+        });
+    }
+
+    SECTION("UncoveredFilteredScansThrowBeforeNoexceptReads")
+    {
+        server->RunScriptContext([&] {
+            auto ctx = server->RequireCurrentSyncContext();
+            REQUIRE(ctx->IsEmpty());
+
+            CHECK_THROWS_AS(Server_Game_GetCritters(server, CritterFindType::Npc), ScriptException);
+            CHECK_THROWS_AS(Server_Game_GetCritters(server, CritterFindType::Players), ScriptException);
+            CHECK_THROWS_AS(Server_Game_GetCritters(server, CritterFindType::Dead), ScriptException);
+            CHECK_THROWS_AS(server->CrMngr.GetNonPlayerCritters(), ScriptException);
+            CHECK_THROWS_AS(server->CrMngr.GetPlayerCritters(), ScriptException);
+            CHECK_THROWS_AS(Server_Game_GetAllNpc(server), ScriptException);
+            CHECK_THROWS_AS(Server_Game_GetAllNpc(server, pid), ScriptException);
+            CHECK(ctx->IsEmpty());
+            CHECK_FALSE(IsEntityAccessValid(npc, false));
+        });
+    }
+
+    SECTION("CoveredPlayerDoesNotAuthorizeReadingForeignNpcCandidate")
+    {
+        server->RunScriptContext([&] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->SyncEntity(player);
+            REQUIRE(IsEntityAccessValid(player, false));
+            REQUIRE_FALSE(IsEntityAccessValid(npc, false));
+            vector<ptr<ServerEntity>> before = ctx->GetHeldEntities();
+
+            CHECK_THROWS_AS(Server_Game_GetCritters(server, CritterFindType::Players), ScriptException);
+            CHECK_THROWS_AS(server->CrMngr.GetNonPlayerCritters(), ScriptException);
+            CHECK_THROWS_AS(server->CrMngr.GetPlayerCritters(), ScriptException);
+            CHECK(ctx->GetHeldEntities() == before);
+            CHECK_FALSE(IsEntityAccessValid(npc, false));
+
+            vector<ptr<Critter>> values = Server_Game_GetCritters(server, CritterFindType::Any);
+            CHECK(values.size() == 3);
+            CHECK(ctx->GetHeldEntities() == before);
+            CHECK_FALSE(IsEntityAccessValid(npc, false));
+        });
+    }
+
+    SECTION("CoveredFiltersPreservePlayerNpcAndDeathMeaning")
+    {
+        server->RunScriptContext([&] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->SyncEntities(actors);
+            vector<ptr<ServerEntity>> before = ctx->GetHeldEntities();
+
+            vector<ptr<Critter>> any = Server_Game_GetCritters(server, CritterFindType::Any);
+            CHECK(any.size() == 3);
+            vector<ptr<Critter>> players = Server_Game_GetCritters(server, CritterFindType::Players);
+            CHECK(players.size() == 1);
+            CHECK(contains(players, player.get()));
+            vector<ptr<Critter>> npcs = Server_Game_GetCritters(server, CritterFindType::Npc);
+            CHECK(npcs.size() == 2);
+            CHECK(contains(npcs, npc.get()));
+            CHECK(contains(npcs, dead_npc.get()));
+            vector<ptr<Critter>> dead = Server_Game_GetCritters(server, CritterFindType::Dead);
+            CHECK(dead.size() == 1);
+            CHECK(contains(dead, dead_npc.get()));
+            vector<ptr<Critter>> live_npc = Server_Game_GetCritters(server, CritterFindType::NonDeadNpc);
+            CHECK(live_npc.size() == 1);
+            CHECK(contains(live_npc, npc.get()));
+            CHECK(Server_Game_GetCritters(server, CritterFindType::DeadPlayers).empty());
+            vector<ptr<Critter>> live_players = Server_Game_GetCritters(server, CritterFindType::NonDeadPlayers);
+            CHECK(live_players.size() == 1);
+            CHECK(contains(live_players, player.get()));
+
+            vector<refcount_ptr<Critter>> manager_npcs = server->CrMngr.GetNonPlayerCritters();
+            CHECK(manager_npcs.size() == 2);
+            vector<refcount_ptr<Critter>> manager_players = server->CrMngr.GetPlayerCritters();
+            REQUIRE(manager_players.size() == 1);
+            CHECK(manager_players[0] == player);
+            CHECK(Server_Game_GetAllNpc(server).size() == 2);
+            CHECK(Server_Game_GetAllNpc(server, pid).size() == 2);
+            CHECK(ctx->GetHeldEntities() == before);
+        });
+    }
 }
 
 FO_END_NAMESPACE

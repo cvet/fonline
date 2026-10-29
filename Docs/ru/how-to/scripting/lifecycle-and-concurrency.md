@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0740a69e9d7d497f4ef84b55aeaa6c814e38585010530726d10b73c3ed59f010"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"96a6b80996670c534ef583c4780df4024fc726852407589428c5f46c6c8389b2"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -188,6 +188,24 @@ Event dispatch может запускать пользовательские ca
 
 Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
 
+### Callback свойств персистентности
+
+`MakePersistent` изменяет `ExplicitlyPersistent` через обычный setter свойства
+перед рекурсивным обновлением персистентности графа сущностей. Реакция после записи
+может уничтожить корневую сущность или её текущую карту. Нативный владелец удерживает
+корень на время callback, затем проверяет его lifetime и текущий доступ к сущности
+до входа в любую из двух рекурсивных веток persistence. Завершение lifetime корня
+вызывает lifecycle-исключение вместо продолжения прохода по БД и повторного создания
+удалённых записей.
+
+Перемещение с сохранением живой сущности само по себе не является отказом. Операция
+может продолжиться для живой сущности под корректным текущим cover вызывающего;
+пропущенный lock она не получает. Это гарантия исключений `Basic`: отказ не
+откатывает изменение свойства или валидные эффекты callback, включая перемещение
+и уничтожение. Перед продолжением или повтором заново проверьте lifetime, текущие
+parent links и необходимый cover; удерживаемый handle не доказывает, что исходный
+граф сущности сохранился.
+
 ### Граница preload персистентности
 
 `Game.OnCritterPreLoad` является серверным migration hook для существующего сохранённого криттера. Он срабатывает один раз после восстановления свойств криттера, инвентаря и вложенных сущностей и после регистрации криттера, но до входа на карту или глобальную карту, обработки видимости, `OnCritterInit(critter, false)` и `OnCritterLoad`. Новые криттеры это событие не получают.
@@ -288,6 +306,22 @@ Server callbacks могут выполняться конкурентно. Дв�
 - `Game.SyncRelease()` освобождает entity cover и все singleton lock entries текущей script execution scope.
 
 `Game.Sync(...)` несёт `[[Async]]`, поэтому marker распространяется на непосредственных script callers даже тогда, когда получение завершается без suspension AngelScript context.
+
+### Handles реестра и фильтрованные scans криттеров
+
+`Game.GetCritters(CritterFindType.Any)` получает snapshot handles зарегистрированных
+криттеров, не читая их mutable properties и не получая entity cover. Возвращённый
+handle не разрешает последующее чтение или изменение. Получите полный необходимый
+cover, затем повторно проверьте lifetime, membership и используемые операцией
+свойства после каждого acquisition, который может приостановиться.
+
+Другие фильтры `Game.GetCritters` и все перегрузки `Game.GetAllNpc` читают mutable
+состояние кандидатов. Вызывающий должен заранее покрыть каждого криттера в snapshot
+реестра, включая исключённых фильтром роли, состояния или prototype кандидатов.
+Отсутствие cover вызывает обычное script exception до защищённого native property
+read; scan не получает отсутствующий lock. Для выборочной работы начните с `Any`,
+явно получите cover нужных сущностей и фильтруйте только при удержании необходимого
+им cover.
 
 ### Cover нативного входа
 

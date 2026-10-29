@@ -186,6 +186,23 @@ Event dispatch may run user callbacks that alter subscriptions, so the engine it
 
 A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
 
+### Persistence property callbacks
+
+`MakePersistent` changes `ExplicitlyPersistent` through the normal property
+setter before recursively updating the entity graph's persistence. A post-set
+reaction may destroy the root entity or its current map. The native owner retains
+the root across that callback, then checks its lifetime and validates current
+entity access before entering either recursive persistence pass. An ended root
+lifetime raises a lifecycle exception instead of continuing into the database
+pass and recreating deleted records.
+
+A surviving relocation is not itself a failure. The operation can continue on
+the live entity under the caller's valid current cover; it does not acquire an
+omitted lock. This is a `Basic` exception guarantee: a failure does not roll back
+the property change or valid callback effects, including relocation or destruction.
+Recheck lifetime, current parent links and required cover before continuing or
+retrying; a retained handle is not proof that the original entity graph survived.
+
 ### Persistence preload boundary
 
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.
@@ -284,6 +301,22 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - `Game.SyncRelease()` releases both the entity cover and any singleton lock entries held by the current script execution scope.
 
 `Game.Sync(...)` carries `[[Async]]`, so the marker propagates through its direct script callers even when acquisition completes without suspending the AngelScript context.
+
+### Registry handles and filtered critter scans
+
+`Game.GetCritters(CritterFindType.Any)` snapshots registered critter handles without
+reading their mutable properties or acquiring entity cover. A returned handle is
+not permission for later reads or mutations. Acquire the complete required cover,
+then recheck lifetime, membership and the properties used by the operation after
+any acquisition that may suspend.
+
+Other `Game.GetCritters` filters and all `Game.GetAllNpc` overloads inspect mutable
+candidate state. The caller must already cover every critter in the registry
+snapshot, including candidates excluded by the role, condition or prototype
+filter. Missing cover raises an ordinary script exception before a protected
+native property read; the scan never acquires a missing lock. For selective work,
+start with `Any`, acquire the intended entities explicitly, and filter only while
+their required cover is held.
 
 ### Native entry covers
 

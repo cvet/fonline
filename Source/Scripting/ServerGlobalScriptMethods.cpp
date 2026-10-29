@@ -688,15 +688,22 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
     return entity ? entity.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations
+// SyncScope: Any scans registry only; other filters require all candidate critters; never acquires cover
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
 {
     vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
+
+    if (findType == CritterFindType::Any) {
+        return MakeScriptHandleVector<Critter>(critters);
+    }
+
     vector<refcount_ptr<Critter>> result;
     result.reserve(critters.size());
 
     for (size_t i = 0; i != critters.size(); i++) {
+        ValidateEntityAccess(critters[i]);
+
         if (critters[i]->CheckFind(findType)) {
             result.emplace_back(std::move(critters[i]));
         }
@@ -1481,7 +1488,7 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ptr<ServerEngine> server, hstring 
     }
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server)
 {
@@ -1489,7 +1496,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> serve
     return MakeScriptRefHandleVectorAs<Critter, Critter>(npcs);
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid)
 {
@@ -1508,7 +1515,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> serve
     return result;
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, ptr<ProtoCritter> proto)
 {

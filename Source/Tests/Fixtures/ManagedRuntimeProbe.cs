@@ -39,6 +39,71 @@ public static class ManagedRuntimeProbe
     }
 
     [CallableFromNative]
+    internal static int RegistryAnyUncovered(long playerId, long npcId, long deadNpcId)
+    {
+        Critter? player = Game.GetCritter(new ident(playerId));
+        Critter? npc = Game.GetCritter(new ident(npcId));
+        Critter? deadNpc = Game.GetCritter(new ident(deadNpcId));
+        if (player == null || npc == null || deadNpc == null) {
+            return -1;
+        }
+        if (Game.IsEntityLocked(player) || Game.IsEntityLocked(npc) || Game.IsEntityLocked(deadNpc)) {
+            return -2;
+        }
+
+        List<Critter> values = Game.GetCritters(CritterFindType.Any);
+        if (values.Count != 3 || !values.Contains(player) || !values.Contains(npc) || !values.Contains(deadNpc)) {
+            return -3;
+        }
+        if (Game.IsEntityLocked(player) || Game.IsEntityLocked(npc) || Game.IsEntityLocked(deadNpc)) {
+            return -4;
+        }
+        return 0;
+    }
+
+    [CallableFromNative]
+    internal static string RegistryUncoveredFailure(int query, long npcId)
+    {
+        Critter? npc = Game.GetCritter(new ident(npcId));
+        if (npc == null || Game.IsEntityLocked(npc)) {
+            return "INVALID_FIXTURE_COVER";
+        }
+        try {
+            if (query == 10) {
+                return "NO_EXCEPTION:" + npc.ControlledByPlayer;
+            }
+            return "NO_EXCEPTION:" + RegistrySelectedCritters(query).Count;
+        }
+        catch (InvalidOperationException exception) {
+            return exception.GetType().Name + "|" + exception.Message;
+        }
+    }
+
+    [CallableFromNative]
+    internal static List<long> RegistryCoveredIds(int query)
+    {
+        List<long> result = new List<long>();
+        foreach (Critter critter in RegistrySelectedCritters(query)) {
+            result.Add(critter.Id.value);
+        }
+        return result;
+    }
+
+    private static List<Critter> RegistrySelectedCritters(int query) => query switch {
+        0 => Game.GetCritters(CritterFindType.Any),
+        1 => Game.GetCritters(CritterFindType.Players),
+        2 => Game.GetCritters(CritterFindType.Npc),
+        3 => Game.GetCritters(CritterFindType.Dead),
+        4 => Game.GetCritters(CritterFindType.NonDeadNpc),
+        5 => Game.GetCritters(CritterFindType.DeadPlayers),
+        6 => Game.GetCritters(CritterFindType.NonDeadPlayers),
+        7 => Game.GetAllNpc(),
+        8 => Game.GetAllNpc("UnitTestRat".hstr()),
+        9 => Game.GetAllNpc(Game.GetProtoCritter("UnitTestRat".hstr())),
+        _ => throw new InvalidOperationException("Unknown registry fixture query"),
+    };
+
+    [CallableFromNative]
     internal static int TestConditionalDatabaseRecords()
     {
         hstring collection = "test_collection".hstr();

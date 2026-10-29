@@ -13,7 +13,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 1013 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 1014 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 133 | Generated entity property contracts. |
 | [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
@@ -24,25 +24,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2579 |
+| Addressable symbols | 2580 |
 | Symbols with descriptions | 2579 |
-| Symbols missing descriptions | 0 |
+| Symbols missing descriptions | 1 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 43 |
-| Explicit contract declarations | 3 |
-| Explicitly classified symbols | 2579 |
+| Explicit contract declarations | 4 |
+| Explicitly classified symbols | 2580 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2578 |
+| <code>experimental</code> | 2579 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2579 stable IDs with SHA-256 <code>e24bb7f4fe64f2e016759642b52e0c8a63fed3492b7e2d8b6c37415ee3e6108c</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2580 stable IDs with SHA-256 <code>4e82e46e539992287f5eddca047282d44280a9c28a964660539a1b763080982a</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
