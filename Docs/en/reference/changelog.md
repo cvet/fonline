@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-29
 
+### Fixed
+
+- Correct the BuildTools README for the current documentation pipeline. It named 20 generated contract models for `docs_description_translations.py`, which inventories the 19 models of `MODEL_PATHS`; it promised a later switch of the description catalog from `registered-translations-current` to `complete`, although the committed catalog already enforces `complete`; and it said that all generated JSON and Markdown is checked in, although the `llms` endpoints, shared manifest, navigation/search indexes and validation catalogs are ignored outputs that `docs_prepare.py` rebuilds, with the public root endpoints under `Workspace/Documentation/`. Both language editions now state the actual model count and separate the versioned contract models, references, images and translations from those build outputs. `test_docs_description_translations.py` compares the model count stated in both READMEs with `MODEL_PATHS`, and the Russian README carries the translation hash of the new English text. The strict localization check, which rejects any stale hash, is unchanged.
+
+### Migration
+
+Base `c80e173595deea1853b93d70304e2c1c6d729162` (`2026.1.83-dev`) to `2026.1.84-dev`: documentation and documentation-test correction only. No source, settings, data or save conversion is required and no rebuild or redeployment is needed. Network protocol, runtime `0.0.82`, Managed ABI `9`, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous text.
+
+## 2026.1.83-dev - 2026-10-29
+
 ### Added
 
 - Add separate `CheckViewMapCritterVisibilityHook` and `CheckViewMapItemVisibilityHook` native hooks with opaque nullable Entity context and view center. Initial and live dynamic-subject admission share the hooks; critter visibility modes are retained and sent. Projects define null policy; generated fallbacks allow all subjects within Engine lifetime/radius bounds. Add `Player.RefreshViewMapVisibility(map)` for policy changes without map reload. See [bounded views](../explanation/runtime/server.md#bounded-map-views).

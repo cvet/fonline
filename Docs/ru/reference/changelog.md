@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"245001bff08c551ffb089536392c18a11fc3ce5293c3ddbcf19a310af92e6b31"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2de9b7bab30aab9df69fffd45f458539f5e0920a9661cc2744706efb03359aff"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-29
+
+### Исправлено
+
+- README BuildTools приведён в соответствие с текущим конвейером документации. Он называл 20 генерируемых контрактных моделей для `docs_description_translations.py`, хотя инструмент инвентаризирует 19 моделей из `MODEL_PATHS`; обещал последующий переход каталога описаний из `registered-translations-current` в `complete`, хотя закоммиченный каталог уже требует `complete`; и утверждал, что весь generated JSON и Markdown хранится в репозитории, хотя endpoints `llms`, общий manifest, индексы навигации и поиска и каталоги валидации — игнорируемые выходы, которые пересобирает `docs_prepare.py`, а публичные корневые endpoints лежат в `Workspace/Documentation/`. Обе редакции теперь называют фактическое число моделей и отделяют версионированные контрактные модели, справочники, изображения и переводы от этих build outputs. `test_docs_description_translations.py` сверяет число моделей, названное в обоих README, с `MODEL_PATHS`, а русский README несёт translation hash нового английского текста. Строгая проверка локализации, отклоняющая любой устаревший hash, не изменена.
+
+### Миграция
+
+База `c80e173595deea1853b93d70304e2c1c6d729162` (`2026.1.83-dev`) → `2026.1.84-dev`: исправление только документации и теста документации. Конверсия исходников, настроек, данных и сохранений не требуется, пересборка и развёртывание не нужны. Сетевой протокол, runtime `0.0.82`, Managed ABI `9`, поколение updater и схема ресурсов не меняются, поэтому смешанные развёртывания остаются совместимыми, а откат возвращает прежний текст.
+
+## 2026.1.83-dev - 2026-10-29
 
 ### Добавлено
 

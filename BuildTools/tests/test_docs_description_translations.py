@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -89,6 +90,20 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ),
             0,
         )
+
+    def test_buildtools_readmes_state_the_inventoried_domain_count(self) -> None:
+        domain_count = len(docs_description_translations.MODEL_PATHS)
+
+        for path, pattern in (
+            ("BuildTools/README.md", r"prose in (\d+) generated contract models"),
+            ("BuildTools/README.ru.md", r"текст в (\d+) генерируемых контрактных моделях"),
+        ):
+            with self.subTest(readme=path):
+                readme = (ENGINE_ROOT / path).read_text(encoding="utf-8")
+                match = re.search(pattern, readme)
+
+                self.assertIsNotNone(match, f"{path} must state the inventoried model count")
+                self.assertEqual(int(match.group(1)), domain_count)
 
     def test_application_uses_copy_and_translates_strings_and_lists(self) -> None:
         package = json.loads(
