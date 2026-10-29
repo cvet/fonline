@@ -2304,12 +2304,12 @@ namespace ScriptMethodsTest
         catch {
         }
 
-        notLoggedIn.ViewMapArea(map, mpos(10, 10), 3);
+        notLoggedIn.ViewMapArea(map, mpos(10, 10), 3, cr);
         if (notLoggedIn.GetControlledCritter() !is cr) return -10;
         notLoggedIn.ReturnFromViewMap();
         if (notLoggedIn.GetViewMapTarget() !is null) return -11;
         try {
-            notLoggedIn.ViewMapArea(map, mpos(10, 10), 0);
+            notLoggedIn.ViewMapArea(map, mpos(10, 10), 0, null);
             return -12;
         }
         catch {

@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2587,
-      "inventory_sha256": "16e792b35d308fad0a317c69cd0d9684b00237a214df5c78eb7072adbe70a69b",
+      "symbol_count": 2588,
+      "inventory_sha256": "fa9afd1d7fef8a1eb1a191536e9fb8748baea17e6a87ac09057b57b7eefedca3",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -52,7 +52,9 @@
       "ClientStartupSettingsHook",
       "SetupBakersHook",
       "CheckCritterVisibilityHook",
-      "CheckItemVisibilityHook"
+      "CheckItemVisibilityHook",
+      "CheckViewMapCritterVisibilityHook",
+      "CheckViewMapItemVisibilityHook"
     ],
     "migration_rule_kinds": [
       "Version",
@@ -70,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2587,
+    "symbol_count": 2588,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 769,
       "event": 121,
-      "method": 1014,
+      "method": 1015,
       "migration-rule": 27,
       "property": 133,
       "ref-field": 41,
@@ -87,21 +89,21 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2586,
+      "experimental": 2587,
       "internal": 1
     },
-    "explicit_contract_declaration_count": 3,
-    "explicit_contract_symbol_count": 2587,
+    "explicit_contract_declaration_count": 4,
+    "explicit_contract_symbol_count": 2588,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2586,
+      "experimental": 2587,
       "internal": 1
     },
-    "described_symbol_count": 2587,
+    "described_symbol_count": 2588,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
-    "contract_source_file_count": 2
+    "contract_source_file_count": 3
   },
   "metadata_source_files": [
     "Source/Client/Client.h",
@@ -1096,7 +1098,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 82",
+      "signature": "Version 0 0 83",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1118,7 +1120,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "82"
+      "replacement": "83"
     },
     {
       "id": "script.entity.Critter",
@@ -36192,7 +36194,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 152
+        "line": 154
       },
       "contract": {
         "explicit": true,
@@ -36239,7 +36241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 155
+        "line": 157
       },
       "contract": {
         "explicit": true,
@@ -36286,7 +36288,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 149
+        "line": 151
       },
       "contract": {
         "explicit": true,
@@ -36318,7 +36320,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 129
+        "line": 130
       },
       "contract": {
         "explicit": true,
@@ -36365,7 +36367,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 126
+        "line": 127
       },
       "contract": {
         "explicit": true,
@@ -36412,7 +36414,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 132
+        "line": 133
       },
       "contract": {
         "explicit": true,
@@ -89628,7 +89630,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 55
+        "line": 56
       },
       "contract": {
         "explicit": true,
@@ -89667,7 +89669,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 102
+        "line": 103
       },
       "contract": {
         "explicit": true,
@@ -89706,7 +89708,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 69
+        "line": 70
       },
       "contract": {
         "explicit": true,
@@ -89745,7 +89747,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 41
+        "line": 42
       },
       "contract": {
         "explicit": true,
@@ -89784,7 +89786,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 48
+        "line": 49
       },
       "contract": {
         "explicit": true,
@@ -89823,7 +89825,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 138
+        "line": 139
       },
       "contract": {
         "explicit": true,
@@ -89862,7 +89864,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 62
+        "line": 63
       },
       "contract": {
         "explicit": true,
@@ -89901,7 +89903,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 110
+        "line": 111
       },
       "contract": {
         "explicit": true,
@@ -89931,6 +89933,53 @@
       ]
     },
     {
+      "id": "script.method.server.Player.RefreshViewMapVisibility",
+      "family_id": "script.method.server.Player.RefreshViewMapVisibility",
+      "kind": "method",
+      "name": "RefreshViewMapVisibility",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Player",
+      "signature": "void Player.RefreshViewMapVisibility(Map map)",
+      "description": "SyncScope: requires self + map + the retained view context; recomputes subjects without reloading the map",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2026.1.83-dev",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
+        "line": 195
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "script.method.server.Player.RefreshViewMapVisibility",
+        "source": {
+          "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
+          "line": 193
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Player"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "map",
+          "type": "Map",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Player.ResetViewMap",
       "family_id": "script.method.server.Player.ResetViewMap",
       "kind": "method",
@@ -89948,7 +89997,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 207
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -89987,7 +90036,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 193
+        "line": 203
       },
       "contract": {
         "explicit": true,
@@ -90026,7 +90075,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 76
+        "line": 77
       },
       "contract": {
         "explicit": true,
@@ -90073,7 +90122,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 93
+        "line": 94
       },
       "contract": {
         "explicit": true,
@@ -90120,7 +90169,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 214
+        "line": 224
       },
       "contract": {
         "explicit": true,
@@ -90159,7 +90208,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 145
+        "line": 146
       },
       "contract": {
         "explicit": true,
@@ -90204,8 +90253,8 @@
         "server"
       ],
       "receiver": "Player",
-      "signature": "void Player.ViewMapArea(Map map, mpos hex, int32 radius)",
-      "description": "SyncScope: requires self + map + its location; a controlled critter must remain on the global map",
+      "signature": "void Player.ViewMapArea(Map map, mpos hex, int32 radius, Entity? context)",
+      "description": "SyncScope: requires self + map + its location + context; a controlled critter remains on the global map",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -90213,7 +90262,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerPlayerScriptMethods.cpp",
-        "line": 173
+        "line": 174
       },
       "contract": {
         "explicit": true,
@@ -90251,6 +90300,13 @@
           "name": "radius",
           "type": "int32",
           "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "context",
+          "type": "Entity?",
+          "nullable": true,
           "by_reference": false,
           "default": null
         }

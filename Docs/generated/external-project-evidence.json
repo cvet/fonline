@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "e8bfc2afcb3f0b1848ae3573816f41f9b547ca69d331c5003aab8cac1f40814d",
+  "source_sha256": "1337d633e7230cd15ef4d8f88141945b447aa1f5d196cc22a4ce30d14882b315",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -1767,21 +1767,55 @@
       ],
       "promotion_gate": "Every public byte has auditable provenance and each tagged example passes its exact-pin and current-Engine lanes.",
       "decision": "Governance and clean fixtures are Engine-owned; neither project's game assets are copied into public examples without explicit compatible licensing."
+    },
+    {
+      "id": "private-item-policy-and-map-spectators",
+      "title": "Private item knowledge and bounded map spectators",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Explode.cs"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "SourceExt/ServerExtension.cpp"
+        }
+      ],
+      "reusable_claim": "Projects can keep discovery private to a viewer; reusable map views carry opaque entity context into separate critter and item visibility hooks for snapshots and live updates without adopting the discovery policy.",
+      "disposition": "boundary-owned",
+      "owner": "runtime",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/explanation/runtime/server.md",
+        "Source/Tests/Test_ServerEntityLifetime.cpp"
+      ],
+      "planned_targets": [],
+      "external_targets": [
+        "last-frontier:Scripts/Explode.cs"
+      ],
+      "required_reviews": [
+        "runtime",
+        "scripting",
+        "quality",
+        "documentation"
+      ],
+      "promotion_gate": "Engine-owned MapViewContextControlsBothSubjectKinds and BoundedMapSpectatorsTrackVisibility cover context, lifetime, radius and null fallback. MapViewDeferredRefreshCannotChangeReplacementSubscription, MapViewDeferredRefreshSendsCurrentPosition and MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects cover deferred subscription identity and current serialized state. An embedding project separately validates its visibility policy and discovery lifecycle.",
+      "decision": "The pinned project snapshot demonstrates viewer-specific mine state and a native item-visibility hook; it does not attest a later checkpoint-preview implementation or current game fixes. The current Engine owns opaque retained context, separate synchronous read-only hooks, membership and critter modes, and independently covered deferred refresh, re-derived from its native source/tests. Discovery abilities, relation labels, mine ownership, null-context meaning and gameplay rules stay project-owned."
     }
   ],
   "summary": {
     "snapshot_count": 3,
-    "record_count": 31,
-    "source_reference_count": 194,
+    "record_count": 32,
+    "source_reference_count": 196,
     "records_by_disposition": {
-      "boundary-owned": 2,
+      "boundary-owned": 3,
       "project-owned": 3,
       "promoted": 25,
       "promotion-candidate": 1
     },
     "records_by_priority": {
       "P0": 19,
-      "P1": 5,
+      "P1": 6,
       "P2": 3,
       "P3": 4
     },
@@ -1792,7 +1826,7 @@
       "frontend": 5,
       "localization": 1,
       "quality": 4,
-      "runtime": 3,
+      "runtime": 4,
       "scripting": 4,
       "tooling": 3
     }

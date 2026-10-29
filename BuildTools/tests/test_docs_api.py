@@ -376,12 +376,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                     [],
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
-        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 3)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2587)
+        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 4)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2588)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2586, "internal": 1},
+            {"experimental": 2587, "internal": 1},
         )
         transfer_state = next(
             symbol for symbol in model["symbols"]
@@ -396,14 +396,124 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertEqual(debugger_symbol["stability"], "internal")
         self.assertTrue(debugger_symbol["contract"]["explicit"])
         experimental_symbols = [symbol for symbol in model["symbols"] if symbol["stability"] == "experimental"]
-        self.assertTrue(all(symbol["since"] == "2022.1.0.wip" for symbol in experimental_symbols))
+        view_refresh_ids = {
+            "script.method.server.Player.RefreshViewMapVisibility",
+        }
+        self.assertEqual(
+            {symbol["id"] for symbol in experimental_symbols if symbol["since"] == "2026.1.83-dev"},
+            view_refresh_ids,
+        )
+        self.assertTrue(all(symbol["since"] == "2022.1.0.wip"
+                            for symbol in experimental_symbols if symbol["id"] not in view_refresh_ids))
+        self.assertTrue(all(symbol["contract"]["selector"] == symbol["id"]
+                            for symbol in experimental_symbols if symbol["id"] in view_refresh_ids))
         allocator_id = "script.method.common.Game.GetAllocatorStatistics"
         allocator_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == allocator_id)
         self.assertEqual(allocator_symbol["contract"]["selector"], allocator_id)
         self.assertIn("empty dictionary", allocator_symbol["description"])
         self.assertIn("whole-process memory contract", allocator_symbol["contract"]["notes"])
         self.assertTrue(all(symbol["contract"]["selector"] == "scope:native-codegen"
-                            for symbol in experimental_symbols if symbol["id"] != allocator_id))
+                            for symbol in experimental_symbols
+                            if symbol["id"] != allocator_id and symbol["id"] not in view_refresh_ids))
+
+    def test_view_map_contract_requires_context_and_refresh(self) -> None:
+        model = json.loads(
+            (ENGINE_ROOT / "Docs/generated/api.json").read_text(encoding="utf-8")
+        )
+        methods = {
+            symbol["id"]: symbol
+            for symbol in model["symbols"]
+            if symbol["kind"] == "method"
+        }
+
+        view_area = methods["script.method.server.Player.ViewMapArea"]
+        self.assertEqual(len(view_area["arguments"]), 4)
+        self.assertEqual(
+            view_area["arguments"],
+            [
+                {
+                    "name": "map",
+                    "type": "Map",
+                    "nullable": False,
+                    "by_reference": False,
+                    "default": None,
+                },
+                {
+                    "name": "hex",
+                    "type": "mpos",
+                    "nullable": False,
+                    "by_reference": False,
+                    "default": None,
+                },
+                {
+                    "name": "radius",
+                    "type": "int32",
+                    "nullable": False,
+                    "by_reference": False,
+                    "default": None,
+                },
+                {
+                    "name": "context",
+                    "type": "Entity?",
+                    "nullable": True,
+                    "by_reference": False,
+                    "default": None,
+                },
+            ],
+        )
+        self.assertEqual(
+            view_area["signature"],
+            "void Player.ViewMapArea(Map map, mpos hex, int32 radius, Entity? context)",
+        )
+
+        refresh_id = "script.method.server.Player.RefreshViewMapVisibility"
+        self.assertIn(refresh_id, methods)
+        refresh = methods[refresh_id]
+        self.assertEqual(len(refresh["arguments"]), 1)
+        self.assertEqual(
+            refresh["arguments"],
+            [
+                {
+                    "name": "map",
+                    "type": "Map",
+                    "nullable": False,
+                    "by_reference": False,
+                    "default": None,
+                },
+            ],
+        )
+        self.assertEqual(
+            refresh["signature"],
+            "void Player.RefreshViewMapVisibility(Map map)",
+        )
+        self.assertEqual(refresh["since"], "2026.1.83-dev")
+
+        # Removed unpublished filter/allow-list methods must not re-enter the Player surface.
+        self.assertEqual(
+            {
+                method_id
+                for method_id in methods
+                if method_id.startswith("script.method.server.Player.")
+            },
+            {
+                "script.method.server.Player.Disconnect",
+                "script.method.server.Player.GetControlledCritter",
+                "script.method.server.Player.GetDisconnectReason",
+                "script.method.server.Player.GetHost",
+                "script.method.server.Player.GetPort",
+                "script.method.server.Player.GetViewMapTarget",
+                "script.method.server.Player.HardDisconnect",
+                "script.method.server.Player.RefreshCritterMoving",
+                "script.method.server.Player.RefreshViewMapVisibility",
+                "script.method.server.Player.ResetViewMap",
+                "script.method.server.Player.ReturnFromViewMap",
+                "script.method.server.Player.SetName",
+                "script.method.server.Player.SwitchCritter",
+                "script.method.server.Player.UnloadMap",
+                "script.method.server.Player.ViewMap",
+                "script.method.server.Player.ViewMapArea",
+            },
+        )
 
     def test_scope_contract_pins_inventory_and_allows_exact_override_without_hash_changes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -3139,6 +3139,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-player-refreshcrittermoving-e12f7da641"></a>
 - [`symbol-script-method-server-player-refreshcrittermoving-e12f7da641`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-refreshcrittermoving-e12f7da641)
 
+<a id="symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd"></a>
+- [`symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd)
+
 <a id="symbol-script-method-server-player-resetviewmap-0e49d3eb65"></a>
 - [`symbol-script-method-server-player-resetviewmap-0e49d3eb65`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-resetviewmap-0e49d3eb65)
 

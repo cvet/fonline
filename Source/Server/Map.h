@@ -108,6 +108,7 @@ public:
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
     [[nodiscard]] auto GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>;
     [[nodiscard]] bool IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id);
+    [[nodiscard]] auto GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -> CritterVisibilityMode;
     [[nodiscard]] auto GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>;
@@ -128,7 +129,8 @@ public:
     void RefreshCritterPlayerState(ptr<Critter> cr);
     void AddSpectatorPlayer(ptr<Player> player);
     void RemoveSpectatorPlayer(ptr<Player> player);
-    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius);
+    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius, nptr<Entity> context = nullptr);
+    void RefreshSpectatorVisibility(ptr<Player> player);
     void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
     void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
@@ -160,8 +162,12 @@ private:
     {
         mpos Hex {};
         int32_t Radius {};
+        refcount_nptr<Entity> Context {};
         unordered_set<ident_t> VisibleEntities {};
+        unordered_map<ident_t, CritterVisibilityMode> CritterModes {};
+        bool RefreshPending {};
     };
+
     struct Field
     {
         bool HasCritter {};
@@ -185,6 +191,14 @@ private:
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
+    auto GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>>;
+    auto HasSpectatorContextCover(const SpectatorArea& area) const -> bool;
+    auto GetSpectatorCritterVisibility(const SpectatorArea& area, ptr<const Critter> cr) const -> CritterVisibilityMode;
+    auto IsSpectatorItemVisible(const SpectatorArea& area, ptr<const Item> item) const -> bool;
+    void ScheduleSpectatorRefresh(ptr<Player> player, shared_ptr<SpectatorArea> area);
+    void RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorArea> area);
+    void RefreshSpectatorCritter(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Critter> cr, bool removed, bool send_movement);
+    void RefreshSpectatorItem(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Item> item, bool removed);
 
     ptr<const ProtoMap> _protoMap;
     ptr<StaticMap> _staticMap;
@@ -207,7 +221,7 @@ private:
     // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
     // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
-    unordered_map<ident_t, SpectatorArea> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
+    unordered_map<ident_t, shared_ptr<SpectatorArea>> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};
 };
 

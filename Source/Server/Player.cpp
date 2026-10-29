@@ -193,13 +193,26 @@ void Player::SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const P
     _sendIgnoreProperty.store(prop.get(), std::memory_order_release);
 }
 
-void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius)
+void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius, nptr<Entity> context)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     auto controlled_cr = GetControlledCritter();
     FO_VERIFY_AND_THROW(!controlled_cr || (radius > 0 && !controlled_cr->GetMapId()), "Map view requires a detached or global-map critter");
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed() && !map->IsDestroying(), "Cannot view an unavailable map", map->GetId());
+
+    FO_VERIFY_AND_THROW(radius >= 0 && radius <= std::numeric_limits<int16_t>::max() && map->GetSize().is_valid_pos(hex), "Invalid map view area", hex, radius);
+
+    if (context) {
+        context->ValidateAccess();
+        FO_VERIFY_AND_THROW(!context->IsDestroyed() && !context->IsDestroying(), "Map view context is unavailable");
+
+        if (auto server_context = context.dyn_cast<ServerEntity>()) {
+            FO_VERIFY_AND_THROW(server_context->GetEngine() == _engine, "Map view context belongs to another engine");
+        }
+    }
+
+    map->SetSpectatorArea(this, hex, radius, context);
 
     if (_viewMapTarget != map) {
         if (_viewMapTarget) {
@@ -210,7 +223,6 @@ void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius)
         _viewMapTarget->AddSpectatorPlayer(this);
     }
 
-    map->SetSpectatorArea(this, hex, radius);
     _viewMap.emplace(ViewMapContext {.MapId = map->GetId(), .Hex = hex, .Radius = radius});
     _viewMapRadius.store(radius, std::memory_order_release);
 }
@@ -219,6 +231,17 @@ bool Player::IsAreaView() const noexcept
 {
     FO_VALIDATE_ENTITY(NONE);
     return _viewMapRadius.load(std::memory_order_acquire) > 0;
+}
+
+void Player::RefreshViewMapVisibility(ptr<Map> map)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    FO_VERIFY_AND_THROW(_viewMap.has_value() && static_cast<bool>(_viewMapTarget), "Map view visibility refresh requires an active view", GetId());
+    FO_VERIFY_AND_THROW(_viewMapTarget == map && _viewMap->MapId == map->GetId(), "Map view visibility refresh targets another map", GetId(), map->GetId());
+
+    ValidateEntityAccess(map);
+    map->RefreshSpectatorVisibility(this);
 }
 
 void Player::ResetViewMap() noexcept
@@ -275,11 +298,11 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
     SendCritter(cr, is_chosen, vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full, true);
 }
 
-void Player::Send_AddObservedCritter(ptr<const Critter> cr)
+void Player::Send_AddObservedCritter(ptr<const Critter> cr, CritterVisibilityMode mode)
 {
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
-    SendCritter(cr, false, CritterVisibilityMode::Full, !IsAreaView());
+    SendCritter(cr, false, mode, !IsAreaView());
 }
 
 void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement)

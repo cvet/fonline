@@ -1144,14 +1144,6 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
         // Notify spectators
         map->RefreshAreaSpectators(cr);
-
-        if (map->HasSpectatorPlayers()) {
-            for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
-                if (!player->IsAreaView()) {
-                    player->Send_AddCritter(cr);
-                }
-            }
-        }
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -1262,13 +1254,6 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
         // Notify spectators
         map->RefreshAreaSpectators(cr, true);
-        if (map->HasSpectatorPlayers()) {
-            for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
-                if (!player->IsAreaView()) {
-                    player->Send_RemoveCritter(cr);
-                }
-            }
-        }
 
         map->RemoveCritter(cr);
         cr->SetMapId({});
@@ -1575,16 +1560,16 @@ void MapManager::ViewMap(ptr<Player> view_player, ptr<Map> map)
     ValidateEntityAccess(view_player);
     ValidateEntityAccess(map);
 
-    // Critters: spectator sees every non-destroyed critter on the map
     for (ptr<const Critter> cr : copy_hold_ref(map->GetCritters())) {
-        if (cr->IsDestroyed() || !map->IsSpectatorEntityVisible(view_player->GetId(), cr->GetId())) {
+        CritterVisibilityMode mode = map->GetSpectatorCritterVisibility(view_player->GetId(), cr->GetId());
+
+        if (cr->IsDestroyed() || mode == CritterVisibilityMode::None) {
             continue;
         }
 
-        view_player->Send_AddObservedCritter(cr);
+        view_player->Send_AddObservedCritter(cr, mode);
     }
 
-    // Items: spectator sees every non-destroyed item on the map
     for (ptr<const Item> item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed() || !map->IsSpectatorEntityVisible(view_player->GetId(), item->GetId())) {
             continue;

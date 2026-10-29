@@ -8470,6 +8470,10 @@
           "source_sha256": "ca9abf72ed21eaa55f003757509ca687373b9e2d98c2f7ae879a21b597f603fd",
           "translation": "SyncScope: требует self и cr; отправляет состояние движения криттера, видимого на текущей карте игрока."
         },
+        "/symbols/@id=script.method.server.Player.RefreshViewMapVisibility/description": {
+          "source_sha256": "1621c64c24d131a05866d0841a8cb4e208d851e5093033e52eff4c6373956b8b",
+          "translation": "SyncScope: требуются self, карта и удерживаемый контекст обзора; объекты пересчитываются без перезагрузки карты"
+        },
         "/symbols/@id=script.method.server.Player.ResetViewMap/description": {
           "source_sha256": "4e46fb9a041249f224ccb9c1453ca709908dc6f00372d840558dffb29c80b102",
           "translation": "SyncScope: требует self; очищает состояние представления карты без смены родителя сущности."
@@ -8495,8 +8499,8 @@
           "translation": "SyncScope: требует self, карту и локацию карты; отправляет данные загрузки карты и открывает для self представление карты."
         },
         "/symbols/@id=script.method.server.Player.ViewMapArea/description": {
-          "source_sha256": "0d982fc7967c8fabc1830287ef26b58e35e797bc1a60edff3c0162e64147f96b",
-          "translation": "SyncScope: требуются self, карта и её локация; управляемый персонаж должен оставаться на глобальной карте"
+          "source_sha256": "7a41998663fe0cdd8409a6219b947b3058317e2daa01d7ddb44a167be21c3ff6",
+          "translation": "SyncScope: требуются self, карта, её локация и контекст; управляемое существо остаётся на глобальной карте"
         },
         "/symbols/@id=script.property.Critter.AttachMaster/description": {
           "source_sha256": "7322c3094e8eed388df1fba240578d7855801138f86b0c715e6941ef08babbe4",
@@ -16453,6 +16457,22 @@
         "/hooks/@id=native-extension.hook.CheckItemVisibilityHook/description": {
           "source_sha256": "3de105d7f50aadbc323be41a4d32db540b8a55b1089e7a785a8be9b95a6fc37e",
           "translation": "Применяет проектную политику видимости между криттером-наблюдателем и предметом на карте."
+        },
+        "/hooks/@id=native-extension.hook.CheckViewMapCritterVisibilityHook/default_behavior": {
+          "source_sha256": "71c485e717450f4ed5eb72fb1a9fbaddfbba702a7825e7fc9cb8de1af2269c59",
+          "translation": "Возвращает CritterVisibilityMode::Full."
+        },
+        "/hooks/@id=native-extension.hook.CheckViewMapCritterVisibilityHook/description": {
+          "source_sha256": "12fb3f1fee2e653ebd6fe850cf2fd7449602b39f65f985bdf2a8b3575addc2bc",
+          "translation": "Применяет проектные правила видимости существ при просмотре карты с непрозрачным nullable-контекстом сущности и центром обзора. Хуки — синхронные читающие проверки с полным покрытием сущностей; смысл null задаёт проект."
+        },
+        "/hooks/@id=native-extension.hook.CheckViewMapItemVisibilityHook/default_behavior": {
+          "source_sha256": "f8df8ad98236e18212def7cb864721963b62e315dc2c47cd8f54fe4a299ba076",
+          "translation": "Возвращает true."
+        },
+        "/hooks/@id=native-extension.hook.CheckViewMapItemVisibilityHook/description": {
+          "source_sha256": "6e2a08db7f164fa3637bb6e9e569ac799b653ec6821fe9b52125daaee0890676",
+          "translation": "Применяет проектные правила видимости предметов при просмотре карты с непрозрачным nullable-контекстом сущности и центром обзора. Хуки — синхронные читающие проверки с полным покрытием сущностей; смысл null задаёт проект."
         },
         "/hooks/@id=native-extension.hook.ClientInitHook/default_behavior": {
           "source_sha256": "276bd557202f6c382534fe2af257c224f897618c74b825f5eef821d44b18c606",

@@ -78,14 +78,15 @@ public:
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
     [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
+    [[nodiscard]] auto IsAreaView() const noexcept -> bool;
 
     void SetName(string_view name);
     void SetControlledCritter(nptr<Critter> cr);
     void DetachCritter();
     void SwapConnection(ptr<Player> other) noexcept;
     void SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept;
-    void SetViewMap(ptr<Map> map, mpos hex, int32_t radius = 0);
-    [[nodiscard]] bool IsAreaView() const noexcept;
+    void SetViewMap(ptr<Map> map, mpos hex, int32_t radius = 0, nptr<Entity> context = nullptr);
+    void RefreshViewMapVisibility(ptr<Map> map);
     void ResetViewMap() noexcept;
     void ClearAllAssociations() noexcept;
 
@@ -95,7 +96,7 @@ public:
     void Send_MovingLease(ptr<const Critter> from_cr);
     void Send_Dir(ptr<const Critter> from_cr);
     void Send_AddCritter(ptr<const Critter> cr);
-    void Send_AddObservedCritter(ptr<const Critter> cr);
+    void Send_AddObservedCritter(ptr<const Critter> cr, CritterVisibilityMode mode = CritterVisibilityMode::Full);
     void Send_RemoveCritter(ptr<const Critter> cr);
     void Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibilityMode mode);
     void Send_LoadMap(nptr<const Map> map);

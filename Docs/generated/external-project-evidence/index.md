@@ -9,9 +9,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ## Coverage
 
 - Snapshots: **3**
-- Classified concerns: **31**
-- Source references: **194**
-- Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
+- Classified concerns: **32**
+- Source references: **196**
+- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
 
 ## Audited snapshots
 
@@ -56,6 +56,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `documentation-localization-governance` Documentation localization and terminology governance | `promoted` | `P0` | `localization` | `Docs/en/contributing/documentation/translation.md`<br>`Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md`<br>`Docs/translation-glossary.json` | `localization`<br>`documentation`<br>`quality` |
 | `native-debugging-workflows` Native, mixed-stack, and AngelScript debugging workflows | `promoted` | `P0` | `quality` | `Docs/en/troubleshooting/debugging.md`<br>`BuildTools/tests/test_docs_debugging.py` | `quality`<br>`platform`<br>`networking`<br>`documentation` |
 | `asset-provenance-and-public-examples` Tutorial assets, provenance, and public examples | `promoted` | `P0` | `build-release` | `Docs/en/how-to/build/public-example-repositories.md`<br>`Examples/PublicRepositories.json`<br>`Examples/PublicRepositoryTemplate` | `build-release`<br>`content-data`<br>`documentation`<br>`quality` |
+| `private-item-policy-and-map-spectators` Private item knowledge and bounded map spectators | `boundary-owned` | `P1` | `runtime` | `Docs/en/explanation/runtime/server.md`<br>`Source/Tests/Test_ServerEntityLifetime.cpp` | `runtime`<br>`scripting`<br>`quality`<br>`documentation` |
 
 ## Decisions and gates
 
@@ -275,6 +276,13 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Reusable claim: Public examples need redistributable minimal assets, exact Engine pins, byte-verified provenance, immutable lesson tags, and pinned/current compatibility evidence.
 - Decision: Governance and clean fixtures are Engine-owned; neither project's game assets are copied into public examples without explicit compatible licensing.
 - Promotion gate: Every public byte has auditable provenance and each tagged example passes its exact-pin and current-Engine lanes.
+
+### Private item knowledge and bounded map spectators
+
+- Sources: `last-frontier:Scripts/Explode.cs`, `last-frontier:SourceExt/ServerExtension.cpp`
+- Reusable claim: Projects can keep discovery private to a viewer; reusable map views carry opaque entity context into separate critter and item visibility hooks for snapshots and live updates without adopting the discovery policy.
+- Decision: The pinned project snapshot demonstrates viewer-specific mine state and a native item-visibility hook; it does not attest a later checkpoint-preview implementation or current game fixes. The current Engine owns opaque retained context, separate synchronous read-only hooks, membership and critter modes, and independently covered deferred refresh, re-derived from its native source/tests. Discovery abilities, relation labels, mine ownership, null-context meaning and gameplay rules stay project-owned.
+- Promotion gate: Engine-owned MapViewContextControlsBothSubjectKinds and BoundedMapSpectatorsTrackVisibility cover context, lifetime, radius and null fallback. MapViewDeferredRefreshCannotChangeReplacementSubscription, MapViewDeferredRefreshSendsCurrentPosition and MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects cover deferred subscription identity and current serialized state. An embedding project separately validates its visibility policy and discovery lifecycle.
 
 ## Owner review requirements
 

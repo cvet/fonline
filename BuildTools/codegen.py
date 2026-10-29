@@ -36,6 +36,8 @@ ENGINE_HOOK_NAMES = (
     'SetupBakersHook',
     'CheckCritterVisibilityHook',
     'CheckItemVisibilityHook',
+    'CheckViewMapCritterVisibilityHook',
+    'CheckViewMapItemVisibilityHook',
 )
 INTERNAL_CONFIG_CAPACITY = 20000
 
@@ -1798,8 +1800,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
-                            'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
+            assert name in ENGINE_HOOK_NAMES, 'Invalid engine hook ' + name
 
             add_codegen_tag('EngineHook', EngineHookTag(name, [], comment), get_tag_source(tag_meta))
             if name != 'ApplicationShutdownHook':
@@ -2325,6 +2326,18 @@ def generate_generic_code() -> None:
         global_lines.append('class Critter;')
         global_lines.append('class Item;')
         global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
+    if not is_engine_hook_enabled('CheckViewMapCritterVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Entity;')
+        global_lines.append('class Critter;')
+        global_lines.append('CritterVisibilityMode CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
+    if not is_engine_hook_enabled('CheckViewMapItemVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Entity;')
+        global_lines.append('class Item;')
+        global_lines.append('bool CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) { return true; }')
     global_lines.append('')
     
     # Engine properties

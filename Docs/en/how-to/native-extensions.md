@@ -173,6 +173,8 @@ Hook bodies run at lifecycle or policy boundaries. They must preserve engine inv
 - configuration hooks run while parsing settings and must return the documented changed/not-changed signal;
 - baker setup should append only requested project bakers and retain shared baking context ownership correctly.
 
+Map-view visibility has its own critter and item hooks, separate from ordinary observer visibility. They receive a nullable Entity context and view center; the project casts/interprets the context and chooses null behavior. The server supplies complete cover and requires synchronous read-only hooks. See [map-view visibility](../explanation/runtime/server.md#bounded-map-views).
+
 ## State and lifetime
 
 Prefer state owned by the engine instance or a project manager reachable from it. Client/server extension data can be attached through the engine's user-data ownership slot with an engine owning pointer and an explicit deleter. This keeps parallel test instances isolated and gives shutdown a deterministic owner.

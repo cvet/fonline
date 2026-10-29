@@ -14160,6 +14160,54 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md Current 2026-10-28 document the default-off switch and explicit opt-in; the bilingual baking guide and generated settings/package references own the behavior.",
       "compatibility": "The additive setting intentionally changes the default export policy. Both modes require current-bake manifests and retain target/pack-role exclusions. Runtime 0.0.82, Managed ABI 9 and usage manifest version 1 remain unchanged from published 2026.1.78-dev; no save conversion. Deploy or roll back matching configuration, generated bindings, binaries and bakes together.",
       "owner": "build-content"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.017d1d2f9a775756",
+      "baseline_contract_sha256": "d1a2bfa664c8e47e1724b452dce37cc2274f60be2a6239656fc2a9ce3deba98b",
+      "current_contract_sha256": "002163056d3cf1602dacf5f4a82331877e8074580245b28a7b77d19c84db3513",
+      "classification": "breaking",
+      "rationale": "The revision-pinned native-codegen inventory adds Player.RefreshViewMapVisibility and two context-aware native visibility hooks; the strict API scope increases from2587 to2588 exported symbols.",
+      "migration": "Update every bounded ViewMapArea call with an explicit context; cover its live state when opening or refreshing. Implement CheckViewMapCritterVisibilityHook and CheckViewMapItemVisibilityHook with synchronous covered reads and an explicit null policy. Use Player.RefreshViewMapVisibility after policy changes. See Docs/en/explanation/runtime/server.md#bounded-map-views and the2026.1.83-dev migration notes.",
+      "release_note": "Docs/en/reference/changelog.md Current2026-10-29 documents both hooks, the required context and refresh behavior.",
+      "compatibility": "Rebuild native roles, regenerate script bindings and rebake matching metadata/assemblies together. Central runtime marker advances from0.0.82 to0.0.83; Managed ABI9 and persisted/resource schemas are unchanged. Restore matching binaries and bakes together on rollback.",
+      "owner": "runtime-map-visibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.4c6de9cd2aad9f4d",
+      "baseline_contract_sha256": "d1a2bfa664c8e47e1724b452dce37cc2274f60be2a6239656fc2a9ce3deba98b",
+      "current_contract_sha256": "002163056d3cf1602dacf5f4a82331877e8074580245b28a7b77d19c84db3513",
+      "classification": "breaking",
+      "rationale": "Player.ViewMapArea requires a nullable Entity context as its fourth argument so projects can authorize map-view subjects through separate critter and item hooks instead of an item-ID filter.",
+      "migration": "Update every bounded ViewMapArea call with an explicit context; cover its live state when opening or refreshing. Implement CheckViewMapCritterVisibilityHook and CheckViewMapItemVisibilityHook with synchronous covered reads and an explicit null policy. Use Player.RefreshViewMapVisibility after policy changes. See Docs/en/explanation/runtime/server.md#bounded-map-views and the2026.1.83-dev migration notes.",
+      "release_note": "Docs/en/reference/changelog.md Current2026-10-29 documents both hooks, the required context and refresh behavior.",
+      "compatibility": "Rebuild native roles, regenerate script bindings and rebake matching metadata/assemblies together. Central runtime marker advances from0.0.82 to0.0.83; Managed ABI9 and persisted/resource schemas are unchanged. Restore matching binaries and bakes together on rollback.",
+      "owner": "runtime-map-visibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.9a74179d4a254d0a",
+      "baseline_contract_sha256": "d1a2bfa664c8e47e1724b452dce37cc2274f60be2a6239656fc2a9ce3deba98b",
+      "current_contract_sha256": "002163056d3cf1602dacf5f4a82331877e8074580245b28a7b77d19c84db3513",
+      "classification": "breaking",
+      "rationale": "The separate central runtime marker advances from0.0.82 to0.0.83 because map-view context and native subject-admission hooks change the runtime contract; the automatic digest does not replace this explicit compatibility boundary.",
+      "migration": "Update every bounded ViewMapArea call with an explicit context; cover its live state when opening or refreshing. Implement CheckViewMapCritterVisibilityHook and CheckViewMapItemVisibilityHook with synchronous covered reads and an explicit null policy. Use Player.RefreshViewMapVisibility after policy changes. See Docs/en/explanation/runtime/server.md#bounded-map-views and the2026.1.83-dev migration notes.",
+      "release_note": "Docs/en/reference/changelog.md Current2026-10-29 documents both hooks, the required context and refresh behavior.",
+      "compatibility": "Rebuild native roles, regenerate script bindings and rebake matching metadata/assemblies together. Central runtime marker advances from0.0.82 to0.0.83; Managed ABI9 and persisted/resource schemas are unchanged. Restore matching binaries and bakes together on rollback.",
+      "owner": "runtime-map-visibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.parser-contract.b8d844eb969282e7",
+      "baseline_contract_sha256": "d1a2bfa664c8e47e1724b452dce37cc2274f60be2a6239656fc2a9ce3deba98b",
+      "current_contract_sha256": "002163056d3cf1602dacf5f4a82331877e8074580245b28a7b77d19c84db3513",
+      "classification": "breaking",
+      "rationale": "The explicit experimental override assigns the new Player.RefreshViewMapVisibility method to2026.1.83-dev while retaining the existing native-codegen scope contract for other symbols.",
+      "migration": "Update every bounded ViewMapArea call with an explicit context; cover its live state when opening or refreshing. Implement CheckViewMapCritterVisibilityHook and CheckViewMapItemVisibilityHook with synchronous covered reads and an explicit null policy. Use Player.RefreshViewMapVisibility after policy changes. See Docs/en/explanation/runtime/server.md#bounded-map-views and the2026.1.83-dev migration notes.",
+      "release_note": "Docs/en/reference/changelog.md Current2026-10-29 documents both hooks, the required context and refresh behavior.",
+      "compatibility": "Rebuild native roles, regenerate script bindings and rebake matching metadata/assemblies together. Central runtime marker advances from0.0.82 to0.0.83; Managed ABI9 and persisted/resource schemas are unchanged. Restore matching binaries and bakes together on rollback.",
+      "owner": "runtime-map-visibility"
     }
   ]
 }

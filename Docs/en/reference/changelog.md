@@ -12,7 +12,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-28
+## Current - 2026-10-29
+
+### Added
+
+- Add separate `CheckViewMapCritterVisibilityHook` and `CheckViewMapItemVisibilityHook` native hooks with opaque nullable Entity context and view center. Initial and live dynamic-subject admission share the hooks; critter visibility modes are retained and sent. Projects define null policy; generated fallbacks allow all subjects within Engine lifetime/radius bounds. Add `Player.RefreshViewMapVisibility(map)` for policy changes without map reload. See [bounded views](../explanation/runtime/server.md#bounded-map-views).
+
+### Migration
+
+- This step follows `629ea6f569f7af460a41fc1d582dd948fdcc6a97` (`2026.1.82-dev`) in `2026.1.83-dev`. Update every `ViewMapArea(map, hex, radius)` call to `ViewMapArea(map, hex, radius, context)` on Managed C# and AngelScript; use null only when the project's hooks intend an unrestricted view. `ViewMap(map, hex)` remains the detached full-map entry and supplies null internally. Remove the unpublished `ViewMapAreaFilteredItems` / `RefreshViewMapItemFilter` integration: context-aware hooks and `RefreshViewMapVisibility` replace its property selector and ID lists, with no aliases. Native `Player::SetViewMap` / `Map::SetSpectatorArea` take `nptr<Entity>` context after radius. Cover the live context for opening and explicit refresh. Hooks must synchronously read covered state without mutations, callbacks, yielding or lock acquisition; deferred native dispatch owns missing independent cover and validates subscription identity.
+- Rebuild all affected native roles, regenerate both scripting backends and bake matching server/client metadata and assemblies. Hook presence and changed API shape change the automatic runtime digest; the current change's central migration marker is `0.0.83`, Managed ABI remains `9`. No network message or resource schema changes. Mixed preceding binaries/resources are unsupported; rollback restores a matching set together. Context and subscriptions are runtime-only, so no persisted-data conversion is needed. Full-map subjects now pass the same hooks; projects that override them must explicitly choose null behavior.
+
+## 2026.1.82-dev - 2026-10-28
 
 ### Fixed
 

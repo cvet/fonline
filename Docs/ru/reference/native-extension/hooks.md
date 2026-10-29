@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-native-extension-hooks","locale":"ru","source_path":"Docs/en/reference/native-extension/hooks.md","source_sha256":"0a4cb39b7625651e4fefc05935b925b6766a54d21d0257f4c7a698456da85f71"} -->
+<!-- docs-translation: {"document_id":"generated-native-extension-hooks","locale":"ru","source_path":"Docs/en/reference/native-extension/hooks.md","source_sha256":"137bb3a78bfe1bcaccba58c16da25ceab3d8fc02f01a093c4d3d0d3f3f27a5b8"} -->
 
 # Хуки движка
 
@@ -162,6 +162,44 @@ FO_END_NAMESPACE
 FO_BEGIN_NAMESPACE
 ///@ EngineHook
 FO_SCRIPT_API bool CheckItemVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, ptr<const Critter> observer, ptr<const Item> item);
+FO_END_NAMESPACE
+```
+
+По умолчанию: Возвращает true.
+
+<a id="entry-native-extension-hook-checkviewmapcrittervisibilityhook-22eaa6e045"></a>
+## `CheckViewMapCritterVisibilityHook`
+
+Применяет проектные правила видимости существ при просмотре карты с непрозрачным nullable-контекстом сущности и центром обзора. Хуки — синхронные читающие проверки с полным покрытием сущностей; смысл null задаёт проект.
+
+- Стабильный ID: `native-extension.hook.CheckViewMapCritterVisibilityHook`
+- Роль: `SERVER`
+- Наличие входит в хеш совместимости: `yes`
+- Места вызова: [Source/Server/Map.cpp](https://github.com/cvet/fonline/blob/master/Source/Server/Map.cpp)
+
+```cpp
+FO_BEGIN_NAMESPACE
+///@ EngineHook
+FO_SCRIPT_API CritterVisibilityMode CheckViewMapCritterVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, nptr<const Entity> context, mpos hex, ptr<const Critter> target);
+FO_END_NAMESPACE
+```
+
+По умолчанию: Возвращает CritterVisibilityMode::Full.
+
+<a id="entry-native-extension-hook-checkviewmapitemvisibilityhook-dd501614f5"></a>
+## `CheckViewMapItemVisibilityHook`
+
+Применяет проектные правила видимости предметов при просмотре карты с непрозрачным nullable-контекстом сущности и центром обзора. Хуки — синхронные читающие проверки с полным покрытием сущностей; смысл null задаёт проект.
+
+- Стабильный ID: `native-extension.hook.CheckViewMapItemVisibilityHook`
+- Роль: `SERVER`
+- Наличие входит в хеш совместимости: `yes`
+- Места вызова: [Source/Server/Map.cpp](https://github.com/cvet/fonline/blob/master/Source/Server/Map.cpp)
+
+```cpp
+FO_BEGIN_NAMESPACE
+///@ EngineHook
+FO_SCRIPT_API bool CheckViewMapItemVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, nptr<const Entity> context, mpos hex, ptr<const Item> target);
 FO_END_NAMESPACE
 ```
 

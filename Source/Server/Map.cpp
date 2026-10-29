@@ -44,6 +44,14 @@
 
 FO_BEGIN_NAMESPACE
 
+auto CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) -> CritterVisibilityMode;
+auto CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) -> bool;
+
+static auto IsMapViewContextAvailable(nptr<const Entity> context) -> bool
+{
+    return !context || (!context->IsDestroyed() && !context->IsDestroying());
+}
+
 Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
@@ -270,30 +278,75 @@ void Map::RemoveSpectatorPlayer(ptr<Player> player)
     _spectatorAreas.erase(player->GetId());
 }
 
-void Map::SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius)
+void Map::SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius, nptr<Entity> context)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
+    auto area = safe_alloc::make_shared<SpectatorArea>();
+    area->Hex = hex;
+    area->Radius = radius;
+    area->Context = context.try_hold_ref();
+
+    if (context) {
+        context->ValidateAccess();
+    }
+
+    for (auto cr : copy_hold_ref(_critters)) {
+        CritterVisibilityMode mode = GetSpectatorCritterVisibility(*area, cr);
+
+        if (mode != CritterVisibilityMode::None) {
+            area->VisibleEntities.emplace(cr->GetId());
+            area->CritterModes.emplace(cr->GetId(), mode);
+        }
+    }
+    for (auto item : copy_hold_ref(_items)) {
+        if (IsSpectatorItemVisible(*area, item)) {
+            area->VisibleEntities.emplace(item->GetId());
+        }
+    }
+
     scoped_lock lock {_spectatorLock};
 
-    _spectatorAreas.erase(player->GetId());
+    _spectatorAreas.insert_or_assign(player->GetId(), std::move(area));
+}
 
-    if (radius <= 0) {
-        return;
+void Map::RefreshSpectatorVisibility(ptr<Player> player)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    shared_ptr<SpectatorArea> area;
+
+    {
+        shared_lock lock {_spectatorLock};
+
+        auto it = _spectatorAreas.find(player->GetId());
+        FO_VERIFY_AND_THROW(it != _spectatorAreas.end(), "Map view subscription is missing", GetId(), player->GetId());
+        area = it->second;
     }
 
-    auto& area = _spectatorAreas.emplace(player->GetId(), SpectatorArea {.Hex = hex, .Radius = radius}).first->second;
+    if (area->Context && !area->Context->IsDestroyed() && !area->Context->IsDestroying()) {
+        area->Context->ValidateAccess();
+    }
 
-    for (auto cr : _critters) {
-        if (!cr->IsDestroyed() && !cr->IsDestroying() && GeometryHelper::GetDistance(hex, cr->GetHex()) <= radius) {
-            area.VisibleEntities.emplace(cr->GetId());
+    RefreshSpectatorVisibility(player, area);
+}
+
+auto Map::GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>>
+{
+    shared_lock lock {_spectatorLock};
+
+    vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>> areas;
+    areas.reserve(_spectatorPlayers.size());
+
+    for (auto player : _spectatorPlayers) {
+        auto it = _spectatorAreas.find(player->GetId());
+
+        if (it != _spectatorAreas.end()) {
+            areas.emplace_back(player.hold_ref(), it->second);
         }
     }
-    for (auto item : _items) {
-        if (!item->IsDestroyed() && !item->IsDestroying() && item->CanSendItem(true) && GeometryHelper::GetDistance(hex, item->GetHex()) <= radius) {
-            area.VisibleEntities.emplace(item->GetId());
-        }
-    }
+
+    return areas;
 }
 
 bool Map::IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id)
@@ -303,7 +356,23 @@ bool Map::IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id)
     shared_lock lock {_spectatorLock};
 
     auto area = _spectatorAreas.find(player_id);
-    return area == _spectatorAreas.end() || area->second.VisibleEntities.contains(entity_id);
+    return area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id);
+}
+
+auto Map::GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -> CritterVisibilityMode
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    shared_lock lock {_spectatorLock};
+
+    auto area = _spectatorAreas.find(player_id);
+
+    if (area == _spectatorAreas.end() || !IsMapViewContextAvailable(area->second->Context)) {
+        return CritterVisibilityMode::None;
+    }
+
+    auto mode = area->second->CritterModes.find(critter_id);
+    return mode != area->second->CritterModes.end() ? mode->second : CritterVisibilityMode::None;
 }
 
 auto Map::GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>
@@ -317,7 +386,7 @@ auto Map::GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refc
     for (auto player : _spectatorPlayers) {
         auto area = _spectatorAreas.find(player->GetId());
 
-        if (area == _spectatorAreas.end() || (area->second.VisibleEntities.contains(entity_id) && GeometryHelper::GetDistance(area->second.Hex, hex) <= area->second.Radius)) {
+        if (area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id) && (area->second->Radius == 0 || GeometryHelper::GetDistance(area->second->Hex, hex) <= area->second->Radius)) {
             recipients.emplace_back(player.hold_ref());
         }
     }
@@ -330,29 +399,13 @@ void Map::RefreshAreaSpectators(ptr<const Critter> cr, bool removed)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    scoped_lock lock {_spectatorLock};
-
-    for (auto player : _spectatorPlayers) {
-        auto it = _spectatorAreas.find(player->GetId());
-
-        if (it == _spectatorAreas.end()) {
-            continue;
+    for (auto& [player, area] : GetSpectatorAreas()) {
+        if (removed || HasSpectatorContextCover(*area)) {
+            RefreshSpectatorCritter(player, area, cr, removed, true);
         }
-
-        auto& area = it->second;
-        bool visible = !removed && !cr->IsDestroyed() && !cr->IsDestroying() && GeometryHelper::GetDistance(area.Hex, cr->GetHex()) <= area.Radius;
-        bool known = area.VisibleEntities.contains(cr->GetId());
-
-        if (visible && !known) {
-            area.VisibleEntities.emplace(cr->GetId());
-            player->Send_AddObservedCritter(cr);
-        }
-        else if (!visible && known) {
-            area.VisibleEntities.erase(cr->GetId());
-            player->Send_RemoveCritter(cr);
-        }
-        else if (visible) {
-            player->Send_Moving(cr);
+        else {
+            RefreshSpectatorCritter(player, area, cr, true, false);
+            ScheduleSpectatorRefresh(player, area);
         }
     }
 }
@@ -362,27 +415,176 @@ void Map::RefreshAreaSpectators(ptr<const Item> item, bool removed)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
+    for (auto& [player, area] : GetSpectatorAreas()) {
+        if (removed || HasSpectatorContextCover(*area)) {
+            RefreshSpectatorItem(player, area, item, removed);
+        }
+        else {
+            RefreshSpectatorItem(player, area, item, true);
+            ScheduleSpectatorRefresh(player, area);
+        }
+    }
+}
+
+auto Map::HasSpectatorContextCover(const SpectatorArea& area) const -> bool
+{
+    if (!area.Context || area.Context->IsDestroyed() || area.Context->IsDestroying()) {
+        return true;
+    }
+
+    auto server_context = area.Context.dyn_cast<const ServerEntity>();
+    return !server_context || IsEntityAccessValid(server_context, false);
+}
+
+auto Map::GetSpectatorCritterVisibility(const SpectatorArea& area, ptr<const Critter> cr) const -> CritterVisibilityMode
+{
+    if (cr->IsDestroyed() || cr->IsDestroying() || !IsMapViewContextAvailable(area.Context) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, cr->GetHex()) > area.Radius)) {
+        return CritterVisibilityMode::None;
+    }
+
+    return CheckViewMapCritterVisibilityHook(_engine, this, area.Context, area.Hex, cr);
+}
+
+auto Map::IsSpectatorItemVisible(const SpectatorArea& area, ptr<const Item> item) const -> bool
+{
+    if (item->IsDestroyed() || item->IsDestroying() || !IsMapViewContextAvailable(area.Context) || (area.Radius > 0 && GeometryHelper::GetDistance(area.Hex, item->GetHex()) > area.Radius)) {
+        return false;
+    }
+
+    return CheckViewMapItemVisibilityHook(_engine, this, area.Context, area.Hex, item);
+}
+
+void Map::ScheduleSpectatorRefresh(ptr<Player> player, shared_ptr<SpectatorArea> area)
+{
+    {
+        scoped_lock lock {_spectatorLock};
+
+        auto current = _spectatorAreas.find(player->GetId());
+
+        if (current == _spectatorAreas.end() || current->second != area || area->RefreshPending) {
+            return;
+        }
+
+        area->RefreshPending = true;
+    }
+
+    bool submitted = false;
+    auto clear_pending_on_failure = scope_exit([&]() noexcept {
+        if (!submitted) {
+            scoped_lock lock {_spectatorLock};
+
+            area->RefreshPending = false;
+        }
+    });
+
+    // A fresh dispatcher acquires the complete cover without releasing the mutating caller's locks
+    _engine->ScheduleDelayedCallback(timespan::zero, [map = refcount_ptr<Map>::from_addref(this), recipient = player.hold_ref(), area]() mutable FO_DEFERRED {
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, recipient};
+
+        if (auto context = area->Context.dyn_cast<ServerEntity>()) {
+            roots.emplace_back(context);
+        }
+
+        sync.GetContext().SyncEntities(roots);
+
+        if (map->IsDestroyed() || map->IsDestroying() || recipient->IsDestroyed() || recipient->IsDestroying()) {
+            return;
+        }
+
+        map->RefreshSpectatorVisibility(recipient, area);
+    });
+
+    submitted = true;
+}
+
+void Map::RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorArea> area)
+{
+    {
+        scoped_lock lock {_spectatorLock};
+
+        auto current = _spectatorAreas.find(player->GetId());
+
+        if (current == _spectatorAreas.end() || current->second != area) {
+            return;
+        }
+
+        area->RefreshPending = true;
+    }
+
+    auto finish_refresh = scope_exit([&]() noexcept {
+        scoped_lock lock {_spectatorLock};
+
+        area->RefreshPending = false;
+    });
+
+    for (auto cr : copy_hold_ref(_critters)) {
+        RefreshSpectatorCritter(player, area, cr, false, false);
+    }
+    for (auto item : copy_hold_ref(_items)) {
+        RefreshSpectatorItem(player, area, item, false);
+    }
+}
+
+void Map::RefreshSpectatorCritter(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Critter> cr, bool removed, bool send_movement)
+{
+    CritterVisibilityMode mode = removed ? CritterVisibilityMode::None : GetSpectatorCritterVisibility(*area, cr);
+
     scoped_lock lock {_spectatorLock};
 
-    for (auto player : _spectatorPlayers) {
-        auto it = _spectatorAreas.find(player->GetId());
+    auto current = _spectatorAreas.find(player->GetId());
 
-        if (it == _spectatorAreas.end()) {
-            continue;
-        }
+    if (current == _spectatorAreas.end() || current->second != area) {
+        return;
+    }
 
-        auto& area = it->second;
-        bool visible = !removed && !item->IsDestroyed() && !item->IsDestroying() && item->CanSendItem(true) && GeometryHelper::GetDistance(area.Hex, item->GetHex()) <= area.Radius;
-        bool known = area.VisibleEntities.contains(item->GetId());
+    auto previous = area->CritterModes.find(cr->GetId());
+    CritterVisibilityMode old_mode = previous != area->CritterModes.end() ? previous->second : CritterVisibilityMode::None;
 
-        if (visible && !known) {
-            area.VisibleEntities.emplace(item->GetId());
-            player->Send_AddItemOnMap(item);
+    if (mode == CritterVisibilityMode::None) {
+        if (old_mode != CritterVisibilityMode::None) {
+            area->VisibleEntities.erase(cr->GetId());
+            area->CritterModes.erase(cr->GetId());
+            player->Send_RemoveCritter(cr);
         }
-        else if (!visible && known) {
-            area.VisibleEntities.erase(item->GetId());
-            player->Send_RemoveItemFromMap(item);
+    }
+    else if (old_mode == CritterVisibilityMode::None) {
+        area->VisibleEntities.emplace(cr->GetId());
+        area->CritterModes.emplace(cr->GetId(), mode);
+        player->Send_AddObservedCritter(cr, mode);
+    }
+    else {
+        if (mode != old_mode) {
+            previous->second = mode;
+            player->Send_CritterVisibilityMode(cr, mode);
         }
+        if (send_movement && area->Radius > 0) {
+            player->Send_Moving(cr);
+        }
+    }
+}
+
+void Map::RefreshSpectatorItem(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Item> item, bool removed)
+{
+    bool visible = !removed && IsSpectatorItemVisible(*area, item);
+
+    scoped_lock lock {_spectatorLock};
+
+    auto current = _spectatorAreas.find(player->GetId());
+
+    if (current == _spectatorAreas.end() || current->second != area) {
+        return;
+    }
+
+    bool known = area->VisibleEntities.contains(item->GetId());
+
+    if (visible && !known) {
+        area->VisibleEntities.emplace(item->GetId());
+        player->Send_AddItemOnMap(item);
+    }
+    else if (!visible && known) {
+        area->VisibleEntities.erase(item->GetId());
+        player->Send_RemoveItemFromMap(item);
     }
 }
 
@@ -635,11 +837,6 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 
     // Notify spectators
     RefreshAreaSpectators(item);
-    for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
-        if (!player->IsAreaView()) {
-            player->Send_AddItemOnMap(item);
-        }
-    }
 }
 
 void Map::SetItem(ptr<Item> item)
@@ -769,13 +966,6 @@ void Map::RemoveItem(ident_t item_id)
             if (IsDestroyed() || item->IsDestroyed()) {
                 return;
             }
-        }
-    }
-
-    // Notify spectators
-    for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
-        if (!player->IsAreaView()) {
-            player->Send_RemoveItemFromMap(item);
         }
     }
 }
