@@ -16,11 +16,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Reject a non-handshake first application message as a protocol error without reporting an engine exception or affecting other connections.
 - Qualify the integration test server helper so its call remains unambiguous in Unity builds. Check snippet corpus coverage without fixing the test to one documentation revision, and regenerate the snippet report for the current corpus.
 
 ### Migration
 
-- Base `522d825ef32dfdcd3889ffdba664f9f0dfee5293` (`2026.1.88-dev`) to `2026.1.89-dev`: test and generated documentation report changes only. No project source, settings, data, save, ABI, wire protocol or resource format migration is required.
+- Base `522d825ef32dfdcd3889ffdba664f9f0dfee5293` (`2026.1.88-dev`) to `2026.1.89-dev`: rebuild native server roles to apply the invalid-input handling change. Valid messages, project source, settings, data, saves, ABI, wire protocol and resource formats remain unchanged; no conversion or deployment pairing is required.
 
 ## 2026.1.88-dev - 2026-10-30
 
