@@ -7,12 +7,27 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"662650c4735d9991519f9f6b8ab6d4e60e676fb6cbdf0047597360cd9ab22db8"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"101414e41be33c8e3730d9c42f7bdac98498c65f6918a92fdc7953e3b5c2969c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-30
+
+### Изменено
+
+- `ServerEngine::ValidateServerSnapshotState` стал публичной статической предварительной проверкой. Встраивающий проект может применить к сохранённому `ServerSnapshotState` структурные проверки конструктора восстановления до остановки живой сессии; проверка не читает мир и не решает вопросы совместимости и идентичности контента, которые остаются проверками вызывающей стороны. `CreateSnapshot()` и восстановление снимка по-прежнему вызывают тот же валидатор.
+
+### Исправлено
+
+- Именованные `HoldSimulation(reason)` / `ReleaseSimulationHold(reason)` разрешены под уже дренированным внешним `Lock()` того же сервера вне main worker. Если управление занято, вызов под этим lock бросает `Simulation control is busy; retry after releasing the external lock` до изменения hold, а не ждёт контроллер, который сам может ждать этот lock; внешние вызывающие по-прежнему ждут. Callback quiescence, собственный `Lock()` main worker и обычные job/script-контексты по-прежнему отвергаются до захвата mutex. `Unlock()` теперь проверяет, что внешний lock принадлежит вызывающему серверу, а первый hold под совпадающим внешним lock дренирует мир через него без повторной блокировки. См. [контексты вызова и повтор при занятости](../explanation/runtime/server.md).
+- Запрошенная подконфигурация в packaged-сборке отвергается без цикла с безусловным исключением, что убирает MSVC C4702 из `LoadAppSettings`; первое запрошенное имя по-прежнему попадает в сообщение.
+
+### Миграция
+
+База `f2a8756706384c0dfe5aa77cb03caf3a7ec04475` (`2026.1.89-dev`) → `2026.1.90-dev`: пересоберите native-роли и цель модульных тестов. Конвертация настроек, данных, ресурсов и сохранений не требуется. Код вне `ServerEngine` вызывает `ServerEngine::ValidateServerSnapshotState(state)` и перехватывает `ServerSnapshotException`; прежнего публичного написания не было. Контроллер, удерживавший внешний `Lock()`, раньше получал `Simulation control must be requested outside a server execution context` при изменении именованных hold; теперь он может менять hold под lock, но обязан обработать исключение занятости: освободить lock, затем повторить вызов или согласовать свои предшествующие изменения. Внешние, стартовые и отвергаемые контексты сохраняют поведение. Сетевой протокол, маркер совместимости `MigrationRule Version` `0.0.84`, Managed ABI `9`, поколение апдейтера и схема ресурсов не меняются; разворачивайте и откатывайте согласованный набор native-бинарников.
+
+## 2026.1.89-dev - 2026-10-30
 
 ### Исправлено
 

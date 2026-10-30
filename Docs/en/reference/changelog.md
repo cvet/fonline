@@ -14,6 +14,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-30
 
+### Changed
+
+- Make `ServerEngine::ValidateServerSnapshotState` a public static preflight. An embedder can apply the restore constructor's structural snapshot checks to a stored `ServerSnapshotState` before it stops a live session; the check reads no world and does not decide compatibility or content identity, which remain the caller's checks. `CreateSnapshot()` and snapshot restore keep calling the same validator.
+
+### Fixed
+
+- Permit named `HoldSimulation(reason)` / `ReleaseSimulationHold(reason)` from the same server's drained off-main external `Lock()`. Busy control under that lock throws `Simulation control is busy; retry after releasing the external lock` before any hold changes instead of waiting for a controller that may itself wait for the lock; outside callers still wait. Quiescence callbacks, the main worker's own `Lock()` and ordinary job/script contexts still refuse before mutex acquisition. `Unlock()` now verifies that the external lock belongs to the calling server, and the first hold under a matching external lock drains through it instead of locking again. See [calling contexts and busy retries](../explanation/runtime/server.md).
+- Reject a requested sub config in a packaged build without an unconditional-throw loop, removing MSVC C4702 from `LoadAppSettings`; the first requested name is still reported.
+
+### Migration
+
+Base `f2a8756706384c0dfe5aa77cb03caf3a7ec04475` (`2026.1.89-dev`) to `2026.1.90-dev`: rebuild native roles and the unit-test target. No settings, data, resource or save conversion is required. Callers outside `ServerEngine` use `ServerEngine::ValidateServerSnapshotState(state)` and catch `ServerSnapshotException`; there was no earlier public spelling. A controller that held an external `Lock()` used to receive `Simulation control must be requested outside a server execution context` for named hold changes; it may now change holds under the lock, but must handle the busy exception by unlocking, then retrying or reconciling its own earlier mutations. Existing outside, startup and refused contexts keep their behavior. Network protocol, the `MigrationRule Version` compatibility marker `0.0.84`, Managed ABI `9`, updater generation and resource schema are unchanged; deploy and roll back matching native binaries together.
+
+## 2026.1.89-dev - 2026-10-30
+
 ### Fixed
 
 - Reject a non-handshake first application message as a protocol error without reporting an engine exception or affecting other connections.

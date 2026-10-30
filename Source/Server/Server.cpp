@@ -56,6 +56,8 @@ static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
 // An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
+thread_local nptr<ServerEngine> ExternalLockOwner {};
+thread_local bool ExternalLockQuiescenceCallback {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -1354,6 +1356,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // active context for its own Sync/Ensure calls
     ExternalLockSyncCtx.emplace();
     ExternalLockSyncCtx->Activate();
+    ExternalLockOwner = this;
 
     return true;
 }
@@ -1381,9 +1384,11 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Play
 void ServerEngine::Unlock()
 {
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
+    FO_VERIFY_AND_THROW(ExternalLockOwner == this, "External lock belongs to another server");
     ExternalLockSyncCtx->Release();
     ExternalLockSyncCtx->Deactivate();
     ExternalLockSyncCtx.reset();
+    ExternalLockOwner = nullptr;
 
     if (std::this_thread::get_id() != _mainWorker.get_thread_id()) {
         unique_lock locker {_syncLocker};
@@ -1461,6 +1466,8 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     state.SynchronizedTime = GameTime.GetSynchronizedTime();
     state.RandomState = CaptureRandomState();
 
+    ExternalLockQuiescenceCallback = true;
+    auto clear_callback = scope_exit([]() noexcept { ExternalLockQuiescenceCallback = false; });
     callback(state);
     return true;
 }
@@ -1770,10 +1777,27 @@ void ServerEngine::ResumeSimulation()
 auto ServerEngine::HoldSimulation(string_view reason) -> bool
 {
     bool startup_context = !_started && std::this_thread::get_id() == _starter.get_thread_id();
-    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
-    optional<scoped_lock<mutex>> quiescence_locker;
+    bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
+
+    bool control_locked = false;
+    auto unlock_control = scope_exit([this, &control_locked]() noexcept {
+        if (control_locked) {
+            _quiescenceLocker.unlock();
+        }
+    });
+
     if (!startup_context) {
-        quiescence_locker.emplace(_quiescenceLocker);
+        // An outside controller may already be waiting for this external lock to drain.
+        // Never wait for its mutex while retaining the sync point.
+        if (drained_context) {
+            FO_VERIFY_AND_THROW(_quiescenceLocker.try_lock(), "Simulation control is busy; retry after releasing the external lock");
+        }
+        else {
+            _quiescenceLocker.lock();
+        }
+
+        control_locked = true;
     }
 
     FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
@@ -1799,12 +1823,25 @@ auto ServerEngine::HoldSimulation(string_view reason) -> bool
 auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
 {
     bool startup_context = !_started && std::this_thread::get_id() == _starter.get_thread_id();
-    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
+    bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
 
-    optional<scoped_lock<mutex>> quiescence_locker;
+    bool control_locked = false;
+    auto unlock_control = scope_exit([this, &control_locked]() noexcept {
+        if (control_locked) {
+            _quiescenceLocker.unlock();
+        }
+    });
 
     if (!startup_context) {
-        quiescence_locker.emplace(_quiescenceLocker);
+        if (drained_context) {
+            FO_VERIFY_AND_THROW(_quiescenceLocker.try_lock(), "Simulation control is busy; retry after releasing the external lock");
+        }
+        else {
+            _quiescenceLocker.lock();
+        }
+
+        control_locked = true;
     }
 
     FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
@@ -1833,7 +1870,7 @@ void ServerEngine::SuspendSimulationWork()
         }
     });
 
-    if (_started) {
+    if (_started && ExternalLockOwner != this) {
         locked = Lock(std::nullopt);
         FO_VERIFY_AND_THROW(locked, "Failed to drain simulation before pausing");
     }

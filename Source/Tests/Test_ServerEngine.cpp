@@ -415,6 +415,95 @@ static void CheckServerSimulationOwnership(Server& server)
             server.ResumeSimulation();
         }
 
+        SECTION("NamedHoldsUseAnAlreadyDrainedExternalLock")
+        {
+            REQUIRE(server.Lock(timespan {std::chrono::seconds {10}}));
+            {
+                auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.Unlock(); }); });
+                REQUIRE(server.HoldSimulation("external-source"));
+                CHECK_FALSE(server.HoldSimulation("external-source"));
+                REQUIRE(server.HoldSimulation("external-other"));
+                synctime held_time = server.GameTime.GetSynchronizedTime();
+                coarse_sleep(std::chrono::milliseconds {30});
+                CHECK(server.GameTime.GetSynchronizedTime() == held_time);
+                CHECK(server.ReleaseSimulationHold("external-source"));
+                CHECK(server.IsSimulationPaused());
+            }
+            CHECK(server.IsSimulationPaused());
+            REQUIRE(server.Lock(timespan {std::chrono::seconds {10}}));
+            {
+                auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.Unlock(); }); });
+                CHECK(server.ReleaseSimulationHold("external-other"));
+                CHECK_FALSE(server.IsSimulationPaused());
+                CHECK_FALSE(server.ReleaseSimulationHold("external-other"));
+            }
+        }
+
+        SECTION("ContendedExternalHoldControlCanRetryWithoutChangingOwners")
+        {
+            REQUIRE(server.HoldSimulation("retained-owner"));
+            REQUIRE(server.Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.Unlock(); }); });
+            std::atomic<bool> entered {};
+            std::atomic<bool> release {};
+            std::atomic<bool> finished {};
+            std::exception_ptr control_error;
+            std::jthread controller {[&] {
+                auto finish = scope_exit([&finished]() noexcept { finished.store(true); });
+                try {
+                    if (!server.RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
+                            entered.store(true);
+                            while (!release.load()) {
+                                coarse_sleep(std::chrono::milliseconds {1});
+                            }
+                        })) {
+                        throw GenericException("Concurrent quiescence did not reach its callback");
+                    }
+                }
+                catch (...) {
+                    control_error = std::current_exception();
+                }
+            }};
+            auto unblock = scope_exit([&]() noexcept {
+                release.store(true);
+                if (controller.joinable()) {
+                    controller.join();
+                }
+            });
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+            while (!entered.load() && !finished.load() && std::chrono::steady_clock::now() < deadline) {
+                coarse_sleep(std::chrono::milliseconds {1});
+            }
+            REQUIRE(entered.load());
+            CHECK_THROWS(server.HoldSimulation("rejected-owner"));
+            CHECK_THROWS(server.ReleaseSimulationHold("retained-owner"));
+            release.store(true);
+            controller.join();
+            CHECK(control_error == nullptr);
+            CHECK_FALSE(server.ReleaseSimulationHold("rejected-owner"));
+            CHECK(server.ReleaseSimulationHold("retained-owner"));
+            CHECK_FALSE(server.IsSimulationPaused());
+        }
+
+        SECTION("ExternalLockDoesNotAuthorizeAnotherServer")
+        {
+            auto other_settings = MakeServerTestSettings();
+            BakerTests::OverrideSetting(other_settings.ServerNetwork.DisableNetworking, true);
+            BakerTests::OverrideSetting(other_settings.Network.DisableInterthreadCommunication, true);
+            auto other = ServerEngineTests::MakeServerEngine(other_settings);
+            auto shutdown = scope_exit([&other]() noexcept { safe_call([&other] { other->Shutdown(); }); });
+            string other_startup_error = ServerEngineTests::WaitForServerStart(other);
+            INFO(other_startup_error);
+            REQUIRE(other_startup_error.empty());
+            REQUIRE(server.Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.Unlock(); }); });
+            CHECK_THROWS(other->HoldSimulation("wrong-server"));
+            CHECK_THROWS(other->ReleaseSimulationHold("wrong-server"));
+            CHECK_THROWS(other->Unlock());
+            CHECK(server.HoldSimulation("matching-server"));
+            CHECK(server.ReleaseSimulationHold("matching-server"));
+        }
+
         SECTION("ControlFromQuiescenceRefusesBeforeTakingItsMutex")
         {
             REQUIRE(server.RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
@@ -841,6 +930,15 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
     }
 
     std::filesystem::create_directories(restored_storage);
+
+    {
+        // The public preflight needs no world and refuses a state that restore would refuse
+        CHECK_NOTHROW(ServerEngine::ValidateServerSnapshotState(captured_state));
+
+        auto malformed_state = captured_state;
+        malformed_state.FormatVersion = ServerSnapshotState::FORMAT_VERSION + 1;
+        CHECK_THROWS_AS(ServerEngine::ValidateServerSnapshotState(malformed_state), ServerSnapshotException);
+    }
 
     {
         // A state that disagrees with its payload must fail before gameplay hooks run

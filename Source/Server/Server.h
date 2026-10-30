@@ -221,6 +221,8 @@ public:
     void Unlock();
     auto RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool;
     auto CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult;
+    // Structural restore preflight without a world; compatibility and content identity remain the caller's checks
+    static void ValidateServerSnapshotState(const ServerSnapshotState& state);
     void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
     void PauseSimulation();
     void ResumeSimulation();
@@ -415,7 +417,6 @@ private:
     auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
     auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
     auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
-    void ValidateServerSnapshotState(const ServerSnapshotState& state);
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
