@@ -380,6 +380,12 @@ connection wrapper's lifetime must be disciplined:
 accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
 disconnect it). `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` also covers peer
 abort, repeated disconnect, exactly one notification and a wrapper retained after endpoint destruction.
+`NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer` makes an old listener close a real
+connection first, proves with an independent bind probe that a POSIX kernel still reserves the port, and
+then starts the real WebSocket server on that port; `NetworkServerWebSocketsRefusesPortHeldByIndependentListener`
+keeps a live listener with and without `SO_REUSEADDR` as the owner that must still refuse it. The probe
+precondition is POSIX-only because Windows never reserves the port, so on Windows the first case guards the
+unchanged policy.
 Run these tests and the unchanged `SecureChannelRunsOverWebSockets` under ThreadSanitizer and
 AddressSanitizer to check state serialization and lifetime separately.
 
@@ -474,6 +480,20 @@ Past the deadline the original exception is rethrown and the startup fails, beca
 can reach is not a started server — the retries buy the losing side of the race some time, they do
 not turn a dead port into an acceptable state. The interthread transport is not part of this: it
 binds nothing another process could hold, so a failure there is a defect rather than a race.
+Every retry line names the failure it follows, so a refusal that changes between attempts is visible in the log.
+
+The retries cannot outwait a port that the previous process left in `TIME_WAIT`. A POSIX kernel keeps the
+local port of a connection the old server closed first reserved for tens of seconds and refuses a bind
+without `SO_REUSEADDR` with `Address already in use`, although no process owns the port. The plain TCP
+listener's acceptor already sets the option, and the WebSocket listener sets it before `listen` on every
+platform except Windows. A socket still in `LISTEN` keeps refusing the bind whatever options its owner
+chose, so an occupied port stays an error. Windows never blocks a bind on `TIME_WAIT`, and there two
+sockets that both set `SO_REUSEADDR` share the port of a live listener, so the WebSocket listener keeps
+the default option on that platform.
+
+A predecessor built without this rule leaves `TIME_WAIT` sockets that carry no `SO_REUSEADDR`, and one
+new listener with the option does not bypass them. The first restart over such a predecessor may still
+wait for those sockets to expire; neither a different port nor an unbounded retry is a remedy.
 
 ## Tests to inspect
 

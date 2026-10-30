@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-29
+## Current - 2026-10-30
+
+### Fixed
+
+- Let a restarted server reopen its WebSocket port on POSIX while the previous process's closed connections still hold it in `TIME_WAIT`. `NetworkServer_WebSockets` now sets `SO_REUSEADDR` before `listen` on every platform except Windows, so a normal stop followed by a fast start no longer spends `ServerNetwork.ListenRetryTime` on `Address already in use (system:98)`. A live listener, with or without the option, still refuses the bind; Windows keeps its default because there the option would let a second process share a live port. Each `ServerEngine::StartConnectionServer` retry line now ends with the failure it follows. See [listener retries](../explanation/authority-and-networking/index.md#a-listener-that-cannot-bind-is-retried-before-the-startup-gives-up).
+
+### Migration
+
+- Base `e8eb12f279b70c73852bdc0fb1a24ae51b5927bc` (`2026.1.87-dev`) to `2026.1.88-dev`: no project source, setting, script, content or saved-data conversion is required: no API, setting, message or file format is added, removed or reinterpreted. Rebuild every native server role with the matching Engine revision. The retry log lines gain a trailing `: <reason>` suffix after the existing text, so match them by their prefix. The central migration marker stays `0.0.84`, Managed ABI `9` and every resource schema are unchanged, and the listener option is not part of the wire protocol, so deployment order and rollback need no pairing. A server built before this step leaves `TIME_WAIT` sockets without `SO_REUSEADDR` when it closes connections first, and one new listener with the option does not bypass them: the first restart over such a build may still wait for them to expire, and neither a different port nor an unbounded retry is a remedy. Acceptance: run the `NetworkServerWebSockets*` cases and `SecureChannelRunsOverWebSockets` natively on Linux as well as Windows, because the `TIME_WAIT` regression can fail only where the kernel reserves the port.
+
+## 2026.1.87-dev - 2026-10-29
 
 ### Added
 

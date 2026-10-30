@@ -760,6 +760,187 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
 }
 
+// Binds like an independent process without SO_REUSEADDR, so any socket still reserving the port shows up as a failure
+static auto TryBindWithoutReuse(uint16_t port) -> std::error_code
+{
+    asio::io_context context;
+    asio::ip::tcp::acceptor probe {context};
+
+    std::error_code error;
+    probe.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        probe.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+
+    return error;
+}
+
+static auto TryListen(asio::ip::tcp::acceptor& acceptor, uint16_t port, bool reuse_addr) -> bool
+{
+    std::error_code error;
+    acceptor.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        acceptor.set_option(asio::socket_base::reuse_address(reuse_addr), error);
+    }
+    if (!error) {
+        acceptor.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+    if (!error) {
+        acceptor.listen(asio::socket_base::max_listen_connections, error);
+    }
+
+    if (error) {
+        std::error_code close_error;
+        acceptor.close(close_error);
+        return false;
+    }
+
+    return true;
+}
+
+// A restart must reopen the port whose previous connection the old server closed first: a POSIX kernel keeps that
+// port reserved in TIME_WAIT, which the bind probe proves, while Windows never blocks it
+TEST_CASE("NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    auto require_ok = [](const std::error_code& socket_error) {
+        INFO(net_sockets::error_text(socket_error));
+        REQUIRE_FALSE(socket_error);
+    };
+
+    asio::io_context context;
+    asio::ip::tcp::acceptor previous_listener {context};
+    uint16_t port = 0;
+
+    // The probe first skips ports another process holds, because a reusing listener could share them on Windows
+    for (int32_t attempt = 0; attempt != 64 && !previous_listener.is_open(); ++attempt) {
+        port = TestServerPort.fetch_add(1);
+
+        if (!TryBindWithoutReuse(port)) {
+            TryListen(previous_listener, port, true);
+        }
+    }
+
+    REQUIRE(previous_listener.is_open());
+
+    auto loopback = asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), port);
+    std::error_code error;
+
+    asio::ip::tcp::socket client {context};
+    client.connect(loopback, error);
+    require_ok(error);
+
+    asio::ip::tcp::socket accepted {context};
+    previous_listener.accept(accepted, error);
+    require_ok(error);
+
+    // The old server closes first, so its half of the connection is the one that lingers once the peer follows
+    accepted.shutdown(asio::ip::tcp::socket::shutdown_both, error);
+    require_ok(error);
+    accepted.close(error);
+    require_ok(error);
+
+    client.non_blocking(true, error);
+    require_ok(error);
+
+    vector<uint8_t> sink(16);
+    std::error_code read_error;
+
+    REQUIRE(WaitForCondition(
+        [&] {
+            client.read_some(asio::buffer(sink), read_error);
+            return read_error != asio::error::would_block;
+        },
+        std::chrono::milliseconds {5000}));
+    CHECK(read_error == asio::error::eof);
+
+    client.close(error);
+    require_ok(error);
+    previous_listener.close(error);
+    require_ok(error);
+
+#if !FO_WINDOWS
+    REQUIRE(WaitForCondition([port] { return TryBindWithoutReuse(port) == asio::error::address_in_use; }, std::chrono::milliseconds {5000}));
+#endif
+
+    BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+    unique_nptr<NetworkServer> server;
+    string startup_error;
+
+    try {
+        server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    }
+    catch (const std::exception& ex) {
+        startup_error = ex.what();
+    }
+
+    CAPTURE(startup_error);
+    REQUIRE(server);
+
+    auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    asio::ip::tcp::socket restarted_client {context};
+    restarted_client.connect(loopback, error);
+    require_ok(error);
+}
+
+// A listener that is still alive keeps its port whichever options its owner chose, and the refusal is reported in English
+TEST_CASE("NetworkServerWebSocketsRefusesPortHeldByIndependentListener")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    for (bool owner_reuse_addr : {false, true}) {
+        asio::io_context context;
+        asio::ip::tcp::acceptor owner {context};
+        uint16_t port = 0;
+
+        for (int32_t attempt = 0; attempt != 64 && !owner.is_open(); ++attempt) {
+            port = TestServerPort.fetch_add(1);
+
+            if (!TryBindWithoutReuse(port)) {
+                TryListen(owner, port, owner_reuse_addr);
+            }
+        }
+
+        CAPTURE(owner_reuse_addr);
+        REQUIRE(owner.is_open());
+
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+        unique_nptr<NetworkServer> server;
+        string error_message;
+
+        try {
+            server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+        }
+        catch (const std::exception& ex) {
+            error_message = ex.what();
+        }
+
+        auto shutdown_server = scope_exit([&server]() noexcept {
+            if (server) {
+                safe_call([&server] { server->Shutdown(); });
+            }
+        });
+
+        CAPTURE(error_message);
+        REQUIRE_FALSE(server);
+        REQUIRE_FALSE(error_message.empty());
+        CHECK(error_message.find("Address already in use") != string::npos);
+        CHECK(error_message.find(std::to_string(port)) != string::npos);
+    }
+}
+
 // A real client connects, sends a frame that must reach the receive callback, and then the transport must tear
 // down without racing the io thread — the path whose threading bugs the sanitizer jobs turn into failures
 TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")

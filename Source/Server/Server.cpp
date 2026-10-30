@@ -2482,13 +2482,13 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 
             break;
         }
-        catch (const std::exception&) {
+        catch (const std::exception& ex) {
             if (nanotime::now() >= deadline) {
                 logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ServerNetwork.ListenRetryTime, 0));
                 throw;
             }
 
-            logging::write("Listener {} did not start on attempt {}, retrying in {} ms", what, attempt, retry_delay.count());
+            logging::write("Listener {} did not start on attempt {}, retrying in {} ms: {}", what, attempt, retry_delay.count(), ex.what());
             coarse_sleep(retry_delay);
         }
     }
