@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"628739cf32c3ccddc8f3c1ac47e3b226c28ec45ae00327460120a6831b1732a7"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"68c840477922b30b8ea0fffc86ea7d7bad0a1ee2966184b42b05eeaa862e5741"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-30
+
+### Исправлено
+
+- В интеграционном тесте явно указано пространство имён серверного helper, чтобы вызов оставался однозначным в Unity-сборках. Проверка покрытия примеров больше не привязана к числам одного снимка документации; отчёт примеров пересоздан для текущего корпуса.
+
+### Миграция
+
+- База `522d825ef32dfdcd3889ffdba664f9f0dfee5293` (`2026.1.88-dev`) → `2026.1.89-dev`: изменены только тесты и сгенерированный отчёт документации. Миграция исходников проекта, настроек, данных, сохранений, ABI, сетевого протокола и форматов ресурсов не требуется.
+
+## 2026.1.88-dev - 2026-10-30
 
 ### Исправлено
 

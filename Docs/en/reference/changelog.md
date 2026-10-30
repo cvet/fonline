@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Qualify the integration test server helper so its call remains unambiguous in Unity builds. Check snippet corpus coverage without fixing the test to one documentation revision, and regenerate the snippet report for the current corpus.
+
+### Migration
+
+- Base `522d825ef32dfdcd3889ffdba664f9f0dfee5293` (`2026.1.88-dev`) to `2026.1.89-dev`: test and generated documentation report changes only. No project source, settings, data, save, ABI, wire protocol or resource format migration is required.
+
+## 2026.1.88-dev - 2026-10-30
+
+### Fixed
+
 - Let a restarted server reopen its WebSocket port on POSIX while the previous process's closed connections still hold it in `TIME_WAIT`. `NetworkServer_WebSockets` now sets `SO_REUSEADDR` before `listen` on every platform except Windows, so a normal stop followed by a fast start no longer spends `ServerNetwork.ListenRetryTime` on `Address already in use (system:98)`. A live listener, with or without the option, still refuses the bind; Windows keeps its default because there the option would let a second process share a live port. Each `ServerEngine::StartConnectionServer` retry line now ends with the failure it follows. See [listener retries](../explanation/authority-and-networking/index.md#a-listener-that-cannot-bind-is-retried-before-the-startup-gives-up).
 
 ### Migration

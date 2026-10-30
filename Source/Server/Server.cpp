@@ -2627,7 +2627,9 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 Process_Handshake(not_logged_in_player);
             }
             else {
-                throw GenericException("Expected handshake message", msg);
+                in_buf.Lock();
+                in_buf->ResetBuf();
+                throw NetBufferException("Expected handshake message", msg);
             }
         }
         else {

@@ -80,6 +80,55 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport")
+{
+    auto port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    auto previous_exception_callback = exceptions::get_callback();
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+    SendCompatibleHandshake(live_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+
+    auto ping = NetOutBuffer(64);
+    ping.StartMsg(NetMessage::Ping);
+    ping.Write(false);
+    ping.Write(nanotime::now().milliseconds());
+    ping.EndMsg();
+    live_client.Send(ping.GetData());
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+
+    faulty_client.Send(ping.GetData());
+    CHECK(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+    CHECK_FALSE(live_client.IsDisconnected());
+    live_client.Send(ping.GetData());
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 2));
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
 {
     using namespace TestClientServerIntegration;
@@ -92,7 +141,7 @@ TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
     auto port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server = TestClientServerIntegration::MakeServerEngine(server_settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {

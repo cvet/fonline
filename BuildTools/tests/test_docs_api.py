@@ -488,7 +488,7 @@ class DocumentationApiModelTests(unittest.TestCase):
         )
         self.assertEqual(refresh["since"], "2026.1.83-dev")
 
-        # Removed unpublished filter/allow-list methods must not re-enter the Player surface.
+        # Removed unpublished filter/allow-list methods must not re-enter the Player surface
         self.assertEqual(
             {
                 method_id
