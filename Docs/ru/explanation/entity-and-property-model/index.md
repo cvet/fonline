@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"50d2607cb907a374c41993a2cb44a760e6b85e68e6260437f3820fe0cdffd689"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"60939dd5025fb3dabe5201d2029826ddf8b7834678635c061360e25a2b897f3c"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -218,6 +218,8 @@ Holder lock предоставляет инициатор публикации. 
 
 - `ContinueChain`
 - `StopChain`
+
+Цепочку решает только callback с явным результатом: он останавливает её, вернув `StopChain` или бросив исключение. Callback, подписанный без него, всегда возвращает `ContinueChain`; `StopChain` от него `Entity::FireEvent` сообщает как нарушение контракта. Нативный подписчик, который запрещает событие, задаёт `EventCallbackData::HasExplicitResult`.
 
 `EntityEventWrapper::Fire()` по-разному формирует native call data для global и non-global entities: для non-global event сущность добавляется первым аргументом.
 

@@ -1166,6 +1166,9 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("FireEventBoxed(") != string::npos);
     CHECK(server_events.find("internal static void AdaptInvoke(global::System.Delegate handler, bool hasExplicitResult, global::System.IntPtr entityPtr, ref byte frame, int frameSize, ref int result)") != string::npos);
     CHECK(server_events.find("return (int)EventResult") == string::npos);
+    // A faulting handler without an explicit result must not stop the chain
+    CHECK(server_events.find("result = (int)(hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain);") != string::npos);
+    CHECK(server_events.find("result = (int)EventResult.StopChain;") == string::npos);
 
     // An entity argument rides the event frame as a pointer slot: the adapter wraps it, Fire writes the wrapper's pointer
     CHECK(server_events.find("Critter __a0 = global::FOnline.Native.WrapEntityNotNull<Critter>((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 0)));") != string::npos);

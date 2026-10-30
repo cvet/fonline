@@ -1914,6 +1914,7 @@ TEST_CASE("ClientEngineAnimationResolverReportsCleanupExceptions")
         return resolved ? Entity::EventResult::ContinueChain : Entity::EventResult::StopChain;
     };
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&spr_id);
+    callback.HasExplicitResult = true;
     client->OnCritterAnimationSprite.Subscribe(std::move(callback));
     auto unsubscribe = scope_exit([&client, &spr_id]() noexcept { client->OnCritterAnimationSprite.Unsubscribe(reinterpret_cast<uintptr_t>(&spr_id)); });
     auto resolve = [&] { return client->ResolveCritterAnimationSprite(client->Hashes.to_hashed_string("ThrowingStop"), CritterStateAnim {}, CritterActionAnim {}); };

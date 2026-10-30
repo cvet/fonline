@@ -1268,6 +1268,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
 
     Entity::EventCallbackData gate;
     gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.HasExplicitResult = true;
     gate.Callback = [&](FuncCallData&) {
         gate_calls++;
         CHECK(candidate->GetId() == ident_t {});
@@ -1402,6 +1403,7 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     size_t refused_unread = 0;
     Entity::EventCallbackData gate;
     gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.HasExplicitResult = true;
     gate.Callback = [&](FuncCallData&) {
         gate_calls++;
 
@@ -1615,6 +1617,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
     refcount_nptr<Critter> visibility_owner;
     Entity::EventCallbackData preload;
     preload.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    preload.HasExplicitResult = true;
     preload.Callback = [&](FuncCallData&) {
         order.emplace_back("pre");
         auto restored = server->EntityMngr.GetCritter(cr_id);
@@ -1885,6 +1888,127 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
     CHECK(restored->IsDestroyed());
     CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     CHECK(map->GetItems().size() == 2);
+}
+
+enum class EventChainFault
+{
+    None,
+    ReturnsStopChain,
+    Throws,
+};
+
+struct EventChainRun
+{
+    vector<string> Order {};
+    Entity::EventResult Result {Entity::EventResult::ContinueChain};
+    size_t Reports {};
+};
+
+// Fires the event with three callbacks, the first of them faulting the given way, and records who ran and what was reported
+template<typename EventType>
+static auto RunEventChain(EventType& event, bool first_has_result, EventChainFault fault) -> EventChainRun
+{
+    EventChainRun run;
+    array<int32_t, 3> tokens {};
+
+    // Server workers stay alive under the test lock, so only the reports this chain can produce are counted
+    auto prev_callback = exceptions::get_callback();
+    exceptions::set_callback([&run](string_view message, const stack_trace::catched_data&, bool) {
+        if (message.find("Event callback failed") != string_view::npos || message.find("Event callback without an explicit result returned StopChain") != string_view::npos) {
+            run.Reports++;
+        }
+    });
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+
+    // Armed before subscribing, so a refused later subscription cannot leave the earlier ones capturing this frame
+    auto unsubscribe = scope_exit([&]() noexcept {
+        for (int32_t& token : tokens) {
+            event.Unsubscribe(reinterpret_cast<uintptr_t>(&token));
+        }
+    });
+
+    auto subscribe = [&](size_t index, string name, Entity::EventPriority priority, bool has_result, EventChainFault callback_fault) {
+        Entity::EventCallbackData callback;
+        callback.Callback = [&run, name = std::move(name), callback_fault](FuncCallData&) -> Entity::EventResult {
+            run.Order.emplace_back(name);
+
+            if (callback_fault == EventChainFault::Throws) {
+                throw InvalidCallException("Event callback failed");
+            }
+
+            return callback_fault == EventChainFault::ReturnsStopChain ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&tokens[index]);
+        callback.Priority = priority;
+        callback.HasExplicitResult = has_result;
+        event.Subscribe(std::move(callback));
+    };
+
+    subscribe(0, "first", Entity::EventPriority::High, first_has_result, fault);
+    subscribe(1, "second", Entity::EventPriority::Normal, false, EventChainFault::None);
+    subscribe(2, "third", Entity::EventPriority::Lowest, false, EventChainFault::None);
+
+    run.Result = event.Fire();
+    return run;
+}
+
+TEST_CASE("EventChainStopsOnlyForCallbacksWithExplicitResult", "[events]")
+{
+    auto settings = EntityLifecycleTests::MakeSettings();
+    auto server = EntityLifecycleTests::MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = EntityLifecycleTests::WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto cr = server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), false);
+    auto destroy = scope_exit([&]() noexcept { safe_call([&] { server->CrMngr.DestroyCritter(cr); }); });
+
+    struct Scenario
+    {
+        bool FirstHasResult {};
+        EventChainFault Fault {};
+        vector<string> Order {};
+        Entity::EventResult Result {};
+        size_t Reports {};
+    };
+
+    vector<string> whole_chain {"first", "second", "third"};
+    vector<string> stopped_chain {"first"};
+    vector<Scenario> scenarios = {
+        {false, EventChainFault::None, whole_chain, Entity::EventResult::ContinueChain, 0},
+        // A callback without an explicit result never decides the chain, so StopChain from it is a reported contract violation
+        {false, EventChainFault::ReturnsStopChain, stopped_chain, Entity::EventResult::StopChain, 1},
+        {false, EventChainFault::Throws, whole_chain, Entity::EventResult::StopChain, 1},
+        {true, EventChainFault::None, whole_chain, Entity::EventResult::ContinueChain, 0},
+        // With an explicit result StopChain is the callback's own decision, and a throw means it failed to decide
+        {true, EventChainFault::ReturnsStopChain, stopped_chain, Entity::EventResult::StopChain, 0},
+        {true, EventChainFault::Throws, stopped_chain, Entity::EventResult::StopChain, 1},
+    };
+
+    // The engine event runs through ServerEngine::FireEvent and the critter event through ServerEntity::FireEvent, both over the one shared loop
+    for (const Scenario& scenario : scenarios) {
+        CAPTURE(scenario.FirstHasResult, static_cast<int32_t>(scenario.Fault));
+
+        for (bool on_critter : {false, true}) {
+            CAPTURE(on_critter);
+
+            EventChainRun run = on_critter ? RunEventChain(cr->OnFinish, scenario.FirstHasResult, scenario.Fault) : RunEventChain(server->OnFinish, scenario.FirstHasResult, scenario.Fault);
+
+            CHECK(run.Order == scenario.Order);
+            CHECK(run.Result == scenario.Result);
+            CHECK(run.Reports == scenario.Reports);
+        }
+    }
 }
 
 FO_END_NAMESPACE

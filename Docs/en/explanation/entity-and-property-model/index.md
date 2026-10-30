@@ -219,6 +219,8 @@ When changing holder behavior, inspect server/client entity managers and persist
 - `ContinueChain`
 - `StopChain`
 
+Only a callback with an explicit result decides the chain: it stops it by returning `StopChain` or by throwing. A callback subscribed without one always returns `ContinueChain`; `Entity::FireEvent` reports a `StopChain` from it as a contract violation. A native subscriber that vetoes an event sets `EventCallbackData::HasExplicitResult`.
+
 `EntityEventWrapper::Fire()` builds native call data differently for global and non-global entities: non-global events inject the entity as the first argument.
 
 `Entity::TimeEventData` stores scheduled script callbacks, fire time, repeat duration, and script data. Entities that support time events are declared with the `HasTimeEvents` metadata flag in the `ExportEntity` annotations.
