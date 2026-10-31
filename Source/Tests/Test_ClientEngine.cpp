@@ -412,13 +412,18 @@ TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
     MapSpriteHolder holder;
     holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
     holder.Hex = mpos {8, 8};
+    holder.Elevation = 18;
     holder.DepthOffset = 12.5f;
     REQUIRE(holder.SprId != 0);
+
     REQUIRE_NOTHROW(Client_Map_DrawMapSprite(map, &holder));
     REQUIRE(holder.Valid);
     REQUIRE(holder.MSpr);
-    CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
+
     auto original_sprite = holder.MSpr;
+
+    CHECK(holder.MSpr->GetElevation() == 18);
+    CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
 
     for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
              std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
@@ -426,6 +431,7 @@ TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
         CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &holder), ScriptException);
         CHECK(holder.Valid);
         CHECK(holder.MSpr == original_sprite);
+        CHECK(holder.MSpr->GetElevation() == 18);
         CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
 
         // Validation must also reject non-finite input before the invalid-hex/missing-sprite early returns.
