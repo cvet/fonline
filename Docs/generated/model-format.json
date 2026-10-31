@@ -33,6 +33,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ClientEngine.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -1508,6 +1509,29 @@
       ]
     },
     {
+      "id": "model-format.rule.bone-point-depth",
+      "name": "Bone-local point projection",
+      "requirement": "The depth-capable ModelInstance.GetBonePos projects authored model units to sprite-relative integer pixels and logical view depth from one pose, independent of pivot/direct-scene scale. Keep the two-argument 2D result; invalid points have no position and clear requested depth.",
+      "rationale": "Screen XY cannot distinguish depths along the camera ray.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth)",
+            "_poseToSpriteFrame",
+            "*view_depth = 0.0f"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ModelBoneDepthKeepsThePosedPointAcrossRenderPaths",
+            "BoneMapAnchorPreservesTheCarrierAndModelDepth"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-format.rule.validation-boundary",
       "name": "Bake plus visible validation",
       "requirement": "Require a clean resource bake for syntax and asset closure, then exercise the model in a visible client scene for scale, pose, layer composition, attachments, materials, cuts, and interaction bounds.",
@@ -1588,7 +1612,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 16,
+    "rule_count": 17,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1605,5 +1629,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "496eb2ea2d6b5150b06217723895efce2ad6ef5d0b1a2c65d26da299f0c91b68"
+  "contract_digest": "2c89810b05543516f373a8e6233d4620aed546a9acf01137b53cbd967446c39d"
 }

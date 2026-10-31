@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-validation","locale":"ru","source_path":"Docs/en/reference/model-format/validation.md","source_sha256":"56e15cf10578f41606235219af8e983880064e0761b700e5513141a759e89516"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-validation","locale":"ru","source_path":"Docs/en/reference/model-format/validation.md","source_sha256":"cbd8adf150dbecd44659d63300fbff8913e494e30dc2f2c7362a19617798a1b2"} -->
 
 # Валидация формата моделей
 

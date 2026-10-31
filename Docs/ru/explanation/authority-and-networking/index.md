@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"a93d70a4558bfe56756ffb981caae43a7c034cd1070f9411ed7783d4701a28e1"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"a8a5b2ff52235dce768587437f99ce67185098a29ee22d641d3e6d699887d292"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -258,7 +258,7 @@ send/receive, вложенное закрытие, ожидание полной
 созданный обработчиком: исходный запрос проверяет moving UID перед применением.
 
 Пересоберите согласованные стороны и выпеките метаданные / скрипты вместе:
-runtime compatibility gate повышен до `0.0.74`. Поля пакетов и сохраняемые данные
+runtime compatibility gate повышен до `0.0.85`. Поля пакетов и сохраняемые данные
 не меняются. `ServerMovementAuthority` проверяет зашифрованные пакеты, водителя,
 пассажира, барьеры обработки и отзыв допуска.
 `ServerMovementSessionIdentity` выходит и восстанавливает ту же запись игрока

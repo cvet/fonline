@@ -15528,6 +15528,78 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased: displayed-model bone anchors and compatibility 0.0.77 to 0.0.78.",
       "compatibility": "Do not mix previous and updated native binaries, metadata, script assemblies or baked resources. Deploy the whole matching cohort and roll back the whole previous cohort. Managed ABI 9, stored identities, property defaults and resource schemas are unchanged; old query semantics are preserved. This feature-branch entry does not claim a published release.",
       "owner": "Engine rendering, scripting and runtime compatibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.9163918a23f08aca",
+      "baseline_contract_sha256": "e4ae40bc79de21adc2e39ab8abfbf1cd9637ccc12a2faeb42d9fe54ad2e505da",
+      "current_contract_sha256": "1d2d8b284fd2184584ba959ccf75326a514fa92402ed54498d86590ad9a2f988",
+      "classification": "breaking",
+      "rationale": "The revision-pinned native-codegen inventory adds eight reviewed movement, particle and map-anchor symbols; no symbol ID is removed relative to this baseline.",
+      "migration": "Regenerate bindings and matching metadata, rebuild all affected roles and bake together; existing calls retain their signatures and meanings. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "The experimental inventory changes from 2590 to 2598 symbols; compatibility marker 0.0.85 requires paired endpoints and metadata.",
+      "owner": "Engine scripting and native-codegen contracts"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.fffdef7ff9aa0780",
+      "baseline_contract_sha256": "e4ae40bc79de21adc2e39ab8abfbf1cd9637ccc12a2faeb42d9fe54ad2e505da",
+      "current_contract_sha256": "1d2d8b284fd2184584ba959ccf75326a514fa92402ed54498d86590ad9a2f988",
+      "classification": "breaking",
+      "rationale": "The central runtime compatibility marker advances from 0.0.84 to 0.0.85 for the combined movement authority and runtime integration changes.",
+      "migration": "Rebuild matching endpoints, bindings and resource metadata together; restore the matching set on rollback. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "Mixed revisions are rejected by the version boundary; this marker change alone does not convert saved data.",
+      "owner": "Engine runtime compatibility"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.072cf1dd61a3fdf2",
+      "baseline_contract_sha256": "e4ae40bc79de21adc2e39ab8abfbf1cd9637ccc12a2faeb42d9fe54ad2e505da",
+      "current_contract_sha256": "1d2d8b284fd2184584ba959ccf75326a514fa92402ed54498d86590ad9a2f988",
+      "classification": "breaking",
+      "rationale": "MapSpriteHolder's exported field list adds DepthOffset while preserving the existing Elevation field and the other exports.",
+      "migration": "Regenerate client and Mapper bindings. Existing callers retain zero depth correction; new callers supply finite logical map pixels. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "The additive field has default zero; elevation remains independent. Rebuild and rebake matching metadata under marker 0.0.85.",
+      "owner": "Engine client map sprite and scripting contracts"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.db2d8d8650e53bf7",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "76f2f2c5bf0613da6e17abb07a80809a722a2113299db1fca1107c3635c132c3",
+      "classification": "breaking",
+      "rationale": "Model-bone particle requests wait for a complete pose and initialize newborn systems at zero time, including callback-created systems, instead of inheriting pre-birth time.",
+      "migration": "Review effects that depend on the first visible frame and run the real model-particle first-pose and lifecycle checks after rebuilding. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "Existing name, bone and offset inputs are retained; unposed requests remain pending until a pose is available. Platform rendering acceptance is separate.",
+      "owner": "Engine model particle integration"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.f8acc7866e17acf9",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "76f2f2c5bf0613da6e17abb07a80809a722a2113299db1fca1107c3635c132c3",
+      "classification": "breaking",
+      "rationale": "Baked dimensions remain the stable layout baseline while live model particles can extend it; the previous claim that no live bounds work occurs is no longer true.",
+      "migration": "Rebuild the particle-enabled roles and rebake matching resources; review model atlas bounds on representative live trails. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "The baked envelope is retained and no authored graph conversion is introduced; visual and performance qualification remain separate.",
+      "owner": "Engine particle bounds"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.63f7395ae8d10474",
+      "baseline_contract_sha256": "f1459bebff67f6fe06c1c0ef8d8e491cbd125d19759a8261a805506172a611b0",
+      "current_contract_sha256": "76f2f2c5bf0613da6e17abb07a80809a722a2113299db1fca1107c3635c132c3",
+      "classification": "breaking",
+      "rationale": "Live Effekseer model bounds extend the transformed baked envelope with current supported renderer instances so moved particles are not clipped.",
+      "migration": "Rebuild particle-enabled roles and rebake matching resources; check Sprite, Ribbon, Ring, Track and Model effects and release after expiry. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "The live CPU probe is cached and does not advance simulation or draw; dormant and expired instances no longer reserve the live envelope.",
+      "owner": "Engine Effekseer runtime and model bounds"
     }
   ]
 }

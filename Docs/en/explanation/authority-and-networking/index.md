@@ -262,7 +262,7 @@ Movement and direction policies also preserve a replacement plan created by a
 callback by checking its movement UID before applying the original request.
 
 Rebuild matching endpoints and rebake metadata/scripts together: this advances
-the runtime compatibility gate to `0.0.74`. Packet fields and persisted data do
+the runtime compatibility gate to `0.0.85`. Packet fields and persisted data do
 not change. `ServerMovementAuthority` exercises encrypted packets, owner and
 passenger controls, processing barriers and revocation.
 `ServerMovementSessionIdentity` logs out and restores the same persistent player

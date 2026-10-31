@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"1d91de6ec0300b02338d4235770b55679cc02c78947272613f2c2f39683c6643"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a0a827f895fb6b639456f99b467654a0a946d9a4640b83093a2e19040a2e740c"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1033,7 +1033,7 @@ depth attachment (UI, light, final screen flush) state является no-op.
 
 Нативный `Sprite` может вернуть из `GetUnlitOverlay()` один слой, которым
 владеет родитель. `DrawSprite`, `DrawSpriteSize` / `DrawSpriteSizeExt` и
-карточный `DrawSprites` рисуют его сразу после основного изображения с теми же
+`DrawSprites` на карте рисуют его сразу после основного изображения с теми же
 логическим прямоугольником и эффектом. Каждый слой предоставляет собственную
 текстуру батча. Заимствование должно оставаться действительным до конца draw;
 вложенные overlay рекурсивно не обходятся.

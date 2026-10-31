@@ -12,6 +12,43 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+### Added
+
+- Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
+  bone and visible-sprite map anchors, `MapSpriteHolder.DepthOffset`, and
+  explicit unlit model particles. Existing `Elevation` and `GetBonePos` retain
+  their meanings. See [network authority](../explanation/authority-and-networking/index.md)
+  and [particle integration](../how-to/content/particle-format.md#integration).
+
+### Fixed
+
+- Place newborn model particles after a complete pose, retain live Effekseer
+  bounds and finite rotations for collapsed axes, and initialize scene placement
+  before simulation. Track speed events integrate across frame boundaries;
+  one-shot endpoints and loop callbacks retain their documented phase behavior.
+- Drain browser Mono finalizers before backend teardown, retain managed list
+  owners through native array transfers, hydrate browser storage before settings
+  load, and correct the browser zlib dispatch build.
+
+### Migration
+
+- From Engine `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`),
+  regenerate script bindings and metadata, rebuild matching server, client,
+  Mapper, Baker and tools, force a matching resource bake, and package all roles
+  together. Runtime compatibility advances from `0.0.84` to `0.0.85`; do not mix
+  endpoints or baked metadata across that boundary. Roll back matching binaries
+  and resources together. This change introduces no saved-data conversion.
+- Movement authority defaults to the selected actor. Projects allowing indirect
+  movement subscribe to `OnPlayerMovementAuthority` and apply their own control
+  policy; the engine rechecks current session, actor, map and movement identity.
+  Revalidate existing vehicle and attachment paths with ordinary clients.
+- Consumers of bone particles should account for first-pose placement and
+  expanded live bounds; unposed owners defer their first draw. `DepthOffset` is
+  a finite view-depth correction in logical map pixels and defaults to zero;
+  `Elevation` remains independent. Recheck overlays and screen anchors on each
+  supported renderer. Browser packages need a fresh build and normal-quit and
+  persistence checks; writes formerly outside the persistent mount are not moved.
+
 ## Current - 2026-10-30
 
 ### Changed
