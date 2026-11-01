@@ -139,6 +139,11 @@ FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self)
             self->Send_AddCritter(group_cr);
         }
     }
+
+    // Every attachment master must exist on the client before a member restores its link
+    for (ptr<Critter> group_cr : group) {
+        self->Send_Attachments(group_cr);
+    }
 }
 
 // SyncScope: requires self; returns a transient snapshot of the transfer-lock nesting counter and neither

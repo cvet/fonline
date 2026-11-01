@@ -54,6 +54,16 @@ A yield or cover release invalidates that observation; revalidate the entities a
 The getter is not a reservation and does not replace native transfer guards. To defer an operation,
 release cover before waiting so the outer native stack can finish, then revalidate the full operation.
 
+## Client attachment snapshots
+
+Client scripts can call `Critter.GetAttachedCritterIds()` to copy the IDs from the latest replicated attachment snapshot. An ID remains in this list when its client-side critter entity is not loaded, including global-map views. `Game.GetCritter(id)` may therefore return null for an ID in the snapshot; `Game.GetCritters(...)` enumerates loaded views and is not a replacement for this list.
+
+The returned array is independent: modifying it does not attach or detach a critter, and later attachment updates do not mutate an earlier array. An empty snapshot returns an empty array. The API preserves the received ordering and performs no entity lookup or additional server request. The embedding project owns any distinction between drivers, passengers or other attachment roles.
+
+The native owner is `CritterView.GetAttachedCritters`; `Client_Critter_GetAttachedCritterIds` exposes its ID copy. `Player.Send_AddCritter` and `Player.Send_Attachments` supply the existing wire snapshot. `ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges` verifies unloaded IDs and copy independence.
+
+After a map transfer restores attachments, the global group receives the master's updated snapshot. Delivery is ordered with group membership, controlled-critter identity and the recipient connection's queued map context. A bounded map viewer receives a fresh group and attachment snapshot on return, including mutations made during the view. `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` verifies actual packets, exact IDs, detach, privacy, duplicate suppression, view/return, connection swaps and controller changes. See [global attachment delivery](../authority-and-networking/index.md#global-attachment-delivery).
+
 ## Entity base class
 
 `Entity` is the shared base for all runtime/prototype entities. It owns:

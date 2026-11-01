@@ -192,6 +192,8 @@ Completion of the script invocation, rather than the return of its first native 
 
 A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
 
+Managed callbacks resolve component enum identifiers to exact dotted metadata names: `ItemProperty.Component_Value` selects `Component.Value`. Getters, transforming setters and sync/async post-set callbacks share this rule. Flat names retain underscores unchanged.
+
 ### Persistence preload boundary
 
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.
@@ -264,6 +266,8 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - a later `Game.Sync(...)` does not extend the previous cover, so request the complete set needed by the next operation;
 - `Game.GetHeldSyncEntities()` reports the current entity-cover owners for diagnostics;
 - `Game.IsEntityLocked(entity)` probes coverage without emitting the uncovered-access diagnostic;
+- the probe accepts a retained destroyed handle and reports actual coverage,
+  including a destroyer's still-held cover, instead of rejecting the argument;
 - `Game.SyncRelease()` releases both the entity cover and any singleton lock entries held by the current script execution scope.
 
 `Game.Sync(...)` carries `[[Async]]`, so the marker propagates through its direct script callers even when acquisition completes without suspending the AngelScript context.

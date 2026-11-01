@@ -96,6 +96,11 @@ The publication route is intentionally independent from any embedding game proje
 
 ## Website source ownership
 
+Search indexes assign shorter numeric document positions to pages with more
+retained postings. This lossless internal permutation preserves every document's
+symbolic identity and metadata, all terms, posting scores and posting-list order;
+both locale indexes still obey the same byte limit and search ranking contracts.
+
 The website implementation lives under `Docs/Site/`: `Layouts/` owns the
 HTML shell, `Data/` owns generated navigation, and `Assets/` owns styles,
 scripts, branding, and generated locale search indexes. `Docs/Site/_config.yml` sets

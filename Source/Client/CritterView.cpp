@@ -165,6 +165,27 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
     return nullptr;
 }
 
+void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlot previous_slot, CritterItemSlot current_slot)
+{
+    auto item = GetInvItem(item_id);
+    if (!item || previous_slot == current_slot) {
+        return;
+    }
+
+    size_t slot_index = static_cast<size_t>(current_slot);
+    bool multi_item_slot = slot_index < _engine->Settings->Critter.CritterSlotMultiItem.size() && _engine->Settings->Critter.CritterSlotMultiItem[slot_index];
+
+    if (!multi_item_slot) {
+        for (auto& peer : _invItems) {
+            if (peer->GetId() != item_id && peer->GetCritterSlot() == current_slot) {
+                peer->SetCritterSlot(previous_slot);
+            }
+        }
+    }
+
+    item->SetCritterSlot(current_slot);
+}
+
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 {
     for (size_t i = 0; i < _invItems.size(); i++) {

@@ -566,25 +566,8 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) <= 1 + hex_cr->GetMultihex()) {
-        if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) > hex_cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetHexDir(hex_cr->GetHex(), toHex)};
-        }
-
-        return {};
-    }
-
     mpos to_hex = toHex;
-    mpos init_to_hex = toHex;
-
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
-        return {};
-    }
-    if (cut > 0 && GeometryHelper::GetDistance(hex_cr->GetHex(), init_to_hex) <= cut + hex_cr->GetMultihex() && GeometryHelper::GetDistance(hex_cr->GetHex(), to_hex) <= 1 + hex_cr->GetMultihex()) {
-        return {};
-    }
-
-    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1);
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
 
     if (!result) {
         return {};
@@ -685,22 +668,8 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) <= 1 + hex_cr->GetMultihex()) {
-        return cut > 0 ? 0 : 1;
-    }
-
     mpos to_hex = toHex;
-    mpos init_to_hex = toHex;
-
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
-        return 0;
-    }
-
-    if (cut > 0 && GeometryHelper::GetDistance(hex_cr->GetHex(), init_to_hex) <= cut + hex_cr->GetMultihex() && GeometryHelper::GetDistance(hex_cr->GetHex(), to_hex) <= 1 + hex_cr->GetMultihex()) {
-        return 0;
-    }
-
-    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1);
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
 
     if (!result) {
         return 0;

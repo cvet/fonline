@@ -25,6 +25,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-getalpha-c633168d06"></a>
 - [`symbol-script-method-client-critter-getalpha-c633168d06`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getalpha-c633168d06)
 
+<a id="symbol-script-method-client-critter-getattachedcritterids-154a444b09"></a>
+- [`symbol-script-method-client-critter-getattachedcritterids-154a444b09`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getattachedcritterids-154a444b09)
+
 <a id="symbol-script-method-client-critter-getbodyangle-8cb57229bd"></a>
 - [`symbol-script-method-client-critter-getbodyangle-8cb57229bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbodyangle-8cb57229bd)
 

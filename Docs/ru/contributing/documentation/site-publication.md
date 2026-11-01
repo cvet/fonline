@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"32fcb956ac0c5ced2d7eacbbfcc1d7bad2ce1757244bf35d5e51ea96e23e0c26"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"3f62383867409d4f79d8f3938f189e1977cf6202b4c74f45da1ce92b3af98041"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -95,6 +95,12 @@ Production получает проверенный артефакт `documentati
 Маршрут публикации намеренно не зависит от подключаемого игрового проекта. Last Frontier, TLA и public example games могут ссылаться на этот сайт, но не собирают и не определяют его.
 
 ## Размещение исходников сайта
+
+Индексы поиска назначают более короткие числовые позиции документам с большим
+числом сохранённых вхождений. Эта внутренняя перестановка без потерь сохраняет
+символьные идентификаторы и метаданные всех документов, все термины, оценки и
+порядок списков вхождений; для обеих локалей остаются прежними предел размера
+в байтах и правила ранжирования результатов.
 
 Реализация сайта находится в `Docs/Site/`: `Layouts/` содержит HTML-шаблон,
 `Data/` — сгенерированную навигацию, а `Assets/` — стили, скрипты, логотип и

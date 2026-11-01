@@ -376,12 +376,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                     [],
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
-        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 4)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2592)
+        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 5)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2593)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2591, "internal": 1},
+            {"experimental": 2592, "internal": 1},
         )
         transfer_state = next(
             symbol for symbol in model["symbols"]
@@ -404,9 +404,14 @@ class DocumentationApiModelTests(unittest.TestCase):
             view_refresh_ids,
         )
         self.assertTrue(all(symbol["since"] == "2022.1.0.wip"
-                            for symbol in experimental_symbols if symbol["id"] not in view_refresh_ids))
+                            for symbol in experimental_symbols if symbol["id"] not in view_refresh_ids and symbol["id"] != "script.method.client.Critter.GetAttachedCritterIds"))
         self.assertTrue(all(symbol["contract"]["selector"] == symbol["id"]
                             for symbol in experimental_symbols if symbol["id"] in view_refresh_ids))
+        attachment_id = "script.method.client.Critter.GetAttachedCritterIds"
+        attachment_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == attachment_id)
+        self.assertEqual(attachment_symbol["since"], "2026.1.53-dev")
+        self.assertEqual(attachment_symbol["signature"], "ident[] Critter.GetAttachedCritterIds()")
+        self.assertEqual(attachment_symbol["contract"]["selector"], attachment_id)
         allocator_id = "script.method.common.Game.GetAllocatorStatistics"
         allocator_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == allocator_id)
         self.assertEqual(allocator_symbol["contract"]["selector"], allocator_id)
@@ -414,7 +419,7 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertIn("whole-process memory contract", allocator_symbol["contract"]["notes"])
         self.assertTrue(all(symbol["contract"]["selector"] == "scope:native-codegen"
                             for symbol in experimental_symbols
-                            if symbol["id"] != allocator_id and symbol["id"] not in view_refresh_ids))
+                            if symbol["id"] not in {allocator_id, attachment_id} and symbol["id"] not in view_refresh_ids))
 
     def test_view_map_contract_requires_context_and_refresh(self) -> None:
         model = json.loads(

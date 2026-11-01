@@ -1828,7 +1828,7 @@ FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<Serv
 }
 
 // SyncScope: sync-safe probe; returns whether entity is covered without emitting diagnostics
-///@ ExportMethod
+///@ ExportMethod AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PROBE bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
     auto ctx = server->RequireCurrentSyncContext();

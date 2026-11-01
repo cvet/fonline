@@ -4526,6 +4526,10 @@
           "source_sha256": "ef55c9e73e54d8594c4421718374db056587caf7a0cf959da1aa6c1afa39cd71",
           "translation": "Возвращает текущую отображаемую прозрачность спрайта на карте или 255, если криттер находится вне представления карты."
         },
+        "/symbols/@id=script.method.client.Critter.GetAttachedCritterIds/description": {
+          "source_sha256": "ef40d784a88606d5c32635df4e817c56faae9c96473cebe23c3c79004ab2de61",
+          "translation": "Возвращает снимок полученных ID прикреплённых криттеров, включая ID сущностей, не загруженных на этом клиенте"
+        },
         "/symbols/@id=script.method.client.Critter.GetBodyAngle/description": {
           "source_sha256": "dada7d239159b7ee7903bb7628c1a40981b814b774a2c10e25e0e1191e88be14",
           "translation": "Возвращает отображаемый угол тела 3D-модели в градусах при наличии модели, иначе угол дискретного направления криттера."

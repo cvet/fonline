@@ -41,8 +41,10 @@
 #include "Application.h"
 #include "Baker.h"
 #include "Client.h"
+#include "CritterView.h"
 #include "DataSerialization.h"
 #include "ImGuiStuff.h"
+#include "ItemView.h"
 #include "ResourcePack.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
@@ -220,6 +222,25 @@ namespace ClientServerIntegrationServer
                 }
             }
         }
+        else if (step == 7) {
+            Item first = cr.AddItem("UnitTestSharedItem".hstr());
+            Item second = cr.AddItem("UnitTestSharedItem".hstr());
+            first.UnitTestItemMark = 71;
+            second.UnitTestItemMark = 72;
+            SlotSwapFirstId = first.Id;
+            SlotSwapSecondId = second.Id;
+            cr.ChangeItemSlot(first.Id, CritterItemSlot::Main);
+            cr.ChangeItemSlot(second.Id, CritterItemSlot::Main);
+            player.ClientCall.UnitTestClientPing(1);
+        }
+        else if (step == 8) {
+            cr.ChangeItemSlot(SlotSwapFirstId, CritterItemSlot::Main);
+            player.ClientCall.UnitTestClientPing(1);
+        }
+        else if (step == 9) {
+            cr.ChangeItemSlot(SlotSwapSecondId, CritterItemSlot::Main);
+            player.ClientCall.UnitTestClientPing(1);
+        }
         else if (step == 6) {
             // Dropping the map's one baked static item; the client watching the map must lose it too
             if (crMapCover !is null) {
@@ -252,6 +273,8 @@ namespace ClientServerIntegrationServer
     }
 
     ident SpawnedNpcId;
+    ident SlotSwapFirstId;
+    ident SlotSwapSecondId;
 
     int UnitTestGetWorldSteps()
     {

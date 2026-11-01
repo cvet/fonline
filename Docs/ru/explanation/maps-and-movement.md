@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"b13541864416f1ff0d5c6a54dd534347daefc56f60b10736015aa41fc0e787cc"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"ee1b6841bc81398a5338e8e6f453679f70c7e5f5209eec1166572f7380ec9281"} -->
 Владельцы геометрии/движения Engine: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers и тесты.
 
 Разделы `.fomap`, identity/владение размещением, Mapper round-trip, side-specific baking и материализация runtime описаны в [формате карт](../how-to/content/map-format.md).
@@ -88,6 +88,14 @@ Engine владеет типами координат, алгоритмами п
 Безопасные помощники проверяют границы `msize`; небезопасные предназначены для внутренних алгоритмов, уже доказавших нахождение в границах.
 
 ## Поиск пути
+
+Клиентские `Map.GetPath(critter, target, cut)` и `GetPathLength` используют один
+нативный поиск при любом расстоянии. `cut` задаёт расстояние от центра тела до
+цели; `Multihex` проверяет проходимость тела и не добавляет радиус остановки.
+При нулевом cut близкая достижимая цель всё ещё требует всех шагов до её центра.
+На текущем гексе и для заблокированной цели длина равна нулю; длина пути
+совпадает с числом возвращённых шагов. `Test_ClientMapPaths.cpp` проверяет эти
+скриптовые экспорты на настоящей клиентской карте и multihex-криттере.
 
 `Source/Common/PathFinding.h` экспортирует основное API поиска пути:
 

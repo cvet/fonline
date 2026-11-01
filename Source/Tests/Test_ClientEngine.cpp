@@ -39,6 +39,8 @@ FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
 
+FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self);
+
 TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
     string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
@@ -1142,6 +1144,51 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
 
     CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
     CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1001})));
+}
+
+TEST_CASE("ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    hstring critter_pid = client->Hashes.to_hashed_string("UnitTestClientCritter");
+    auto critter_proto = client->GetProtoCritter(critter_pid);
+    REQUIRE(static_cast<bool>(critter_proto));
+
+    auto vehicle = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto);
+    auto driver = safe_alloc::make_refcounted<CritterView>(client, ident_t {11}, critter_proto);
+
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
+
+    // The passenger id replicates as a bare id, so its critter is deliberately never created on this client
+    vehicle->SetAttachedCritters({driver->GetId(), ident_t {22}});
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {22})));
+
+    vector<ident_t> snapshot = Client_Critter_GetAttachedCritterIds(vehicle);
+    REQUIRE(snapshot.size() == 2);
+    CHECK(snapshot[0] == driver->GetId());
+    CHECK(snapshot[1] == ident_t {22});
+
+    // Caller mutations leave the critter intact, and replacing its native list must preserve the old snapshot
+    snapshot[0] = ident_t {9999};
+    CHECK(vehicle->GetAttachedCritters()[0] == driver->GetId());
+
+    vehicle->SetAttachedCritters({driver->GetId()});
+    CHECK(snapshot[0] == ident_t {9999});
+    CHECK(snapshot[1] == ident_t {22});
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).size() == 1);
+
+    vehicle->SetAttachedCritters({});
+    CHECK(snapshot.size() == 2);
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
+
+    vehicle->DestroySelf();
+    driver->DestroySelf();
+
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {11})));
 }
 
 TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")

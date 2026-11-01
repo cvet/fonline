@@ -14,6 +14,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-02
 
+### Added
+
+- Client-only `Critter.GetAttachedCritterIds()` returns a copy of the received ordered IDs, including unloaded views. Editing it changes no attachment or authority; `Game.GetCritter(id)` may return null.
+
+### Fixed
+
+- Revalidate attached movement permission, controller/connection/map identity and leases after callbacks, including renewals and speed-zero stops.
+- Order global attachment snapshots with group membership and queued map context; refresh them after bounded map viewing without exposing other groups.
+- Use canonical client critter paths/cuts, reject blocked neighbours, and reconcile exclusive item slots without displacing multi-item slots or retaining invalid entities across setters.
+- Refuse disconnected outbound client RPC before packet mutation. Admit retained destroyed handles only to the existing native `Game.IsEntityLocked` coverage probe, without acquiring cover or weakening ordinary argument rejection.
+- Compact generated search indexes by a bijective document-position permutation after the existing term filter. Preserve all documents, metadata, terms, scores and posting order under the unchanged locale byte limit.
+
+### Migration
+
+- Baseline `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`) to `2026.1.97-dev`: the combined lifecycle/attachment contract advances the manual marker from `0.0.85` to `0.0.86`. Incoming fault continuation, VisualOffset and coordinate/grid fixes remain. Default coordinates stay16-bit/4000; field types, units, IDs/defaults, persistence and packet order retain meaning. Managed ABI9, SpriteResource v3 and snapshot format4 are unchanged; no saved-data conversion is required.
+- Regenerate API/bindings/metadata; rebuild native extensions and Client/Server/Mapper/Baker/tests, then force-rebake matching CoreScripts, assemblies and packs. Deploy/roll back that whole set; reject mixed generations. Movement handlers permit re-evaluation after callbacks; RPC callers wait for connection and cancel/defer on disconnect. The coverage probe grants no missing backend API.
+- Qualify paths/cuts, slot lifetimes, attachment ordering/privacy, view return, attached/reentrant movement, covers and save/restart through the existing owners. Prior results remain historical until final combined-source native and player checks.
+
+## 2026.1.96-dev - 2026-11-02
+
 ### Fixed
 
 - Release a partially created Vulkan buffer and its allocated memory when memory-type selection, memory allocation or buffer binding fails. Leave caller output handles unchanged on failure and transfer ownership only after successful binding.

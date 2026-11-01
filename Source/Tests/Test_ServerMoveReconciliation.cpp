@@ -45,11 +45,23 @@ FO_BEGIN_NAMESPACE
 
 // Move requests go through the export scripts call, because that is where a refused request decides what observers hear
 ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck);
+FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius, nptr<ServerEntity> context);
+FO_SCRIPT_API void Server_Player_ReturnFromViewMap(ptr<Player> self);
+FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self);
 
 // An arrival report settles the server position before the action behind it is read. The rig runs no script; an
 // AngelScript build still needs one bytecode file to start, so it gets an empty one
 namespace
 {
+    // Copied CritterAttachments wire payload, so recipient assertions never read production attachment state
+    struct CritterAttachmentSnapshot
+    {
+        ident_t CrId {};
+        bool IsAttached {};
+        ident_t MasterId {};
+        vector<ident_t> AttachedIds {};
+    };
+
     class MoveReconciliationConnection final : public NetworkServerConnection
     {
     public:
@@ -84,11 +96,11 @@ namespace
             ReceiveCallback(sealed);
         }
 
-        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
+        [[nodiscard]] auto CountReceivedCritterMessage(NetMessage message, ident_t cr_id) -> size_t
         {
             scoped_lock locker {_clientChannelLocker};
 
-            return numeric_cast<size_t>(std::ranges::count_if(_receivedMovement, [message, cr_id](const ReceivedMovement& received) { return received.Message == message && received.CritterId == cr_id; }));
+            return numeric_cast<size_t>(std::ranges::count(_receivedCritterMessages, std::pair {message, cr_id}));
         }
 
         [[nodiscard]] auto ReadReceivedSenderTime(NetMessage message, ident_t cr_id) -> int64_t
@@ -148,6 +160,34 @@ namespace
             _receivedMovement.clear();
         }
 
+        [[nodiscard]] auto GetReceivedAttachmentSnapshots() -> vector<CritterAttachmentSnapshot>
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return _receivedAttachmentSnapshots;
+        }
+
+        [[nodiscard]] auto GetReceivedCritterMessages() -> vector<std::pair<NetMessage, ident_t>>
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return _receivedCritterMessages;
+        }
+
+        void ClearReceivedCritterMessages()
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            _receivedCritterMessages.clear();
+        }
+
+        void ClearReceivedAttachmentSnapshots()
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            _receivedAttachmentSnapshots.clear();
+        }
+
     protected:
         void DispatchImpl() override
         {
@@ -157,7 +197,7 @@ namespace
 
             if (!encoded_data.empty()) {
                 _clientChannel.Receive(encoded_data, _plainData);
-                RecordMovementMessages();
+                RecordCritterMessages();
                 _plainData.clear();
             }
         }
@@ -173,7 +213,7 @@ namespace
         };
 
         // The compressed stream is continuous, so every packet is unpacked in order even when nothing in it is recorded
-        void RecordMovementMessages()
+        void RecordCritterMessages()
         {
             if (_plainData.empty()) {
                 return;
@@ -208,8 +248,58 @@ namespace
                     _receivedMovement.push_back(ReceivedMovement {.Message = message, .CritterId = cr_id, .Data = vector<uint8_t>(message_data.begin(), message_data.end())});
                 }
 
+                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos || message == NetMessage::CritterAttachments || message == NetMessage::AddCritter) {
+                    FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(ident_t), "Truncated outgoing movement message", message_size);
+
+                    ident_t cr_id {};
+                    memory::copy(&cr_id, data.data() + offset + header_size, sizeof(cr_id));
+                    _receivedCritterMessages.emplace_back(message, cr_id);
+                }
+
+                if (message == NetMessage::CritterAttachments) {
+                    _receivedAttachmentSnapshots.emplace_back(DecodeAttachmentSnapshot(data.subspan(offset + header_size, message_size - header_size)));
+                }
+
                 offset += message_size;
             }
+        }
+
+        // Payload of Player::Send_Attachments: id, attached flag, master id, attached count and each attached id
+        [[nodiscard]] static auto DecodeAttachmentSnapshot(const_span<uint8_t> payload) -> CritterAttachmentSnapshot
+        {
+            constexpr size_t fixed_size = sizeof(ident_t) + sizeof(bool) + sizeof(ident_t) + sizeof(uint16_t);
+            FO_VERIFY_AND_THROW(payload.size() >= fixed_size, "Truncated outgoing attachments payload", payload.size());
+
+            size_t pos = 0;
+            CritterAttachmentSnapshot snapshot;
+
+            memory::copy(&snapshot.CrId, payload.data() + pos, sizeof(snapshot.CrId));
+            pos += sizeof(snapshot.CrId);
+
+            memory::copy(&snapshot.IsAttached, payload.data() + pos, sizeof(snapshot.IsAttached));
+            pos += sizeof(snapshot.IsAttached);
+
+            memory::copy(&snapshot.MasterId, payload.data() + pos, sizeof(snapshot.MasterId));
+            pos += sizeof(snapshot.MasterId);
+
+            uint16_t attached_count = 0;
+            memory::copy(&attached_count, payload.data() + pos, sizeof(attached_count));
+            pos += sizeof(attached_count);
+
+            FO_VERIFY_AND_THROW(attached_count <= (payload.size() - pos) / sizeof(ident_t), "Outgoing attachments payload count exceeds remaining bytes", attached_count, payload.size(), pos);
+
+            snapshot.AttachedIds.reserve(attached_count);
+
+            for (uint16_t i = 0; i < attached_count; i++) {
+                ident_t attached_id {};
+                memory::copy(&attached_id, payload.data() + pos, sizeof(attached_id));
+                pos += sizeof(attached_id);
+                snapshot.AttachedIds.emplace_back(attached_id);
+            }
+
+            FO_VERIFY_AND_THROW(pos == payload.size(), "Outgoing attachments payload has trailing bytes", payload.size(), pos);
+
+            return snapshot;
         }
 
         mutex _clientChannelLocker {};
@@ -218,6 +308,8 @@ namespace
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         vector<ReceivedMovement> _receivedMovement {};
+        vector<pair<NetMessage, ident_t>> _receivedCritterMessages {};
+        vector<CritterAttachmentSnapshot> _receivedAttachmentSnapshots {};
     };
 
     auto MakeSettings() -> GlobalSettings
@@ -417,6 +509,29 @@ namespace
         packet.StartMsg(NetMessage::Ping);
         packet.Write(true);
         packet.Write(sender_ms);
+        packet.EndMsg();
+
+        connection->Receive(packet.GetData());
+    }
+
+    void SendCritterMove(ptr<MoveReconciliationConnection> connection, ptr<ServerEngine> server, ptr<Critter> cr, uint16_t speed)
+    {
+        SendCritterMove(connection, server, cr->GetMapId(), cr->GetId(), speed, cr->GetHex(), vector<mdir> {mdir {hdir::East}, mdir {hdir::East}, mdir {hdir::East}}, nanotime::now().milliseconds());
+    }
+
+    void SendCritterStop(ptr<MoveReconciliationConnection> connection, ptr<ServerEngine> server, ptr<Critter> cr)
+    {
+        SendStopCritterMove(connection, server, cr->GetMapId(), cr->GetId(), cr->GetHex(), cr->GetHexOffset(), cr->GetDir());
+    }
+
+    void SendCritterDir(ptr<MoveReconciliationConnection> connection, ptr<ServerEngine> server, ptr<Critter> cr, mdir dir)
+    {
+        NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
+
+        packet.StartMsg(NetMessage::SendCritterDir);
+        packet.Write(cr->GetMapId());
+        packet.Write(cr->GetId());
+        packet.Write(dir);
         packet.EndMsg();
 
         connection->Receive(packet.GetData());
@@ -724,7 +839,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
             REQUIRE(mover->IsMoving());
 
             test_connection->Dispatch();
-            test_connection->ClearReceivedMovement();
+            test_connection->ClearReceivedCritterMessages();
 
             auto refused = request_move(hex, speed);
             test_connection->Dispatch();
@@ -734,8 +849,8 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
             CHECK(route->GetCompleteReason() == MovingState::Stopped);
             CHECK_FALSE(mover->IsMoving());
             CHECK(mover->GetHex() == mover_hex);
-            CHECK(test_connection->CountReceivedMovement(NetMessage::CritterPos, mover->GetId()) == 1);
-            CHECK(test_connection->CountReceivedMovement(NetMessage::CritterMove, mover->GetId()) == 0);
+            CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterPos, mover->GetId()) == 1);
+            CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterMove, mover->GetId()) == 0);
         };
 
         refuse_mid_route(mover_hex, 1, MovingState::Success);
@@ -746,7 +861,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         REQUIRE(mover->IsMoving());
 
         test_connection->Dispatch();
-        test_connection->ClearReceivedMovement();
+        test_connection->ClearReceivedCritterMessages();
 
         auto retarget = request_move(mpos {24, 40}, 1);
         test_connection->Dispatch();
@@ -754,8 +869,8 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         CHECK_FALSE(retarget->IsCompleted());
         CHECK(route->GetCompleteReason() == MovingState::Stopped);
         CHECK(mover->IsMoving());
-        CHECK(test_connection->CountReceivedMovement(NetMessage::CritterMove, mover->GetId()) == 1);
-        CHECK(test_connection->CountReceivedMovement(NetMessage::CritterPos, mover->GetId()) == 0);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterMove, mover->GetId()) == 1);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterPos, mover->GetId()) == 0);
 
         server->StopCritterMoving(mover);
         server->SwitchPlayerCritter(player, nullptr);
@@ -1162,6 +1277,714 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->CrMngr.DestroyCritter(cr);
         server->MapMngr.DestroyLocation(loc);
     }
+}
+
+TEST_CASE("ServerAttachedMasterMovementAuthority")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    bool server_locked = true;
+    auto unlock = scope_exit([&server, &server_locked]() noexcept {
+        safe_call([&server, &server_locked] {
+            if (server_locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto player = CreateLoggedPlayer(server, test_connection, "AttachedMasterMovement");
+    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
+
+    auto chosen = server->CreateCritter(fn("TestCritter"), true);
+    auto master = server->CreateCritter(fn("TestCritter"), false);
+    auto stranger = server->CreateCritter(fn("TestCritter"), true);
+    server->MapMngr.TransferToMap(chosen, map, mpos {19, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(stranger, map, mpos {40, 40}, mdir {}, std::nullopt);
+    server->SwitchPlayerCritter(player, chosen);
+    chosen->AttachToCritter(master);
+    REQUIRE(player->GetControlledCritter() == chosen.get());
+
+    int32_t move_calls = 0;
+    int32_t dir_calls = 0;
+    function<Entity::EventResult()> on_move = [] { return Entity::EventResult::ContinueChain; };
+    Entity::EventCallbackData move_callback;
+    move_callback.Callback = [&](FuncCallData&) {
+        move_calls++;
+        return on_move();
+    };
+    move_callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&move_calls);
+    server->OnPlayerMoveCritter.Subscribe(std::move(move_callback));
+    Entity::EventCallbackData dir_callback;
+    dir_callback.Callback = [&](FuncCallData&) {
+        dir_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    dir_callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&dir_calls);
+    server->OnPlayerDirCritter.Subscribe(std::move(dir_callback));
+    auto unsubscribe = scope_exit([&]() noexcept {
+        server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&move_calls));
+        server->OnPlayerDirCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&dir_calls));
+    });
+
+    auto sync_fixture = [&] {
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 6> entities {player, chosen, master, stranger, map, loc};
+        ctx->SyncEntities(entities);
+    };
+    auto wait_move_calls = [&](int32_t count) {
+        return WaitForUnlockedServerCondition(server, server_locked, [&] {
+            sync_fixture();
+            return move_calls >= count;
+        });
+    };
+    auto start_master_move = [&](uint16_t speed) {
+        server->StartCritterMoving(master, speed, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, player);
+        REQUIRE(master->IsMoving());
+    };
+    auto start_master_lease = [&] {
+        auto plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, master->GetHex(), ipos16 {}, ipos16 {});
+        plan->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
+        server->StartCritterMoving(master, std::move(plan), player, 7);
+        REQUIRE(master->IsMoving());
+    };
+
+    SECTION("AttachedChosenReplacesItsMovingMastersPlan")
+    {
+        start_master_move(uint16_t {1});
+        uint32_t previous_uid = master->GetMovingUid();
+        SendCritterMove(test_connection, server, master, uint16_t {2});
+        REQUIRE(wait_move_calls(1));
+        REQUIRE(master->IsMoving());
+        CHECK(master->GetMovingUid() != previous_uid);
+        CHECK(master->GetMoving()->GetSpeed() == 2);
+        CHECK(player->GetControlledCritter() == chosen.get());
+    }
+
+    SECTION("AttachedChosenRenewsItsMastersLease")
+    {
+        start_master_lease();
+        SendCritterMoveLease(test_connection, server, map->GetId(), master->GetId(), 7, 1000.0f, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK(master->GetMoving()->GetLeaseTime() == timespan {std::chrono::duration<float64_t, std::milli> {1000.0f}});
+        CHECK(player->GetControlledCritter() == chosen.get());
+    }
+
+    SECTION("ScriptCanRefuseMastersLease")
+    {
+        start_master_lease();
+        on_move = [] { return Entity::EventResult::StopChain; };
+        SendCritterMoveLease(test_connection, server, map->GetId(), master->GetId(), 7, 1000.0f, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK(master->GetMoving()->GetLeaseTime() == timespan {std::chrono::duration<float64_t, std::milli> {200.0f}});
+    }
+
+    SECTION("DetachmentDuringLeasePermissionCheckInvalidatesTheRenewal")
+    {
+        start_master_lease();
+        on_move = [&] {
+            chosen->DetachFromCritter();
+            return Entity::EventResult::ContinueChain;
+        };
+        SendCritterMoveLease(test_connection, server, map->GetId(), master->GetId(), 7, 1000.0f, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK(master->GetMoving()->GetLeaseTime() == timespan {std::chrono::duration<float64_t, std::milli> {200.0f}});
+        CHECK_FALSE(chosen->GetIsAttached());
+    }
+
+    SECTION("ControllerSwitchDuringLeasePermissionCheckInvalidatesTheRenewal")
+    {
+        start_master_lease();
+        on_move = [&] {
+            sync_fixture();
+            server->SwitchPlayerCritter(player, stranger);
+            return Entity::EventResult::ContinueChain;
+        };
+        SendCritterMoveLease(test_connection, server, map->GetId(), master->GetId(), 7, 1000.0f, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK(master->GetMoving()->GetLeaseTime() == timespan {std::chrono::duration<float64_t, std::milli> {200.0f}});
+        CHECK(player->GetControlledCritter() == stranger.get());
+    }
+
+    SECTION("ReplacementPlanDuringLeasePermissionCheckIsNotRenewed")
+    {
+        start_master_lease();
+        on_move = [&] {
+            start_master_move(uint16_t {1});
+            return Entity::EventResult::ContinueChain;
+        };
+        SendCritterMoveLease(test_connection, server, map->GetId(), master->GetId(), 7, 1000.0f, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK_FALSE(master->GetPlayerPlanMoving(7));
+        CHECK(master->GetMoving()->GetLeaseTime() == timespan::zero);
+    }
+
+    SECTION("AttachedChosenStartsTurnsAndStopsItsMaster")
+    {
+        SendCritterMove(test_connection, server, master, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        REQUIRE(master->IsMoving());
+        CHECK_FALSE(chosen->IsMoving());
+        CHECK(player->GetControlledCritter() == chosen.get());
+
+        mdir dir {hdir::NorthEast};
+        SendCritterDir(test_connection, server, master, dir);
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&] {
+            sync_fixture();
+            return dir_calls == 1;
+        }));
+        CHECK(master->GetDir() == dir);
+
+        SendCritterStop(test_connection, server, master);
+        REQUIRE(wait_move_calls(2));
+        CHECK_FALSE(master->IsMoving());
+        CHECK(chosen->GetIsAttached());
+    }
+
+    SECTION("AttachedChosenReconcilesItsMastersArrival")
+    {
+        PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
+        start_master_move(uint16_t {400});
+        auto end_hex = master->GetMoving()->GetEndHex();
+        mpos first_hex = master->GetHex();
+        REQUIRE(GeometryHelper::MoveHexByDir(first_hex, hdir::East, map->GetSize()));
+        SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, first_hex, ipos16 {}, mdir {});
+        REQUIRE(wait_move_calls(1));
+        CHECK_FALSE(master->IsMoving());
+        CHECK(master->GetHex() == first_hex);
+        CHECK(chosen->GetHex() == first_hex);
+    }
+
+    SECTION("ScriptCanRefuseMastersArrival")
+    {
+        on_move = [] { return Entity::EventResult::StopChain; };
+        PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
+        start_master_move(uint16_t {400});
+        auto end_hex = master->GetMoving()->GetEndHex();
+        auto start_hex = master->GetHex();
+        SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, start_hex, ipos16 {}, mdir {});
+        REQUIRE(wait_move_calls(1));
+        CHECK(master->IsMoving());
+        CHECK(master->GetHex() == start_hex);
+    }
+
+    SECTION("ScriptCanRefuseMastersMoveAndStop")
+    {
+        on_move = [] { return Entity::EventResult::StopChain; };
+        SendCritterMove(test_connection, server, master, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK_FALSE(master->IsMoving());
+
+        start_master_move(uint16_t {1});
+        SendCritterStop(test_connection, server, master);
+        REQUIRE(wait_move_calls(2));
+        CHECK(master->IsMoving());
+    }
+
+    SECTION("DetachmentDuringPermissionCheckInvalidatesTheMove")
+    {
+        on_move = [&] {
+            chosen->DetachFromCritter();
+            return Entity::EventResult::ContinueChain;
+        };
+        SendCritterMove(test_connection, server, master, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK_FALSE(master->IsMoving());
+        CHECK_FALSE(chosen->GetIsAttached());
+    }
+
+    SECTION("ControllerSwitchDuringPermissionCheckInvalidatesTheMove")
+    {
+        on_move = [&] {
+            sync_fixture();
+            server->SwitchPlayerCritter(player, stranger);
+            return Entity::EventResult::ContinueChain;
+        };
+        SendCritterMove(test_connection, server, master, uint16_t {1});
+        REQUIRE(wait_move_calls(1));
+        CHECK_FALSE(master->IsMoving());
+        CHECK(player->GetControlledCritter() == stranger.get());
+    }
+
+    SECTION("AnUnrelatedCritterNeverReachesScriptPermissionChecks")
+    {
+        auto stranger_plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East}, vector<uint16_t> {1}, server->GameTime.GetFrameTime(), timespan {}, stranger->GetHex(), ipos16 {}, ipos16 {});
+        stranger_plan->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
+        server->StartCritterMoving(stranger, std::move(stranger_plan), player, 7);
+        SendCritterMoveLease(test_connection, server, map->GetId(), stranger->GetId(), 7, 1000.0f, uint16_t {1});
+        mdir dir {hdir::NorthEast};
+        SendCritterMove(test_connection, server, stranger, uint16_t {1});
+        SendCritterDir(test_connection, server, stranger, dir);
+        SendCritterDir(test_connection, server, chosen, dir);
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&] {
+            sync_fixture();
+            return dir_calls == 1;
+        }));
+        CHECK(move_calls == 0);
+        CHECK(stranger->GetMoving()->GetLeaseTime() == timespan {std::chrono::duration<float64_t, std::milli> {200.0f}});
+        CHECK(stranger->GetDir() != dir);
+        CHECK(chosen->GetDir() == dir);
+        server->StopCritterMoving(stranger);
+    }
+
+    sync_fixture();
+    server->StopCritterMoving(master);
+    if (chosen->GetIsAttached()) {
+        chosen->DetachFromCritter();
+    }
+    server->SwitchPlayerCritter(player, nullptr);
+    chosen->UnmarkIsForPlayer();
+    stranger->UnmarkIsForPlayer();
+    server->CrMngr.DestroyCritter(chosen);
+    server->CrMngr.DestroyCritter(master);
+    server->CrMngr.DestroyCritter(stranger);
+    server->MapMngr.DestroyLocation(loc);
+}
+
+TEST_CASE("CritterAttachmentDestruction")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto player = CreateLoggedPlayer(server, test_connection, "AttachmentDestruction");
+    auto master = server->CreateCritter(fn("TestCritter"), false).hold_ref();
+    auto passenger = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+    auto other_passenger = server->CreateCritter(fn("TestCritter"), false).hold_ref();
+    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(map);
+    server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(passenger, map, mpos {19, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(other_passenger, map, mpos {21, 20}, mdir {}, std::nullopt);
+    server->SwitchPlayerCritter(player, passenger);
+    (void)master->AddVisibleCritter(passenger, CritterVisibilityMode::Full);
+    (void)other_passenger->AddVisibleCritter(passenger, CritterVisibilityMode::Full);
+
+    for (ptr<Critter> member : {passenger.as_ptr(), other_passenger.as_ptr()}) {
+        member->AttachToCritter(master);
+    }
+    test_connection->Dispatch();
+    test_connection->ClearReceivedCritterMessages();
+
+    std::atomic<size_t> error_count {};
+    logging::set_callback("critter-attachment-destruction-test", [&](logging::type type, string_view, nptr<const stack_trace::catched_data>) {
+        if (type == logging::type::error) {
+            error_count.fetch_add(1, std::memory_order_relaxed);
+        }
+    });
+    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("critter-attachment-destruction-test", {}); });
+
+    SECTION("MasterDestroyedBeforePassengers")
+    {
+        CHECK_NOTHROW(server->CrMngr.DestroyCritter(master));
+        CHECK(master->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(master->GetId()));
+        CHECK_FALSE(passenger->GetIsAttached());
+        CHECK_FALSE(passenger->GetAttachMaster());
+        CHECK_FALSE(other_passenger->GetIsAttached());
+        CHECK_FALSE(other_passenger->GetAttachMaster());
+        CHECK_FALSE(passenger->IsDestroyed());
+        CHECK_FALSE(other_passenger->IsDestroyed());
+        CHECK(player->GetControlledCritter() == passenger.get());
+        test_connection->Dispatch();
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, master->GetId()) == 0);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, passenger->GetId()) >= 1);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, other_passenger->GetId()) >= 1);
+        CHECK(error_count.load(std::memory_order_relaxed) == 0);
+        server->CrMngr.DestroyCritter(other_passenger);
+    }
+
+    SECTION("PassengerDestroyedBeforeMaster")
+    {
+        CHECK_NOTHROW(server->CrMngr.DestroyCritter(other_passenger));
+        CHECK(other_passenger->IsDestroyed());
+        REQUIRE(master->GetAttachedCritters().size() == 1);
+        CHECK(master->GetAttachedCritters().front() == passenger.get());
+        CHECK(passenger->GetAttachMaster() == master->GetId());
+        test_connection->Dispatch();
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, master->GetId()) >= 1);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, other_passenger->GetId()) == 0);
+        CHECK(error_count.load(std::memory_order_relaxed) == 0);
+        test_connection->ClearReceivedCritterMessages();
+        CHECK_NOTHROW(server->CrMngr.DestroyCritter(master));
+        CHECK(master->IsDestroyed());
+        CHECK_FALSE(passenger->GetIsAttached());
+        CHECK_FALSE(passenger->IsDestroyed());
+        test_connection->Dispatch();
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, master->GetId()) == 0);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterAttachments, passenger->GetId()) >= 1);
+        CHECK(error_count.load(std::memory_order_relaxed) == 0);
+    }
+
+    server->SwitchPlayerCritter(player, nullptr);
+    passenger->UnmarkIsForPlayer();
+    server->CrMngr.DestroyCritter(passenger);
+    server->MapMngr.DestroyLocation(loc);
+    CHECK(error_count.load(std::memory_order_relaxed) == 0);
+}
+
+// A rider's client rebuilds who sits with it from the master's CritterAttachments frames, so a real local-to-global
+// transfer must leave both riders holding one listing exactly their two ids and leave other groups deaf to it
+TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
+{
+    auto settings = MakeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+    auto driver_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto passenger_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto outsider_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto driver_player = CreateLoggedPlayer(server, driver_connection, "GlobalAttachmentDriver");
+    auto passenger_player = CreateLoggedPlayer(server, passenger_connection, "GlobalAttachmentPassenger");
+    auto outsider_player = CreateLoggedPlayer(server, outsider_connection, "GlobalAttachmentOutsider");
+
+    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
+
+    auto master = server->CreateCritter(fn("TestCritter"), false).hold_ref();
+    auto driver = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+    auto passenger = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+    auto outsider = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+
+    server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(driver, map, mpos {19, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(passenger, map, mpos {21, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(outsider, map, mpos {40, 40}, mdir {}, std::nullopt);
+
+    server->SwitchPlayerCritter(driver_player, driver);
+    server->SwitchPlayerCritter(passenger_player, passenger);
+    server->SwitchPlayerCritter(outsider_player, outsider);
+
+    auto sync_fixture = [&] {
+        auto ctx = server->RequireCurrentSyncContext();
+        ptr<Critter> master_ref = master;
+        ptr<Critter> driver_ref = driver;
+        ptr<Critter> passenger_ref = passenger;
+        ptr<Critter> outsider_ref = outsider;
+        small_vector<ptr<ServerEntity>, 10> entities {driver_player, passenger_player, outsider_player, master_ref, driver_ref, passenger_ref, outsider_ref, map, loc};
+        ctx->SyncEntities(entities);
+    };
+
+    sync_fixture();
+    driver->AttachToCritter(master);
+    passenger->AttachToCritter(master);
+
+    // Outsider leaves for a global group of its own first, so it keeps no map-visibility path into the tested
+    // transfer and stays a real third player in a different group
+    server->MapMngr.TransferToGlobal(outsider, ident_t {});
+
+    auto flush_observations = [&] {
+        driver_connection->Dispatch();
+        passenger_connection->Dispatch();
+        outsider_connection->Dispatch();
+    };
+    auto clear_observations = [&] {
+        flush_observations();
+
+        driver_connection->ClearReceivedCritterMessages();
+        driver_connection->ClearReceivedAttachmentSnapshots();
+        passenger_connection->ClearReceivedCritterMessages();
+        passenger_connection->ClearReceivedAttachmentSnapshots();
+        outsider_connection->ClearReceivedCritterMessages();
+        outsider_connection->ClearReceivedAttachmentSnapshots();
+    };
+    auto latest_attachment = [](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> optional<CritterAttachmentSnapshot> {
+        for (size_t i = snapshots.size(); i > 0; i--) {
+            const CritterAttachmentSnapshot& snapshot = snapshots[i - 1];
+
+            if (snapshot.CrId == cr_id) {
+                return snapshot;
+            }
+        }
+
+        return std::nullopt;
+    };
+    auto attachment_ids_match = [](const vector<ident_t>& actual, const vector<ident_t>& expected) -> bool {
+        if (actual.size() != expected.size()) {
+            return false;
+        }
+
+        return std::ranges::all_of(expected, [&actual](ident_t id) { return std::ranges::find(actual, id) != actual.end(); });
+    };
+    auto count_attachments = [](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> size_t { return numeric_cast<size_t>(std::ranges::count_if(snapshots, [cr_id](const CritterAttachmentSnapshot& snapshot) { return snapshot.CrId == cr_id; })); };
+
+    // Oracles are the fixture's own actor ids, never the critters' current attachment state
+    ident_t master_id = master->GetId();
+    ident_t driver_id = driver->GetId();
+    ident_t passenger_id = passenger->GetId();
+    vector<ident_t> expected_full_master_ids {driver_id, passenger_id};
+    vector<ident_t> expected_detached_master_ids {driver_id};
+
+    // A known nonempty packet validates the independent decoder before missing broadcasts can satisfy the RED
+    clear_observations();
+    driver_player->Send_Attachments(master);
+    flush_observations();
+    auto known_snapshot = latest_attachment(driver_connection->GetReceivedAttachmentSnapshots(), master_id);
+    REQUIRE(known_snapshot.has_value());
+    REQUIRE(attachment_ids_match(known_snapshot->AttachedIds, expected_full_master_ids));
+
+    std::atomic<size_t> error_count {};
+    logging::set_callback("critter-global-attachment-test", [&](logging::type type, string_view, nptr<const stack_trace::catched_data>) {
+        if (type == logging::type::error) {
+            error_count.fetch_add(1, std::memory_order_relaxed);
+        }
+    });
+    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("critter-global-attachment-test", {}); });
+
+    clear_observations();
+    server->MapMngr.TransferToGlobal(master, ident_t {});
+    flush_observations();
+
+    // The master's own snapshot is the riders' whole model of who sits with them, so the transfer window must close
+    // with one whose attached list is exactly their two ids
+    SECTION("TransferLeavesBothRidersHoldingTheFullMasterList")
+    {
+        auto expect_full_master_list = [&](const vector<CritterAttachmentSnapshot>& snapshots) {
+            optional<CritterAttachmentSnapshot> master_snapshot = latest_attachment(snapshots, master_id);
+
+            CHECK(master_snapshot.has_value());
+
+            if (master_snapshot.has_value()) {
+                CHECK(attachment_ids_match(master_snapshot->AttachedIds, expected_full_master_ids));
+            }
+        };
+
+        expect_full_master_list(driver_connection->GetReceivedAttachmentSnapshots());
+        expect_full_master_list(passenger_connection->GetReceivedAttachmentSnapshots());
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+    }
+
+    // A global detach publishes two states: the master's list narrowed to the rider still aboard and the child's
+    // own cleared attachment, and both must reach the riders still sharing the group
+    SECTION("GlobalDetachNarrowsTheMasterListAndClearsTheChild")
+    {
+        clear_observations();
+        passenger->DetachFromCritter();
+        flush_observations();
+
+        auto expect_detach_state = [&](const vector<CritterAttachmentSnapshot>& snapshots) {
+            optional<CritterAttachmentSnapshot> master_snapshot = latest_attachment(snapshots, master_id);
+            optional<CritterAttachmentSnapshot> passenger_snapshot = latest_attachment(snapshots, passenger_id);
+
+            CHECK(master_snapshot.has_value());
+
+            if (master_snapshot.has_value()) {
+                CHECK(attachment_ids_match(master_snapshot->AttachedIds, expected_detached_master_ids));
+            }
+
+            CHECK(passenger_snapshot.has_value());
+
+            if (passenger_snapshot.has_value()) {
+                CHECK_FALSE(passenger_snapshot->IsAttached);
+                CHECK(passenger_snapshot->MasterId == ident_t {});
+            }
+        };
+
+        expect_detach_state(driver_connection->GetReceivedAttachmentSnapshots());
+        expect_detach_state(passenger_connection->GetReceivedAttachmentSnapshots());
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+    }
+
+    // An explicit rider broadcast is one snapshot per real recipient: its own connection exactly once, its group peer
+    // once and never a second copy back through the peer path
+    SECTION("ExplicitRiderSendArrivesOnceAtItsOwnConnectionAndItsPeer")
+    {
+        clear_observations();
+        driver->SendAndBroadcast_Attachments();
+        flush_observations();
+
+        vector<CritterAttachmentSnapshot> driver_frames = driver_connection->GetReceivedAttachmentSnapshots();
+        vector<CritterAttachmentSnapshot> passenger_frames = passenger_connection->GetReceivedAttachmentSnapshots();
+
+        CHECK(count_attachments(driver_frames, driver_id) == 1);
+        CHECK(driver_frames.size() == 1);
+        CHECK(count_attachments(passenger_frames, driver_id) == 1);
+        CHECK(passenger_frames.size() == 1);
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+    }
+
+    SECTION("GlobalSnapshotsRespectBoundedMapViewAndResumeAfterReturn")
+    {
+        sync_fixture();
+        Server_Player_ViewMapArea(passenger_player, map, mpos {20, 20}, 5, nullptr);
+        clear_observations();
+        master->SendAndBroadcast_Attachments();
+        flush_observations();
+        CHECK(count_attachments(driver_connection->GetReceivedAttachmentSnapshots(), master_id) == 1);
+        CHECK(passenger_connection->GetReceivedAttachmentSnapshots().empty());
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+
+        clear_observations();
+        passenger->SendAndBroadcast_Attachments();
+        flush_observations();
+        CHECK(count_attachments(driver_connection->GetReceivedAttachmentSnapshots(), passenger_id) == 1);
+        CHECK(passenger_connection->GetReceivedAttachmentSnapshots().empty());
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+
+        driver->DetachFromCritter();
+        clear_observations();
+        Server_Player_ReturnFromViewMap(passenger_player);
+        Server_Critter_SendGlobalMapGroupInfo(passenger);
+        flush_observations();
+
+        for (ident_t id : vector<ident_t> {master_id, driver_id, passenger_id}) {
+            CHECK(passenger_connection->CountReceivedCritterMessage(NetMessage::AddCritter, id) == 1);
+        }
+
+        auto resumed_master = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), master_id);
+        CHECK(resumed_master.has_value());
+        if (resumed_master) {
+            CHECK(attachment_ids_match(resumed_master->AttachedIds, vector<ident_t> {passenger_id}));
+        }
+
+        auto resumed_driver = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), driver_id);
+        CHECK(resumed_driver.has_value());
+        if (resumed_driver) {
+            CHECK_FALSE(resumed_driver->IsAttached);
+            CHECK(resumed_driver->MasterId == ident_t {});
+        }
+
+        auto resumed_passenger = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), passenger_id);
+        CHECK(resumed_passenger.has_value());
+        if (resumed_passenger) {
+            CHECK(resumed_passenger->IsAttached);
+            CHECK(resumed_passenger->MasterId == master_id);
+        }
+
+        vector<ident_t> added_ids;
+        for (const auto& [message, id] : passenger_connection->GetReceivedCritterMessages()) {
+            if (message == NetMessage::AddCritter) {
+                added_ids.emplace_back(id);
+            }
+            else if (message == NetMessage::CritterAttachments) {
+                CHECK(std::ranges::find(added_ids, id) != added_ids.end());
+            }
+        }
+
+        clear_observations();
+        master->SendAndBroadcast_Attachments();
+        flush_observations();
+        CHECK(count_attachments(driver_connection->GetReceivedAttachmentSnapshots(), master_id) == 1);
+        CHECK(count_attachments(passenger_connection->GetReceivedAttachmentSnapshots(), master_id) == 1);
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+    }
+
+    SECTION("QueuedMapContextFollowsTheConnectionAcrossSwapAndRollback")
+    {
+        auto reconnect_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+        auto reconnect_player = server->CreateNotLoggedInPlayer(reconnect_connection);
+        clear_observations();
+        driver_player->SwapConnection(reconnect_player);
+        master->SendAndBroadcast_Attachments();
+        reconnect_connection->Dispatch();
+        CHECK(reconnect_connection->GetReceivedAttachmentSnapshots().empty());
+
+        driver_player->Send_LoadMap(nullptr);
+        reconnect_connection->ClearReceivedAttachmentSnapshots();
+        master->SendAndBroadcast_Attachments();
+        reconnect_connection->Dispatch();
+        CHECK(count_attachments(reconnect_connection->GetReceivedAttachmentSnapshots(), master_id) == 1);
+
+        driver_player->Send_LoadMap(map);
+        driver_player->SwapConnection(reconnect_player);
+        clear_observations();
+        master->SendAndBroadcast_Attachments();
+        flush_observations();
+        CHECK(count_attachments(driver_connection->GetReceivedAttachmentSnapshots(), master_id) == 1);
+        CHECK(outsider_connection->GetReceivedAttachmentSnapshots().empty());
+        reconnect_player->MarkAsDestroyed();
+    }
+
+    SECTION("PinnedRecipientCannotReceiveTheOldGroupAfterSwitchingCritter")
+    {
+        auto replacement = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+        auto pending_player = passenger->GetPlayerForSend();
+        REQUIRE(pending_player);
+        server->SwitchPlayerCritter(passenger_player, replacement);
+        clear_observations();
+
+        // Models a recipient pinned before the switch but queued only after the new controller is installed
+        pending_player->Send_Attachments(master, passenger);
+        flush_observations();
+        CHECK(passenger_connection->GetReceivedAttachmentSnapshots().empty());
+
+        pending_player->Send_Attachments(replacement, replacement);
+        flush_observations();
+        CHECK(count_attachments(passenger_connection->GetReceivedAttachmentSnapshots(), replacement->GetId()) == 1);
+
+        server->SwitchPlayerCritter(passenger_player, passenger);
+        replacement->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(replacement);
+    }
+
+    sync_fixture();
+
+    if (driver->GetIsAttached()) {
+        driver->DetachFromCritter();
+    }
+    if (passenger->GetIsAttached()) {
+        passenger->DetachFromCritter();
+    }
+
+    server->SwitchPlayerCritter(driver_player, nullptr);
+    server->SwitchPlayerCritter(passenger_player, nullptr);
+    server->SwitchPlayerCritter(outsider_player, nullptr);
+    driver->UnmarkIsForPlayer();
+    passenger->UnmarkIsForPlayer();
+    outsider->UnmarkIsForPlayer();
+    server->CrMngr.DestroyCritter(driver);
+    server->CrMngr.DestroyCritter(passenger);
+    server->CrMngr.DestroyCritter(outsider);
+    server->CrMngr.DestroyCritter(master);
+    server->MapMngr.DestroyLocation(loc);
+    CHECK(error_count.load(std::memory_order_relaxed) == 0);
 }
 
 FO_END_NAMESPACE

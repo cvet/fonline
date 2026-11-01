@@ -13068,3 +13068,177 @@ the contended host is retained; no performance acceptance is claimed. Rendered
 Jekyll output and other platforms are not qualified by this run.
 Safety copies and original attempts are retained; no staging, commit or remote
 publication has been performed.
+
+
+## Retained unpublished lifecycle evidence
+
+### Retained pre-rebase validation record
+
+## 2026-10-11 - Retained work on published minor 27
+
+- Rebase the unpublished retained-work commit onto published
+  `5ef9334595f45522c8d580c25e22ed4556ab137b`; retained HEAD is
+  `7999575afdaf778913725443b1c4beddab74a3a6` (minor 28), with draft minor 29
+  and compatibility marker 71 for the disconnected-client remote-call guard.
+  Published grid, display, attachment, optional-component, storage and Baker-lock
+  contracts remain in the ancestry and dated EN/RU migration notes.
+- Regenerate every modeled contract, native references and public index before
+  delivery preparation. The direct published-tip diff passes with 1 required
+  disposition; the complete `cfa468f17bd5dff82cebc6f05b568620fc34163c` range
+  passes with 80 changes across 17 domains, 61 required dispositions and none
+  missing. Preserve published decisions when deduplicating four exact ledger
+  identities introduced by the stash reconciliation.
+- Build native roles and the headless client with zero compiler warnings; enable
+  JSON/SQLite alongside Mongo for this validation configuration. Native default
+  test inventory has 566 cases; the complete JUnit run passes 666,836 assertions
+  and 2,138 section variants with zero failures/errors/skips. Disabled optional
+  importers remain disabled; their successful import paths are not claimed.
+- Standalone documentation passes all 411 Markdown entries. The first rendered
+  artifact gate found duplicate manual/automatic English anchors in persistence
+  and project configuration; remove the redundant English anchors, retain the
+  Russian anchor targets and reconcile translation hashes. Describe snapshot
+  matching against the current central marker rather than freezing marker 70.
+  The rebuilt artifact passes 592 rendered routes, 41 static endpoints and
+  85,622 local references. AI delivery passes 28 tasks and 67 retrieval checks
+  with 100% success and 0.930 MRR. Failed intermediate records remain available.
+- The embedding exception-safety audit checks 7,383 functions with zero errors
+  or warnings. This is project integration evidence, not a new reusable Engine
+  proof dependency. Gameplay/cold-storage acceptance remains with the embedding
+  project; no old SQLite/Extended JSON reader or conversion is introduced here.
+
+
+## 2026-10-12 unpublished update rebased on 2026.1.35-dev
+
+Previous results qualify their recorded revisions only. Fresh upstream integration is validated separately; historical receipts do not qualify the rebased tree.
+
+## 2026-10-13 retained integration on published 2026.1.35-dev
+
+The complete Managed-backend native regression executable was rebuilt after the source rebase and passed 570 test cases with 667792 assertions, including attachment authority/lifetime, disconnected RPCs, client paths, managed writeback and the destroyed-handle coverage probe. This qualifies the selected native configuration, not other platforms or game acceptance.
+
+Fresh documentation preparation passed 313 normative snippets, 4871 description translations and 28 AI tasks/67 retrieval checks (100% success, MRR0.930). Validation passed 412 Markdown entries. The pinned Ruby/Gems site build and rendered artifact audit passed 592 routes, 41 static endpoints and 85640 local references. The AI byte limit was preserved by compacting owning prose; no pages or migrations were dropped. Contract diff against published master passed all 17 domains: two exact required dispositions, zero missing.
+
+Previous runtime receipts qualify their earlier revisions only. No site or code was published. Safety branches and stashes are retained for embedding-project validation.
+
+Published master advanced to 2026.1.36-dev (91d8bf21ac) during validation. Its audio Markdown validator/tests, public AI-delivery explanation and diagram corrections were audited and retained. No native source changed: the complete Source tree remains byte-identical to the 570-case native qualification. The unpublished update is rebased as 2026.1.37-dev; version metadata and documentation are regenerated separately.
+
+## 2026-10-15 — Retained lifecycle work rebased onto published text-pack update
+
+- Prepare the unpublished lifecycle/writeback/attachment update from local base `b497070377b3e1f8be6b9d0b91ebad71e9987a3d` and commits `228eb613e2`, `b6afddd883`, `49e8d6116a` on published `c727e6f549fe54095e21dad4c272b99761083e0f` (`2026.1.40-dev`). Consolidate the three unpublished notes into the single `2026.1.41-dev` update; retain every published changelog entry.
+- Reconcile the documentation overlap while retaining published text-pack loading, holder persistence, map placement and canonical Managed callback-name contracts. Keep the local mutable-event writeback, attachment/movement and retained-destroyed-handle coverage contracts, with runtime marker `0.0.73` and Managed ABI `9`. Keep the compact storage guide's current-marker requirement and route AI bundle limits to the reviewed manifest budget.
+- Union the disposition ledgers by exact domain/change/model-pair identity, retaining all seventeen local-only identities (including five local-only change IDs) and the published reconciliation of shared historical entries. Exact current model digests and generated references are refreshed after the source conflicts are resolved. Reviewed Russian prose follows the merged English owners; its hashes are refreshed in that same ordered preparation.
+- All earlier build, runtime and documentation receipts above qualify only their recorded revisions. This conflict-resolution pass runs no generators, builds or tests and makes no current-tree acceptance or publication claim. Fresh validation belongs to the completed integration.
+
+Fresh validation of the combined native source passed 675 test cases and 735050 assertions in the Managed configuration. The source-backed contract report against published base 40 passes 17 domains, with two required exact dispositions and zero missing. Version-history validation accepts one 41 step. Python checks passed 35 tests and 58 subtests; the unchanged CMake dependency suite passed 15 tests with 10 platform skips from a new Workspace fixture. Its initial Temp-based run retained a failure: MSBuild MSB8029 warns that Temp invalidates incremental tracking; the Workspace run preserves the strict invocation count and dependency graph.
+
+Documentation preparation passed 313 normative snippets,159 evidence fences,183 external parser checks,4874 description translations and 28 AI tasks/67 retrieval checks (100% success, MRR 0.930). Validation passed 412 Markdown entries. The pinned Ruby/Gems build and rendered artifact audit passed 592 routes,41 static endpoints and 85647 local references. Reviewed locale hashes are current. No code, site or release was published; embedding-project gameplay and ordinary-player acceptance remain separate.
+
+## 2026-10-18 - Lifecycle work rebased on the NPC persistence update
+
+Retain published master `219fbd7568f2388f4a3b47e5a22fb38b8e259a0d` (51-dev), including console quit, writable-root validation, empty-ACM refusal and explicit NPC unregister intent. The complete incoming native/test diff and owning English/Russian notes were inspected. Rebase the unpublished lifecycle update as 52-dev with marker 0.0.74 and Managed ABI 9. Earlier qualification applies only to its recorded source revision. Fresh native, resource, gameplay and documentation checks remain pending.
+
+
+## 2026-10-18 - Rebased lifecycle and attachment qualification on 51-dev
+
+Retain published `219fbd7568f2388f4a3b47e5a22fb38b8e259a0d` (51-dev),
+rebased lifecycle commit `addf8e10481cb611bf664a5898ec067052e56a81` (52-dev),
+and the separate uncommitted attachment update (53-dev, marker 0.0.75, ABI 9).
+Reconfiguration and all selected native roles passed. The fresh default native
+executable passed 693 cases / 735628 assertions; the isolated Windows console
+matrix passed all four Ctrl+C/Ctrl+Break policy cases. The embedding project
+completed all three Managed roles in a full bake and passed 130 selected runtime
+cases / 14455 expectations after adopting the visible native-weapon contract.
+No platform, ordinary-player, performance, deployment or publication verdict follows.
+
+The full documentation Python corpus passed 575 tests. Update its exact API
+inventory assertions for the fourth contract declaration and 2574 classified
+symbols, including the explicit 53-dev attachment getter. All 4875 description
+translations are current; repair that getter's damaged Russian wording before
+regenerating its reference and delivery. Comparison against both committed 52-dev
+and published 51-dev passes all 17 contract domains with every exact disposition.
+ADR-0003 records the reviewed 16 KiB full-context increase; complete documents,
+existing exclusions and oversize rejection remain intact. Final rendered
+qualification after the Russian wording correction is recorded separately.
+
+## 2026-10-21 - Combined 58-dev integration on published 57-dev
+
+Preserve published master `aafc7fe74bb8fa35e6395e04d8c6d2a66a91831a`
+(57-dev). Rebase the one unpublished lifecycle commit and restore its separately
+preserved attachment work as one 58-dev update, marker0.0.76, Managed ABI9.
+Both the transient transfer-lock getter and the copied client attachment-ID
+snapshot remain present. The complete incoming seven-commit native/test and
+Python ranges were reviewed; old receipts retain their original source scope.
+
+Fresh Windows native compilation and the default Managed-configured native
+suite passed710 cases /736388 assertions. Package ZIP cleanup passed20 pytest
+cases; Managed shutdown passed6. The separate hidden-console matrix passed all
+four Ctrl+C/Ctrl+Break policy cases. Other helper and structural checks are
+recorded in the integration receipts; direct invocation of pytest modules was
+not treated as test collection and was replaced by explicit pytest/JUnit runs.
+
+The full documentation Python corpus passed575 tests; source validation passed
+413 Markdown entries and4886 current description translations. Comparison with
+the published base passed17 contract domains, three exact required dispositions
+and zero missing. Version validation accepts58-dev. The complete context bundle
+required an explicit16KiB budget review, recorded in ADR-0003 without dropping
+documents or weakening rejection. Site validation passed592 routes,41 endpoints
+and85674 local references. Pinned browser checks passed1776 rendered pages,
+15 interaction profiles and23 screenshots. These are local qualification results,
+not publication or embedding-project ordinary-player acceptance. The embedding
+project still owns its resource bake, runtime tests and retained-world shutdown.
+
+The retained evidence predates the current rebase; it does not qualify the new revision. Current reconciliation is tracked by the embedding update plan and fresh checks.
+
+## 2026-10-24 - Reconcile the additionally received published60 update
+
+The final version/aggregate gate discovered that origin/master had advanced to
+published268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629 while the preceding integration
+still used ca18bfeed. Preserve those failed gates and all prior binary receipts.
+The preceding checks qualify their recorded71c99c10 working tree only; a moving
+remote-ref field does not turn that into qualification of published60.
+
+Review the complete49-file incoming range, including every production/test hunk,
+the two-client single-worker64-request TCP/interthread control, admission refusal
+and invalidation at every registration/message boundary, stored-map loading and
+callback destruction/relocation/visibility/persistence controls. Preserve the
+published global-map overload and native return-cover guarantee, the default-false
+interthread setting and native-only admission events. The embedding project must
+initialize the new setting and recompile analyzer-sensitive LoadCritter callers;
+this does not authorize adopting a new application admission policy.
+
+Rebase only the verified unpublished local commit, preserve all earlier versions
+and dispositions, and prepare61-dev/runtime0.0.78 on the published60/runtime77
+base. The merged inventory has2580 native symbols; regenerate models and paired
+references rather than choosing either stale generated side. Both published and
+local contract histories remain; the three current dispositions name exact model
+digests. This reconciliation entry does not claim fresh builds or runtime passes.
+
+## 2026-10-28 ? Reconcile the unpublished lifecycle boundary onto master version 80
+
+Baseline: published `fcac7eb0824ea23a67fa4e2bd8804d4e03fdda98` (`2026.1.80-dev`); original local source boundary `cd455c432b873b0ea3802eb85be0c8a676bed923`, now authored as `2026.1.81-dev`. The integration preserves the published 74?80 change records and the additive Map query/default-off resource filtering.
+
+The combined attachment recipient/map-context and lifecycle contract advances the manual marker 82 ? 83. The monotonic movement sender fix is already upstream. Managed ABI 9, SpriteResource v3 and saved-world field meanings remain unchanged; rebuild and rebake matching binaries, bindings, metadata, CoreScripts and resource packs. The original rich attachment decoder/assertions are retained alongside the upstream send-time wire fixture.
+
+The strict source parser derives 2588 unique API IDs and inventory `e91aa75dea79219932b5a5bd60294ba1a9f2f40502268b6cf7775b0482c89a29`, with 4 explicit contract declarations. API/reference, CMake, image-format, package and public-index owners were regenerated; the 83 marker source anchor is updated. The aggregate diff against the published base requires three explicit API dispositions (inventory scope, marker, retained destroyed cover-probe argument admission), bound to its actual before/after contract digests. Source documentation validation is recorded in the consuming project's integration evidence; native/build/bake/player acceptance is pending and older evidence remains bound to its original hashes.
+
+
+## 2026-11-01 - Replay lifecycle onto published94 as95
+
+Baseline c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1, originally local
+c014a9ee16. Preserve incoming event fault continuation, VisualOffset,
+default16-bit configurable map coordinates and simulation/grid owners.
+The combined lifecycle boundary is manual86, Managed ABI9, SpriteResourcev3
+and snapshot4. Regenerated API inventory has2593 symbols; description
+translations cover5001 entries. Exact current comparison passes17 domains,
+four changes and three required dispositions with none missing.
+
+The coupled search corpus exceeds the existing byte cap. Retain that cap,
+all documents/terms/metadata/scores and posting order; assign short document
+positions by descending retained posting frequency with original-position
+ties. Exhaustive symbolic posting bindings and actual Python/JavaScript
+consumer comparisons preserve both locales, including equal-title ties,
+prefix and multi-term queries. Permanent wrong-state tests first fail, then
+the site/layout/CMake documentation suite passes30 tests and15 subtests.
+The lifecycle-focused source suite passes66 tests and99 subtests;8 CMake
+tests are deselected in that command. Preparation and414-entry validation
+pass. Full validator-meta and final combined checks are recorded separately.
+No native build, bake, runtime, player or other-platform acceptance is claimed.
