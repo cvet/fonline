@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d0c47b404f348577451ea5f97682e56cb3460e5a5d3838bb087fbaa77cf1f4cd"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"754b06d95046020bf1e71b053190dfef6dd28cd36dfefdef2bc319fbd948f308"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -22,6 +22,8 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Исправлено
 
+- Полная очередь запуска сервера формируется до исполнения: после ошибки стадии
+  больше не запускаются задания, добавленные вслед за очисткой очереди.
 - Новые частицы модели размещаются после получения полной позы; живые границы
   Effekseer учитывают текущие частицы, а вращения остаются конечными при нулевых
   осях масштаба. Начальное положение сценических частиц задаётся до симуляции.

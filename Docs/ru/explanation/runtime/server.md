@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"4e36ee7ac7374b20fae1ead838cda48439d0dc5db5fde072c8ee76d78eeb95f3"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"05c1eafe3e8f118c68a35e5d4ee23a44b8764525bea6f9aa94fdf0e3d368e1bb"} -->
 ## Ограниченный обзор карты
 
 `Player.ViewMapArea(map, hex, radius, context)` наблюдает область гексного радиуса с включённой границей без размещения персонажа на карте. Обязательный четвёртый аргумент — любая nullable-сущность `Entity`: Engine удерживает её как непрозрачный проектный контекст до сброса, замены обзора или отключения. Перед открытием требуется покрытие игрока, карты, локации и живого контекста. Управляемый персонаж может оставаться на глобальной карте. Отсоединённый полный `ViewMap(map, hex)` использует тот же отбор видимости с null-контекстом без ограничения радиуса.
@@ -174,6 +174,11 @@ permalink: /Docs/ru/explanation/runtime/server.html
 - `NotLoggedInPlayerJob()`
 - `PlayerJob()`
 - `CritterMovingJob()`
+
+Starter получает полную очередь запуска до начала её выполнения. При ошибке
+одного задания обработчик фиксирует отказ и очищает оставшиеся стадии. Если
+ошибка возникает при подготовке очереди, частичная очередь очищается при выходе
+из конструктора сервера.
 
 `InitNetworkingJob()` проверяет `ServerNetwork.ChannelSecretKey` и создаёт статическую идентичность защищённого канала сервера до приёма соединений. Ключ обязателен и при отключённых внешних listener: interthread и тестовые соединения используют тот же канал. В лог записывается только публичный ключ. Приём фиксирует неверный кадр Noise под блокировкой буфера, а владеющий worker затем закрывает соединение с `ProtocolError`. См. [Сеть](../authority-and-networking/#защищённый-канал).
 

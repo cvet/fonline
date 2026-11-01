@@ -22,6 +22,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Publish the complete server startup queue before execution so a failed stage
+  cannot be followed by jobs submitted after its failure handler cleared the queue.
 - Place newborn model particles after a complete pose, retain live Effekseer
   bounds and finite rotations for collapsed axes, and initialize scene placement
   before simulation. Track speed events integrate across frame boundaries;

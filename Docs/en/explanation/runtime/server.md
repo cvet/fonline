@@ -174,6 +174,11 @@ entity-owner cleanup when a runtime map constructor fails.
 - `PlayerJob()`
 - `CritterMovingJob()`
 
+The starter receives its complete startup queue before it begins executing.
+If a startup job fails, its handler records the failure and clears the remaining
+stages. If queue construction itself fails, the partial queue is cleared while
+the server constructor unwinds.
+
 `InitNetworkingJob()` validates `ServerNetwork.ChannelSecretKey` and constructs the server's static secure-channel identity before accepting any connection. This is required even when external listeners are disabled: interthread and test connections use the same channel. It logs only the public key. The receive path latches an invalid Noise frame under its buffer lock; the owning worker later closes that connection with `ProtocolError`. See [Networking](../authority-and-networking/#secure-channel).
 
 After startup, only `SyncPointJob()` and `FrameTimeJob()` recur on the main

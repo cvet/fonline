@@ -171,6 +171,10 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         return true;
     });
 
+    // Publish every startup stage before the worker can clear the queue on failure
+    _starter.pause();
+    auto clear_pending_startup = scope_exit([this]() noexcept { _starter.clear(); });
+
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitHealthFileJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitScriptSystemJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitNetworkingJob(); }));
@@ -181,6 +185,9 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitClientPacksJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitGameLogicJob(); }));
     _starter.add_job(WrapJobWithSync([this]() FO_DEFERRED { return InitDoneJob(); }));
+
+    _starter.resume();
+    clear_pending_startup.release();
 }
 
 ServerEngine::~ServerEngine()
