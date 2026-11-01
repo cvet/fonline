@@ -204,6 +204,20 @@ static auto ScreenPosToWindowPos(ptr<const Renderer> renderer, isize32 screen_si
     return {win_x, win_y};
 }
 
+static auto GetSdlWindowPixelDensity(nptr<SDL_Window> window) -> float32_t
+{
+    float32_t density {window ? SDL_GetWindowPixelDensity(window.get()) : 0.0f};
+
+    return density > 0.0f ? density : 1.0f;
+}
+
+static auto WindowPointToScreenPos(ptr<const Renderer> renderer, isize32 screen_size, nptr<SDL_Window> window, float32_t x, float32_t y) -> ipos32
+{
+    float32_t density {GetSdlWindowPixelDensity(window)};
+
+    return WindowPosToScreenPos(renderer, screen_size, {iround<int32_t>(x * density), iround<int32_t>(y * density)});
+}
+
 static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_ptr<SDL_Window>
 {
     return make_unique_del_ptr(window, [](SDL_Window* raw_window) {
@@ -1565,10 +1579,12 @@ void Application::BeginFrame()
         switch (sdl_event.type) {
         case SDL_EVENT_MOUSE_MOTION: {
             InputEvent::MouseMoveEvent ev {};
-            ipos32 screen_pos {WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.motion.x), iround<int32_t>(sdl_event.motion.y)})};
+            auto motion_window {make_nptr(SDL_GetWindowFromID(sdl_event.motion.windowID))};
+            ipos32 screen_pos {WindowPointToScreenPos(active_renderer, ScreenState.Size, motion_window, sdl_event.motion.x, sdl_event.motion.y)};
             irect32 vp {active_renderer->GetViewPort()};
-            float32_t x_ratio {numeric_cast<float32_t>(ScreenState.Size.width) / numeric_cast<float32_t>(vp.width)};
-            float32_t y_ratio {numeric_cast<float32_t>(ScreenState.Size.height) / numeric_cast<float32_t>(vp.height)};
+            float32_t motion_density {GetSdlWindowPixelDensity(motion_window)};
+            float32_t x_ratio {numeric_cast<float32_t>(ScreenState.Size.width) / numeric_cast<float32_t>(vp.width) * motion_density};
+            float32_t y_ratio {numeric_cast<float32_t>(ScreenState.Size.height) / numeric_cast<float32_t>(vp.height) * motion_density};
             ipos32 host_delta {ipos32 {iround<int32_t>(sdl_event.motion.xrel * x_ratio), iround<int32_t>(sdl_event.motion.yrel * y_ratio)}};
 
             switch_active_to_hovered_child(screen_pos);
@@ -1595,7 +1611,7 @@ void Application::BeginFrame()
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
-            ipos32 button_screen_pos {WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.button.x), iround<int32_t>(sdl_event.button.y)})};
+            ipos32 button_screen_pos {WindowPointToScreenPos(active_renderer, ScreenState.Size, make_nptr(SDL_GetWindowFromID(sdl_event.button.windowID)), sdl_event.button.x, sdl_event.button.y)};
             switch_active_to_hovered_child(button_screen_pos);
 
             bool button_to_client {!imgui_capture_mouse || host_pos_inside_active_virtual(button_screen_pos)};
@@ -1821,7 +1837,7 @@ void Application::BeginFrame()
             InputEvent::MouseWheelEvent ev {};
             ev.Delta = iround<int32_t>(sdl_event.wheel.y);
 
-            ipos32 wheel_screen_pos {WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(sdl_event.wheel.mouse_x), iround<int32_t>(sdl_event.wheel.mouse_y)})};
+            ipos32 wheel_screen_pos {WindowPointToScreenPos(active_renderer, ScreenState.Size, make_nptr(SDL_GetWindowFromID(sdl_event.wheel.windowID)), sdl_event.wheel.mouse_x, sdl_event.wheel.mouse_y)};
             switch_active_to_hovered_child(wheel_screen_pos);
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(wheel_screen_pos)) {
@@ -2138,7 +2154,7 @@ void Application::BeginFrame()
                     int32_t window_y {};
                     SDL_GetWindowPosition(main_sdl_window.get(), &window_x, &window_y);
 
-                    ipos32 screen_pos {WindowPosToScreenPos(active_renderer, ScreenState.Size, {iround<int32_t>(mouse_x_global) - window_x, iround<int32_t>(mouse_y_global) - window_y})};
+                    ipos32 screen_pos {WindowPointToScreenPos(active_renderer, ScreenState.Size, main_sdl_window, mouse_x_global - numeric_cast<float32_t>(window_x), mouse_y_global - numeric_cast<float32_t>(window_y))};
                     if (!mouse_motion_event_seen && (!_lastMouseMoveHostPosValid || screen_pos != _lastMouseMoveHostPos)) {
                         InputEvent::MouseMoveEvent ev {};
                         ipos32 host_delta {_lastMouseMoveHostPosValid ? ipos32 {screen_pos.x - _lastMouseMoveHostPos.x, screen_pos.y - _lastMouseMoveHostPos.y} : ipos32 {}};
@@ -2821,7 +2837,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     }
 
     auto active_renderer {GetActiveRenderer(_app->_ctx)};
-    ipos32 host_pos {WindowPosToScreenPos(active_renderer, _app->ScreenState.Size, {iround<int32_t>(x), iround<int32_t>(y)})};
+    ipos32 host_pos {WindowPointToScreenPos(active_renderer, _app->ScreenState.Size, _app->MainWindow._windowHandle.reinterpret_as<SDL_Window>(), x, y)};
     return _app->TranslateHostPosToActiveWindow(host_pos);
 }
 
@@ -2848,7 +2864,8 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
             if (auto handle {relative_to->GetWindowHandleForInput()}; handle) {
                 auto sdl_window {handle.reinterpret_as<SDL_Window>()};
                 FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
-                SDL_WarpMouseInWindow(sdl_window.get(), numeric_cast<float32_t>(window_pos.x), numeric_cast<float32_t>(window_pos.y));
+                float32_t density {GetSdlWindowPixelDensity(sdl_window)};
+                SDL_WarpMouseInWindow(sdl_window.get(), numeric_cast<float32_t>(window_pos.x) / density, numeric_cast<float32_t>(window_pos.y) / density);
             }
         }
         else {
