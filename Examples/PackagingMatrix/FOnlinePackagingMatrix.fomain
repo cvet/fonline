@@ -93,7 +93,7 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
-ServerNetwork.ChannelSecretKey =
+ServerNetwork.ChannelSecretKey = 527259eb08e4bf3ad565d4f0af48923230b51ee40b46c3020902352d48b8d80f
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
@@ -108,7 +108,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
-ClientNetwork.ChannelServerKeys =
+ClientNetwork.ChannelServerKeys = 344d73f86ee77d063bd2eed10c2f1580d4ae026284b22b3be245c73cafafdc72
 
 # Audio
 Audio.DisableAudio = True
@@ -151,8 +151,8 @@ SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0f
 
 # Animation
-Animation.PreviewStateAnim = CritterStateAnim::None
-Animation.PreviewActionAnim = CritterActionAnim::None
+Animation.PreviewStateAnim = 0
+Animation.PreviewActionAnim = 0
 
 # Render
 Render.Animation3dSmoothTime = 150

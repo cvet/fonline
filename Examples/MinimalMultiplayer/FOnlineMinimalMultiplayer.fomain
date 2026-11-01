@@ -93,7 +93,7 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
-ServerNetwork.ChannelSecretKey =
+ServerNetwork.ChannelSecretKey = 79e769e2ef7e0513647b6316e942f9a6d6b67442c2d3c92f30baa9ddfebdbabf
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
@@ -108,7 +108,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
-ClientNetwork.ChannelServerKeys =
+ClientNetwork.ChannelServerKeys = 1cd82da5a7ca0cb1bb7e0598fe2275e193a1f087a02cfa536a399d97f9891170
 
 # Audio
 Audio.DisableAudio = False
@@ -151,8 +151,8 @@ SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0
 
 # Animation
-Animation.PreviewStateAnim = CritterStateAnim::None
-Animation.PreviewActionAnim = CritterActionAnim::None
+Animation.PreviewStateAnim = 0
+Animation.PreviewActionAnim = 0
 
 # Render
 Render.Animation3dSmoothTime = 150
@@ -388,8 +388,8 @@ ServerOnly = True
 
 [ResourcePack]
 Name = Scripts
-InputDirs = Scripts Engine/Source/Scripting/AngelScript/CoreScripts
-IncludePatterns = Tutorial.fos Core.fos
+InputDirs = Scripts
+IncludePatterns = Tutorial.fos
 Bakers = AngelScript
 
 [ResourcePack]

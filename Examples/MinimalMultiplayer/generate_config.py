@@ -19,7 +19,7 @@ def resolve_engine_root() -> Path:
 ENGINE_ROOT = resolve_engine_root()
 
 sys.path.insert(0, str(ENGINE_ROOT / "BuildTools"))
-from example_config_settings import parse_runtime_managed_settings
+from example_config_settings import parse_enum_constants, parse_runtime_managed_settings, resolve_enum_constant
 
 OUTPUT_PATH = PROJECT_ROOT / "FOnlineMinimalMultiplayer.fomain"
 
@@ -36,6 +36,8 @@ OVERRIDES = {
     "Server.EntityIdReserveBatch": "1000",
     "ServerNetwork.DisableNetworking": "False",
     "Baking.ForceBaking": "False",
+    "ServerNetwork.ChannelSecretKey": "79e769e2ef7e0513647b6316e942f9a6d6b67442c2d3c92f30baa9ddfebdbabf",
+    "ClientNetwork.ChannelServerKeys": "1cd82da5a7ca0cb1bb7e0598fe2275e193a1f087a02cfa536a399d97f9891170",
     "Baking.SingleThreadBaking": "False",
     "Baking.IgnoreMissingBakerWarning": "False",
     "Baking.RawCopyFileExtensions": "fofnt bmfc fnt acm ogg wav ogv json ini",
@@ -107,8 +109,8 @@ ServerOnly = True
 
 [ResourcePack]
 Name = Scripts
-InputDirs = Scripts Engine/Source/Scripting/AngelScript/CoreScripts
-IncludePatterns = Tutorial.fos Core.fos
+InputDirs = Scripts
+IncludePatterns = Tutorial.fos
 Bakers = AngelScript
 
 [ResourcePack]
@@ -213,7 +215,7 @@ def decode_string(value: str) -> str:
     return value
 
 
-def serialize_default(setting: Setting) -> str:
+def serialize_default(setting: Setting, enum_constants: dict[str, int]) -> str:
     values = [decode_string(value) for value in setting.defaults]
     if setting.value_type.startswith("vector<"):
         return " ".join(values)
@@ -221,7 +223,7 @@ def serialize_default(setting: Setting) -> str:
         value = values[0]
         if setting.value_type == "bool":
             return "True" if value.lower() == "true" else "False"
-        return value
+        return resolve_enum_constant(value, enum_constants)
     if setting.value_type == "bool":
         return "False"
     if setting.value_type == "string" or setting.value_type.startswith("vector<"):
@@ -232,6 +234,7 @@ def serialize_default(setting: Setting) -> str:
 def render_config(engine_root: Path = ENGINE_ROOT) -> str:
     settings = parse_settings(engine_root / "Source/Common/Settings.inc")
     runtime_managed = parse_runtime_managed_settings(engine_root / "Source/Common/Settings.cpp")
+    enum_constants = parse_enum_constants(engine_root / "Source")
     unknown_overrides = sorted(set(OVERRIDES) - {setting.name for setting in settings})
     if unknown_overrides:
         raise ValueError(f"overrides reference unknown settings: {', '.join(unknown_overrides)}")
@@ -251,7 +254,7 @@ def render_config(engine_root: Path = ENGINE_ROOT) -> str:
                 lines.append("")
             lines.append(f"# {group}")
             last_group = group
-        value = OVERRIDES.get(setting.name, serialize_default(setting))
+        value = OVERRIDES.get(setting.name, serialize_default(setting, enum_constants))
         lines.append(f"{setting.name} = {value}" if value else f"{setting.name} =")
 
     lines.extend(["", PROJECT_SECTIONS.rstrip()])
