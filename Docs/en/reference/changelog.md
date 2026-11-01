@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-31
+## Current - 2026-11-01
+
+### Added
+
+- Add the client-only `Critter.VisualOffset` (`ipos`, pixels): a mutable, unsynchronized, non-persistent offset that `CritterHexView::RefreshOffs` adds to the movement, extra and animation offsets of the critter's map sprite; the client refreshes the offsets from the property's post-setter. A client script can now draw a critter off its logical position, for example along a smooth flight curve over a hex path, without changing logical state. Zero draws exactly as before.
+
+### Migration
+
+- Base `680c444d1d54d5120e1cb87b080cbe14dd81a081` (`2026.1.91-dev`) to `2026.1.92-dev`: additive; no source/data conversion. Rebuild all native roles/tests and Baker, then rebake all metadata and managed roles together. The new Critter property is registered after `LightColor`, so the registry index of every Critter property declared after it, including all embedding-project Critter properties, advances by one; the manual compatibility marker advances from `0.0.84` to `0.0.85`, and mixed old/new executables and resources are refused. Existing scripts, prototypes, maps and saves are unaffected: the property is client-only, not persisted and not synchronized, defaults to zero and changes no rendering until a script sets it. Managed ABI `9` is unchanged. Roll back matching executables and resources together.
+
+## 2026.1.91-dev - 2026-10-31
 
 ### Fixed
 

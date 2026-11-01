@@ -121,6 +121,9 @@ Continue with the [canonical reference](../../en/reference/script-api/properties
 <a id="symbol-script-property-critter-visibilitymode-57b6f84936"></a>
 - [`symbol-script-property-critter-visibilitymode-57b6f84936`](../../en/reference/script-api/properties.md#symbol-script-property-critter-visibilitymode-57b6f84936)
 
+<a id="symbol-script-property-critter-visualoffset-cf701c4fd3"></a>
+- [`symbol-script-property-critter-visualoffset-cf701c4fd3`](../../en/reference/script-api/properties.md#symbol-script-property-critter-visualoffset-cf701c4fd3)
+
 <a id="group-property-game-1adbaba355"></a>
 - [`group-property-game-1adbaba355`](../../en/reference/script-api/properties.md#group-property-game-1adbaba355)
 

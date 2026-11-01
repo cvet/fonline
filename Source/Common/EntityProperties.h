@@ -403,6 +403,9 @@ public:
     // RGBA color emitted by the critter's client-side light source
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(ucolor, LightColor);
+    // Pixel offset of the critter's map sprite added to its movement and animation offsets; never synchronized
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ipos32, VisualOffset);
 };
 
 class MapProperties : public EntityProperties

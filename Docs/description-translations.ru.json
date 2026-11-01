@@ -1026,6 +1026,10 @@
           "source_sha256": "ba9e8d77f08fbaee8cd10f84866c21c5d60edd7a4f0c31ff9af07d0fe57c77fa",
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
+        "/symbols/@id=script.enum-value.CritterProperty.VisualOffset/description": {
+          "source_sha256": "50aaa9f8200c69c2ff88bce5bff3fd437963261687d45f29f56d004f17015091",
+          "translation": "Смещение map-спрайта криттера в пикселях, прибавляемое к смещениям его движения и анимации; никогда не синхронизируется."
+        },
         "/symbols/@id=script.enum-value.CritterSeeType.Any/description": {
           "source_sha256": "b6a79fdabe4c1001b9e574da82c095924259539c3440d3205f2cc23d9c707def",
           "translation": "Возвращает объединение входящих и исходящих отношений видимости криттеров."
@@ -8722,6 +8726,10 @@
           "source_sha256": "ba9e8d77f08fbaee8cd10f84866c21c5d60edd7a4f0c31ff9af07d0fe57c77fa",
           "translation": "Режим детализации видимости, назначенный этому криттеру с точки зрения текущего клиента."
         },
+        "/symbols/@id=script.property.Critter.VisualOffset/description": {
+          "source_sha256": "50aaa9f8200c69c2ff88bce5bff3fd437963261687d45f29f56d004f17015091",
+          "translation": "Смещение map-спрайта криттера в пикселях, прибавляемое к смещениям его движения и анимации; никогда не синхронизируется."
+        },
         "/symbols/@id=script.property.Game.CustomHolderEntry/description": {
           "source_sha256": "1050e666d84a94010a810b27fa9d7f3ad171a30f9a7d8d759bfb66b9dc73a348",
           "translation": "Для пользовательской сущности задаёт запись держателя, через которую она прикреплена."
@@ -15144,6 +15152,10 @@
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
           "translation": "temporary"
         },
+        "/properties/@id=map-format.property.Critter.VisualOffset/description": {
+          "source_sha256": "50aaa9f8200c69c2ff88bce5bff3fd437963261687d45f29f56d004f17015091",
+          "translation": "Смещение map-спрайта криттера в пикселях, прибавляемое к смещениям его движения и анимации; никогда не синхронизируется."
+        },
         "/properties/@id=map-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",
           "translation": "Не позволяет рисовать спрайт предмета во время выполнения и по умолчанию скрывает его в Mapper."
@@ -18499,6 +18511,10 @@
           "preserve_source": true,
           "source_sha256": "ea8b82a5c42a33f042e3f6c8d0f750226bf9e0ac8268e8e8ac9ab02cc1d99dff",
           "translation": "temporary"
+        },
+        "/properties/@id=prototype-format.property.Critter.VisualOffset/description": {
+          "source_sha256": "50aaa9f8200c69c2ff88bce5bff3fd437963261687d45f29f56d004f17015091",
+          "translation": "Смещение map-спрайта криттера в пикселях, прибавляемое к смещениям его движения и анимации; никогда не синхронизируется."
         },
         "/properties/@id=prototype-format.property.Item.AlwaysHideSprite/description": {
           "source_sha256": "35bbd94aefd466f34cc5b9d2561f4cd554850378266d72e52df6b764d0a7d1d2",

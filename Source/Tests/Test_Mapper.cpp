@@ -2518,6 +2518,25 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {5, -4});
     }
 
+    SECTION("VisualOffsetShiftsTheSpriteWithoutTouchingTheLogicalOffset")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->RefreshView();
+        ipos32 baseline = *critter->GetMapSprite()->GetPSprOffset();
+        // The client engine refreshes the offsets from the property's post-setter; the mapper engine has none
+        critter->SetVisualOffset(ipos32 {7, -5});
+        critter->RefreshOffs();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 7, baseline.y - 5});
+        CHECK(critter->GetHexOffset() == ipos16 {});
+        critter->AddExtraOffs({3, -4});
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 10, baseline.y - 9});
+        critter->SetVisualOffset(ipos32 {});
+        critter->RefreshOffs();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 3, baseline.y - 4});
+    }
+
     SECTION("FrameAlignmentProjectsBothAxesAndFloorsNegativeCycles")
     {
         auto aligned = sprite->MakeCopy().dyn_cast<SpriteSheet>();

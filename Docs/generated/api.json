@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2590,
-      "inventory_sha256": "795294f5ce6cdc76c5b6378b0b135a3f3bf4a2577608513f94bdb7e13df5f104",
+      "symbol_count": 2592,
+      "inventory_sha256": "d30863c773f528b16887e5cc24af643562f35daef626b0a7c71be2c6a7c84bee",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,15 +72,15 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2590,
+    "symbol_count": 2592,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
-      "enum-value": 769,
+      "enum-value": 770,
       "event": 121,
       "method": 1016,
       "migration-rule": 27,
-      "property": 133,
+      "property": 134,
       "ref-field": 42,
       "ref-method": 28,
       "ref-type": 6,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2589,
+      "experimental": 2591,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2590,
+    "explicit_contract_symbol_count": 2592,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2589,
+      "experimental": 2591,
       "internal": 1
     },
-    "described_symbol_count": 2590,
+    "described_symbol_count": 2592,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -963,7 +963,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 494
+        "line": 497
       },
       "contract": {
         "explicit": true,
@@ -999,7 +999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 457
+        "line": 460
       },
       "contract": {
         "explicit": true,
@@ -1035,7 +1035,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 462
+        "line": 465
       },
       "contract": {
         "explicit": true,
@@ -1071,7 +1071,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 419
+        "line": 422
       },
       "contract": {
         "explicit": true,
@@ -1098,7 +1098,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 84",
+      "signature": "Version 0 0 85",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1120,7 +1120,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "84"
+      "replacement": "85"
     },
     {
       "id": "script.entity.Critter",
@@ -4304,6 +4304,42 @@
       "parent_id": "script.enum.CritterProperty",
       "value": "26",
       "evaluated_value": 26,
+      "generated": true
+    },
+    {
+      "id": "script.enum-value.CritterProperty.VisualOffset",
+      "family_id": "script.enum-value.CritterProperty.VisualOffset",
+      "kind": "enum-value",
+      "name": "VisualOffset",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "CritterProperty",
+      "signature": "CritterProperty.VisualOffset = 37",
+      "description": "Pixel offset of the critter's map sprite added to its movement and animation offsets; never synchronized",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 407
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.CritterProperty",
+      "value": "37",
+      "evaluated_value": 37,
       "generated": true
     },
     {
@@ -26133,7 +26169,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 496
+        "line": 499
       },
       "contract": {
         "explicit": true,
@@ -26169,7 +26205,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 499
+        "line": 502
       },
       "contract": {
         "explicit": true,
@@ -26562,7 +26598,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 430
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -26670,7 +26706,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 467
+        "line": 470
       },
       "contract": {
         "explicit": true,
@@ -26706,7 +26742,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 464
+        "line": 467
       },
       "contract": {
         "explicit": true,
@@ -26778,7 +26814,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 459
+        "line": 462
       },
       "contract": {
         "explicit": true,
@@ -26814,7 +26850,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 473
+        "line": 476
       },
       "contract": {
         "explicit": true,
@@ -26850,7 +26886,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 479
+        "line": 482
       },
       "contract": {
         "explicit": true,
@@ -26886,7 +26922,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 421
+        "line": 424
       },
       "contract": {
         "explicit": true,
@@ -26922,7 +26958,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 433
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -26958,7 +26994,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 424
+        "line": 427
       },
       "contract": {
         "explicit": true,
@@ -26994,7 +27030,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 427
+        "line": 430
       },
       "contract": {
         "explicit": true,
@@ -27030,7 +27066,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 470
+        "line": 473
       },
       "contract": {
         "explicit": true,
@@ -27066,7 +27102,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 476
+        "line": 479
       },
       "contract": {
         "explicit": true,
@@ -27135,7 +27171,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 436
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -27171,7 +27207,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 448
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -27207,7 +27243,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 445
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -27243,7 +27279,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 439
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -27279,7 +27315,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 451
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -27315,7 +27351,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 454
+        "line": 457
       },
       "contract": {
         "explicit": true,
@@ -27351,7 +27387,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 442
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -91803,6 +91839,45 @@
       "persistent": false
     },
     {
+      "id": "script.property.Critter.VisualOffset",
+      "family_id": "script.property.Critter.VisualOffset",
+      "kind": "property",
+      "name": "VisualOffset",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Critter",
+      "signature": "ipos Critter.VisualOffset",
+      "description": "Pixel offset of the critter's map sprite added to its movement and animation offsets; never synchronized",
+      "flags": [
+        "Mutable",
+        "CoreProperty"
+      ],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Common/EntityProperties.h",
+        "line": 407
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "access": "client",
+      "type": "ipos",
+      "nullable": false,
+      "mutability": "mutable",
+      "persistent": false
+    },
+    {
       "id": "script.property.Game.CustomHolderEntry",
       "family_id": "script.property.Game.CustomHolderEntry",
       "kind": "property",
@@ -94560,7 +94635,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 496
+        "line": 499
       },
       "contract": {
         "explicit": true,
@@ -94598,7 +94673,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 499
+        "line": 502
       },
       "contract": {
         "explicit": true,
@@ -94636,7 +94711,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 430
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -94760,7 +94835,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 467
+        "line": 470
       },
       "contract": {
         "explicit": true,
@@ -94802,7 +94877,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 464
+        "line": 467
       },
       "contract": {
         "explicit": true,
@@ -94885,7 +94960,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 459
+        "line": 462
       },
       "contract": {
         "explicit": true,
@@ -94923,7 +94998,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 473
+        "line": 476
       },
       "contract": {
         "explicit": true,
@@ -94961,7 +95036,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 479
+        "line": 482
       },
       "contract": {
         "explicit": true,
@@ -95003,7 +95078,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 421
+        "line": 424
       },
       "contract": {
         "explicit": true,
@@ -95041,7 +95116,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 433
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -95079,7 +95154,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 424
+        "line": 427
       },
       "contract": {
         "explicit": true,
@@ -95117,7 +95192,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 427
+        "line": 430
       },
       "contract": {
         "explicit": true,
@@ -95155,7 +95230,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 470
+        "line": 473
       },
       "contract": {
         "explicit": true,
@@ -95193,7 +95268,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 476
+        "line": 479
       },
       "contract": {
         "explicit": true,
@@ -95235,7 +95310,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 436
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -95275,7 +95350,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 448
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -95313,7 +95388,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 445
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -95353,7 +95428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 439
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -95391,7 +95466,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 451
+        "line": 454
       },
       "contract": {
         "explicit": true,
@@ -95429,7 +95504,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 454
+        "line": 457
       },
       "contract": {
         "explicit": true,
@@ -95469,7 +95544,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/EntityProperties.h",
-        "line": 442
+        "line": 445
       },
       "contract": {
         "explicit": true,

@@ -20,7 +20,7 @@ This reference describes the Engine-owned image import, FOFRM composition, baked
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own asset catalogs, source licensing, visual style, compression policy, resource-pack precedence, animation substitutions, movement tuning, and visible acceptance. |
 | Source manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Contract digest | <code>64d2a9f46c5b8cc7908a6097bc933c032a06d88c722068887dd65780e75562b7</code> |
+| Contract digest | <code>0fada3c0e4bb95c82c16e9d200fe863bc1bd0aa507e85238a922607adbde3673</code> |
 | Baker | <code>Image</code>, order 4 |
 | Baked pixels | <code>RGBA8</code> |
 | Runtime side | <code>client</code> |
