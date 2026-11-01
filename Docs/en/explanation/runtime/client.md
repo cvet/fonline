@@ -174,6 +174,16 @@ snapshot may instead represent an immutable static map item and legitimately
 carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
 list handler enforces identity at its narrower boundary.
 
+Authoritative inventory slot reconciliation retains the critter and moved item
+and iterates a retained snapshot of the inventory. Property post-setters run
+synchronously and may remove another item, move the item to another holder, or
+destroy the critter. Revalidate membership and lifetime after each slot setter;
+stop the remaining reconciliation when the moved item or owner is invalidated.
+The network handler also revalidates the critter before refreshing its light.
+Already committed slot writes remain valid; this is not a transactional rollback.
+Ordinary moves, prediction echoes and multi-item destinations preserve their
+existing semantics (`Test_ClientEntityLifetime.cpp`).
+
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
 ## 3D model runtime architecture

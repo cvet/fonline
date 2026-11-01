@@ -65,7 +65,7 @@ public:
     void RefreshAlpha();
     void PlayAnim(hstring anim_name, bool looped, bool reversed);
     void StopAnim();
-    void SetAnimTime(float32_t normalized_time);
+    void SetAnimPhase(float32_t normalized_phase);
     void SetAnimDir(mdir dir);
     void RefreshAnim();
     void MoveToHex(mpos hex, float32_t speed);
@@ -81,7 +81,7 @@ private:
     bool _animLooped {};
     bool _animReversed {};
     bool _animStopped {};
-    float32_t _animTime {};
+    float32_t _animPhase {};
     mdir _animDir {};
 
     bool _isMoving {};

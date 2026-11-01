@@ -37,6 +37,7 @@
 
 #include "Baker.h"
 #include "DataSerialization.h"
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
@@ -53,6 +54,26 @@ FO_SCRIPT_API void Server_Critter_SendGlobalMapGroupInfo(ptr<Critter> self);
 // AngelScript build still needs one bytecode file to start, so it gets an empty one
 namespace
 {
+    // One decoded outgoing packet: fields actually written by the production sender, never reconstructed state
+    struct TransportPacketSnapshot
+    {
+        NetMessage Message {};
+        uint32_t FrameBytes {};
+        bool PingAnswer {};
+        ident_t CrId {};
+        int32_t WholeMs {};
+        int32_t ElapsedMs {};
+        uint16_t Speed {};
+        mpos StartHex {};
+        vector<hdir> Steps {};
+        vector<uint16_t> ControlSteps {};
+        ipos16 EndHexOffset {};
+        uint32_t MovingUid {};
+        float32_t LeaseDistance {};
+        int64_t SenderMs {};
+        nanotime ReceiveTime {};
+    };
+
     // Copied CritterAttachments wire payload, so recipient assertions never read production attachment state
     struct CritterAttachmentSnapshot
     {
@@ -174,6 +195,13 @@ namespace
             return _receivedCritterMessages;
         }
 
+        [[nodiscard]] auto GetReceivedTransportPackets() -> vector<TransportPacketSnapshot>
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return _transportPackets;
+        }
+
         void ClearReceivedCritterMessages()
         {
             scoped_lock locker {_clientChannelLocker};
@@ -188,10 +216,29 @@ namespace
             _receivedAttachmentSnapshots.clear();
         }
 
+        void ClearReceivedTransportPackets()
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            _transportPackets.clear();
+        }
+
+        // Holding dispatch leaves framed output queued; the next dispatch compresses and seals it in order
+        void SetDispatchHold(bool held)
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            _dispatchHeld = held;
+        }
+
     protected:
         void DispatchImpl() override
         {
             scoped_lock locker {_clientChannelLocker};
+
+            if (_dispatchHeld) {
+                return;
+            }
 
             vector<uint8_t> encoded_data = SendCallback();
 
@@ -232,11 +279,14 @@ namespace
             while (offset < data.size()) {
                 FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
 
+                uint32_t message_signature {};
                 uint32_t message_size {};
                 NetMessage message {};
+                memory::copy(&message_signature, data.data() + offset, sizeof(message_signature));
                 memory::copy(&message_size, data.data() + offset + sizeof(uint32_t), sizeof(message_size));
                 memory::copy(&message, data.data() + offset + sizeof(uint32_t) + sizeof(message_size), sizeof(message));
 
+                FO_VERIFY_AND_THROW(message_signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", message_signature, offset);
                 FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
 
                 if (message == NetMessage::CritterMove || message == NetMessage::CritterPos || message == NetMessage::CritterMoveLease) {
@@ -256,12 +306,85 @@ namespace
                     _receivedCritterMessages.emplace_back(message, cr_id);
                 }
 
+                if (message == NetMessage::Ping || message == NetMessage::CritterMove || message == NetMessage::CritterMoveLease) {
+                    const_span<uint8_t> payload = data.subspan(offset + header_size, message_size - header_size);
+                    _transportPackets.emplace_back(DecodeTransportPacket(message, payload, nanotime::now(), message_size));
+                }
+
                 if (message == NetMessage::CritterAttachments) {
                     _receivedAttachmentSnapshots.emplace_back(DecodeAttachmentSnapshot(data.subspan(offset + header_size, message_size - header_size)));
                 }
 
                 offset += message_size;
             }
+        }
+
+        template<typename T>
+        static void ReadTransportField(const_span<uint8_t> payload, size_t& pos, T& value)
+        {
+            FO_VERIFY_AND_THROW(pos <= payload.size() && sizeof(T) <= payload.size() - pos, "Truncated outgoing transport payload", payload.size(), pos, sizeof(T));
+            memory::copy(&value, payload.data() + pos, sizeof(T));
+            pos += sizeof(T);
+        }
+
+        // Payloads of Player::Send_Ping, Player::SendCritterMoving and Player::Send_MovingLease in their wire order
+        [[nodiscard]] static auto DecodeTransportPacket(NetMessage message, const_span<uint8_t> payload, nanotime receive_time, uint32_t frame_bytes) -> TransportPacketSnapshot
+        {
+            TransportPacketSnapshot snapshot;
+            snapshot.Message = message;
+            snapshot.FrameBytes = frame_bytes;
+            snapshot.ReceiveTime = receive_time;
+
+            size_t pos = 0;
+
+            switch (message) {
+            case NetMessage::Ping:
+                ReadTransportField(payload, pos, snapshot.PingAnswer);
+                ReadTransportField(payload, pos, snapshot.SenderMs);
+                break;
+            case NetMessage::CritterMoveLease:
+                ReadTransportField(payload, pos, snapshot.CrId);
+                ReadTransportField(payload, pos, snapshot.MovingUid);
+                ReadTransportField(payload, pos, snapshot.LeaseDistance);
+                ReadTransportField(payload, pos, snapshot.SenderMs);
+                break;
+            case NetMessage::CritterMove: {
+                ReadTransportField(payload, pos, snapshot.CrId);
+                ReadTransportField(payload, pos, snapshot.WholeMs);
+                ReadTransportField(payload, pos, snapshot.ElapsedMs);
+                ReadTransportField(payload, pos, snapshot.Speed);
+                ReadTransportField(payload, pos, snapshot.StartHex);
+
+                uint16_t step_count = 0;
+                ReadTransportField(payload, pos, step_count);
+                FO_VERIFY_AND_THROW(step_count <= (payload.size() - pos) / sizeof(hdir), "Outgoing movement step count exceeds remaining bytes", step_count, payload.size(), pos);
+                snapshot.Steps.resize(step_count);
+
+                for (uint16_t i = 0; i < step_count; i++) {
+                    ReadTransportField(payload, pos, snapshot.Steps[i]);
+                }
+
+                uint16_t control_count = 0;
+                ReadTransportField(payload, pos, control_count);
+                FO_VERIFY_AND_THROW(control_count <= (payload.size() - pos) / sizeof(uint16_t), "Outgoing movement control count exceeds remaining bytes", control_count, payload.size(), pos);
+                snapshot.ControlSteps.resize(control_count);
+
+                for (uint16_t i = 0; i < control_count; i++) {
+                    ReadTransportField(payload, pos, snapshot.ControlSteps[i]);
+                }
+
+                ReadTransportField(payload, pos, snapshot.EndHexOffset);
+                ReadTransportField(payload, pos, snapshot.MovingUid);
+                ReadTransportField(payload, pos, snapshot.LeaseDistance);
+                ReadTransportField(payload, pos, snapshot.SenderMs);
+            } break;
+            default:
+                throw GenericException("Unsupported outgoing transport packet", message);
+            }
+
+            FO_VERIFY_AND_THROW(pos == payload.size(), "Outgoing transport payload has trailing bytes", message, payload.size(), pos);
+
+            return snapshot;
         }
 
         // Payload of Player::Send_Attachments: id, attached flag, master id, attached count and each attached id
@@ -310,6 +433,8 @@ namespace
         vector<ReceivedMovement> _receivedMovement {};
         vector<pair<NetMessage, ident_t>> _receivedCritterMessages {};
         vector<CritterAttachmentSnapshot> _receivedAttachmentSnapshots {};
+        vector<TransportPacketSnapshot> _transportPackets {};
+        bool _dispatchHeld {};
     };
 
     auto MakeSettings() -> GlobalSettings
@@ -1462,7 +1587,7 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
     {
         PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
         start_master_move(uint16_t {400});
-        auto end_hex = master->GetMoving()->GetEndHex();
+        mpos end_hex = master->GetMoving()->GetEndHex();
         mpos first_hex = master->GetHex();
         REQUIRE(GeometryHelper::MoveHexByDir(first_hex, hdir::East, map->GetSize()));
         SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, first_hex, ipos16 {}, mdir {});
@@ -1477,7 +1602,7 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
         on_move = [] { return Entity::EventResult::StopChain; };
         PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
         start_master_move(uint16_t {400});
-        auto end_hex = master->GetMoving()->GetEndHex();
+        mpos end_hex = master->GetMoving()->GetEndHex();
         auto start_hex = master->GetHex();
         SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, start_hex, ipos16 {}, mdir {});
         REQUIRE(wait_move_calls(1));
@@ -1985,6 +2110,260 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
     server->CrMngr.DestroyCritter(master);
     server->MapMngr.DestroyLocation(loc);
     CHECK(error_count.load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("ServerMovementTransportClock")
+{
+    auto settings = MakeSettings();
+    REQUIRE(settings.Network.NetBufferSize > 0);
+
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE_FALSE(server->GameTime.IsPaused());
+    REQUIRE(server->IsConnectionAdmissionOpen());
+    REQUIRE_FALSE(server->GetCurrentSyncContext());
+
+    bool callback_invoked = false;
+    bool quiesced = server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
+        callback_invoked = true;
+
+        CHECK(server->GameTime.IsPaused());
+        CHECK_FALSE(server->IsConnectionAdmissionOpen());
+
+        auto ctx = server->RequireCurrentSyncContext();
+        auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "MovementTransportClock");
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        mpos start_hex {20, 20};
+        server->MapMngr.TransferToMap(cr, map, start_hex, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
+        ctx->SyncEntities(sync_entities);
+
+        vector<mdir> move_steps(12, mdir {hdir::East});
+        vector<uint16_t> control_steps {12};
+        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, move_steps, control_steps, server->GameTime.GetFrameTime(), timespan {std::chrono::milliseconds {100}}, start_hex, ipos16 {}, ipos16 {});
+        moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
+        server->StartCritterMoving(cr, moving, player, 7);
+        REQUIRE(cr->IsMoving());
+
+        uint32_t expected_moving_uid = cr->GetMovingUid();
+        int32_t expected_whole_ms = iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>()));
+
+        test_connection->Dispatch();
+        test_connection->ClearReceivedTransportPackets();
+        test_connection->ClearReceivedCritterMessages();
+        test_connection->ClearReceivedAttachmentSnapshots();
+
+        nanotime frozen_frame = server->GameTime.GetFrameTime();
+        nanotime sleep_started = nanotime::now();
+        coarse_sleep(std::chrono::milliseconds {250});
+        nanotime sleep_finished = nanotime::now();
+        server->GameTime.FrameAdvance(true);
+
+        REQUIRE(server->GameTime.GetFrameTime() == frozen_frame);
+        REQUIRE(sleep_finished - sleep_started >= std::chrono::milliseconds {250});
+        REQUIRE(sleep_finished - frozen_frame >= std::chrono::milliseconds {250});
+
+        auto check_sender_stamp = [&](const TransportPacketSnapshot& packet, nanotime before, nanotime after) {
+            CHECK(numeric_cast<size_t>(packet.FrameBytes) <= numeric_cast<size_t>(settings.Network.NetBufferSize));
+            CHECK(packet.SenderMs >= before.milliseconds());
+            CHECK(packet.SenderMs <= after.milliseconds());
+            CHECK(packet.SenderMs > frozen_frame.milliseconds());
+        };
+
+        nanotime ping_before = nanotime::now();
+        player->Send_Ping(false);
+        nanotime ping_after = nanotime::now();
+        nanotime move_before = nanotime::now();
+        player->Send_Moving(cr);
+        nanotime move_after = nanotime::now();
+        nanotime lease_before = nanotime::now();
+        player->Send_MovingLease(cr);
+        nanotime lease_after = nanotime::now();
+        test_connection->Dispatch();
+
+        vector<TransportPacketSnapshot> packets = test_connection->GetReceivedTransportPackets();
+        REQUIRE(packets.size() == 3);
+        REQUIRE(packets[0].Message == NetMessage::Ping);
+        REQUIRE(packets[1].Message == NetMessage::CritterMove);
+        REQUIRE(packets[2].Message == NetMessage::CritterMoveLease);
+        CHECK(test_connection->CountReceivedCritterMessage(NetMessage::CritterMove, cr->GetId()) == 1);
+
+        CHECK_FALSE(packets[0].PingAnswer);
+        check_sender_stamp(packets[0], ping_before, ping_after);
+
+        CHECK(packets[1].CrId == cr->GetId());
+        CHECK(packets[1].WholeMs == expected_whole_ms);
+        CHECK(packets[1].ElapsedMs == 100);
+        CHECK(packets[1].Speed == 300);
+        CHECK(packets[1].StartHex == start_hex);
+        REQUIRE(packets[1].Steps.size() == move_steps.size());
+        CHECK(std::ranges::all_of(packets[1].Steps, [](hdir step) { return step == hdir::East; }));
+        REQUIRE(packets[1].ControlSteps.size() == control_steps.size());
+        CHECK(packets[1].ControlSteps == control_steps);
+        CHECK(packets[1].EndHexOffset == ipos16 {});
+        CHECK(packets[1].MovingUid == expected_moving_uid);
+        CHECK(packets[1].LeaseDistance == 60.0f);
+        check_sender_stamp(packets[1], move_before, move_after);
+
+        CHECK(packets[2].CrId == cr->GetId());
+        CHECK(packets[2].MovingUid == expected_moving_uid);
+        CHECK(packets[2].LeaseDistance == 60.0f);
+        check_sender_stamp(packets[2], lease_before, lease_after);
+
+        TransportPacketSnapshot expected_move = packets[1];
+        TransportPacketSnapshot expected_lease = packets[2];
+
+        timespan catch_up_min = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs};
+        timespan catch_up_max = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMaxMs};
+        auto make_estimator = [&server] {
+            return LinkDelayEstimator {std::chrono::milliseconds {server->Settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {server->Settings->Network.LinkDelayRebaseMs}};
+        };
+        auto evaluate_catch_up = [&](timespan late) { return EvaluateLateCatchUp(late, catch_up_min, catch_up_max); };
+        auto check_move_payload = [&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
+            CHECK(actual.Message == NetMessage::CritterMove);
+            CHECK(actual.CrId == expected.CrId);
+            CHECK(actual.WholeMs == expected.WholeMs);
+            CHECK(actual.ElapsedMs == expected.ElapsedMs);
+            CHECK(actual.ElapsedMs == 100);
+            CHECK(actual.Speed == expected.Speed);
+            CHECK(actual.StartHex == expected.StartHex);
+            CHECK(std::ranges::equal(actual.Steps, expected.Steps));
+            CHECK(actual.ControlSteps == expected.ControlSteps);
+            CHECK(actual.EndHexOffset == expected.EndHexOffset);
+            CHECK(actual.MovingUid == expected.MovingUid);
+            CHECK(actual.LeaseDistance == expected.LeaseDistance);
+        };
+        auto check_lease_payload = [&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
+            CHECK(actual.Message == NetMessage::CritterMoveLease);
+            CHECK(actual.CrId == expected.CrId);
+            CHECK(actual.MovingUid == expected.MovingUid);
+            CHECK(actual.LeaseDistance == expected.LeaseDistance);
+            CHECK(actual.LeaseDistance == 60.0f);
+        };
+        auto capture_fresh_ping = [&]() -> TransportPacketSnapshot {
+            test_connection->Dispatch();
+            test_connection->ClearReceivedTransportPackets();
+
+            player->Send_Ping(false);
+            test_connection->Dispatch();
+
+            vector<TransportPacketSnapshot> ping_packets = test_connection->GetReceivedTransportPackets();
+            REQUIRE(ping_packets.size() == 1);
+            REQUIRE(ping_packets.front().Message == NetMessage::Ping);
+
+            return ping_packets.front();
+        };
+
+        LinkDelayEstimator immediate_estimator = make_estimator();
+        TransportPacketSnapshot baseline_ping = capture_fresh_ping();
+        (void)immediate_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
+        test_connection->ClearReceivedTransportPackets();
+
+        move_before = nanotime::now();
+        player->Send_Moving(cr);
+        move_after = nanotime::now();
+        lease_before = nanotime::now();
+        player->Send_MovingLease(cr);
+        lease_after = nanotime::now();
+        test_connection->Dispatch();
+        packets = test_connection->GetReceivedTransportPackets();
+        REQUIRE(packets.size() == 2);
+        REQUIRE(packets[0].Message == NetMessage::CritterMove);
+        REQUIRE(packets[1].Message == NetMessage::CritterMoveLease);
+        check_sender_stamp(packets[0], move_before, move_after);
+        check_sender_stamp(packets[1], lease_before, lease_after);
+        check_move_payload(packets[0], expected_move);
+        check_lease_payload(packets[1], expected_lease);
+
+        // Millisecond rounding can leave a timely sample nonzero; the production threshold decides lateness
+        timespan immediate_move_late = immediate_estimator.AddSample(packets[0].SenderMs, packets[0].ReceiveTime);
+        CHECK(evaluate_catch_up(immediate_move_late) == timespan::zero);
+        timespan immediate_lease_late = immediate_estimator.AddSample(packets[1].SenderMs, packets[1].ReceiveTime);
+        CHECK(evaluate_catch_up(immediate_lease_late) == timespan::zero);
+
+        LinkDelayEstimator delayed_move_estimator = make_estimator();
+        baseline_ping = capture_fresh_ping();
+        (void)delayed_move_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
+        test_connection->ClearReceivedTransportPackets();
+
+        test_connection->SetDispatchHold(true);
+        move_before = nanotime::now();
+        player->Send_Moving(cr);
+        move_after = nanotime::now();
+        CHECK(test_connection->GetReceivedTransportPackets().empty());
+        coarse_sleep(std::chrono::milliseconds {250});
+        CHECK(test_connection->GetReceivedTransportPackets().empty());
+        test_connection->SetDispatchHold(false);
+        test_connection->Dispatch();
+
+        packets = test_connection->GetReceivedTransportPackets();
+        REQUIRE(packets.size() == 1);
+        REQUIRE(packets.front().Message == NetMessage::CritterMove);
+        check_sender_stamp(packets.front(), move_before, move_after);
+        CHECK(packets.front().ReceiveTime - move_after >= std::chrono::milliseconds {250});
+        check_move_payload(packets.front(), expected_move);
+
+        timespan delayed_move_late = delayed_move_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime);
+        CHECK(evaluate_catch_up(delayed_move_late) > timespan::zero);
+        CHECK(server->GameTime.GetFrameTime() == frozen_frame);
+
+        LinkDelayEstimator delayed_lease_estimator = make_estimator();
+        baseline_ping = capture_fresh_ping();
+        (void)delayed_lease_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
+        test_connection->ClearReceivedTransportPackets();
+
+        test_connection->SetDispatchHold(true);
+        lease_before = nanotime::now();
+        player->Send_MovingLease(cr);
+        lease_after = nanotime::now();
+        CHECK(test_connection->GetReceivedTransportPackets().empty());
+        coarse_sleep(std::chrono::milliseconds {250});
+        CHECK(test_connection->GetReceivedTransportPackets().empty());
+        test_connection->SetDispatchHold(false);
+        test_connection->Dispatch();
+
+        packets = test_connection->GetReceivedTransportPackets();
+        REQUIRE(packets.size() == 1);
+        REQUIRE(packets.front().Message == NetMessage::CritterMoveLease);
+        check_sender_stamp(packets.front(), lease_before, lease_after);
+        CHECK(packets.front().ReceiveTime - lease_after >= std::chrono::milliseconds {250});
+        check_lease_payload(packets.front(), expected_lease);
+
+        timespan delayed_lease_late = delayed_lease_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime);
+        CHECK(evaluate_catch_up(delayed_lease_late) > timespan::zero);
+        CHECK(server->GameTime.GetFrameTime() == frozen_frame);
+
+        server->StopCritterMoving(cr);
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+        server->MapMngr.DestroyLocation(loc);
+    });
+
+    CHECK(callback_invoked);
+    REQUIRE(quiesced);
+    CHECK_FALSE(server->GameTime.IsPaused());
+    CHECK(server->IsConnectionAdmissionOpen());
+    CHECK_FALSE(server->GetCurrentSyncContext());
 }
 
 FO_END_NAMESPACE

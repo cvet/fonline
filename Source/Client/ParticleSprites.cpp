@@ -88,9 +88,9 @@ void ParticleSprite::Prewarm()
     }
 }
 
-void ParticleSprite::SetTime(float32_t normalized_time)
+void ParticleSprite::SetPhase(float32_t normalized_phase)
 {
-    ignore_unused(normalized_time);
+    ignore_unused(normalized_phase);
 }
 
 void ParticleSprite::SetDirection(mdir dir)

@@ -566,16 +566,16 @@ void SpriteSheet::Prewarm()
     RefreshParameters();
 }
 
-auto SpriteSheet::GetTime() const -> float32_t
+auto SpriteSheet::GetPhase() const -> float32_t
 {
     return numeric_cast<float32_t>(_phase);
 }
 
-void SpriteSheet::SetTime(float32_t normalized_time)
+void SpriteSheet::SetPhase(float32_t normalized_phase)
 {
-    FO_VERIFY_AND_THROW(std::isfinite(normalized_time), "Sprite normalized time must be finite");
+    FO_VERIFY_AND_THROW(std::isfinite(normalized_phase), "Sprite phase must be finite");
 
-    _phase = std::clamp(numeric_cast<float64_t>(normalized_time), 0.0, 1.0);
+    _phase = std::clamp(numeric_cast<float64_t>(normalized_phase), 0.0, 1.0);
     _startTick = _sprMngr->GetTimer().GetFrameTime();
     RefreshParameters();
 }

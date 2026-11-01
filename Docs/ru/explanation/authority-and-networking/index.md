@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"b1072acc759cf258a706506c8e518b6b07f28eb466ab66950d6a51e74c54f6db"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"1c7ab00ae80fbcd710717859ee6a172619c48f77395eeb72bca8987038a31212"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -95,7 +95,9 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - запись арифметических типов, enum и простых типов свойств через типизированный `Write()`;
 - запись строк и хешированных строк;
 - запись блоков данных свойств через `WritePropsData()`;
-- framing сообщений через `StartMsg()` и `EndMsg()`.
+- framing сообщений через `StartMsg()`/`EndMsg()`; `AbortMsg()` удаляет только незавершённый хвост.
+
+`ServerConnection::WriteMsg()` владеет одним сообщением под блокировкой выхода. Ошибка сериализации или завершения отменяет его до снятия блокировки; готовые сообщения очереди сохраняются, следующее сообщение можно записать. Dispatch остаётся после снятия блокировки.
 
 Обязанности `NetInBuffer`:
 
@@ -244,6 +246,8 @@ send/receive, вложенное закрытие, ожидание полной
 Удерживаемое направление использует один дальний план с lease. `SendCritterMove` передаёт номер клиентского плана и подтверждённую границу в проецируемом расстоянии. Пока ввод удерживается, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` продлевает её. Сервер учитывает разницу начала своей копии и рассылает `CritterMoveLease {critter, movement uid, lease distance, sender ms}`. Наблюдатель принимает продление только для совпадающего uid. Зависание uplink останавливает сервер и наблюдателей на границе lease; потеря соединения завершает этот план. Позднее отпускание согласуется по завершённому плану игрока, см. [серверное движение](../runtime/server.md#движение-и-авторитетное-состояние) и [прямое управление](../runtime/client.md#движение-при-удержании-направления).
 
 Опоздание измеряет `LinkDelayEstimator`: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает прежнюю оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). Метки вне ±9223372036854 мс вызывают `Sender timestamp is outside the native clock range` до изменения выборки; опоздание ограничено диапазоном 0…9223372036854 мс для нативного хранения наносекунд. `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format движения/Ping и требуют отдельной compatibility version.
+
+Транспортные метки движения и lease берутся из `nanotime::now()` при кодировании, в той же шкале, что и Ping. Пауза или ограничение шага `GameTime` не должны выглядеть как лишнее время передачи по сети. Прошедшее время движения и прогресс lease по-прежнему используют игровую шкалу; транспортная метка не продвигает их и не меняет wire layout.
 
 ### Трассировка синхронизации движения
 

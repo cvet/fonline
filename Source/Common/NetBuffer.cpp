@@ -159,8 +159,6 @@ void NetOutBuffer::EndMsg()
     FO_VERIFY_AND_THROW(_msgStarted, "Network message stream is not started");
     FO_VERIFY_AND_THROW(_bufEndPos > _startedBufPos, "Network message ended without any payload after its start marker", _startedBufPos, _bufEndPos);
 
-    _msgStarted = false;
-
     auto msg_len = numeric_cast<uint32_t>(_bufEndPos - _startedBufPos);
 
     uint32_t msg_signature;
@@ -170,6 +168,19 @@ void NetOutBuffer::EndMsg()
 
     auto msg_len_target = make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature));
     memory::copy(msg_len_target, &msg_len, sizeof(msg_len));
+    _msgStarted = false;
+}
+
+void NetOutBuffer::AbortMsg() noexcept
+{
+    if (!_msgStarted) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(_startedBufPos <= _bufEndPos, "Outgoing message starts beyond the buffered output", _startedBufPos, _bufEndPos);
+
+    _bufEndPos = _startedBufPos;
+    _msgStarted = false;
 }
 
 void NetOutBuffer::WriteHashedString(hstring value)

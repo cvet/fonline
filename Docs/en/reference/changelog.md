@@ -14,6 +14,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-02
 
+### Fixed
+
+- Preserve loop, one-shot and frozen sprite playback through refresh and reentrant animation selection. Use explicit normalized-phase APIs: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, and `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` with ref `normalizedPosition`.
+- Abort an outgoing message if its writer unwinds or finalization fails, retaining earlier complete queued messages and releasing the buffer lock. Successful packets keep their existing layout, field types, units and order.
+- Retain the inventory owner, moved item and peer snapshot across synchronous post-setters; stop after owner/item invalidation and skip peers removed by reentrant callbacks.
+- Preserve the published monotonic movement sender contract and extend real-wire tests for ping, movement and lease payloads, paused/clamped game time and delayed dispatch. Earlier receipts remain bound to their original sources.
+
+### Migration
+
+- Base `7bda9a657966d8db2e4328b5402746036564756f` (`2026.1.97-dev`) to `2026.1.98-dev`: apply the exact native, AngelScript and Managed replacements in the [sprite animation migration](../how-to/migration/script-owned-sprite-animations.md). Old API/event names are removed and unmigrated calls fail compilation/baking; no old-name aliases or persisted-data conversion are introduced. Project-owned animation roles and numeric identities retain their meanings.
+- Regenerate API, bindings and metadata; rebuild affected client/server/Mapper/Baker/test roles and extensions, then force-rebake one coherent set of CoreScripts, assemblies, metadata and packs. Deploy or roll back that set together and reject mixtures.
+- The manual marker stays `0.0.86`: the replaced callable/event identifiers are already hashed by codegen, while transactional buffer recovery restores the packet invariant without adding a wire field or changing its meaning. Managed ABI `9` and SpriteResource v3 are unchanged. Recheck playback/phase, reentrant slot lifetimes, failed-message recovery and real transport clocks; final native/build/bake/player qualification remains separate.
+
+## 2026.1.97-dev - 2026-11-02
+
 ### Added
 
 - Client-only `Critter.GetAttachedCritterIds()` returns a copy of the received ordered IDs, including unloaded views. Editing it changes no attachment or authority; `Game.GetCritter(id)` may return null.

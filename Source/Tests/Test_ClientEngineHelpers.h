@@ -1193,7 +1193,7 @@ namespace ClientEngineTest
 
         // Animation controls are legal on a still sprite and simply have nothing to advance
         Game.PlaySprite(quad, "".hstr(), true, false);
-        Game.SetSpriteTime(quad, 0.5f);
+        Game.SetSpritePhase(quad, 0.5f);
         Game.StopSprite(quad);
         Game.SetParticleScale(quad, 2.0f);
         Game.PrewarmParticle(quad);

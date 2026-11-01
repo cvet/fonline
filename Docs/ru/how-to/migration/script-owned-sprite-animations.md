@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/migration/script-owned-sprite-animations.html
 ---
 
 # Перенос анимаций спрайтов в скрипты
-<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"3c359aeb4d0f032a928e0481579c3d81b97532b12c2d133048fae661a261cfbe"} -->
+<!-- docs-translation: {"document_id":"script-owned-sprite-animations","locale":"ru","source_path":"Docs/en/how-to/migration/script-owned-sprite-animations.md","source_sha256":"d499c1f78e3eb196697eceae83cbd5e3f7b1161a0c6e643247d5fbfaea7a94fc"} -->
 ### Скриптовые 2D-анимации криттеров
 
 Удалите OnCritterAnimationFrames(modelName,stateAnim,actionAnim,pass,flags,ox,oy,animName) и
@@ -71,7 +71,11 @@ Native: замените оба resolver на `ResolveCritterAnimationSprite(hst
 
 Native `CritterStateAnim` и `CritterActionAnim` содержат только `None=0`. Остальные значения объявляет проект в metadata с прежними числовыми идентификаторами.
 
-`OnCritterAnimationInit` принимает `(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedTime, float32& speed)`. Контекст сообщает покой, движение вперёд/назад, поворот влево/вправо, действие из очереди или превью. Проект выбирает пару, флаг `Freeze`, нормализованное положение заморозки, скорость воспроизведения и флаг `Movement` для 2D root motion. Движок не выводит эти решения из состояния жизни, оружия или номера действия. None/0 означает отсутствие решения; fallback и подстановки определяет проект.
+Замените `OnCritterAnimationInit` на `OnCritterAnimationPlaybackInit(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedPosition, float32& speed)`. Контекст по-прежнему сообщает покой, движение, поворот, действие из очереди или превью. Проект выбирает идентификаторы, флаги и скорость; None/0 остаётся отсутствием решения с проектным fallback/подстановкой. Position конечен в [0,1]; speed конечна и положительна.
+
+В 2D `Freeze` выбирает округлённый `lerp(0, frameCount-1, normalizedPosition)` при инициализации, повторном выборе и обработке. Иначе настоящее движение с `Movement` использует мировое смещение; остановленный `Movement` допускает воспроизведение по таймеру. Положительная длительность использует фазу с весами длительностей кадров: покой зацикливается, действие очереди ограничивается концом. Нулевая длительность сохраняет ручной округлённый выбор без autoplay; незамороженное действие очереди завершается при первом Process, замороженное удерживается. Неизменный выбор покоя сохраняет начало отсчёта. Семантика начала/удержания 3D-клипа, скорости и оставшейся длительности сохранена.
+
+Замените native `Sprite::GetTime/SetTime` на `GetPhase/SetPhase`, `Game.SetSpriteTime` на `Game.SetSpritePhase`, `Item.SetAnimTime` на `Item.SetAnimPhase`. Aliases и новый script getter отсутствуют. Перенесите overrides производных спрайтов; часы ModelInstance, VideoClip и ParticleSystem не меняйте. Scalar types/порядок и no-op случаи сохранены. Фаза спрайта следует взвешенной шкале; листы нулевой длительности сохраняют ручной выбор кадра. Перегенерируйте bindings/metadata и совместно пересоберите native extensions и все затронутые script roles.
 
 Прежние `Render.WalkAnimBaseSpeed`, `Render.RunAnimStartSpeed` и `Render.RunAnimBaseSpeed` перенесите в настройки проекта, если сохраняете эту политику. Явно задайте `Animation.PreviewStateAnim` и `Animation.PreviewActionAnim` для Mapper, AnimationViewer и базовых границ модели; defaults движка равны нулю. Baker выбирает указанную пару, а при её отсутствии — доступные границы, без эвристики Unarmed/Idle. После смены пары перепеките модели. Native callback ModelInstance принимает контекст, скорость движения и параметры воспроизведения; `GetMovingContext()` заменяет `GetMovingAnim()`.
 

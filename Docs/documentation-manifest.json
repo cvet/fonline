@@ -209,7 +209,8 @@
         "script-methods-map",
         "buildtools-readme",
         "documentation-site-publication",
-        "script-owned-sprite-animations"
+        "script-owned-sprite-animations",
+        "unit-tests-readme"
       ]
     },
     "public_manifest": {

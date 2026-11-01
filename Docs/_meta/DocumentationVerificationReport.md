@@ -60,6 +60,34 @@ six API changes across seventeen domains, with three required dispositions and
 none missing. Native, bake and player-path qualification remain separate from
 these documentation results.
 
+## 2026-10-24 - Reconcile the current published instruction update
+
+Published master advances from `268cc3df8c3de8fe5d4cf9ed11b13b45a72d7629`
+to `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0`. The complete incoming range
+contains one AGENTS clarification directing authored AngelScript changes to
+their style guide. It changes no native source, API, settings, serialized
+layout, dependency pin or public contract model.
+
+Rebase the unpublished lifecycle/movement integration from
+`c36f98946ce0558df2715864fde0c0629afe35b6` to
+`e9d34896f4ac3d7edc8cc7ab575eaf1450d2a740`. Preserve the existing client-slot
+lifetime work and its tests; all five working source/test files are byte-identical
+to their pre-update copies. Retain the named safety references and stashes.
+The published version remains `2026.1.60-dev`, so the unpublished integration
+remains its next minor `2026.1.61-dev`; no additional compatibility or ABI change
+is introduced by the instruction update. Refresh the paired migration base/date.
+
+Fresh embedding-project validation builds the native application roles and runs
+738 native cases with 737696 assertions, all passing. Managed generation covers
+Server, Client and Mapper; full baking succeeds and the following incremental
+bake changes zero files. Documentation preparation, 574 documentation tests and
+validation of 414 Markdown entries pass. These results establish local Windows
+integration; they do not qualify other platforms or production publication.
+
+The embedding project's spatial authoring gate remains red with documented
+incoming content/tooling debt. Its map findings do not change Engine contracts
+and are not represented as runtime or publication acceptance here.
+
 ## 2026-10-23 - Rebase player admission and stored-map loading
 
 Rebase the unpublished `fc4474a1eba43b75518747bb2dd97e05c5d3dcd6`
@@ -13188,6 +13216,80 @@ project still owns its resource bake, runtime tests and retained-world shutdown.
 
 The retained evidence predates the current rebase; it does not qualify the new revision. Current reconciliation is tracked by the embedding update plan and fresh checks.
 
+## 2026-10-24 - Reconcile published presentation owners with retained lifecycle work
+
+Rebase only the unpublished lifecycle commit from `2354ffac6973c9cbfb0090ea1d9f72cb27cd7070`
+onto published master `ca18bfeededf7777db2fdc2b9dcd77ec4c2ce135` (59-dev). The
+result is `71c99c10b2143349817b7baeb5aa0ca2375240f6`, 60-dev, runtime marker
+0.0.77, Managed ABI9, sprite container v2. Preserve published history, both
+incoming commits, project-owned presentation/animation policy, ResourceManager
+and CritterFramesCache ownership, sprite offset/motion separation and the frozen
+locomotion fix. Review all eighty incoming Source paths and the retained local
+source/test range. Regenerate the merged native inventory:2578 symbols,4887
+description translations, three exact required dispositions in17 domains.
+
+An independent read-only review found reentrant invalidation in the retained
+authoritative item-slot reconciliation. Preserve the original failing regression
+and its teardown diagnostic separately. The final fixture deletes the moved
+item, deletes a later peer or destroys the owner through the real synchronous
+property post-setter. Retain the owner, moved item and peer snapshot; revalidate
+after callbacks and before subsequent network-handler light work. The focused
+run passes25 assertions in2 cases, including ordinary/predicted and multi-slot
+controls. The complete enabled native suite passes729 cases /736427 assertions.
+The review's missing-effect fixture diagnostic remains a deferred minor; it is
+not a player-rendering verdict.
+
+Fresh native builds pass for server/headless server, client, Mapper, animation
+viewer and particle viewer. Exception safety passes7478 functions with zero
+errors/warnings; allocator audit passes660 files. The smart-pointer audit exposed
+an unnecessary optional nullable-pointer scratch in a retained conversion test.
+ConvertArg does not use scratch storage for a scalar handle; use its ordinary
+nullable wrapper and deduce that scratch type, preserving both destroyed-handle
+and missing-cover negative controls. Final recompilation/execution of that
+fixture and remaining bake/runtime/documentation checks are recorded separately
+when completed; this intermediate entry does not claim their success.
+
+The complete documentation run also exposes canonical navigation links
+removed by the incoming concise maintainer-guide rewrite and an old aggregate
+translation count. Restore the short owner links and derive the total
+from the complete current catalogue without weakening any validation rule.
+Original failure receipts remain distinct from corrected passes. No publication,
+ordinary-player completion, non-Windows qualification or performance result is
+claimed by the source and native checks above.
+
+Final qualification of the scalar-scratch correction rebuilds and passes all729
+native cases /736419 assertions. The assertion count varies in timing-dependent
+loops; the original earlier count remains attached to its own run. All seven
+application roles, Baker and the native test target build without compiler
+warnings. All three Managed roles compile in the forced bake:33 packs,27537
+inputs,19090 changed outputs and664 maps. The following incremental bake changes
+zero files. The resource-pack audit passes all33 packs below100MiB; Music retains
+its ordinary87.9MiB near-limit advisory. Exception and pointer/allocator audits
+pass with zero errors/warnings. The local-variable AST command cannot run on
+this Visual Studio build: no compilation database or Clang query/tidy tools are
+installed. Edited semantic groups and pointer/lifetime boundaries are manually
+reviewed; no automated AST verdict is claimed.
+
+The corrected full documentation Python corpus passes574 tests. The embedding
+gameplay run passes84 cases /645 expectations in17 suites, including all41 vehicle
+cases, long actions, presentation/playback, source-grant failure preservation,
+attached corpse disposal, Landmark2 container reachability, mine sprites and
+the ordinary GUI weapon-mode shortcut handler. Preserve the earlier21-case run
+whose checker correctly rejected an undersized selection: its plural vehicle
+filter missed the actual singular suite, and the corrected run retains the
+original minimum without suppressing any failure. The embedding MCP corpus
+passes2014 tests with two legitimate skips; test-quality and four-edition
+localization/identity checks pass separately.
+
+Inspect four1600x900 Windows OpenGL captures of a lightweight performance scene:
+the same unencumbered actor walks, starts a fresh run and returns to its initial
+hex with an empty queue. Inspect the independent Landmark2 Mapper capture and
+its self-terminated render receipt. The earlier overloaded DevTest scene proves
+walking/rendering only. Client scene cleanup is an adapter-owned forced stop,
+not graceful saved-world shutdown; the Memory fixtures never open the ordinary
+saved world. Standalone viewer GUI, other renderers/platforms, audible output,
+sanitizers, performance and ordinary first-wave acceptance remain unqualified.
+
 ## 2026-10-24 - Reconcile the additionally received published60 update
 
 The final version/aggregate gate discovered that origin/master had advanced to
@@ -13212,11 +13314,48 @@ references rather than choosing either stale generated side. Both published and
 local contract histories remain; the three current dispositions name exact model
 digests. This reconciliation entry does not claim fresh builds or runtime passes.
 
-## 2026-10-28 ? Reconcile the unpublished lifecycle boundary onto master version 80
+Final61-dev qualification rebuilds all seven Windows application roles, Baker and
+the unit-test target without compiler warnings. The final native run passes738
+cases /737711 assertions, including the nine incoming cases and all retained
+attachment/movement/slot controls. The first run before the explicit test-local
+owner spelling passes738 /737710. The text pointer audit had mistaken an
+auto-deduced refcount owner copy for a borrow assignment; the compiler rejects
+an attempted hold operation on that already-owned handle. Preserve that compiler
+failure. Naming its existing refcount_nptr type explicitly retains the copy
+semantics and passes the unchanged audit, without suppressing its rule.
 
-Baseline: published `fcac7eb0824ea23a67fa4e2bd8804d4e03fdda98` (`2026.1.80-dev`); original local source boundary `cd455c432b873b0ea3802eb85be0c8a676bed923`, now authored as `2026.1.81-dev`. The integration preserves the published 74?80 change records and the additive Map query/default-off resource filtering.
+Regenerate the three full example configurations after the new Engine setting;
+their generators add only its default-false row. The corrected documentation
+Python corpus passes574 tests. The embedding compilation first fails FOSYNC015
+at a redundant Widen after LoadCritter in courier recovery; replace that one
+lifetime-only suspension with IsDestroyed and keep existing-entity and graph
+cover acquisition. The corrected full bake compiles all three Managed roles
+without warnings, rebuilds33 packs/664 maps, and the following incremental run
+changes zero files. Re-derived exception guarantees cover7480 functions with
+zero errors/warnings; pointer and allocator audits pass660 files.
 
-The combined attachment recipient/map-context and lifecycle contract advances the manual marker 82 ? 83. The monotonic movement sender fix is already upstream. Managed ABI 9, SpriteResource v3 and saved-world field meanings remain unchanged; rebuild and rebake matching binaries, bindings, metadata, CoreScripts and resource packs. The original rich attachment decoder/assertions are retained alongside the upstream send-time wire fixture.
+The final embedding run reports138 selected cases:135 pass, three negative
+authentication cases explicitly skip because this controller has no real
+unlogged-connection driver. All20 suites finish, with945 expectations, no failed
+or timed-out cases and zero global-exception delta. The source-derived required
+set covers92 names, including41 vehicle cases, seven long actions, roster/auth
+and escrow consumers. The canonical two-process SQLite escrow probe saves the
+setup failpoint, stops, reloads in a second process and verifies reconciliation
+exactly once; setup readiness is not mislabeled as a completed test summary.
+The ordinary saved world is never opened. Fresh MCP2014 checks pass with two
+documented skips, and the embedding quality gate passes4127 registrations.
+
+Inspect four fresh1600x900 OpenGL frames and the self-terminated Landmark2 Mapper
+capture on this artifact set. No standalone viewer GUI, alternate-platform or
+renderer, sanitizer, performance, missing negative-auth driver or ordinary-world
+reconnect verdict is implied. The existing local-variable AST tooling limitation
+and deferred ClientMapPaths effect-fixture diagnostic remain recorded above.
+
+## 2026-10-28 - Reconcile the unpublished lifecycle boundary onto master version 80
+
+Baseline: published `fcac7eb0824ea23a67fa4e2bd8804d4e03fdda98` (`2026.1.80-dev`); original local source boundary `cd455c432b873b0ea3802eb85be0c8a676bed923`, now authored as `2026.1.81-dev`. The integration preserves the published 74-80 change records and the additive Map query/default-off resource filtering.
+
+The combined attachment recipient/map-context and lifecycle contract advances the manual marker 82 -> 83. The monotonic movement sender fix is already upstream. Managed ABI 9, SpriteResource v3 and saved-world field meanings remain unchanged; rebuild and rebake matching binaries, bindings, metadata, CoreScripts and resource packs. The original rich attachment decoder/assertions are retained alongside the upstream send-time wire fixture.
 
 The strict source parser derives 2588 unique API IDs and inventory `e91aa75dea79219932b5a5bd60294ba1a9f2f40502268b6cf7775b0482c89a29`, with 4 explicit contract declarations. API/reference, CMake, image-format, package and public-index owners were regenerated; the 83 marker source anchor is updated. The aggregate diff against the published base requires three explicit API dispositions (inventory scope, marker, retained destroyed cover-probe argument admission), bound to its actual before/after contract digests. Source documentation validation is recorded in the consuming project's integration evidence; native/build/bake/player acceptance is pending and older evidence remains bound to its original hashes.
 
@@ -13242,3 +13381,26 @@ The lifecycle-focused source suite passes66 tests and99 subtests;8 CMake
 tests are deselected in that command. Preparation and414-entry validation
 pass. Full validator-meta and final combined checks are recorded separately.
 No native build, bake, runtime, player or other-platform acceptance is claimed.
+
+## 2026-10-28 - Reconcile the second unpublished playback and transaction boundary
+
+Baseline: rebased `13db52844da4f1698bd754b1d050bdbbe43853f6` (`2026.1.81-dev`); original local source boundary `cbdcf49433838a5e8b7d95ecf534e3facb2e3323`, now authored as `2026.1.82-dev`. Preserve the complete prior 81 and published 74-80 changelog records. The strict source parser derives 2588 unique IDs with sorted-ID inventory `3b2b37b75c89b0639335069d947a15bfe43413cf6984d0cfaf29743eea00c990`; the generated API contract digest is `69929b9ff24a387e9e259c64ec93cce8cadff640fc1eafc169384a5c31421590`.
+
+The explicit native/script phase and playback-event replacements require current-only caller migration. Retain outgoing-message abort/recovery and reentrant inventory owner/item/peer lifetimes. The manual marker stays 83: callable/event identifiers are codegen-hashed, and transaction recovery changes no successful wire field, unit or order. Managed ABI 9, SpriteResource v3 and saved-world identities remain unchanged. Rebuild/rebake and deploy or roll back a coherent matching set.
+
+The retained original final Test_ServerMoveReconciliation body is byte-equivalent after LF normalization when the five exact published send-time fixture additions are removed; its rich ping/movement/lease/attachment decoding and assertions were not replaced. The additive movable-cell query, default-off resource filtering and optional Unity contracts remain present. All six model/reference owners were regenerated. Contract dispositions bind exact digests separately for this boundary, the cumulative published-base comparison and adoption from the original local tip. Final source/doc checks are recorded in the consuming project's integration evidence. Native/build/bake/player acceptance remains pending; historical passes and the published version-history failure retain their original scope.
+
+
+## 2026-11-01 - Replay playback and packet transactions as96
+
+The lifecycle95 parent is8bd133a818580588607c706a87485f8101fab53c.
+Keep incoming VisualOffset in RefreshOffs and scoped simulation/event/grid
+owners while replaying explicit phase/playback replacements, outgoing
+abort-on-unwind and inventory snapshots. Manual86, Managed ABI9,
+SpriteResourcev3 and snapshot4 remain. The2593-symbol inventory is
+f0e29c5a173ca5d74aaa2d2ef1adb277fb27e76ba54b280be8db8c381a4cd841.
+Seven current changes in17 domains require four exact dispositions, all present.
+The existing phase-doc assertion is moved from the final local replay into
+this owner boundary: the stale assertion fails, then66 focused tests and99
+subtests pass. Preparation,414-entry documentation validation and version
+checks pass. Native/build/bake/player/platform gates remain separate.

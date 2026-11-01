@@ -173,7 +173,7 @@ void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
     _animLooped = looped;
     _animReversed = reversed;
     _animStopped = false;
-    _animTime = reversed ? 0.0f : 1.0f;
+    _animPhase = reversed ? 0.0f : 1.0f;
 
     if (_anim) {
         _anim->Play(_animName, _animLooped, _animReversed);
@@ -189,12 +189,12 @@ void ItemHexView::StopAnim()
     }
 }
 
-void ItemHexView::SetAnimTime(float32_t normalized_time)
+void ItemHexView::SetAnimPhase(float32_t normalized_phase)
 {
-    _animTime = normalized_time;
+    _animPhase = normalized_phase;
 
     if (_anim) {
-        _anim->SetTime(_animTime);
+        _anim->SetPhase(_animPhase);
     }
 }
 
@@ -222,13 +222,13 @@ void ItemHexView::RefreshAnim()
     if (_anim) {
         if (_map->IsMapperMode()) {
             _anim->Stop();
-            _anim->SetTime(0.0f);
+            _anim->SetPhase(0.0f);
         }
         else if (is_anim_init) {
             _anim->PlayDefault();
         }
         else {
-            _anim->SetTime(_animTime);
+            _anim->SetPhase(_animPhase);
             _anim->SetDirection(_animDir);
 
             if (!_animStopped && _animLooped) {

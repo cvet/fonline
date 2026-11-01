@@ -7,12 +7,27 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"3b591b5462ccd48b88e11dde8d5c5a546fe1371a40e8e51795efef15f1029943"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e29039c563bc7771c8e05c38aba8529c094a1cb673c646482d5e46b8bdaa3fac"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-02
+
+### Исправлено
+
+- Сохранены циклическое, однократное и замороженное воспроизведение спрайтов при refresh и reentrant-выборе анимации. Введены явные API нормализованной фазы: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, а `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` с ref `normalizedPosition`.
+- Исходящий пакет прерывается при раскрутке writer или ошибке finalization; ранее завершённые пакеты сохраняются, блокировка буфера освобождается. Успешные пакеты сохраняют layout, типы, единицы и порядок полей.
+- Владелец инвентаря, перемещаемый предмет и снимок peers удерживаются через синхронные post-setters; обработка останавливается при инвалидировании owner/item и пропускает peers, удалённых reentrant callbacks.
+- Сохранён опубликованный контракт монотонного времени отправки движения; real-wire тесты расширены для payload ping, движения и lease, paused/clamped game time и задержанной отправки. Прежние receipts остаются привязанными к исходным sources.
+
+### Миграция
+
+- База `7bda9a657966d8db2e4328b5402746036564756f` (`2026.1.97-dev`) → `2026.1.98-dev`: примените точные замены native, AngelScript и Managed из [миграции анимации спрайтов](../how-to/migration/script-owned-sprite-animations.md). Старые имена API/событий удалены; неперенесённые вызовы отвергаются компиляцией/bake. Aliases прежних имён и конверсия persisted data не вводятся. Игровые роли анимации и числовые identity сохраняют смысл.
+- Перегенерируйте API, bindings и metadata; пересоберите затронутые роли client/server/Mapper/Baker/tests и расширения, затем полностью выпеките один согласованный комплект CoreScripts, assemblies, metadata и packs. Разворачивайте или откатывайте его вместе; смешанные поколения должны отвергаться.
+- Ручной marker остаётся `0.0.86`: заменённые идентификаторы callable/события уже хэшируются codegen, а транзакционное восстановление буфера возвращает packet invariant без нового wire field или смены его смысла. Managed ABI `9` и SpriteResource v3 прежние. Повторно проверьте playback/phase, reentrant lifetimes слотов, восстановление после ошибки пакета и реальные transport clocks; окончательная native/build/bake/player-приёмка остаётся отдельной.
+
+## 2026.1.97-dev - 2026-11-02
 
 ### Добавлено
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0cd3e28d71aa3de9497c135847193d53a0ae0dd13ff130f463253c55f4ae8cf7"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"91cf24a9e27d4c1d6ebd480557e3833e0463e000a10c9401148fb3838f523a00"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -386,6 +386,10 @@ coverage на нативных платформах хоста. Они такж�
 Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
 
 ### Шаблоны focused harness
+
+- **Бинарная совместимость:** `ClientBinaryCompatibilityPrecedesPlayerSession` использует настоящие движки с одинаковой metadata: разные binary digests вызывают отказ устаревших ресурсов до сессии игрока; совпадающие разрешают подключение.
+
+- **Общие baker fixtures:** header-only `Test_*Helpers.h` не входят в `FO_TESTS_SOURCE`. `TestRig` настоящих bakers из `Test_BakerHelpers.h` через `AddBakedScriptBytecode` копирует выходы трёх ролей в `BakedFiles` до очистки `Outputs` методом `MakeContext`. Дисковые AS fixtures включают Metadata до Proto.
 
 - **Неинтерактивные ошибки:** каждый скрытый случай `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` и `ApplicationHeadlessException` запускается по точному имени в отдельном процессе сгенерированного unit-test приложения. Состояние quit необратимо; общий тег нельзя запускать одним набором. Headless-случаи сохраняют `Common.NonInteractive = False`, а прямое сообщение проверяет сохранение статуса ошибки после позднего успешного запроса quit. Эти случаи проверяют headless-реализацию; для графического frontend и ошибки до создания приложения нужны отдельные process smoke с проверками лога/trace, exit status и тайм-аута.
 

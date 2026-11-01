@@ -600,8 +600,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-setsoundvolume-45493f3dd5"></a>
 - [`symbol-script-method-client-game-setsoundvolume-45493f3dd5`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setsoundvolume-45493f3dd5)
 
-<a id="symbol-script-method-client-game-setspritetime-a88d9658c0"></a>
-- [`symbol-script-method-client-game-setspritetime-a88d9658c0`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setspritetime-a88d9658c0)
+<a id="symbol-script-method-client-game-setspritephase-36e1298b7f"></a>
+- [`symbol-script-method-client-game-setspritephase-36e1298b7f`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setspritephase-36e1298b7f)
 
 <a id="symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07"></a>
 - [`symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-setuserconfig-404272fae1b8c4d2-1fa2fe0a07)
@@ -719,8 +719,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-setanimdir-0de3bf037e"></a>
 - [`symbol-script-method-client-item-setanimdir-0de3bf037e`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimdir-0de3bf037e)
 
-<a id="symbol-script-method-client-item-setanimtime-3081f8eacf"></a>
-- [`symbol-script-method-client-item-setanimtime-3081f8eacf`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimtime-3081f8eacf)
+<a id="symbol-script-method-client-item-setanimphase-8bf8692294"></a>
+- [`symbol-script-method-client-item-setanimphase-8bf8692294`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-setanimphase-8bf8692294)
 
 <a id="symbol-script-method-client-item-stopanim-3d1617d6b8"></a>
 - [`symbol-script-method-client-item-stopanim-3d1617d6b8`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-stopanim-3d1617d6b8)

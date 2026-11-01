@@ -93,7 +93,9 @@ Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of 
 - write arithmetic/enums/plain property types through typed `Write()`;
 - write strings and hashed strings;
 - write property data blocks with `WritePropsData()`;
-- frame messages with `StartMsg()` and `EndMsg()`.
+- frame messages with `StartMsg()`/`EndMsg()`; `AbortMsg()` discards only the unfinished tail.
+
+`ServerConnection::WriteMsg()` owns one message under the output lock. Serialization or finalization failure aborts it before unlocking; completed queued messages survive, and the next message can be written. Dispatch remains after unlocking.
 
 `NetInBuffer` responsibilities:
 
@@ -249,6 +251,8 @@ The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) 
 A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
 
 **Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
+
+Movement and lease transport stamps use `nanotime::now()` at encoding, in the same clock domain as Ping. Pausing or clamping `GameTime` must not appear as excess network transit. Movement elapsed time and lease progress still use the simulation clock; transport stamping does not advance them or change the wire layout.
 
 ### Movement synchronization trace
 

@@ -329,6 +329,10 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 
 ### Focused harness patterns
 
+- **Binary compatibility:** `ClientBinaryCompatibilityPrecedesPlayerSession` uses real engines with equal metadata: mismatched binary digests refuse outdated resources before a player session; matching digests connect.
+
+- **Shared baker fixtures:** header-only `Test_*Helpers.h` stay outside `FO_TESTS_SOURCE`. `Test_BakerHelpers.h`'s real-baker `TestRig` copies three-role outputs via `AddBakedScriptBytecode` into `BakedFiles` before `MakeContext` clears `Outputs`. Disk AS fixtures include Metadata before Proto.
+
 - **Unattended errors:** run each hidden `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` and `ApplicationHeadlessException` case by its exact name in a fresh generated unit-test process. Quit state is irreversible; do not run the shared tag as one suite. The headless cases keep `Common.NonInteractive = False`, and the direct-error case verifies that a later successful quit request retains the failed status. These cases exercise the headless implementation; graphical-frontend and pre-application error paths require separate process smokes with log/trace, exit-status and timeout assertions.
 
 - **Attachment teardown:** `CritterAttachmentTeardown` in `Test_ServerEntityLifetime.cpp` uses a self-contained server with either scripting backend. It covers ordinary detach and destruction of either endpoint, counts native exception reports through the existing exception callback while preserving the previous reporter, and decodes the surviving player's `CritterAttachments` packet. `ClientCritterFinalizationDropsAttachmentIds` in `Test_ClientEntityLifetime.cpp` checks view finalization with cached attachment IDs and a surviving peer. Final entity state alone cannot prove clean teardown: a caught native exception may be followed by a successful retry.

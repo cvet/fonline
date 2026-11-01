@@ -39,6 +39,15 @@ FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
 
+template<typename T>
+concept client_animation_playback_init = requires(T& client) { client.OnCritterAnimationPlaybackInit; };
+
+template<typename T>
+concept client_legacy_animation_init = requires(T& client) { client.OnCritterAnimationInit; };
+
+static_assert(client_animation_playback_init<ClientEngine>);
+static_assert(!client_legacy_animation_init<ClientEngine>);
+
 FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self);
 
 TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
@@ -1307,8 +1316,8 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         CHECK(sheet->IsPlaying());
 
         // Seeking addresses a frame directly rather than waiting for the clock
-        for (float32_t normalized_time : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
-            REQUIRE_NOTHROW(sheet->SetTime(normalized_time));
+        for (float32_t phase : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
+            REQUIRE_NOTHROW(sheet->SetPhase(phase));
             ignore_unused(sheet->Update());
         }
 
@@ -2371,7 +2380,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             return Entity::EventResult::ContinueChain;
         };
 
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
         auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
         map->EnableMapperMode();
@@ -2400,7 +2409,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
 
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
         auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
@@ -2436,7 +2445,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
         auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
         map->EnableMapperMode();

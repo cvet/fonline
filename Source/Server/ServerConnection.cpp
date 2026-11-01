@@ -326,6 +326,7 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
                     _outBuf->EndMsg();
                 }
                 catch (...) {
+                    _outBuf->AbortMsg();
                     _owner->_outBufLocker.unlock();
                     throw;
                 }
@@ -335,6 +336,10 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
             _owner->StartAsyncSend();
         }
         else {
+            if (_msg) {
+                _outBuf->AbortMsg();
+            }
+
             _owner->_outBufLocker.unlock();
         }
 

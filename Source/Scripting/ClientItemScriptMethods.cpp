@@ -152,12 +152,12 @@ FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
     }
 }
 
-// Sets the normalized playback position of a map item's sprite animation; does nothing for items outside the map view
+// Sets the normalized playback phase of a map item's sprite animation; does nothing for items outside the map view
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimPhase(ptr<ItemView> self, float32_t normalizedPhase)
 {
     if (auto hex_item = self.dyn_cast<ItemHexView>()) {
-        hex_item->SetAnimTime(normalizedTime);
+        hex_item->SetAnimPhase(normalizedPhase);
     }
 }
 

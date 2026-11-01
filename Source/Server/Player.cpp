@@ -1081,8 +1081,8 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
     out_buf.Write(cr->GetMovingUid());
     out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
-    // The actual send time by the server's monotonic clock: the receiver tells from it how much
-    // later than usual the plan reached it
+
+    // Transport delay shares ping's monotonic clock, independent of paused or clamped game time
     out_buf.Write(nanotime::now().milliseconds());
 }
 

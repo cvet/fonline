@@ -586,6 +586,59 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers")
     CHECK(second->GetCritterSlot() == multi_slot);
 }
 
+TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
+{
+    auto settings = MakeClientLifetimeSettings();
+    BakerTests::OverrideSetting(settings.Critter.CritterSlotMultiItem, vector<bool> {true, false});
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ReentrantSlotCritter"), client->GetPropertyRegistrar("Critter"));
+    auto item_proto = safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ReentrantSlotItem"), client->GetPropertyRegistrar("Item"));
+    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1101}, critter_proto);
+    auto cleanup = scope_exit([&critter]() noexcept {
+        if (!critter->IsDestroyed()) {
+            safe_call([&critter] { critter->DestroySelf(); });
+        }
+    });
+    auto displaced = critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr);
+    auto moved = critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref();
+    auto peer = critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref();
+    int32_t mutation = GENERATE(0, 1, 2);
+    CAPTURE(mutation);
+    int32_t callback_count = 0;
+
+    displaced->GetPropertyCritterSlot()->AddPostSetter([&](nptr<Entity> entity, ptr<const Property>) {
+        if (entity == displaced) {
+            callback_count++;
+
+            if (mutation == 0) {
+                critter->DeleteInvItem(moved);
+            }
+            else if (mutation == 1) {
+                critter->DeleteInvItem(peer);
+            }
+            else {
+                critter->DestroySelf();
+            }
+        }
+    });
+
+    critter->ApplyAuthoritativeItemSlotMove(moved->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
+
+    CHECK(callback_count == 1);
+
+    if (mutation == 1) {
+        CHECK_FALSE(moved->IsDestroyed());
+        CHECK(moved->GetCritterSlot() == CritterItemSlot::Main);
+        CHECK(peer->IsDestroyed());
+        CHECK(displaced->GetCritterSlot() == CritterItemSlot::Inventory);
+    }
+    else {
+        CHECK(moved->IsDestroyed());
+        CHECK(moved->GetCritterSlot() == CritterItemSlot::Inventory);
+    }
+}
+
 TEST_CASE("ClientEntityFinalReleasePreservesSuccessorRegistration")
 {
     auto settings = MakeClientLifetimeSettings();

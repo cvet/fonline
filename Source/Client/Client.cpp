@@ -1453,8 +1453,18 @@ void ClientEngine::Net_OnCritterMoveItem()
     }
 
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
+        auto cr_ref_holder = cr.hold_ref();
         cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
         moved_item->SetCritterSlot(prev_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
     }
 
     if (_curMap) {

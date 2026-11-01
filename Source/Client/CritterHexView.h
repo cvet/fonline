@@ -109,7 +109,7 @@ private:
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         CritterAnimationFlags Flags {};
-        float32_t NormalizedTime {};
+        float32_t NormalizedPosition {};
         float32_t Speed {1.0f};
         refcount_nptr<Entity> ContextItem {};
         nptr<const SpriteSheet> Frames {};
@@ -125,6 +125,7 @@ private:
     void ProcessMoving();
     void NextAnim();
     void PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed);
+    void UpdateAnimFrame(CritterAnim& anim);
     void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
     void RefreshAnimOffset(CritterAnim& anim);

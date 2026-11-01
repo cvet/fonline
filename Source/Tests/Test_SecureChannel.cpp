@@ -36,6 +36,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
+#include "Movement.h"
 #include "NetSockets.h"
 #include "NetworkServer.h"
 #include "SecureChannel.h"
@@ -665,6 +666,87 @@ namespace
         void DispatchImpl() override { }
         void DisconnectImpl() override { }
     };
+}
+
+TEST_CASE("ServerOutgoingMessageFailurePreservesCompletedFrames")
+{
+    auto settings = MakeTestSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+
+    SecureChannelIdentity identity {crypto::generate_secret_key()};
+    auto transport = safe_alloc::make_shared<ProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, transport, identity);
+    timespan elapsed {};
+    timespan whole_time {std::chrono::milliseconds {1000}};
+
+    SECTION("ElapsedTimeConversionFailsAfterTheWholeTimeWasWritten")
+    {
+        elapsed = timespan {std::chrono::milliseconds {2147483648LL}};
+    }
+
+    SECTION("WholeTimeConversionFailsAfterTheMessagePrefixWasWritten")
+    {
+        whole_time = timespan {std::chrono::milliseconds {2147483648LL}};
+    }
+
+    auto moving = safe_alloc::make_refcounted<MovingContext>(msize {40, 40}, uint16_t {100}, vector<mdir> {hdir::East}, vector<uint16_t> {1}, nanotime {}, elapsed, mpos {20, 20}, ipos16 {}, ipos16 {}, whole_time);
+    REQUIRE_NOTHROW(moving->ValidateRuntimeState());
+
+    {
+        auto output = connection->WriteMsg(NetMessage::Ping);
+        output->Write(false);
+        output->Write(int64_t {111});
+    }
+
+    vector<uint8_t> completed;
+
+    {
+        auto output = connection->WriteBuf();
+        auto data = output->GetData();
+        completed.assign(data.begin(), data.end());
+    }
+
+    auto write_failed_movement = [&]() {
+        auto output = connection->WriteMsg(NetMessage::CritterMove);
+        output->Write(ident_t {42});
+        output->Write(iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>())));
+        output->Write(iround<int32_t>(moving->GetRuntimeElapsedTime(nanotime {}).to_ms<float64_t>()));
+    };
+
+    CHECK_THROWS_AS(write_failed_movement(), OverflowException);
+
+    {
+        auto output = connection->WriteBuf();
+        CHECK_FALSE(output->IsMsgStarted());
+        CHECK(std::ranges::equal(output->GetData(), completed));
+    }
+
+    REQUIRE_NOTHROW([&]() {
+        auto output = connection->WriteMsg(NetMessage::Ping);
+        output->Write(true);
+        output->Write(int64_t {222});
+    }());
+
+    SecureChannel client {vector<crypto::key_bytes> {identity.GetPublicKey()}};
+    vector<uint8_t> offer;
+    client.TakeHandshakeOutput(offer);
+    transport->Receive(offer);
+
+    vector<uint8_t> plaintext;
+    client.Receive(transport->SendCallback(), plaintext);
+    REQUIRE(client.IsEstablished());
+
+    NetInBuffer input {64};
+    input.AddData(plaintext);
+    REQUIRE(input.NeedProcess());
+    CHECK(input.ReadMsg() == NetMessage::Ping);
+    CHECK_FALSE(input.Read<bool>());
+    CHECK(input.Read<int64_t>() == 111);
+    REQUIRE(input.NeedProcess());
+    CHECK(input.ReadMsg() == NetMessage::Ping);
+    CHECK(input.Read<bool>());
+    CHECK(input.Read<int64_t>() == 222);
+    CHECK_FALSE(input.NeedProcess());
 }
 
 TEST_CASE("SecureChannelServerSendsNothingInTheClear")

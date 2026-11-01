@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"d49b6b678c680ab9d7af5987087a7e07acb6664341a5618471d98f85a646e695"} -->
+<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"7ed2ee81170b14a4b39844602b1622d574f5f57ca06fed61491ee7e2073cdab6"} -->
 
 # Сгенерированный справочник API
 
@@ -44,7 +44,7 @@ generated: true
 
 ## Контракт области
 
-Полный текущий инвентарь имеет статус <code>experimental</code> с версии <code>2022.1.0.wip</code>. Объявление закрепляет 2593 стабильных ID хешем SHA-256 <code>954bfa0478467b64c34da064225ca94e3126e785003a1ea16c3fb125b4cbbb13</code>; любое добавление или удаление символа либо изменение стабильного ID останавливает генерацию, пока владелец не проверит и не обновит оба пина.
+Полный текущий инвентарь имеет статус <code>experimental</code> с версии <code>2022.1.0.wip</code>. Объявление закрепляет 2593 стабильных ID хешем SHA-256 <code>f0e29c5a173ca5d74aaa2d2ef1adb277fb27e76ba54b280be8db8c381a4cd841</code>; любое добавление или удаление символа либо изменение стабильного ID останавливает генерацию, пока владелец не проверит и не обновит оба пина.
 
 Поверхность native-codegen предлагается только для оценки и остаётся привязанной к ревизии до появления поддерживаемых веток выпусков.<br>SymbolCount и InventorySha256 требуют проверки владельцем каждого добавления, удаления или изменения стабильного ID.
 

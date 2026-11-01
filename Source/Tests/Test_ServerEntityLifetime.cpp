@@ -1777,8 +1777,8 @@ TEST_CASE("ServerCoverageProbeAcceptsDestroyedNativeArguments", "[server][sync][
     REQUIRE_NOTHROW(method->Call(call));
     CHECK(covered);
 
-    optional<nptr<ServerEntity>> scratch;
-    auto ordinary_conversion = [&]() { return NativeDataCaller::ConvertArg<nptr<ServerEntity>, optional<nptr<ServerEntity>>>(make_ptr(&target).void_cast(), NativeDataProvider::NATIVE_DATA_ACCESSOR, scratch); };
+    nptr<ServerEntity> scratch;
+    auto ordinary_conversion = [&]() { return NativeDataCaller::ConvertArg<nptr<ServerEntity>>(make_ptr(&target).void_cast(), NativeDataProvider::NATIVE_DATA_ACCESSOR, scratch); };
     CHECK_THROWS_WITH(ordinary_conversion(), Catch::Matchers::ContainsSubstring("destroyed entity"));
 
     ctx.Release();

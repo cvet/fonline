@@ -112,6 +112,7 @@ public:
 
     void StartMsg(NetMessage msg);
     void EndMsg();
+    void AbortMsg() noexcept;
 
 private:
     void WriteHashedString(hstring value);

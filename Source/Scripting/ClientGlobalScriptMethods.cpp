@@ -1286,9 +1286,9 @@ FO_SCRIPT_API void Client_Game_StopSprite(ptr<ClientEngine> client, uint32_t spr
     sprite->Stop();
 }
 
-// Sets the normalized playback time of a client-local sprite; unknown handles are ignored
+// Sets the normalized playback phase of a client-local sprite; unknown handles are ignored
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t sprId, float32_t normalizedTime)
+FO_SCRIPT_API void Client_Game_SetSpritePhase(ptr<ClientEngine> client, uint32_t sprId, float32_t normalizedPhase)
 {
     auto sprite = client->AnimGetSpr(sprId);
 
@@ -1296,7 +1296,7 @@ FO_SCRIPT_API void Client_Game_SetSpriteTime(ptr<ClientEngine> client, uint32_t 
         return;
     }
 
-    sprite->SetTime(normalizedTime);
+    sprite->SetPhase(normalizedPhase);
 }
 
 // Changes the scale of a loaded particle sprite and returns false for an unknown handle or non-particle sprite

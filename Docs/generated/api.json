@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2593,
-      "inventory_sha256": "954bfa0478467b64c34da064225ca94e3126e785003a1ea16c3fb125b4cbbb13",
+      "inventory_sha256": "f0e29c5a173ca5d74aaa2d2ef1adb277fb27e76ba54b280be8db8c381a4cd841",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -31316,17 +31316,17 @@
       ]
     },
     {
-      "id": "script.event.client.Game.OnCritterAnimationInit",
-      "family_id": "script.event.client.Game.OnCritterAnimationInit",
+      "id": "script.event.client.Game.OnCritterAnimationPlaybackInit",
+      "family_id": "script.event.client.Game.OnCritterAnimationPlaybackInit",
       "kind": "event",
-      "name": "OnCritterAnimationInit",
+      "name": "OnCritterAnimationPlaybackInit",
       "runtime_sides": [
         "client",
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "event Game.OnCritterAnimationInit(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedTime, float32& speed)",
-      "description": "Selects project animation identifiers and playback for a context and effective movement speed; normalizedTime is in [0,1], speed must be finite and positive",
+      "signature": "event Game.OnCritterAnimationPlaybackInit(Critter cr, CritterStateAnim& stateAnim, CritterActionAnim& actionAnim, AbstractItem? contextItem, CritterAnimationContext context, int32 movingSpeed, CritterAnimationFlags& flags, float32& normalizedPosition, float32& speed)",
+      "description": "Selects project animation identifiers and playback for a context and effective movement speed; normalizedPosition is a mode-dependent 2D frame position/phase or 3D clip start in [0,1], speed must be finite and positive",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -31397,7 +31397,7 @@
           "default": null
         },
         {
-          "name": "normalizedTime",
+          "name": "normalizedPosition",
           "type": "float32&",
           "nullable": false,
           "by_reference": true,
@@ -46811,17 +46811,17 @@
       ]
     },
     {
-      "id": "script.method.client.Game.SetSpriteTime",
-      "family_id": "script.method.client.Game.SetSpriteTime",
+      "id": "script.method.client.Game.SetSpritePhase",
+      "family_id": "script.method.client.Game.SetSpritePhase",
       "kind": "method",
-      "name": "SetSpriteTime",
+      "name": "SetSpritePhase",
       "runtime_sides": [
         "client",
         "mapper"
       ],
       "receiver": "Game",
-      "signature": "void Game.SetSpriteTime(uint32 sprId, float32 normalizedTime)",
-      "description": "Sets the normalized playback time of a client-local sprite; unknown handles are ignored",
+      "signature": "void Game.SetSpritePhase(uint32 sprId, float32 normalizedPhase)",
+      "description": "Sets the normalized playback phase of a client-local sprite; unknown handles are ignored",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -46857,7 +46857,7 @@
           "default": null
         },
         {
-          "name": "normalizedTime",
+          "name": "normalizedPhase",
           "type": "float32",
           "nullable": false,
           "by_reference": false,
@@ -48594,17 +48594,17 @@
       ]
     },
     {
-      "id": "script.method.client.Item.SetAnimTime",
-      "family_id": "script.method.client.Item.SetAnimTime",
+      "id": "script.method.client.Item.SetAnimPhase",
+      "family_id": "script.method.client.Item.SetAnimPhase",
       "kind": "method",
-      "name": "SetAnimTime",
+      "name": "SetAnimPhase",
       "runtime_sides": [
         "client",
         "mapper"
       ],
       "receiver": "Item",
-      "signature": "void Item.SetAnimTime(float32 normalizedTime)",
-      "description": "Sets the normalized playback position of a map item's sprite animation; does nothing for items outside the map view",
+      "signature": "void Item.SetAnimPhase(float32 normalizedPhase)",
+      "description": "Sets the normalized playback phase of a map item's sprite animation; does nothing for items outside the map view",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -48633,7 +48633,7 @@
       },
       "arguments": [
         {
-          "name": "normalizedTime",
+          "name": "normalizedPhase",
           "type": "float32",
           "nullable": false,
           "by_reference": false,

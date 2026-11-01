@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"67bf62c3fb72c16e3f6cb2d1f5f9c409e9860ae51377b8c0c6c239f443d2c409"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"3cb1f76d82c4c28c0f0f0a36d867580c12c4bf746b168ee6672aaf2728c060f1"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -173,6 +173,17 @@ callers сохраняют и адресуют эти items. Action-context snap
 представлять immutable static map item и корректно иметь empty id:
 `ReceiveDetachedItem()` принимает это общее состояние, а list handler проверяет
 identity на своей более узкой boundary.
+
+Согласование авторитетных слотов инвентаря удерживает персонажа и перемещаемый
+предмет и перебирает удерживаемый снимок инвентаря. Post-setter свойства
+выполняется синхронно и может удалить соседний предмет, сменить владельца
+предмета или уничтожить персонажа. После каждого setter слота заново
+проверяются принадлежность и время жизни; при утрате перемещаемого предмета
+или владельца оставшееся согласование прекращается. Сетевой обработчик
+также проверяет персонажа перед обновлением его света. Уже выполненные записи
+слотов остаются допустимыми; транзакционного отката нет. Обычное перемещение,
+эхо предсказания и многопредметные слоты сохраняют прежнюю семантику
+(`Test_ClientEntityLifetime.cpp`).
 
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
 

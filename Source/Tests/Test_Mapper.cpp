@@ -2418,6 +2418,8 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     auto resources = MakeMapperTestResources();
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationPolicyResources");
     source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100, ipos16 {2, 0}));
+    vector<uint8_t> phase_data = BakerTests::MakeMultiFrameBakedSprite(16, 2, 2, 1600, ipos16 {2, 0});
+    source->AddFile("PhasePolicy.fofrm", phase_data);
     resources.AddCustomSource(std::move(source));
     auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
     auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
@@ -2437,16 +2439,16 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     uint32_t spr_id = mapper->AnimAdd(sprite);
     auto flags = CritterAnimationFlags::None;
-    float32_t normalized_time = 0.0f;
+    float32_t normalized_position = 0.0f;
     Entity::EventCallbackData selection;
-    selection.Callback = [&flags, &normalized_time, &selected_action](FuncCallData& call) {
+    selection.Callback = [&flags, &normalized_position, &selected_action](FuncCallData& call) {
         *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = static_cast<CritterStateAnim>(401);
         *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = selected_action;
         *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = flags;
-        *cast_from_void<float32_t*>(call.ArgsData[7]) = normalized_time;
+        *cast_from_void<float32_t*>(call.ArgsData[7]) = normalized_position;
         return Entity::EventResult::ContinueChain;
     };
-    mapper->OnCritterAnimationInit.Subscribe(std::move(selection));
+    mapper->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
     Entity::EventCallbackData resolution;
     resolution.Callback = [&observed, &spr_id](FuncCallData& call) {
         observed = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
@@ -2458,24 +2460,200 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     critter->RefreshView();
     CHECK(observed == static_cast<CritterActionAnim>(509));
 
+    SECTION("PlaybackPositionUsesTheSelectedDrivingMode")
+    {
+        CAPTURE(phase_data.size(), phase_data.capacity());
+        REQUIRE(phase_data.size() == 618);
+        REQUIRE(phase_data.capacity() >= phase_data.size());
+        SpriteResourceData decoded = ReadSpriteResource(phase_data);
+        REQUIRE(decoded.Directions.size() == 1);
+        REQUIRE(decoded.Directions.front().Frames.size() == 16);
+
+        for (const SpriteResourceFrameData& frame : decoded.Directions.front().Frames) {
+            CAPTURE(frame.Size.width, frame.Size.height, frame.Pixels.size(), frame.Pixels.capacity());
+            CHECK(frame.Size == isize32 {2, 2});
+            CHECK(frame.Duration == timespan {std::chrono::milliseconds {100}});
+            CHECK_FALSE(frame.SharedFrameIndex.has_value());
+            REQUIRE(frame.Pixels.size() == 4);
+            CHECK(make_const_span(frame.Pixels).size() == 16);
+            CHECK(frame.Pixels.capacity() >= frame.Pixels.size());
+            CHECK(std::ranges::all_of(frame.Pixels, [](ucolor pixel) { return pixel == ucolor {255, 255, 255, 255}; }));
+        }
+
+        auto phase_sprite = mapper->ResMngr.LoadSprite("PhasePolicy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        REQUIRE(phase_sprite);
+        REQUIRE(phase_sprite->GetFramesCount() == 16);
+        REQUIRE(phase_sprite->GetDuration() == timespan {std::chrono::milliseconds {1600}});
+
+        for (int32_t index = 0; index < phase_sprite->GetFramesCount(); index++) {
+            phase_sprite->SetFrame(index, phase_sprite->GetSprite(index)->MakeCopy(), ipos32 {40 + index, -17}, ipos32 {2, 0});
+        }
+
+        spr_id = mapper->AnimAdd(phase_sprite);
+        selected_action = static_cast<CritterActionAnim>(600);
+        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+        REQUIRE(frames);
+        REQUIRE(frames->GetFramesCount() == 16);
+
+        for (int32_t index = 1; index < frames->GetFramesCount(); index++) {
+            REQUIRE(frames->GetSprite(index) != frames->GetSprite(index - 1));
+        }
+
+        REQUIRE(frames->GetSprite(0) != frames->GetSprite(2));
+
+        normalized_position = 0.1f;
+        auto frame_time = mapper->GameTime.GetFrameTime();
+
+        SECTION("FreezeKeepsRoundedPositionBeforeAndAfterProcessing")
+        {
+            critter->StopMoving();
+            flags = CritterAnimationFlags::Freeze;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+        }
+
+        SECTION("AdvancingIdleAndQueuedInitUseTheDurationWeightedPosition")
+        {
+            critter->StopMoving();
+            flags = CritterAnimationFlags::None;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+            critter->AppendAnim(static_cast<CritterStateAnim>(401), selected_action);
+            REQUIRE(critter->IsAnimPlaying());
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+            critter->Process();
+            CHECK(critter->IsAnimPlaying());
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+            critter->StopAnim();
+
+            normalized_position = 0.125f;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+
+            flags = CritterAnimationFlags::Movement;
+            normalized_position = 0.1f;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(1));
+        }
+
+        SECTION("UnequalDurationsSeparateAdvancingPhaseFromFrozenPosition")
+        {
+            auto unequal = safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {{timespan {std::chrono::milliseconds {900}}, timespan {std::chrono::milliseconds {100}}}});
+
+            for (int32_t index = 0; index < unequal->GetFramesCount(); index++) {
+                unequal->SetFrame(index, phase_sprite->GetSprite(index)->MakeCopy(), ipos32 {}, ipos32 {});
+            }
+
+            REQUIRE(unequal->GetDuration() == timespan {std::chrono::milliseconds {1000}});
+            spr_id = mapper->AnimAdd(unequal);
+            selected_action = static_cast<CritterActionAnim>(601);
+            auto unequal_frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+            REQUIRE(unequal_frames);
+            REQUIRE(unequal_frames->GetFramesCount() == 2);
+            REQUIRE(unequal_frames->GetSprite(0) != unequal_frames->GetSprite(1));
+            critter->StopMoving();
+            flags = CritterAnimationFlags::None;
+            normalized_position = 0.75f;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == unequal_frames->GetSprite(0));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == unequal_frames->GetSprite(0));
+            flags = CritterAnimationFlags::Freeze;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == unequal_frames->GetSprite(1));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == unequal_frames->GetSprite(1));
+        }
+
+        SECTION("UntimedManualPositionHoldsAndOnlyUnfrozenQueueCompletes")
+        {
+            auto untimed = safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {vector<timespan>(16, timespan::zero)});
+
+            for (int32_t index = 0; index < untimed->GetFramesCount(); index++) {
+                untimed->SetFrame(index, phase_sprite->GetSprite(index)->MakeCopy(), ipos32 {}, ipos32 {});
+            }
+
+            REQUIRE(untimed->GetDuration() == timespan::zero);
+            spr_id = mapper->AnimAdd(untimed);
+            selected_action = static_cast<CritterActionAnim>(602);
+            auto untimed_frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+            REQUIRE(untimed_frames);
+            REQUIRE(untimed_frames->GetFramesCount() == 16);
+            REQUIRE(untimed_frames->GetDuration() == timespan::zero);
+            REQUIRE(untimed_frames->GetSprite(1) != untimed_frames->GetSprite(2));
+            critter->StopMoving();
+            flags = CritterAnimationFlags::None;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+            flags = CritterAnimationFlags::Freeze;
+            critter->RefreshView();
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+            flags = CritterAnimationFlags::None;
+            critter->AppendAnim(static_cast<CritterStateAnim>(401), selected_action);
+            REQUIRE(critter->IsAnimPlaying());
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+            critter->Process();
+            CHECK_FALSE(critter->IsAnimPlaying());
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+            flags = CritterAnimationFlags::Freeze;
+            critter->AppendAnim(static_cast<CritterStateAnim>(401), selected_action);
+            critter->Process();
+            CHECK(critter->IsAnimPlaying());
+            CHECK(critter->GetMapSprite()->GetSprite() == untimed_frames->GetSprite(2));
+        }
+
+        SECTION("MovementSelectsThePoseUntilFreezeTakesPrecedence")
+        {
+            REQUIRE(critter->IsMoving());
+            REQUIRE(critter->GetHexOffset() == ipos16 {});
+            flags = CritterAnimationFlags::Movement;
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
+            CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
+            CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
+            flags = combine_enum(CritterAnimationFlags::Freeze, CritterAnimationFlags::Movement);
+            critter->RefreshView();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+            CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {6, 0});
+            critter->Process();
+            CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
+            CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {6, 0});
+        }
+
+        CHECK(mapper->GameTime.GetFrameTime() == frame_time);
+    }
+
     SECTION("FreezeIsIndependentOfLifeStateAndSurvivesProcessingAndDirectionChanges")
     {
         critter->StopMoving();
         flags = CritterAnimationFlags::Freeze;
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->RefreshView();
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
         REQUIRE(frames);
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
         critter->Process();
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(2));
-        normalized_time = 0.75f;
+        normalized_position = 0.75f;
         critter->ChangeLookDir(mdir {1});
         critter->Process();
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(3));
         critter->SetCondition(CritterCondition::Dead);
         flags = CritterAnimationFlags::None;
-        normalized_time = 0.0f;
+        normalized_position = 0.0f;
         critter->RefreshView();
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSprite(0));
     }
@@ -2484,7 +2662,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     {
         critter->StopMoving();
         flags = CritterAnimationFlags::Freeze;
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->RefreshView();
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
         REQUIRE(frames);
@@ -2522,7 +2700,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     {
         critter->StopMoving();
         flags = CritterAnimationFlags::Freeze;
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->RefreshView();
         ipos32 baseline = *critter->GetMapSprite()->GetPSprOffset();
         // The client engine refreshes the offsets from the property's post-setter; the mapper engine has none
@@ -2716,7 +2894,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     SECTION("FrozenMotionTakesPrecedenceOverMovementAlignment")
     {
         flags = combine_enum(CritterAnimationFlags::Movement, CritterAnimationFlags::Freeze);
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->SetHexOffset(ipos16 {5, 0});
         critter->RefreshView();
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {11, 0});
@@ -2738,7 +2916,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     {
         critter->StopMoving();
         flags = CritterAnimationFlags::Freeze;
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->RefreshView();
         critter->AddExtraOffs({3, -4});
         auto mspr = critter->GetMapSprite();
@@ -2766,12 +2944,12 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     {
         critter->StopMoving();
         flags = CritterAnimationFlags::Freeze;
-        normalized_time = 0.5f;
+        normalized_position = 0.5f;
         critter->AppendAnim(static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509));
         critter->Process();
         CHECK(critter->IsAnimPlaying());
         flags = CritterAnimationFlags::None;
-        normalized_time = 0.0f;
+        normalized_position = 0.0f;
         critter->StopAnim();
         CHECK_FALSE(critter->IsAnimPlaying());
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
@@ -2781,10 +2959,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("InvalidSelectionDoesNotLeaveAnUninitializedQueuedAnimation")
     {
-        normalized_time = 2.0f;
+        normalized_position = 2.0f;
         CHECK_THROWS(critter->AppendAnim(static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509)));
         REQUIRE_FALSE(critter->IsAnimPlaying());
-        normalized_time = 0.0f;
+        normalized_position = 0.0f;
         CHECK_NOTHROW(critter->Process());
     }
 

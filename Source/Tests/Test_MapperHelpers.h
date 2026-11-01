@@ -413,7 +413,7 @@ namespace MapperMergeTest
         item.GetSpriteOffset();
         item.IsAnimPlaying();
         item.PlayAnim("".hstr(), true, false);
-        item.SetAnimTime(0.5f);
+        item.SetAnimPhase(0.5f);
         item.SetAnimDir(mdir(0));
         item.StopAnim();
         item.IsMoving();
@@ -534,7 +534,7 @@ namespace MapperMergeTest
         Game.SetParticleScale(particle, 2.0f);
         Game.PrewarmParticle(particle);
         Game.PlaySprite(particle, "".hstr(), true, false);
-        Game.SetSpriteTime(particle, 0.25f);
+        Game.SetSpritePhase(particle, 0.25f);
         Game.StopSprite(particle);
         Game.IsSpriteHit(particle, ipos(0, 0));
         Game.FreeSprite(particle);
