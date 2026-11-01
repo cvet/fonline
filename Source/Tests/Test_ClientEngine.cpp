@@ -1074,7 +1074,7 @@ TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
 
         ptr<RenderTexture> atlas_tex = model_spr->GetAtlas()->GetTexture();
         ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
-        vector<ucolor> pixels(size.square(), ucolor {0, 0, 0, 0});
+        vector<ucolor> pixels(size.square<size_t>(), ucolor {0, 0, 0, 0});
         pixels[numeric_cast<size_t>(opaque_pos.y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(opaque_pos.x)] = ucolor {255, 255, 255, 255};
         atlas_tex->UpdateTextureRegion(origin, size, pixels);
 

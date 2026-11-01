@@ -1101,7 +1101,7 @@ auto Map::GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mp
 
     for (int32_t x = min_x; x <= max_x; x++) {
         for (int32_t y = min_y; y <= max_y; y++) {
-            mpos probe {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
+            mpos probe {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
             int32_t distance = GeometryHelper::GetDistance(origin, probe);
 
             if (distance > radius) {

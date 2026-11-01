@@ -931,7 +931,7 @@ FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(ptr<MapView> self)
 {
     msize map_size = self->GetSize();
     vector<mpos> hexes;
-    hexes.reserve(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height));
+    hexes.reserve(map_size.square<size_t>());
 
     for (int32_t hy = 0; hy < map_size.height; hy++) {
         for (int32_t hx = 0; hx < map_size.width; hx++) {

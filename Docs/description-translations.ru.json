@@ -9735,12 +9735,12 @@
           "translation": "Угол направления на карте, сохранённый как знаковое 16-битное значение с операциями преобразования и поворота для дискретных направлений."
         },
         "/symbols/@id=script.value-type.mpos/description": {
-          "source_sha256": "820942c8d1513d67fa5064785339ee84fba7dd1cdd9d4956d1d2225800ffe068",
-          "translation": "Позиция в координатах карты из знаковых 16-битных компонентов, доступная скриптам как изменяемые x и y."
+          "source_sha256": "699a9c2436a119954b9b718f3323d33d8faf4ff9af95c6b2f32f37862e04714f",
+          "translation": "Позиция в координатах карты из знаковых компонентов mcoord, доступная скриптам как изменяемые x и y; mcoord 16-битный, а с FO_MAP_WIDE_COORDS — 32-битный"
         },
         "/symbols/@id=script.value-type.msize/description": {
-          "source_sha256": "559f799f4411c1ac634fa0db646d2526932b2e6d734ee74892a1a3536bff6d33",
-          "translation": "Размер карты из знаковых 16-битных компонентов, доступный скриптам как изменяемые width и height."
+          "source_sha256": "8e6635b5d9fda351c5cef2c3f08b6bea015e7896b95fd5f63caa4f933df3a02f",
+          "translation": "Размер карты из знаковых компонентов mcoord, доступный скриптам как изменяемые width и height; mcoord 16-битный, а с FO_MAP_WIDE_COORDS — 32-битный"
         },
         "/symbols/@id=script.value-type.nanotime/description": {
           "source_sha256": "dfabe0f60bdc4de2b9b54b64e79d216e03077088931a04129f5f5b0e47172ea5",
@@ -11910,6 +11910,14 @@
         "/options/@id=cmake.option.FO_AUDIO_ACM/description": {
           "source_sha256": "ead2313fdc27b0f5d6ae192ceb6070ff069512726f5f2f286e9d636bd1679c76",
           "translation": "Включить импортёр аудио ACM."
+        },
+        "/options/@id=cmake.option.FO_MAP_WIDE_COORDS/description": {
+          "source_sha256": "6d2a4dec836014cdfd3c14b94e78cfed183af84ac0e00064b965b96ccb8049dd",
+          "translation": "Использовать знаковые 32-битные компоненты mpos и msize вместо знаковых 16-битных."
+        },
+        "/options/@id=cmake.option.FO_MAP_MAX_SIZE/description": {
+          "source_sha256": "caeb5016ac1bca714e82ab4bd428deb7414706ac358254e86698393d38965859",
+          "translation": "Наибольшие ширина и высота карты в ячейках: от 200 до 32767, а с FO_MAP_WIDE_COORDS — до 4194304, самой широкой стороны, которую упорядочивает ключ порядка отрисовки спрайтов."
         }
       }
     },

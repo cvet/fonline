@@ -1179,7 +1179,7 @@ auto OpenGL_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
 
     GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, pixel_buf));
     auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });
-    GL(glBufferData(GL_PIXEL_PACK_BUFFER, numeric_cast<GLsizeiptr>(size.square() * sizeof(ucolor)), nullptr, GL_STREAM_READ));
+    GL(glBufferData(GL_PIXEL_PACK_BUFFER, numeric_cast<GLsizeiptr>(size.square<size_t>() * sizeof(ucolor)), nullptr, GL_STREAM_READ));
 
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
@@ -1226,9 +1226,9 @@ auto OpenGL_TextureReadback::TakePixels() -> optional<vector<ucolor>>
 
     FO_VERIFY_AND_THROW(wait_result == GL_ALREADY_SIGNALED || wait_result == GL_CONDITION_SATISFIED, "OpenGL glClientWaitSync failed for a texture readback", wait_result);
 
-    size_t data_size = _size.square() * sizeof(ucolor);
+    size_t data_size = _size.square<size_t>() * sizeof(ucolor);
     vector<ucolor> pixels;
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, _pixelBuf));
     auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });

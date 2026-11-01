@@ -20,8 +20,8 @@ Engine owns coordinate types, path algorithms, interpolation and file loading. P
 
 `Source/Common/Geometry.h` exports these runtime/API/script value types:
 
-- `mpos` — map hex/tile position stored as `int16 x` + `int16 y`.
-- `msize` — map dimensions stored as `int16 width` + `int16 height`.
+- `mpos` — map hex/tile position stored as `mcoord x` + `mcoord y`.
+- `msize` — map dimensions stored as `mcoord width` + `mcoord height`.
 - `hdir` — discrete hex/tile direction.
 - `mdir` — movement direction angle; convertible to/from hex direction.
 
@@ -31,6 +31,16 @@ Engine owns coordinate types, path algorithms, interpolation and file loading. P
 - `from_raw_pos()` asserts that raw coordinates are already in bounds.
 
 Public map API substitutions with `ipos`/`isize` require generated metadata and script-layout checks.
+
+### Coordinate width and map size limit
+
+`mcoord` (`mcoord_t` in native code) is `int16` by default and `int32` when the embedding project enables the `FO_MAP_WIDE_COORDS` CMake option. Codegen resolves the `mcoord` layout field type from that option, so native structs, AngelScript fields (`int16`/`int32`), Managed C# fields (`short`/`int`), network messages and baked property data follow it. The resolved layout is part of `FO_COMPATIBILITY_VERSION`, so a client and server built with different widths refuse to connect. Database documents and text maps store coordinates as numbers, so switching the width needs a rebake but no data migration while every stored value fits the target width.
+
+Wide coordinates add four bytes to each position in network messages and baked property data. Per-hex grids do not grow: their cells hold no positions.
+
+Managed `mpos` and `msize` constructors take `int` at either width and narrow 16-bit fields with an overflow check. Script code that constructs positions with `new mpos(x, y)` and reads fields into `int` compiles for both widths; code that stores a field in `short` builds only with 16-bit coordinates.
+
+`FO_MAP_MAX_SIZE` (default `4000`) bounds map width and height. It must be at least the Mapper default size `200` and at most `32767`, the `int16` coordinate range, or `GameSettings::MAP_SIZE_LIMIT` (`4194304`) with wide coordinates: the client sprite draw-order key stores a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects other values, and static assertions repeat the bounds. Map area and every array index derived from coordinates are computed in 64 bits and converted to `size_t` with an overflow check, so on a 32-bit target coordinates that `size_t` cannot index raise `OverflowException` instead of wrapping; a static assertion keeps pixel positions within half of the `int32` range for the configured hex size. The server and client reject a map whose `Size` exceeds the limit on load, and the Mapper clamps resizing to it. Client hex lighting and the path-search block index are still dense per map, so memory and per-search setup grow with map area. Render positions are `float32`, so far from the map origin (past about 2^23 pixels) they lose sub-pixel precision.
 
 ### Sub-hex offset convention
 

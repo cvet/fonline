@@ -412,6 +412,13 @@ enum class NetProperty : uint8_t
     CustomEntity, // One extra arg: id
 };
 
+// Component of the map-cell position and size value types
+#if FO_MAP_WIDE_COORDS
+using mcoord_t = int32_t;
+#else
+using mcoord_t = int16_t;
+#endif
+
 // Generic fixed game settings
 struct GameSettings
 {
@@ -434,10 +441,18 @@ struct GameSettings
     static constexpr float32_t MAX_ZOOM = 20.0f;
     static constexpr int32_t DEFAULT_MAP_SIZE = 200;
     static constexpr int32_t MIN_MAP_SIZE = 10;
-    static constexpr int32_t MAX_MAP_SIZE = 4000;
+    static constexpr int32_t MAX_MAP_SIZE = FO_MAP_MAX_SIZE;
+    // Widest map side the engine orders at any coordinate width: the client sprite draw-order key holds a cell X in
+    // 22 bits and a screen row, at most twice a side, in 24 bits (MapSpriteList::MakeDrawOrderPos)
+    static constexpr int32_t MAP_SIZE_LIMIT = 4194304;
     static constexpr size_t CLIENT_MAP_CHUNK_SIDE = 16;
     static constexpr size_t SERVER_MAP_CHUNK_SIDE = 16;
 };
+
+// Pixel positions add a hex-size bound where they are computed
+static_assert(GameSettings::MAX_MAP_SIZE >= GameSettings::DEFAULT_MAP_SIZE, "FO_MAP_MAX_SIZE is below the default Mapper map size 200");
+static_assert(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max(), "FO_MAP_MAX_SIZE exceeds the map coordinate type; maps above 32767 need FO_MAP_WIDE_COORDS");
+static_assert(GameSettings::MAX_MAP_SIZE <= GameSettings::MAP_SIZE_LIMIT, "FO_MAP_MAX_SIZE exceeds 4194304, the widest map side the sprite draw-order key orders");
 
 // Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum

@@ -392,8 +392,7 @@ public partial struct mpos
     public mpos(string text)
     {
         string[] parts = text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
-        x = short.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
-        y = short.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+        this = new mpos(int.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture), int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public static bool operator<(mpos a, mpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;

@@ -98,6 +98,46 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     CHECK(hidden_field.ShootBlocked);
 }
 
+TEST_CASE("MapManagerRejectsMapLargerThanEngineMaximum")
+{
+    if constexpr (GameSettings::MAX_MAP_SIZE < std::numeric_limits<mcoord_t>::max()) {
+        auto settings = ServerMapOperationsTests::MakeSettings();
+        string message;
+        std::mutex message_locker;
+
+        auto prev_callback = exceptions::get_callback();
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) {
+            std::scoped_lock locker(message_locker);
+
+            message += msg;
+            message += '\n';
+        });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+
+        msize oversized {numeric_cast<mcoord_t>(GameSettings::MAX_MAP_SIZE + 1), 10};
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources(oversized));
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted() || server->IsStartingError()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = ServerMapOperationsTests::WaitForStart(server.get());
+        CHECK(startup_error == "ServerEngine startup failed");
+
+        string message_snapshot;
+        {
+            std::scoped_lock locker(message_locker);
+            message_snapshot = message;
+        }
+
+        INFO(message_snapshot);
+        CHECK(message_snapshot.find("Map size exceeds the engine maximum") != string::npos);
+    }
+}
+
 TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
 {
     auto settings = ServerMapOperationsTests::MakeSettings();

@@ -867,7 +867,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 
     VkResult vk_result = VK_SUCCESS;
     vector<ucolor> tex_region;
-    VkDeviceSize region_size = size.square() * sizeof(ucolor);
+    VkDeviceSize region_size = size.square<size_t>() * sizeof(ucolor);
     size_t region_data_size = numeric_cast<size_t>(region_size);
 
     // Create staging buffer for reading from GPU
@@ -906,7 +906,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     VerifyVkResult(vk_result);
     auto map_data = make_nptr(map_data_raw);
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
-    tex_region.resize(size.square());
+    tex_region.resize(size.square<size_t>());
     memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
@@ -946,7 +946,7 @@ auto Vulkan_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
-    VkDeviceSize region_size = size.square() * sizeof(ucolor);
+    VkDeviceSize region_size = size.square<size_t>() * sizeof(ucolor);
     VkBuffer buffer {};
     VkDeviceMemory memory {};
     AllocateBuffer(_ctx, region_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, memory);
@@ -1020,9 +1020,9 @@ auto Vulkan_TextureReadback::TakePixels() -> optional<vector<ucolor>>
         return std::nullopt;
     }
 
-    size_t data_size = _size.square() * sizeof(ucolor);
+    size_t data_size = _size.square<size_t>() * sizeof(ucolor);
     vector<ucolor> pixels;
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     void* map_data_raw {};
     VkResult vk_result = vkMapMemory(_ctx->Device, _memory, 0, numeric_cast<VkDeviceSize>(data_size), 0, &map_data_raw);

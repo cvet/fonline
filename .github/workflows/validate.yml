@@ -20,6 +20,7 @@ on:
         options:
           - all
           - unity
+          - wide-coords
           - managed-apple
 
 jobs:
@@ -43,7 +44,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y python3-pytest cmake ninja-build
     - name: Check generated configuration and default arguments
-      run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_codegen_default_args.py
+        BuildTools/tests/test_codegen_value_type_layouts.py
+        BuildTools/tests/test_cmake_map_size_options.py
     - name: Check managed runtime preparation and recovery
       run: >-
         python3 -m pytest -q
@@ -378,6 +383,19 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 -m pytest -q BuildTools/tests/test_unity_build.py
+    - run: BuildTools/validate.sh unit-tests
+  wide-coords:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'wide-coords'}}
+    name: Run unit tests with wide map coordinates
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      FO_MAP_WIDE_COORDS: ON
+    steps:
+    - uses: actions/checkout@v6
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh unit-tests
   unit-tests-sanitizers:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}

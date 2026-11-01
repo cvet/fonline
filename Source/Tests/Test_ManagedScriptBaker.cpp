@@ -1264,9 +1264,20 @@ TEST_CASE("ManagedScriptBaker")
 
     // A value type converts to and from `any` field by field, nested value types flattened, as GenericType_AnyConv does
     CHECK(server_types.find("public static implicit operator global::FOnline.any(mpos value)\n    {\n        return global::FOnline.any.FromFields(new string[]\n        {\n            global::FOnline.any.FieldText(value.x),\n            global::FOnline.any.FieldText(value.y),\n        });\n    }") != string::npos);
-    CHECK(server_types.find("public static explicit operator mpos(global::FOnline.any value)\n    {\n        string[] fields = value.SplitFields(2, \"mpos\");\n        mpos result = default;\n        result.x = global::FOnline.any.FieldInt16(fields[0]);\n        result.y = global::FOnline.any.FieldInt16(fields[1]);\n        return result;\n    }") != string::npos);
+    string_view coord_field_reader = sizeof(mcoord_t) == sizeof(int32_t) ? "FieldInt32" : "FieldInt16";
+    CHECK(server_types.find(strex("public static explicit operator mpos(global::FOnline.any value)\n    {{\n        string[] fields = value.SplitFields(2, \"mpos\");\n        mpos result = default;\n        result.x = global::FOnline.any.{}(fields[0]);\n        result.y = global::FOnline.any.{}(fields[1]);\n        return result;\n    }}", coord_field_reader, coord_field_reader).str()) != string::npos);
     CHECK(server_types.find("global::FOnline.any.FieldText(value.Collection.Name),") != string::npos);
     CHECK(server_types.find("result.Collection.Name = global::FOnline.any.FieldHash(fields[0]);") != string::npos);
+
+    // Map coordinate constructors take int at either coordinate width and narrow 16-bit fields under checked arithmetic
+    if constexpr (sizeof(mcoord_t) == sizeof(int32_t)) {
+        CHECK(server_types.find("public mpos(int x, int y)\n    {\n        this.x = x;\n        this.y = y;\n    }") != string::npos);
+    }
+    else {
+        CHECK(server_types.find("public mpos(int x, int y)\n    {\n        this.x = (short)x;\n        this.y = (short)y;\n    }") != string::npos);
+    }
+
+    CHECK(server_types.find("public msize(int width, int height)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
         string types = ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()));

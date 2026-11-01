@@ -29,6 +29,7 @@ DeclareRequiredValueOptions(
 	FO_OUTPUT_PATH "Common output path")
 
 DeclareValueOptions(BAKING
+	FO_MAP_MAX_SIZE "Maximum map width and height in cells" 4000
 	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
 	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
 	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
@@ -49,6 +50,7 @@ DeclareValueOptions(
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(BAKING
+	FO_MAP_WIDE_COORDS "Signed 32-bit map cell coordinates instead of 16-bit" OFF
 	FO_ENABLE_3D "Supporting of 3d models" OFF
 	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF

@@ -82,6 +82,27 @@ TEST_CASE("Direction constructors normalize full-width inputs")
     CHECK(mdir(std::numeric_limits<int32_t>::max()).angle() == 127);
 }
 
+TEST_CASE("Map coordinates use the configured component width")
+{
+    STATIC_REQUIRE(sizeof(mpos) == sizeof(mcoord_t) * 2);
+    STATIC_REQUIRE(sizeof(msize) == sizeof(mcoord_t) * 2);
+    STATIC_REQUIRE(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max());
+
+    mcoord_t max_side = numeric_cast<mcoord_t>(GameSettings::MAX_MAP_SIZE);
+    mcoord_t last = numeric_cast<mcoord_t>(max_side - 1);
+    msize max_size {max_side, max_side};
+    CHECK(max_size.from_raw_pos(GameSettings::MAX_MAP_SIZE - 1, GameSettings::MAX_MAP_SIZE - 1) == mpos {last, last});
+    CHECK(max_size.clamp_pos(GameSettings::MAX_MAP_SIZE + 100, -5) == mpos {last, 0});
+    CHECK_THROWS(max_size.from_raw_pos(GameSettings::MAX_MAP_SIZE, 0));
+
+    if constexpr (sizeof(mcoord_t) == sizeof(int32_t)) {
+        // Wide coordinates address cells past the 16-bit range
+        msize wide_size {numeric_cast<mcoord_t>(70000), numeric_cast<mcoord_t>(70000)};
+        CHECK(wide_size.from_raw_pos(69999, 65536) == mpos {numeric_cast<mcoord_t>(69999), numeric_cast<mcoord_t>(65536)});
+        CHECK(strex("{}", wide_size.from_raw_pos(69999, 65536)).str() == "69999 65536");
+    }
+}
+
 TEST_CASE("GeometryHelper")
 {
     // GetDistance

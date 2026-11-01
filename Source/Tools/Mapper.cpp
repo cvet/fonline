@@ -6704,7 +6704,7 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
     int32_t corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
     int32_t corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
 
-    map->Resize(msize(numeric_cast<int16_t>(corrected_width), numeric_cast<int16_t>(corrected_height)));
+    map->Resize(msize(numeric_cast<mcoord_t>(corrected_width), numeric_cast<mcoord_t>(corrected_height)));
     map->InstantScrollTo(map->GetWorkHex());
 
     nptr<MapView> map_view = map;

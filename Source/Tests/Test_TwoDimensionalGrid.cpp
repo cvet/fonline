@@ -188,6 +188,17 @@ TEST_CASE("TwoDimensionalGrid")
         check_chunk_side.operator()<8>();
         check_chunk_side.operator()<32>();
     }
+
+    SECTION("EveryGridRejectsNegativeSizeOnConstruction")
+    {
+        using DynamicGrid = DynamicTwoDimensionalGrid<int32_t, ipos32, isize32>;
+        using StaticGrid = StaticTwoDimensionalGrid<int32_t, ipos32, isize32>;
+        using ChunkedGrid = ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16>;
+
+        CHECK_THROWS(DynamicGrid(isize32 {-1, 3}));
+        CHECK_THROWS(StaticGrid(isize32 {3, -1}));
+        CHECK_THROWS(ChunkedGrid(isize32 {-1, -1}));
+    }
 }
 
 FO_END_NAMESPACE

@@ -2923,12 +2923,12 @@ static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler,
             int32_t mode_value = static_cast<int32_t>(ManagedProbeCallbackMode::UnmanagedCallersOnly);
             uint8_t flag = 1;
             int64_t wide = 0x1122334455667788;
-            array<int16_t, 2> hex {7, -9};
+            mpos hex {7, -9};
             hstring tag = meta->Hashes.to_hashed_string("InteropProbeTag");
             memory::copy(frame.data(), &mode_value, sizeof(mode_value));
             memory::copy(frame.data() + 4, &flag, sizeof(flag));
             memory::copy(frame.data() + 8, &wide, sizeof(wide));
-            memory::copy(frame.data() + 16, hex.data(), sizeof(hex));
+            memory::copy(frame.data() + 16, &hex, sizeof(hex));
             memory::copy(frame.data() + 24, &tag, sizeof(tag));
             frame_size = 32;
         }

@@ -2227,7 +2227,7 @@ void Application::EndFrame()
             if (im_tex->Status != ImTextureStatus_OK) {
                 if (im_tex->Status == ImTextureStatus_WantCreate) {
                     auto tex_size = isize(im_tex->Width, im_tex->Height);
-                    FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
+                    FO_VERIFY_AND_THROW(tex_size.square<size_t>() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square<size_t>() * 4, im_tex->GetSizeInBytes());
                     auto font_tex = active_renderer->CreateTexture(tex_size, true, false);
                     auto tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
                     FO_VERIFY_AND_THROW(tex_data, "ImGui texture pixel data is null");

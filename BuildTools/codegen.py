@@ -2491,6 +2491,43 @@ def get_value_type_layout(tag: ExportValueTypeTag) -> list[tuple[str, str]]:
     return result
 
 
+# Layout field types that an embedding project selects at build time through an engine define
+CONFIGURED_LAYOUT_FIELD_TYPES: dict[str, tuple[str, dict[str, str]]] = {
+    'mcoord': ('FO_MAP_WIDE_COORDS', {'0': 'int16', '1': 'int32'}),
+}
+
+
+def get_engine_define(name: str) -> str | None:
+    for define in args.enginedefine:
+        define_name, separator, value = define.partition('=')
+        if define_name.strip() == name:
+            return value.strip() if separator else ''
+    return None
+
+
+def resolve_layout_field_type(field_type: str) -> str:
+    configured_type = CONFIGURED_LAYOUT_FIELD_TYPES.get(field_type)
+    if configured_type is None:
+        return field_type
+    define_name, variants = configured_type
+    define_value = get_engine_define(define_name)
+    assert define_value in variants, 'Layout field type ' + field_type + ' requires engine define ' + define_name + ' set to one of ' + ', '.join(sorted(variants))
+    return variants[define_value]
+
+
+def get_resolved_value_type_layout(tag: ExportValueTypeTag) -> list[tuple[str, str]]:
+    return [(resolve_layout_field_type(field_type), field_name) for field_type, field_name in get_value_type_layout(tag)]
+
+
+def hash_resolved_value_type_layouts() -> None:
+    def hash_resolved_value_type_layouts_impl() -> None:
+        # Parsing hashed the declared layouts; the field types selected for this build join the compatibility version here
+        for value_type_tag in codegen_tags['ExportValueType']:
+            hash_recursive(compatibility_hasher, (value_type_tag.name, get_resolved_value_type_layout(value_type_tag)))
+
+    run_codegen_step(hash_resolved_value_type_layouts_impl, 'Can\'t resolve value type layouts')
+
+
 def append_value_type_registration(helper_lines: list[str], register_lines: list[str]) -> None:
     if not codegen_tags['ExportValueType']:
         return
@@ -2530,7 +2567,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     for value_type_tag in sorted_tags:
         body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
-        for field_type, field_name in get_value_type_layout(value_type_tag):
+        for field_type, field_name in get_resolved_value_type_layout(value_type_tag):
             body_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
         body_lines.append('} });')
         body_lines.append('')
@@ -2884,6 +2921,7 @@ def flush_generated_files() -> None:
 def run_codegen() -> None:
     parse_meta_files()
     parse_all_tags()
+    hash_resolved_value_type_layouts()
     run_generic_codegen()
     run_metadata_registration_codegen()
     write_embedded_resources()

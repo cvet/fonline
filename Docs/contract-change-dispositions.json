@@ -14700,6 +14700,78 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-10-29",
       "compatibility": "Matching binaries, generated metadata, assemblies and resources; runtime marker 0.0.84, Managed ABI 9. Preserve the preceding matching complete artifact/data set for rollback.",
       "owner": "Engine native-codegen and client rendering maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.89a6578e5249974b",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The mpos.x field type is declared as the build-selected mcoord: int16 by default, int32 with FO_MAP_WIDE_COORDS. The field name, offset, meaning and default width are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.6cb9db90f222e7df",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The mpos.y field type is declared as the build-selected mcoord: int16 by default, int32 with FO_MAP_WIDE_COORDS. The field name, offset, meaning and default width are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.78c22d6a4857273b",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The msize.height field type is declared as the build-selected mcoord: int16 by default, int32 with FO_MAP_WIDE_COORDS. The field name, offset, meaning and default width are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.56ea419e6a9611a2",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The msize.width field type is declared as the build-selected mcoord: int16 by default, int32 with FO_MAP_WIDE_COORDS. The field name, offset, meaning and default width are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.ce5aeca2c95bef06",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The mpos layout now declares mcoord-x+mcoord-y, which codegen resolves from FO_MAP_WIDE_COORDS, and the description names both widths. The type name, field order and default size of 4 bytes are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0434009ef4c4d4ff",
+      "baseline_contract_sha256": "3440f7e6d3b83826db0ac36022bc812310e3d68f660baae676639f7dd9d171cd",
+      "current_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "classification": "breaking",
+      "rationale": "The msize layout now declares mcoord-width+mcoord-height, which codegen resolves from FO_MAP_WIDE_COORDS, and the description names both widths. The type name, field order and default size of 4 bytes are unchanged.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-01: default builds keep int16 components, so no source, data or resource conversion is required; rebuild every native and Managed role and rebake from the same revision because FO_COMPATIBILITY_VERSION changes. Width-independent scripts construct with new mpos(x, y) / new msize(w, h) and read components into int. Enabling FO_MAP_WIDE_COORDS needs a full rebake; stored database coordinates load unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
+      "owner": "Engine geometry, codegen and scripting backend maintainers"
     }
   ]
 }

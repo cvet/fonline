@@ -4892,7 +4892,7 @@ namespace MapOpsTest
         return std::move(rig.Outputs.at("StaticMap.fomap-bin-server"));
     }
 
-    inline auto MakeResources() -> FileSystem
+    inline auto MakeResources(msize test_map_size = msize {200, 200}) -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -4938,7 +4938,7 @@ namespace MapOpsTest
         auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
         auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
+        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", test_map_size);
         auto static_map_proto_blob = MakeMapProtoBlob(proto_engine, map_type, "StaticMap", msize {50, 50});
         auto static_map_client_proto_blob = MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50});
         auto fomap_blob = MakeEmptyMapBlob();

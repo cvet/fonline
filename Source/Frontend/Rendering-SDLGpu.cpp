@@ -1243,7 +1243,7 @@ auto SDLGpu_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
 
     SDL_GPUTransferBufferCreateInfo transfer_buf_info = {};
     transfer_buf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer_buf_info.size = numeric_cast<uint32_t>(size.square() * sizeof(ucolor));
+    transfer_buf_info.size = numeric_cast<uint32_t>(size.square<size_t>() * sizeof(ucolor));
 
     auto transfer_buf = make_nptr(SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &transfer_buf_info));
     FO_VERIFY_AND_THROW(transfer_buf, "SDL_CreateGPUTransferBuffer failed for a texture readback", SDL_GetError(), size);
@@ -1346,9 +1346,9 @@ auto SDLGpu_TextureReadback::TakePixels() -> optional<vector<ucolor>>
         return std::nullopt;
     }
 
-    size_t data_size = _size.square() * sizeof(ucolor);
+    size_t data_size = _size.square<size_t>() * sizeof(ucolor);
     vector<ucolor> pixels;
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     auto mapped = MapTransferBuffer(_ctx, _transferBuf, false);
     memory::copy(pixels.data(), mapped, data_size);

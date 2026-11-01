@@ -84,6 +84,9 @@ void MapManager::LoadFromResources()
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
+            FO_VERIFY_AND_THROW(map_size.width > 0 && map_size.height > 0, "Map size must be positive", map_proto->GetName(), map_size);
+            FO_VERIFY_AND_THROW(map_size.width <= GameSettings::MAX_MAP_SIZE && map_size.height <= GameSettings::MAX_MAP_SIZE, "Map size exceeds the engine maximum", map_proto->GetName(), map_size, GameSettings::MAX_MAP_SIZE);
+
             auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapGridType);
 
             // Read hashes
@@ -232,8 +235,8 @@ void MapManager::LoadFromResources()
             int32_t scroll_block_size = _engine->Settings->Hex.ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
-                for (int16_t hx = 0; hx < map_size.width; hx++) {
-                    for (int16_t hy = 0; hy < map_size.height; hy++) {
+                for (mcoord_t hx = 0; hx < map_size.width; hx++) {
+                    for (mcoord_t hy = 0; hy < map_size.height; hy++) {
                         mpos hex = {hx, hy};
                         ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 

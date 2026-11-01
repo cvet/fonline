@@ -171,6 +171,28 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(highest_here < lowest_nearer);
     }
 
+    SECTION("FarthestCoordinatesKeepTheirFieldsApart")
+    {
+        // The widest X the key holds still orders below the sub-layer and the row, at either coordinate width
+        mcoord_t far_x = sizeof(mcoord_t) == sizeof(int32_t) ? numeric_cast<mcoord_t>((1 << 22) - 1) : std::numeric_limits<mcoord_t>::max();
+        mcoord_t row_step = numeric_cast<mcoord_t>(GameSettings::HEXAGONAL_GEOMETRY ? 2 : 1);
+        mpos far_hex {far_x, 0};
+        mpos same_row_hex {numeric_cast<mcoord_t>(far_x - row_step), 1};
+        mpos nearer_row_hex {far_x, 1};
+        REQUIRE(GeometryHelper::GetHexScreenRow(same_row_hex) == GeometryHelper::GetHexScreenRow(far_hex));
+        REQUIRE(GeometryHelper::GetHexScreenRow(nearer_row_hex) == GeometryHelper::GetHexScreenRow(far_hex) + 1);
+
+        uint64_t far_wall = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, far_hex, WALL_SUB_LAYER);
+        uint64_t same_row_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, same_row_hex, SCENERY_SUB_LAYER);
+        uint64_t far_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, far_hex, SCENERY_SUB_LAYER);
+        uint64_t far_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, far_hex, std::numeric_limits<int8_t>::max());
+        uint64_t nearer_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, nearer_row_hex, std::numeric_limits<int8_t>::min());
+
+        CHECK(far_wall < same_row_item);
+        CHECK(same_row_item < far_item);
+        CHECK(far_critter < nearer_item);
+    }
+
     SECTION("SubLayerAppliesToFlatLayersWithoutLeavingThem")
     {
         uint64_t flat_low = MapSpriteList::MakeDrawOrderPos(DrawOrderType::FlatItemAfterLight, WALL_CELL, std::numeric_limits<int8_t>::min());

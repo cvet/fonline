@@ -37,31 +37,31 @@
 
 FO_BEGIN_NAMESPACE
 
-// Signed 16-bit map-coordinate position exposed to scripts as mutable x and y components
+// Signed map-coordinate position exposed to scripts as mutable x and y components; mcoord is 16-bit, or 32-bit with FO_MAP_WIDE_COORDS
 // x: Signed X component of the map-cell coordinate
 // y: Signed Y component of the map-cell coordinate
-///@ ExportValueType Layout = int16-x+int16-y
-struct mpos : ipos<int16_t>
+///@ ExportValueType Layout = mcoord-x+mcoord-y
+struct mpos : ipos<mcoord_t>
 {
     constexpr mpos() noexcept = default;
-    constexpr mpos(int16_t x_, int16_t y_) noexcept :
+    constexpr mpos(mcoord_t x_, mcoord_t y_) noexcept :
         ipos(x_, y_)
     {
     }
 };
-static_assert(sizeof(mpos) == 4 && std::is_standard_layout_v<mpos>);
+static_assert(sizeof(mpos) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<mpos>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE mpos, "{} {}", value.x, value.y);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE mpos, value.x >> value.y);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE mpos);
 
-// Signed 16-bit map size exposed to scripts as mutable width and height components
+// Signed map size exposed to scripts as mutable width and height components; mcoord is 16-bit, or 32-bit with FO_MAP_WIDE_COORDS
 // width: Map width in addressable cells
 // height: Map height in addressable cells
-///@ ExportValueType Layout = int16-width+int16-height
-struct msize : isize<int16_t>
+///@ ExportValueType Layout = mcoord-width+mcoord-height
+struct msize : isize<mcoord_t>
 {
     constexpr msize() noexcept = default;
-    constexpr msize(int16_t width_, int16_t height_) noexcept :
+    constexpr msize(mcoord_t width_, mcoord_t height_) noexcept :
         isize(width_, height_)
     {
     }
@@ -70,16 +70,16 @@ struct msize : isize<int16_t>
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
-        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
+        auto clamped_x = numeric_cast<mcoord_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
+        auto clamped_y = numeric_cast<mcoord_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto clamp_pos(pos_type auto pos) const -> mpos
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
-        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
+        auto clamped_x = numeric_cast<mcoord_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
+        auto clamped_y = numeric_cast<mcoord_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
         return {clamped_x, clamped_y};
     }
     [[nodiscard]] constexpr auto from_raw_pos(std::integral auto x, std::integral auto y) const -> mpos
@@ -90,7 +90,7 @@ struct msize : isize<int16_t>
         FO_VERIFY_AND_THROW(y >= 0, "Y is negative", y);
         FO_VERIFY_AND_THROW(x < width, "X is outside allowed range", x, width);
         FO_VERIFY_AND_THROW(y < height, "Y is outside allowed range", y, height);
-        return {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
+        return {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
     }
     [[nodiscard]] constexpr auto from_raw_pos(pos_type auto pos) const -> mpos
     {
@@ -100,10 +100,10 @@ struct msize : isize<int16_t>
         FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
         FO_VERIFY_AND_THROW(pos.x < width, "Position x is outside allowed range", pos.x, width);
         FO_VERIFY_AND_THROW(pos.y < height, "Position y is outside allowed range", pos.y, height);
-        return {numeric_cast<int16_t>(pos.x), numeric_cast<int16_t>(pos.y)};
+        return {numeric_cast<mcoord_t>(pos.x), numeric_cast<mcoord_t>(pos.y)};
     }
 };
-static_assert(sizeof(msize) == 4 && std ::is_standard_layout_v<msize>);
+static_assert(sizeof(msize) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<msize>);
 FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE msize, "{} {}", value.width, value.height);
 FO_DECLARE_TYPE_PARSER(FO_NAMESPACE msize, value.width >> value.height);
 FO_DECLARE_TYPE_HASHER(FO_NAMESPACE msize);
