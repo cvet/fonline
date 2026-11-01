@@ -210,7 +210,7 @@ TemporaryCompat(Missing)
                 self.assertNotEqual(result.returncode, 0)
 
     def test_web_database_options_have_no_platform_veto(self):
-        commands = (temporary_compat.ENGINE_CMAKE / "helpers/Commands.cmake").as_posix()
+        commands = (temporary_compat.ENGINE_CMAKE.parent / "Init.cmake").as_posix()
         stage = (temporary_compat.ENGINE_CMAKE / "stages/ProjectOptions.cmake").as_posix()
         prefix = f'''include("{commands}")
 function(AbortMessage text)
@@ -218,6 +218,8 @@ function(AbortMessage text)
 endfunction()
 set(FO_FORCE_ENABLE_3D "")
 set(FO_UNITY_BUILD_BATCH_SIZE 32)
+set(FO_MAP_WIDE_COORDS OFF)
+set(FO_MAP_MAX_SIZE 4000)
 '''
 
         for web, server, mongo, sqlite in ((0, 1, 1, 1), (1, 0, 1, 1), (1, 1, 0, 0), (1, 1, 1, 0), (1, 1, 0, 1), (1, 1, 1, 1)):

@@ -2291,6 +2291,8 @@ void MapView::Resize(msize size)
     FO_VERIFY_AND_THROW(size.height >= GameSettings::MIN_MAP_SIZE, "Map resize height is smaller than the engine minimum", size.height, GameSettings::MIN_MAP_SIZE);
     FO_VERIFY_AND_THROW(size.height <= GameSettings::MAX_MAP_SIZE, "Map resize height is larger than the engine maximum", size.height, GameSettings::MAX_MAP_SIZE);
 
+    size_t hex_count = size.square<size_t>();
+
     for (const auto& vf : _viewField) {
         if (_mapSize.is_valid_pos(vf.RawHex)) {
             auto field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(vf.RawHex));
@@ -2328,7 +2330,7 @@ void MapView::Resize(msize size)
 
     SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
-    _hexLight.resize(_mapSize.square<size_t>());
+    _hexLight.resize(hex_count);
     _hexField->Resize(_mapSize);
 
     for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {

@@ -14,6 +14,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-01
 
+### Fixed
+
+- Use scoped mutex ownership for named simulation hold control so Clang can verify every acquisition and release. Preserve startup control, non-blocking control under a drained external lock, and `VerificationException` when that control is busy.
+- Regenerate the ContentShowcase and PackagingMatrix configurations from the current Engine settings.
+- Initialize the standalone web/database option test through the real CMake helpers and provide the map-size defaults required by the project-options stage. Restore canonical formatting in the Managed `mpos(string)` constructor.
+
+- Reject an overflowing map/grid resize before changing map state; publish static-grid dimensions only with the replacement cells.
+
+### Migration
+
+- Baseline `27553fd71d553bb46c47d0c8e7de6b8e8e4301ca` (`2026.1.93-dev`) to `2026.1.94-dev`: no project source, setting, persisted-data or resource conversion is required. Rebuild every affected native role (Server, Client, Mapper, Baker and tests), because the grid template is shared. Simulation hold reasons, pause ownership, startup behavior, exception type and retry rules keep their existing meanings; a failed non-blocking acquisition leaves all holds unchanged. The example configuration defaults remain unchanged. The central `MigrationRule Version` marker, Managed ABI, wire protocol and resource schemas are unchanged by these fixes. All clients, servers and baked resources must still use the same configured Engine revision as required by the preceding map-coordinate update.
+
+## 2026.1.93-dev - 2026-11-01
+
 ### Added
 
 - Add the `FO_MAP_WIDE_COORDS` CMake option (baking, default `OFF`). When it is `ON`, `mpos` and `msize` components are signed 32-bit instead of signed 16-bit. Native code names the component type `mcoord_t`. Both `ExportValueType` layouts declare the field type `mcoord`; `codegen.py` resolves it to `int16` or `int32` from the `FO_MAP_WIDE_COORDS` engine define and hashes the resolved layouts into `FO_COMPATIBILITY_VERSION`. AngelScript registers the `mpos`/`msize` fields from that metadata layout, and generated Managed C# structs follow it (`short`/`int`).

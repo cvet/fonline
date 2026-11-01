@@ -50,6 +50,32 @@ FO_BEGIN_NAMESPACE
 
 void ServerInitHook(ptr<ServerEngine>);
 
+class FO_TSA_SCOPED_CAPABILITY ServerQuiescenceGuard final
+{
+public:
+    ServerQuiescenceGuard(mutex& target, bool try_only) FO_TSA_ACQUIRE(target) :
+        _target {&target}
+    {
+        if (try_only) {
+            if (!_target->try_lock()) {
+                throw VerificationException("Simulation control is busy; retry after releasing the external lock");
+            }
+        }
+        else {
+            _target->lock();
+        }
+    }
+
+    ServerQuiescenceGuard(const ServerQuiescenceGuard&) = delete;
+    ServerQuiescenceGuard(ServerQuiescenceGuard&&) noexcept = delete;
+    auto operator=(const ServerQuiescenceGuard&) -> ServerQuiescenceGuard& = delete;
+    auto operator=(ServerQuiescenceGuard&&) noexcept -> ServerQuiescenceGuard& = delete;
+    ~ServerQuiescenceGuard() FO_TSA_RELEASE() { _target->unlock(); }
+
+private:
+    ptr<mutex> _target;
+};
+
 static constexpr timespan JOB_STATS_SAMPLE_INTERVAL {std::chrono::seconds {1}};
 static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
 
@@ -1755,44 +1781,34 @@ auto ServerEngine::HoldSimulation(string_view reason) -> bool
     bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
     FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
 
-    bool control_locked = false;
-    auto unlock_control = scope_exit([this, &control_locked]() noexcept {
-        if (control_locked) {
-            _quiescenceLocker.unlock();
-        }
-    });
+    auto hold_simulation = [&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold requires an initialized server");
 
-    if (!startup_context) {
-        // An outside controller may already be waiting for this external lock to drain.
-        // Never wait for its mutex while retaining the sync point.
-        if (drained_context) {
-            FO_VERIFY_AND_THROW(_quiescenceLocker.try_lock(), "Simulation control is busy; retry after releasing the external lock");
-        }
-        else {
-            _quiescenceLocker.lock();
+        auto [hold, inserted] = _simulationHolds.emplace(reason);
+
+        if (!inserted) {
+            return false;
         }
 
-        control_locked = true;
+        auto remove_on_error = scope_fail([this, hold]() noexcept { _simulationHolds.erase(hold); });
+
+        if (!_simulationPaused) {
+            SuspendSimulationWork();
+        }
+
+        remove_on_error.release();
+        return true;
+    };
+
+    if (startup_context) {
+        return hold_simulation();
     }
 
-    FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
-    FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
-    FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold requires an initialized server");
-
-    auto [hold, inserted] = _simulationHolds.emplace(reason);
-
-    if (!inserted) {
-        return false;
-    }
-
-    auto remove_on_error = scope_fail([this, hold]() noexcept { _simulationHolds.erase(hold); });
-
-    if (!_simulationPaused) {
-        SuspendSimulationWork();
-    }
-
-    remove_on_error.release();
-    return true;
+    // A drained external lock must not wait for a controller that is waiting for that lock
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return hold_simulation();
 }
 
 auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
@@ -1801,39 +1817,30 @@ auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
     bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
     FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
 
-    bool control_locked = false;
-    auto unlock_control = scope_exit([this, &control_locked]() noexcept {
-        if (control_locked) {
-            _quiescenceLocker.unlock();
-        }
-    });
+    auto release_hold = [&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold release requires an initialized server");
 
-    if (!startup_context) {
-        if (drained_context) {
-            FO_VERIFY_AND_THROW(_quiescenceLocker.try_lock(), "Simulation control is busy; retry after releasing the external lock");
-        }
-        else {
-            _quiescenceLocker.lock();
+        auto hold = _simulationHolds.find(string {reason});
+
+        if (hold == _simulationHolds.end()) {
+            return false;
         }
 
-        control_locked = true;
+        if (_simulationHolds.size() == 1 && !_manualSimulationPause && !_startupSimulationPause) {
+            RestoreSimulationWork();
+        }
+
+        _simulationHolds.erase(hold);
+        return true;
+    };
+
+    if (startup_context) {
+        return release_hold();
     }
 
-    FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
-    FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold release requires an initialized server");
-
-    auto hold = _simulationHolds.find(string {reason});
-
-    if (hold == _simulationHolds.end()) {
-        return false;
-    }
-
-    if (_simulationHolds.size() == 1 && !_manualSimulationPause && !_startupSimulationPause) {
-        RestoreSimulationWork();
-    }
-
-    _simulationHolds.erase(hold);
-    return true;
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return release_hold();
 }
 
 void ServerEngine::SuspendSimulationWork()

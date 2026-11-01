@@ -260,15 +260,13 @@ public:
         auto prev_width = base::_size.width;
         auto prev_height = base::_size.height;
 
-        base::_size = size;
-
         vector<optional<TCell>> new_cells;
-        new_cells.resize(base::_size.template square<size_t>());
+        new_cells.resize(size.template square<size_t>());
 
-        for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
-            for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
-                if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
+        for (int64_t y = 0; y < std::max(prev_height, size.height); y++) {
+            for (int64_t x = 0; x < std::max(prev_width, size.width); x++) {
+                if (x < size.width && y < size.height && x < prev_width && y < prev_height) {
+                    auto new_index = numeric_cast<size_t>(y * size.width + x);
                     auto prev_index = numeric_cast<size_t>(y * prev_width + x);
                     new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
@@ -276,6 +274,7 @@ public:
         }
 
         _preallocatedCells = std::move(new_cells);
+        base::_size = size;
     }
 
 private:

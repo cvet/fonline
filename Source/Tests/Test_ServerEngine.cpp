@@ -475,8 +475,8 @@ static void CheckServerSimulationOwnership(Server& server)
                 coarse_sleep(std::chrono::milliseconds {1});
             }
             REQUIRE(entered.load());
-            CHECK_THROWS(server.HoldSimulation("rejected-owner"));
-            CHECK_THROWS(server.ReleaseSimulationHold("retained-owner"));
+            CHECK_THROWS_AS(server.HoldSimulation("rejected-owner"), VerificationException);
+            CHECK_THROWS_AS(server.ReleaseSimulationHold("retained-owner"), VerificationException);
             release.store(true);
             controller.join();
             CHECK(control_error == nullptr);
