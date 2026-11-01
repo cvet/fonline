@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c05c4a9bde648c9ecc9c8af69f56ad83e95a11d0a211db7d398aff9df814d3d0"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e473711f61a8e3ec7572825b546b9d45a6225a84e1a931b3e9cde0abf19da5d8"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-01
+
+### Исправлено
+
+- CMake-тест интерфейса проекта теперь ожидает 62 настройки, объявленные текущим интерфейсом, включая `FO_MAP_MAX_SIZE` и `FO_MAP_WIDE_COORDS`. Сохранены точные количества стадий и helpers, проверка объявлений и их влияния на bake.
+- Тест интерфейса native extensions теперь ожидает все 10 hooks, включая два существующих хука видимости при просмотре карты. Сохранены маршрутизация ролей и отказ для неполной пары роль/путь.
+
+### Миграция
+
+- База `c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1` (`2026.1.94-dev`), новая версия `2026.1.95-dev`: преобразование исходников проекта, настроек, сохранённых данных или ресурсов не требуется. Исправления тестов не меняют runtime-контракты, ABI, сетевой протокол, маркер совместимости или схемы ресурсов. Проверьте текущие интерфейсы командами `cmake -P BuildTools/tests/validate_project_interface.cmake` и `cmake -P BuildTools/tests/validate_native_extension_interface.cmake`. При выборе новой ревизии Engine по-прежнему требуется штатная регенерация версии/метаданных; клиенты, серверы и ресурсы должны использовать одну согласованную ревизию.
+
+## 2026.1.94-dev - 2026-11-01
 
 ### Исправлено
 

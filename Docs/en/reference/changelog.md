@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Update the CMake project-interface test to expect the 62 options declared by the current interface, including `FO_MAP_MAX_SIZE` and `FO_MAP_WIDE_COORDS`. Keep exact stage/helper counts and the declaration and baking-impact checks.
+- Update the native-extension interface test to expect all 10 hooks, including the two existing map-view visibility hooks. Preserve role routing and rejection of incomplete role/path pairs.
+
+### Migration
+
+- Baseline `c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1` (`2026.1.94-dev`) to `2026.1.95-dev`: no project source, settings, saved-data or resource conversion is required. These test corrections change no runtime contract, ABI, wire protocol, compatibility marker or resource schema. Run `cmake -P BuildTools/tests/validate_project_interface.cmake` and `cmake -P BuildTools/tests/validate_native_extension_interface.cmake` to verify the current interfaces. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.94-dev - 2026-11-01
+
+### Fixed
+
 - Use scoped mutex ownership for named simulation hold control so Clang can verify every acquisition and release. Preserve startup control, non-blocking control under a drained external lock, and `VerificationException` when that control is busy.
 - Regenerate the ContentShowcase and PackagingMatrix configurations from the current Engine settings.
 - Initialize the standalone web/database option test through the real CMake helpers and provide the map-size defaults required by the project-options stage. Restore canonical formatting in the Managed `mpos(string)` constructor.
