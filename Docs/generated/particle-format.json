@@ -2414,7 +2414,7 @@
       "id": "particle-format.runtime.baked-bounds",
       "name": "Mandatory baked bounds",
       "stability": "experimental",
-      "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles; Effekseer appends and validates a mandatory bounds trailer.",
+      "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles. Effekseer uses a nonnegative authored seed or a fixed local fallback for its bounds simulation and appends and validates a mandatory bounds trailer. One simulation does not cover every random trajectory.",
       "rationale": "Reproducible baseline dimensions provide stable atlas layout without manual authoring; model trails can extend the baseline with current live instances.",
       "source": [
         {
@@ -2423,6 +2423,7 @@
             "deterministic run of a throwaway copy",
             "SPARK particle system showed no visible particles while baking its bounds",
             "SimulateEffekseerBounds",
+            "manager->SetRandFunc",
             "AppendEffekseerBoundsTrailer",
             "SPK::RandomSeedScope bake_seed_scope"
           ]
@@ -2437,7 +2438,8 @@
         {
           "path": "Source/Tests/Test_ParticleBaker.cpp",
           "anchors": [
-            "ContinuousEmitterBoundsIgnoreEarlierBakes"
+            "ContinuousEmitterBoundsIgnoreEarlierBakes",
+            "EffekseerBoundsAreRepeatableAndHonorAuthoredSeed"
           ]
         }
       ]
@@ -3186,5 +3188,5 @@
       "stable": 4
     }
   },
-  "contract_digest": "10e8619f2c1a8edbabffd001bc37029e84772cca75be515187d50819e0693b21"
+  "contract_digest": "5bf5536e10f8176f20b54f61037ade9cd6911f50fb688becdcd2b877daeb22fb"
 }

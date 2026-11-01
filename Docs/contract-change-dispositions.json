@@ -15600,6 +15600,18 @@
       "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
       "compatibility": "The live CPU probe is cached and does not advance simulation or draw; dormant and expired instances no longer reserve the live envelope.",
       "owner": "Engine Effekseer runtime and model bounds"
+    },
+    {
+      "domain": "particle-format",
+      "change_id": "particle-format-change.modified.ed3d871060dcec1b",
+      "baseline_contract_sha256": "76f2f2c5bf0613da6e17abb07a80809a722a2113299db1fca1107c3635c132c3",
+      "current_contract_sha256": "fab95368de13172b0fecdef55653aea15011404d1b474f2a1c5fb7ef73f62839",
+      "classification": "breaking",
+      "rationale": "Effekseer bounds without an authored seed previously depended on process random state and effect order, contrary to the reproducible bounds contract. A manager-local fallback restores repeatability while preserving nonnegative authored seeds.",
+      "migration": "Rebuild Baker and fully rebake Effekseer resources; inspect effect framing in representative scenes because one seeded simulation does not cover every trajectory. See Docs/en/how-to/content/particle-format.md and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "compatibility": "No authored format or saved-data conversion is required. Previously baked unseeded bounds may change after the required full bake; package matching resources and binaries together.",
+      "owner": "Engine particle bounds"
     }
   ]
 }

@@ -24,6 +24,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Publish the complete server startup queue before execution so a failed stage
   cannot be followed by jobs submitted after its failure handler cleared the queue.
+- Make Effekseer bounds baking independent of process random state and effect
+  order while preserving an explicitly authored seed.
 - Place newborn model particles after a complete pose, retain live Effekseer
   bounds and finite rotations for collapsed axes, and initialize scene placement
   before simulation. Track speed events integrate across frame boundaries;
@@ -50,6 +52,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   `Elevation` remains independent. Recheck overlays and screen anchors on each
   supported renderer. Browser packages need a fresh build and normal-quit and
   persistence checks; writes formerly outside the persistent mount are not moved.
+- Fully rebake existing Effekseer resources to replace previously sampled bounds.
+  A fixed simulation seed provides repeatability, not coverage of every trajectory;
+  inspect effect framing in representative scenes.
 
 ## Current - 2026-10-30
 

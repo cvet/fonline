@@ -915,6 +915,10 @@ static void SimulateEffekseerBounds(string_view source_path, string_view source_
     setting->SetModelLoader(Effekseer::MakeRefPtr<EffekseerBoundsModelLoader>(string {source_root_path}, string {source_path}));
     manager->SetSetting(setting);
 
+    // A zero callback is a valid LCG seed, so bounds sampling repeats without touching process RNG; Play still
+    // prefers an authored nonnegative seed
+    manager->SetRandFunc([] { return 0; });
+
     ptr<EffekseerBoundsCollector> collector_ptr {&collector};
     manager->SetSpriteRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::SpriteRenderer>>(collector_ptr));
     manager->SetRibbonRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::RibbonRenderer>>(collector_ptr));

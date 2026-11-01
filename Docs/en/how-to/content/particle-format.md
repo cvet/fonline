@@ -71,8 +71,11 @@ advertised by `ParticleSpriteFactory`.
 
 Both formats store simulated position bounds and maximum camera-facing billboard
 radius (`.spk` or an Engine `.efk` trailer) for sprite framing and model visibility.
-SPARK seeds emitter copying; bounds ignore process time and effect order. Rebake
-after contract changes; `.efk` without a valid trailer fails.
+SPARK seeds emitter copying. Effekseer uses a nonnegative authored random seed
+or a fixed fallback, local to the bounds simulation. Bounds do not depend
+on process random state or effect order. One simulation is a sample, not a proof
+that every random trajectory fits. Fully rebake existing Effekseer resources after
+updating the baker; `.efk` without a valid trailer fails.
 
 ### Incremental Effekseer baking
 

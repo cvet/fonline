@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"803d3fbcf9bd274a6051e26daeb8ab84f0f3568428e8aa5fc5ed5560bf44c1dd"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"6997095ca950f09e9c19d22cdfbe362b318e77db9e07f0df2c3604308d2a2512"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -71,11 +71,14 @@ SetOptionValues(
 
 Оба формата требуют измеренных симуляцией границ позиций частиц и отдельного
 максимального радиуса билборда, обращённого к камере (`.spk` или trailer Engine
-в `.efk`). SPARK задаёт seed перед инициализацией копий эмиттеров, устраняя
-зависимость границ от времени процесса и порядка эффектов. Runtime-framing
-спрайта и видимость модели используют сохранённые bounds вместо авторских
-прямоугольников. После изменения контракта перезапеките частицы; `.efk` без
-валидного trailer отклоняется.
+в `.efk`) для рамки спрайта и видимости модели. SPARK задаёт seed перед
+инициализацией копий эмиттеров. Effekseer использует неотрицательный авторский
+seed или фиксированный seed в противном случае;
+это значение локально для симуляции границ. Границы не зависят от случайного
+состояния процесса и порядка эффектов. Одна симуляция — выборка, а не доказательство
+того, что внутри рамки поместится любая случайная траектория. После обновления baker
+полностью перезапеките существующие ресурсы Effekseer; `.efk` без валидного trailer
+отклоняется.
 
 ### Инкрементальное запекание Effekseer
 
