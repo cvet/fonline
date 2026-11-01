@@ -1,5 +1,39 @@
 # Documentation Verification Report
 
+## 2026-11-01 - Canonical Mapper EOF and retained multi-map separators
+
+Prepare `2026.1.94-dev` from `d08edacb0567d6f7d887aa962a6fdd4ccaac9a5c`
+(`2026.1.93-dev`). Standalone Mapper output keeps internal blank separators and
+ends with one LF. Multi-map replacement supplies a separator before the next
+retained section, preserves sibling bytes, and leaves an untouched last
+sibling's existing EOF alone. Accepted map grammar, IDs, properties, ownership,
+API, ABI, wire/resource formats and the manual compatibility marker do not change.
+
+Update the paired map-format guide and existing round-trip rule, its reviewed
+Russian description and generated EN/RU references. Preserve .93 history and
+record the rebuild/re-save workflow without a source-map or saved-data conversion.
+The exact-baseline aggregate diff passes one documentation change across 17
+domains, with no required or missing dispositions.
+
+Reproduce the pre-existing .92 documentation-test failure using exact d08edacb
+inputs: the source-bound check still named SetTime while Mapper already stopped
+the animation and selected normalized phase 0. Port only its two assertions and
+paired prose to SetPhase/normalized phase 0; retain the failed receipt separately.
+The implementation and first-frame authoring behavior remain unchanged.
+
+The final focused Python documentation/version selection passes 94 cases and 85
+subtests after preparation. One CMake execution case is deliberately excluded
+from this documentation-only step. Map-format generation/check, version/changelog
+validation and the 414-entry documentation validator pass; generated description
+translations are 4993/4993 current. The earlier stale ignored-output and obsolete
+assertion failures remain separate from the corrected result.
+
+The integrating Windows checkout's prior source-bound native run passes 807
+cases with one skip. Its three native implementation/test input hashes are
+unchanged by this documentation/version step. No CMake, bake, game or new native
+run is claimed here; other platforms and full project map-content acceptance
+remain separate.
+
 ## 2026-10-24 - Prepare FOFRM rework against published master 61
 
 Integrate published feature `a0489ef02bc71b2c5caab53b19d1524bc0e2b381`
@@ -13404,3 +13438,24 @@ The existing phase-doc assertion is moved from the final local replay into
 this owner boundary: the stale assertion fails, then66 focused tests and99
 subtests pass. Preparation,414-entry documentation validation and version
 checks pass. Native/build/bake/player/platform gates remain separate.
+
+
+## 2026-11-01 - Complete the four unpublished replays as98
+
+The published parent isc1b3f7114d8c7ec7299ab936fe3c36ee20726dd1.
+Replay lifecycle95/manual86, current-only playback96, Git/VS helper97 and
+canonical Mapper EOF98. Keep incoming event continuation, transient VisualOffset,
+default narrow coordinates/max4000, simulation holds and grid failure semantics.
+The generated API union remains2593 symbols; ABI9, SpriteResourcev3 and snapshot4
+remain unchanged. Cumulative comparison reports11 changes in17 domains with
+six exact required dispositions. The98 step changes only the compatible map
+round-trip description among generated domains.
+
+Final source-focused checks pass66 cases/99 subtests; additional codegen,
+site/layout/CMake/map-format checks pass45 cases/15 subtests;14 literal/file
+hash writer script-mode cases pass. Source layout/module checks pass. All steps
+prepare and validate414 Markdown entries. Existing compiled helper/native808,
+Mapper disk/runtime, bake and player receipts retain their original revisions;
+the new combined source still needs fresh native, Managed, bake and ordinary
+player/platform checks. Rendered-site/browser and final version-history results
+are retained in the consuming reconciliation evidence, separately from runtime.

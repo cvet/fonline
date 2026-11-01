@@ -16,6 +16,20 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- End standalone Mapper map output with exactly one LF while retaining blank separators between sections.
+- Keep the separator before the next retained section when replacing a map in a multi-map container; untouched sibling blocks remain byte-exact.
+- Retain the Mapper freeze documentation and its source-bound check with the normalized phase-zero API adopted in `2026.1.98-dev`; first-frame authoring behavior is unchanged.
+
+### Migration
+
+- Base `f083ca17d5a36d6be921bdd579e48ed556f7694d` (`2026.1.99-dev`) to `2026.1.100-dev`: rebuild the Mapper and native test host, then re-save edited maps through the native Mapper. Existing map input, including old final blank lines, remains readable. No project script, setting, source-map or saved-data conversion is required; map IDs, property values, placement order and ownership links retain their meanings.
+- Only the selected map is normalized. An untouched final sibling retains its existing EOF bytes; do not trim the entire container or use another writer to normalize it. Review the complete canonical diff and rebake both map outputs through the normal content workflow.
+- No API, network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. Native regressions cover returned text, actual disk save paths, first/middle/last multi-map replacement, exact siblings, reload and repeat saves; this does not qualify other platforms or all embedding-project map content.
+
+## 2026.1.99-dev - 2026-11-02
+
+### Fixed
+
 - Keep Git configuration dependencies file-only, including the first loose branch ref after `pack-refs`. Visual Studio regeneration no longer reports a Git directory as a missing file (`MSB8064`).
 - Write native build markers from a stable target-specific configured hash file. A direct Visual Studio build that regenerates late now writes the same project revision as its generated header and compiled executable on that first build.
 

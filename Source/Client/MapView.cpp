@@ -4311,6 +4311,9 @@ auto MapView::SaveToText(string_view save_name) const -> string
         }
     }
 
+    // Each section emits a separator; a standalone map ends at its final row
+    fomap.pop_back();
+
     return fomap;
 }
 

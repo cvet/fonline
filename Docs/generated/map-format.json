@@ -508,7 +508,7 @@
       "name": "Mapper round-trip",
       "requirement": "Review mapper-saved diffs as normalized output, not byte-preserving serialization.",
       "stability": "experimental",
-      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, flattens inherited map properties, and preserves sibling map blocks byte-exact in a multi-map container.",
+      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, and flattens inherited map properties. Standalone output ends with exactly one LF and keeps blank lines between sections. Multi-map save keeps the separator before the next retained section and preserves sibling map blocks byte-exact, including an untouched final sibling's existing EOF.",
       "source": {
         "path": "Source/Tools/Mapper.cpp",
         "anchors": [
@@ -3649,5 +3649,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "e284b528d5b19d20a3ccc4fece56af0ba0a13bec0e7947ab6ebf6a4d9cf2b2bb"
+  "contract_digest": "99f76d6ae4f90904274e48d1709046d6e643ea9571ea673456187b8ca36872a7"
 }

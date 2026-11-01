@@ -2074,6 +2074,21 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     string reference_map = MakeMapText(MakeItemBlock(10, TILE_A, 5, 5));
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
 
+    string first_sibling = "[ProtoMap]\n$Name = FirstMap\n# first sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(30, TILE_A, 5, 5);
+    string middle_sibling = "[ProtoMap]\n$Name = MiddleMap\n# middle sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(31, TILE_B, 6, 6);
+    string last_sibling = "[ProtoMap]\n$Name = LastMap\n# last sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n[$Name/Item]\n$Id = 32\n$Proto = MapperMergeTileA\nHex = 7 7\n";
+    REQUIRE(fs::write_file((maps_dir / "CombinedMaps.fomap").generic_string(), first_sibling + middle_sibling + last_sibling));
+
+    string first_tail_sibling = "[ProtoMap]\n$Name = TailFirst\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(40, TILE_A, 8, 8);
+    string untouched_tail_sibling = "[ProtoMap]\n$Name = TailLast\n# preserve this noncanonical tail\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(41, TILE_B, 9, 9) + "\n\n";
+    REQUIRE(fs::write_file((maps_dir / "UntouchedTail.fomap").generic_string(), first_tail_sibling + untouched_tail_sibling));
+
+    auto check_terminal_newline = [](const string& saved) {
+        REQUIRE_FALSE(saved.empty());
+        CHECK(saved.ends_with("\n"));
+        CHECK_FALSE(saved.ends_with("\n\n"));
+    };
+
     auto settings = MakeMapperTestSettings();
     BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
     auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
@@ -2089,14 +2104,122 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
+    SECTION("CanonicalTextPreservesInternalSeparatorsAndOneTerminalNewline")
+    {
+        string saved = map->SaveToText("SavedRoundTrip");
+        check_terminal_newline(saved);
+        CHECK(saved.find("\n\n[$Name/Item]\n") != string::npos);
+
+        auto reloaded = mapper->LoadMapFromText("SavedRoundTrip", "SavedRoundTrip.fomap", saved);
+        REQUIRE(reloaded);
+        REQUIRE(reloaded->GetItems().size() == 1);
+        CHECK(reloaded->GetItems().front()->GetId() == ident_t {11});
+        CHECK(reloaded->SaveToText("SavedRoundTrip") == saved);
+
+        auto empty = mapper->LoadMapFromText("EmptyMap", "EmptyMap.fomap", MakeMapText(""));
+        REQUIRE(empty);
+        string empty_saved = empty->SaveToText("EmptyRoundTrip");
+        check_terminal_newline(empty_saved);
+
+        auto empty_reloaded = mapper->LoadMapFromText("EmptyRoundTrip", "EmptyRoundTrip.fomap", empty_saved);
+        REQUIRE(empty_reloaded);
+        CHECK(empty_reloaded->GetItems().empty());
+        CHECK(empty_reloaded->SaveToText("EmptyRoundTrip") == empty_saved);
+    }
+
+    SECTION("SavingADeclaredSingleMapUsesItsDiskContainer")
+    {
+        auto reference = mapper->LoadMap("ReferenceMap");
+        REQUIRE(reference);
+        reference->SetFixedDayTime(123);
+
+        REQUIRE_NOTHROW(mapper->SaveMap(reference, "ReferenceMap"));
+        auto saved = fs::read_file((maps_dir / "ReferenceMap.fomap").generic_string());
+        REQUIRE(saved);
+        check_terminal_newline(*saved);
+        CHECK(saved->find("FixedDayTime = 123\n") != string::npos);
+        CHECK(saved->find("\n\n[$Name/Item]\n") != string::npos);
+
+        REQUIRE_NOTHROW(mapper->SaveMap(reference, "ReferenceMap"));
+        CHECK(fs::read_file((maps_dir / "ReferenceMap.fomap").generic_string()) == saved);
+    }
+
+    SECTION("ReplacingAContainerMapPreservesSeparatorsAndExactSiblings")
+    {
+        for (string_view selected_name : {"FirstMap", "MiddleMap", "LastMap"}) {
+            DYNAMIC_SECTION(selected_name)
+            {
+                auto selected = mapper->LoadMap(selected_name);
+                REQUIRE(selected);
+                selected->SetFixedDayTime(123);
+
+                string selected_text = selected->SaveToText(selected_name);
+                check_terminal_newline(selected_text);
+                REQUIRE_NOTHROW(mapper->SaveMap(selected, selected_name));
+                auto saved = fs::read_file((maps_dir / "CombinedMaps.fomap").generic_string());
+                REQUIRE(saved);
+                check_terminal_newline(*saved);
+
+                string expected;
+
+                if (selected_name == "FirstMap") {
+                    expected = selected_text + "\n" + middle_sibling + last_sibling;
+                }
+                else if (selected_name == "MiddleMap") {
+                    expected = first_sibling + selected_text + "\n" + last_sibling;
+                }
+                else {
+                    expected = first_sibling + middle_sibling + selected_text;
+                }
+
+                CHECK(*saved == expected);
+                REQUIRE_NOTHROW(mapper->SaveMap(selected, selected_name));
+                CHECK(fs::read_file((maps_dir / "CombinedMaps.fomap").generic_string()) == saved);
+
+                for (string_view reloaded_name : {"FirstMap", "MiddleMap", "LastMap"}) {
+                    auto reloaded = mapper->LoadMapFromText(reloaded_name, "CombinedMaps.fomap", *saved);
+                    REQUIRE(reloaded);
+                    REQUIRE(reloaded->GetItems().size() == 1);
+
+                    if (reloaded_name == selected_name) {
+                        CHECK(reloaded->GetFixedDayTime() == 123);
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("ReplacingFirstMapDoesNotTrimAnUntouchedSiblingTail")
+    {
+        auto selected = mapper->LoadMap("TailFirst");
+        REQUIRE(selected);
+        selected->SetFixedDayTime(123);
+
+        string selected_text = selected->SaveToText("TailFirst");
+        check_terminal_newline(selected_text);
+        REQUIRE_NOTHROW(mapper->SaveMap(selected, "TailFirst"));
+        auto saved = fs::read_file((maps_dir / "UntouchedTail.fomap").generic_string());
+        REQUIRE(saved);
+        CHECK(*saved == selected_text + "\n" + untouched_tail_sibling);
+        CHECK(saved->ends_with(untouched_tail_sibling));
+
+        REQUIRE_NOTHROW(mapper->SaveMap(selected, "TailFirst"));
+        CHECK(fs::read_file((maps_dir / "UntouchedTail.fomap").generic_string()) == saved);
+    }
+
     SECTION("SavingIntoASubDirectoryWritesTheFile")
     {
         REQUIRE_NOTHROW(mapper->SaveMapToDir(map.as_ptr(), "Generated", "SavedByTest"));
         CHECK(std::filesystem::exists(maps_dir / "Generated" / "SavedByTest.fomap"));
+        auto saved = fs::read_file((maps_dir / "Generated" / "SavedByTest.fomap").generic_string());
+        REQUIRE(saved);
+        check_terminal_newline(*saved);
+        CHECK(saved->find("\n\n[$Name/Item]\n") != string::npos);
 
         // Re-saving the same name overwrites in place instead of appending a second container
         REQUIRE_NOTHROW(mapper->SaveMapToDir(map.as_ptr(), "Generated", "SavedByTest"));
         CHECK(std::filesystem::exists(maps_dir / "Generated" / "SavedByTest.fomap"));
+        CHECK(fs::read_file((maps_dir / "Generated" / "SavedByTest.fomap").generic_string()) == saved);
     }
 
     SECTION("SavingUnderTheReferenceContainerSplicesIntoIt")

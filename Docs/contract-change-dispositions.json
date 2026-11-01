@@ -15744,6 +15744,78 @@
       "release_note": "Docs/en/reference/changelog.md#2026196-dev---2026-11-01",
       "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
       "owner": "Engine playback and outgoing transaction maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.45340698aacf761f",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "The combined native-codegen inventory adds the copied attachment-ID getter, replaces the three old phase/playback stable IDs and preserves the incoming VisualOffset and configurable mcoord surface. The exact union contains2593 symbols.",
+      "migration": "Follow the dated95 lifecycle and96 current-only phase/playback migrations and their paired sprite-animation guide. Regenerate all bindings and metadata; rebuild extensions and native roles; force-rebake matching CoreScripts, assemblies and resource packs. No compatibility aliases or persisted identity conversion.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "The combined lifecycle contract requires manual0.0.86. Callable/event IDs are additionally codegen-hashed; existing valid wire field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 retain meaning. Reject mixed generations and deploy/roll back the full artifact set together.",
+      "owner": "Engine reconciled95-98 contract maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0b02324d541cbd03",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "The independent incoming and local branches both used85. The reconciled lifecycle/attachment recipient and queued-context contract receives its own manual compatibility boundary86; no persisted property conversion is introduced.",
+      "migration": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and Docs/ru/reference/changelog.md#2026195-dev---2026-11-01: regenerate all metadata/bindings, rebuild extensions and affected native roles, force-rebake a coherent set; no saved-data conversion. Preserve normal PublicSync/OwnerSync filtering and current view context hooks.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "Manual MigrationRule Version0.0.86 rejects mixed lifecycle generations. Default mpos/msize remain16-bit with maximum4000; Managed ABI9, SpriteResourcev3 and snapshot format4 remain unchanged. Deploy/roll back matching executables, CoreScripts, assemblies, metadata and packs together.",
+      "owner": "Engine reconciled95-98 contract maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.6c90eaa548c8774b",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "OnCritterAnimationInit -> OnCritterAnimationPlaybackInit; preserve all argument types, reference qualifiers and meanings, renaming only the normalized-position local.",
+      "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
+      "owner": "Engine reconciled95-98 contract maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.c0abd5ca52a9de0b",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "Game.SetSpriteTime -> Game.SetSpritePhase with normalized phase in[0,1].",
+      "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
+      "owner": "Engine reconciled95-98 contract maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.cc25e1004cc1b11b",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "Item.SetAnimTime -> Item.SetAnimPhase with normalized phase in[0,1].",
+      "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
+      "owner": "Engine reconciled95-98 contract maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.720735b8725e3a49",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "39a589226e6787c6d64dcf1e1f617957d75d6440f36ee16b52cd2b5580271e54",
+      "classification": "breaking",
+      "rationale": "Only the existing sync-safe coverage probe admits retained destroyed entity arguments. It reads cover without acquiring it; ordinary argument conversion still rejects destroyed entities and backend availability is unchanged.",
+      "migration": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and Docs/ru/reference/changelog.md#2026195-dev---2026-11-01: regenerate all metadata/bindings, rebuild extensions and affected native roles, force-rebake a coherent set; no saved-data conversion. Preserve normal PublicSync/OwnerSync filtering and current view context hooks.",
+      "release_note": "Docs/en/reference/changelog.md#2026195-dev---2026-11-01 and #2026196-dev---2026-11-01; corresponding Russian dated entries.",
+      "compatibility": "Manual MigrationRule Version0.0.86 rejects mixed lifecycle generations. Default mpos/msize remain16-bit with maximum4000; Managed ABI9, SpriteResourcev3 and snapshot format4 remain unchanged. Deploy/roll back matching executables, CoreScripts, assemblies, metadata and packs together.",
+      "owner": "Engine reconciled95-98 contract maintainers"
     }
   ]
 }
