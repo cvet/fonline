@@ -37,6 +37,76 @@ def test_unit_tests_use_the_native_platform() -> None:
     assert buildtools.VALIDATION_TARGETS["unit-tests"]["platform"] == "native"
 
 
+def flag_map(arguments: list[str]) -> dict[str, str]:
+    return {
+        argument[2:].split("=", 1)[0]: argument.split("=", 1)[1]
+        for argument in arguments
+        if argument.startswith("-DFO_")
+    }
+
+
+def expected_flag_map(enabled: set[str], omitted: set[str] | None = None) -> dict[str, str]:
+    omitted_flags = omitted or set()
+    return {
+        name: "1" if name in enabled else "0"
+        for name in buildtools.FLAG_NAMES
+        if name not in omitted_flags
+    }
+
+
+def test_unit_tests_role_selects_unit_tests_and_baker_only() -> None:
+    assert flag_map(buildtools.build_flag_args("unit-tests")) == expected_flag_map(
+        {"FO_BUILD_BAKER", "FO_UNIT_TESTS"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("target_name", "enabled", "omitted"),
+    [
+        ("client", {"FO_BUILD_CLIENT"}, set()),
+        ("server", {"FO_BUILD_SERVER"}, set()),
+        ("mapper", {"FO_BUILD_MAPPER"}, set()),
+        ("ascompiler", {"FO_BUILD_ASCOMPILER"}, set()),
+        ("baker", {"FO_BUILD_BAKER"}, set()),
+        ("code-coverage", {"FO_CODE_COVERAGE"}, set()),
+        ("toolset", {"FO_BUILD_BAKER"}, {"FO_BUILD_ASCOMPILER"}),
+        ("full", {"FO_BUILD_CLIENT", "FO_BUILD_SERVER", "FO_BUILD_MAPPER", "FO_BUILD_BAKER"}, {"FO_BUILD_ASCOMPILER"}),
+    ],
+)
+def test_other_build_roles_keep_their_existing_flag_selection(
+    target_name: str, enabled: set[str], omitted: set[str],
+) -> None:
+    arguments = buildtools.build_flag_args(target_name, config="Release")
+
+    assert arguments[-1] == "-DCMAKE_BUILD_TYPE=Release"
+    assert flag_map(arguments) == expected_flag_map(enabled, omitted)
+
+
+@pytest.mark.parametrize("config", ["Release", "San_Address", "San_Thread"])
+def test_unit_tests_role_keeps_the_requested_configuration(config: str) -> None:
+    arguments = buildtools.build_flag_args("unit-tests", config=config)
+
+    assert arguments[-1] == f"-DCMAKE_BUILD_TYPE={config}"
+    assert flag_map(arguments) == expected_flag_map({"FO_BUILD_BAKER", "FO_UNIT_TESTS"})
+
+
+@pytest.mark.parametrize(
+    ("platform_name", "config"),
+    [
+        ("linux", "San_Address"),
+        ("linux", "San_Thread"),
+        ("win64", "Release"),
+        ("mac", "Release"),
+    ],
+)
+def test_unit_tests_platform_route_selects_unit_tests_and_baker(
+    platform_name: str, config: str,
+) -> None:
+    arguments = buildtools.make_platform_build_flag_args(platform_name, "unit-tests", config)
+
+    assert flag_map(arguments) == expected_flag_map({"FO_BUILD_BAKER", "FO_UNIT_TESTS"})
+
+
 def test_unit_validation_passes_the_resolved_platform_to_cmake(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

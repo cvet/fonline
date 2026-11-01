@@ -130,6 +130,11 @@ as asset failures.
 key token. Do not rely on them as a full line-comment grammar. `End` stops
 parsing and should terminate every authored descriptor.
 
+`Image` values may cross line boundaries; the last parsed value wins. Resource
+usage follows these token rules, discards the rest of each `Letter` line, and
+stops at `End` or failed integer extraction. It retains that image dependency
+without replacing runtime descriptor validation.
+
 ## FOFNT metrics
 
 Each glyph has a visible rectangle and cursor metrics:
@@ -342,7 +347,7 @@ For an Engine parser, metric, layout, or script-binding change:
 ```powershell
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
-python BuildTools\docs_contract_diff.py --check
+python BuildTools\docs_contract_diff.py --baseline-git-ref origin/master --check --enforce
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 

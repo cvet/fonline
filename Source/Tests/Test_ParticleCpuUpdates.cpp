@@ -302,7 +302,7 @@ namespace
     struct ParticleState
     {
         bool Active {};
-        float32_t Elapsed {};
+        timespan Elapsed {};
         optional<ParticleBounds3D> Bounds {};
     };
 
@@ -314,7 +314,7 @@ namespace
     void CheckParticleState(const ParticleState& actual, const ParticleState& expected)
     {
         CHECK(actual.Active == expected.Active);
-        CHECK(actual.Elapsed == Catch::Approx(expected.Elapsed));
+        CHECK(actual.Elapsed == expected.Elapsed);
         REQUIRE(actual.Bounds.has_value() == expected.Bounds.has_value());
 
         if (actual.Bounds) {
@@ -328,15 +328,17 @@ namespace
         }
     }
 
-    void CheckSpriteManagerParticleUpdates(string_view extension, size_t sprite_count)
+    auto CheckSpriteManagerParticleUpdates(string_view extension, size_t sprite_count, bool occupy_worker = false) -> uint64_t
     {
         vector<ParticleState> reference;
+        uint64_t mode2_worker_calls = 0;
 
         for (int32_t mode = 0; mode < 3; mode++) {
             INFO(strex("extension={}, mode={}", extension, mode).str());
+            int32_t available_workers = occupy_worker ? 1 : 2;
             auto settings = ClientEngineTests::MakeClientTestSettings();
             BakerTests::OverrideSetting(settings.Client.Multithreading, mode != 0);
-            BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, mode == 1 ? 0 : 2);
+            BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, mode == 1 ? 0 : available_workers);
             BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, 0);
             BakerTests::OverrideSetting(settings.Render.Animation3dFPS, 1000);
             auto client = ClientEngineTests::MakeClientEngine(settings, ClientEngineTests::MakeClientTestResources(ParticleCpuTests::MakeResources(extension)));
@@ -371,6 +373,54 @@ namespace
                 sprites.emplace_back(std::move(sprite));
             }
 
+            shared_ptr<WorkScheduler::BackgroundGroup> occupied_group;
+            shared_ptr<WorkScheduler::BackgroundTask> occupied_task;
+            std::promise<void> worker_entered;
+            std::promise<void> worker_release;
+            auto entered_future = worker_entered.get_future();
+            auto release_future = worker_release.get_future();
+            std::thread::id occupied_worker_id;
+            auto unblock_worker = scope_exit([&]() noexcept {
+                if (occupied_group) {
+                    worker_release.set_value();
+                    scheduler->CancelBackground(occupied_group);
+                    scheduler->DrainBackground(occupied_group);
+                }
+            });
+
+            if (mode == 2 && occupy_worker) {
+                REQUIRE(scheduler->GetWorkerCount() == 1);
+                occupied_group = scheduler->CreateBackgroundGroup();
+                occupied_task = scheduler->TrySubmitBackground(occupied_group, [&] {
+                    occupied_worker_id = std::this_thread::get_id();
+                    worker_entered.set_value();
+
+                    if (release_future.wait_for(std::chrono::seconds {10}) != std::future_status::ready) {
+                        throw WorkSchedulerException("Occupied particle worker release deadline expired");
+                    }
+                });
+
+                REQUIRE(occupied_task);
+                REQUIRE(entered_future.wait_for(std::chrono::seconds {10}) == std::future_status::ready);
+                CHECK(occupied_worker_id != std::this_thread::get_id());
+                CHECK(scheduler->PollBackground(occupied_task).Status == WorkScheduler::BackgroundStatus::Running);
+            }
+
+            size_t eligible_sprites = 0;
+            uint64_t owner_calls_before = 0;
+            uint64_t worker_calls_before = 0;
+
+            for (auto& sprite : sprites) {
+                if (sprite->CanUpdateParticleCpu()) {
+                    eligible_sprites++;
+                }
+
+                CpuUpdateDiagnostics diagnostics = sprite->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+                owner_calls_before += diagnostics.OwnerKernelCalls;
+                worker_calls_before += diagnostics.WorkerKernelCalls;
+            }
+
+            WorkScheduler::Diagnostics scheduler_before = scheduler->GetDiagnostics();
             size_t state_index = 0;
 
             // The timer does not advance: the existing first-draw rule supplies the same positive millisecond
@@ -396,10 +446,20 @@ namespace
                 }
             }
 
+            if (occupied_task) {
+                CHECK(scheduler->PollBackground(occupied_task).Status == WorkScheduler::BackgroundStatus::Running);
+            }
+
+            WorkScheduler::Diagnostics scheduler_after = scheduler->GetDiagnostics();
+            int64_t first_elapsed_ns = sprites.front()->GetParticle()->GetElapsedTime().nanoseconds();
+            uint64_t owner_calls = 0;
             uint64_t worker_calls = 0;
 
             for (auto& sprite : sprites) {
-                worker_calls += sprite->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics().WorkerKernelCalls;
+                CpuUpdateDiagnostics diagnostics = sprite->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+                owner_calls += diagnostics.OwnerKernelCalls;
+                worker_calls += diagnostics.WorkerKernelCalls;
+
                 ParticleState before_stop = ReadParticleState(*sprite->GetParticle());
                 sprite->Stop();
                 CheckParticleState(ReadParticleState(*sprite->GetParticle()), before_stop);
@@ -407,18 +467,61 @@ namespace
                 CHECK(sprite->GetParticle()->GetElapsedTime() >= before_stop.Elapsed);
             }
 
-            bool workers_expected = mode == 2;
+            uint64_t batch_delta = scheduler_after.ParallelBatches - scheduler_before.ParallelBatches;
+            uint64_t item_delta = scheduler_after.ParallelItems - scheduler_before.ParallelItems;
+            uint64_t owner_delta = owner_calls - owner_calls_before;
+            uint64_t worker_delta = worker_calls - worker_calls_before;
+
+            logging::write("PARTICLESPRITEDIAG extension={} mode={} sprites={} eligible={} batches={} items={} chunks={} ownerBefore={} ownerAfter={} workerBefore={} workerAfter={} firstElapsedNs={} occupied={}",
+                extension, mode, sprites.size(), eligible_sprites, batch_delta, item_delta,
+                scheduler_after.ParallelChunks - scheduler_before.ParallelChunks,
+                owner_calls_before, owner_calls, worker_calls_before, worker_calls, first_elapsed_ns, mode == 2 && occupy_worker);
+
+            bool worker_allowed = mode == 2;
 #ifdef SPK_DEBUG
-            workers_expected = workers_expected && extension != "spk";
+            if (extension == "spk") {
+                worker_allowed = false;
+            }
 #endif
-            if (workers_expected) {
-                INFO("Missing worker participation leaves the parallel execution proof incomplete; it is separate from the simulation equality assertions above");
-                CHECK(worker_calls > 0);
+            INFO("Completed owner or worker kernel work is required; actual worker calls are separate qualification evidence");
+            CHECK(owner_delta + worker_delta > 0);
+
+            if (!worker_allowed) {
+                CHECK(worker_delta == 0);
+            }
+
+            if (extension == "efk") {
+                CHECK(eligible_sprites == 0);
+            }
+
+            if (mode == 2) {
+                mode2_worker_calls = worker_delta;
+
+                if (extension == "spk") {
+#ifdef SPK_DEBUG
+                    CHECK(eligible_sprites == 0);
+                    CHECK(batch_delta == 0);
+                    CHECK(item_delta == 0);
+#else
+                    CHECK(eligible_sprites == 32);
+                    CHECK(batch_delta == 8);
+                    CHECK(item_delta == 256);
+                    CHECK(owner_delta + worker_delta == 256);
+#endif
+                }
+                else if (extension == "efk") {
+                    CHECK(batch_delta > 0);
+                    CHECK(item_delta > 0);
+                }
             }
             else {
-                CHECK(worker_calls == 0);
+                CHECK(batch_delta == 0);
+                CHECK(item_delta == 0);
+                CHECK(worker_delta == 0);
             }
         }
+
+        return mode2_worker_calls;
     }
 }
 #endif
@@ -1278,8 +1381,8 @@ TEST_CASE("SPARK old direct copy and isolated copy preserve mixed-step random dy
         CHECK(original->getRandomSeed() == isolated->getRandomSeed());
 
         for (size_t index = 0; index < 512; index++) {
-            const auto expected = original->getGroup(0)->getParticle(index);
-            const auto actual = isolated->getGroup(0)->getParticle(index);
+            auto expected = original->getGroup(0)->getParticle(index);
+            auto actual = isolated->getGroup(0)->getParticle(index);
             CHECK(actual.position() == expected.position());
             CHECK(actual.velocity() == expected.velocity());
             CHECK(actual.getColor() == expected.getColor());
@@ -1390,8 +1493,57 @@ static auto ParticleVerticesDiffer(const vector<ParticleCpuTests::CapturedDraw>&
     return false;
 }
 
+struct MovingParticleWorkerEvidence
+{
+    uint64_t SparkWorkerKernelCalls {};
+    uint64_t EffekseerWorkerKernelCalls {};
+};
+
+static auto RunMovingParticleScenario() -> MovingParticleWorkerEvidence;
+
 TEST_CASE("SpriteManager preserves moving random particle geometry and colors", "[particle][particle-cpu-dynamics]")
 {
+    (void)RunMovingParticleScenario();
+}
+
+TEST_CASE("Moving sprite particle CPU worker participation qualification", "[.][particle-worker-qualification]")
+{
+    MovingParticleWorkerEvidence total_evidence;
+    constexpr size_t sample_count = 4;
+
+    for (size_t attempt = 0; attempt < sample_count; attempt++) {
+        MovingParticleWorkerEvidence attempt_evidence = RunMovingParticleScenario();
+
+        total_evidence.SparkWorkerKernelCalls += attempt_evidence.SparkWorkerKernelCalls;
+        total_evidence.EffekseerWorkerKernelCalls += attempt_evidence.EffekseerWorkerKernelCalls;
+#if FO_SPARK_PARTICLES
+        logging::write("PARTICLECPUWORKERQUALIFY route=moving backend=spk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, attempt_evidence.SparkWorkerKernelCalls, total_evidence.SparkWorkerKernelCalls);
+#endif
+#if FO_EFFEKSEER_PARTICLES
+        logging::write("PARTICLECPUWORKERQUALIFY route=moving backend=efk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, attempt_evidence.EffekseerWorkerKernelCalls, total_evidence.EffekseerWorkerKernelCalls);
+#endif
+    }
+
+    logging::write("PARTICLECPUWORKERQUALIFYRESULT route=moving samples={} sparkWorkerCalls={} effekseerWorkerCalls={}",
+        sample_count, total_evidence.SparkWorkerKernelCalls, total_evidence.EffekseerWorkerKernelCalls);
+
+#if FO_SPARK_PARTICLES
+#ifdef SPK_DEBUG
+    CHECK(total_evidence.SparkWorkerKernelCalls == 0);
+#else
+    CHECK(total_evidence.SparkWorkerKernelCalls > 0);
+#endif
+#endif
+#if FO_EFFEKSEER_PARTICLES
+    CHECK(total_evidence.EffekseerWorkerKernelCalls > 0);
+#endif
+}
+
+static auto RunMovingParticleScenario() -> MovingParticleWorkerEvidence
+{
+    MovingParticleWorkerEvidence evidence;
     auto settings = ClientEngineTests::MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.Animation3dFPS, 1000);
     BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 16);
@@ -1409,6 +1561,8 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
 #endif
          }) {
         CAPTURE(extension);
+        WorkScheduler::Diagnostics parallel_before = parallel.GetDiagnostics();
+        uint64_t extension_worker_calls = 0;
         vector<unique_ptr<CpuSpriteCaptureRig>> rigs;
         vector<vector<shared_ptr<ParticleSprite>>> particles;
 
@@ -1456,7 +1610,7 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
                 AdvanceBoundedParticleFrame(timer);
             }
 
-            float32_t before = particles[0][0]->GetParticle()->GetElapsedTime();
+            timespan before = particles[0][0]->GetParticle()->GetElapsedTime();
             vector<vector<ParticleCpuTests::CapturedDraw>> reference;
 
             for (size_t mode = 0; mode < rigs.size(); mode++) {
@@ -1478,18 +1632,18 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
                 }
             }
 
-            float32_t delta = particles[0][0]->GetParticle()->GetElapsedTime() - before;
-            zero_delta_seen = zero_delta_seen || delta == 0.0f;
-            positive_delta_seen = positive_delta_seen || delta > 0.0f;
+            timespan delta = particles[0][0]->GetParticle()->GetElapsedTime() - before;
+            zero_delta_seen = zero_delta_seen || delta == timespan::zero;
+            positive_delta_seen = positive_delta_seen || delta > timespan::zero;
             CheckModelParticleDraws(reference[0], reference[1]);
             CHECK(ParticleVerticesDiffer(reference[0], reference[2], false));
 
-            if (!previous.empty() && delta > 0.0f) {
+            if (!previous.empty() && delta > timespan::zero) {
                 positions_changed = positions_changed || ParticleVerticesDiffer(reference[0], previous, false);
                 colors_changed = colors_changed || ParticleVerticesDiffer(reference[0], previous, true);
             }
 
-            if (!previous.empty() && delta == 0.0f) {
+            if (!previous.empty() && delta == timespan::zero) {
                 CheckModelParticleDraws(reference[0], previous);
             }
 
@@ -1505,44 +1659,155 @@ TEST_CASE("SpriteManager preserves moving random particle geometry and colors", 
         }
 
         for (size_t mode = 0; mode < rigs.size(); mode++) {
+            uint64_t owners = 0;
             uint64_t workers = 0;
 
             for (auto& particle : particles[mode]) {
-                workers += particle->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics().WorkerKernelCalls;
+                CpuUpdateDiagnostics diagnostics = particle->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+                owners += diagnostics.OwnerKernelCalls;
+                workers += diagnostics.WorkerKernelCalls;
             }
 
-            bool expected_workers = mode == 2;
+            INFO("Completed owner or worker kernel work is required for every execution mode");
+            CHECK(owners + workers > 0);
+
+            bool worker_allowed = mode == 2;
 #ifdef SPK_DEBUG
-            expected_workers = expected_workers && extension != "spk";
-#endif
-            if (expected_workers) {
-                INFO("Missing worker participation leaves the parallel execution proof incomplete; simulation geometry and RNG equality are checked separately above");
-                CHECK(workers > 0);
+            if (extension == "spk") {
+                worker_allowed = false;
             }
-            else {
+#endif
+            if (!worker_allowed) {
                 CHECK(workers == 0);
             }
+
+            if (mode == 2) {
+                extension_worker_calls = workers;
+            }
+        }
+
+        WorkScheduler::Diagnostics parallel_after = parallel.GetDiagnostics();
+        uint64_t parallel_batches = parallel_after.ParallelBatches - parallel_before.ParallelBatches;
+        uint64_t parallel_items = parallel_after.ParallelItems - parallel_before.ParallelItems;
+        bool cpu_admission_expected = true;
+#ifdef SPK_DEBUG
+        if (extension == "spk") {
+            cpu_admission_expected = false;
+        }
+#endif
+        logging::write("PARTICLECPUMOVINGDIAG extension={} batches={} items={} workerCalls={} admitted={}",
+            extension, parallel_batches, parallel_items, extension_worker_calls, cpu_admission_expected);
+
+        if (cpu_admission_expected) {
+            CHECK(parallel_batches > 0);
+            CHECK(parallel_items > 0);
+        }
+        else {
+            CHECK(parallel_batches == 0);
+            CHECK(parallel_items == 0);
+        }
+
+        if (extension == "spk") {
+            evidence.SparkWorkerKernelCalls += extension_worker_calls;
+        }
+        else {
+            evidence.EffekseerWorkerKernelCalls += extension_worker_calls;
         }
     }
+
+    return evidence;
 }
 #endif
 
 #if FO_SPARK_PARTICLES
 TEST_CASE("SpriteManager executes SPARK particle CPU work", "[particle][particle-cpu][spark]")
 {
-    CheckSpriteManagerParticleUpdates("spk", 32);
+    (void)CheckSpriteManagerParticleUpdates("spk", 32);
+}
+
+TEST_CASE("SpriteManager completes particle CPU work with an occupied worker", "[particle][particle-cpu][spark]")
+{
+    uint64_t worker_calls = CheckSpriteManagerParticleUpdates("spk", 32, true);
+    CHECK(worker_calls == 0);
 }
 #endif
 
 #if FO_EFFEKSEER_PARTICLES
 TEST_CASE("SpriteManager executes Effekseer particle CPU work", "[particle][particle-cpu][effekseer]")
 {
-    CheckSpriteManagerParticleUpdates("efk", 2);
+    (void)CheckSpriteManagerParticleUpdates("efk", 2);
+}
+#endif
+
+#if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
+TEST_CASE("Sprite particle CPU worker participation qualification", "[.][particle-worker-qualification]")
+{
+    uint64_t spark_worker_calls = 0;
+    uint64_t effekseer_worker_calls = 0;
+    constexpr size_t sample_count = 4;
+
+    for (size_t attempt = 0; attempt < sample_count; attempt++) {
+#if FO_SPARK_PARTICLES
+        uint64_t spark_sample_worker_calls = CheckSpriteManagerParticleUpdates("spk", 32);
+        spark_worker_calls += spark_sample_worker_calls;
+        logging::write("PARTICLECPUWORKERQUALIFY route=basic backend=spk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, spark_sample_worker_calls, spark_worker_calls);
+#endif
+#if FO_EFFEKSEER_PARTICLES
+        uint64_t effekseer_sample_worker_calls = CheckSpriteManagerParticleUpdates("efk", 2);
+        effekseer_worker_calls += effekseer_sample_worker_calls;
+        logging::write("PARTICLECPUWORKERQUALIFY route=basic backend=efk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, effekseer_sample_worker_calls, effekseer_worker_calls);
+#endif
+    }
+
+    logging::write("PARTICLECPUWORKERQUALIFYRESULT route=basic samples={} sparkWorkerCalls={} effekseerWorkerCalls={}",
+        sample_count, spark_worker_calls, effekseer_worker_calls);
+
+#if FO_SPARK_PARTICLES
+#ifdef SPK_DEBUG
+    CHECK(spark_worker_calls == 0);
+#else
+    CHECK(spark_worker_calls > 0);
+#endif
+#endif
+#if FO_EFFEKSEER_PARTICLES
+    CHECK(effekseer_worker_calls > 0);
+#endif
 }
 #endif
 
 #if FO_SPARK_PARTICLES
+static auto RunSpriteAtlasCallbackScenario() -> uint64_t;
+
 TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only later particles", "[particle][particle-cpu-order][spark]")
+{
+    (void)RunSpriteAtlasCallbackScenario();
+}
+
+TEST_CASE("Sprite atlas callback particle CPU worker participation qualification", "[.][particle-worker-qualification]")
+{
+    uint64_t total_worker_calls = 0;
+    constexpr size_t sample_count = 4;
+
+    for (size_t attempt = 0; attempt < sample_count; attempt++) {
+        uint64_t sample_worker_calls = RunSpriteAtlasCallbackScenario();
+        total_worker_calls += sample_worker_calls;
+        logging::write("PARTICLECPUWORKERQUALIFY route=atlas backend=spk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, sample_worker_calls, total_worker_calls);
+    }
+
+    logging::write("PARTICLECPUWORKERQUALIFYRESULT route=atlas samples={} sparkWorkerCalls={}",
+        sample_count, total_worker_calls);
+
+#ifdef SPK_DEBUG
+    CHECK(total_worker_calls == 0);
+#else
+    CHECK(total_worker_calls > 0);
+#endif
+}
+
+static auto RunSpriteAtlasCallbackScenario() -> uint64_t
 {
     constexpr size_t count = 9;
     constexpr size_t barrier = 4;
@@ -1587,12 +1852,12 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
             REQUIRE(sprite->PlayWithSeed(977));
             sprite->GetParticle()->Update();
             sprite->GetParticle()->Draw();
-            sprite->GetParticle()->Update(0.0625f);
+            sprite->GetParticle()->Update(std::chrono::microseconds {62500});
             sprites.emplace_back(std::move(sprite));
         }
 
         vector<vector<ParticleCpuTests::CapturedDraw>> before;
-        vector<float32_t> elapsed;
+        vector<timespan> elapsed;
         vector<CpuUpdateDiagnostics> diagnostics;
 
         for (auto& sprite : sprites) {
@@ -1613,7 +1878,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
                 return;
             }
 
-            const auto found = std::find(effect_names.begin(), effect_names.end(), effect);
+            auto found = std::find(effect_names.begin(), effect_names.end(), effect);
             REQUIRE(found != effect_names.end());
             order.emplace_back(numeric_cast<size_t>(found - effect_names.begin()));
         });
@@ -1634,7 +1899,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
             auto& sprite = sprites[index];
             CHECK(sprite->GetParticle()->IsActive());
             CHECK(sprite->GetParticle()->GetElapsedTime() == elapsed[index]);
-            const auto after = sprite->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+            auto after = sprite->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
             CHECK(after.OwnerKernelCalls == diagnostics[index].OwnerKernelCalls);
             CHECK(after.WorkerKernelCalls == diagnostics[index].WorkerKernelCalls);
             rig->Render.ClearDraws();
@@ -1652,7 +1917,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
             REQUIRE(runtime);
             runtime->GetEditableBaseSystem()->getContext().setRandomSeed(123456U);
             REQUIRE(sprite->PlayWithSeed(numeric_cast<int32_t>(977 + ordinal)));
-            sprite->GetParticle()->Update(0.125f);
+            sprite->GetParticle()->Update(std::chrono::milliseconds {125});
             sprite->GetParticle()->Draw();
             sprite->SetDrawInScene(ordinal != barrier);
             logical.emplace_back(std::move(sprite));
@@ -1664,7 +1929,9 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
         rigs.emplace_back(std::move(rig));
     }
 
-    uint64_t worker_calls = 0;
+    WorkScheduler::Diagnostics parallel_before = parallel.GetDiagnostics();
+    array<uint64_t, 3> owner_calls {};
+    array<uint64_t, 3> worker_calls {};
 
     for (size_t frame = 0; frame < 8; frame++) {
         AdvanceBoundedParticleFrame(timer);
@@ -1683,7 +1950,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
                 return draws;
             };
             vector<vector<ParticleCpuTests::CapturedDraw>> previous;
-            vector<float32_t> elapsed;
+            vector<timespan> elapsed;
 
             for (size_t ordinal = 0; ordinal < count; ordinal++) {
                 previous.emplace_back(capture(ordinal));
@@ -1720,7 +1987,7 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
                 REQUIRE(runtime);
                 runtime->GetEditableBaseSystem()->getContext().setRandomSeed(123456U);
                 REQUIRE(sprites[barrier + 1]->PlayWithSeed(numeric_cast<int32_t>(2000 + frame)));
-                CHECK(sprites[barrier + 1]->GetParticle()->GetElapsedTime() == 0.0f);
+                CHECK(sprites[barrier + 1]->GetParticle()->GetElapsedTime() == timespan::zero);
             });
             auto clear_observer = scope_exit([&rig]() noexcept { rig.Render.SetDrawObserver({}); });
             auto abort_scene = scope_fail([&rig]() noexcept { rig.Sprites.AbortScene(); });
@@ -1735,11 +2002,14 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
             CheckModelParticleDraws(capture(barrier - 1), committed);
             // Respawn occurred inside the atlas callback at the current cached time. The later sprite must
             // compute its fresh forced-draw delta, rather than consume a descriptor prepared before the barrier.
-            CHECK(sprites[barrier + 1]->GetParticle()->GetElapsedTime() == Catch::Approx(0.001f));
+            CHECK(sprites[barrier + 1]->GetParticle()->GetElapsedTime() == timespan {std::chrono::milliseconds {1}});
 
             for (size_t ordinal = 0; ordinal < count; ordinal++) {
                 auto draws = capture(ordinal);
-                const auto diagnostics = sprites[ordinal]->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+                CpuUpdateDiagnostics diagnostics = sprites[ordinal]->GetParticle()->GetRuntimeSystem()->GetCpuUpdateDiagnostics();
+
+                owner_calls[mode] += diagnostics.OwnerKernelCalls;
+                worker_calls[mode] += diagnostics.WorkerKernelCalls;
 
                 if (mode == 0) {
                     reference.emplace_back(draws);
@@ -1750,22 +2020,47 @@ TEST_CASE("SpriteManager atlas callbacks observe committed spans and mutate only
                     CheckModelParticleDraws(draws, reference[ordinal], false);
                 }
 
-                if (mode == 2) {
-                    worker_calls += diagnostics.WorkerKernelCalls;
-                }
-                else {
+                if (mode != 2) {
                     CHECK(diagnostics.WorkerKernelCalls == 0);
                 }
             }
         }
     }
 
+    WorkScheduler::Diagnostics parallel_after = parallel.GetDiagnostics();
+    uint64_t parallel_batches = parallel_after.ParallelBatches - parallel_before.ParallelBatches;
+    uint64_t parallel_items = parallel_after.ParallelItems - parallel_before.ParallelItems;
 #ifdef SPK_DEBUG
-    CHECK(worker_calls == 0);
+    bool cpu_admission_expected = false;
 #else
-    INFO("Zero worker calls means participation evidence is incomplete; state and callback ordering have separate assertions above");
-    CHECK(worker_calls > 0);
+    bool cpu_admission_expected = true;
 #endif
+    logging::write("PARTICLECPUATLASDIAG batches={} items={} ownerCalls={} workerCalls={} admitted={}",
+        parallel_batches, parallel_items, owner_calls[2], worker_calls[2], cpu_admission_expected);
+
+    for (size_t mode = 0; mode < rigs.size(); mode++) {
+        INFO("Completed owner or worker kernel work is required for every execution mode");
+        CHECK(owner_calls[mode] + worker_calls[mode] > 0);
+
+        bool worker_allowed = mode == 2;
+#ifdef SPK_DEBUG
+        worker_allowed = false;
+#endif
+        if (!worker_allowed) {
+            CHECK(worker_calls[mode] == 0);
+        }
+    }
+
+    if (cpu_admission_expected) {
+        CHECK(parallel_batches > 0);
+        CHECK(parallel_items > 0);
+    }
+    else {
+        CHECK(parallel_batches == 0);
+        CHECK(parallel_items == 0);
+    }
+
+    return worker_calls[2];
 }
 #endif
 
@@ -1778,7 +2073,7 @@ static auto MakeMovingChildParticleResources() -> vector<pair<string, vector<uin
     for (string_view owner : {"Root", "Child"}) {
         SPK::SPKContext context;
         SPK::FO::EnsureSparkParticleObjectsRegistered(context);
-        const auto found = std::find_if(resources.begin(), resources.end(), [](const auto& entry) { return entry.first == "Particles/Cpu.spk"; });
+        auto found = std::find_if(resources.begin(), resources.end(), [](const auto& entry) { return entry.first == "Particles/Cpu.spk"; });
         REQUIRE(found != resources.end());
         const auto& payload = found->second;
         auto system = context.getIOManager().loadFromBuffer("spk", ptr<const uint8_t> {payload.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned int>(payload.size()));
@@ -1888,13 +2183,43 @@ static auto MakeMovingChildParticleResources() -> vector<pair<string, vector<uin
     return resources;
 }
 
+static auto RunModelRootCallbackScenario() -> uint64_t;
+
 TEST_CASE("Model root callbacks observe moving child-joint particles and zero repose preserves state", "[particle][particle-cpu-order][particle-cpu-model][spark]")
+{
+    (void)RunModelRootCallbackScenario();
+}
+
+TEST_CASE("Model root callback particle CPU worker participation qualification", "[.][particle-worker-qualification]")
+{
+    uint64_t total_worker_calls = 0;
+    constexpr size_t sample_count = 4;
+
+    for (size_t attempt = 0; attempt < sample_count; attempt++) {
+        uint64_t sample_worker_calls = RunModelRootCallbackScenario();
+        total_worker_calls += sample_worker_calls;
+        logging::write("PARTICLECPUWORKERQUALIFY route=root backend=spk attempt={} workerCalls={} totalWorkerCalls={}",
+            attempt, sample_worker_calls, total_worker_calls);
+    }
+
+    logging::write("PARTICLECPUWORKERQUALIFYRESULT route=root samples={} sparkWorkerCalls={}",
+        sample_count, total_worker_calls);
+
+#ifdef SPK_DEBUG
+    CHECK(total_worker_calls == 0);
+#else
+    CHECK(total_worker_calls > 0);
+#endif
+}
+
+static auto RunModelRootCallbackScenario() -> uint64_t
 {
     auto settings = ClientEngineTests::MakeClientTestSettings();
     auto client = ClientEngineTests::MakeClientEngine(settings, ClientEngineTests::MakeClientTestResources(MakeMovingChildParticleResources()));
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
     WorkScheduler zero("ChildParticleZero", 0);
     WorkScheduler parallel("ChildParticleParallel", 2);
+    REQUIRE(parallel.IsParallel());
     ParticleCpuTests::CapturingAppRender render(&settings);
     EffectManager effects(&settings, &client->Resources, &render);
     effects.LoadDefaultEffects();
@@ -1904,8 +2229,8 @@ TEST_CASE("Model root callbacks observe moving child-joint particles and zero re
     array<int32_t, MODEL_LAYERS_COUNT> layers {};
     layers[2] = 1;
     layers[3] = 1;
-    const auto state = static_cast<CritterStateAnim>(1);
-    const auto action = static_cast<CritterActionAnim>(1);
+    CritterStateAnim state = static_cast<CritterStateAnim>(1);
+    CritterActionAnim action = static_cast<CritterActionAnim>(1);
 
     for (size_t mode = 0; mode < 3; mode++) {
         auto manager = safe_alloc::make_unique<ModelManager>(
@@ -1956,7 +2281,9 @@ TEST_CASE("Model root callbacks observe moving child-joint particles and zero re
         model->PoseSpriteFrame(true);
     }
 
-    uint64_t workers = 0;
+    WorkScheduler::Diagnostics parallel_before = parallel.GetDiagnostics();
+    array<uint64_t, 3> owner_calls {};
+    array<uint64_t, 3> worker_calls {};
 
     for (size_t frame = 0; frame < 4; frame++) {
         for (auto& model : models) {
@@ -2046,8 +2373,9 @@ TEST_CASE("Model root callbacks observe moving child-joint particles and zero re
                 CheckModelParticleDraws(new_child, child_reference);
             }
 
-            const auto diagnostics = model->GetParticleCpuUpdateDiagnostics();
-            workers += mode == 2 ? diagnostics.WorkerKernelCalls : 0;
+            CpuUpdateDiagnostics diagnostics = model->GetParticleCpuUpdateDiagnostics();
+            owner_calls[mode] += diagnostics.OwnerKernelCalls;
+            worker_calls[mode] += diagnostics.WorkerKernelCalls;
 
             if (mode != 2) {
                 CHECK(diagnostics.WorkerKernelCalls == 0);
@@ -2057,21 +2385,48 @@ TEST_CASE("Model root callbacks observe moving child-joint particles and zero re
             CHECK(callbacks == 1);
             CheckModelParticleDraws(capture(model.as_ptr(), "Root"), new_root);
             CheckModelParticleDraws(capture(model.as_ptr(), "Child"), new_child);
-            const auto zero_diagnostics = model->GetParticleCpuUpdateDiagnostics();
+            auto zero_diagnostics = model->GetParticleCpuUpdateDiagnostics();
             CHECK(zero_diagnostics.OwnerKernelCalls == diagnostics.OwnerKernelCalls);
             CHECK(zero_diagnostics.WorkerKernelCalls == diagnostics.WorkerKernelCalls);
             CHECK(zero_diagnostics.UpdatedInstances == diagnostics.UpdatedInstances);
         }
     }
 
+    WorkScheduler::Diagnostics parallel_after = parallel.GetDiagnostics();
+    uint64_t parallel_batches = parallel_after.ParallelBatches - parallel_before.ParallelBatches;
+    uint64_t parallel_items = parallel_after.ParallelItems - parallel_before.ParallelItems;
 #ifdef SPK_DEBUG
-    CHECK(workers == 0);
+    bool cpu_admission_expected = false;
 #else
-    INFO("Missing actual worker calls is incomplete participation evidence, separately from geometry, placement and callback assertions");
-    CHECK(workers > 0);
+    bool cpu_admission_expected = true;
 #endif
+    logging::write("PARTICLECPUMODELROOTDIAG batches={} items={} ownerCalls={} workerCalls={} admitted={}",
+        parallel_batches, parallel_items, owner_calls[2], worker_calls[2], cpu_admission_expected);
+
+    for (size_t mode = 0; mode < models.size(); mode++) {
+        INFO("Completed owner or worker kernel work is required for every execution mode");
+        CHECK(owner_calls[mode] + worker_calls[mode] > 0);
+
+        bool worker_allowed = mode == 2;
+#ifdef SPK_DEBUG
+        worker_allowed = false;
+#endif
+        if (!worker_allowed) {
+            CHECK(worker_calls[mode] == 0);
+        }
+    }
+
+    if (cpu_admission_expected) {
+        CHECK(parallel_batches > 0);
+        CHECK(parallel_items > 0);
+    }
+    else {
+        CHECK(parallel_batches == 0);
+        CHECK(parallel_items == 0);
+    }
+
+    return worker_calls[2];
 }
 #endif
 
 FO_END_NAMESPACE
-

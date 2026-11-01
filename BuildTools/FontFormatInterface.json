@@ -328,11 +328,11 @@
       "id": "font-format.binding.raw-copy",
       "name": "Descriptor raw-copy boundary",
       "stability": "experimental",
-      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged.",
-      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes.",
+      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged. For FOFNT usage, retain the last Image parsed before End using runtime token boundaries.",
+      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes. Collection honors key-token comments, whole Letter lines and failed integer extraction; it does not replace runtime font validation.",
       "source": [
         {"path": "Source/Common/Settings.inc", "anchors": ["RawCopyFileExtensions", "\"fofnt\"", "\"fnt\""]},
-        {"path": "Source/Tools/RawCopyBaker.cpp", "anchors": ["_context->WriteData(file.GetPath(), file.GetData())"]}
+        {"path": "Source/Tools/RawCopyBaker.cpp", "anchors": ["_context->WriteData(file.GetPath(), file.GetData())", "while (input >> key)", "key.find_first_of(\"#;\")", "key == \"End\"", "key == \"Letter\"", "input >> metric"]}
       ]
     },
     {

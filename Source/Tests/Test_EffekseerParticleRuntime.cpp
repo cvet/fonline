@@ -2681,4 +2681,3 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
 #endif
 
 FO_END_NAMESPACE
-

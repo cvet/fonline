@@ -419,7 +419,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
 auto SpriteSheet::PrepareGeometry(const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> optional<PreparedSpriteGeometry>
 {
-    return GetCurSpr()->PrepareGeometry(pos, colors);
+    return GetCurrentSprite()->PrepareGeometry(pos, colors);
 }
 
 auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t

@@ -10,14 +10,14 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Snapshots: **3**
 - Classified concerns: **31**
-- Source references: **194**
+- Source references: **195**
 - Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
-| `last-frontier` | `lastfrontierdev/lf` | `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier` | `lastfrontierdev/lf` | `b33d97661e701b7f051184c60ab5e86e03ddbf56` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `last-frontier-map-acceptance` | `lastfrontierdev/lf` | `b9c18d6582378d7172efffaad49ad8edc7d2e65d` | `private-local-checkout` | Pinned linked-model output-discovery regression evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
@@ -37,7 +37,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `text-and-localization-format` Text packs, languages, and runtime lookup | `promoted` | `P0` | `content-data` | `Docs/en/how-to/content/text-and-localization.md`<br>`Docs/en/reference/text-format/index.md` | `content-data`<br>`localization`<br>`frontend`<br>`quality` |
 | `model-animation-and-root-motion` Models, animation timing, and sprite root motion | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/model-format.md`<br>`Docs/en/how-to/content/model-animation.md`<br>`Docs/en/how-to/content/sprite-root-motion.md`<br>`Docs/en/reference/model-format/index.md` | `frontend`<br>`content-data`<br>`runtime`<br>`quality` |
 | `effects-images-and-shaders` Effects, images, sprites, and shader resources | `promoted` | `P0` | `frontend` | `Docs/en/explanation/rendering/index.md`<br>`Docs/en/how-to/content/effect-format.md`<br>`Docs/en/how-to/content/image-format.md`<br>`Docs/en/reference/effect-format/index.md`<br>`Docs/en/reference/image-format/index.md` | `frontend`<br>`content-data`<br>`platform`<br>`quality` |
-| `particle-authoring-and-runtime` Particle authoring, baking, tools, and runtime | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/particle-format.md`<br>`Docs/en/how-to/tools/particle-authoring.md`<br>`Docs/en/reference/particle-format/index.md` | `frontend`<br>`tooling`<br>`content-data`<br>`platform`<br>`quality` |
+| `particle-authoring-and-runtime` Particle authoring, baking, tools, and runtime | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/particle-format.md`<br>`Docs/en/how-to/tools/particle-authoring.md`<br>`Docs/en/reference/particle-format/index.md`<br>`Docs/en/explanation/runtime/client-multithreading.md`<br>`Docs/en/contributing/third-party/index.md` | `frontend`<br>`tooling`<br>`content-data`<br>`platform`<br>`quality` |
 | `font-audio-and-video` Fonts, audio, and video presentation | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/font-format.md`<br>`Docs/en/how-to/content/audio.md`<br>`Docs/en/how-to/content/video.md`<br>`Docs/en/reference/font-format/index.md`<br>`Docs/en/reference/audio/index.md`<br>`Docs/en/reference/video/index.md` | `frontend`<br>`content-data`<br>`platform`<br>`quality` |
 | `mapper-and-focused-viewers` Mapper, AnimationViewer, and ParticleViewer | `promoted` | `P0` | `tooling` | `Docs/en/how-to/tools/mapper-interactive.md`<br>`Docs/en/how-to/tools/mapper.md`<br>`Docs/en/how-to/tools/animation-particle-viewers.md` | `tooling`<br>`frontend`<br>`content-data`<br>`quality` |
 | `profiling-practice` Client and server profiling | `promoted` | `P1` | `quality` | `Docs/en/how-to/quality/profiling.md` | `quality`<br>`runtime`<br>`frontend`<br>`build-release` |
@@ -146,9 +146,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ### Particle authoring, baking, tools, and runtime
 
 - Sources: `last-frontier:Docs/Particles.md`, `last-frontier:Docs/ContentWorkflow.md`, `fonline-tla:Resources`
-- Reusable claim: SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts.
-- Decision: Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned.
-- Promotion gate: Both enabled backends pass source, bake, runtime, tool, and visible integration gates.
+- Reusable claim: SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts. Optional CPU simulation uses the existing client scheduler only for audited isolated SPARK graphs or disjoint ready Effekseer chunks, with owner lifecycle and callback boundaries.
+- Decision: Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned. CPU eligibility, destination-context copying, synchronous executor lifetime and failure boundaries are re-derived from Engine source and native tests. Project asset admission, seeded fixtures, map/model workloads, host permission, frame-time and RSS verdicts remain external; source or native success does not promote renderer, platform or production performance acceptance.
+- Promotion gate: Enabled-backend functional and feature configurations must validate state, useful worker work, callback rejection, joined failure and lifetime. Separate ordinary rendered integration and matched performance qualification remain required before deployment claims.
 
 ### Fonts, audio, and video presentation
 
@@ -166,9 +166,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Client and server profiling
 
-- Sources: `last-frontier:Docs/Profiling.md`, `fonline-tla:Docs/ReanimationPlan.md`
-- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.
-- Decision: Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation.
+- Sources: `last-frontier:Docs/Profiling.md`, `fonline-tla:Docs/ReanimationPlan.md`, `last-frontier:Docs/Plans/2026-10-11-client-multithreading-next-measurements.md`
+- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy. Per-frame batch diagnosis needs exact completion intervals, explicit item counts and separate participant-drain scopes; dispatch residual is not wait time and recursive or cross-thread zone totals are not a critical path.
+- Decision: Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation. The pinned client frame analysis identifies these boundaries without qualifying default promotion. Engine-owned batch text, join/wait and coarse callback zones are re-derived from WorkScheduler, SpriteManager and ClientEngine; project fixtures, CSV correlation, host policy and benchmark verdicts remain project-owned.
 - Promotion gate: At least one representative Engine-owned capture proves native and script zones with exact tools.
 
 ### Reusable gameplay and integration test harness

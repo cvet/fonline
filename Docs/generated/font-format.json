@@ -657,8 +657,8 @@
       "id": "font-format.binding.raw-copy",
       "name": "Descriptor raw-copy boundary",
       "stability": "experimental",
-      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged.",
-      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes.",
+      "requirement": "Keep fofnt and fnt in Baking.RawCopyFileExtensions so descriptor bytes reach baked resources unchanged. For FOFNT usage, retain the last Image parsed before End using runtime token boundaries.",
+      "rationale": "There is no dedicated font descriptor baker; RawCopyBaker preserves path and bytes. Collection honors key-token comments, whole Letter lines and failed integer extraction; it does not replace runtime font validation.",
       "source": [
         {
           "path": "Source/Common/Settings.inc",
@@ -671,7 +671,12 @@
         {
           "path": "Source/Tools/RawCopyBaker.cpp",
           "anchors": [
-            "_context->WriteData(file.GetPath(), file.GetData())"
+            "_context->WriteData(file.GetPath(), file.GetData())",
+            "while (input >> key)",
+            "key.find_first_of(\"#;\")",
+            "key == \"End\"",
+            "key == \"Letter\"",
+            "input >> metric"
           ]
         }
       ]
@@ -953,6 +958,35 @@
   ],
   "rendering_rules": [
     {
+      "id": "font-format.rendering.cpu-geometry",
+      "name": "Owner-prepared glyph geometry",
+      "stability": "internal",
+      "requirement": "Keep layout and font access on the application thread; submit immutable glyph values in draw order and complete their geometry before buffer upload.",
+      "rationale": "Glyphs share the pure sprite geometry kernel. Serial mode writes directly; optional client workers process disjoint reserved ranges without renderer or font-manager access.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "SubmitSpriteGeometry",
+            "PreparedSpriteGeometry"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "CompleteSpriteGeometry",
+            "SpriteGeometryBatch"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteGeometry.cpp",
+          "anchors": [
+            "WritePreparedSpriteGeometry"
+          ]
+        }
+      ]
+    },
+    {
       "id": "font-format.rendering.one-pixel-sampling-border",
       "name": "One-pixel sampling border",
       "stability": "experimental",
@@ -1079,6 +1113,31 @@
             "key_parts",
             "LastUsedFrame",
             "_formatCache.clear()"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-format.rendering.batch-layout",
+      "name": "Measurement and draw batch preparation",
+      "stability": "experimental",
+      "requirement": "Prepare equally sized text/color lists with common bounds and format; draw each entry with its returned extent and the same color and format on the application thread.",
+      "rationale": "Distinct cold misses run pure CPU layout in two phases, while cache publication, recency, brightness and draw order remain owner-thread work; warm caches submit no jobs.",
+      "source": [
+        {
+          "path": "Source/Client/FontManager.cpp",
+          "anchors": [
+            "PrepareTextLayouts",
+            "PrepareFormats",
+            "TextMeasureLayout",
+            "TextDrawLayout"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PrepareTextLayouts",
+            "Client_Game_CanPrepareTextLayoutsInParallel"
           ]
         }
       ]
@@ -1243,18 +1302,18 @@
     }
   ],
   "summary": {
-    "entry_count": 57,
+    "entry_count": 59,
     "format_count": 3,
     "fofnt_field_count": 13,
     "bmfont_rule_count": 9,
     "binding_rule_count": 8,
     "layout_rule_count": 9,
-    "rendering_rule_count": 7,
+    "rendering_rule_count": 9,
     "validation_rule_count": 8,
     "entries_by_stability": {
-      "experimental": 55,
-      "internal": 2
+      "experimental": 56,
+      "internal": 3
     }
   },
-  "contract_digest": "70d9dbcba198506cc15a781543364a77b8285e200765682ecec11a8446f281d0"
+  "contract_digest": "ef2dc7f7198faa1fbe1f3c303e8aa8a55dac17a763702e4b8bfa2dfcbfa6f6c6"
 }

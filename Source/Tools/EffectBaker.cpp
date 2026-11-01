@@ -33,6 +33,7 @@
 
 #include "EffectBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "Application.h"
 #include "ConfigFile.h"
 #include "Direct3DLevel9.h"
@@ -127,13 +128,18 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
     auto check_file = [&](const File& file) -> bool {
         string_view path = file.GetPath();
-        auto fofx = ConfigFile(file.GetStr());
-        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
-        uint64_t write_time = file.GetWriteTime();
 
         if (std::ranges::find(EffectDefaults::Paths, path) != EffectDefaults::Paths.end()) {
             _context->KeepOutput(path);
         }
+
+        if (!_context->HasBakeChecker()) {
+            return true;
+        }
+
+        auto fofx = ConfigFile(file.GetStr());
+        int32_t passes = fofx.GetAsInt("Effect", "Passes", 1);
+        uint64_t write_time = file.GetWriteTime();
 
         for (const string& output : GetEffectOutputPaths(path, passes)) {
             (void)_context->CheckOutput(output, write_time);
@@ -162,7 +168,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
             auto file = File(File::Load(file_header));
 
-            if (_context->HasBakeChecker() && !check_file(file)) {
+            if (!check_file(file)) {
                 continue;
             }
 
@@ -180,7 +186,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
         if (!file) {
             return;
         }
-        if (_context->HasBakeChecker() && !check_file(file)) {
+        if (!check_file(file)) {
             return;
         }
 
@@ -192,6 +198,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
     }
 
     vector<std::future<void>> file_bakings;
+    BakingTaskGuard baking_tasks {file_bakings};
 
     for (auto& file_ : filtered_files) {
         string task_name = strex("BakeEffect-{}", file_.GetPath()).str();
@@ -520,6 +527,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // Make all asynchronously
     vector<std::future<void>> file_bakings;
+    BakingTaskGuard baking_tasks {file_bakings};
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv", make_spirv));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv_sdl", make_spirv_sdl));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl", make_glsl));

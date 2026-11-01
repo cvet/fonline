@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4814f4d681d24393217cc413fc8930b7cffe93c9afafd19bd5499f6e18b72523"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"e7ae72c5af263ddcbdec28d6384fdd874af79a4031ae6f8fac6fa61d6a07e588"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 ## Статус контракта

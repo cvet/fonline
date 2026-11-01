@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"93959aa341723c2666f8ee35108a86b8182d6d75a9db476c102699e960ee90c8"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0e64813cebd2ffe0426aaa64b7e84e86358b187a47a4932c43daa9a9cd00d369"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -195,9 +195,19 @@ baker-ов `MasterBaker` пересоздаёт `Resources.usage.json` по те
 монтирования и сторон. Отсутствующая ссылка прерывает bake с указанием свойства,
 владельца или причины зависимости.
 
+Имена пакетов, пути выходов, ссылки и зависимости используют канонические
+относительные пути. Native-регистрация и упаковка отклоняют повторный или
+завершающий `/`. Пустая необязательная ссылка не добавляет корень. Одному
+физическому ключу output соответствуют одна пара pack/path и один baker.
+Совпадение `Art` + `Subpack/Image.png` и `Art/Subpack` + `Image.png` отклоняется
+до изменения registry; повторы той же пары и повышение `Resource` до `Required`
+сохраняются.
+
 Встроенные asset-baker-ы помечают изображения, звук, эффекты, частицы, модели и
 raw-copy выходы как ресурсы. Служебные выходы обязательны: embedded-данные,
-SpriteInfo, ModelAnimationInfo и стандартные эффекты движка. У пользовательского
+SpriteInfo, ModelAnimationInfo и стандартные эффекты движка.
+Стандартные эффекты остаются обязательными и без callback проверки актуальности.
+У пользовательского
 `BaseBaker` по умолчанию `BakingOutputKind::Required`; для необязательных assets
 выбирают `Resource`, обязательные companion-файлы отмечают через
 `BakingContext::KeepOutput`, а внешние runtime-зависимости объявляют через
@@ -210,6 +220,10 @@ SpriteInfo, ModelAnimationInfo и стандартные эффекты движ
 не нужны. Полный локальный кеш изображений также допускает самостоятельный выход
 поглощённого входа; в список поставки его добавит только отдельная ресурсная ссылка
 или runtime-зависимость. Это отбор поставки, без обещания уменьшить обработку исходников.
+
+Image-зависимости частиц учитывают filename options изображений. Не-image зависимости
+Effekseer (модели, материалы, curves и waves) сохраняют полное относительное имя
+ресурса, включая `$`.
 
 Описания моделей и частиц читаются из собственного физического пакета.
 `ResourceProviderCallback` предоставляет всех текущих доступных поставщиков пути;
@@ -274,6 +288,10 @@ AddBakingTarget(Game_PublicResources
 пассивным `BakingContextOptions`. Settings/files заимствуются, report и const-граф
 сохраняют общих владельцев. Для чтения служат `Get*` и `GetAsyncMode()`;
 режимы и граф задаются до запуска задач.
+
+`BakingTaskGuard` объявляется после захваченных входов: на каждом выходе он ждёт
+valid, не deferred futures, не забирая результаты. В ProtoBaker клиентские задачи
+завершаются до уничтожения server shared-future handle.
 
 `CheckOutput()` один раз вызывает checker при наличии, применяет `required`
 (включая `false`) и один раз учитывает итог в отчёте. `HasBakeChecker()` определяет
@@ -613,7 +631,7 @@ Reader получает expected identity и до Ozz codec отклоняет m
 
 `ModelInfoBaker` строит canonical runtime skeleton, unique animations, remaps, presence masks и nearest timelines. Payload проходит write/read-back validation. Signed TRS допускает mirror через X scale и требует `T*R*S` round-trip с relative tolerance `1e-4`; shear, zero scale, invalid quaternion/ranges/durations/timepoints, более 1024 joints или 65535 timepoints и animated aliased roots запрещены. Missing base tracks заполняются canonical rest, animation-only — identity, presence byte остаётся zero.
 
-Каждый `.fo3d` output начинается с `LFMODINF`, schema `3`, flags `0`, затем positional description и обязательный length-prefixed `LFOZZRIG` schema 1. Schema 2 добавила к каждому geometry link union AABB, а schema 3 — счётный набор per-animation боксов с ключом `(StateAnim, ActionAnim)`, поэтому client берёт envelope активного клипа, а не union для любой позы. Каждый шаг несовместим по binary layout: любое следующее поле `LFMODINF` поднимает `MODEL_DESCRIPTION_SCHEMA_VERSION` тем же изменением, а переход на schema 3 использует compatibility marker `0.0.46`, поэтому новый runtime и полный rebake ресурсов едут вместе. Rig содержит signatures, skeleton, base remap, unique animation/remap pairs и sorted `(StateAnim, ActionAnim) -> (clip index, reversed)`. Manifest повторяет source identity/signature и сверяет их с nested `LFOZZARC`. Counts/order/duplicates/bindings/remaps/consumption/tags/topology/rest/tracks/durations проверяются до публикации immutable `ModelInformation`. Unversioned descriptions не поддерживаются; compatibility marker mesh transition — `0.0.30`, нужен полный rebake.
+Каждый `.fo3d` output начинается с `LFMODINF`, schema `5`, flags `0`, затем positional description и обязательный length-prefixed `LFOZZRIG` schema 1. Schema 5 хранит static texture name, mesh и slot без animation flag; прежние схемы description отвергаются. Нужны согласованные baker/runtime и принудительный rebake descriptions/metadata с текущим runtime marker из `Source/Common/Common.h`. Schema 2 добавила к каждому geometry link union AABB, а schema 3 — счётный набор per-animation боксов с ключом `(StateAnim, ActionAnim)`, поэтому client берёт envelope активного клипа, а не union для любой позы. Каждый шаг несовместим по binary layout: любое следующее поле `LFMODINF` поднимает `MODEL_DESCRIPTION_SCHEMA_VERSION` тем же изменением, а переход на schema 3 использовал compatibility marker `0.0.46`, поэтому новый runtime и полный rebake ресурсов едут вместе. Rig содержит signatures, skeleton, base remap, unique animation/remap pairs и sorted `(StateAnim, ActionAnim) -> (clip index, reversed)`. Manifest повторяет source identity/signature и сверяет их с nested `LFOZZARC`. Counts/order/duplicates/bindings/remaps/consumption/tags/topology/rest/tracks/durations проверяются до публикации immutable `ModelInformation`. Unversioned descriptions не поддерживаются; compatibility marker mesh transition — `0.0.30`, нужен полный rebake.
 
 Generated Ozz rig является единственным production clip/pose payload. `ModelAnimationController` хранит LF timeline/events и Ozz clip metadata; sampling, blending, movement replacement, procedural rotations и local-to-model выполняются per-instance. Cross-model sharing или persisted cache требуют отдельного измеренного обоснования.
 

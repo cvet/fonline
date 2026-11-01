@@ -14,6 +14,60 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-26
 
+### Added
+
+- Client workers on `2026.1.70-dev` share a client-owned `WorkScheduler` for model poses, sprite/glyph geometry, text layout, dirty light/fog and eligible particle CPU updates. GPU work, resource access, script callbacks and ordered publication stay on the application thread. Unsupported, small and zero-worker loads stay direct. `Client.Multithreading` defaults to false; enablement qualifies neither performance nor platforms.
+- Add `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` and passive `TextLayoutResult` with `Width`, `Height` and `Lines`. Measurement/drawing remains; reuse bounds with identical text/font/format/color only. Warm layouts submit no jobs.
+- Add bounded static-map preparation on the same pool. `ResourceManager` owns acquisition, factories, caches, generation/epoch cancellation, optional decoding and shutdown drain. Workers decode owning passive buffers; the owner replays sprite/atlas publication and failures in order. Exact custom-factory dispatch and independent sheet playback remain.
+- Fix HEX/SQUARE fixtures, six-to-eight Fallout directions and Clang 24 RTTI warnings. Runtime/formats stay unchanged; no migration.
+- Reject known headers exceeding remaining reservation before full provider reads. Coalescing, actual-byte admission, cancellation/retry, ordinary loading, byte limits and public APIs stay unchanged.
+- Match minimal-client diagnostics to supplied effects, declare moving-child particle animation enums and use explicit native owner/borrow operations. Preserve exact diagnostics and literal geometry/pixel/alias/callback/particle-state checks. Rebuild native tests; no resource-schema/script migration.
+
+### Fixed
+
+- Preserve complete Effekseer non-image dependency names in resource manifests; `$` no longer truncates model filenames. Rebuild the baker and rebake/repackage; particle binaries and resource formats are unchanged.
+- Keep built-in default effects and their shader companions in resource manifests when `EffectBaker` has no incremental checker. Rebuild the baker and rebake/repackage; shader binaries and resource formats are unchanged.
+
+- Reject colliding pack-relative output identities instead of silently merging them. Rebuild the baker and rebake/repackage; nested pack names and manifest format are unchanged.
+
+- FOFNT resource dependencies follow runtime token rules and retain the last image before `End`. Rebuild the baker and rebake/repackage; descriptors, runtime parsing and formats are unchanged.
+- Enable Baker in the `unit-tests` build role so native validation retains resource-usage integration. Regressions execute real CLI flags and CMake option setters. Reconfigure test builds; no runtime, metadata, resource or saved-data migration.
+- Separate particle physics checks from explicit per-backend worker qualification; run `[particle-worker-qualification]` as well as the default suite. No runtime or migration change.
+- SDK compiler children use normal globalization for named cultures; embedded Mono keeps its setting. Rebuild the baker; compile/bake again.
+- Vulkan accepts RGBA8 UNORM surfaces, retaining one format for textures, upload and both readbacks. Rebuild clients/mapper; check colors, alpha, resize and readback per platform. No script/resource/wire/saved-data migration.
+- Android Client packaging reads metadata from the matching `.fomain-server` while embedding `.fomain-client`. Keep both files from one bake and regenerate APKs: Activity no longer passes `--ApplySubConfig` to a resolved packaged config. Native ABI and resource formats are unchanged.
+- Preserve exact affine model framing on ARM64; rebuild clients/mapper, no migrations.
+- Android quick exit flushes logs without TLS teardown; rebuild native consumers.
+- Preserve Android Vulkan orientation and recover lost presentation surfaces; rebuild clients/mapper.
+- Threading traces count completed callbacks per batch participant, distinguishing idle workers and partial failure. Rebuild profiled consumers; no API or resource migration.
+- Retain maps in Mapper reentrancy tests.
+- Fix SQUARE bearings, trace offsets/chains and viewport shifts; rebuild native consumers; formats/IDs unchanged.
+
+### Migration
+
+- Base: `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`); next version: `2026.1.70-dev`. Preserve both published histories. Apply skipped master migrations in order, especially project-owned animation/resource splitting in version 58 and admission/restore in version 60.
+- Reconfigure/rebuild all enabled native consumers, regenerate both scripting backends' bindings and bake matching server/client metadata, assemblies and resources: added types, methods and settings change generated API metadata. Marker `81`, Managed ABI `9`, wire layouts, sprite v3, resource schemas and persisted property IDs stay unchanged. Package/roll back matching native/runtime/resource sets; no saved-data conversion.
+- Explicit-setting projects add `Client.Multithreading = False`, `Client.MultithreadingMaxWorkers = 8`, `Client.MultithreadingMaxMobileWorkers = 2`, `Client.MultithreadingHeadroomMinCores = 4`, `Render.ParallelSpriteUpdateMinCount = 4` and `Render.ParallelSpriteGeometryMinCount = 128`: direct defaults and provisional thresholds. Caps accept `0..64`; zero mobile cap and threadless Web stay serial. Config baking rejects omitted required settings; `ChooseWorkerCount` rejects invalid caps/headroom before worker startup.
+- No script callable is removed/reinterpreted relative to version 69; text-layout methods are optional. Rebuild native interfaces/layouts. Replace `SpriteManager sprites {settings, window, timer, effects, hashes};` with `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` for direct-only use, or pass an `nptr<WorkScheduler>` borrow. The old five-argument constructor fails compilation. The scheduler outlives all sprite/resource/model/particle consumers; the client declares it first. `FogShape::Input` derives from passive `CalculationInput`; native `Prepare` callers use current scheduler/obstacle-reader parameters or documented defaults.
+- Detect with `rg -n "SpriteManager|ResourceManager|ModelManager|ParticleRuntimeServices|FogShape|ParallelSprite|Multithreading|PrepareTextLayouts|TextLayoutResult" <project-source-paths>`. Use current headers; do not mix old libraries or restore retired version-58 loading/animation APIs. `ResourceManager` owns resource operations; `SpriteManager` retains rendering and its scheduler borrow.
+- Test direct, zero-worker and enabled modes with native geometry, font-layout, light/fog, preparation, pose and particle suites; then exercise ordinary visible map/UI/load/unload/shutdown and measure actual workloads. Timeline preparation may expose changes to an already prepared model next frame: see the [ownership guide](../explanation/runtime/client-multithreading.md). Native pose equality does not qualify callback order/visual equivalence. Keep the switch off until intended workloads/platforms pass.
+
+- Native particle preparation/commit helpers use `timespan`: retain the returned elapsed value through owner preparation and publication; call the isolated backend with `elapsed.to_sec<float32_t>()`. Replace float owner-side deltas with typed durations. Rebuild custom native callers; old float helper arguments fail compilation. Existing backend seconds and logical elapsed units retain their meaning.
+
+### Resource preparation migration
+
+`ResourceManager(resources, sprites, scheduler = nullptr, decoder = ReadSpriteResource)` retains two-argument direct loading. An opted-in decoder is reentrant, accepts/returns only owned bytes/results and cannot capture providers, entities, factories or renderer state. Give `DefaultSpriteFactory` matching sprite/resource-manager borrows; register it with that resource owner. The owner runs prefetch, consume, cancel, invalidate and drain. Explicit client shutdown drains before disconnect/events; destruction drains before provider/factory/renderer loss. Standalone fixtures/embedders preserve declaration order.
+
+The 32-slot/64 MiB reservation bounds documented input, decoded and control capacities for the qualified decoder/STL. Excluded: allocator/transient/provider/GPU storage, retained exception diagnostics and arbitrary decoder captures; no RSS limit. Cancellation revokes publication immediately, retaining active/publishing storage until completion/unwind. See [resource limits and replay](../how-to/content/image-format.md#bounded-cpu-resource-preparation); run real provider/pixel/cancellation fixtures per claimed configuration.
+
+### Particle CPU migration
+
+Rebuild custom native particle backends/model consumers for current `ParticleRuntimeSystem`, `ParticleRuntimeServices`, `ModelManager` and vendored Effekseer interfaces. Unknown graphs, callbacks, unsupported effects and unready parents stay direct. Native custom backends opt in only with the isolated CPU contract. SPARK contexts stay private; constructor/system random streams stay unchanged. Effekseer uses useful independent chunks in its existing manager. Creation, transforms, attachment layout, lifecycle callbacks and drawing stay on the owner; every batch joins before publication/failure propagation.
+
+No separate particle pool. See [particle CPU contract](../explanation/runtime/client-multithreading.md#particle-cpu-updates), [vendored maintenance](../contributing/third-party/index.md#particle-cpu-extensions) and [native input fixtures](../../../Source/Tests/README.md). Storage diagnostics, source checks and headless runs do not prove peak RSS, GPU equivalence, Android acceptance or frame-time improvement.
+
+## 2026.1.69-dev - 2026-10-26
+
 ### Migration
 
 Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: combine the published FOFRM/resource/time branch with master. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Regenerate bindings/metadata, rebuild extensions/all roles and force-rebake. Deploy/roll back matching binaries, assemblies, sources and packs together; mixed generations fail. Saved values/network units keep meaning. Validation: Windows only.
@@ -164,51 +218,6 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 - Timer callback signatures, IDs, units, default intervals and saved-data formats are unchanged. This corrects premature completion: review code that depended on overlapping repeats or early removal of one-shot callbacks. Rebuild all affected native roles, regenerate managed assemblies and rebake matching resources together. No saved-data conversion is required. Runtime compatibility advances from `0.0.77` to `0.0.78` for the native/managed completion bridge; Managed ABI remains `9`. Mixed old/new binaries or resources are unsupported. Base: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); this step is `2026.1.62-dev`.
 
 - Audit every `CountTimeEvent` use (`rg -n "CountTimeEvent" <script-and-native-source-dirs>`). Singleton guards, active status queries and completion waits retain the default inclusive count. A one-shot remains registered until terminal completion, so snapshot coalescing must explicitly exclude execution: Managed `owner.CountTimeEvent(Callback, excludeExecuting: true)` or `Game.CountTimeEvent(id, excludeExecuting: true)`; AngelScript `owner.CountTimeEvent(Callback, true)` or `Game.CountTimeEvent(id, true)`; native `manager.CountTimeEvent(entity, func_name, id, true)`. This allows one independently queued one-shot alongside an executing snapshot. The old scheduler retained recurring records but removed one-shots when the initial call returned; neither boolean alone reproduces that mixed lifetime policy. Existing arguments, IDs and units retain their meaning. Regenerate both backends and compile Server/Client/Mapper before baking.
-
-## 2026.1.61-dev - 2026-10-24
-
-### Added
-
-- Client workers on `2026.1.61-dev` share a client-owned `WorkScheduler` for model poses, sprite/glyph geometry, text layout, dirty light/fog and eligible particle CPU updates. GPU work, resource access, script callbacks and ordered publication stay on the application thread. Unsupported, small and zero-worker loads stay direct. `Client.Multithreading` defaults to false; enablement qualifies neither performance nor platforms.
-- Add `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` and passive `TextLayoutResult` with `Width`, `Height` and `Lines`. Measurement/drawing remains; reuse bounds with identical text/font/format/color only. Warm layouts submit no jobs.
-- Add bounded static-map preparation on the same pool. `ResourceManager` owns acquisition, factories, caches, generation/epoch cancellation, optional decoding and shutdown drain. Workers decode owning passive buffers; the owner replays sprite/atlas publication and failures in order. Exact custom-factory dispatch and independent sheet playback remain.
-- Fix HEX/SQUARE fixtures, six-to-eight Fallout directions and Clang 24 RTTI warnings. Runtime/formats stay unchanged; no migration.
-- Reject known headers exceeding remaining reservation before full provider reads. Coalescing, actual-byte admission, cancellation/retry, ordinary loading, byte limits and public APIs stay unchanged.
-- Match minimal-client diagnostics to supplied effects, declare moving-child particle animation enums and use explicit native owner/borrow operations. Preserve exact diagnostics and literal geometry/pixel/alias/callback/particle-state checks. Rebuild native tests; no resource-schema/script migration.
-
-### Fixed
-
-- Separate particle physics checks from explicit per-backend worker qualification; run `[particle-worker-qualification]` as well as the default suite. No runtime or migration change.
-- SDK compiler children use normal globalization for named cultures; embedded Mono keeps its setting. Rebuild the baker; compile/bake again.
-- Vulkan accepts RGBA8 UNORM surfaces, retaining one format for textures, upload and both readbacks. Rebuild clients/mapper; check colors, alpha, resize and readback per platform. No script/resource/wire/saved-data migration.
-- Android Client packaging reads metadata from the matching `.fomain-server` while embedding `.fomain-client`. Keep both files from one bake and regenerate APKs: Activity no longer passes `--ApplySubConfig` to a resolved packaged config. Native ABI and resource formats are unchanged.
-- Preserve exact affine model framing on ARM64; rebuild clients/mapper, no migrations.
-- Android quick exit flushes logs without TLS teardown; rebuild native consumers.
-- Preserve Android Vulkan orientation and recover lost presentation surfaces; rebuild clients/mapper.
-- Threading traces count completed callbacks per batch participant, distinguishing idle workers and partial failure. Rebuild profiled consumers; no API or resource migration.
-- Retain maps in Mapper reentrancy tests.
-- Fix SQUARE bearings, trace offsets/chains and viewport shifts; rebuild native consumers; formats/IDs unchanged.
-
-### Migration
-
-- Base: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); next version: `2026.1.62-dev`. Preserve both published histories. Apply skipped master migrations in order, especially project-owned animation/resource splitting in version 58 and admission/restore in version 60.
-- Reconfigure/rebuild all enabled native consumers, regenerate both scripting backends' bindings and bake matching server/client metadata, assemblies and resources: added types, methods and settings change generated API metadata. Marker `77`, Managed ABI `9`, wire layouts, sprite v2, resource schemas and persisted property IDs stay unchanged. Package/roll back matching native/runtime/resource sets; no saved-data conversion.
-- Explicit-setting projects add `Client.Multithreading = False`, `Client.MultithreadingMaxWorkers = 8`, `Client.MultithreadingMaxMobileWorkers = 2`, `Client.MultithreadingHeadroomMinCores = 4`, `Render.ParallelSpriteUpdateMinCount = 4` and `Render.ParallelSpriteGeometryMinCount = 128`: direct defaults and provisional thresholds. Caps accept `0..64`; zero mobile cap and threadless Web stay serial. Config baking rejects omitted required settings; `ChooseWorkerCount` rejects invalid caps/headroom before worker startup.
-- No script callable is removed/reinterpreted relative to version 61; text-layout methods are optional. Rebuild native interfaces/layouts. Replace `SpriteManager sprites {settings, window, timer, effects, hashes};` with `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` for direct-only use, or pass an `nptr<WorkScheduler>` borrow. The old five-argument constructor fails compilation. The scheduler outlives all sprite/resource/model/particle consumers; the client declares it first. `FogShape::Input` derives from passive `CalculationInput`; native `Prepare` callers use current scheduler/obstacle-reader parameters or documented defaults.
-- Detect with `rg -n "SpriteManager|ResourceManager|ModelManager|ParticleRuntimeServices|FogShape|ParallelSprite|Multithreading|PrepareTextLayouts|TextLayoutResult" <project-source-paths>`. Use current headers; do not mix old libraries or restore retired version-58 loading/animation APIs. `ResourceManager` owns resource operations; `SpriteManager` retains rendering and its scheduler borrow.
-- Test direct, zero-worker and enabled modes with native geometry, font-layout, light/fog, preparation, pose and particle suites; then exercise ordinary visible map/UI/load/unload/shutdown and measure actual workloads. Timeline preparation may expose changes to an already prepared model next frame: see the [ownership guide](../explanation/runtime/client-multithreading.md). Native pose equality does not qualify callback order/visual equivalence. Keep the switch off until intended workloads/platforms pass.
-
-### Resource preparation migration
-
-`ResourceManager(resources, sprites, scheduler = nullptr, decoder = ReadSpriteResource)` retains two-argument direct loading. An opted-in decoder is reentrant, accepts/returns only owned bytes/results and cannot capture providers, entities, factories or renderer state. Give `DefaultSpriteFactory` matching sprite/resource-manager borrows; register it with that resource owner. The owner runs prefetch, consume, cancel, invalidate and drain. Explicit client shutdown drains before disconnect/events; destruction drains before provider/factory/renderer loss. Standalone fixtures/embedders preserve declaration order.
-
-The 32-slot/64 MiB reservation bounds documented input, decoded and control capacities for the qualified decoder/STL. Excluded: allocator/transient/provider/GPU storage, retained exception diagnostics and arbitrary decoder captures; no RSS limit. Cancellation revokes publication immediately, retaining active/publishing storage until completion/unwind. See [resource limits and replay](../how-to/content/image-format.md#bounded-cpu-resource-preparation); run real provider/pixel/cancellation fixtures per claimed configuration.
-
-### Particle CPU migration
-
-Rebuild custom native particle backends/model consumers for current `ParticleRuntimeSystem`, `ParticleRuntimeServices`, `ModelManager` and vendored Effekseer interfaces. Unknown graphs, callbacks, unsupported effects and unready parents stay direct. Native custom backends opt in only with the isolated CPU contract. SPARK contexts stay private; constructor/system random streams stay unchanged. Effekseer uses useful independent chunks in its existing manager. Creation, transforms, attachment layout, lifecycle callbacks and drawing stay on the owner; every batch joins before publication/failure propagation.
-
-No separate particle pool. See [particle CPU contract](../explanation/runtime/client-multithreading.md#particle-cpu-updates), [vendored maintenance](../contributing/third-party/index.md#particle-cpu-extensions) and [native input fixtures](../../../Source/Tests/README.md). Storage diagnostics, source checks and headless runs do not prove peak RSS, GPU equivalence, Android acceptance or frame-time improvement.
 
 ## 2026.1.61-dev - 2026-10-24
 

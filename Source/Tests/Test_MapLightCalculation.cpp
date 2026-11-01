@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "MapLightCalculation.h"
@@ -100,4 +102,3 @@ TEST_CASE("MapLightCalculationWorkerFailureDrainsAndRecovers")
 }
 
 FO_END_NAMESPACE
-

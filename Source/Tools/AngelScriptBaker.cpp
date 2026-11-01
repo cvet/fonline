@@ -33,6 +33,8 @@
 
 #include "AngelScriptBaker.h"
 
+#include "BakingTaskGuard.h"
+
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptScripting.h"
@@ -103,6 +105,8 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         messages.emplace(message);
         logging::write(message);
     };
+
+    BakingTaskGuard baking_tasks {file_bakings};
 
     if (bake_server) {
         file_bakings.emplace_back(run_async(script_compile_mode, "BakeAngelScript-Server", [&] {

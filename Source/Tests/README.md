@@ -67,7 +67,7 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 
 ## Particle worker qualification
 
-Run hidden `[particle-worker-qualification]` alongside the default suite. Both cases reuse all model/equation geometry, RNG and attachment checks. Each logs up to four complete attempts, requiring actual worker kernels separately for SPARK, model Effekseer and global equations; local equations stay serial. Disabled backends and SPARK with `SPK_DEBUG` need no witness. Missing work fails qualification. Defaults accept completed owner-only or helper-only enabled work. Retain every attempt; pool size and planned batches prove neither participation nor performance.
+Run hidden `[particle-worker-qualification]` with the default suite. It reuses all state, geometry, RNG, attachment and callback checks. Separate actual worker-kernel witnesses are required for basic and moving sprites per backend, SPARK atlas/root callbacks, model SPARK/Effekseer and global equations; local equations remain serial. Sprite/callback qualifiers log four complete samples; model/equation qualifiers log up to four. Disabled backends and SPARK with `SPK_DEBUG` need no witness. Missing work fails qualification. Defaults require completed work and admission where eligible, accept owner-only/helper-only execution, and include an occupied-worker regression. Retain all samples; pool size and planned batches prove neither worker participation nor performance.
 
 ## Opt-in pose batch cost
 

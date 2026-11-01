@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c37e288288f973754de6efc6bb81789dffc660e9d0d50a876770d947a1f868a6"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"d4420ee6a814b9017d7916c1a13f99c01b390923adaee1e9d2da1f40bb5d3b28"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.

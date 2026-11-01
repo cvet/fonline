@@ -790,10 +790,11 @@ TEST_CASE("ResourcePreparationPublishesIndependentSheetsAndPreservesFactoryOverr
     REQUIRE(second);
     CHECK(first != second);
     CHECK(first->GetFramesCount() == 3);
-    CHECK(first->GetDirCount() == GameSettings::MAP_DIR_COUNT);
-    CHECK(first->GetSprMotion()[1] == ipos32 {1, -1});
-    CHECK(first->GetSprMotion()[2] == ipos32 {3, -3});
-    first->SetDir(hdir {1});
+    CHECK(first->GetDirectionCount() == GameSettings::MAP_DIR_COUNT);
+    CHECK(first->GetSpriteMotion()[0] == ipos32 {1, -1});
+    CHECK(first->GetSpriteMotion()[1] == ipos32 {50, -50});
+    CHECK(first->GetSpriteMotion()[2] == ipos32 {3, -3});
+    first->SetDirection(hdir {1});
     first->SetTime(1.0f);
     first->Play({}, true, true);
     CHECK_FALSE(second->IsPlaying());

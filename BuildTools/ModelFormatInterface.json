@@ -1299,7 +1299,7 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
+      "rationale": "An attached child inherits the current static parent texture or effect at the requested slot. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",

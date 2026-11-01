@@ -8,17 +8,17 @@ permalink: /Docs/en/explanation/content-pipeline/baking.html
 
 # Baking Pipeline
 
-This document explains the engine resource baking pipeline: where it is wired, which source files own baker behavior, and how to validate changes. For the broader engine tool map, see [Tools](../../../Tools.md).
+This page explains resource baking's wiring, source owners and validation. See [Tools](../../../Tools.md) for the broader engine tool map.
 
-Use this for reusable engine behavior. Game-specific content folder rules and product package policy belong in the embedding project's docs.
+This page owns reusable engine behavior; game-specific content folders and package policy belong in project docs.
 
 ## Contract status
 
-The baking pipeline is a revision-pinned `experimental` contract. The Engine owns the resource-pack schema, built-in baker names and ordering, incremental/full-rebuild behavior, private runtime payloads, report schema, and the extension hook. An embedding project owns its pack names, input layout, custom bakers, side assignment, content policy, generated project sources, and release acceptance.
+Baking is a revision-pinned `experimental` contract. The Engine owns resource-pack schema, built-in baker names/order, incremental/full rebuilds, private runtime payloads, report schema and extension hook. Projects own pack names, input layout, custom bakers, side assignment, content policy, generated sources and release acceptance.
 
-Treat the current Engine source and generated contract models as authoritative. A project configuration demonstrates one composition of the pipeline; it does not redefine the reusable baker contract.
+Current Engine source and generated contract models are authoritative. A project config demonstrates one pipeline composition, without redefining the reusable contract.
 
-Baking writes loose target-specific outputs. Packaging then selects each logical pack's files from the bake's `Resources.usage.json`, applies its target filter, and writes a deterministic `.fores` base; the executable's `Embedded` pack remains ZIP. A client update may pair a full `.fores` with one append-only writable `.patch.fores`, and a disposable `Resources.foindex` accelerates merged lookup. The byte-level format, hash identities, validation, and recovery rules belong to [Resource Pack Format](../../../ResourcePackFormat.md), while client synchronization belongs to [Client Runtime Split and Updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` compares real baked-tree formats with optional readback verification; `analyze_resource_corpus.py` estimates source distribution and index cost without writing packs.
+Baking writes loose target-specific outputs. Packaging selects each logical pack's files from `Resources.usage.json`, applies its target filter and writes a deterministic `.fores` base; executable `Embedded` remains ZIP. Updates may pair a full `.fores` with one append-only writable `.patch.fores`; disposable `Resources.foindex` speeds merged lookup. [Resource Pack Format](../../../ResourcePackFormat.md) owns byte-level format, hash identities, validation and recovery; [Client Runtime Split and Updater](../runtime/client-updater.md) owns client synchronization. `BuildTools/measure_resource_packs.py` compares real baked-tree formats with optional readback verification; `analyze_resource_corpus.py` estimates source distribution and index cost without writing packs.
 
 ## Source paths inspected
 
@@ -110,36 +110,31 @@ Baking writes loose target-specific outputs. Packaging then selects each logical
 
 ## What baking does
 
-Baking turns project resources and configuration into runtime-ready output. The build pipeline creates `BakeResources` and `ForceBakeResources` command targets in `BuildTools/cmake/stages/ScriptsAndBaking.cmake`. Those targets run the project baker application with the embedding project's main config applied.
+Baking converts project resources/config into runtime output. Command targets `BakeResources` and `ForceBakeResources` in `BuildTools/cmake/stages/ScriptsAndBaking.cmake` run the project baker with the project's main config.
 
-At runtime/source level, baking is owned by:
+Runtime/source owners:
 
-- `Source/Applications/BakerApp.cpp` — executable app wrapper that constructs `MasterBaker` and calls `BakeAll()`.
-- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. An unpackaged application normally pre-bakes resources on startup. `Baking.PrebakeOnStartup = False` skips that pass when a launcher has already baked the output for several processes. On Linux a linker export map makes this the shared library's only public symbol, and a post-build symbol check enforces that ABI. All allocator and engine implementation symbols bind locally, so loading a release baker into a sanitizer host cannot interpose on host allocation or global runtime state.
-- `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
-- `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
+- `Source/Applications/BakerApp.cpp` — executable wrapper constructing `MasterBaker` and calling `BakeAll()`.
+- `Source/Applications/BakerLib.cpp` — exported `FO_BakeResources()` entry for library baking. Unpackaged apps normally prebake on startup; `Baking.PrebakeOnStartup = False` skips this when a launcher already baked for several processes. On Linux, a linker export map and post-build symbol check make it the library's sole public symbol. Allocator/Engine implementation symbols bind locally, preventing a release baker loaded into a sanitizer host from interposing host allocation or global runtime state.
+- `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared context, baker setup, data source, output writing and `MasterBaker`.
+- `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report contracts, thread-safe aggregation, JSON serialization and report paths.
 
 ### Output names are reconciled with the names bakers addressed
 
-`MasterBaker::BakeAllInternal()` reconciles the output tree with the names the bakers actually addressed, in two steps around the outdated-output sweep:
+`MasterBaker::BakeAllInternal()` reconciles output names with those the bakers addressed, in two steps around the outdated-output sweep:
 
-1. `ReconcileStaleCasedOutputDirs()` walks the expected output directories shallowest first and renames any that differ from the expected spelling by letter case only, logging `Rename stale-cased dir <from> to <to>`. Directories go first because renaming a file into a differently-cased parent resolves straight back to the existing directory and leaves its name untouched, and shallowest-first means every rename lands inside a parent whose own name is already correct.
-2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
+1. `ReconcileStaleCasedOutputDirs()` walks expected directories shallowest first and renames case-only differences, logging `Rename stale-cased dir <from> to <to>`. Directories precede files: a differently cased parent otherwise resolves to the existing directory, leaving its name unchanged. Shallowest-first puts each rename in an already corrected parent.
+2. After the sweep, files receive the same comparison, logging `Rename stale-cased file <from> to <to>`.
 
-This exists because a case-only rename of an input is otherwise invisible on a case-insensitive filesystem. The output stream or directory creation reuses the old directory entry, the outdated sweep compares case-folded paths, and incremental baking may then skip the apparently current artifact. Runtime lookup remains exact, so the stale spelling becomes an unresolvable resource.
+On case-insensitive filesystems, case-only input renames otherwise disappear: output creation reuses old entries, the outdated sweep case-folds paths, and incremental baking may skip the apparently current artifact. Exact runtime lookup then cannot resolve its stale spelling.
 
-The expected names come from `BakeChecker`, so a baker whose output differs from its source registers the output path. `ImageBaker` registers Fallout critter `.frm` frames in lowercase and a `.fr0`..`.fr5` direction set as one `.fofrm` for critters or `.frm` elsewhere. This keeps reconciliation from restoring the source spelling over the name runtime lookup expects. `ScanModeRegistersTheResourceEachSourceBakesTo` checks registered names against the written resources.
+`BakeChecker` supplies expected names, so bakers with different source/output names register output paths. `ImageBaker` registers lowercase Fallout critter `.frm` frames and a `.fr0`..`.fr5` set as one `.fofrm` for critters or `.frm` elsewhere. Reconciliation therefore keeps runtime spelling instead of restoring source spelling. `ScanModeRegistersTheResourceEachSourceBakesTo` compares registrations with written resources.
 
-Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
+Reconciliation runs once per bake over produced outputs, including those skipped as up to date; it adds no per-write work and neither deletes nor recreates content. Case-sensitive filesystems need no reconciliation: the ordinary outdated sweep removes the old name. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin pipeline/filesystem contracts.
 
 ## Output ownership and competing processes
 
-`MasterBaker::BakeAll` acquires an exclusive `<output-directory>.lock` before
-creating a report or deleting the previous report, success marker or outputs.
-Existing path components are canonicalized, so relative, trailing-separator and
-directory-alias paths share the same lock. The output must name a directory
-below a filesystem root. The owner retains the lock through error handling and
-both report writes; RAII releases it on return, including failed baking.
+`MasterBaker::BakeAll` acquires exclusive `<output-directory>.lock` before creating/deleting reports, success markers or outputs. Canonicalizing existing path components unifies relative, trailing-separator and directory-alias paths. Output must be a directory below a filesystem root. The lock covers error handling and both report writes; RAII releases it on return, including failure.
 
 The sibling file survives a forced output rebuild. Leave it in place: its
 existence does not mean a bake is running. Removing a held POSIX lock file can
@@ -150,79 +145,60 @@ including a repeat call on a previously used `MasterBaker`. Check the running
 owner and directory permissions, then retry after it exits. Parent directories
 and the empty sibling lock may be created even when acquisition fails.
 
-The native baker alone writes `Resources.build-hash`, using its compiled
-`FO_BUILD_HASH`, before releasing the output lock. `AddBakingTarget` has no
-post-process resource-marker writer; an unlocked CMake write could otherwise
-mark another process's incomplete rebuild as successful. Native binary markers
-still use the configured hash helper. Reconfigure and rebuild for a new revision.
+Only the native baker writes `Resources.build-hash`, from compiled `FO_BUILD_HASH`, before releasing the lock. `AddBakingTarget` has no post-process marker writer: an unlocked CMake write could mark another process's incomplete rebuild successful. Native binary markers still use the configured hash helper. Reconfigure/rebuild for a new revision.
 
-In builds with `AS_DEBUG`, an AngelScript pack also requires the working
-directory's `AS_DEBUG.lock` before output mutation. Baker processes using that
-same directory refuse concurrent debug compilation even for different resource
-outputs. AngelScript role compilers and packs at their script-baking order run
-sequentially because bytecode diagnostic filenames are shared. Other pack
-orders retain their configured mode. Release builds retain ordinary pack and
-role parallelism and do not acquire the diagnostic lock. Use separate working
-directories for independent debug bakes; this lock does not govern arbitrary
-external AngelScript compilers. Both lock files are process-owned handles and
-are released by the OS on process exit; they are not PID sentinels.
+With `AS_DEBUG`, an AngelScript pack also acquires the working directory's `AS_DEBUG.lock` before output mutation. Same-directory baker processes refuse concurrent debug compilation even with different outputs. Role compilers and packs at the script-baking order run serially because bytecode diagnostic filenames are shared; other pack orders keep their configured mode. Release builds retain pack/role parallelism without this lock. Independent debug bakes need separate working directories; the lock does not govern arbitrary external AngelScript compilers. Both locks are process-owned handles released by the OS at exit, not PID sentinels.
 
-`DiskFileSystem` lock/move/Unicode tests, `BakerMasterRawCopy`, its failure and
-forced-rebuild cases, and `BakerMasterAngelScriptMultiplePacks` cover these
-boundaries. Process integration must additionally verify a refused second
-owner, byte-identical protected outputs, and successful reuse after normal or
-abrupt owner exit. A lock protects cooperating bakers; it is not a transaction
-over the produced resource set.
+`DiskFileSystem` lock/move/Unicode tests, `BakerMasterRawCopy` failure/forced-rebuild cases and `BakerMasterAngelScriptMultiplePacks` cover these boundaries. Process integration must also verify a refused second owner, byte-identical protected outputs and reuse after normal/abrupt owner exit. Locks protect cooperating bakers, without making the resource set transactional.
 
 ## Resource usage manifest
 
-A successful bake does not export its whole output tree. `MasterBaker::BakeAllInternal()` registers every configured pack into a `ResourceUsage` collector (`Source/Tools/ResourceUsage.h` / `.cpp`) and, after all pack bakers finish, publishes `Resources.usage.json` into the output directory. That manifest is the packaging-side contract of the bake: `BuildTools/resource_usage.py` validates and loads it, and `BuildTools/package.py` packages only the files it lists.
+`MasterBaker::BakeAllInternal()` registers every configured pack in a `ResourceUsage` collector (`Source/Tools/ResourceUsage.h` / `.cpp`), then publishes `Resources.usage.json` in the output directory after all pack bakers finish. Packaging exports only that selection: `BuildTools/resource_usage.py` validates/loads the manifest; `BuildTools/package.py` packages only listed files.
 
-The manifest carries `Version` (the integer `1`), `BuildHash` and `BakingConfigHash`, plus a `Packs` object mapping every configured pack name to its sorted, exact, pack-relative file list; an empty selection stays listed as an empty array. `Reasons` is a diagnostic object keyed by `<pack>/<path>` that records why each selected output was chosen; packaging ignores it.
+The manifest contains `Version` (integer `1`), `BuildHash`, `BakingConfigHash` and `Packs`: every configured pack maps to a sorted, exact pack-relative file list, including empty arrays. Diagnostic `Reasons`, keyed by `<pack>/<path>`, explains selections; packaging ignores it.
+
+Pack names, output paths, references and dependency edges use canonical relative paths. Native registration and packaging reject repeated or trailing `/`. An empty optional reference adds no root. One physical output key must identify one pack/path pair and baker. Aliases such as `Art` + `Subpack/Image.png` and `Art/Subpack` + `Image.png` fail before registry mutation; identical repeats and `Resource` to `Required` promotion remain valid.
 
 ### Manifest lifecycle
 
-The previous manifest is deleted only after `BakeAll()` has acquired the exclusive output lock and before the run mutates any baked output, so a refused lock leaves it, the markers, the reports and the resources unchanged, and an interrupted run cannot leave the previous run's manifest usable. On success the new manifest is written to `Resources.usage.json.tmp` and renamed into place before `Resources.baking-config-hash` and `Resources.build-hash` are written: the success markers cannot appear unless the manifest of that run has been published. Packaging consumes the manifest only together with both markers and fails on any mismatch.
+`BakeAll()` deletes the previous manifest after acquiring the output lock and before any output mutation. Refused locks leave manifest, markers, reports and resources unchanged; interrupted bakes cannot leave a usable old manifest. Success writes `Resources.usage.json.tmp`, renames it into place, then writes `Resources.baking-config-hash` and `Resources.build-hash`. Success markers therefore require that run's published manifest. Packaging requires the manifest and both markers to match.
 
-The manifest is selection over the full loose output of a normal (incremental or forced) bake. It is not a bake speedup and it does not delete source art: baking still produces the complete local tree, including a complete local image cache, and the outdated-output sweep still removes outputs no baker addressed. Only packaging is narrowed — an output present on disk is exported only when the selection below includes it.
+The manifest selects from a normal incremental/forced bake's complete loose output; it neither accelerates baking nor deletes source art. Baking still produces the full local tree and image cache, and the outdated sweep still removes outputs no baker addressed. Only packaging narrows: disk presence alone does not select an export.
 
 ### Root references
 
-`ResourceUsage::CollectReferences()` re-reads root references from the baked output on every run, including cache hits; a previous manifest is never reused as a source. Roots are:
+`ResourceUsage::CollectReferences()` re-reads baked root references every run, including cache hits, never sourcing a previous manifest. Roots:
 
 - the `Render.ImGuiDefaultEffect`, `Render.CritterStubSpriteName` and `Render.ItemStubSpriteName` settings, from the applied config and the baked client config;
 - every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from `.foinfo` files — through `ResourceUsage::AddProperties()`;
 - the same resource-typed properties of placed map entities (critters on the server side, items on both sides), restored from the baked map blobs.
 
-`AddProperties` is a typed property read, not a scan of arbitrary strings: it visits only properties whose base type is resource, and only a nonempty scalar `hstring` or a nonempty `hstring[]` array; any other resource-typed shape is a baking error. Each root must name an actual baked output path — a reference with no baked provider fails manifest creation with `Referenced resource has no baked output`, so root paths always map to the names bakers actually wrote.
+`AddProperties` reads typed properties, not arbitrary strings: only resource base types with nonempty scalar `hstring` or nonempty `hstring[]` arrays qualify; other resource-typed shapes fail baking. Each root must name a real baked output. Missing providers fail manifest creation with `Referenced resource has no baked output`, binding roots to names actually written.
 
-Each metadata pass skips properties disabled for its role. A server-only or client-only `Resource` field is collected by its active role and contributes to the shared selection.
+Each metadata pass skips properties disabled for its role; active-role reads of server-only/client-only `Resource` fields contribute to the shared selection.
 
 ### Output kinds and registration
 
 Every baker output is registered as `Required` or `Resource`:
 
-- `BakingContext::CheckOutput()` registers each path the incremental checker is asked about — including paths answered up to date — and `WriteData()` registers each write, so cache hits and fresh writes both count as outputs. Re-registering one path under a second baker fails, and a later `Required` registration upgrades a `Resource` one.
-- Custom bakers default to `Required`: the per-baker `BakingContext` copy defaults its output kind to `Required`, and outputs of the `Embedded` pack are forced to `Required` regardless of the requested kind. Built-in image, audio, effect, particle, model and raw-copy outputs are `Resource` unless the baker explicitly calls `KeepOutput()`, which registers a path as `Required`; the structural outputs that must always ship — `SpriteInfo` and `ModelAnimationInfo` indexes, default effects and embedded content — are preserved that way.
+- `BakingContext::CheckOutput()` registers every incremental query, including up-to-date answers; `WriteData()` registers writes. Cache hits and fresh writes both count. Registration under a second baker fails; later `Required` upgrades `Resource`.
+- Custom bakers default to `Required`: per-baker `BakingContext` copies default the output kind to `Required`. `Embedded` outputs are always `Required`, regardless of requested kind. Built-in image, audio, effect, particle, model and raw-copy outputs are `Resource` unless `KeepOutput()` explicitly marks them `Required`. This preserves always-shipped structural outputs: `SpriteInfo`/`ModelAnimationInfo` indexes, default effects and embedded content. Default-effect retention also applies when no incremental checker is supplied.
 
 ### Selection and dependency closure
 
-`ResourceUsage::CreateManifest()` selects in three steps. First, every `Required` output must be present in its pack's output directory, or the bake fails with `Required baked output is missing`. Second, every root reference selects all available outputs that provide that path — one logical reference preserves pack identity and selects every matching provider across packs. Third, each selected output contributes the dependencies its owning baker returns from `CollectResourceDependencies()`, followed transitively to a fixed point.
+`ResourceUsage::CreateManifest()` first requires every `Required` output in its pack directory, failing with `Required baked output is missing` otherwise. Each root then selects all available matching providers across packs, preserving pack identity. Finally, selected outputs add owning-baker `CollectResourceDependencies()` edges transitively to a fixed point.
 
-That dependency edge is the runtime closure: what the output loads at runtime beyond itself. The default implementation returns no dependencies, so a custom baker that owns runtime companions must override it; the built-in closure covers font pages, effect current-pass companions, model meshes, attachments, textures, effects and cuts, and particle external dependencies. FOFRM composition inputs are bake-time dependencies only: after flattening, the composed `.fofrm` output is the export edge, and a source image a flattened sprite consumed does not become an export edge merely by having been read.
+Dependency edges describe runtime companions. Custom bakers owning them must override the empty default. Built-in closure covers font pages, effect current-pass companions, model meshes/attachments/textures/effects/cuts and particle externals. FOFRM inputs are bake-time-only dependencies: flattening exports the composed `.fofrm`, without exporting each source image merely read to compose it.
 
-A complete local cache therefore does not imply export. An output that stays baked and up to date is dropped from the manifest as soon as nothing requires it: removing the last reference removes the file from packaging on the next bake even though the cached asset remains in the local tree, and flattening an FOFRM never ships its input PNG merely because the image cache consumed it. The reverse also holds — a standalone consumed source is exported when an independent `Resource` reference or a model-texture dependency names its path, while unreferenced source copies in the cache are absent from package lists.
+A complete, up-to-date cache does not imply export. Removing the last reference drops a file from the next bake's manifest/package while keeping its local cache; flattening an FOFRM alone never ships its input PNG. An independent `Resource` reference or model-texture dependency can still export that source. Unreferenced cache copies stay off package lists.
 
-Model and particle descriptors are read from their own physical pack. A
-`ResourceProviderCallback` exposes every current, available provider of a dependency
-path; model collectors combine their meshes and child descriptions, including
-relative texture overrides. The resulting shared allowlist is a conservative union.
-Unclaimed stale files cannot become resolver candidates. Map inclusion reasons are
-grouped by source map, entity type and property rather than repeated for placement IDs.
+Particle image dependencies resolve image filename options. Effekseer non-image dependencies (models, materials, curves and waves) keep the complete relative resource name, including `$`.
+
+Model/particle descriptors come from their own physical pack. `ResourceProviderCallback` exposes all current available providers of each dependency path; model collectors combine meshes, child descriptions and relative texture overrides into a conservative shared allowlist. Unclaimed stale files cannot resolve. Map inclusion reasons group by source map, entity type and property, not placement ID.
 
 ### Forced inclusion for opaque runtime names
 
-Resources addressed only by embedding-project data the typed-property collector cannot see — JSON/INI files, Spine data, script-composed dynamic names — have no root and are not exported by guessing. The Engine provides no wildcard expansion, directory recursion, arbitrary-string scanning, or script-constructor interception for this registry, and it never silently falls back to exporting everything. The supported route is an embedding-project `FixedType` — for example a `ResourceSet` carrying an `hstring[] Resource` `Files` property, declared with ordinary `///@ FixedType` metadata and populated by ordinary `.foinfo` rows — whose resource properties are read as roots by the same collector. The Engine has no special parser for that name and executes no script constructors for it: any such type is an ordinary typed definition whose references resolve like every other root.
+Typed-property collection cannot see roots used only through project JSON/INI, Spine data or script-built names. The Engine neither guesses exports nor expands wildcards, recurses directories, scans arbitrary strings, intercepts script constructors or falls back to exporting everything. Use a project `FixedType`, e.g. `ResourceSet` with an `hstring[] Resource` `Files` property, ordinary `///@ FixedType` metadata and `.foinfo` rows. The same collector reads its resource properties as roots. That name has no special parser or script-constructor execution: its typed references resolve like other roots.
 
 For example, declare:
 
@@ -271,6 +247,10 @@ The actual final target names that depend on these commands are project/preset-d
 `Source/Tools/BakingContext.h/.cpp` encapsulates state initialized from passive
 `BakingContextOptions`. Settings/files stay borrowed; report and const graph stay
 shared. Use `Get*` accessors and `GetAsyncMode()`; configure modes/graph before tasks.
+
+Declare `BakingTaskGuard` after captured inputs: it waits valid, non-deferred
+futures on every exit without consuming results. Proto client tasks finish before
+the server shared-future handle is destroyed.
 
 `CheckOutput()` calls the checker once if present, applies `required` (including
 `false`), then reports the result once. `HasBakeChecker()` detects absence.
@@ -700,12 +680,7 @@ should not be parsed by embedding-project code.
 
 ## 3D model baking architecture
 
-The model pipeline is split into source extraction, compatibility analysis,
-conversion, native wire contracts, and the two final bakers. These are engine
-responsibilities, not interchangeable animation-backend interfaces. The
-animation-specific production code groups them into one same-named `.h`/`.cpp`
-pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and
-`ModelAnimationData`.
+The model pipeline separates source extraction, compatibility analysis, conversion, native wire contracts and two final bakers. These are engine owners, not interchangeable animation-backend interfaces. Animation production code uses one same-named `.h`/`.cpp` pair per owner: `ModelSourceLoader`, `ModelAnimationConverter`, and `ModelAnimationData`.
 
 | Module | Layer | Responsibility |
 | --- | --- | --- |
@@ -722,50 +697,31 @@ The main data flow is:
 `ModelAnimationConverter` -> `ModelAnimationData` -> `ModelInfoBaker` ->
 `ModelInformation` / `ModelAnimation`.
 
-Mesh data follows the parallel
-`FBX/.obj` -> `ModelMeshBaker` -> `ModelMeshData` -> `ModelManager` /
-`ModelHierarchy` path. The two streams meet in `ModelInformation`; clips and
-mutable poses are never serialized into the shared mesh hierarchy.
+Mesh data follows `FBX/.obj` -> `ModelMeshBaker` -> `ModelMeshData` -> `ModelManager` / `ModelHierarchy`. Both streams meet in `ModelInformation`; clips and mutable poses never serialize into shared mesh hierarchy.
 
-The model-specific bounds and duration contract is described immediately above; the Ozz conversion changes its source representation, not the common `AnimationInfo` query surface.
+Ozz conversion changes the source representation, retaining the model bounds/duration contract above and common `AnimationInfo` query surface.
 
-For `ProtoBaker` section resolution, identity, inheritance, side-specific property applicability, strict values, references, and migrations, use [Prototype Format](../../how-to/content/prototype-format.md) and the generated [prototype-format reference](../../reference/prototype-format/index.md). Concrete project extensions, entity metadata, IDs, and semantic field combinations remain project-owned.
+[Prototype Format](../../how-to/content/prototype-format.md) and the generated [prototype-format reference](../../reference/prototype-format/index.md) own `ProtoBaker` section resolution, identity, inheritance, side-specific property applicability, strict values, references and migrations. Project extensions, entity metadata, IDs and semantic field combinations remain project-owned.
 
-For `.fomap` section order, placement IDs, ownership references, static/dynamic handling, mapper round-trip, and the coupled server/client payloads produced by `MapBaker`, use [Map Format](../../how-to/content/map-format.md) and the generated [map-format reference](../../reference/map-format/index.md). Project map catalogs, composition rules, quests, encounters, and gameplay validation remain project-owned.
+[Map Format](../../how-to/content/map-format.md) and the generated [map-format reference](../../reference/map-format/index.md) own `.fomap` section order, placement IDs, ownership references, static/dynamic handling, mapper round-trip and coupled server/client `MapBaker` payloads. Map catalogs, composition rules, quests, encounters and gameplay validation remain project-owned.
 
-`ModelMeshBaker` imports current `.fbx` / `.obj` inputs before `ModelInfoBaker` validates and emits concrete `.fo3d` descriptions. For lexical syntax, includes, layers, attachments, transforms, materials, cuts, runtime composition, and validation, use [Model Format](../../how-to/content/model-format.md) and its generated reference. For animation tuples, `AnimSpeed`, one-step `StateAnimEqual` / `ActionAnimEqual` semantics, `ModelAnimationInfo.foinfo`, runtime distribution, and missing-data behavior, use [Model Animation](../../how-to/content/model-animation.md). Baked mesh/description/config layouts are private baker/runtime contracts and must not be parsed by embedding-project scripts.
+`ModelMeshBaker` imports current `.fbx` / `.obj` before `ModelInfoBaker` validates/emits concrete `.fo3d` descriptions. [Model Format](../../how-to/content/model-format.md) and its generated reference own syntax, includes, layers, attachments, transforms, materials, cuts, runtime composition and validation. [Model Animation](../../how-to/content/model-animation.md) owns animation tuples, `AnimSpeed`, one-step `StateAnimEqual` / `ActionAnimEqual` semantics, `ModelAnimationInfo.foinfo`, runtime distribution and missing-data behavior. Mesh/description/config layouts are private baker/runtime contracts; project scripts must not parse them.
 
-`TextBaker` parses `<TextPack>.<Language>.fotxt`, completes changed pack language sets, and normalizes them against the first `Baking.BakeLanguages` entry. `ProtoTextBaker` merges inherited `$Text` fields and emits the five Engine-generated prototype text packs. Use [Text and Localization](../../how-to/content/text-and-localization.md) and the generated [text-format reference](../../reference/text-format/index.md) for exact syntax, fallback, runtime lookup, color-tag, and project-formatting boundaries.
+`TextBaker` parses `<TextPack>.<Language>.fotxt`, completes changed pack language sets and normalizes against the first `Baking.BakeLanguages` entry. `ProtoTextBaker` merges inherited `$Text` fields into five Engine-generated prototype text packs. [Text and Localization](../../how-to/content/text-and-localization.md) and the generated [text-format reference](../../reference/text-format/index.md) own syntax, fallback, lookup, color-tag and project-formatting boundaries.
 
-`ImageBaker` imports PNG/TGA and ten legacy/descriptor extensions, composes FOFRM sequences/directions/options, and writes the private RGBA sprite container consumed by the stock client. Use [Image And Sprite Formats](../../how-to/content/image-format.md) and its generated [image-format reference](../../reference/image-format/index.md) for exact source support, FOFRM grammar, legacy selectors, output naming, runtime factory coverage, atlas/cache behavior, and validation. Signed per-frame `Motion` then enters the narrower movement-driven presentation contract in [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+`ImageBaker` imports PNG/TGA and ten legacy/descriptor extensions, composes FOFRM sequences/directions/options and writes the stock client's private RGBA sprite container. [Image And Sprite Formats](../../how-to/content/image-format.md) and its generated [image-format reference](../../reference/image-format/index.md) own source support, FOFRM grammar, legacy selectors, output naming, runtime factories, atlases/caches and validation. Signed per-frame `Motion` feeds the narrower movement-driven [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) contract.
 
-`ParticleBaker` owns both optional particle backends. It validates authored SPARK `.spark` XML and serializes deterministic `.spk` data; it compiles Effekseer `.efkproj` sources and dependencies into `.efk`. Both outputs include mandatory measured bounds, and authored `.spk`/`.efk` inputs are rejected. Use [Particle Format And Runtime](../../how-to/content/particle-format.md) and its generated [particle-format reference](../../reference/particle-format/index.md) for backend options, source/runtime formats, supported objects and render capabilities, incremental baking, runtime framing, integration routes, and the mandatory visible validation boundary.
+`ParticleBaker` owns both optional backends: it validates SPARK `.spark` XML into deterministic `.spk` and compiles Effekseer `.efkproj` sources/dependencies into `.efk`. Both require measured bounds; authored `.spk`/`.efk` inputs fail. [Particle Format And Runtime](../../how-to/content/particle-format.md) and its generated [particle-format reference](../../reference/particle-format/index.md) own backend options, formats, supported objects/render capabilities, incremental baking, framing, integration routes and mandatory visible validation.
 
-Bitmap-font descriptors also have no dedicated baker. `RawCopyBaker` copies runtime `.fofnt` and AngelCode text `.fnt` descriptors, while `.bmfc` is only an authoring sidecar that may be shipped for source provenance; the descriptor's referenced PNG/TGA image is baked separately by `ImageBaker`. `FontManager` validates and binds the descriptor at client startup. Use [Font Formats And Text Layout](../../how-to/content/font-format.md) and its generated [font-format reference](../../reference/font-format/index.md) for exact syntax, resource relationships, layout/rendering semantics, diagnostics, and visible validation.
+Fonts have no dedicated baker. `RawCopyBaker` copies runtime `.fofnt` and AngelCode text `.fnt`; `.bmfc` is an authoring sidecar shippable for provenance. `ImageBaker` separately bakes referenced PNG/TGA. `FontManager` validates/binds descriptors at client startup. [Font Formats And Text Layout](../../how-to/content/font-format.md) and its generated [font-format reference](../../reference/font-format/index.md) own syntax, resource relationships, layout/rendering, diagnostics and visible validation.
 
-Audio has a dedicated baker. Authored PCM/IEEE-float `.wav` is normalized to
-signed 16-bit PCM and encoded as Vorbis, while authored `.ogg` is verified and
-passed through without changing its logical path. Runtime playback therefore
-uses one Vorbis decoder and does not accept legacy ACM. Use
-[Audio](../../how-to/content/audio.md) and the generated
-[audio reference](../../reference/audio/index.md) for accepted profiles,
-playback handles, spatial updates, mixing, diagnostics, and audible validation.
+Audio has a dedicated baker: PCM/IEEE-float `.wav` becomes signed 16-bit PCM encoded as Vorbis; verified `.ogg` passes through at its logical path. Runtime uses one Vorbis decoder; legacy ACM is unsupported. [Audio](../../how-to/content/audio.md) and the generated [audio reference](../../reference/audio/index.md) own accepted profiles, handles, spatial updates, mixing, diagnostics and audible validation.
 
-Video also has no dedicated baker or transcoder. Runtime `.ogv` bytes are copied
-unchanged and loaded by exact client resource path into the experimental
-Ogg/Theora decoder. Use [Video](../../how-to/content/video.md) and the generated
-[video reference](../../reference/video/index.md) for whole-resource memory ownership,
-fullscreen/embedded behavior, separate audio, diagnostics, and the mandatory
-visible-client gate.
+Video has no dedicated baker/transcoder. Runtime `.ogv` bytes copy unchanged and load by exact client resource path into the experimental Ogg/Theora decoder. [Video](../../how-to/content/video.md) and the generated [video reference](../../reference/video/index.md) own whole-resource memory, fullscreen/embedded behavior, separate audio, diagnostics and mandatory visible-client validation.
 
-`EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses. Use [Effect Format](../../how-to/content/effect-format.md) and the generated [effect-format reference](../../reference/effect-format/index.md) for the owning authoring, resource, runtime-cache, script-value, and validation contract.
+`EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0), emitting per-stage native `-spv` for `Rendering-Vulkan`, SPIRV-Cross outputs `-glsl` / `-glsl_es` / `-hlsl`, and opt-in SDL_GPU `-spv_sdl` plus SDL-remapped `-msl_mac`/`-msl_ios`. Native SPIR-V uses the engine's 2-set convention (set 0 uniform buffers, set 1 combined image samplers, shared across stages); `-spv_sdl` rewrites its descriptor decorations in place to SDL_GPU per-stage sets (vertex samplers 0 / UBOs 1, fragment samplers 2 / UBOs 3, dense 0..N-1 slots). Per-pass `-info` contains `[EffectInfo]` (program-wide GL/D3D/Vulkan bindings and `CHECK_BUF` sizes against `RenderEffect` structs) and `[EffectInfoSdl]` (per-resource stage slots and sampler/UBO counts for `SDL_CreateGPUShader`). Baking fails on exceeding SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), storage buffers/images, duplicate/missing explicit bindings or unused declared resources. [Effect Format](../../how-to/content/effect-format.md) and the generated [effect-format reference](../../reference/effect-format/index.md) own authoring, resources, runtime caches, script values and validation.
 
-Direct3D consumes baked `-dxbc`, produced from SPIRV-Cross HLSL by vendored
-vkd3d-shader, not runtime HLSL compilation. Optional
-`Baking.Direct3DLevel9Shaders` invokes `Direct3DLevel9.cpp` to add an `Aon9`
-level-9.3 chunk to non-model effects only. Unsupported 9.3 constructs fail
-the bake. A 3D-enabled renderer cannot use a 9.3 device, and 9.1/9.2 are not
-supported; see [Effect Format](../../how-to/content/effect-format.md#baking-outputs).
+Direct3D consumes baked `-dxbc` from SPIRV-Cross HLSL via vendored vkd3d-shader, without runtime HLSL compilation. Optional `Baking.Direct3DLevel9Shaders` invokes `Direct3DLevel9.cpp` to add an `Aon9` level-9.3 chunk only to non-model effects; unsupported 9.3 constructs fail baking. A 3D-enabled renderer cannot use 9.3; 9.1/9.2 are unsupported. See [Effect Format](../../how-to/content/effect-format.md#baking-outputs).
 
 `ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
 frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
@@ -778,334 +734,68 @@ by `BakingSettings`:
 - `AreaSavingsWeight` converts the fraction of original quad area removed into
   selection-score points; one point compensates one submitted triangle.
 
-Declare all four values in an embedding project's `.fomain`, including when
-`Enabled = False`. Image baking resolves and validates the complete group before
-processing frames: `AlphaThreshold` must be in `0..254`, `MaxTriangles` must be
-positive, and `AreaSavingsWeight` must be finite and non-negative. The canonical
-minimal project records the Engine defaults explicitly so a standalone bake does
-not depend on an embedding project's generated or inherited settings state.
+Declare all four `.fomain` values even with `Enabled = False`. Image baking resolves/validates the full group before frames: `AlphaThreshold` in `0..254`, positive `MaxTriangles`, finite non-negative `AreaSavingsWeight`. The canonical minimal project explicitly records Engine defaults, avoiding dependence on project-generated/inherited settings during standalone baking.
 
-The polygonization algorithm is isolated in `SpriteMeshing`. It accepts an
-RGBA frame, its dimensions, and the resolved mesh settings, then owns mask
-construction, component and contour analysis, candidate generation,
-triangulation, validation, scoring, and the diagnostic result. `ImageBaker`
-owns image-format decoding, frame sequences and shared frames, adaptive
-per-frame padding and cropping, mesh serialization, and baking-report
-integration. This
-keeps polygonization independent of `ImageImport::FrameShot` and allows the
-geometry builder to be exercised without an image-resource container.
+`SpriteMeshing` takes RGBA, dimensions and resolved settings, owning mask construction, components/contours, candidates, triangulation, validation, scoring and diagnostics. `ImageBaker` owns decoding, sequences/shared frames, adaptive padding/cropping, serialization and report integration. Polygonization thus stays independent of `ImageImport::FrameShot` and testable without an image-resource container.
 
-Geometric safety is internal policy rather than project tuning. The baker uses
-a one-pixel mask guard band and may probe up to 20 pixels of temporary padding
-when a candidate needs room beyond the source bounds. After selecting a mesh,
-it takes the exact bounds of the final vertices, crops the RGBA payload to those
-bounds, and translates the vertices to the cropped frame origin. The serialized
-per-frame offset is adjusted on both axes so the logical root remains at the
-same screen position even when different animation frames have different
-bounds. At runtime `AtlasSprite` reverses that storage adjustment for its public
-logical size and offset, maps mesh positions through the stored source origin,
-and keeps UVs local to the cropped atlas allocation. A quad or empty result is
-not cropped or padded. Candidate profitability
-is always compared against the original unpadded frame, so increasing the
-search area cannot manufacture an artificial saving. Each unique frame is
-searched on the maximum temporary canvas, then the retained mesh is translated
-into its minimum required canvas without repeating candidate generation. A
-maximum-canvas quad is re-evaluated on the unpadded frame, because the bounded
-contour search can produce a useful border-sensitive candidate there.
+Geometric safety is internal policy. A one-pixel mask guard band and up to 20 pixels of temporary padding accommodate candidates beyond source bounds. Selected final vertex bounds determine RGBA cropping; vertices translate to that origin. Both serialized offset axes adjust to preserve the logical root across differently bounded frames. `AtlasSprite` reverses this adjustment for public size/offset, maps mesh positions through the stored source origin and keeps UVs local to the cropped allocation. Quad/empty results receive no cropping/padding. Profitability compares against the original unpadded frame, so larger search areas cannot invent savings. Each unique frame is searched on the maximum temporary canvas, then retained geometry translates to its minimum required canvas without regenerating candidates. A maximum-canvas quad is re-evaluated unpadded, where bounded contour search may find a useful border-sensitive candidate.
 
-Mesh generation builds enclosing candidates for every reachable triangle count
-from one through `MaxTriangles`. It starts with exact convex-hull support lines.
-A greedy removal path quickly reaches the configured range, then a deterministic
-bounded beam explores alternate support-line removals and retains the smallest
-area found for every triangle count. The exhaustive minimum-area triangle and
-parallelogram candidates remain additional optimized cases. Candidates that do
-not contain the complete hull are rejected before triangulation.
+Mesh generation builds enclosing candidates for every reachable triangle count from one through `MaxTriangles`, starting with exact convex-hull support lines. Greedy removal reaches the configured range quickly; a deterministic bounded beam explores alternate support-line removals, keeping the smallest area per count. Exhaustive minimum-area triangle and parallelogram candidates remain additional optimized cases. Candidates missing any hull area fail before triangulation.
 
-If the mask has multiple disconnected outer contours, the same candidate ladder
-is built for every component. Nearby components are also merged into a
-deterministic hierarchy. Every partition that can fit the triangle budget is
-evaluated, so the search compares one global primitive, all-independent
-primitives, and intermediate groupings such as two close door details plus a
-separate leaf. A bounded dynamic program keeps several low-area alternatives per
-triangle count while distributing the budget. The final validator rejects local
-primitives that overlap each other or miss any guarded visible pixel. Selection
-scores each valid candidate as
-`savedFrameAreaRatio * AreaSavingsWeight - triangleCount` and compares it with
-the ordinary quad score of `-2`. Equal scores prefer the smaller covered area.
-This lets projects explicitly trade submission complexity for fill-rate savings:
-for example, a weight of 64 makes each additional 1.5625% frame-area saving worth
-one extra triangle. A closed double door can still use one common primitive,
-while sufficiently separated leaves use independent primitives without covering
-the gap.
+Disconnected outer contours each receive this candidate ladder; nearby components also merge into a deterministic hierarchy. Every budget-fitting partition is evaluated, comparing a global primitive, independent primitives and intermediate groups such as two close door details plus a separate leaf. Bounded dynamic programming keeps several low-area alternatives per triangle count while distributing the budget. Validation rejects overlapping primitives or missed guarded visible pixels. Each valid candidate scores `savedFrameAreaRatio * AreaSavingsWeight - triangleCount` against the quad's `-2`; ties prefer smaller covered area. This trades submission cost for fill rate: weight 64 values each 1.5625% area saving as one extra triangle. A closed double door can share a primitive; separated leaves can use independent primitives without covering the gap.
 
-The baker also traces exact pixel-cell boundaries, preserves disconnected opaque
-islands and transparent holes, and automatically tries a deterministic ladder
-of closed-contour simplification tolerances. Clipper2 normalizes touching paths,
-offsets simplified geometry by the internal guard band, unions it with the exact
-source polygon so no visible area can be clipped, and intersects it with the
-exact raster-dilated region so simplification cannot bridge arbitrary
-transparent pockets. A second constrained cleanup removes long pixel
-staircases. Every simplified outer-ring edge is moved to the supporting line
-that encloses its complete replaced source chain before adjacent lines are
-intersected; hole rings retain ordinary inward simplification. This keeps the
-cleanup from cutting across visible stair-step corners. Earcut only triangulates
-the resulting outer rings and holes.
+Exact pixel-cell tracing preserves disconnected islands and transparent holes and tries a deterministic closed-contour simplification ladder. Clipper2 normalizes touching paths, offsets simplified geometry by the guard band, unions it with the exact source polygon to prevent visible clipping, and intersects the exact raster-dilated region to prevent arbitrary transparent bridges. A second constrained cleanup removes long pixel staircases: each simplified outer edge moves to the support line enclosing its entire replaced source chain before adjacent-line intersections; holes keep ordinary inward simplification. Thus stair-step corners remain covered. Earcut only triangulates resulting outer rings/holes.
 
-Every valid detailed result up to `MaxTriangles` competes directly with the
-enclosing and per-component candidates under the same score. At every tolerance,
-the constrained offset, guard-band simplified, and tolerance-expanded cover
-families are generated independently; finding a merely valid candidate in one
-family never suppresses another family. The tolerance ladder likewise runs to
-its deterministic bound instead of stopping after several early valid results.
+Every valid detailed result up to `MaxTriangles` competes with enclosing/component candidates under the same score. Each tolerance independently generates constrained-offset, guard-band-simplified and tolerance-expanded cover families; a valid result never suppresses another family. The ladder runs to its deterministic bound, without stopping after early valid results.
 
-The simplified families use a bounded removal beam rather than probing only one
-vertex. Each step tries replacing an exterior corner with a supporting chord
-through that corner; adjacent edge intersections preserve coverage. The beam
-keeps the lowest-area distinct states and records the best result for every
-reachable triangle count. Tolerance-expanded covers convert the
-Douglas-Peucker error bound into an enclosure instead of clipping thin visible
-features. They still undergo exact pixel-cell coverage and topology validation,
-but their transparent overdraw competes through `AreaSavingsWeight` rather than
-a separate tolerance mask.
+Simplified families use a bounded removal beam: each step tries replacing exterior corners with supporting chords through them, preserving coverage at adjacent-edge intersections. The beam keeps lowest-area distinct states and the best result per reachable triangle count. Tolerance-expanded covers turn Douglas-Peucker error bounds into enclosure, preserving thin features. Exact pixel-cell/topology validation still applies; transparent overdraw competes through `AreaSavingsWeight`, without a separate tolerance mask.
 
-Generated triangles must cover the complete unit-square area of every original
-visible pixel; the validator clips triangles against pixel cells and compares
-their accumulated area instead of relying on a finite set of sample points.
-For the constrained detailed-contour path, additional transparent coverage is
-limited to the internal one-pixel guard band plus one pixel for final staircase
-cleanup and integer vertex rounding. Expanded-cover and enclosing candidates are
-not controlled by a separate overdraw gate: their actual covered area is
-accounted for directly by the score.
-Failure reasons remain distinct internally
-(contour extraction/offset, vertex limit, triangulation, area, coverage, and
-tolerance-mask failures), so retry policy does not conflate complexity with
-geometric invalidity. An empty
-mask is recorded explicitly as empty geometry; a fully opaque, unprofitable,
-oversized, or otherwise unsafe result is recorded as the ordinary quad. The
-optional Earcut Delaunay refinement pass is deliberately not used: it changes
-neither triangle count nor covered area and does not promise bit-identical
-output across compilers.
+Validation clips triangles against original visible pixel cells and compares accumulated area, requiring complete unit-square coverage rather than finite point samples. Constrained detailed contours allow only the internal one-pixel guard plus one pixel for staircase cleanup/integer rounding as additional transparent coverage. Expanded/enclosing candidates have no separate overdraw gate; scoring accounts for their actual area. Distinct contour/offset, vertex-limit, triangulation, area, coverage and tolerance-mask failures keep complexity retries separate from invalid geometry. Empty masks explicitly yield empty geometry; fully opaque, unprofitable, oversized or unsafe results yield an ordinary quad. Optional Earcut Delaunay refinement is unused: it changes neither triangle count nor area and promises no bit-identical cross-compiler output.
 
-Baked spritev3 records store each direction's count/total and each logical frame's
-duration, int32 placement and int16 movement. Shared records reference pixels and
-geometry only; concrete records carry RGBA and mesh kind. `SpriteResource` owns this contract, mesh data
-type, and strict whole-resource decoder used by the client, particle editor,
-and project-side server image loader. Its public entry point accepts the exact
-resource byte span and creates its own reader, so decoding is independent of
-any caller-owned stream position while footer and trailing-data checks remain
-scoped to that resource slice. The decoder returns animation timing,
-directions, per-frame offsets, shared-frame references, RGBA pixels, and
-optional mesh geometry. Mesh records use fixed-width cropped-frame coordinates
-and indices plus the original logical source size and the cropped-frame origin
-within that source. The origin may be negative when selected geometry uses the
-internal safety border. The decoder requires mesh vertices to occupy the exact
-serialized frame bounds. Shared animation frames continue to refer to the
-original frame and do not duplicate its offset, pixels, or geometry. The
-runtime rejects legacy or malformed blobs rather than guessing their layout.
-Drawable atlas sprites retain the original logical size, anchor, scaling, and
-hit-test coordinate space while using the cropped pixels and mesh for texture
-storage and rendering. Thus transparent-canvas cropping is an internal storage
-optimization rather than a change to the authored sprite contract.
-Consumers that sample the image as a plain rectangular texture rather than a
-sprite (`FontManager`, `ParticleEditor`, and project-side server image sampling)
-restore the cropped payload into the original logical canvas so their size and
-pixel-coordinate contracts do not change. In particular, font glyph positions
-are authored against the original sheet dimensions; `ResourceManager::LoadSpriteAsQuad`
-must be used for font sheets so mesh padding/cropping cannot shift glyph UVs.
-After this format changes, or when `SpriteMesh.*` values change without a new
-build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
-that an existing image output was baked with the same mesh settings.
+Baked spritev3 stores direction count/total and logical-frame duration, int32 placement and int16 movement. Shared records reference pixels/geometry only; concrete records carry RGBA and mesh kind. `SpriteResource` owns mesh types and the strict whole-resource decoder for client, particle editor and project server image loader. Its entry point takes exact resource bytes and creates its reader, independent of caller stream position; footer/trailing checks stay within that slice. It returns timing, directions, offsets, shared references, RGBA and optional geometry. Fixed-width cropped-frame coordinates/indices accompany original source size and cropped origin, which may be negative for safety-border geometry. Vertices must occupy exact serialized frame bounds. Shared frames reference the original without duplicating offset/pixels/geometry. Legacy/malformed blobs fail without layout guessing. Atlas sprites retain logical size, anchor, scaling and hit-test space while storing/rendering cropped pixels/mesh; cropping changes storage, not authored semantics. Rectangular-texture consumers (`FontManager`, `ParticleEditor`, project server sampling) restore the original logical canvas, preserving dimensions/pixel coordinates. Font glyphs use original sheet dimensions: use `ResourceManager::LoadSpriteAsQuad` to prevent mesh padding/cropping from shifting UVs. Format changes, or `SpriteMesh.*` changes without a new build hash, require `ForceBakeResources`; timestamps cannot prove matching mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items; its hash dictionary includes their client properties, hidden static-item client properties, and every string collected for the server blob. Thus authored `Server` values and critter/dynamic-item overrides can resolve after that map loads without putting those entities or server property records in the client blob.
 
 `ProtoBaker` similarly carries the server prototype pack's strings in `fopro-bin-client`, while `Server` property data and applicability remain server-only. When only the client pack is stale, it still parses the server side to collect strings, without rerunning script validation or writing the current server pack. A shared future orders client writing after server-string collection; errors remain fatal. The native `ClientPackCarriesStringsOfServerOnlyProperties` section and `MapBaker`'s `BakesCrittersAndStaticItems` checks bind these boundaries to real output tables. Regenerate affected prototype/map outputs after updating the baker; unchanged source timestamps do not establish that old outputs carry the enlarged dictionaries.
 
-Both blobs start with `BAKED_MAP_FILE_MAGIC` and
-`BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`.
-`MapLoader::ReadBakedFileHeader` validates this header before
-`MapManager::LoadStaticMaps` or `MapView::LoadStaticData` reads the payload.
-The hash table uses the paired `DataWriter::WriteString` and
-`DataReader::ReadString` contract, and every remaining count or byte size is
-preflighted with `DataReader::VerifyPayloadCount` before it drives an
-allocation or loop. Missing, stale, truncated, or damaged data therefore raises
-`DataReadingException` instead of being interpreted as element counts. When
-the layout changes, bump `BAKED_MAP_FILE_VERSION` and run
-`ForceBakeResources` in the same change; source timestamps do not prove that
-an existing output uses the current layout.
+Both blobs begin with `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`. `MapLoader::ReadBakedFileHeader` validates before `MapManager::LoadStaticMaps` or `MapView::LoadStaticData` reads payloads. Hash strings pair `DataWriter::WriteString` / `DataReader::ReadString`; `DataReader::VerifyPayloadCount` preflights every other count/byte size before allocation or iteration. Missing, stale, truncated or damaged data raises `DataReadingException` rather than becoming counts. Layout changes require `BAKED_MAP_FILE_VERSION` and `ForceBakeResources` in the same change; timestamps cannot prove current layout.
 
-`ParticleBaker` exposes only the formats whose backend is enabled at build time.
-`FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
-`FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
-output. Both options default to `OFF`, in which case the registered baker has no
-particle formats to process.
+`ParticleBaker` registers only enabled backends: `FO_SPARK_PARTICLES` enables text `.spark` and generated `.spk`; `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` and generated `.efk`. Both default `OFF`, leaving the registered baker no particle formats.
 
-For SPARK, `ParticleBaker` loads native `.spark` XML with the engine's registered
-`SparkQuadRenderer` type and writes deterministic SPARK binary to `.spk` with
-the same path stem. Renderer texture paths are resolved relative to the
-`.spark` resource; absolute paths and paths which escape the resource source
-are hard errors. Unknown object types, malformed XML, authored `.spk`, and
-binary-save failures are also hard errors; publishing a graph after silently
-omitting an object is forbidden.
-The client and baker use the same `SparkExtension.cpp` implementation through
-`ClientLib`; do not compile a layout-changing headless copy into `BakerLib`.
-The binary loader enforces exact memory payload length, bounded object/attribute
-counts, bounds-checked reads, descriptor signatures, and valid typed object
-references, so changing a custom serialized descriptor requires rebaking its
-resources.
+`ParticleBaker` loads SPARK `.spark` XML with registered `SparkQuadRenderer`, writing deterministic `.spk` at the same stem. Texture paths resolve relative to `.spark`; absolute/escaping paths, unknown types, malformed XML, authored `.spk` and binary-save failures are hard errors. Never publish a graph with silently omitted objects. Client and baker share `SparkExtension.cpp` through `ClientLib`; no layout-changing headless copy belongs in `BakerLib`. Binary loading enforces exact payload length, bounded object/attribute counts, checked reads, descriptor signatures and valid typed references; custom descriptor changes require rebaking.
 
-For Effekseer, `.efkproj` must be an on-disk XML project normalized by Editor
-1.80.5 with project version 3. `ParticleBaker` calls the native C++
-`EffekseerCompiler` module directly. The fixed-profile exporter produces raw
-`SKFE` bytes and a dependency list; the baker validates each result with the
-pinned C++ Effekseer Core and publishes it under the same path stem with the
-`.efk` extension. The compiler is part of `BakerLib` and is never linked into
-production clients. Native Mapper's on-demand baker uses the same path when a
-tracked source edit is detected. Web targets consume `.efk` resources baked
-before packaging.
+Effekseer `.efkproj` must be on-disk XML normalized by Editor 1.80.5, project version 3. `ParticleBaker` directly calls native C++ `EffekseerCompiler`; its fixed-profile exporter returns raw `SKFE` and dependencies. The baker validates each result with pinned C++ Effekseer Core and publishes same-stem `.efk`. The compiler belongs to `BakerLib`, never production clients. Mapper's on-demand baker follows this path for tracked edits; Web targets consume `.efk` baked before packaging.
 
-The compiler also exposes the referenced resource paths for each project.
-`ParticleBaker` resolves them relative to that project, rejects paths which
-escape the project's physical directory resource source, and stores a
-per-output snapshot containing the project path, size, and write time plus each
-dependency's path, size, and write time under
-`<BakeOutput>/.baker-cache/Effekseer/<pack>/<output>.deps`. On the next
-incremental check it stats those same physical files which the native compiler
-reads. This remains correct when a resource pack has multiple overlaid input
-directories: the snapshot follows the selected project's disk source rather
-than a same-named virtual file from another source.
-A changed, deleted, or renamed dependency dirties every effect that references
-it, while an unrelated file does not trigger a corpus-wide recompile. A missing
-or stale snapshot makes the compiler inspect the project's dependency list
-before the normal single `BakeChecker` call. `ParticleBaker` then removes only
-that effect's stale physical `.efk` output, so the ordinary missing-output path
-schedules the compile without a special timestamp or a callback in the common
-baker infrastructure.
+The compiler lists referenced resources. `ParticleBaker` resolves them relative to the project, rejecting escapes from its physical directory resource source. `<BakeOutput>/.baker-cache/Effekseer/<pack>/<output>.deps` stores project/dependency paths, sizes and write times per output. Incremental checks stat the same physical files the compiler reads, following the selected project's disk source even with overlaid input directories. Changed/deleted/renamed dependencies dirty all referencing effects; unrelated files cause no corpus-wide compile. Missing/stale snapshots trigger dependency inspection before the normal single `BakeChecker` call. `ParticleBaker` removes only that effect's stale physical `.efk`; ordinary missing-output scheduling compiles it, without special timestamps or common-infrastructure callbacks.
 
 An `.efkmodel` is not an effect container: it is a binary runtime
 dependency requested by Model nodes and remains subject to the embedding
 project's ordinary resource-pack/raw-copy policy.
 
-Authored `.efk` files are hard errors rather than copy-through inputs. Project
-resource sources retain reproducible `.efkproj` XML, while runtime code accepts
-only the generated `.efk`. Baking proves the compiler/Core parser boundary
-only: it does not load FOnline atlas textures or enforce the client/Mapper CPU
-Sprite/Ring renderer capability policy. A compiler implementation change
-requires a forced bake so all generated `.efk` files are refreshed.
-`ModelMeshBaker` builds the passive `ModelMeshData` tree and its common codec
-writes a versioned mesh-only payload. Every baked model mesh
-starts with `LFMODMSH`, schema `1`, and zero flags, followed by the recursive
-bone, bind, and drawable-mesh data. The writer does not serialize clips or a TRS
-tail. `ModelInfoBaker` traverses the decoded DTO for metadata, while the client
-adapts it into hashed runtime hierarchy and render types; neither owns a second
-byte parser. Both require this header, consume the mesh payload exactly, and
-reject old headerless files, unknown schemas or flags,
-truncation, and trailing data. There is no legacy mesh-format fallback.
-Runtime readers preflight every serialized length/count against the unread byte
-span before allocation. Mesh vertices are limited by `vindex_t`
-addressability, each index must address a serialized vertex, skin palettes may
-not exceed `MODEL_MAX_BONES`, and offset counts must match. Every serialized
-blend weight/index must be finite, weights stay in `[0, 1]`, indices are integral
-and address that palette, and each vertex's weights sum to one. The hierarchy
-has at most 1024 joints and at most 128 nodes on one parent chain; the mesh
-baker, `ModelInfoBaker`, source loader, and client all enforce the applicable
-limits. Malformed resources therefore fail with contextual
-`DataReadingException` instead of allocation, out-of-bounds palette access, or
-recursive-stack failure.
+Authored `.efk` inputs fail; sources retain reproducible `.efkproj` XML and runtime accepts generated `.efk` only. Baking proves compiler/Core parsing, without loading FOnline atlases or enforcing client/Mapper CPU Sprite/Ring capabilities. Compiler changes require forced rebaking of every `.efk`. `ModelMeshBaker` builds passive `ModelMeshData`; its common codec writes mesh-only `LFMODMSH`, schema `1`, zero flags, then recursive bone/bind/drawable data without clips/TRS tail. `ModelInfoBaker` traverses the decoded DTO; client adapts it to hashed hierarchy/render types. Neither adds a parser. Both require the header and exact consumption, rejecting headerless/unknown-schema/unknown-flag/truncated/trailing payloads with no legacy fallback. Readers preflight all lengths/counts against unread bytes before allocation. `vindex_t` bounds vertices; indices must address serialized vertices, palettes cannot exceed `MODEL_MAX_BONES`, and offset counts must match. Blend weights/indices must be finite; weights in `[0, 1]` sum to one per vertex, and integral indices address the palette. Hierarchies allow at most 1024 joints and 128 nodes per parent chain; mesh baker, `ModelInfoBaker`, source loader and client enforce applicable limits. Malformed data raises contextual `DataReadingException`, avoiding allocation, palette-bound and stack failures.
 
-`ModelMeshBaker` rejects a mesh node whose `geometry_to_world` determinant is
-negative. Such a node was exported with a negative scale: the reflection flips
-surface orientation, leaving normals and triangle winding inconsistent with
-lighting and back-face culling. The baker does not hide the source defect by
-flipping normals and winding; freeze the mirrored object back to a positive
-scale in the authoring tool.
+`ModelMeshBaker` rejects negative `geometry_to_world` determinants: exported negative scale reflects surfaces, making normals/winding inconsistent with lighting/culling. It never hides this by flipping normals/winding; freeze mirrored objects to positive scale in the authoring tool.
 
-`ModelInfoBaker` also checks model scale against
-`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. A
-direct `Attach` link to a bare `.fbx` is checked from its static maximum-axis
-extent. Each `.fo3d` section is checked from its aggregate `ModelBounds`: the
-union of animation envelopes, or static geometry when the model has no
-mappings. A full bake checks the envelope while writing
-`ModelAnimationInfo.foinfo`; a targeted `.fo3d` bake runs the same check before
-writing the description. A `.fo3d` `Scale` token does not change the baked
-envelope, so a centimetre-space root model is not exempt. Failures name the
-file, measured extent, and limit.
+`ModelInfoBaker` enforces `Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`. A direct `Attach` to bare `.fbx` uses static maximum-axis extent; each `.fo3d` section uses aggregate `ModelBounds` (animation-envelope union, or static geometry without mappings). Full baking checks while writing `ModelAnimationInfo.foinfo`; targeted `.fo3d` baking checks before description output. `.fo3d` `Scale` does not change the envelope or exempt centimetre-space roots. Errors name file, measured extent and limit.
 
-Baker code does not use the build host's `AppRender::MAX_ATLAS_WIDTH` /
-`HEIGHT` as a device contract. Portable layout math uses
-`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`. Runtime preview zoom can still push
-a valid envelope beyond `Render.ModelSpriteMaxTextureWidth` / `Height`;
-`RefreshFrameLayout` clamps that scratch texture and draws cropped instead of
-terminating.
+Baking never treats host `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT` as device contracts; portable math uses `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE`. Preview zoom may exceed `Render.ModelSpriteMaxTextureWidth` / `Height` even for valid envelopes: `RefreshFrameLayout` clamps scratch textures and crops instead of terminating.
 
 Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire
 format and a new schema rather than interpreting schema 1 in place.
 
-Before writing the mesh payload, `ModelMeshBaker` validates node matrices,
-vertex attributes, normalized colors, skin weights, skin offsets, the 1024-node
-total limit, and the same 128-node safe hierarchy-depth limit. Values must be
-finite and representable as `float32`. Every skinned vertex must retain at least
-one positive influence; cluster indices must resolve, weights must be
-non-negative, and the retained top four are normalized and rechecked to sum to
-one. The final serialized vertex is checked again after UV flipping and
-skin-weight normalization.
-Diagnostics name the source asset, node, field, element, and component. Invalid
-values are never clamped or replaced with identity.
+`ModelMeshBaker` validates matrices, vertex attributes, normalized colors, skin weights/offsets, 1024 total nodes and 128-node depth before writing. Values must be finite/representable as `float32`. Skinned vertices need a positive influence, resolving cluster indices and non-negative weights; retained top four normalize and recheck to sum one. Serialized vertices recheck after UV flipping/weight normalization. Errors name asset, node, field, element and component; invalid values never clamp or default to identity.
 
-After `ufbx_generate_indices` has removed byte-identical duplicate vertices,
-the baker runs the pinned `meshoptimizer` v1.2 release (tag commit
-`9d9890c73011d75920af614485296d1e03e95448`) on each drawable mesh. Vertex-cache
-optimization first reorders whole triangles to improve transformed-vertex
-reuse; vertex-fetch optimization then reorders the interleaved `Vertex3D`
-buffer to first-use order and rewrites its 32-bit working indices. Both passes
-write temporary buffers. The baker verifies triangle-list shape and index ranges
-before the library call, requires fetch optimization to retain every vertex
-produced by `ufbx`, validates the resulting indices again, and only then commits
-the buffers and narrows indices to `vindex_t`. The library's temporary allocator
-is installed once before parallel mesh jobs and uses `SafeAllocator`, preserving
-the engine rpmalloc, backup-pool retry, and fail-fast OOM policy.
+After `ufbx_generate_indices` removes byte-identical vertices, pinned `meshoptimizer` v1.2 (tag commit `9d9890c73011d75920af614485296d1e03e95448`) optimizes each drawable mesh: vertex-cache ordering reorders whole triangles for reuse; vertex-fetch ordering moves interleaved `Vertex3D` to first use and rewrites 32-bit working indices. Both use temporary buffers. Shape/ranges validate before library calls; fetch must retain every `ufbx` vertex. Indices revalidate before committing buffers/narrowing to `vindex_t`. The temporary allocator installs once before parallel jobs and uses `SafeAllocator`, preserving rpmalloc, backup-pool retry and fail-fast OOM.
 
-These passes are lossless reorderings, so `LFMODMSH` remains schema `1`; existing
-runtime readers need no meshoptimizer dependency. Overdraw reordering is not
-enabled because the same assets target desktop and tiled mobile GPUs, where its
-benefit is workload-dependent. Quantization, mesh codecs, LODs, meshlets, and a
-packed vertex layout remain a separate measured schema-2 design rather than an
-implicit extension of this wire format.
+Lossless reordering retains `LFMODMSH` schema `1`; runtime needs no meshoptimizer dependency. Overdraw reordering stays disabled: desktop/tiled-mobile benefits depend on workload. Quantization, codecs, LODs, meshlets and packed vertices require a separate measured schema-2 design, never an implicit wire extension.
 
-Animation extraction is owned by `ModelSourceLoader`, not by the baked mesh
-format. For each source FBX selected through a resolved `.fo3d`, the loader uses
-`ufbx` to extract the source skeleton and every clip, validates the complete
-source asset, and returns immutable source data to `ModelInfoBaker`. Clip names
-must be unique case-insensitively. Source/clip identity, positive finite
-duration, hierarchy/output pairing, every S/R/T time and value, joint/clip/key
-limits, the shared 128-node source-hierarchy depth, and quaternion normalization
-are validated before Ozz conversion.
-Individual S/R/T channels must be non-empty and key times must be finite,
-strictly ascending, and have finite intervals. The `ModelSourceAssetCache` is
-created once per `ModelInfoBaker::BakeFiles()` call and implements single-flight
-loading with one shared future per source path: parallel descriptions share one
-successful parse or the same exception, while FBX parsing occurs outside the
-cache mutex.
+`ModelSourceLoader` owns animation extraction, outside baked meshes. For each source FBX selected by resolved `.fo3d`, `ufbx` extracts skeleton/all clips, validates the whole asset and returns immutable data to `ModelInfoBaker`. Case-insensitively unique clip names, source/clip identity, positive finite duration, hierarchy/output pairing, all S/R/T times/values, joint/clip/key limits, shared 128-node depth and quaternion normalization validate before Ozz conversion. Each channel needs keys with finite strictly ascending times and finite intervals. One `ModelSourceAssetCache` per `ModelInfoBaker::BakeFiles()` provides single-flight shared futures by source path: parallel descriptions share a parse or exception, with FBX parsing outside the mutex.
 
-`ModelInfoBaker` audits the base skeleton and every selected external animation
-clip before writing a `.fo3d` description. `ModelAnimationConverter` builds a
-deterministic, parent-first canonical joint map as part of its compatibility
-analysis, and the baker emits
-per-description reports in path order. Animation-only joints are permitted and
-reported as contributions. An FBX's unique technical scene root may have an
-empty name; empty non-root joint names remain invalid. Duplicate joint names or
-full hierarchies and incompatible parents fail baking because they cannot be
-remapped to an index-based runtime skeleton without ambiguity. Different
-source-root names are normalized to the base root and reported explicitly.
+`ModelInfoBaker` audits base skeleton/all selected external clips before `.fo3d` description output. `ModelAnimationConverter` compatibility analysis builds deterministic parent-first canonical joints; baker emits per-description reports in path order. Animation-only joints are allowed/reported as contributions. Only the unique technical FBX scene root may have an empty name. Duplicate joint names/full hierarchies or incompatible parents fail because index remapping would be ambiguous. Different source-root names normalize to the base root and are explicitly reported.
 
-Rest-pose divergence between the base model and external clip FBXs is
-report-only: selected clip outputs are authored absolute local TRS, so existing
-assets do not require one shared rest pose. Reports retain every divergent
-clip/joint mapping and log deterministic counts, the maximum matrix-component
-delta, and its source. The canonical converter keeps base-model local rest
-transforms and gives animation-only hierarchy nodes identity rest; a clip's
-different rest pose does not replace either fallback.
+Base/external-clip rest divergence is report-only: clips author absolute local TRS, requiring no common rest pose. Reports retain every divergent clip/joint mapping and deterministic counts, maximum matrix-component delta and source. Canonical conversion keeps base local rest and identity rest for animation-only nodes; differing clip rest replaces neither fallback.
 
 Source key times are deliberately not constrained to `[0, duration]`: ufbx
 playback ranges and key ranges are independent, and `trim_start_time` shifts
@@ -1125,32 +815,11 @@ before time `0`, or wholly after the playback window; a first key inside
 `(0, duration]` is rejected because the required discontinuity cannot be
 represented by continuous Ozz interpolation.
 
-Direct FBX attachments are validated as rest-only resources. If an
-`Attach ...fbx` target contains embedded animation clips, baking fails and
-requires an `Attach ...fo3d` description with explicit animation mappings; the
-direct runtime path has neither a controller nor a clip-binding table. This
-check reads the attachment's validated source asset through the same per-call
-single-flight loader.
+Direct FBX attachments are rest-only: clips in `Attach ...fbx` fail baking and require `Attach ...fo3d` with explicit mappings, since direct runtime lacks controllers/clip bindings. Validation uses the same per-call single-flight source loader.
 
-External animation FBXs should contain transform hierarchy and animation only.
-Baking rejects drawable geometry in an external `Anim` source unless the
-resolved model description names that exact selected file with one
-validation-only `AllowAnimationGeometry <file>` token. Duplicate resolved
-exceptions, exceptions for non-selected sources, and exceptions whose target no
-longer contains geometry are hard errors, preventing broad or stale allowlists.
-When duplicate drawable geometry shares transforms with linked child models,
-source repair must preserve the helper names, parents, and tracks as
-geometry-free helper/bone nodes; it must not prune the complete branches.
-Remove each exception with its repaired export. The embedding project's content
-workflow owns the exact temporary allowlist and source-repair inventory;
-reusable engine documentation deliberately does not enumerate project assets.
+External animation FBXs should contain only transform hierarchy/animation. Drawable external `Anim` geometry fails unless the resolved description names that exact selected file in one validation-only `AllowAnimationGeometry <file>`. Duplicate resolved exceptions, unselected targets and targets no longer containing geometry fail, preventing broad/stale allowlists. Repair duplicate geometry shared with child-model transforms by preserving helper names, parents and tracks as geometry-free helper/bone nodes; never prune whole branches. Remove exceptions with repaired exports. Project workflow owns temporary allowlists/repair inventories; reusable engine documentation lists no project assets.
 
-Incremental `.fo3d` invalidation includes the maximum write time of the resolved
-description/include graph and every replacement-expanded `Model`, external
-`Anim`, direct `Attach`, and `Cut` source dependency. A missing referenced source
-is a hard error. This is required because an animation-only FBX change does not
-change the mesh-only `LFMODMSH` output by itself but must still rebuild the
-canonical Ozz rig and `ModelAnimationInfo` data.
+Incremental `.fo3d` invalidation takes the maximum write time of the resolved description/include graph and replacement-expanded `Model`, external `Anim`, direct `Attach` and `Cut` dependencies. Missing references fail. Animation-only FBX edits leave mesh-only `LFMODMSH` unchanged but must rebuild canonical Ozz rigs and `ModelAnimationInfo`.
 
 The native model-animation format is implemented with the `ozz-animation`
 0.16.0 release tag, whose exact tagged commit is
@@ -1174,22 +843,9 @@ handling (or source-bit signatures) and Windows/Linux golden-signature tests
 before these derived floating-point hashes can be treated as cross-platform
 cache keys.
 
-Before any runtime or offline codec object is constructed,
-`InitializeModelAnimationMemory()` installs a private engine allocator for the
-statically linked Ozz state in that module. It provides arbitrary power-of-two
-alignment over `SafeAllocator<uint8_t>`, so codec allocations use the same
-rpmalloc backend, backup-memory retry, OOM diagnostics, and fail-fast policy as
-engine containers. No Ozz allocator type is exposed through a public model API,
-and the vendored allocator source remains byte-identical to upstream 0.16.0.
+Before runtime/offline codec construction, `InitializeModelAnimationMemory()` installs a private allocator for that module's statically linked Ozz state. Arbitrary power-of-two alignment over `SafeAllocator<uint8_t>` preserves rpmalloc, backup-memory retry, OOM diagnostics and fail-fast policy. Public model APIs expose no Ozz allocator type; vendored allocator source stays byte-identical to upstream 0.16.0.
 
-The reader requires the caller's expected identity and rejects mismatches,
-unknown kinds, reserved flags, truncation, trailing bytes, and payload hash
-mismatches before the animation codec reads the opaque payload. FNV-1a detects
-accidental corruption only; it is non-cryptographic and does not authenticate
-the archive. Ozz's binary deserializer is therefore used only after LF framing
-validation and only for trusted baked resources. A deployment that accepts
-attacker-rewritable resource packs must authenticate the pack before model
-loading; recomputing the non-cryptographic LF hash is not a security boundary.
+The reader requires expected caller identity, rejecting mismatches, unknown kinds, reserved flags, truncation, trailing bytes and bad payload hashes before opaque codec parsing. Non-cryptographic FNV-1a detects corruption, not authenticity. Ozz deserialization follows LF framing validation for trusted baked resources only. Authenticate attacker-rewritable packs before loading; recomputed LF hashes provide no security boundary.
 
 After resolving a `.fo3d`, `ModelInfoBaker` now builds the complete canonical
 runtime skeleton, every unique selected runtime animation, the base/clip remaps,
@@ -1210,14 +866,14 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `3`, and zero flags, followed by the existing positional
-description and one required length-prefixed `LFOZZRIG` schema-1 payload. Schema 2
+with `LFMODINF`, schema `5`, and zero flags, followed by the existing positional
+description and one required length-prefixed `LFOZZRIG` schema-1 payload. Schema 5 stores static texture name, mesh and slot without an animation flag; earlier description schemas are rejected. Rebuild matching baker/runtime and force-rebake descriptions and metadata using the current runtime marker in `Source/Common/Common.h`. Schema 2
 appended the union AABB to every geometry link and schema 3 appended the counted,
 `(StateAnim, ActionAnim)`-keyed per-animation boxes described above, so the client
 uses the active clip's envelope instead of the union for every pose. Each step is an
 incompatible binary layout: any further `LFMODINF` field bumps
 `MODEL_DESCRIPTION_SCHEMA_VERSION` in the same change, and the schema-3 transition
-uses compatibility marker `0.0.46` so a new runtime and a full resource bake travel
+used compatibility marker `0.0.46` so a new runtime and a full resource bake travel
 together. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
@@ -1237,14 +893,7 @@ durations are validated before the immutable rig is published to
 runtime fallback. The final mesh-only wire transition uses compatibility marker
 `0.0.30` and requires a full resource rebake.
 
-The generated Ozz rig is the only production clip/pose payload. The client does
-not load a parallel TRS representation, and `ModelAnimationController` stores
-only LF timeline/event state plus direct Ozz clip index, duration, reverse, and
-bound-joint metadata. Sampling, per-joint body blending, movement replacement,
-procedural pre-rotations, and local-to-model evaluation are per-instance Ozz
-runtime work. Cross-model clip sharing or a persisted conversion cache remains
-an optional optimization that must be justified by measured pack and runtime
-memory results.
+The generated Ozz rig alone supplies production clips/poses; client loads no parallel TRS. `ModelAnimationController` stores LF timelines/events and direct Ozz clip index, duration, reverse and bound-joint metadata only. Sampling, joint body blending, movement replacement, procedural pre-rotations and local-to-model evaluation remain per-instance Ozz work. Cross-model clip sharing/persisted conversion caches require measured pack/runtime-memory justification.
 
 ## Script compilation relationship
 

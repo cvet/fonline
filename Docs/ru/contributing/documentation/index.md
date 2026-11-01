@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"165afc62b6ce52a378a0f1b0abde155daf265e04a838a3be2b318c5d55549598"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"b2f10e9b7a130adb2a7bddfc86e9aada05bc1afa0661c827a6d1b79e446f8a43"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.

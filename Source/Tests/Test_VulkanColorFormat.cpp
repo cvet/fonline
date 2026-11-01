@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "VulkanColorFormat.h"
@@ -349,4 +351,3 @@ TEST_CASE("VulkanColorPixelInputValidation", "[vulkan-color-format]")
 FO_END_NAMESPACE
 
 #endif // FO_HAVE_VULKAN
-

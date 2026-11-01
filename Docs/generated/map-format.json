@@ -559,6 +559,22 @@
           "Map baking error"
         ]
       }
+    },
+    {
+      "id": "map-format.rule.client-resource-preparation",
+      "name": "Client static resource preparation",
+      "requirement": "After original replay admits a cold eligible sprite, inspect at most 64 records including that record using passive owner properties, submit eligible resources before one window fence, then replay original item publication order. Skip removed IDs before property restoration. Defer speculative errors to original replay.",
+      "stability": "internal",
+      "description": "Direct, zero-worker and fully warm paths avoid lookahead, fences and epoch changes. Preparation does not change the baked format, effective PicMap, factory overrides or the published failure prefix.",
+      "source": {
+        "path": "Source/Client/MapView.cpp",
+        "anchors": [
+          "preparation_window_end",
+          "PrefetchSpriteResource",
+          "DrainPreparedSpriteResources",
+          "Replay owns the diagnostic"
+        ]
+      }
     }
   ],
   "properties": [
@@ -3606,7 +3622,7 @@
     "directive_count": 5,
     "ownership_count": 4,
     "supported_ownership_count": 3,
-    "rule_count": 19,
+    "rule_count": 20,
     "property_count": 108,
     "authorable_property_count": 87,
     "excluded_property_count": 21,
@@ -3621,5 +3637,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "917128b8042992d3fd6194cd483441a6c124bc97fa9cfa88c5f2cdf62d701bce"
+  "contract_digest": "9203d5c77cb09012f1aa56bfefcb06a7133afc2e4d91398598136a7e70edf1f7"
 }

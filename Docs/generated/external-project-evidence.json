@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "e8bfc2afcb3f0b1848ae3573816f41f9b547ca69d331c5003aab8cac1f40814d",
+  "source_sha256": "9edf8447b745733efba0550629d6d937415f7c987992ee13f218a8d3a8f5ca05",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -23,7 +23,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31",
+      "revision": "b33d97661e701b7f051184c60ab5e86e03ddbf56",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -739,14 +739,16 @@
           "path": "Resources"
         }
       ],
-      "reusable_claim": "SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts.",
+      "reusable_claim": "SPARK and Effekseer are independent optional authoring/runtime paths with explicit baking, bounds, renderer, Mapper, and validation contracts. Optional CPU simulation uses the existing client scheduler only for audited isolated SPARK graphs or disjoint ready Effekseer chunks, with owner lifecycle and callback boundaries.",
       "disposition": "promoted",
       "owner": "frontend",
       "priority": "P0",
       "engine_targets": [
         "Docs/en/how-to/content/particle-format.md",
         "Docs/en/how-to/tools/particle-authoring.md",
-        "Docs/en/reference/particle-format/index.md"
+        "Docs/en/reference/particle-format/index.md",
+        "Docs/en/explanation/runtime/client-multithreading.md",
+        "Docs/en/contributing/third-party/index.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -757,8 +759,8 @@
         "platform",
         "quality"
       ],
-      "promotion_gate": "Both enabled backends pass source, bake, runtime, tool, and visible integration gates.",
-      "decision": "Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned."
+      "promotion_gate": "Enabled-backend functional and feature configurations must validate state, useful worker work, callback rejection, joined failure and lifetime. Separate ordinary rendered integration and matched performance qualification remain required before deployment claims.",
+      "decision": "Engine backend mechanics are promoted; particle catalogs, textures, budgets, and art direction stay project-owned. CPU eligibility, destination-context copying, synchronous executor lifetime and failure boundaries are re-derived from Engine source and native tests. Project asset admission, seeded fixtures, map/model workloads, host permission, frame-time and RSS verdicts remain external; source or native success does not promote renderer, platform or production performance acceptance."
     },
     {
       "id": "font-audio-and-video",
@@ -876,9 +878,13 @@
         {
           "snapshot": "fonline-tla",
           "path": "Docs/ReanimationPlan.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Plans/2026-10-11-client-multithreading-next-measurements.md"
         }
       ],
-      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.",
+      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy. Per-frame batch diagnosis needs exact completion intervals, explicit item counts and separate participant-drain scopes; dispatch residual is not wait time and recursive or cross-thread zone totals are not a critical path.",
       "disposition": "promoted",
       "owner": "quality",
       "priority": "P1",
@@ -894,7 +900,7 @@
         "build-release"
       ],
       "promotion_gate": "At least one representative Engine-owned capture proves native and script zones with exact tools.",
-      "decision": "Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation."
+      "decision": "Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation. The pinned client frame analysis identifies these boundaries without qualifying default promotion. Engine-owned batch text, join/wait and coarse callback zones are re-derived from WorkScheduler, SpriteManager and ClientEngine; project fixtures, CSV correlation, host policy and benchmark verdicts remain project-owned."
     },
     {
       "id": "gameplay-test-harness",
@@ -1772,7 +1778,7 @@
   "summary": {
     "snapshot_count": 3,
     "record_count": 31,
-    "source_reference_count": 194,
+    "source_reference_count": 195,
     "records_by_disposition": {
       "boundary-owned": 2,
       "project-owned": 3,

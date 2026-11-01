@@ -33,6 +33,7 @@
 
 #include "MapBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "AngelScriptScripting.h"
 #include "ConfigFile.h"
 #include "ManagedScripting.h"
@@ -173,6 +174,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     auto client_engine = BakerClientEngine(*_context->GetBakedFiles());
 
     vector<std::future<void>> proto_loadings;
+    BakingTaskGuard proto_tasks {proto_loadings};
     proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterServerProtos", [&]() FO_DEFERRED { server_engine.RegisterProtos(*_context->GetBakedFiles()); }));
     proto_loadings.emplace_back(run_async(GetAsyncMode(), "BakeMap-RegisterClientProtos", [&]() FO_DEFERRED { client_engine.RegisterProtos(*_context->GetBakedFiles()); }));
 
@@ -325,6 +327,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
     // Async baking
     vector<std::future<void>> file_bakings;
+    BakingTaskGuard map_tasks {file_bakings};
 
     for (const auto& entry : filtered_files) {
         auto entry_ptr = make_ptr(&entry);

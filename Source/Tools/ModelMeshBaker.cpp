@@ -33,6 +33,8 @@
 
 #include "ModelMeshBaker.h"
 
+#include "BakingTaskGuard.h"
+
 #if FO_ENABLE_3D
 
 #include "Application.h"
@@ -187,6 +189,7 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     // Process files
     vector<std::future<void>> file_bakings;
+    BakingTaskGuard baking_tasks {file_bakings};
 
     for (auto& file_ : filtered_files) {
         string task_name = strex("BakeModelMesh-{}", file_.GetPath()).str();

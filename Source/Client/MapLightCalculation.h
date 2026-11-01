@@ -90,4 +90,3 @@ auto CalculateMapLight(const MapLightCalculationInput& input, const MapLightObst
 auto CalculateMapLightDirect(const MapLightCalculationInput& input, const function<MapLightObstacle(mpos)>& read_obstacle, const function<void(mpos, ucolor)>& mark) -> MapLightCalculationResult;
 
 FO_END_NAMESPACE
-

@@ -37,9 +37,11 @@
 
 #include "ConfigFile.h"
 #include "EffectBaker.h"
+#include "ResourceUsage.h"
 #include "Test_BakerHelpers.h"
 
 FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
 #include "vkd3d_shader.h"
 FO_DISABLE_WARNINGS_POP()
 
@@ -401,6 +403,61 @@ TEST_CASE("EffectBaker")
 
         EffectBaker baker {local_rig.MakeContext()};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
+    }
+}
+
+TEST_CASE("EffectBakerKeepsDefaultEffectsWithoutBakeChecker")
+{
+    using namespace BakerTests;
+
+    for (string_view target : {"", "Effects/2D_Default.fofx-1-info"}) {
+        CAPTURE(target);
+
+        TestRig rig;
+        rig.AddSourceFile("Effects/2D_Default.fofx", VALID_EFFECT);
+        rig.AddSourceFile("Effects/Custom.fofx", VALID_EFFECT);
+
+        auto usage = safe_alloc::make_shared<ResourceUsage>();
+        auto options = rig.MakeContextOptions("Effects");
+        options.BakeChecker = {};
+        options.Usage = usage;
+
+        EffectBaker baker {safe_alloc::make_shared<BakingContext>(std::move(options))};
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), target));
+
+        REQUIRE(rig.Outputs.contains("Effects/2D_Default.fofx"));
+
+        if (target.empty()) {
+            CHECK(rig.Outputs.contains("Effects/Custom.fofx"));
+        }
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            rig.AddBakedFile(path, bytes);
+        }
+
+        const BaseBaker& dependencies = baker;
+        string manifest_data = usage->CreateManifest("build", "config", [&](const ResourceOutput& output) { return rig.Outputs.contains(output.Path); }, [&](const ResourceOutput& output) { return dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path); });
+        nlohmann::json manifest = nlohmann::json::parse(manifest_data);
+
+        CHECK(manifest.at("Packs").at("Effects") == nlohmann::json::array({
+            "Effects/2D_Default.fofx",
+            "Effects/2D_Default.fofx-1-frag-dxbc",
+            "Effects/2D_Default.fofx-1-frag-glsl",
+            "Effects/2D_Default.fofx-1-frag-glsl_es",
+            "Effects/2D_Default.fofx-1-frag-msl_ios",
+            "Effects/2D_Default.fofx-1-frag-msl_mac",
+            "Effects/2D_Default.fofx-1-frag-spv",
+            "Effects/2D_Default.fofx-1-frag-spv_sdl",
+            "Effects/2D_Default.fofx-1-info",
+            "Effects/2D_Default.fofx-1-vert-dxbc",
+            "Effects/2D_Default.fofx-1-vert-glsl",
+            "Effects/2D_Default.fofx-1-vert-glsl_es",
+            "Effects/2D_Default.fofx-1-vert-msl_ios",
+            "Effects/2D_Default.fofx-1-vert-msl_mac",
+            "Effects/2D_Default.fofx-1-vert-spv",
+            "Effects/2D_Default.fofx-1-vert-spv_sdl",
+        }));
     }
 }
 

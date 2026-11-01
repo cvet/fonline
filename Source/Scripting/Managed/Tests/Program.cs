@@ -443,12 +443,22 @@ internal static class Program
                  var delay = ScriptTask.Delay(new timespan(1));
                  Check(Game.LastTimerDuration.nanoseconds == 1 && !delay.IsCompleted,
                        "A typed delay was rounded or completed before the engine callback");
-                 Game.LastTimerCallback!();
+
+                 Action timerCallback = Game.LastTimerCallback ?? throw new InvalidOperationException("The engine timer callback is missing");
+
+                 timerCallback();
+
                  Check(delay.IsCompletedSuccessfully, "The engine callback did not complete the delay");
+
                  var millisecondDelay = ScriptTask.Delay(17);
                  Check(Game.LastTimerDuration.nanoseconds == 17_000_000, "The integer overload lost millisecond units");
-                 Game.LastTimerCallback!();
+
+                 Action millisecondCallback = Game.LastTimerCallback ?? throw new InvalidOperationException("The millisecond timer callback is missing");
+
+                 millisecondCallback();
+
                  Check(millisecondDelay.IsCompletedSuccessfully, "The millisecond adapter lost completion");
+
                  using (ScriptSynchronizationContext.Enter(synchronous: true))
                  {
                      ExpectThrows<InvalidOperationException>(() => _ = ScriptTask.Delay(new timespan(1)),

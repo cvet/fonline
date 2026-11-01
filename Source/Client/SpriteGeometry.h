@@ -75,4 +75,3 @@ void WritePreparedSpriteGeometry(const PreparedSpriteGeometry& geometry, span<Ve
 void TransformPreparedSpriteGeometry(const PreparedSpriteTransform& transform, span<Vertex2D> vertices);
 
 FO_END_NAMESPACE
-

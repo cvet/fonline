@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"bba57bb39769f55f07a1a0c19d99e5cca3e75c4c4ac6992915be391aa8722498"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"711b0bf6ad539716a9f1f3ac59c510a4384c8ffe9d62bfee8ae2afa01773c17a"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -209,7 +209,7 @@ Script GUI widgets `ItemView` кешируют handles предметов, пр�
 
 Имя анимации с префиксом `~` проигрывает source clip в обратном направлении: playback time `t` выбирает clip в `duration - fmod(t, duration)`, поэтому точная граница loop начинает с конца clip. При отключённой интерполяции то же правило nearest key применяется к этому обратному source time.
 
-Каждый baked `.fo3d` имеет обязательный versioned header `LFMODINF` schema 1 и обязательный payload `LFOZZRIG`, созданный для pinned `ozz-animation` 0.16.0. `ModelInformation` строго загружает и хранит один immutable `ModelAnimationRuntimeRig`. Его PImpl содержит canonical Ozz skeleton, unique clips, base/clip remaps, presence masks, nearest timelines и разрешённую таблицу state/action bindings. Loader отклоняет старые unversioned files и любой partial или inconsistent rig; после ошибки Ozz он не переходит к другому payload. Финальный mesh-only wire transition использует compatibility marker `0.0.30` и требует полного rebake ресурсов.
+Каждый baked `.fo3d` имеет обязательный versioned header `LFMODINF` schema 5 (`MODEL_DESCRIPTION_SCHEMA_VERSION`) и обязательный payload `LFOZZRIG` schema 1, созданный для pinned `ozz-animation` 0.16.0. `ModelInformation` строго загружает и хранит один immutable `ModelAnimationRuntimeRig`. Его PImpl содержит canonical Ozz skeleton, unique clips, base/clip remaps, presence masks, nearest timelines и разрешённую таблицу state/action bindings. Loader отклоняет старые unversioned files и любой partial или inconsistent rig; после ошибки Ozz он не переходит к другому payload. Исторический mesh-only wire transition использовал compatibility marker `0.0.30` и требует полного rebake ресурсов.
 
 Ozz является production path animated pose. Controllers тела и движения продвигают только timeline/event state. Каждая зарегистрированная анимация хранит прямые Ozz clip index/duration/reverse metadata и immutable набор bound joints из presence mask clip. Joint привязывается только при совпадении canonical и точного runtime имени, поэтому resource-renamed root модели намеренно не попадает в source-root animation. Per-track masks allowed joints и transition suppression дополнительно фильтруют bindings до передачи track state в per-instance Ozz pose.
 

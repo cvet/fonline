@@ -44,7 +44,7 @@ def bake(baker: Path, config: Path, work: Path, label: str) -> None:
     require(result.returncode == 0, f"{label} failed ({result.returncode}):\n{output[-12000:]}")
 
 
-def create_fixture(work: Path) -> tuple[Path, Path, Path]:
+def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, Path]:
     art = work / "inputs/art"
     definitions = work / "inputs/definitions"
     baked = work / "baked"
@@ -52,7 +52,8 @@ def create_fixture(work: Path) -> tuple[Path, Path, Path]:
     write(art / "Props/Plate source.tga", red_pixel)
     write(art / ROOT_IMAGE, "Frame = Plate source.tga\nSize = 2 3\nOffset = 4 -5\nMotion = 1 -2\n")
     write(art / FONT_PAGE, red_pixel)
-    write(art / "Fonts/Test.fofnt", "Image Atlas.tga*\n")
+    write(art / "Fonts/Ignored.tga", red_pixel)
+    write(art / "Fonts/Test.fofnt", "Version 2\nImage Ignored.tga\nImage#page\nAtlas.tga*\nEnd\nImage Unreachable.tga\n")
     write(art / FORCED, '{"forced":true}\n')
     write(art / "Data/Unused.json", '{"unused":true}\n')
     write(definitions / "Definitions.cs", "///@ FixedType Common ResourceSet\n"
@@ -60,6 +61,11 @@ def create_fixture(work: Path) -> tuple[Path, Path, Path]:
     write(definitions / "Resources.fopro", "[ProtoItem]\n$Name = Visible\n"
           f"PicMap = {ROOT_IMAGE}\n[ResourceSet]\n$Name = Forced\n"
           f'Files = Fonts/Test.fofnt "{FORCED}"\n')
+    metadata_bakers = "Metadata Proto"
+
+    if angelscript:
+        write(definitions / "Noop.fos", "void ResourceUsageFixtureNoop() {}\n")
+        metadata_bakers += " AngelScript"
 
     # Pack paths use space-separated tokens, so keep them relative to the config.
     # Metadata.fometa-* is the native metadata registration entry point.
@@ -67,7 +73,7 @@ def create_fixture(work: Path) -> tuple[Path, Path, Path]:
     write(config, f"Baking.BakeOutput = {baked.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
           "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
-          "[ResourcePack]\nName = Metadata\nInputDirs = inputs/definitions\nBakers = Metadata Proto\n"
+          f"[ResourcePack]\nName = Metadata\nInputDirs = inputs/definitions\nBakers = {metadata_bakers}\n"
           "[ResourcePack]\nName = Art\nInputDirs = inputs/art\nBakers = Image RawCopy\n")
     return config, art, baked
 
@@ -136,8 +142,8 @@ def check_negative_controls(consumer: package.Packager, work: Path, baked: Path,
         raise AssertionError(f"Package oracle accepted wrong selection {index}")
 
 
-def run_pipeline(baker: Path, work: Path) -> None:
-    config, art, baked = create_fixture(work)
+def run_pipeline(baker: Path, work: Path, angelscript: bool = False) -> None:
+    config, art, baked = create_fixture(work, angelscript=angelscript)
     bake(baker, config, work, "producer")
     consumer = make_packager(baked)
     files = check_selection(consumer, baked, EXPECTED)
@@ -169,6 +175,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baker", type=Path, required=True, help="real native Baker executable")
     parser.add_argument("--workdir", type=Path, help="parent directory for temporary fixture files")
+    parser.add_argument("--angelscript", action="store_true", default=False,
+                        help="include the required AngelScript server bytecode fixture")
     args = parser.parse_args()
     baker = args.baker.resolve()
 
@@ -182,7 +190,7 @@ def main() -> int:
     os.environ.pop(package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, None)
 
     with tempfile.TemporaryDirectory(prefix="resource usage pipeline-", dir=args.workdir) as directory:
-        run_pipeline(baker, Path(directory))
+        run_pipeline(baker, Path(directory), angelscript=args.angelscript)
 
     print("Resource usage pipeline passed: full/incremental bake, exact selection, native readback, 2 negative controls")
     return 0

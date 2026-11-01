@@ -1352,7 +1352,7 @@
           "max_rank": 2
         },
         {
-          "query": "Engine metadata codegen machinery embedding project configuration generated build artifacts all eighteen canonical models",
+          "query": "Engine metadata codegen machinery embedding project configuration generated build artifacts all seventeen canonical models",
           "expected_document_ids": ["generated-api-metadata"],
           "max_rank": 2
         },
@@ -1389,7 +1389,7 @@
           "description": "Compare every generated domain and require reviewed dispositions for compatibility breaks.",
           "document_id": "generated-api-metadata",
           "anchor": "multi-domain-diff-and-change-disposition",
-          "required_terms": ["all eighteen canonical generated models", "exact domain-bound entry", "does not bypass the gate"]
+          "required_terms": ["all seventeen canonical generated models", "exact domain-bound entry", "does not bypass the gate"]
         }
       ],
       "forbidden_assumptions": [

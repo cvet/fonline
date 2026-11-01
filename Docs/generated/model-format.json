@@ -33,6 +33,7 @@
     "baking_pipeline": "Source/Tools/Baker.cpp",
     "tests": [
       "Source/Tests/Test_ModelBaker.cpp",
+      "Source/Tests/Test_ParticleCpuUpdates.cpp",
       "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp"
     ]
   },
@@ -1378,7 +1379,7 @@
       "id": "model-format.rule.parent-materials",
       "name": "Parent material inheritance",
       "requirement": "Use Parent or Parent_<mesh> only inside an attached child model; the parent mesh must already expose the requested texture slot or effect.",
-      "rationale": "A texture child inherits the immutable parent resource and starts its own instance phase; effects retain current-material inheritance. Root descriptions have no parent context.",
+      "rationale": "An attached child inherits the current static parent texture or effect at the requested slot. Root descriptions have no parent context.",
       "source": [
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
@@ -1433,6 +1434,30 @@
           "anchors": [
             "if (_animIndexes.count(anim_pair) != 0)",
             "continue;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "model-format.rule.particle-cpu-order",
+      "name": "Particle CPU completion order",
+      "requirement": "Finalize children before attached particles. Prepare joint transforms on the owner, use the pose delta, join admitted particle CPU work before layout refresh, animation callbacks or drawing, and preserve zero-delta layout re-poses.",
+      "rationale": "SPARK attachment spans and Effekseer inner chunks share the client scheduler while unsupported graphs retain their original owner ordering.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "FinalizeAnimationPose",
+            "TryUpdateParticleCpuSpan",
+            "SetupParticle",
+            "RefreshConfigurationLayout"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ParticleCpuUpdates.cpp",
+          "anchors": [
+            "Model particles preserve geometry across direct and worker owners",
+            "model->PoseSpriteFrame(false)"
           ]
         }
       ]
@@ -1588,7 +1613,7 @@
     "parser_token_count": 59,
     "asset_count": 6,
     "limit_count": 4,
-    "rule_count": 16,
+    "rule_count": 17,
     "removed_legacy_count": 6,
     "tokens_by_category": {
       "animation": 10,
@@ -1605,5 +1630,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "496eb2ea2d6b5150b06217723895efce2ad6ef5d0b1a2c65d26da299f0c91b68"
+  "contract_digest": "47acda576d57d7902c36a3b421a72f850d39dfeba724ef566375e830fbc9e3f8"
 }

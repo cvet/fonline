@@ -1664,6 +1664,32 @@
   ],
   "runtime_rules": [
     {
+      "id": "image-format.runtime.cpu-preparation",
+      "name": "Bounded CPU preparation",
+      "stability": "internal",
+      "requirement": "With effective workers, owner-read bytes may be decoded on the common scheduler before owner-only normal or quad publication. Preserve exact factory dispatch, original exceptions, generation/epoch revocation and active/publishing reservation lifetime.",
+      "rationale": "The 32-slot and 64 MiB input/decoded/control reservation uses a qualified default decoder and excludes retained diagnostic exception payloads, arbitrary decoder captures, allocator/transient/provider/GPU storage and process RSS. Capacity decline uses direct loading.",
+      "source": [
+        {
+          "path": "Source/Client/ResourcePreparation.cpp",
+          "anchors": [
+            "EstimateReservation",
+            "job->Publishing = true",
+            "CancelGeneration",
+            "MeasureSpriteResourceStorage"
+          ]
+        },
+        {
+          "path": "Source/Client/ResourceManager.cpp",
+          "anchors": [
+            "PrefetchSpriteResource",
+            "typeid(sprite_factory) != typeid(DefaultSpriteFactory)",
+            "ShutdownResourcePreparation"
+          ]
+        }
+      ]
+    },
+    {
       "id": "image-format.runtime.factory-coverage",
       "name": "Default factory extension boundary",
       "stability": "experimental",
@@ -1796,16 +1822,22 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "if (_meshData)",
-            "for (uint16_t local_index : mesh.Indices)",
+            "AtlasSprite::GetGeometry",
+            "WritePreparedSpriteGeometry",
             "1px border for correct linear interpolation",
             "hit_test_data[i] = _sprMngr->CheckHitTest"
           ]
         },
         {
+          "path": "Source/Client/SpriteGeometry.cpp",
+          "anchors": [
+            "for (uint16_t local_index : mesh.Indices)"
+          ]
+        },
+        {
           "path": "Source/Client/SpriteManager.cpp",
           "anchors": [
-            "spr->FillData(_spritesDrawBuf",
+            "FillSpriteGeometry",
             "DrawSpriteSize"
           ]
         }
@@ -1887,7 +1919,7 @@
       "name": "Complete direction tables",
       "stability": "experimental",
       "requirement": "Frame/Frames composition requires one unnamed sequence or the complete active-geometry indexed direction table; even a later section without direction1 fails before resolution. Source permits overrides of existing directions without repeated references. Final direction counts and durations may differ, but every timeline must be valid.",
-      "rationale": "Every direction sheet shares one frame-count and timing header.",
+      "rationale": "Every final direction owns its frame count and timeline; indexed composition still requires the complete active-geometry direction table.",
       "source": [
         {
           "path": "Source/Tools/ImageRecipe.cpp",
@@ -2082,20 +2114,20 @@
     }
   ],
   "summary": {
-    "entry_count": 81,
+    "entry_count": 82,
     "format_count": 12,
     "descriptor_field_count": 33,
     "filename_option_count": 4,
     "baking_rule_count": 14,
-    "runtime_rule_count": 8,
+    "runtime_rule_count": 9,
     "validation_rule_count": 10,
     "baker_extension_count": 12,
     "runtime_extension_count": 11,
     "entries_by_stability": {
       "deprecated": 1,
       "experimental": 73,
-      "internal": 7
+      "internal": 8
     }
   },
-  "contract_digest": "c00f85f515a3afa824ca38f684f1e0894c64edd728c2b62446452d38b3074237"
+  "contract_digest": "abed07990c7f7f3db04d7a5df8bec5c7072b81a53f505723b01b2c403c493d09"
 }

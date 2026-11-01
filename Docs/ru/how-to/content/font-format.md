@@ -5,7 +5,7 @@ locale: ru
 document_id: font-format-guide
 permalink: /Docs/ru/how-to/content/font-format.html
 ---
-<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"a67cde7fedc1762c051e96dca3b219d58a7c8c0a012d71e8f9a13e5c16c45cb4"} -->
+<!-- docs-translation: {"document_id":"font-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/font-format.md","source_sha256":"1acc34737c5ff085dcadb5eeb49312bc0e478f2a16b421948d9f5b641896d115"} -->
 # Форматы шрифтов и компоновка текста
 
 FOnline отрисовывает растровые шрифты, описанные текстовым форматом Engine
@@ -132,6 +132,12 @@ End
 `#` и `;` удаляются только тогда, когда встречаются в текущем ключе, отделённом
 пробелами. Не используйте их как полноценный синтаксис комментариев строки.
 `End` останавливает разбор и должен завершать каждый авторский дескриптор.
+
+Значение `Image` может находиться на следующей строке; используется последнее
+разобранное значение. Resource usage следует этим правилам токенов, пропускает
+остаток каждой строки `Letter` и останавливается на `End` или отказе чтения целого
+числа. Он сохраняет зависимость от выбранного изображения, не заменяя
+runtime-валидацию дескриптора.
 
 ## Метрики FOFNT
 
@@ -348,7 +354,7 @@ backend-валидация описаны в [формате эффектов](e
 ```powershell
 python BuildTools\docs_font_format.py --write
 python -m unittest BuildTools.tests.test_docs_font_format
-python BuildTools\docs_contract_diff.py --check
+python BuildTools\docs_contract_diff.py --baseline-git-ref origin/master --check --enforce
 cmake --build <build-dir> --config RelWithDebInfo --target RunUnitTests
 ```
 

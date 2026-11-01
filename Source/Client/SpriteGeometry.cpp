@@ -203,4 +203,3 @@ void TransformPreparedSpriteGeometry(const PreparedSpriteTransform& transform, s
 }
 
 FO_END_NAMESPACE
-

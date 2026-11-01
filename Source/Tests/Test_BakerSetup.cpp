@@ -54,6 +54,7 @@
 #include "RawCopyBaker.h"
 #include "ResourceUsage.h"
 #include "Test_BakerHelpers.h"
+#include "Test_ClientEngineHelpers.h"
 #include "TextBaker.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -1560,6 +1561,11 @@ ClientFile = Client.png
     rig.AddBakedFile("Music.ogg", "music");
     rig.AddBakedFile("Server.png", "server image");
     rig.AddBakedFile("Client.png", "client image");
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    BakerTests::PrepareResourceUsageServerBytecode(rig);
+#endif
+
     ProtoBaker baker {rig.MakeContext("Protos")};
     baker.BakeFiles(rig.GetAllSourceFiles(), {});
 
@@ -1613,6 +1619,10 @@ PicMap = Placed.png
         rig.AddBakedFile(path, "image");
     }
 
+#if FO_ANGELSCRIPT_SCRIPTING
+    BakerTests::PrepareResourceUsageServerBytecode(rig);
+#endif
+
     ProtoBaker prototypes {rig.MakeContext("Protos")};
     prototypes.BakeFiles(rig.GetAllSourceFiles(), {});
 
@@ -1656,6 +1666,154 @@ TEST_CASE("ResourceUsageOwnersKeepFontPagesAndOnlyCurrentEffectPasses")
 
     const BaseBaker& effect_dependencies = effects;
     CHECK(effect_dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "Effects/Test.fofx") == vector<string> {"Effects/Test.fofx-1-info", "Effects/Test.fofx-1-vert-glsl"});
+}
+
+TEST_CASE("ResourceUsageFofntDependenciesFollowRuntimeTokens")
+{
+    const pair<string_view, string_view> variants[] = {
+        {"Image UnitTestFont.png\n", "Image UnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "Image\nUnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "Image\nUnitTestFont.png*\n"},
+        {"Image UnitTestFont.png\n", "LineHeight 8 Image UnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "Image Unreachable.png\nImage UnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "Image#note UnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "Image;note UnitTestFont.png\n"},
+        {"Image UnitTestFont.png\n", "# Image Unreachable.png\nImage UnitTestFont.png\n"},
+        {"End\n", "End\nImage Unreachable.png\n"},
+        {"Letter 'A'\n", "Letter 'A' Image Unreachable.png\n"},
+        {"End\n", "YAdvance invalid\nImage Unreachable.png\nEnd\n"},
+        {"End\n", "YAdvance Image Unreachable.png\nEnd\n"},
+        {"End\n", "PositionX invalid\nImage Unreachable.png\nEnd\n"},
+    };
+
+    for (const auto& [original, replacement] : variants) {
+        CAPTURE(replacement);
+
+        auto resources = ClientEngineTests::MakeUnitTestFontResources();
+        REQUIRE(resources.front().first == "UnitTestFont.fofnt");
+        string descriptor {resources.front().second.begin(), resources.front().second.end()};
+        size_t position = descriptor.find(original);
+        REQUIRE(position != string::npos);
+        descriptor.replace(position, original.size(), replacement);
+        resources.front().second.assign(descriptor.begin(), descriptor.end());
+
+        ClientEngineTests::CheckMinimalClientDiagnostics([&] {
+            auto settings = ClientEngineTests::MakeClientTestSettings();
+            BakerTests::OverrideSetting(settings.Client.Multithreading, false);
+            auto client = ClientEngineTests::MakeClientEngine(settings, ClientEngineTests::MakeClientTestResources(std::move(resources)));
+            auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+            REQUIRE_NOTHROW(client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false));
+            CHECK(client->FontMngr.HaveLetter(FontType::Default, uint32_t {'A'}));
+            CHECK(client->FontMngr.GetLineHeight(FontType::Default) == 8);
+        });
+
+        BakerTests::TestRig rig;
+        rig.AddBakedFile("UnitTestFont.fofnt", descriptor);
+        RawCopyBaker fonts {rig.MakeContext("Fonts")};
+        const BaseBaker& dependencies = fonts;
+        vector<string> selected;
+        CHECK_NOTHROW(selected = dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "UnitTestFont.fofnt"));
+        CHECK(selected == vector<string> {"UnitTestFont.png"});
+    }
+}
+
+TEST_CASE("ResourceUsageFofntRuntimeOracleRejectsUnsupportedVersion")
+{
+    auto resources = ClientEngineTests::MakeUnitTestFontResources();
+    string descriptor {resources.front().second.begin(), resources.front().second.end()};
+    REQUIRE(descriptor.starts_with("Version 2\n"));
+    descriptor.replace(0, string_view {"Version 2"}.size(), "Version 99");
+    resources.front().second.assign(descriptor.begin(), descriptor.end());
+
+    ClientEngineTests::CheckMinimalClientDiagnostics([&] {
+        auto settings = ClientEngineTests::MakeClientTestSettings();
+        BakerTests::OverrideSetting(settings.Client.Multithreading, false);
+        auto client = ClientEngineTests::MakeClientEngine(settings, ClientEngineTests::MakeClientTestResources(std::move(resources)));
+        auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+        CHECK_THROWS_WITH(client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false), Catch::Matchers::ContainsSubstring("Font version not supported"));
+    });
+}
+
+TEST_CASE("ResourceUsageRejectsEmptyPathSegmentsBeforePackaging")
+{
+    auto available = [](const ResourceOutput&) { return true; };
+
+    for (string_view path : {"Folder//Image.png", "Folder/Image.png/"}) {
+        CAPTURE(path);
+
+        ResourceUsage packs;
+        CHECK_THROWS_WITH(packs.RegisterPack(path), Catch::Matchers::ContainsSubstring("Noncanonical resource usage path"));
+
+        ResourceUsage outputs;
+        CHECK_THROWS_WITH(outputs.RegisterOutput("Art", path, "Image", BakingOutputKind::Resource), Catch::Matchers::ContainsSubstring("Noncanonical resource usage path"));
+
+        ResourceUsage references;
+        CHECK_THROWS_WITH(references.AddReference(path, "Fixture"), Catch::Matchers::ContainsSubstring("Noncanonical resource usage path"));
+
+        ResourceUsage dependencies;
+        dependencies.RegisterOutput("Art", "Root.fofrm", "Image", BakingOutputKind::Required);
+
+        auto invalid_dependency = [path](const ResourceOutput&) -> vector<string> { return {string {path}}; };
+        CHECK_THROWS_WITH(dependencies.CreateManifest("build", "config", available, invalid_dependency), Catch::Matchers::ContainsSubstring("Noncanonical resource usage path"));
+    }
+}
+
+TEST_CASE("ResourceUsagePreservesCanonicalPathsAndEmptyReferences")
+{
+    ResourceUsage usage;
+    usage.RegisterOutput("Art/Subpack", "Folder/Image With Space.png", "Image", BakingOutputKind::Required);
+    usage.AddReference({}, "Absent optional resource");
+    usage.AddReference("Folder/Image With Space.png", "Fixture");
+
+    auto available = [](const ResourceOutput&) { return true; };
+    auto dependencies = [](const ResourceOutput&) -> vector<string> { return {}; };
+    nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", available, dependencies));
+
+    CHECK(manifest.at("Packs").at("Art/Subpack") == nlohmann::json::array({"Folder/Image With Space.png"}));
+    CHECK(manifest.at("Reasons").at("Art/Subpack/Folder/Image With Space.png") == nlohmann::json::array({"Fixture", "Required output of Image"}));
+}
+
+TEST_CASE("ResourceUsageRejectsAmbiguousOutputIdentities")
+{
+    for (bool nested_first : {false, true}) {
+        CAPTURE(nested_first);
+
+        string_view first_pack = nested_first ? "Art/Subpack" : "Art";
+        string_view first_path = nested_first ? "Image.png" : "Subpack/Image.png";
+        string_view second_pack = nested_first ? "Art" : "Art/Subpack";
+        string_view second_path = nested_first ? "Subpack/Image.png" : "Image.png";
+
+        ResourceUsage usage;
+        usage.RegisterOutput(first_pack, first_path, "Image", BakingOutputKind::Resource);
+
+        CHECK_THROWS_WITH(usage.RegisterOutput(second_pack, second_path, "Image", BakingOutputKind::Required), Catch::Matchers::ContainsSubstring("Resource output path has multiple pack-relative identities"));
+
+        auto outputs = usage.GetOutputs();
+        REQUIRE(outputs.size() == 1);
+        CHECK(outputs.front().Pack == first_pack);
+        CHECK(outputs.front().Path == first_path);
+        CHECK(outputs.front().Kind == BakingOutputKind::Resource);
+
+        usage.AddReference(first_path, "Fixture");
+
+        auto available = [](const ResourceOutput&) { return true; };
+        auto dependencies = [](const ResourceOutput&) -> vector<string> { return {}; };
+        nlohmann::json manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", available, dependencies));
+        CHECK(manifest.at("Packs").contains(first_pack));
+        CHECK_FALSE(manifest.at("Packs").contains(second_pack));
+        CHECK(manifest.at("Packs").at(first_pack) == nlohmann::json::array({first_path}));
+        CHECK(manifest.at("Reasons").at("Art/Subpack/Image.png") == nlohmann::json::array({"Fixture"}));
+
+        usage.RegisterOutput(first_pack, first_path, "Image", BakingOutputKind::Required);
+        usage.RegisterOutput(second_pack, "Different.png", "Image", BakingOutputKind::Required);
+
+        manifest = nlohmann::json::parse(usage.CreateManifest("build", "config", available, dependencies));
+        CHECK(manifest.at("Packs").at(first_pack) == nlohmann::json::array({first_path}));
+        CHECK(manifest.at("Packs").at(second_pack) == nlohmann::json::array({"Different.png"}));
+        CHECK(manifest.at("Reasons").at("Art/Subpack/Image.png") == nlohmann::json::array({"Fixture", "Required output of Image"}));
+    }
 }
 
 FO_END_NAMESPACE

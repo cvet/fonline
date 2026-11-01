@@ -33,6 +33,7 @@
 
 #include "ImageBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "Application.h"
 #include "ConfigFile.h"
 #include "FileSystem.h"
@@ -254,6 +255,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 
     vector<std::future<SpriteInfoFileEntry>> tasks;
+    BakingTaskGuard baking_tasks {tasks};
 
     for (size_t index = 0; index < work.size(); index++) {
         tasks.emplace_back(run_async(GetAsyncMode(), strex("BakeImage-{}", work[index].Output.Source.Path), [this, &source_files, &work, index]() FO_DEFERRED -> SpriteInfoFileEntry {

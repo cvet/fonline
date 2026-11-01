@@ -890,4 +890,3 @@ TEST_CASE("Discrete direction identities")
 }
 
 FO_END_NAMESPACE
-

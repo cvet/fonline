@@ -33,6 +33,8 @@
 
 #include "ModelInfoBaker.h"
 
+#include "BakingTaskGuard.h"
+
 #if FO_ENABLE_3D
 
 #include "AnimationInfo.h"
@@ -523,6 +525,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     vector<std::future<void>> file_bakings;
     bool validate_aggregate_bounds = !target_path.empty();
+    BakingTaskGuard baking_tasks {file_bakings};
 
     for (File& file_ : files_to_bake) {
         string task_name = strex("BakeModelInfo-{}", file_.GetPath()).str();
@@ -1611,6 +1614,7 @@ static void CalculateModelDescriptionLinkBounds(const FileCollection& source_fil
     link_bakings.reserve(link_indices.size());
 
     nptr<const ModelBoundsSampler> parent = parent_sampler ? &*parent_sampler : nullptr;
+    BakingTaskGuard link_tasks {link_bakings};
 
     for (size_t link_index : link_indices) {
         string task_name = strex("BakeModelInfoBounds-{}-{}", fname, link_index);
@@ -1701,6 +1705,7 @@ static auto SampleModelDescriptionLinkBoneTracks(const ModelBoundsSampler& paren
     // One flat slot per bone and clip, so each task owns its slot and no writer needs synchronization
     vector<optional<vector<mat44>>> tracks(bones.size() * clips.size());
     vector<std::future<void>> track_bakings;
+    BakingTaskGuard track_tasks {track_bakings};
 
     for (size_t bone_index = 0; bone_index < bones.size(); bone_index++) {
         for (size_t clip_index = 0; clip_index < clips.size(); clip_index++) {
@@ -2315,6 +2320,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
     ModelBoundsMeasurement measurement = GetModelBoundsMeasurement(*ctx.GetSettings());
     vector<std::future<ModelAnimationInfoSection>> section_bakings;
     section_bakings.reserve(fo3d_files.size());
+    BakingTaskGuard section_tasks {section_bakings};
 
     for (const File& file : fo3d_files) {
         string task_name = strex("BakeModelAnimationInfo-{}", file.GetPath());
@@ -2665,6 +2671,7 @@ static auto SampleModelAnimationInfoClipBounds(const DescriptionBoundsSampler& s
     vector<uint64_t> retries(clip_count);
     vector<std::future<void>> clip_bakings;
     vector<bool> scheduled(clip_count);
+    BakingTaskGuard clip_tasks {clip_bakings};
 
     // One task owns one clip slot, so the shared result and retry buffers need no further synchronization
     for (const ModelAnimationInfoEntry& entry_ : entries) {

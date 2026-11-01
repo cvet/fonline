@@ -1,6 +1,7 @@
 {
   "Version": 1,
   "HeaderOnly": {
+    "Source/Tools/BakingTaskGuard.h": "Pure template scope guard for futures and their collections; all definitions require the caller's task type.",
     "Source/Tests/Test_EntityLifecycleHelpers.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_DumpArtifacts.h": "Shared test fixture utility; no independent runtime module.",
     "Source/Tests/Test_ClientServerIntegrationHelpers.h": "Shared test fixture utility; no independent runtime module.",

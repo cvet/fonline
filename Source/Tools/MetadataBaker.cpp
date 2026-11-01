@@ -33,6 +33,7 @@
 
 #include "MetadataBaker.h"
 
+#include "BakingTaskGuard.h"
 #include "MetadataRegistration.h"
 
 FO_BEGIN_NAMESPACE
@@ -89,6 +90,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     vector<std::future<void>> file_bakings;
 
     std::ranges::stable_sort(filtered_files, [](auto&& a, auto&& b) { return a.GetPath() < b.GetPath(); });
+    BakingTaskGuard baking_tasks {file_bakings};
 
     if (bake_server) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Server", [&]() FO_DEFERRED {

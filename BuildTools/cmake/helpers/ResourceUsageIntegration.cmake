@@ -5,11 +5,18 @@ function(SetupResourceUsageIntegrationTests)
 
     get_filename_component(engine_root "${FO_ENGINE_ROOT}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
+    set(resource_usage_arguments
+        --baker "$<TARGET_FILE:${FO_DEV_NAME}_Baker>"
+        --workdir "${CMAKE_CURRENT_BINARY_DIR}/Testing/ResourceUsage")
+
+    if(FO_ANGELSCRIPT_SCRIPTING)
+        list(APPEND resource_usage_arguments --angelscript)
+    endif()
+
     add_custom_target(RunResourceUsageIntegrationTests
         COMMAND "${Python3_EXECUTABLE}"
             "${engine_root}/BuildTools/tests/check_resource_usage_pipeline.py"
-            --baker "$<TARGET_FILE:${FO_DEV_NAME}_Baker>"
-            --workdir "${CMAKE_CURRENT_BINARY_DIR}/Testing/ResourceUsage"
+            ${resource_usage_arguments}
         DEPENDS ${FO_DEV_NAME}_Baker
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Verify resource usage selection and native archive readback"

@@ -12,7 +12,7 @@ permalink: /Docs/en/explanation/runtime/client.html
 
 ## Purpose
 
-The client runtime turns baked resources, server state, local input, and scripts into the player-facing game view. It does not own game design decisions. Instead, it provides the reusable engine pieces that a game project drives through scripts, configuration, resources, and server messages.
+The client runtime combines baked resources, server state, input, and scripts into the game view. Projects own game design and drive the reusable runtime through scripts, configuration, resources, and server messages.
 
 Read this page together with:
 
@@ -87,7 +87,7 @@ Read this page together with:
 
 ## Runtime owner: `ClientEngine`
 
-`ClientEngine` in `Source/Client/Client.h` is the central client-side engine object. It derives from `BaseEngine` and `AnimationResolver`, owns the high-level client lifecycle, and exposes event hooks used by client scripts.
+`ClientEngine` in `Source/Client/Client.h` derives from `BaseEngine` and `AnimationResolver`, owns the client lifecycle, and exposes client-script event hooks.
 
 Major responsibilities:
 
@@ -100,7 +100,7 @@ Major responsibilities:
 - own client-facing managers such as sprites, effects, fonts, sounds, video playback, resources, cache storage, and render targets;
 - raise engine events such as `OnStart`, `OnLoop`, `OnConnected`, `OnDisconnected`, render-map stages, input events, entity in/out events, and map load/unload events.
 
-`ClientEngine` is intentionally broad: it is the composition root where Common-layer data (`Entity`, properties, prototypes, networking buffers) meets Frontend-layer services (`Application`, render, input, audio) and game scripts. Game-facing media contracts are documented separately in [Audio.md](../../../Audio.md) and [Video.md](../../../Video.md).
+`ClientEngine` composes Common-layer data (`Entity`, properties, prototypes, networking buffers), Frontend services (`Application`, render, input, audio), and game scripts. [Audio.md](../../../Audio.md) and [Video.md](../../../Video.md) own game-facing media contracts.
 
 ## Client lifecycle
 
@@ -115,15 +115,15 @@ A typical client lifetime has these phases:
 7. **Map and entity state** arrive through network messages, are represented as client view entities, and are updated through property sync and movement/action packets.
 8. **Shutdown** first closes and drains resource preparation, then disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
 
-When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
+Startup/shutdown changes must keep script events, manager lifetime, entity registration, and network callbacks consistent.
 
-`ClientSessionMarker` is a best-effort record in the writable client root, shared by the host and runtime. It records build/start time, process identity (`Pid` plus `ProcessStart`), and the last shutdown stage: `MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`, `GlobalDataTeardown` (with the active global-data set), `RuntimeReturned`, then `ExitRequested`. Numeric stage values retain their historical meanings rather than their order here. The host leaves the marker through process exit, because DLL detach and runtime callbacks can still hang. The next launch consumes a marker at `ExitRequested` silently only when its exact process is gone; other markers report either a still-running previous process or an unclean exit. An unknown/malformed stage or missing process identity cannot prove clean exit. Every write checks identity so an older instance cannot mark a newer instance's marker complete. This file is diagnostic, not a cross-process registry or lock. Windows liveness polls the handle rather than treating exit code `259` as proof of life.
+`ClientSessionMarker` is a best-effort diagnostic in the writable client root, shared by host and runtime. It records build/start time, process identity (`Pid` plus `ProcessStart`), and the last stage: `MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`, `GlobalDataTeardown` (including the active global-data set), `RuntimeReturned`, then `ExitRequested`. Numeric stage meanings are historical, not this sequence. The marker survives process exit because DLL detach/runtime callbacks may hang. The next launch silently consumes `ExitRequested` only after the exact process has gone; otherwise it reports a running predecessor or unclean exit. Unknown/malformed stages or missing identity cannot prove clean exit. Writes verify identity so an older instance cannot complete a newer marker. This is no registry or cross-process lock. Windows polls the process handle; exit code `259` does not prove liveness.
 
 ## Server connection and message dispatch
 
-`ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns the client-side transport state. It hides whether the current connection is interthread, TCP sockets, or UDP-capable sockets.
+`ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns transport state, abstracting interthread, TCP, and UDP-capable sockets.
 
-`ClientNetwork.RequireInterthreadTransport = True` requires an in-process listener on `Network.ServerPort`. A missing listener fails `Connect()` immediately with `ConnectResult::Failed`, without attempting TCP, UDP or WebSocket; an available listener takes precedence even when `ClientNetwork.UseUdp` is true. The default is false and preserves normal transport selection and fallback. This client-side opt-in is intended for embedded clients; server-side admission and authentication remain independent.
+`ClientNetwork.RequireInterthreadTransport = True` requires an in-process listener on `Network.ServerPort`: absence immediately fails `Connect()` with `ConnectResult::Failed` without trying TCP, UDP, or WebSocket. An available listener wins even with `ClientNetwork.UseUdp` enabled. Default false retains ordinary selection/fallback. This client opt-in serves embedded clients; server admission/authentication remain independent.
 
 Important responsibilities:
 
@@ -137,17 +137,15 @@ Important responsibilities:
 
 `ClientEngine` owns the semantic handlers. Examples include `Net_OnInitData`, `Net_OnAddCritter`, `Net_OnRemoveCritter`, `Net_OnProperty`, `Net_OnLoadMap`, `Net_OnSomeItems`, `Net_OnRemoteCall`, `Net_OnAddCustomEntity`, and `Net_OnRemoveCustomEntity`.
 
-On an ordinary failed connection attempt, `Net_OnConnect()` clears the pending
-request before firing `OnConnectingFailed`. The main loop does not retry every
-frame; a script or user action must request another `Game.Connect()` explicitly.
+On ordinary connection failure, `Net_OnConnect()` clears the pending request before `OnConnectingFailed`. There is no per-frame retry: a script/user action must explicitly request `Game.Connect()` again.
 
 For protocol format details, use [Networking](../authority-and-networking/). For client/server handshake validation, see `Source/Tests/Test_ClientServerIntegration.cpp`, especially `ClientAndServerHandshakeOverInterthreadTransport`.
 
-Client-side script continuations scheduled through `ScheduleDelayedCallback()` are processed once per main-loop pass from a snapshot of callbacks already due at the start of that pass. A callback that schedules another zero-delay callback, including `Yield(0)`, resumes on the next pass instead of re-entering immediately. This prevents script wait loops from starving the next network/input tick.
+Each main-loop pass processes a snapshot of `ScheduleDelayedCallback()` continuations already due at its start. Newly scheduled zero-delay callbacks, including `Yield(0)`, resume next pass instead of re-entering, so script wait loops cannot starve network/input ticks.
 
 ## Entity and view model
 
-Client-side game objects are not raw server entities. They are view entities that combine Common-layer entity data with client-only rendering, input, and presentation state.
+Client objects are views combining Common entity data with client-only rendering, input, and presentation state, rather than raw server entities.
 
 Primary view types:
 
@@ -160,30 +158,15 @@ Primary view types:
 - `ItemHexView` — item placed on a map hex, with map flags, sprite placement, blockers, and lighting implications.
 - custom client entities — created by `CreateCustomEntityView()` when a synced custom entity entry arrives.
 
-`ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
+`ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain network/script id lookup; `Source/Tests/Test_ClientEngine.cpp` checks registration and removal.
 
-`Item.Ownership` is not synchronized. Item snapshots received outside an owned
-holder therefore pass through `ClientEngine::ReceiveDetachedItem()`, which
-restores their data and explicitly assigns `ItemOwnership::Nowhere`. This shared
-path covers item-list payloads, action context items, and slot-move items. A
-detached snapshot must never retain the enum's zero default (`MapHex`), because
-client presentation and actions would then treat another inventory's item as an
-object lying on the current map. Item-list payloads still require a nonzero
-entity id because callers retain and address those items. An action-context
-snapshot may instead represent an immutable static map item and legitimately
-carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
-list handler enforces identity at its narrower boundary.
+`Item.Ownership` is unsynchronized. `ClientEngine::ReceiveDetachedItem()` restores snapshots outside an owned holder and assigns `ItemOwnership::Nowhere` for item lists, action context, and slot moves. Snapshots must never retain the zero default (`MapHex`): it would make presentation/actions treat another inventory's item as lying on the current map. Lists require nonzero entity ids because callers retain/address their items. Action-context snapshots may represent immutable static map items with empty ids; `ReceiveDetachedItem()` accepts that generic state, while the list handler enforces its narrower identity requirement.
 
-Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
+GUI `ItemView` cells cache bound handles. `Resort()` discards destroyed supplier handles, retains a cell only for the same live handle instance, and rebinds same-id replacement clones so draw callbacks see current counts and other projected properties.
 
 ## 3D model runtime architecture
 
-The former `3dAnimation` and `3dStuff` umbrella modules have been removed. The
-client 3D path now uses same-named `Model*.h` / `Model*.cpp` module pairs with
-one ownership boundary per module. There is no client-side `ModelMesh` utility
-module: mesh representation types live with `ModelHierarchy`. There is also no
-separate `ModelPoseRuntime` module: renderer-independent pose/link operations
-are part of `ModelAnimation`.
+The removed `3dAnimation` / `3dStuff` umbrellas are replaced in the client 3D path by same-named `Model*.h` / `Model*.cpp` pairs, each owning one boundary. No `ModelMesh` utility exists: mesh types belong to `ModelHierarchy`. No separate `ModelPoseRuntime` exists: renderer-independent pose/link operations belong to `ModelAnimation`.
 
 | Module | Responsibility |
 | --- | --- |
@@ -206,346 +189,119 @@ The ownership direction is deliberate:
   canonical indexing and cross-model pose links belong to
   `ModelAnimation`, not `ModelHierarchy`.
 
-This split removes the old include-everything dependency. A caller includes the
-manager, information, hierarchy, instance, animation, or baked-data contract it
-actually consumes. Small passive types stay with their owning module instead of
-forming empty translation units.
+Callers include only the manager, information, hierarchy, instance, animation, or baked-data contract they consume. Passive types remain with their owner rather than creating empty translation units; the include-everything dependency is gone.
 
-`ModelAnimationRuntimeClip`, `ModelAnimationRuntimeRig`, and
-`ModelAnimationRuntimePose` keep their backend state behind PImpl. The public
-header exposes only engine-owned runtime values and spans; Ozz headers, archive
-objects, sampling contexts, and matrix buffers stay in
-`ModelAnimation.cpp`. `ModelAnimationData` defines the native versioned wire
-contract shared with the baker, while
-`ModelAnimationConverter` owns offline conversion. The engine API does not name
-or model interchangeable animation backends: Ozz is an implementation detail of
-the engine's native model-animation runtime and baked format.
+`ModelAnimationRuntimeClip`, `ModelAnimationRuntimeRig`, and `ModelAnimationRuntimePose` hide backend state behind PImpl. Public headers expose engine runtime values/spans; `ModelAnimation.cpp` holds Ozz headers, archives, sampling contexts, and matrices. `ModelAnimationData` owns the versioned native wire contract shared with the baker; `ModelAnimationConverter` owns offline conversion. Ozz implements the Engine's native runtime/baked format, not a public interchangeable-backend API.
 
 ## Critter model animation
 
-The complete `.fo3d` loading and composition contract - source meshes, layers, root modifiers, child models, particles, transforms, materials, cuts, and rendering controls - is [Model Format](../../how-to/content/model-format.md).
+[Model Format](../../how-to/content/model-format.md) owns the complete `.fo3d` loading/composition contract: source meshes, layers, root modifiers, child models, particles, transforms, materials, cuts, and rendering controls.
 
-3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
-animation-specific speed (`AnimSpeed`) to the body/action controller, while `RefreshMoveAnimation()` assigns gait and
-movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
-the model base/link/global speed only; it must not inherit the current body action's `AnimSpeed`, otherwise fast actions
-such as use/pick-up make the leg cycle run too quickly while the critter is moving.
+3D critters have separate body/action and movement controllers. `ModelInstance::PlayAnim()` applies `AnimSpeed` to body/action; `RefreshMoveAnimation()` assigns gait/movement-speed scaling to the movement track. With both active, movement advances at model base/link/global speed, without the body's `AnimSpeed`; otherwise fast use/pick-up actions would accelerate moving legs.
 
-An animation name prefixed with `~` plays the source clip in reverse: playback time `t` samples the clip at
-`duration - fmod(t, duration)`, so an exact loop boundary restarts at the clip end. If interpolation is disabled, the
-same nearest-key rule is applied at that reversed source time.
+The `~` animation-name prefix reverses source playback: time `t` samples `duration - fmod(t, duration)`, restarting exact loop boundaries at the clip end. Without interpolation, nearest-key selection uses that reversed source time.
 
-Every baked `.fo3d` has the required versioned `LFMODINF` schema-1 header and a
-required `LFOZZRIG` payload generated for pinned `ozz-animation` 0.16.0.
-`ModelInformation` strictly loads and owns one immutable
-`ModelAnimationRuntimeRig`. Its PImpl contains the canonical Ozz skeleton,
-unique clips, base/clip remaps, presence masks, nearest timelines, and resolved
-state/action binding table. The loader rejects old unversioned files and any
-partial or inconsistent rig; it never falls back to another payload after an
-Ozz load error. The final mesh-only wire transition uses compatibility marker
-`0.0.30` and requires a full resource rebake.
+Every baked `.fo3d` requires a versioned `LFMODINF` schema-5 header (`MODEL_DESCRIPTION_SCHEMA_VERSION`) and schema-1 `LFOZZRIG` payload for pinned `ozz-animation` 0.16.0. `ModelInformation` strictly owns/loads one immutable `ModelAnimationRuntimeRig`, whose PImpl holds the canonical Ozz skeleton, unique clips, base/clip remaps, presence masks, nearest timelines, and resolved state/action bindings. Old unversioned, partial, or inconsistent rigs fail; Ozz errors never fall back to other payloads. The historical mesh-only wire transition used compatibility marker `0.0.30` and requires a full rebake.
 
-Ozz is the production animated-pose path. The body and movement controllers
-advance timeline/event state only. Each registered animation stores direct Ozz
-clip index/duration/reverse metadata and an immutable bound-joint set derived
-from the clip presence mask. A joint is bound only when its canonical and exact
-runtime names match, so this gate deliberately keeps a resource-renamed model
-root out of a source-root animation. Per-track allowed-joint and transition-
-suppression masks further filter those bindings before the track state feeds the
-per-instance Ozz pose.
-Ozz performs clip sampling, body blending,
-movement-only joint replacement, procedural body/head pre-rotation, and
-local-to-model evaluation. Each `ModelInstance` snapshots the resulting world
-matrices, and skin palettes, linked children, particles, and bone queries read
-that owning instance snapshot. Link-all attachments override only the matched
-joint after evaluation and deliberately do not recompute its descendants,
-preserving the established attachment order.
+Ozz evaluates production animated poses; body/movement controllers advance only timelines/events. Registered animations hold direct Ozz clip index/duration/reverse metadata and immutable bound-joint sets derived from clip presence masks. Binding requires matching canonical/exact runtime names, excluding a resource-renamed model root from source-root animation. Per-track allowed-joint and transition-suppression masks further filter bindings before tracks feed the instance pose. Ozz samples clips, blends bodies, replaces movement-only joints, applies procedural body/head pre-rotation, and evaluates local-to-model transforms. Each `ModelInstance` snapshots world matrices for skin palettes, linked children, particles, and bone queries. Link-all attachments override matched joints after evaluation without recomputing descendants, preserving attachment order.
 
-Canonical joint names, exact runtime lookup names, and name-to-index bindings
-are independent of the physical `ModelBone` hierarchy. Base joints retain a
-read-only physical bone for meshes and cuts; animation-contributed joints have
-no `ModelBone` and are never materialized into the shared cached hierarchy.
-The base root deliberately keeps its resource-path runtime alias, while
-contributed joints use their canonical names, preserving exact legacy lookup
-and root-animation suppression semantics. Runtime particles, attachment
-resolution, link-all matching, and bone-position queries operate on canonical
-indices; link-all can therefore bind contributed joints without physical
-bones. Authored one-bone link validation remains base-hierarchy-only in the
-current baking schema.
+Canonical names, exact runtime names, and name/index bindings are independent of physical `ModelBone` topology. Base joints retain read-only physical bones for meshes/cuts; animation-contributed joints have no `ModelBone` and never enter the shared hierarchy. Base roots retain resource-path runtime aliases; contributed joints use canonical names, preserving legacy exact lookup/root-animation suppression. Particles, attachment resolution, link-all matching, and bone-position queries use canonical indices, so link-all supports contributed joints without physical bones. Authored one-bone links remain base-hierarchy-only in the current baking schema.
 
-Static `.fo3d` instances evaluate an empty Ozz track set so canonical rest and
-procedural body/head transforms follow the same runtime as animated instances.
-Only direct raw-model instances remain outside Ozz and build parent-ordered
-world matrices through the validation helpers owned by
-`ModelAnimation`.
+Static `.fo3d` instances evaluate empty Ozz track sets, sharing animated-instance canonical rest/procedural body/head transforms. Only direct raw models bypass Ozz and build parent-ordered world matrices through `ModelAnimation` validation helpers.
 
-The client script pair `Game.DrawCritter3d(...)` and
-`Game.GetDrawCritter3dBounds(...)` supports reusable GUI layout around a model
-sprite. After drawing an instance, the bounds query returns two rectangles
-relative to the draw anchor, or `false` when that instance has not produced a
-valid model sprite. `drawRect` covers the selected animation's complete cycle
-and continuous facing range, including its projected shadow. `viewRect` is the
-stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the view rectangle;
-world-space overlays use the stable view rectangle as their logical anchor,
-without duplicating 3D projection rules or depending on the current atlas crop.
-The former custom pose evaluator and shared mutable matrix-output table have
-been removed. Baked model meshes now begin with the mandatory `LFMODMSH`
-schema-1 header and contain only the recursive hierarchy/bind/drawable mesh
-payload. The client consumes it exactly and rejects headerless, mismatched,
-truncated, or trailing data; no serialized TRS tail and no legacy mesh fallback
-remain. Runtime clip identity, duration, joint presence, and sampling come
-exclusively from the baked Ozz rig.
+`Game.DrawCritter3d(...)` and `Game.GetDrawCritter3dBounds(...)` support GUI model layout. After a draw, the query returns two draw-anchor-relative rectangles, or `false` if no valid model sprite exists. `drawRect` covers the selected animation's full cycle/continuous facing range and projected shadow; `viewRect` is the stable logical model/layers rectangle for names and coarse picking. GUI previews fit/centre it; world overlays anchor to it without duplicating 3D projection or following atlas crops. The old custom evaluator/shared mutable matrix table are gone. Baked meshes require `LFMODMSH` schema-1 headers and only recursive hierarchy/bind/drawable mesh data. Clients consume exactly that payload, rejecting headerless, mismatched, truncated, or trailing data; no serialized TRS tail or legacy fallback remains. Only the baked Ozz rig supplies clip identity, duration, joint presence, and sampling.
 
-The nested LF archive hash detects accidental corruption but is not an
-authentication mechanism. Ozz deserialization assumes the baked resource pack
-is trusted; deployments that permit attacker-rewritable packs must authenticate
-the pack before this loader runs.
+The nested LF archive hash detects corruption, not authenticity. Ozz deserialization trusts baked packs; deployments allowing attacker-rewritable packs must authenticate them before loading.
 
 ## Sprite loading and atlases
 
-The stock client does not decode source PNG/TGA or legacy image bytes. `ResourceManager` lowercases a baked resource's extension, selects a registered `SpriteFactory`, and caches copyable sprites by path plus `AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container and returns `AtlasSprite` for one static frame or `SpriteSheet` for animation/directions. Concrete RGBA frames are uploaded into the requested atlas with duplicated one-pixel filter borders and an alpha-derived hit mask. Missing paths and unknown/failing factories are memoized separately; routine cleanup preserves them, while ForgetFailedSprite or InvalidateSpriteResource explicitly permits retry.
+Stock clients do not decode source PNG/TGA or legacy image bytes. `ResourceManager` lowercases baked extensions, dispatches registered `SpriteFactory` objects, and caches copyable sprites by path/`AtlasType`. `DefaultSpriteFactory` reads the private `ImageBaker` container into static `AtlasSprite` or animated/directional `SpriteSheet` objects. RGBA frames upload with duplicated one-pixel filter borders and alpha hit masks. Missing paths and unknown/failing factories are separately memoized across routine cleanup; ForgetFailedSprite or InvalidateSpriteResource permits retry.
 
-The complete source-format, FOFRM, baked-record, default-extension, atlas, and cache contract is [Image And Sprite Formats](../../how-to/content/image-format.md). Project code should feed supported sources through the pinned baker rather than parse the private baked stream.
+[Image And Sprite Formats](../../how-to/content/image-format.md) owns source formats, FOFRM, baked records, default extensions, atlases, and caching. Projects must use the pinned baker for supported sources rather than parse private baked streams.
 
-Particle resources follow a separate backend-neutral factory path. `ParticleManager` selects the enabled SPARK or Effekseer backend from a baked `.spk` or `.efk` extension, caches immutable backend data and failed loads by exact path, and creates independent simulation state per instance. `ParticleSpriteFactory` derives sprite framing from mandatory baked bounds and then selects atlas-backed or direct map-scene rendering; model-bone attachments use the 3D composition path. The complete authoring, baking, renderer, cache, tooling, script, and validation contract is [Particle Format And Runtime](../../how-to/content/particle-format.md).
+Particles use a separate neutral factory. `ParticleManager` chooses enabled SPARK/Effekseer backends by baked `.spk` / `.efk` extensions, caches immutable backend data/failed loads by exact path, and creates independent instance simulations. `ParticleSpriteFactory` frames sprites from mandatory baked bounds, choosing atlas-backed or direct map-scene rendering; bone attachments use 3D composition. [Particle Format And Runtime](../../how-to/content/particle-format.md) owns authoring, baking, rendering, caching, tools, scripts, and validation.
 
 ## 2D sprite root motion
 
-Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `Motion` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+For moving 2D critters, `MovingContext` owns logical path/hex progress. `CritterHexView` projects integer-pixel displacement onto accumulated walk/run `Motion` cycles, deriving frames and `_offsAnim` without changing authoritative movement. Direction-specific sheets preserve wrapped phase; start/stop resets the anchor. [Sprite Root Motion](../../how-to/content/sprite-root-motion.md) owns the data/math contract.
 
 ## `MapView`: map presentation and local spatial state
 
-`MapView` is the largest client view class because it bridges several subsystems:
+`MapView`, the largest client view, bridges these subsystems:
 
-- map file/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
-- per-instance static item removal, skipped in `LoadStaticData()` and applied live by `ApplyStaticItemRemovals()`, driven by the map's `RemovedStaticItemIds` property; removal is one-way and never reversed on a loaded map — see [Maps and Movement](../maps-and-movement.md#static-item-removal);
-- map processing through `Process()`;
-- map rendering through `DrawMap()` and staged render events on `ClientEngine`;
-- field indexes for items and critters;
-- item hit testing over active map and indoor-mask sprites: each drawable keeps
-  its `ItemHexView` owner, hidden primary sprites are skipped, and eligible
-  extra/multihex sprites remain selectable. Moving or destroying an item changes
-  the active-sprite set directly, so stale padded viewport cells cannot win;
-- coordinate conversion, zoom, scrolling, screen-to-map and map-to-screen transformations;
-- path finding and cut-path helpers built on `PathFinding::FindPath()`;
-- line tracing for bullets and light fans; `MapView::ApplyLightFan` traces every light source out to its full `Distance` in hexes (kept at >= 1) and forwards per-light falloff metadata to primitive shaders via `PrimitivePoint::EggData` → vertex attribute slot 3 (`InTexEggCoord`): `LightFanToPrimitves` writes the traced radius (hexes) and the normalized center alpha so a shader can reconstruct each fragment's hex-distance-from-edge and fade over a fixed hex band independent of the light's total length. A critter's light fan follows the critter's sprite offset (`HexView::GetSpriteOffsetPtr()`) so the light stays exactly under the sprite — the two must never diverge. The offset is kept bounded at the source: `MovingContext::EvaluateRawProgress`'s `current_hex` can lag the smooth lerp, and client prediction reconciliation in `ReceiveCritterMoving` can fold an inter-hex delta into the offset during rapid step taps, but `CritterHexView::StopMoving` cashes any accumulated offset back into the hex (snapping to the hex the sprite actually reached and keeping only the sub-hex remainder, with `hex + offset` invariant so the sprite never jumps). Normalization refuses a different target hex when that field is movement-blocked and retains the original offset, preventing client reconciliation from reporting a hex the server cannot path to. The offset therefore cannot run away and drag the fan off the critter. Items use the same `GetSpriteOffsetPtr()`;
-- fog-of-war layers;
-- local lighting sources and render targets;
-- mapper mode helpers used by engine tools.
+- map/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
+- one-way per-instance static item removal: `LoadStaticData()` skips removals, `ApplyStaticItemRemovals()` applies them live from `RemovedStaticItemIds`; loaded maps never reverse removal — see [Maps and Movement](../maps-and-movement.md#static-item-removal);
+- processing through `Process()`;
+- drawing through `DrawMap()` and `ClientEngine` render stages;
+- item/critter field indexes;
+- picking active map/indoor-mask sprites: drawables retain their `ItemHexView` owners, hidden primaries are skipped, eligible extra/multihex sprites remain selectable. Move/destruction updates the active set directly, excluding stale padded viewport cells;
+- coordinates, zoom, scrolling, screen/map conversions;
+- pathfinding/cutting through `PathFinding::FindPath()`;
+- bullet/light tracing: `MapView::ApplyLightFan` traces each light's full hex `Distance` (>= 1), passing falloff through `PrimitivePoint::EggData` to attribute slot 3 (`InTexEggCoord`). `LightFanToPrimitves` writes traced hex radius/normalized centre alpha for per-fragment hex-distance-from-edge and fixed-hex-band fading independent of light length. Critter fans must follow sprite offsets (`HexView::GetSpriteOffsetPtr()`) exactly. `MovingContext::EvaluateRawProgress`'s `current_hex` may lag smooth interpolation; rapid-tap reconciliation in `ReceiveCritterMoving` may add inter-hex deltas. `CritterHexView::StopMoving` folds accumulated offsets into the reached hex, retaining sub-hex remainders and invariant `hex + offset` to avoid jumps. Normalization retains the original offset if a different target hex is movement-blocked, avoiding reporting a hex the server cannot path to. Bounded offsets keep fans under critters. Items also use `GetSpriteOffsetPtr()`;
+- fog layers;
+- local lights/render targets;
+- engine-tool mapper helpers.
 
-`map.GetEntityAtScreenPos(pos, ignoreTransparentEgg = false)` returns the picked
-entity or null at an empty point. The default prefers non-egg items over sprites
-faded by an egg. Passing `true` removes that preference while retaining sprite
-alpha checks and ordinary entity draw-order selection; a tool can target the
-faded structure itself. It changes picking policy, not either render mask.
-Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same
-default-false option. The script default applies to both AngelScript and Managed
-C#; an embedding project owns when its input mode opts in.
+`map.GetEntityAtScreenPos(pos, ignoreTransparentEgg = false)` returns the picked entity, or null for empty points. Default picking prefers non-egg items over egg-faded sprites. `true` removes only that preference, retaining alpha checks/draw order so tools can target faded structures; neither render mask changes. Native `MapView::GetItemAtScreen` / `GetEntityAtScreen` share this default-false option. AngelScript and Managed C# expose the same default; projects choose which input modes opt in.
 
-`MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
+`MapView` presents the Common map model. [Maps, Movement, and Geometry](../maps-and-movement.md) owns reusable coordinates/pathfinding; this page and [Frontend and Rendering](../rendering/) own render targets, light textures, transparent eggs, scrolling, and picking.
 
-`MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).
+`MapView::SetTransparentEgg` configures either screen-space egg slot; the critter overload uses sprite size. The rectangle script overload places `TransparentEggTarget` after `eggSize`: `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` only walls/roofs, excluding props. `MapSprite::SetEggStructure` stores prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, cutting complete wall runs without parity adjustment. `IsCutByTransparentEgg` owns eligibility (`Test_TransparentEgg.cpp`).
 
-Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
+Authored light intensity is percentage magnitude (`0..100`; negative values retain magnitude but select constant/personal capacity semantics). `MapView` clamps animated percentages, converts to raw falloff (`0..10000`), then uses day-light capacity percentage to scale light-map RGB to `0..200` and primitive alpha to `0..255`. `SetDayColors()` must invalidate cached fans when either day color or light-capacity percentage changes; both affect cached per-hex lighting.
 
-`GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so `RebuildMapOffset()` moves every light vertex by the same pixel delta when the view origin scrolls. `MapView` translates cached `_lightPoints` by that delta instead of rebuilding every fan. Hiding the last visible hex of a light still forces a primitive rebuild to remove leftover triangles, while lights entering the view reapply their fans and rebuild normally. `Test_Geometry.cpp` pins the uniform-translation identity.
+`GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`. `RebuildMapOffset()` moves every light vertex by the same scrolling pixel delta; `MapView` translates cached `_lightPoints` instead of rebuilding fans. Hiding a light's last visible hex still rebuilds primitives to remove stale triangles; entering lights reapply/rebuild normally. `Test_Geometry.cpp` pins uniform translation.
 
-The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
+`SetExtraScrollOffset()` applies script-owned transient camera offsets to the map view. Project scripts own quake/shake timing and fade overlays.
 
 ## Resources, sprites, effects, and render targets
 
 ### Client map field storage
 
-`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a directly indexed
-table of nullable owners of dense blocks. The grid's `ChunkSide` template
-parameter must be a nonzero power of two. `MapView` supplies
-`GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, so its blocks are 16x16.
-Changing this compile-time setting requires rebuilding native consumers;
-it is not a runtime configuration key. The first write to a block constructs
-its `ChunkSide * ChunkSide` default fields. Reading a missing block returns the
-shared empty field without allocating. Access uses coordinate division/remainder
-by the compile-time block side and array indexing; it does not hash coordinates or allocate per-field
-nodes. Existing field addresses survive allocations of other blocks. Mapper
-resize preserves overlapping coordinates, discards removed fields, and may
-invalidate field addresses. Unload releases the table and every block.
+`MapView` fields use `ChunkedTwoDimensionalGrid`, an indexed table of nullable owners of dense blocks. Template `ChunkSide` must be a nonzero power of two; `MapView` supplies compile-time `GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, making 16x16 blocks. Changes require native rebuilds, not runtime settings. A block's first write constructs `ChunkSide * ChunkSide` default fields; missing-block reads return the shared empty field without allocation. Division/remainder and array indexing replace hashing/per-field nodes. Other block allocations preserve existing field addresses. Mapper resize preserves overlaps, discards removed fields, and may invalidate addresses. Unload frees the table/all blocks.
 
-This removes the single full-map field allocation. With the current side of
-16, a 1200x1200 map initially
-needs 5625 owner entries rather than 1440000 field slots; each field allocation
-is bounded to `256 * sizeof(MapView::Field)`. Populated blocks consume their
-full capacity, so a map with writes in every block can still approach dense
-field storage. Light and view buffers retain their existing representations.
+With side 16, an initial 1200x1200 map holds 5625 owners instead of 1440000 fields, replacing one full-map allocation with allocations bounded to `256 * sizeof(MapView::Field)`. Written blocks consume full capacity; writing every block can still approach dense storage. Light/view buffer representations are unchanged.
 
-`ClientLargeMapFieldsStayWithinMemoryBudget` and
-`ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure the real constructor
-on an empty 1200x1200 map, including its view/light buffers and scroll bounds.
-The hidden `ClientMapFieldAccessCost` compares actual field reads/writes with
-dense and hash-based storage. Its timings qualify only those workloads, not
-whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contributing/testing/).
+`ClientLargeMapFieldsStayWithinMemoryBudget` and `ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure real empty 1200x1200-map construction, including view/light buffers and scroll bounds. Hidden `ClientMapFieldAccessCost` compares actual reads/writes against dense/hash storage. Timings cover those workloads, not game FPS or fragmented 32-bit long sessions; see [Testing](../../contributing/testing/).
 
 ### Map unload and native storage lifetime
 
-`ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool. Resource preparation cancels the previous generation before `OnMapUnload`; active CPU requests retain their owned inputs until quiescence and cannot publish into the next generation.
+`ClientEngine::UnloadMap()` destroys the old `MapView` before constructing another. Script handles can retain its destroyed shell: Managed references survive until finalization, and either backend supports explicit handles. Unload therefore releases the grid, view/light buffers, entity collections, deferred item owners, fog, and scratch capacity without awaiting destruction. `MapSpriteList::InvalidateAll()` retains camera-rebuild pools; permanent `Clear()` detaches holders/frees pools. Preparation cancels the old generation before `OnMapUnload`; active CPU requests own inputs until quiescence and cannot publish into the next generation.
 
-All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
+Unload retires all three manager-owned map targets; failed construction frees targets already created. Queued draws flush before teardown, and matching cached indoor-mask borrows clear before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite eviction also frees empty atlas pages/targets while preserving live allocations. Model mesh/animation definitions remain resource-identity caches, not retired-map owners.
 
-`Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
+`Test_ClientEntityLifetime.cpp` covers retained handles, pending owners, construction failure, and empty/live atlas pages. Its storage bound requires debug/profiling allocator statistics. Private bytes/working sets include allocator, Managed-runtime, and renderer/driver caches: a high-water mark alone does not prove a loaded map, and headless target counts do not qualify hardware memory.
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` owns sprite factories, extension dispatch, template/missing caches, invalidation and defaults. `CritterFramesCache` caches project-resolved directional sheets; Mapper owns mutable preview models. Audio path handling belongs to `AudioManager`; project sound naming belongs to scripts.
-- `SpriteManager` owns atlases, live sprite updates, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
-- `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
-  image/animation resources, including the optional per-frame silhouette mesh
-  produced by `ImageBaker`. The resource decoder also fills the `Sprite`
-  payload of the common `AnimationInfo` record with frame count, duration,
-  directions, and resolved per-frame bounds; this payload remains available in
-  builds without 3D support. `EngineMetadata` reads the matching compact
-  version 1 `SpriteInfo/<PackName>.foinfo` indexes at startup, so common sprite metadata
-  queries do not decode pixel payloads. A source-backed sprite uses its mesh for ordinary
-  full-image draws; an explicit empty mesh skips the draw, while a missing/quad
-  mesh keeps the four-vertex path used by runtime-generated atlas sprites.
-- With `FO_ENABLE_3D`, `ModelSpriteFactory` turns model resources into
-  atlas-backed sprites. It asks
-  `EngineMetadata` for the already parsed version 2 aggregate, project-selected preview
-  view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
-  layer never reopens or reparses that companion, and no authored `.fo3d`
-  `DrawSize` or `ViewSize` remains.
-  Enabled body/movement animation envelopes are projected through the active
-  model transform across every facing direction to derive a grid-aligned
-  logical scratch frame large enough for the body and projected shadow. The
-  separate view envelope (the configured `Animation.PreviewStateAnim` /
-  `Animation.PreviewActionAnim` pair, then deterministic fallback) seeds the body `ViewRect`; aggregate `ModelBounds` sizes the
-  horizontal-lighting frame. Layout math without a live GPU uses
-  `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
-  (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), rather than treating the bake
-  host's atlas limit as the game device. At runtime the scratch texture is
-  capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and the current
-  machine's atlas; the logical frame is that texture divided by `FRAME_SCALE`.
-  A pose or lighting envelope that exceeds the cap is cropped, including when
-  authored scale and GUI preview `SetScale` combine to enlarge an otherwise
-  valid model. Invalid or non-finite bounds still assert and report the six
-  coordinates plus the model file. Runtime layer and child-model bounds
-  extend both the view/name rectangle and the aggregate horizontal-lighting
-  frame; the envelope resets when mesh composition changes and otherwise only
-  grows. Names, coarse picking, transparent eggs, flying text, and attachments
-  therefore stay inside automatically derived bounds without authored sizes.
-  A body/movement animation switch can refresh the scratch frame, but it must
-  retain this accumulated configuration view envelope instead of falling back
-  to the root model's idle-only view; otherwise a turn animation temporarily
-  moves the name and flying-text anchor for equipped critters.
+- `ResourceManager` owns factories, extension dispatch, template/missing caches, invalidation, and defaults. `CritterFramesCache` caches project-resolved directional sheets; Mapper owns mutable preview models. `AudioManager` owns audio paths; scripts own project sound names.
+- `SpriteManager` owns atlases, live updates, primitives, ordering, scissor stack, window/screen sizing, and target drawing.
+- `DefaultSpriteFactory` loads default image/animation atlas sprites/sheets, including `ImageBaker`'s optional per-frame silhouette mesh. Decoders fill the `Sprite` payload of common `AnimationInfo` with frame count, duration, directions, and resolved frame bounds, including non-3D builds. Startup `EngineMetadata` reads compact version 1 `SpriteInfo/<PackName>.foinfo` indexes, avoiding pixel decoding for metadata queries. Ordinary full-image draws use source-backed meshes; explicit empty meshes skip drawing, missing/quad meshes retain the four-vertex path used by runtime-generated sprites.
+- With `FO_ENABLE_3D`, `ModelSpriteFactory` creates atlas-backed models. `EngineMetadata` supplies parsed version 2 aggregates, project-selected preview views, and per-animation bounds from `ModelAnimationInfo.foinfo`; clients never reopen/reparse that companion, and authored `.fo3d` `DrawSize` / `ViewSize` no longer exist. Active transforms project enabled body/movement envelopes over every facing into grid-aligned logical frames containing body/projected shadow. The separate configured `Animation.PreviewStateAnim` / `Animation.PreviewActionAnim` envelope, with deterministic fallback, seeds body `ViewRect`; aggregate `ModelBounds` sizes horizontal lighting. GPU-free layout uses portable `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` ceiling (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`), not the baker host's atlas limit. Runtime scratch textures are capped by `Render.ModelSpriteMaxTextureWidth` / `Height` and device atlases; logical frame size is texture size divided by `FRAME_SCALE`. Oversize pose/lighting envelopes crop, including otherwise-valid models enlarged by authored scale plus GUI preview `SetScale`. Invalid/non-finite bounds assert, reporting six coordinates/model file. Layer/child bounds extend view/name and aggregate lighting envelopes; only mesh-composition changes reset them, otherwise they grow. Names, coarse picking, eggs, flying text, and attachments thus fit derived bounds without authored sizes. Animation switches may refresh scratch frames but must retain the accumulated configuration view envelope, avoiding idle-root fallback that shifts equipped critters' name/flying-text anchors during turns.
 
-  The model is rendered into a reusable 2x scratch target for the automatic
-  frame. Per-animation prediction is united with the baked AABBs of selected
-  geometry links; runtime projects envelope corners instead of skinning
-  combined-mesh vertices for sizing. If live particle bounds require a larger scratch frame,
-  the factory merges the current and required placements as signed root-relative
-  intervals before expanding and rerendering. This absorbs adjacent pixel-rounded
-  pivot alternation and allows a tight frame to sit wholly on one side of the
-  model root; the bounded retry loop still fails rather than accepting a genuinely
-  unbounded or clipped frame. The
-  cropped sprite offset preserves the fixed model root, hit-test coordinates,
-  and stable horizontal lighting gradient. Scratch-frame setup does not reserve
-  atlas space; allocation happens only after the final crop is known. A changed
-  placement is prepared locally, rendered, and published only after the atlas
-  copy succeeds, while failures request an immediate redraw and retain the old
-  allocation. An atlas
-  slot only expands while its active animation/mesh/shadow envelope identity is
-  unchanged, then may shrink once when a transition settles or mesh composition
-  changes. An emitting model-attached particle contributes its mandatory
-  bake-time bounds, transformed through the current attachment, without a
-  per-frame live-AABB walk. Frame changes rebase already emitted atlas-space
-  particles so expansion does not move them, and particles force a full-frame
-  crop. Full-frame cropping does not freeze the
-  frame pivot: expansion still derives the model-origin position from the complete
-  geometry/particle envelope, and a pivot-only change triggers another sizing pose,
-  so added space lands on the side where the effect extends instead of accumulating
-  to the right and bottom. A non-default model effect also disables the tight
-  crop; effects that displace vertices beyond ordinary skinned geometry need a
-  separate conservative rendering contract because bounds schema version 2 does
-  not encode shader displacement.
-- `ParticleSpriteFactory` does the same for particle resources.
-- `EffectManager` loads default/minimal effects, resolves script-selected effects, and updates per-frame effect buffers.
-- `FontManager` loads fonts and formats/draws text, including inline color tags.
-- `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen render targets.
+  Models render into reusable 2x automatic-frame scratch targets. Animation predictions unite with selected geometry-link baked AABBs; sizing projects envelope corners rather than skinning combined vertices. When live particles need expansion, the factory unions current/required placements as signed root-relative intervals before rerendering. This absorbs adjacent pixel-rounded pivot alternation and permits frames wholly on one side of the root; bounded retries still reject unbounded/clipped frames. Cropped offsets preserve fixed roots, picking coordinates, and stable horizontal lighting. Scratch setup reserves no atlas space: allocation follows final crop. Changed placements prepare/render locally and publish only after successful atlas copy; failures retain old allocations/request immediate redraw. Slots only expand while animation/mesh/shadow envelope identity is stable, then may shrink once as transitions settle or composition changes. Emitting model attachments contribute mandatory bake bounds transformed by their current attachments, without per-frame live-AABB walks. Frame changes rebase emitted atlas-space particles to avoid movement; particles require full-frame crops. Full-frame cropping still derives origin from complete geometry/particle envelopes: pivot-only changes trigger sizing poses, expanding toward the effect rather than accumulating space right/down. Non-default model effects also disable tight crops. Shader-displacing effects need separate conservative contracts: bounds schema version 2 omits shader displacement.
+- `ParticleSpriteFactory` does the same for particles.
+- `EffectManager` loads default/minimal effects, resolves script choices, and updates per-frame buffers.
+- `FontManager` loads fonts and formats/draws text with inline colors.
+- `RenderTargetManager` creates, resizes, pushes, pops, reads, clears, dumps, and deletes offscreen targets.
 
-For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
+3D critter alive-state idles restart at the beginning; dead idles freeze at the final frame, other non-alive idles at the first. Projects must author that first frame as the condition's resting pose.
 
-These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
+These managers use `IAppRender` / `Renderer` abstractions rather than a specific renderer, supporting OpenGL, Direct3D, or null rendering according to platform/build configuration.
 
-`ParticleManager` and `ParticleSystem` are backend-neutral dispatch facades used
-by sprites and model attachments. `ParticleRuntime.cpp` is the composition point:
-it creates the enabled `ParticleRuntimeBackend` implementations, and the manager
-selects one by resource extension. Every live particle owns exactly one
-`ParticleRuntimeSystem`; common timing, scale, and render scheduling stay in
-`ParticleSystem`, while simulation and backend-specific rendering are virtual
-runtime operations.
+`ParticleManager` and `ParticleSystem` are neutral facades for sprites/model attachments. `ParticleRuntime.cpp` creates enabled `ParticleRuntimeBackend` implementations; the manager selects by extension. Each particle owns one `ParticleRuntimeSystem`. `ParticleSystem` owns common timing, scale, and render scheduling; virtual runtime operations own simulation/backend rendering.
 
-Model attachments do not own a `ParticleSprite`, so their simulation is advanced
-explicitly by `ModelInstance::ProcessAnimation` after the complete parent/child
-hierarchy has been posed. This order is required for effects attached to child
-joints: using the previous child pose makes automatic frame sizing chase a stale
-effect box and fail to converge. The particle receives the model's logical frame
-delta; zero-delta sizing re-poses update placement without advancing emission a
-second time. Prewarming defers a model-clock reset until the next real animation
-advance, preventing time spent waiting off-screen from becoming one large first
-update that destroys the warmed particle-age distribution.
+Model attachments lack a `ParticleSprite`; `ModelInstance::ProcessAnimation` advances them after posing the full parent/child hierarchy. Child-joint effects require that order: stale poses make automatic sizing chase old bounds without converging. Particles receive logical model-frame deltas; zero-delta sizing re-poses update placement without advancing emission twice. Prewarm delays model-clock reset until the next real animation advance, preventing off-screen waits becoming a large first update that destroys warmed particle ages.
 
-Resource invalidation follows the same neutral boundary:
-`ResourceManager -> ParticleSpriteFactory -> ParticleManager` notifies every
-backend through `ParticleRuntimeBackend::InvalidateResource()`, because a
-changed file may be a dependency rather than a backend-owned root asset. SPARK
-drops the matching parsed graph for a changed `.spk` and clears its graph
-cache when a texture or render-effect dependency changes, so the next particle
-creation reloads both graph and dependency. Failed loads are not cached.
-Backends without a parsed-asset cache keep the invalidation operation as a
-no-op.
+`ResourceManager -> ParticleSpriteFactory -> ParticleManager` invalidation calls every `ParticleRuntimeBackend::InvalidateResource()` because changed files may be dependencies rather than roots. SPARK drops matching `.spk` graphs and clears graph caches on texture/render-effect changes, reloading both next creation. Failed loads are uncached; backends without parsed-asset caches do nothing.
 
-`VisualParticles.h` / `.cpp` contain no particle-backend names or feature guards.
-Concrete types and capabilities live in their extension files. The SPARK editor
-performs its checked typed access only after crossing the neutral
-`GetRuntimeSystem()` boundary, so adding another runtime does not add another
-branch, enum value, or vendor type to the common facade.
+`VisualParticles.h` / `.cpp` contain no backend names/guards; extension files own concrete types/capabilities. SPARK editor checked typed access follows `GetRuntimeSystem()`. New runtimes therefore add no branches, enum values, or vendor types to the common facade.
 
-Particle backends are independent build features: `FO_SPARK_PARTICLES` and
-`FO_EFFEKSEER_PARTICLES` both default to `OFF`. The embedding project may enable
-one or both; the particle sprite factory advertises only the extensions owned by
-enabled backends, and a disabled backend does not compile or link its upstream
-runtime.
+Independent `FO_SPARK_PARTICLES` / `FO_EFFEKSEER_PARTICLES` default to `OFF`. Projects may enable either/both. The factory advertises only enabled extensions; disabled upstream runtimes neither compile nor link.
 
-SPARK `.spark` sources are baked to `.spk` binaries.
-`SparkParticleRuntimeBackend` accepts only `.spk` and loads it through SPARK's
-binary `loadFromBuffer` path; XML never reaches runtime. The binary path must remain
-behaviorally equivalent to its stream loader; truncated/oversized payloads,
-unknown object types, descriptor-signature mismatches, zero/out-of-range object
-references, and references to an incompatible object class invalidate the graph.
-Custom FOnline SPARK object registration is shared by the baker, editor, and
-client through the thread-safe `EnsureSparkParticleObjectsRegistered()` path.
-`SparkQuadRenderer::Setup()` resolves the effect and texture before a particle
-is returned; missing render dependencies produce a normal load failure instead
-of a later exception on the first draw. A renderer newly added in the SPARK
-editor is bound to the owning runtime before the preview graph is initialized;
-while its effect or texture is still unassigned it draws nothing, allowing the
-author to complete the renderer without dereferencing an incomplete backend
-state.
+SPARK `.spark` sources bake to `.spk`; `SparkParticleRuntimeBackend` accepts only `.spk` through binary `loadFromBuffer`, never runtime XML. Binary/stream loaders must behave equivalently: truncated/oversized data, unknown types, descriptor-signature mismatches, zero/out-of-range references, and incompatible referenced classes invalidate graphs. Baker/editor/client share thread-safe `EnsureSparkParticleObjectsRegistered()`. `SparkQuadRenderer::Setup()` resolves effects/textures before returning particles, turning missing dependencies into ordinary load failure rather than first-draw exceptions. New editor renderers bind to their owner before preview initialization and draw nothing until effect/texture assignment, avoiding incomplete-state dereferences.
 
-Baked raw `.efk` resources select `EffekseerParticleRuntimeBackend` behind the
-same facade. The client never
-loads `.efkproj` XML or invokes the build-time compiler. This includes Web:
-the host pipeline must bake `.efk` before packaging. Each `ClientEngine` or
-Mapper instance owns an Effekseer core manager; each `Create` parses a new
-effect, while the shared particle sprite factory separately caches successfully
-loaded atlas textures. Effekseer advances hierarchy, emission, and lifetime
-state; custom renderer callbacks copy the evaluated render snapshot into
-FOnline-owned packets. No Effekseer graphics backend participates. The initial
-capability gate is CPU Sprite/Ring-only and rejects unsupported renderer or
-material families before returning a particle system. Dynamic callback checks
-still fail closed on non-finite evaluated data, invalid UV ranges, or an atlas
-filter mismatch and retire that already-created handle. Simulation update is
-separate from draw, so effect lifetime does not pause when a direct-scene sprite
-is outside the rendered viewport; stopped handles are advanced through
-Effekseer's deferred removal queues before their wrapper is released.
+Baked raw `.efk` selects `EffekseerParticleRuntimeBackend`; clients never load `.efkproj` XML or run compilers, including on Web, where the host must bake `.efk` before packaging. Each `ClientEngine`/Mapper owns a core manager; each `Create` parses a fresh effect, while the shared factory caches successful atlas textures. Effekseer advances hierarchy/emission/lifetimes; custom callbacks copy evaluated snapshots into FOnline packets without an Effekseer graphics backend. Initial CPU Sprite/Ring-only support rejects unsupported renderer/material families before creation. Dynamic checks retire existing handles on non-finite data, invalid UV ranges, or atlas filter mismatches. Simulation is independent of draw, so off-viewport direct-scene lifetimes continue; stopped handles drain deferred removal queues before wrapper release.
 
 The exception is an explicit direct-scene prewarm request: it remains pending
 until the first `DrawInScene` can provide the current transform, and scheduled
@@ -561,15 +317,15 @@ sampling rectangle is not the source sprite silhouette.
 
 ### Fonts and Inline Color Tags
 
-The complete authoring and runtime contract is owned by [Font Formats And Text Layout](../../how-to/content/font-format.md); use its [generated reference](../../reference/font-format/index.md) for exact fields, enum values, limits, and validation records. This page only places `FontManager` in the wider client lifecycle.
+[Font Formats And Text Layout](../../how-to/content/font-format.md) owns font authoring/runtime contracts; its [generated reference](../../reference/font-format/index.md) specifies fields, enums, limits, and validation. This page places `FontManager` in the client lifecycle.
 
-`FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
+`FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@`, recording parsed `ucolor` per glyph during draw formatting. `@color@` restores the previous inline color, or base draw color if none is active. `FontFlag::NoColorize` strips tags but renders with the caller's base color.
 
-`Game.BindFont(font, path, defaultScale = 1.0)` can downscale the bound font slot. The scale is applied once at bind time: glyph bitmaps are re-rasterized in place inside the font's atlas region with an area-average filter, and every metric (advances, offsets, line height, space width) is rounded to integers at the target size. The runtime text pipeline (`Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, `Game.DrawText(...)`) therefore always works in plain integer pixel coordinates — a scaled font behaves exactly like a font authored at the smaller size, with no fractional glyph positions. The scale must be in `(0..1]`; upscaling a bitmap font is rejected — author a bigger font asset for larger text.
+`Game.BindFont(font, path, defaultScale = 1.0)` downscales bound slots once at bind time: it re-rasterizes glyphs in their atlas region with area-average filtering and rounds advances, offsets, line height, and space width to target integers. `Game.GetTextInfo(...)`, `Game.GetTextLines(...)`, and `Game.DrawText(...)` then use integer pixels, like a smaller authored font, without fractional glyph positions. Scale must be `(0..1]`; bitmap upscaling fails, so author larger assets for larger text.
 
 ## Input and script-facing hooks
 
-`ClientEngine::ProcessInputEvent()` receives frontend `InputEvent` values and raises higher-level script events such as:
+`ClientEngine::ProcessInputEvent()` converts frontend `InputEvent` values into script events:
 
 - `OnMouseDown`, `OnMouseUp`, `OnMouseMove`;
 - `OnTouchDown`, `OnTouchMove`, `OnTouchUp` for raw per-finger touch streams, plus `OnTouchTap`, `OnTouchDoubleTap`, `OnTouchScroll`, `OnTouchZoom` for aggregated gestures;
@@ -577,38 +333,38 @@ The complete authoring and runtime contract is owned by [Font Formats And Text L
 - `OnScreenScroll` and `OnScreenSizeChanged`;
 - map render-stage events such as `OnRenderMap_BeforeTiles`, `OnRenderMap_AfterSprites`, and `OnRenderMap_AfterFlushMap`.
 
-Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
+`Source/Frontend/Application.h` owns input semantics; projects own game UI in scripts/GUI resources.
 
-**Typed text is filtered here, not in the frontend layer.** `ProcessInputEvent()` strips C0 control characters and `DEL` from `KeyDown.Text` before raising `OnKeyDown`, and drops a `KeyCode::Text` event whose payload was nothing but control characters. Windows delivers Alt+numpad as an ordinary OS text-input event, so codes below `0x20` arrive as bare control characters; a bitmap font then draws them as CP437 pseudographics and they surface as junk glyphs in chat and text fields. Filtering by *character* rather than by the Alt modifier keeps AltGr, ordinary typing, and printable Alt codes (`Alt+0169`) working. Byte-wise filtering is safe for UTF-8 because every byte of a multi-byte sequence is `>= 0x80`.
+**Client runtime filters typed text.** `ProcessInputEvent()` removes C0 controls and `DEL` from `KeyDown.Text` before `OnKeyDown`, dropping control-only `KeyCode::Text` events. Windows Alt+numpad delivers ordinary OS text: below `0x20` these are bare controls, rendered as CP437 junk pseudographics by bitmap fonts. Character filtering preserves AltGr, ordinary typing, and printable Alt codes (`Alt+0169`) rather than rejecting Alt modifiers. Byte filtering is UTF-8-safe: multi-byte sequence bytes are `>= 0x80`.
 
-`ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
+`ProcessInputEvent()` receives every source: SDL through `ProcessInputEvents()`, scripted `Game.Simulate*`, and project automation bridges. Frontend/SDL filtering would cover only OS input, missing simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
+Scripts synthesize runtime-path input for automation/embedded probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` retain held-button state across raw gestures, including outside-window positions; `Game.SimulateMouseClick(pos, button)` sends complete clicks/wheel events. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams; `Game.SimulateTouchTap(pos)` completes taps. `Game.SimulateKeyPress(key, text)` sends a down/up pair; `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` supports two-key sequences. `Game.SimulateDisconnect()` delivers the real-disconnect-ending `OnDisconnected` notification; `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Neither changes the connection, so probes retain the session used to report their reactions.
 
-For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
+`ClientEngine::CritterMoveTo()` brings active `MovingContext` state to the current frame before starting movement/stopping, then normalizes hex/offset pairs before sending requests. Rapid start/stop therefore sends neither stale nor overlarge offsets.
 
 ### Held-direction movement
 
-`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). The client materialises the intent itself:
+`Critter.MoveToDir(dir, speed)` sets/steers held keyboard/D-pad/stick direct-move intent, not a path toward a nearby point. Intent lasts until `StopMove()`, path order `MoveToHex()`, or map departure (`UnloadMap()` clears it). The client materializes it as follows:
 
-- **One long plan under a lease.** A plan is a `PathFinding::TraceDirection()` of `Client.DirectMoveTraceSteps` hexes along the input ray, sliding along obstacles when `Client.DirectMoveSlide` is on (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)); the player's own critter walks all of it. The plan goes to the server numbered and *leased*: the server and every other player run it only `Client.DirectMoveLeaseSteps` steps ahead of where the player has confirmed holding the direction, and `ProcessDirectMove()` renews the lease with a small `SendCritterMoveLease` once `Client.DirectMoveLeaseRenewSteps` or fewer of it are left ahead of the critter. A held run is therefore one plan with one timeline on every side, while a stall on the player's link stops the server and the observers at the lease end instead of carrying them along the trace. The wire lease names projected path distance, so a speed correction cannot move its boundary and it does not depend on the link's latency: the server trails the player by one uplink transit and meets the lease end only when renewals stop arriving.
-- **The next plan before this one ends.** When the plan has `Client.DirectMoveExtendAheadSteps` or fewer steps left and was traced to its full length, the next one is traced on from where the critter is, projected onto the line the run began on, at the plan's current speed, which the server may have changed.
-- **Turn throttle.** A turn of at least `Client.DirectMoveRetargetImmediateAngle` degrees, a speed change, a start and a stop are planned at once. A smaller turn, including a 45° keyboard change under the default 60° threshold, is applied at most once per `Client.DirectMoveRetargetMinMs`; the latest direction wins when the interval passes.
-- **Server plans play out.** The controller extends only the plan it made itself. A plan the server sends for the critter (a correction, a truncated path) plays out first; a truncated path is finite and has no lease, since its replacement retires the client plan that would renew it; the held direction resumes when it ends, and a blocked direction is retried at the re-plan interval rather than every frame.
+- **One long plan under a lease.** `PathFinding::TraceDirection()` traces `Client.DirectMoveTraceSteps` hexes along the input ray, optionally sliding along obstacles with `Client.DirectMoveSlide` (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)). The player's critter walks the entire numbered plan. Server/observers are *leased* only `Client.DirectMoveLeaseSteps` beyond confirmed held direction; `ProcessDirectMove()` sends small `SendCritterMoveLease` renewals when at most `Client.DirectMoveLeaseRenewSteps` remain ahead. One held run shares one plan/timeline across participants; stalled player links stop server/observers at lease end. Wire leases use projected distance: speed corrections cannot move their boundaries, and latency does not determine them. Servers trail by one uplink transit, reaching lease end only when renewals stop.
+- **The next plan before this one ends.** A full-length trace extends when at most `Client.DirectMoveExtendAheadSteps` remain: trace from the current position projected onto the original run line, using current speed, including server corrections.
+- **Turn throttle.** Turns >= `Client.DirectMoveRetargetImmediateAngle`, speed changes, starts, and stops plan immediately. Smaller turns, including 45° keyboard changes below the default 60°, apply at most once per `Client.DirectMoveRetargetMinMs`, taking the latest direction.
+- **Server plans play out.** Only self-created plans extend. Server corrections/truncations finish first; truncated finite paths have no lease: replacing the client plan retires its renewals. Held intent resumes afterward; blocked directions retry at re-plan intervals, not each frame.
 
-An observer applies a leased plan and its renewals (`CritterMoveLease`, matched to the plan by the server's movement uid) to its copy; a copy joined further along its path carries the lease shifted by the projected distance it skipped, converted to time at its current speed. `MovingContext::SetLeaseTime` holds a plan at its lease with the plan's clock stopped, so a longer lease resumes it from where it waited; while it waits the critter is drawn standing (`CritterHexView` switches to the idle animation and back when the plan moves on), not walking in place. With `Network.MoveSyncTrace`, every such plan writes a `dir_plan` line naming its reason (`start`, `turn`, `extend`, `resume`) and every renewal a `lease_send` line, see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
+Observers apply leased plans and `CritterMoveLease` renewals matched by server movement uid. Copies joining later shift the lease by skipped projected distance, converted at current speed. `MovingContext::SetLeaseTime` stops the plan clock at lease end; extension resumes from that point. Waiting critters stand (`CritterHexView` uses idle while waiting and resumes movement animation with the plan) rather than walk in place. `Network.MoveSyncTrace` writes `dir_plan` reasons (`start`, `turn`, `extend`, `resume`) and renewal `lease_send` lines; see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
 
 ### Late plans catch up
 
-Movement messages carry their sender's clock: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease` and `Ping` from the client, `CritterMove`, `CritterMoveLease` and `Ping` from the server. Each end keeps a `LinkDelayEstimator` for its link (`ClientConnection` for the downlink, `ServerConnection` for the uplink): the median receive-minus-send offset of the link's usual messages over the last `Network.LinkDelayWindowMs` is its usual transit, and a message's excess over it is how long a stall held it — the transit itself would need a clock both ends share, the excess does not. The median, not the best transit, is the reference so that ordinary jitter is not caught up as if it were a stall: a plan caught up to the best transit would put the server ahead of where the player's stop reaches it and walk it past the stop. A message late by `Network.MoveLateCatchUpMinMs` or more is kept out of the usual ones, so every message of a stall's burst is measured against the link as it was before it; a link whose every message stayed that late for `Network.LinkDelayRebaseMs` got slower for good, and its new transit becomes the usual one. The duration of this exceptional run is tracked independently of its bounded sample queue, so frequent messages cannot postpone rebasing. At least a handful of usual samples outlive the window, so a link that fell silent keeps its transit. A plan or a lease renewal late by at least `Network.MoveLateCatchUpMinMs` is played from where it would be by now, up to `Network.MoveLateCatchUpMaxMs`: the server fast-forwards it at once, an observer runs it at `Client.MoveCatchUpRate` times its speed until it has made up the time, up to `Client.MoveCatchUpSmoothMaxMs`, and skips the rest. The same holds for a plan the server itself started ahead because the player's move reached it late: an observer whose copy stands at the plan's start begins there and runs to where the server has it, rather than skipping the steps (`ahead_ms` in the trace); a copy anywhere else, such as a critter just come into view, is placed where the plan has it. The player's own critter is never caught up: its plans are its own input.
+Movement carries sender clocks: clients send `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, and `Ping`; servers send `CritterMove`, `CritterMoveLease`, and `Ping`. Per-link `LinkDelayEstimator` (`ClientConnection` downlink, `ServerConnection` uplink) takes median receive-minus-send offsets of usual messages within `Network.LinkDelayWindowMs` as usual transit; excess measures stall delay without shared clocks, unlike absolute transit. Median rather than best transit prevents treating ordinary jitter as stalls, which would advance servers beyond where players' stops arrive. Messages late by >= `Network.MoveLateCatchUpMinMs` are excluded from usual samples, keeping whole stalled bursts referenced to pre-stall links. If every message remains that late for `Network.LinkDelayRebaseMs`, the slower transit becomes usual. Exceptional-run duration is independent of the bounded sample queue, preventing frequent messages postponing rebase; a few usual samples outlive the window, preserving transit across silence. Plans/renewals late by >= `Network.MoveLateCatchUpMinMs` catch up to now, capped by `Network.MoveLateCatchUpMaxMs`: servers fast-forward immediately; observers run at `Client.MoveCatchUpRate` times normal speed until lost time is recovered, capped by `Client.MoveCatchUpSmoothMaxMs`, skipping excess. This also covers server plans started ahead after late player input: observers standing at plan starts walk to server positions instead of skipping (`ahead_ms`); other copies, including newly visible critters, jump to the plan's position. Player-owned critters never catch up their own input plans.
 
 ### Joining a plan already under way
 
-A plan the receiver's copy of the critter has partly walked already — the continuation of a movement that reached it after a slower transit than the previous plan — is joined where the critter stands, up to `Network.MovePlanJoinMaxSteps` steps in, instead of being walked from its start (`FindPathPrefixSteps` / `DropPathPrefix`). The server does the same, after first bringing the critter's current plan up to the present, since its steps advance only once a movement period.
+Receivers join partly walked continuation plans at the critter's position, up to `Network.MovePlanJoinMaxSteps`, instead of restarting (`FindPathPrefixSteps` / `DropPathPrefix`). This covers continuations arriving after slower transit than their predecessor. The server first advances its current plan to now, since movement steps advance only once per movement period.
 
 ## Client-side validation tests
 
-Use the smallest relevant test scope when changing client runtime behavior:
+Choose the smallest relevant client-runtime test scope:
 
 - `Source/Tests/Test_ClientEngine.cpp` — native client construction, entity registration and rendering resources with either scripting backend.
 - `Source/Tests/Test_AngelScriptClientEngine.cpp` — AngelScript initialization, loop callbacks and client bindings.
@@ -618,7 +374,7 @@ Use the smallest relevant test scope when changing client runtime behavior:
 - `Source/Tests/Test_ClientDataValidation.cpp` — inbound remote-call payload validation for UTF-8, enums, floats, hashed strings, bools, truncation, and ref-type payloads.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` — client runtime ABI/export/result validation for the host/runtime split described in [Client Updater](client-updater.md).
 
-Exact test target names are generated by the embedding project's CMake/BuildTools configuration; do not hard-code one project's target names in engine docs.
+Embedding-project CMake/BuildTools generates target names; Engine docs must not hard-code a project's names.
 
 ## Change checklist
 
@@ -635,4 +391,4 @@ Optional CPU workers: [client multithreading](client-multithreading.md) owns wor
 
 ## Map light and fog calculation ownership
 
-Dirty light sources and large dirty fog shapes can calculate their passive marks and fan geometry through the client worker budget. Source lifecycle, map-field publication, offset borrows, transitions and GPU submission stay on the application thread. Direct and small paths do not snapshot map obstacles. See [light and fog batches](client-multithreading.md#light-and-fog-batches) for thresholds, exact aggregation/trace rules, exception boundaries and native migration.
+Dirty lights/large fog shapes may calculate passive marks/fan geometry within the client worker budget. Source lifecycle, map-field publication, offset borrows, transitions, and GPU submission remain on the application thread. Direct/small paths do not snapshot obstacles. [light and fog batches](client-multithreading.md#light-and-fog-batches) owns thresholds, aggregation/trace rules, exceptions, and native migration.

@@ -327,7 +327,7 @@ auto SpriteManager::TryUpdateParticleCpuSpan(size_t begin) -> size_t
     struct ParticleUpdateJob
     {
         ptr<ParticleSystem> Particle;
-        float32_t Delta {};
+        timespan Elapsed {};
         CpuUpdateDiagnostics Result {};
     };
 
@@ -344,19 +344,19 @@ auto SpriteManager::TryUpdateParticleCpuSpan(size_t begin) -> size_t
     for (size_t index = begin; index < end; index++) {
         auto sprite = _liveUpdateSprites[index].as_ptr().dyn_cast<ParticleSprite>();
         ptr<ParticleSystem> particle = sprite->GetParticle();
-        float32_t delta = particle->PrepareCpuUpdate();
-        jobs.emplace_back(ParticleUpdateJob {particle, delta, {}});
+        timespan elapsed = particle->PrepareCpuUpdate();
+        jobs.emplace_back(ParticleUpdateJob {particle, elapsed, {}});
     }
 
     std::thread::id owner_thread = std::this_thread::get_id();
     _workScheduler->RunBatch("ParticleCpuUpdate", jobs.size(), 1, [&jobs, owner_thread](size_t index) {
         auto& job = jobs[index];
-        job.Particle->GetRuntimeSystem()->UpdateCpu(job.Delta, std::this_thread::get_id() != owner_thread, job.Result);
+        job.Particle->GetRuntimeSystem()->UpdateCpu(job.Elapsed.to_sec<float32_t>(), std::this_thread::get_id() != owner_thread, job.Result);
     });
 
     for (size_t index = 0; index < jobs.size(); index++) {
         auto& job = jobs[index];
-        job.Particle->CommitCpuUpdate(job.Delta, job.Result);
+        job.Particle->CommitCpuUpdate(job.Elapsed, job.Result);
 
         if (!job.Particle->IsActive()) {
             _updateSprites.erase(make_ptr(_liveUpdateSprites[begin + index].get()));

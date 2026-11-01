@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"4edabaeb348f8495571d245521e780a8e988fe28d818767d1e7bfc67b9621567"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"b2a40dbc9a48cd6fdf641a9ba43b8e6be856ef71b2fd9d133b069c8b0fd3f5fa"} -->
 > Test executable движка, сгенерированные test/coverage targets и все текущие suites `Source/Tests/Test_*.cpp`.
 
 ## Назначение
@@ -116,9 +116,9 @@ native completion, доказывая ожидание уже вошедшего
 Цель `RunResourceUsageIntegrationTests` запускает настоящий нативный Baker через
 `BuildTools/tests/check_resource_usage_pipeline.py`. При включённом `FO_UNIT_TESTS`,
 наличии цели Baker и нативной конфигурации она входит в зависимости `RunUnitTests`.
-Стандартный validation-project явно включает `FO_BUILD_BAKER`; регрессия CMake
-проверяет этот параметр, исполняя настоящий профиль с отключёнными побочными
-действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
+Профиль `unit-tests` явно включает `FO_UNIT_TESTS` и `FO_BUILD_BAKER`. Регрессии
+CMake передают настоящие аргументы профиля и используют setters из `Init.cmake`,
+проверяя явные переопределения и порядок пайплайна перед unit tests. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
 и проверяют, что команда пайплайна выполняется первой.
 
 Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
@@ -131,7 +131,8 @@ Packager должен перечитать manifest и обновить архи
 остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
 и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
 
-Прямому запуску нужны стандартная библиотека Python и существующий Baker:
+Прямому запуску нужны стандартная библиотека Python и соответствующий Baker.
+Для Baker с AngelScript добавьте `--angelscript`; CMake передаёт этот флаг сам:
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -259,11 +260,16 @@ diagnostic evidence, а cleanup ограничен artifacts с доказанн
 
 Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
 
-Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
-`<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
-Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
-При failure helper также выводит captured output перед остановкой, поэтому CI log
-называет failing test/assertion даже после удаления runner workspace и file log.
+Для Visual Studio/MSBuild `RunUnitTests` пишет вывод процесса в
+`<build-dir>/Testing/<ProjectDevName>_UnitTests-<Configuration>.log` и требует
+нулевой exit code вместе с успешным итогом Catch2. Итог с явными пропусками
+должен содержать хотя бы один прошедший тест и assertion, согласованные суммы
+тестов и отсутствие упавших assertions; пропущенные тесты остаются непроверенными.
+Пустые, полностью пропущенные и несогласованные итоги отклоняются. Ожидаемые
+строки `error` компилятора из отрицательных сценариев не превращаются в ошибки
+MSBuild. При ненулевом exit code helper выводит сохранённый вывод перед остановкой,
+поэтому CI сохраняет упавший тест/assertion даже после удаления runner workspace
+и файла журнала.
 
 BuildTools может запускать выбранные широкие сценарии:
 

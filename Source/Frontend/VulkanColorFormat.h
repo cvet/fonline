@@ -53,4 +53,3 @@ namespace VulkanColorFormat
 FO_END_NAMESPACE
 
 #endif // FO_HAVE_VULKAN
-

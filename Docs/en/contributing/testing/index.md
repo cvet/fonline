@@ -81,7 +81,7 @@ gate-removal control must fail semantically.
 
 `engine-update` checks resource usage, serial/parallel archives, pack format, IsPackaged, native layout and CMake wiring. Formatting runs `python3 BuildTools/check_native_modules.py`; [scope/exceptions](../source-tree/index.md#native-module-layout).
 
-Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. Validation enables FO_BUILD_BAKER; CMake fixtures prove profile configuration and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a Baker:
+Native RunUnitTests depends on RunResourceUsageIntegrationTests when Baker exists. The `unit-tests` role enables `FO_UNIT_TESTS` and `FO_BUILD_BAKER`. CMake fixtures execute actual role arguments and `Init.cmake` option setters, preserving explicit overrides and pipeline-before-unit ordering. The isolated runner bakes metadata/protos/FOFRM/font pages, checks exact selection, packages, then remounts through native DataSource for byte comparison. One Packager must refresh after ResourceSet.Files removal and same-timestamp image edits. Wrong-state controls package all outputs or omit a font page; unused files stay baked. Cleanup removes fixtures; failures retain Baker diagnostics. Requires standard-library Python and a matching Baker; add `--angelscript` for an AngelScript-enabled Baker (CMake passes it automatically):
 
 ```bash
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
@@ -198,7 +198,7 @@ scoped to artifacts the test can prove it owns.
 
 Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+With Visual Studio/MSBuild generators, `RunUnitTests` writes process output to `<build-dir>/Testing/<ProjectDevName>_UnitTests-<Configuration>.log` and requires a zero process exit plus a successful Catch2 summary. A summary containing explicit skips must have at least one passing case and assertion, consistent case totals and no failed assertions; the skipped cases remain unqualified. Empty, all-skipped and inconsistent summaries fail. Expected negative-case compiler `error` lines are not reclassified as MSBuild errors. For a nonzero exit the helper echoes captured output before stopping, so CI retains the failing test/assertion even after the runner workspace and file log are discarded.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 

@@ -241,4 +241,3 @@ TEST_CASE("FontLayoutBatchWithoutWorkersKeepsDirectSemantics")
 }
 
 FO_END_NAMESPACE
-

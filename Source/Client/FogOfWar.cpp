@@ -438,4 +438,3 @@ void FogShape::InterpolatePoints(const vector<PrimitivePoint>& from_points, cons
 }
 
 FO_END_NAMESPACE
-

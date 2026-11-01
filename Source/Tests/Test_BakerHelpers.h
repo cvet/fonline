@@ -621,6 +621,25 @@ namespace BakerTests
         nptr<MemoryDataSource> _bakedData {};
     };
 
+#if FO_ANGELSCRIPT_SCRIPTING
+    // ProtoBaker's server path initializes AngelScript, which requires exactly one real server bytecode; callers opt
+    // in after their metadata exists so compilation sees the rig's actual baked metadata
+    inline void PrepareResourceUsageServerBytecode(TestRig& rig)
+    {
+        BakerServerEngine compiler {rig.BakedFiles};
+        auto bytecode = CompileInlineScripts(&compiler, rig.Settings, "ResourceUsageFixture", {{"Noop.fos", "void ResourceUsageFixtureNoop() {}\n"}}, [](string_view message) {
+            string text {message};
+
+            if (text.find("error") != string::npos || text.find("Error") != string::npos || text.find("fatal") != string::npos || text.find("Fatal") != string::npos) {
+                throw ScriptSystemException(text);
+            }
+        });
+
+        REQUIRE_FALSE(bytecode.empty());
+        rig.AddBakedFile("ResourceUsageFixture.fos-bin-server", std::move(bytecode));
+    }
+#endif
+
     inline void AddTestBakedImage(TestRig& rig, string_view path, const vector<uint8_t>& data)
     {
         auto sprite = ReadSpriteResource(data);

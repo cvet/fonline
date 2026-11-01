@@ -142,12 +142,16 @@ def parse_settings(path: Path) -> list[Setting]:
 
 
 def parse_runtime_managed_settings(path: Path) -> set[str]:
-    return set(
-        re.findall(
-            r'_appliedSettings\.emplace\("([^"]+)"\)',
-            path.read_text(encoding="utf-8-sig"),
-        )
+    settings_by_symbol = {
+        setting.name.replace(".", "_"): setting.name
+        for setting in parse_settings(path.with_suffix(".inc"))
+    }
+    symbols = re.findall(
+        r"_appliedSettings\.emplace\(SettingNames::([A-Za-z_][A-Za-z0-9_]*)\)",
+        path.read_text(encoding="utf-8-sig"),
     )
+
+    return {settings_by_symbol[symbol] for symbol in symbols}
 
 
 def decode_string(value: str) -> str:

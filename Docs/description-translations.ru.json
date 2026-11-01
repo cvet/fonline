@@ -12639,12 +12639,12 @@
           "translation": "Граница raw-copy для дескриптора"
         },
         "/binding_rules/@id=font-format.binding.raw-copy/rationale": {
-          "source_sha256": "ff911c077271cf2ed11de2a795ef9d948c850ceb6aee5e5d49c0d0ffca63d4e6",
-          "translation": "Отдельного baker дескрипторов шрифтов нет; RawCopyBaker сохраняет путь и байты."
+          "source_sha256": "3fd79edc7ec128b1f3637b19936d371c32b648b33ce29d589cbdaa9399ee5e28",
+          "translation": "Отдельного baker дескрипторов шрифтов нет; RawCopyBaker сохраняет путь и байты. Сбор зависимостей учитывает комментарии в ключе, целые строки Letter и отказ чтения целого числа; он не заменяет runtime-валидацию шрифта."
         },
         "/binding_rules/@id=font-format.binding.raw-copy/requirement": {
-          "source_sha256": "92ca8c1d82ebbecdfe75aa6f213e8626c1cbd0965b1a68f9d3a4a47796e03f7b",
-          "translation": "Оставьте fofnt и fnt в Baking.RawCopyFileExtensions, чтобы байты дескриптора без изменений попали в запечённые ресурсы."
+          "source_sha256": "1fce7c7b4f498a9b95427bf4d2a1562060dca3bd73b5b783d14264999058cb36",
+          "translation": "Оставьте fofnt и fnt в Baking.RawCopyFileExtensions, чтобы байты дескриптора без изменений попали в запечённые ресурсы. Для usage FOFNT сохраняйте последний Image, разобранный до End по границам runtime-токенов."
         },
         "/binding_rules/@id=font-format.binding.rebind/name": {
           "source_sha256": "1137938b999e75dfe47a3052a44745261ecd1ec42395efffed85e33b992dec1e",
@@ -14790,8 +14790,8 @@
           "translation": "Полные таблицы направлений"
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/rationale": {
-          "source_sha256": "992d122158c2bf374e68dae21c14f8e7d62eaab8a46557b8930a646f8a4bae20",
-          "translation": "Каждый direction sheet разделяет один frame-count и timing header."
+          "source_sha256": "35dfbe558801b8da6a5bbbd8b70d04a2bb48ede901dbc4cff635007b23e76db8",
+          "translation": "Каждое итоговое направление имеет собственное число кадров и временную шкалу; композиция с индексами по-прежнему требует полного набора направлений активной геометрии."
         },
         "/validation_rules/@id=image-format.validation.fofrm-directions/requirement": {
           "source_sha256": "e932b66e08386202848ba2606d706d8b72a9ddf710d14448628bbff90316d3ce",
@@ -16041,8 +16041,8 @@
           "translation": "Наследование parent material"
         },
         "/rules/@id=model-format.rule.parent-materials/rationale": {
-          "source_sha256": "7001ce884fb20387f880d3555b85cb25850d4b67a372b236086a4e14df9a777d",
-          "translation": "Дочерняя текстура наследует неизменяемый ресурс родителя и использует свою фазу экземпляра; эффекты сохраняют наследование текущего материала. У корневого описания нет родителя."
+          "source_sha256": "4c79f6e666142d87abd221b422d10d44563f679778c6f9a7a90fcfb8cebc0c48",
+          "translation": "Дочерняя модель наследует текущую статическую текстуру или эффект родителя в запрошенном слоте. У корневого описания нет родительского контекста."
         },
         "/rules/@id=model-format.rule.parent-materials/requirement": {
           "source_sha256": "20713077c8007f8f2213797475b0f73aac322c798da64063a880d789b70af959",

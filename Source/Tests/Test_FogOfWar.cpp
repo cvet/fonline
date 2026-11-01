@@ -532,7 +532,7 @@ TEST_CASE("FogParallelPreparationBypassesSnapshotsAndRecovers")
 
     input.Radius = 32;
     input.FogOrigin.BaseHex = {0, 0};
-    input.FogTransitionDuration = 100;
+    input.FogTransitionDuration = std::chrono::milliseconds {100};
     direct.Prepare(input, &zero, reader);
     parallel.Prepare(input, &workers, reader);
     compare();
@@ -547,4 +547,3 @@ TEST_CASE("FogParallelPreparationBypassesSnapshotsAndRecovers")
 }
 
 FO_END_NAMESPACE
-

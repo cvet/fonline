@@ -371,14 +371,14 @@ TEST_CASE("SpriteGeometrySheetCapturesTheSelectedFrameBeforeDrain")
         auto sheet = sprite.dyn_cast<SpriteSheet>();
         REQUIRE(sheet);
         sheet->SetTime(0);
-        auto first = sheet->GetCurSpr().dyn_cast<const AtlasSprite>();
+        auto first = sheet->GetCurrentSprite().dyn_cast<const AtlasSprite>();
         REQUIRE(first);
         frect32 first_uv = first->GetAtlasRect();
         RecordingQuadEffect effect;
         sheet->SetDrawEffect(&effect);
         client->SprMngr.DrawSprite(sheet, {10, 20}, ucolor {1, 2, 3, 4});
         sheet->SetTime(1);
-        auto second = sheet->GetCurSpr().dyn_cast<const AtlasSprite>();
+        auto second = sheet->GetCurrentSprite().dyn_cast<const AtlasSprite>();
         REQUIRE(second);
         frect32 second_uv = second->GetAtlasRect();
         REQUIRE(first_uv != second_uv);
@@ -919,4 +919,3 @@ TEST_CASE("SpriteGeometryModelCropPreservesLightingThroughManagerDraw")
 #endif
 
 FO_END_NAMESPACE
-

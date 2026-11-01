@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
@@ -969,4 +971,3 @@ static void FinishWorkSchedulerTraceFixture()
 #endif
 
 FO_END_NAMESPACE
-

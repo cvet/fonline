@@ -7,12 +7,69 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"61e66ea43ef905c94416bb51561095c6852816622eb45c81eccf33056a601faf"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e8b5a9388fd4061be3fb677fae9bca1b507b7dabe90dceda0da42d454b1fb70f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-26
+
+### Добавлено
+
+- Опубликованная реализация клиентских workers согласована с `2026.1.70-dev`. Один принадлежащий клиенту `WorkScheduler` обслуживает позы моделей, подготовленную геометрию спрайтов/глифов, раскладку текста, расчёт грязных света/тумана и допущенные CPU-обновления частиц. GPU, доступ к ресурсам, script callbacks и упорядоченная публикация остаются на потоке приложения. Неподдерживаемые, малые и zero-worker нагрузки сохраняют прямой путь. `Client.Multithreading` по умолчанию остаётся false; включение не означает приёмку производительности или платформы.
+- Добавлены `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` и пассивное значение `TextLayoutResult` с полями `Width`, `Height`, `Lines`. Прежние измерение и рисование текста доступны; подготовленные размеры используются с теми же текстом, шрифтом, форматом и цветом. Прогретая раскладка не создаёт jobs.
+- Добавлена ограниченная подготовка ресурсов статики карты на том же пуле. `ResourceManager` владеет получением данных, factories, кешами, отменой generation/epoch, необязательным decoder и shutdown drain. Workers декодируют принадлежащие запросам пассивные буферы; владелец повторяет публикацию спрайтов/атласов и ошибки в исходном порядке. Точная диспетчеризация custom factories и независимое воспроизведение sheets сохраняются.
+
+- Исправлены HEX/SQUARE-фикстуры, шесть/восемь Fallout-направлений и предупреждения RTTI в Clang 24. Runtime и форматы прежние; миграция не требуется.
+
+- Подготовка спрайта отклоняется до полного чтения provider, если известный размер из заголовка не помещается в оставшуюся reservation. Сохранены прежние coalescing, приём по реальным bytes, отмена, повтор и обычная загрузка; байтовые лимиты и публичные API не меняются.
+- Ожидания диагностик минимального клиента согласованы с поставляемыми effects, в particle-фикстуре движущегося child объявлены проектные animation enums, а native-фикстуры используют явные операции owner/borrow. Сохранены точное сравнение diagnostic и буквальные проверки geometry, pixels, aliases, callbacks и состояния частиц. Требуется пересборка native tests; миграция ресурсов или скриптов не вводится.
+
+### Исправлено
+
+- Не-image зависимости Effekseer сохраняют полные имена в resource manifest; `$` больше не усекает имена моделей. Пересоберите baker, повторите bake и упаковку; бинарники частиц и форматы ресурсов прежние.
+- Встроенные стандартные эффекты и их shader companions сохраняются в resource manifest при запуске `EffectBaker` без callback проверки актуальности. Пересоберите baker, повторите bake и упаковку; shader binaries и форматы ресурсов прежние.
+
+- Совпадающие физические пути с разными pack-relative identities отклоняются вместо молчаливого объединения. Пересоберите baker, повторите bake и упаковку; вложенные имена пакетов и формат manifest прежние.
+
+- Зависимости ресурсов FOFNT следуют runtime-токенам и сохраняют последнее изображение до `End`. Пересоберите baker и повторите запекание/упаковку; дескрипторы, runtime-парсер и форматы прежние.
+- Профиль сборки `unit-tests` включает Baker, сохраняя интеграционную проверку отбора ресурсов в native validation. Регрессии используют настоящие CLI-флаги и setters CMake. Переконфигурируйте тестовые сборки; runtime, метаданные, ресурсы и сохранения не требуют миграции.
+- Отделить физические проверки частиц от явной worker qualification каждого backend; запускайте `[particle-worker-qualification]` вместе с default suite. Runtime и миграции не меняются.
+- Компилятор SDK запускается с обычной globalization только в дочернем процессе, чтобы его именованные локали не наследовали invariant-режим встроенного Mono. Настройка родительского runtime сохраняется; пересоберите baker и повторите компиляцию/bake проекта.
+- Vulkan принимает поверхности RGBA8 UNORM, сохраняя единый формат текстур, upload и обоих readback. Пересоберите клиенты/mapper; проверьте цвета, alpha, resize и readback на каждой платформе. Миграция скриптов/ресурсов/wire/сохранённых данных не нужна.
+- Упаковщик Android Client читает метаданные из парного `.fomain-server`, встраивая `.fomain-client`. Сохраняйте оба файла одного bake и пересоберите APK: Activity больше не передаёт `--ApplySubConfig` уже разрешённому packaged config. Native ABI и форматы ресурсов не меняются.
+
+- Кадр модели на ARM64 сохраняет точную аффинность. Пересоберите клиент/Mapper; миграций нет.
+- Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
+- Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
+- Трассы Threading считают завершённые callbacks каждого участника пакета, различая пустых workers и частичный отказ. Пересоберите profiled consumers; миграций API и ресурсов нет.
+- Карты удерживаются в reentrancy-тестах Mapper.
+- Исправлены SQUARE bearings, offsets/цепочки трасс и сдвиги viewport; пересоберите native consumers. Идентичности/форматы сохраняются.
+
+### Миграция
+
+- База: `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`); следующая версия — `2026.1.70-dev`. Интеграция сохраняет обе опубликованные истории. Примените пропущенные миграции master ниже по порядку, особенно разделение владения анимациями/ресурсами с проектом в версии 58 и изменения admission/restore версии 60.
+- Повторите configure и пересоберите все включённые native consumers, обновите привязки обоих script backends и запеките согласованные метаданные, assemblies и ресурсы сервера/клиента. Новый value type, методы и настройки меняют сгенерированные API-метаданные. Ручной маркер совместимости остаётся `81`; Managed ABI `9`, прежние форматы wire messages, спрайты v3, схемы ресурсов и ID сохраняемых свойств не меняются. Поставляйте или откатывайте полные согласованные native/runtime/resource комплекты. Эти CPU-стадии не вводят конверсию сохранений.
+- Проекты с явной инициализацией всех настроек Engine добавляют `Client.Multithreading = False`, `Client.MultithreadingMaxWorkers = 8`, `Client.MultithreadingMaxMobileWorkers = 2`, `Client.MultithreadingHeadroomMinCores = 4`, `Render.ParallelSpriteUpdateMinCount = 4` и `Render.ParallelSpriteGeometryMinCount = 128`. Это сохраняет прямой default и предварительные пороги. Worker caps принимают `0..64`; нулевой mobile cap оставляет телефоны последовательными. Web без поддержки потоков остаётся последовательным. Config baker обнаруживает пропущенную обязательную инициализацию; `ChooseWorkerCount` отклоняет неверные caps/headroom до запуска workers.
+- Относительно версии 69 существующие script callables не удалены и не переосмыслены. Два метода раскладки текста необязательны к использованию. Native-интерфейсы и member layouts требуют полной пересборки: замените `SpriteManager sprites {settings, window, timer, effects, hashes};` на `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` для прямого потребителя либо передайте заимствование `nptr<WorkScheduler>` для использования пула. Прежний конструктор с пятью аргументами отклоняется компилятором. Scheduler должен пережить всех потребителей sprite/resource/model/particle; клиент объявляет его перед ними. `FogShape::Input` наследуется от пассивного `CalculationInput`; native callers `Prepare` передают актуальные scheduler/obstacle-reader параметры либо сохраняют их документированные defaults.
+- Найдите затронутые native/configuration обращения командой `rg -n "SpriteManager|ResourceManager|ModelManager|ParticleRuntimeServices|FogShape|ParallelSprite|Multithreading|PrepareTextLayouts|TextLayoutResult" <project-source-paths>`. Пересобирайте с текущими заголовками; не смешивайте старые библиотеки и не возвращайте удалённые в версии 58 loading/animation APIs. Актуальные операции ресурсов принадлежат `ResourceManager`, а `SpriteManager` сохраняет rendering и заимствование scheduler.
+- Проверьте direct, zero-worker и enabled режимы переиспользуемыми native suites для геометрии, раскладки шрифтов, света/тумана, подготовки ресурсов, поз и частиц. Затем пройдите обычный видимый маршрут map/UI/load/unload/shutdown проекта и измерьте его реальные нагрузки. Подготовка timeline может отложить изменение уже подготовленной модели до следующего кадра, как описано в [руководстве владения](../explanation/runtime/client-multithreading.md); равенство native pose само по себе не подтверждает callback ordering или визуальную эквивалентность. Сохраняйте переключатель выключенным до приёмки нужных нагрузок и платформ.
+
+- Нативные helpers подготовки/commit частиц используют `timespan`: сохраняйте возвращённую длительность через подготовку и публикацию владельцем; изолированному backend передавайте `elapsed.to_sec<float32_t>()`. Замените float-дельты владельца типизированными длительностями. Пересоберите собственных native callers; прежние float-аргументы helpers не компилируются. Секунды backend и единицы логического elapsed сохраняют смысл.
+
+### Миграция подготовки ресурсов
+
+Актуальный конструктор — `ResourceManager(resources, sprites, scheduler = nullptr, decoder = ReadSpriteResource)`. Прежний вызов с двумя аргументами сохраняет прямую загрузку. Подключаемый decoder получает только принадлежащие запросам bytes/results, допускает reentrant-вызов и не захватывает providers, entities, factories или renderer state. Создавайте `DefaultSpriteFactory` с заимствованиями sprite manager и соответствующего resource manager, затем регистрируйте её у этого владельца ресурсов. Prefetch, consume, cancel, invalidate и drain вызываются владельцем. Явный shutdown клиента дренирует до disconnect/events; уничтожение дренирует до исчезновения providers, factories и renderer dependencies. Сохраняйте порядок объявления в самостоятельных fixtures и embedders.
+
+Reservation на 32 слота/64 MiB покрывает документированные ёмкости входов, decoded data и control для проверенных decoder/STL. Она исключает allocator/transient/provider/GPU storage, сохранённую диагностику исключений и произвольные captures decoder; это не RSS limit. Отмена немедленно отзывает публикацию, удерживая active/publishing storage до completion или unwind. См. [лимиты ресурсов и replay](../how-to/content/image-format.md#ограниченная-cpu-подготовка-ресурсов) и запускайте настоящие provider/pixel/cancellation fixtures в каждой заявляемой конфигурации.
+
+### Миграция CPU-обновления частиц
+
+Пересоберите собственные native particle backends и потребителей моделей с текущими `ParticleRuntimeSystem`, `ParticleRuntimeServices`, `ModelManager` и интерфейсами vendored Effekseer. Неизвестные графы, callbacks, неподдерживаемые effects и неготовые родители остаются direct; custom native backends сохраняют direct execution, пока не реализуют изолированный CPU-контракт. SPARK использует частные runtime contexts, сохраняя прежние случайные потоки конструкторов и system. Effekseer обрабатывает полезные независимые chunks внутри прежнего manager. Создание, transforms, attachment layout, lifecycle callbacks и drawing остаются у владельца; каждый переданный batch выполняет join до публикации или передачи ошибки.
+
+Отдельного пула частиц нет. См. [CPU-контракт частиц](../explanation/runtime/client-multithreading.md#cpu-обновление-частиц), [сопровождение вендорных изменений](../contributing/third-party/index.md#расширения-cpu-симуляции-частиц) и [native input fixtures](../../../Source/Tests/README.ru.md). Storage diagnostics, проверки исходников и headless run не подтверждают peak RSS, GPU-эквивалентность, приёмку Android или ускорение кадра.
+
+## 2026.1.69-dev - 2026-10-26
 
 ### Миграция
 
@@ -166,54 +223,6 @@ permalink: /Docs/ru/reference/changelog.html
 - Сигнатуры таймеров, ID, единицы, интервалы по умолчанию и форматы сохранений прежние. Исправлено преждевременное завершение: проверить код, который рассчитывал на перекрытие повторов или раннее удаление одноразового события. Пересобрать все затронутые native-роли, managed assemblies и согласованные ресурсы одной запеканкой. Конверсия сохранений не нужна. Runtime меняется с `0.0.77` на `0.0.78` для native/managed completion bridge; Managed ABI остаётся `9`. Смешанные старые/новые binaries или ресурсы не поддерживаются. База: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); этот шаг — `2026.1.62-dev`.
 
 - Проверить все вызовы `CountTimeEvent` (`rg -n "CountTimeEvent" <script-and-native-source-dirs>`). Singleton guards, активный статус и ожидание completion сохраняют включающий выполнение подсчёт по умолчанию. One-shot остаётся зарегистрированным до terminal completion, поэтому коалесцирование снимков явно исключает выполнение: Managed `owner.CountTimeEvent(Callback, excludeExecuting: true)` или `Game.CountTimeEvent(id, excludeExecuting: true)`; AngelScript `owner.CountTimeEvent(Callback, true)` или `Game.CountTimeEvent(id, true)`; native `manager.CountTimeEvent(entity, func_name, id, true)`. Рядом с выполняющимся снимком можно поставить отдельный one-shot. Старый scheduler сохранял повторяющиеся записи, но удалял one-shot после возврата первого вызова; ни одно значение флага не воспроизводит эту смешанную политику времени жизни целиком. Прежние аргументы, ID и единицы сохраняют смысл. Перед bake пересоздать оба backend и скомпилировать Server/Client/Mapper.
-
-## 2026.1.61-dev - 2026-10-24
-
-### Добавлено
-
-- Опубликованная реализация клиентских workers согласована с `2026.1.61-dev`. Один принадлежащий клиенту `WorkScheduler` обслуживает позы моделей, подготовленную геометрию спрайтов/глифов, раскладку текста, расчёт грязных света/тумана и допущенные CPU-обновления частиц. GPU, доступ к ресурсам, script callbacks и упорядоченная публикация остаются на потоке приложения. Неподдерживаемые, малые и zero-worker нагрузки сохраняют прямой путь. `Client.Multithreading` по умолчанию остаётся false; включение не означает приёмку производительности или платформы.
-- Добавлены `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` и пассивное значение `TextLayoutResult` с полями `Width`, `Height`, `Lines`. Прежние измерение и рисование текста доступны; подготовленные размеры используются с теми же текстом, шрифтом, форматом и цветом. Прогретая раскладка не создаёт jobs.
-- Добавлена ограниченная подготовка ресурсов статики карты на том же пуле. `ResourceManager` владеет получением данных, factories, кешами, отменой generation/epoch, необязательным decoder и shutdown drain. Workers декодируют принадлежащие запросам пассивные буферы; владелец повторяет публикацию спрайтов/атласов и ошибки в исходном порядке. Точная диспетчеризация custom factories и независимое воспроизведение sheets сохраняются.
-
-- Исправлены HEX/SQUARE-фикстуры, шесть/восемь Fallout-направлений и предупреждения RTTI в Clang 24. Runtime и форматы прежние; миграция не требуется.
-
-- Подготовка спрайта отклоняется до полного чтения provider, если известный размер из заголовка не помещается в оставшуюся reservation. Сохранены прежние coalescing, приём по реальным bytes, отмена, повтор и обычная загрузка; байтовые лимиты и публичные API не меняются.
-- Ожидания диагностик минимального клиента согласованы с поставляемыми effects, в particle-фикстуре движущегося child объявлены проектные animation enums, а native-фикстуры используют явные операции owner/borrow. Сохранены точное сравнение diagnostic и буквальные проверки geometry, pixels, aliases, callbacks и состояния частиц. Требуется пересборка native tests; миграция ресурсов или скриптов не вводится.
-
-### Исправлено
-
-- Отделить физические проверки частиц от явной worker qualification каждого backend; запускайте `[particle-worker-qualification]` вместе с default suite. Runtime и миграции не меняются.
-- Компилятор SDK запускается с обычной globalization только в дочернем процессе, чтобы его именованные локали не наследовали invariant-режим встроенного Mono. Настройка родительского runtime сохраняется; пересоберите baker и повторите компиляцию/bake проекта.
-- Vulkan принимает поверхности RGBA8 UNORM, сохраняя единый формат текстур, upload и обоих readback. Пересоберите клиенты/mapper; проверьте цвета, alpha, resize и readback на каждой платформе. Миграция скриптов/ресурсов/wire/сохранённых данных не нужна.
-- Упаковщик Android Client читает метаданные из парного `.fomain-server`, встраивая `.fomain-client`. Сохраняйте оба файла одного bake и пересоберите APK: Activity больше не передаёт `--ApplySubConfig` уже разрешённому packaged config. Native ABI и форматы ресурсов не меняются.
-
-- Кадр модели на ARM64 сохраняет точную аффинность. Пересоберите клиент/Mapper; миграций нет.
-- Android завершает процесс через quick exit со сбросом логов без TLS teardown; пересоберите native consumers.
-- Сохранена ориентация Android Vulkan и добавлено восстановление потерянного presentation surface; пересоберите клиент/Mapper.
-- Трассы Threading считают завершённые callbacks каждого участника пакета, различая пустых workers и частичный отказ. Пересоберите profiled consumers; миграций API и ресурсов нет.
-- Карты удерживаются в reentrancy-тестах Mapper.
-- Исправлены SQUARE bearings, offsets/цепочки трасс и сдвиги viewport; пересоберите native consumers. Идентичности/форматы сохраняются.
-
-### Миграция
-
-- База: `af0770a5ef98ef31fa57c448f27ed4ce3fa86ee4` (`2026.1.61-dev`); следующая версия — `2026.1.62-dev`. Интеграция сохраняет обе опубликованные истории. Примените пропущенные миграции master ниже по порядку, особенно разделение владения анимациями/ресурсами с проектом в версии 58 и изменения admission/restore версии 60.
-- Повторите configure и пересоберите все включённые native consumers, обновите привязки обоих script backends и запеките согласованные метаданные, assemblies и ресурсы сервера/клиента. Новый value type, методы и настройки меняют сгенерированные API-метаданные. Ручной маркер совместимости остаётся `77`; Managed ABI `9`, прежние форматы wire messages, спрайты v2, схемы ресурсов и ID сохраняемых свойств не меняются. Поставляйте или откатывайте полные согласованные native/runtime/resource комплекты. Эти CPU-стадии не вводят конверсию сохранений.
-- Проекты с явной инициализацией всех настроек Engine добавляют `Client.Multithreading = False`, `Client.MultithreadingMaxWorkers = 8`, `Client.MultithreadingMaxMobileWorkers = 2`, `Client.MultithreadingHeadroomMinCores = 4`, `Render.ParallelSpriteUpdateMinCount = 4` и `Render.ParallelSpriteGeometryMinCount = 128`. Это сохраняет прямой default и предварительные пороги. Worker caps принимают `0..64`; нулевой mobile cap оставляет телефоны последовательными. Web без поддержки потоков остаётся последовательным. Config baker обнаруживает пропущенную обязательную инициализацию; `ChooseWorkerCount` отклоняет неверные caps/headroom до запуска workers.
-- Относительно версии 61 существующие script callables не удалены и не переосмыслены. Два метода раскладки текста необязательны к использованию. Native-интерфейсы и member layouts требуют полной пересборки: замените `SpriteManager sprites {settings, window, timer, effects, hashes};` на `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` для прямого потребителя либо передайте заимствование `nptr<WorkScheduler>` для использования пула. Прежний конструктор с пятью аргументами отклоняется компилятором. Scheduler должен пережить всех потребителей sprite/resource/model/particle; клиент объявляет его перед ними. `FogShape::Input` наследуется от пассивного `CalculationInput`; native callers `Prepare` передают актуальные scheduler/obstacle-reader параметры либо сохраняют их документированные defaults.
-- Найдите затронутые native/configuration обращения командой `rg -n "SpriteManager|ResourceManager|ModelManager|ParticleRuntimeServices|FogShape|ParallelSprite|Multithreading|PrepareTextLayouts|TextLayoutResult" <project-source-paths>`. Пересобирайте с текущими заголовками; не смешивайте старые библиотеки и не возвращайте удалённые в версии 58 loading/animation APIs. Актуальные операции ресурсов принадлежат `ResourceManager`, а `SpriteManager` сохраняет rendering и заимствование scheduler.
-- Проверьте direct, zero-worker и enabled режимы переиспользуемыми native suites для геометрии, раскладки шрифтов, света/тумана, подготовки ресурсов, поз и частиц. Затем пройдите обычный видимый маршрут map/UI/load/unload/shutdown проекта и измерьте его реальные нагрузки. Подготовка timeline может отложить изменение уже подготовленной модели до следующего кадра, как описано в [руководстве владения](../explanation/runtime/client-multithreading.md); равенство native pose само по себе не подтверждает callback ordering или визуальную эквивалентность. Сохраняйте переключатель выключенным до приёмки нужных нагрузок и платформ.
-
-### Миграция подготовки ресурсов
-
-Актуальный конструктор — `ResourceManager(resources, sprites, scheduler = nullptr, decoder = ReadSpriteResource)`. Прежний вызов с двумя аргументами сохраняет прямую загрузку. Подключаемый decoder получает только принадлежащие запросам bytes/results, допускает reentrant-вызов и не захватывает providers, entities, factories или renderer state. Создавайте `DefaultSpriteFactory` с заимствованиями sprite manager и соответствующего resource manager, затем регистрируйте её у этого владельца ресурсов. Prefetch, consume, cancel, invalidate и drain вызываются владельцем. Явный shutdown клиента дренирует до disconnect/events; уничтожение дренирует до исчезновения providers, factories и renderer dependencies. Сохраняйте порядок объявления в самостоятельных fixtures и embedders.
-
-Reservation на 32 слота/64 MiB покрывает документированные ёмкости входов, decoded data и control для проверенных decoder/STL. Она исключает allocator/transient/provider/GPU storage, сохранённую диагностику исключений и произвольные captures decoder; это не RSS limit. Отмена немедленно отзывает публикацию, удерживая active/publishing storage до completion или unwind. См. [лимиты ресурсов и replay](../how-to/content/image-format.md#ограниченная-cpu-подготовка-ресурсов) и запускайте настоящие provider/pixel/cancellation fixtures в каждой заявляемой конфигурации.
-
-### Миграция CPU-обновления частиц
-
-Пересоберите собственные native particle backends и потребителей моделей с текущими `ParticleRuntimeSystem`, `ParticleRuntimeServices`, `ModelManager` и интерфейсами vendored Effekseer. Неизвестные графы, callbacks, неподдерживаемые effects и неготовые родители остаются direct; custom native backends сохраняют direct execution, пока не реализуют изолированный CPU-контракт. SPARK использует частные runtime contexts, сохраняя прежние случайные потоки конструкторов и system. Effekseer обрабатывает полезные независимые chunks внутри прежнего manager. Создание, transforms, attachment layout, lifecycle callbacks и drawing остаются у владельца; каждый переданный batch выполняет join до публикации или передачи ошибки.
-
-Отдельного пула частиц нет. См. [CPU-контракт частиц](../explanation/runtime/client-multithreading.md#cpu-обновление-частиц), [сопровождение вендорных изменений](../contributing/third-party/index.md#расширения-cpu-симуляции-частиц) и [native input fixtures](../../../Source/Tests/README.ru.md). Storage diagnostics, проверки исходников и headless run не подтверждают peak RSS, GPU-эквивалентность, приёмку Android или ускорение кадра.
 
 ## 2026.1.61-dev - 2026-10-24
 

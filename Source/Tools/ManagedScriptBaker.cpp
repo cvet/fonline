@@ -5354,4 +5354,3 @@ static auto IsManagedProjectReference(string_view reference) -> bool
 FO_END_NAMESPACE
 
 #endif
-

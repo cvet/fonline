@@ -379,6 +379,21 @@ auto ParticleBaker::CollectResourceDependencies(const FileCollection& files, str
         Effekseer::SettingRef setting = Effekseer::Setting::Create();
         Effekseer::EffectRef effect = Effekseer::Effect::Create(setting, data.data(), numeric_cast<int32_t>(data.size()), 1.0f, u"");
         FO_VERIFY_AND_THROW(effect, "Effekseer dependency output is invalid", path);
+
+        auto add_non_image_path = [&](string reference) {
+            if (reference.empty()) {
+                return;
+            }
+
+            string normalized = strex(reference).normalize_path_slashes().str();
+            FO_VERIFY_AND_THROW(!fs::is_absolute_path(normalized), "Effekseer dependency path must be relative", path, reference);
+
+            string resolved = strex(path).extract_dir().combine_path(normalized).str();
+            FO_VERIFY_AND_THROW(resolved != ".." && !resolved.starts_with("../"), "Effekseer dependency path escapes mounted sources", path, reference);
+
+            result.emplace_back(std::move(resolved));
+        };
+
         auto add_path = [&](string reference) {
             if (!reference.empty()) {
                 result.emplace_back(ImageReferencePath(path, reference));
@@ -395,16 +410,16 @@ auto ParticleBaker::CollectResourceDependencies(const FileCollection& files, str
             add_path(ToEffekseerUtf8(effect->GetDistortionImagePath(i)));
         }
         for (int32_t i = 0; i < effect->GetModelCount(); i++) {
-            add_path(ToEffekseerUtf8(effect->GetModelPath(i)));
+            add_non_image_path(ToEffekseerUtf8(effect->GetModelPath(i)));
         }
         for (int32_t i = 0; i < effect->GetMaterialCount(); i++) {
-            add_path(ToEffekseerUtf8(effect->GetMaterialPath(i)));
+            add_non_image_path(ToEffekseerUtf8(effect->GetMaterialPath(i)));
         }
         for (int32_t i = 0; i < effect->GetCurveCount(); i++) {
-            add_path(ToEffekseerUtf8(effect->GetCurvePath(i)));
+            add_non_image_path(ToEffekseerUtf8(effect->GetCurvePath(i)));
         }
         for (int32_t i = 0; i < effect->GetWaveCount(); i++) {
-            add_path(ToEffekseerUtf8(effect->GetWavePath(i)));
+            add_non_image_path(ToEffekseerUtf8(effect->GetWavePath(i)));
         }
     }
 #endif

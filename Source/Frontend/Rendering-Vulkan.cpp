@@ -3726,4 +3726,3 @@ static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
 FO_END_NAMESPACE
 
 #endif // FO_HAVE_VULKAN
-

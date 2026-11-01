@@ -545,4 +545,3 @@ void WorkScheduler::StopWorkers() noexcept
 }
 
 FO_END_NAMESPACE
-

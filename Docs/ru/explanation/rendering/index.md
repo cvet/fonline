@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"97dce7146a828ceca7847aeef29b4a4453a7cfb3aaa2d303047fe0382dd5010d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"648a54bb8c8318f3765e51835c9f02743cbe9dbabd3900c949b33a10be93c854"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -672,9 +672,9 @@ level 10.0. Сборка без 3D может принять level 9.3, если
 ### Placeholder прямого Metal
 
 `FO_HAVE_METAL`, `RenderType::Metal`, `Render.ForceMetal` и SDL Metal window flag
-присутствуют, но direct `Metal_Renderer` не реализован. Поэтому
-`Render.ForceMetal = True` немедленно вызывает `AppInitException`; такую
-конфигурацию нельзя рекламировать или считать release evidence.
+присутствуют, но direct `Metal_Renderer` не реализован. Выбор скомпилированной
+ветки `Render.ForceMetal = True` немедленно вызывает `AppInitException`.
+Прямой Metal не поддерживается: его нельзя рекламировать или считать release evidence.
 
 Metal driver SDL_GPU — другой, реализованный backend. Используйте
 `Render.ForceSDLGpu = True` и `Render.SDLGpuDriver = metal` и применяйте те же
@@ -778,15 +778,7 @@ renderer; вид, превышающий получившийся target, раз
 
 Light target накладывается только на нарисованную область текущего chunk, расширенную на padding render target и запас в одну восьмую chunk для тряски и refractive sampling. `MapView::GetMapCompositeRect` задаёт эту границу и для обычного `FlushLight`, и для custom fog-slot path. При приближении карты это избавляет от композиции всего увеличенного light target, сохраняя краевые pixels, которые могут читать эффекты.
 
-`Gui::CheckHit` кеширует boolean result для текущих `Game.FrameTime` и query
-position, поскольку cursor drawing, zoom и movement могут проверять одну точку
-несколько раз за frame, тогда как `FindHit` обходит все screen trees. Изменения
-GUI activation, geometry, ordering, scroll, crop, изображения для transparent
-hit и hittability инвалидируют cache. Refresh resolution и language проходит
-через `_RefreshPositionRecursive`; setters с неизменившимся значением не
-инвалидируют cache. Внутренний `_Move` намеренно не инвалидирует сам по себе,
-поскольку `Draw` использует временную пару `_Move` каждый frame, поэтому direct
-callers, меняющие persistent layout, инвалидируют явно.
+Деревья объектов GUI, обход экранов и любые кешированные результаты запросов к ним принадлежат встраиваемому проекту; [граница интеграции GUI](../../how-to/runtime/gui.md) определяет это разделение. Engine предоставляет время кадра, ввод и sprite hit-test primitives. Ключи кеша запросов к дереву экранов и его инвалидация при activation, geometry, ordering, scroll, crop, transparency, hittability, language/resolution и persistent movement являются policy проекта, включая отличие от временных draw-time offsets.
 
 Model-attached SPARK systems сохраняют уже spawned particles в simulation space,
 пока emitter следует attachment point модели. Non-identity root transform
@@ -800,15 +792,14 @@ rotation/projection; setup-time positive и draw-time negative offsets
 
 Рендеринг использует два разных размера:
 
-- **Logical screen size** — `Settings.View.ScreenWidth/ScreenHeight`. В этой системе координат игра рисует `_rtMain`, projection и GUI/ImGui.
+- **Logical screen size** — текущий `IAppWindow::GetScreenSize()` (script `Game.ScreenSize`). Startup `View.ScreenWidth`/`View.ScreenHeight` задают начальное значение; `Render.Fullscreen` задаёт начальный fullscreen state. Эти settings остаются immutable. `_rtMain`, projection и GUI/ImGui используют текущий logical viewport.
 - **Backbuffer size** — реальный output surface: pixels OS window, monitor fullscreen или virtual render texture embedded client.
 
 Игра всегда рисует `_rtMain` в logical size. Финальный blit при
 `Renderer::SetRenderTarget(nullptr)` растягивает его в backbuffer **с сохранением
 aspect ratio**, центрируя и добавляя bars только при разных aspect. При равных
 размерах это 1:1. `_rtMain` изменяется по `GetScreenSize()` на
-screen-size-changed event. Events семантически разделены:
-`OnScreenSizeChanged` — logical size, `OnWindowSizeChanged` — physical/host size.
+screen-size-changed event. Dispatchers главного окна различают изменение logical size (`OnScreenSizeChanged`) и physical/window changes (`OnWindowSizeChanged`).
 
 Script offscreen surfaces (`Game.ActivateOffscreenSurface` /
 `Game.PresentOffscreenSurface`) также работают в logical coordinates, потому
@@ -820,13 +811,7 @@ boundary внутри эффекта.
 
 ### Windowed
 
-Window pixels и logical size поддерживаются равными. Событие
-`SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` вне fullscreen записывает
-`Settings.ScreenWidth/Height`, вызывает `OnWindowSizeChanged`, а
-`OnScreenSizeChanged` — только при реальном изменении settings.
-`Game.SetResolution(w, h)` сначала меняет logical size, затем OS window, если
-клиент не fullscreen и не virtual; последующее OS event не вызывает повторный
-GUI/map refresh того же logical resolution.
+Pixel-resize handler главного окна записывает сообщённый размер в `ScreenState.Size` только для events, не классифицированных как fullscreen/backbuffer resizes. Он вызывает `OnWindowSizeChanged`, а `OnScreenSizeChanged` — только при изменении logical size. `Game.SetResolution(w, h)` сначала задаёт logical dimensions через `SetScreenSize`, затем запрашивает native resize только для non-fullscreen, non-virtual clients. Последующий event с тем же logical size даёт только window-size notification, без повторного GUI/map refresh. Startup settings не меняются.
 
 ### Fullscreen (borderless desktop)
 
@@ -834,7 +819,7 @@ GUI/map refresh того же logical resolution.
 size. Fullscreen resolution означает **logical render size**:
 `Game.SetResolution` меняет logical size, а blit aspect-fits его в monitor.
 Startup/toggle/pixel-size events fullscreen обновляют renderer/backbuffer, но не
-перезаписывают `Settings.ScreenWidth/Height` и не вызывают
+перезаписывают `ScreenState.Size` и не вызывают
 `OnScreenSizeChanged`, иначе выбранное logical resolution схлопнулось бы к
 monitor size. `AppWindow::ToggleFullscreen()` помечает transition до SDL call,
 потому что queued event может прийти при старых flags. Bars ожидаемы только при
@@ -855,18 +840,9 @@ monitor size. `AppWindow::ToggleFullscreen()` помечает transition до S
 - game render идёт в `_rtMain` logical size, затем aspect-fit в `_virtualRenderTex` physical size;
 - host aspect-fit/center-ит virtual texture в display rect и обратным тем же mapping переводит input, поэтому black bars не искажают local mouse coordinates.
 
-Resolution change обновляет settings **владеющего engine**, не host. Virtual
-`SetScreenSize` хранит logical value в `_virtualScreenSize`, а
-`SpriteManager::SetScreenSize` отражает его в собственные
-`Settings.ScreenWidth/Height` до handlers. `SetResolution` не вызывает
-`SetWindowSize` для virtual window и не меняет `_virtualSize`; host layout и
-render texture не resize-ятся. В standalone один engine, поэтому settings
-engine и `App->Settings` совпадают.
+Каждый embedded client хранит текущий logical size в своём virtual `AppWindow`: `SetScreenSize`/`GetScreenSize` используют `_virtualScreenSize`. `SpriteManager::SetScreenSize` передаёт размер окну до handlers, без записи в startup settings. Virtual `SetResolution` пропускает `SetWindowSize`; logical resize не меняет `_virtualSize`, render texture или host layout. Standalone client использует тот же startup settings instance, что `GetApp()->Settings`; текущее разрешение его главного окна хранит `Application::ScreenState`.
 
-GUI re-center выполняется через `OnScreenSizeChanged` →
-`Gui::Callback_OnResolutionChanged()`, заново layout-ящий screens по
-`Settings.View.ScreenWidth/Height`; `Anchor: None` центрируется по parent/screen.
-Таким образом, `_rtMain` задаёт pixels, а settings — layout coordinates.
+Обработчик `OnScreenSizeChanged` встраиваемого проекта владеет GUI relayout и re-centering по текущему logical viewport своего клиента, доступному через `Game.ScreenSize`; docking и anchoring остаются policy проекта. `_rtMain`/`GetScreenSize()` и GUI viewport должны использовать этот logical size. Immutable startup defaults `View.ScreenWidth`/`View.ScreenHeight` не являются текущими layout coordinates.
 
 Local-map viewport при фактическом logical size change сразу recenter-ится на
 chosen critter. `MapView` берёт logical client size, а не physical backbuffer;

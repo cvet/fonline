@@ -49,6 +49,8 @@ static void ValidateUsagePath(string_view path)
 {
     FO_VERIFY_AND_THROW(!path.empty() && path.find_first_of("\\:\0", 0, 3) == string_view::npos && !path.starts_with('/'), "Invalid resource usage path", path);
 
+    FO_VERIFY_AND_THROW(!path.ends_with('/') && path.find("//") == string_view::npos, "Noncanonical resource usage path", path);
+
     for (string_view part : strvex(path).split('/')) {
         FO_VERIFY_AND_THROW(!part.empty() && part != "." && part != "..", "Noncanonical resource usage path", path);
     }
@@ -66,17 +68,20 @@ void ResourceUsage::RegisterOutput(string_view pack, string_view path, string_vi
     ValidateUsagePath(pack);
     ValidateUsagePath(path);
     string key = strex(pack).combine_path(path);
+
     scoped_lock lock {_locker};
-    _packs.emplace(pack);
     auto [it, inserted] = _outputs.try_emplace(key, ResourceOutput {string {pack}, string {path}, string {baker}, kind});
 
     if (!inserted) {
+        FO_VERIFY_AND_THROW(it->second.Pack == pack && it->second.Path == path, "Resource output path has multiple pack-relative identities", key, it->second.Pack, it->second.Path, pack, path);
         FO_VERIFY_AND_THROW(it->second.Baker == baker, "Resource output has multiple baking owners", key, it->second.Baker, baker);
 
         if (kind == BakingOutputKind::Required) {
             it->second.Kind = kind;
         }
     }
+
+    _packs.emplace(pack);
 }
 
 void ResourceUsage::AddReference(string_view path, string_view reason)

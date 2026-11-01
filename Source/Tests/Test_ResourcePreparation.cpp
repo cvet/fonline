@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
@@ -52,18 +54,110 @@ static auto MakePreparationInput(string path, ucolor pixel = {17, 29, 43, 255}, 
     data_writer writer {input.Bytes};
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.write<uint16_t>(uint16_t {1});
-    writer.write<uint16_t>(uint16_t {80});
     writer.write<uint8_t>(uint8_t {1});
+
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint32_t>(uint32_t {80});
+
+    writer.write<uint32_t>(uint32_t {80});
+    writer.write<int32_t>(int32_t {3});
+    writer.write<int32_t>(int32_t {-2});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
     writer.write<uint8_t>(uint8_t {0});
-    writer.write<int16_t>(int16_t {3});
-    writer.write<int16_t>(int16_t {-2});
+
     writer.write<uint16_t>(uint16_t {1});
     writer.write<uint16_t>(uint16_t {1});
-    writer.write<int16_t>(int16_t {0});
-    writer.write<int16_t>(int16_t {0});
     writer.write<ucolor>(pixel);
     writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    return input;
+}
+
+static auto MakePreparationDirections(const vector<vector<uint32_t>>& timelines, bool shared_frames) -> vector<uint8_t>
+{
+    vector<uint8_t> bytes;
+    data_writer writer {bytes};
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(numeric_cast<uint8_t>(timelines.size()));
+
+    for (size_t direction_index = 0; direction_index < timelines.size(); direction_index++) {
+        uint64_t total_duration = 0;
+
+        for (uint32_t duration : timelines[direction_index]) {
+            total_duration += duration;
+        }
+
+        writer.write<uint16_t>(numeric_cast<uint16_t>(timelines[direction_index].size()));
+        writer.write<uint32_t>(numeric_cast<uint32_t>(total_duration));
+
+        for (size_t frame_index = 0; frame_index < timelines[direction_index].size(); frame_index++) {
+            bool shared = shared_frames && frame_index != 0;
+
+            writer.write<uint32_t>(timelines[direction_index][frame_index]);
+            writer.write<int32_t>(numeric_cast<int32_t>(direction_index));
+            writer.write<int32_t>(-numeric_cast<int32_t>(frame_index));
+            writer.write<int16_t>(int16_t {1});
+            writer.write<int16_t>(int16_t {-1});
+
+            if (shared) {
+                writer.write<uint8_t>(uint8_t {1});
+                writer.write<uint16_t>(uint16_t {0});
+            }
+            else {
+                writer.write<uint8_t>(uint8_t {0});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<ucolor>(ucolor {numeric_cast<uint8_t>(direction_index + 1), numeric_cast<uint8_t>(frame_index + 1), 0, 255});
+                writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+            }
+        }
+    }
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    return bytes;
+}
+
+static auto MakeExpandedPreparationInput() -> ResourcePreparation::Input
+{
+    constexpr uint16_t frame_count = 65535;
+    constexpr uint32_t frame_duration = 40;
+    constexpr uint32_t direction_duration = uint32_t {frame_count} * frame_duration;
+
+    ResourcePreparation::Input input;
+    input.Identity = {"expanded.png", ResourcePreparation::Kind::Sprite, 1, 1, 1};
+    data_writer writer {input.Bytes};
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(uint8_t {2});
+
+    for (uint8_t direction_index = 0; direction_index < 2; direction_index++) {
+        writer.write<uint16_t>(frame_count);
+        writer.write<uint32_t>(direction_duration);
+
+        for (uint16_t frame_index = 0; frame_index < frame_count; frame_index++) {
+            writer.write<uint32_t>(frame_duration);
+            writer.write<int32_t>(int32_t {0});
+            writer.write<int32_t>(int32_t {0});
+            writer.write<int16_t>(int16_t {0});
+            writer.write<int16_t>(int16_t {0});
+
+            if (frame_index == 0) {
+                writer.write<uint8_t>(uint8_t {0});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<uint16_t>(uint16_t {1});
+                writer.write<ucolor>(ucolor {17, 29, 43, 255});
+                writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+            }
+            else {
+                writer.write<uint8_t>(uint8_t {1});
+                writer.write<uint16_t>(uint16_t {0});
+            }
+        }
+    }
+
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     return input;
 }
@@ -130,6 +224,8 @@ TEST_CASE("ResourcePreparationAdmissionCoalescesAndRetainsCompletedReservations"
     REQUIRE(gate->WaitEntered());
     CHECK(lane.Poll(first.Ticket) == ResourcePreparation::Completion::Pending);
     CHECK(lane.FindRequest(key) == first.Ticket);
+
+    input = MakePreparationInput("first.png");
     input.Bytes.assign(100, uint8_t {0});
 
     auto duplicate = lane.Request(MakePreparationInput("first.png"));
@@ -155,6 +251,10 @@ TEST_CASE("ResourcePreparationAdmissionCoalescesAndRetainsCompletedReservations"
         REQUIRE(data.Directions[0].Frames.size() == 1);
         const auto& frame = data.Directions[0].Frames[0];
         CHECK(frame.Offset == ipos32 {3, -2});
+        CHECK(frame.NextOffset == ipos32 {0, 0});
+        CHECK(frame.Size == isize32 {1, 1});
+        CHECK(frame.Duration == timespan {std::chrono::milliseconds {80}});
+
         REQUIRE(frame.Pixels.size() == 1);
         CHECK(frame.Pixels[0] == ucolor {17, 29, 43, 255});
     }));
@@ -230,12 +330,12 @@ TEST_CASE("ResourcePreparationDistinguishesMalformedMissingAndBudgetDecline", "[
         expected_diagnostic = "Sprite resource header magic is invalid";
         break;
     case 1:
-        malformed.Bytes.resize(22);
+        malformed.Bytes.resize(32);
         expected_diagnostic = "Sprite frame pixel data is truncated";
         break;
     case 2:
-        malformed.Bytes[7] = 1;
-        malformed.Bytes[8] = malformed.Bytes[9] = 0;
+        malformed.Bytes[25] = 1;
+        malformed.Bytes[26] = malformed.Bytes[27] = 0;
         expected_diagnostic = "Sprite frame reference points outside previously decoded frames";
         break;
     case 3: {
@@ -255,9 +355,17 @@ TEST_CASE("ResourcePreparationDistinguishesMalformedMissingAndBudgetDecline", "[
     CHECK_THROWS_WITH(lane.Consume(failed.Ticket, [](SpriteResourceData&&) { FAIL("Malformed input must not publish"); }), Catch::Matchers::ContainsSubstring(std::string {expected_diagnostic}));
     CHECK(lane.GetDiagnostics().Outstanding == 0);
 
-    auto expanded = MakePreparationInput("expanded.png");
-    expanded.Bytes[2] = expanded.Bytes[3] = expanded.Bytes[6] = 255;
-    CHECK(lane.Request(std::move(expanded)).Status == ResourcePreparation::Admission::BudgetDeclined);
+    auto expanded = MakeExpandedPreparationInput();
+    REQUIRE(expanded.Bytes.size() < ResourcePreparation::Limits {}.EncodedBytes);
+
+    auto expanded_estimate = EstimateSpriteResourceStorage(expanded.Bytes, 4 * ResourcePreparation::Limits {}.DecodedBytes);
+    REQUIRE(expanded_estimate);
+    CHECK(*expanded_estimate > ResourcePreparation::Limits {}.DecodedBytes);
+    CHECK_FALSE(EstimateSpriteResourceStorage(expanded.Bytes, ResourcePreparation::Limits {}.DecodedBytes));
+
+    auto expanded_request = lane.Request(std::move(expanded));
+    CHECK(expanded_request.Status == ResourcePreparation::Admission::BudgetDeclined);
+
     auto missing = MakePreparationInput("missing.png");
     missing.Bytes.clear();
     missing.Missing = true;
@@ -433,6 +541,7 @@ TEST_CASE("ResourcePreparationCapacityOracleAndDriftFallback", "[resource-prepar
     auto input = MakePreparationInput("capacity.png");
     auto estimate = EstimateSpriteResourceStorage(input.Bytes, 16 * 1024 * 1024);
     REQUIRE(estimate);
+
     auto data = ReadSpriteResource(input.Bytes);
     auto actual = MeasureSpriteResourceStorage(data, *estimate);
     REQUIRE(actual);
@@ -443,15 +552,89 @@ TEST_CASE("ResourcePreparationCapacityOracleAndDriftFallback", "[resource-prepar
     REQUIRE(data.Animation.Sprite);
     CHECK(data.Animation.Sprite->Directions.capacity() == 1);
     CHECK(data.Animation.Sprite->Directions[0].Frames.capacity() == 1);
+
     SpriteMeshData mesh {{3, 3}, {1, 1}, {{0, 0}, {1, 0}, {0, 1}}, {0, 1, 2}};
     auto mesh_bytes = BakerTests::MakeMinimalBakedSprite(1, 1, SpriteMeshKind::Mesh, mesh);
     auto mesh_estimate = EstimateSpriteResourceStorage(mesh_bytes, 16 * 1024 * 1024);
     REQUIRE(mesh_estimate);
+
     auto mesh_data = ReadSpriteResource(mesh_bytes);
     REQUIRE(MeasureSpriteResourceStorage(mesh_data, *mesh_estimate));
     REQUIRE(mesh_data.Directions[0].Frames[0].Mesh);
     CHECK(mesh_data.Directions[0].Frames[0].Mesh->Vertices.capacity() == 3);
     CHECK(mesh_data.Directions[0].Frames[0].Mesh->Indices.capacity() == 3);
+
+    vector<vector<uint32_t>> shared_timelines {{100, 40, 60}, {50, 50}, {90, 30, 20, 10}};
+    auto shared_bytes = MakePreparationDirections(shared_timelines, true);
+    auto shared_estimate = EstimateSpriteResourceStorage(shared_bytes, 16 * 1024 * 1024);
+    REQUIRE(shared_estimate);
+
+    auto shared_data = ReadSpriteResource(shared_bytes);
+    auto shared_actual = MeasureSpriteResourceStorage(shared_data, *shared_estimate);
+    REQUIRE(shared_actual);
+    CHECK(*shared_actual <= *shared_estimate);
+    CHECK_FALSE(MeasureSpriteResourceStorage(shared_data, *shared_actual - 1));
+
+    auto shared_repeat = EstimateSpriteResourceStorage(shared_bytes, *shared_estimate);
+    REQUIRE(shared_repeat);
+    CHECK(*shared_repeat == *shared_estimate);
+    CHECK_FALSE(EstimateSpriteResourceStorage(shared_bytes, *shared_estimate - 1));
+    CHECK(shared_data.Directions.capacity() == shared_timelines.size());
+    REQUIRE(shared_data.Animation.Sprite);
+    CHECK(shared_data.Animation.Sprite->Directions.capacity() == shared_timelines.size());
+
+    for (size_t direction_index = 0; direction_index < shared_timelines.size(); direction_index++) {
+        CHECK(shared_data.Directions[direction_index].Frames.capacity() == shared_timelines[direction_index].size());
+        CHECK(shared_data.Animation.Sprite->Directions[direction_index].Frames.capacity() == shared_timelines[direction_index].size());
+        CHECK(shared_data.Directions[direction_index].Frames[0].Pixels.capacity() == 1);
+        CHECK_FALSE(shared_data.Directions[direction_index].Frames[0].SharedFrameIndex);
+
+        for (size_t frame_index = 1; frame_index < shared_timelines[direction_index].size(); frame_index++) {
+            const auto& frame = shared_data.Directions[direction_index].Frames[frame_index];
+            REQUIRE(frame.SharedFrameIndex);
+            CHECK(*frame.SharedFrameIndex == 0);
+            CHECK(frame.Pixels.empty());
+            CHECK(frame.Size == shared_data.Directions[direction_index].Frames[0].Size);
+        }
+    }
+
+    vector<vector<uint32_t>> unequal_timelines {{100}, {40, 70, 20}, {10, 20, 30, 40, 50}};
+    auto unequal_bytes = MakePreparationDirections(unequal_timelines, false);
+    auto unequal_estimate = EstimateSpriteResourceStorage(unequal_bytes, 16 * 1024 * 1024);
+    REQUIRE(unequal_estimate);
+
+    auto unequal_data = ReadSpriteResource(unequal_bytes);
+    auto unequal_actual = MeasureSpriteResourceStorage(unequal_data, *unequal_estimate);
+    REQUIRE(unequal_actual);
+    CHECK(*unequal_actual <= *unequal_estimate);
+    CHECK_FALSE(MeasureSpriteResourceStorage(unequal_data, *unequal_actual - 1));
+
+    auto unequal_repeat = EstimateSpriteResourceStorage(unequal_bytes, *unequal_estimate);
+    REQUIRE(unequal_repeat);
+    CHECK(*unequal_repeat == *unequal_estimate);
+    CHECK_FALSE(EstimateSpriteResourceStorage(unequal_bytes, *unequal_estimate - 1));
+    CHECK(unequal_data.Directions.capacity() == unequal_timelines.size());
+    REQUIRE(unequal_data.Animation.Sprite);
+    CHECK(unequal_data.Animation.Sprite->Directions.capacity() == unequal_timelines.size());
+
+    for (size_t direction_index = 0; direction_index < unequal_timelines.size(); direction_index++) {
+        uint64_t total_duration = 0;
+
+        for (uint32_t duration : unequal_timelines[direction_index]) {
+            total_duration += duration;
+        }
+
+        CHECK(unequal_data.Directions[direction_index].Frames.capacity() == unequal_timelines[direction_index].size());
+        CHECK(unequal_data.Animation.Sprite->Directions[direction_index].Frames.capacity() == unequal_timelines[direction_index].size());
+        CHECK(GetSpriteDirDuration(unequal_data.Animation.Sprite->Directions[direction_index]) == timespan {std::chrono::milliseconds {numeric_cast<int64_t>(total_duration)}});
+
+        for (size_t frame_index = 0; frame_index < unequal_timelines[direction_index].size(); frame_index++) {
+            const auto& frame = unequal_data.Directions[direction_index].Frames[frame_index];
+            CHECK(frame.Pixels.capacity() == 1);
+            CHECK_FALSE(frame.SharedFrameIndex);
+        }
+    }
+
     logging::write("Preparation capacity oracle: resource={}, direction={}, frame={}, infoDirection={}, infoFrame={}, estimate={}, actual={}, scheduler={}", sizeof(SpriteResourceData), sizeof(SpriteResourceDirectionData), sizeof(SpriteResourceFrameData), sizeof(SpriteDirInfo), sizeof(SpriteFrameInfo), *estimate, *actual, WorkScheduler::EstimateBackgroundStorage());
 
     if constexpr (FO_WEB) {
@@ -470,6 +653,47 @@ TEST_CASE("ResourcePreparationCapacityOracleAndDriftFallback", "[resource-prepar
     CHECK(lane.Poll(request.Ticket) == ResourcePreparation::Completion::BudgetDeclined);
     CHECK_FALSE(lane.Consume(request.Ticket, [](SpriteResourceData&&) { FAIL("Capacity drift must use direct fallback"); }));
     CHECK(lane.GetDiagnostics().ReservedBytes == 0);
+}
+
+TEST_CASE("SpriteResourceEstimateBoundsTruncatedAndPartialV3Records", "[resource-preparation]")
+{
+    vector<uint8_t> metadata_only;
+    data_writer writer {metadata_only};
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(uint8_t {2});
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<uint32_t>(uint32_t {2621400});
+
+    size_t declared_metadata = sizeof(SpriteResourceData) + 2 * (sizeof(SpriteResourceDirectionData) + sizeof(SpriteDirInfo));
+    declared_metadata += size_t {65535} * (sizeof(SpriteResourceFrameData) + sizeof(SpriteFrameInfo));
+    auto estimate = EstimateSpriteResourceStorage(metadata_only, 16 * 1024 * 1024);
+    REQUIRE(estimate);
+    CHECK(*estimate >= declared_metadata);
+
+    // The declared frame arrays alone exceed a bound derived only from the short encoded prefix
+    CHECK_FALSE(EstimateSpriteResourceStorage(metadata_only, declared_metadata - 1));
+    CHECK_FALSE(EstimateSpriteResourceStorage(metadata_only, sizeof(SpriteResourceData) + metadata_only.size() * 2));
+
+    vector<vector<uint32_t>> timelines {{100, 40, 60}, {50, 25}};
+    auto complete = MakePreparationDirections(timelines, true);
+
+    for (size_t length = 0; length <= complete.size(); length++) {
+        const_span<uint8_t> prefix {complete.data(), length};
+        auto prefix_estimate = EstimateSpriteResourceStorage(prefix, 16 * 1024 * 1024);
+        REQUIRE(prefix_estimate);
+        CHECK(*prefix_estimate <= 16 * 1024 * 1024);
+    }
+
+    SpriteMeshData mesh {{3, 3}, {1, 1}, {{0, 0}, {1, 0}, {0, 1}}, {0, 1, 2}};
+    auto mesh_bytes = BakerTests::MakeMinimalBakedSprite(1, 1, SpriteMeshKind::Mesh, mesh);
+
+    for (size_t length = 0; length <= mesh_bytes.size(); length++) {
+        const_span<uint8_t> prefix {mesh_bytes.data(), length};
+        auto prefix_estimate = EstimateSpriteResourceStorage(prefix, 16 * 1024 * 1024);
+        REQUIRE(prefix_estimate);
+        CHECK(*prefix_estimate <= 16 * 1024 * 1024);
+    }
 }
 
 TEST_CASE("ResourcePreparationKeysAndByteLimitsKeepTheirDistinctMeaning", "[resource-preparation]")
@@ -541,7 +765,8 @@ TEST_CASE("ResourcePreparationKeysAndByteLimitsKeepTheirDistinctMeaning", "[reso
                                          decoded.store(true);
                                          return ReadSpriteResource(bytes);
                                      }};
-        CHECK(bounded.Request(std::move(input)).Status == ResourcePreparation::Admission::BudgetDeclined);
+        auto bounded_request = bounded.Request(std::move(input));
+        CHECK(bounded_request.Status == ResourcePreparation::Admission::BudgetDeclined);
         bounded.Drain();
         CHECK_FALSE(decoded.load());
         CHECK(bounded.GetDiagnostics().Outstanding == 0);
@@ -851,7 +1076,7 @@ TEST_CASE("ResourcePreparationSpriteManagerRejectsHeaderBudgetBeforeFullRead", "
     assets.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&sprites, &assets));
     auto observation = safe_alloc::make_shared<PreparationReadObservation>();
     auto source = safe_alloc::make_unique<PreparationMapSource>(observation);
-    const vector<uint8_t> image = BakerTests::MakeMinimalBakedSprite(1024, 1024);
+    vector<uint8_t> image = BakerTests::MakeMinimalBakedSprite(1024, 1024);
     vector<hstring> paths;
 
     for (size_t index = 0; index < image_count; index++) {
@@ -1069,4 +1294,3 @@ TEST_CASE("ResourcePreparationActualStaticMapPreservesPixelsOrderAndFailurePrefi
 }
 
 FO_END_NAMESPACE
-

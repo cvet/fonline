@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"44779feaa9c80a1418f7fd787d9d4f4966bd6c63d8ddf88786dfec39f791c164"} -->
+<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"b4e6988d0e956c65dbda30c0bc7ed64cce247bf26bd57f0e80b5e79b925b9999"} -->
 
 # Сгенерированный интерфейс пакетов
 
@@ -34,7 +34,7 @@ generated: true
 | Support policy | Версионируемая линия поддержки пакетов не объявлена; встраивающие проекты должны фиксировать ревизию движка. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>eddfe1395ddf308c3626f977b13e24189189dfc3fcc88ea58665ce2676561d54</code> |
+| Contract digest | <code>e2aba7b4b23e241fbd0e656cecfc27a90a743741f98f8410c2851fb95aa66bb9</code> |
 
 ## Покрытие
 

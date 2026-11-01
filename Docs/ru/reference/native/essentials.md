@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"a05694907bab8c6a70b731708717d5a02ccdc7805d1a6986cf78660d3f76b089"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"62282e94e498d33b46bac85b33d9f07f5b14a02a428d8d94556c586fe5f25fdf"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -59,7 +59,7 @@ Essentials следует строгому dependency DAG: зависимост�
 `DequeObject`, `Containers`, `StringUtils`, `WinApi`, `Posix`, `Platform`,
 `ExceptionHandling`, `RandomGenerator`, `Threading`, `SafeArithmetics`, `DataSerialization`,
 `HashedString`, `StrongType`, `TimeRelated`, `ExtendedTypes`, `Compressor`,
-`WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
+`Cryptography`, `WorkThread`, `Logging`, `DiskFileSystem`, `CommonHelpers` и `NetSockets`.
 Не меняйте этот список местами для исправления cycle. Передавайте reverse
 dependency pressure вверх через parameter или разделяйте ответственность в
 более высоком слое-владельце. Каждый новый Essentials `.h` / `.cpp` должен
@@ -75,7 +75,7 @@ consumers линкуются в correct dependency point.
 Engine владеет reusable metadata/codegen machinery; embedding project
 предоставляет project configuration, дополнительные metadata sources, common
 headers и script/content inputs; generated files являются build artifacts.
-Сравнивайте все восемнадцать canonical generated models и требуйте проверенную
+Сравнивайте все 17 canonical generated models и требуйте проверенную
 точную domain-bound disposition для каждого gated compatibility break; unit
 test Essentials не обходит contract-change gate.
 

@@ -547,7 +547,7 @@ TEST_CASE("FogDirtyConsumerSubmitsSectors")
     fog->Radius = 32;
     fog->Distance = 32;
     fog->Traced = true;
-    fog->TransitionDuration = 0;
+    fog->TransitionDuration = timespan::zero;
     auto before = client->WorkSched.GetDiagnostics();
     map->DrawMap();
     auto after = client->WorkSched.GetDiagnostics();

@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"7990dbf6bb8fe32901b442dbd41fbce54bf75ecd79a02e855d0e74f501a058ad"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"0704debeacd242e1f882ce4e1428cbcfde738dbaee8451f559a3897a5ce569b8"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
@@ -150,7 +150,7 @@ inline-code записи и создаёт
 английский Markdown не меняются, а русский Markdown получает переведённые
 описания до локализации фиксированных подписей и заголовков.
 
-Каталог использует режим `complete`: все 4 811 обращённых к читателю значений
+Каталог использует режим `complete`: все 5 014 обращённых к читателю значений
 во всех 19 генерируемых доменах, включая native API, имеют актуальные
 проверенные записи. CI и локальная проверка отклоняют отсутствующие,
 неизвестные, устаревшие, меняющие тип, форму списка или inline-code записи.

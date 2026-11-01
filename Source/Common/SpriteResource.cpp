@@ -39,19 +39,155 @@ FO_BEGIN_NAMESPACE
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>;
 
+static auto AddSpriteStorageBound(size_t& size, size_t count, size_t element_size, size_t limit) -> bool;
+static auto HasSpriteStorageBytes(const_span<uint8_t> data, size_t cursor, uint64_t size) -> bool;
+static auto ReadSpriteStorageUInt16(const_span<uint8_t> data, size_t& cursor) -> uint16_t;
+static auto ReadSpriteStorageUInt32(const_span<uint8_t> data, size_t& cursor) -> uint32_t;
+
 auto EstimateSpriteResourceStorage(const_span<uint8_t> data, size_t limit) -> optional<size_t>
 {
-    uint64_t frames = data.size() >= 7 ? uint64_t {data[2]} + (uint64_t {data[3]} << 8) : 0;
-    uint64_t directions = data.size() >= 7 ? data[6] : 0;
-    uint64_t metadata = sizeof(SpriteResourceData) + directions * (sizeof(SpriteResourceDirectionData) + sizeof(SpriteDirInfo));
-    metadata += directions * frames * (sizeof(SpriteResourceFrameData) + sizeof(SpriteFrameInfo));
+    size_t metadata = sizeof(SpriteResourceData);
+
+    if (metadata > limit) {
+        return std::nullopt;
+    }
+
+    if (data.size() >= 3 && data[0] == SPRITE_RESOURCE_MAGIC && data[1] == SPRITE_RESOURCE_VERSION) {
+        uint8_t direction_count = data[2];
+
+        if (!AddSpriteStorageBound(metadata, direction_count, sizeof(SpriteResourceDirectionData) + sizeof(SpriteDirInfo), limit)) {
+            return std::nullopt;
+        }
+
+        size_t cursor = 3;
+
+        for (uint8_t direction_index = 0; direction_index < direction_count; direction_index++) {
+            if (!HasSpriteStorageBytes(data, cursor, sizeof(uint16_t) + sizeof(uint32_t))) {
+                break;
+            }
+
+            uint16_t frame_count = ReadSpriteStorageUInt16(data, cursor);
+            uint32_t total_duration = ReadSpriteStorageUInt32(data, cursor);
+
+            if (frame_count == 0 || total_duration < frame_count) {
+                break;
+            }
+
+            // Declared frame arrays are charged before their records, since the decoder resizes them first
+            if (!AddSpriteStorageBound(metadata, frame_count, sizeof(SpriteResourceFrameData) + sizeof(SpriteFrameInfo), limit)) {
+                return std::nullopt;
+            }
+
+            uint64_t duration_sum = 0;
+            bool records_complete = true;
+
+            for (uint16_t frame_index = 0; frame_index < frame_count; frame_index++) {
+                if (!HasSpriteStorageBytes(data, cursor, sizeof(uint32_t) + sizeof(int32_t) * 2 + sizeof(int16_t) * 2 + sizeof(uint8_t))) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint32_t duration = ReadSpriteStorageUInt32(data, cursor);
+                duration_sum += duration;
+                cursor += sizeof(int32_t) * 2 + sizeof(int16_t) * 2;
+                uint8_t shared = data[cursor];
+                cursor += sizeof(uint8_t);
+
+                if (duration == 0 || shared > 1) {
+                    records_complete = false;
+                    break;
+                }
+
+                if (shared != 0) {
+                    if (!HasSpriteStorageBytes(data, cursor, sizeof(uint16_t))) {
+                        records_complete = false;
+                        break;
+                    }
+
+                    uint16_t shared_index = ReadSpriteStorageUInt16(data, cursor);
+
+                    if (shared_index >= frame_index) {
+                        records_complete = false;
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (!HasSpriteStorageBytes(data, cursor, sizeof(uint16_t) * 2)) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint16_t width = ReadSpriteStorageUInt16(data, cursor);
+                uint16_t height = ReadSpriteStorageUInt16(data, cursor);
+
+                if (width == 0 || height == 0) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint64_t pixel_bytes = numeric_cast<uint64_t>(width) * height * sizeof(ucolor);
+
+                if (!HasSpriteStorageBytes(data, cursor, pixel_bytes)) {
+                    records_complete = false;
+                    break;
+                }
+
+                cursor += numeric_cast<size_t>(pixel_bytes);
+
+                if (!HasSpriteStorageBytes(data, cursor, sizeof(uint8_t))) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint8_t mesh_kind = data[cursor];
+                cursor += sizeof(uint8_t);
+
+                if (mesh_kind == static_cast<uint8_t>(SpriteMeshKind::Quad) || mesh_kind == static_cast<uint8_t>(SpriteMeshKind::Empty)) {
+                    continue;
+                }
+
+                if (mesh_kind != static_cast<uint8_t>(SpriteMeshKind::Mesh)) {
+                    records_complete = false;
+                    break;
+                }
+
+                if (!HasSpriteStorageBytes(data, cursor, sizeof(uint16_t) + sizeof(uint32_t))) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint16_t vertex_count = ReadSpriteStorageUInt16(data, cursor);
+                uint32_t index_count = ReadSpriteStorageUInt32(data, cursor);
+
+                if (vertex_count < 3 || index_count < 3 || index_count % 3 != 0 || index_count > numeric_cast<uint32_t>(vertex_count) * 6u) {
+                    records_complete = false;
+                    break;
+                }
+
+                uint64_t mesh_payload = sizeof(uint16_t) * 2 + sizeof(int32_t) * 2 + numeric_cast<uint64_t>(vertex_count) * sizeof(uint16_t) * 2 + numeric_cast<uint64_t>(index_count) * sizeof(uint16_t);
+
+                if (!HasSpriteStorageBytes(data, cursor, mesh_payload)) {
+                    records_complete = false;
+                    break;
+                }
+
+                cursor += numeric_cast<size_t>(mesh_payload);
+            }
+
+            if (!records_complete || duration_sum != total_duration) {
+                break;
+            }
+        }
+    }
 
     // RGBA and indices expand 1:1; uint16 mesh coordinates expand at most 2:1 into ipos32
     if (metadata > limit || data.size() > (limit - metadata) / 2) {
         return std::nullopt;
     }
 
-    return numeric_cast<size_t>(metadata + data.size() * 2);
+    return metadata + data.size() * 2;
 }
 
 auto MeasureSpriteResourceStorage(const SpriteResourceData& resource, size_t limit) -> optional<size_t>
@@ -207,6 +343,40 @@ auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteRes
     return image;
 }
 
+static auto AddSpriteStorageBound(size_t& size, size_t count, size_t element_size, size_t limit) -> bool
+{
+    if (size > limit || element_size == 0 || count > (limit - size) / element_size) {
+        return false;
+    }
+
+    size += count * element_size;
+    return true;
+}
+
+static auto HasSpriteStorageBytes(const_span<uint8_t> data, size_t cursor, uint64_t size) -> bool
+{
+    return cursor <= data.size() && size <= data.size() - cursor;
+}
+
+static auto ReadSpriteStorageUInt16(const_span<uint8_t> data, size_t& cursor) -> uint16_t
+{
+    uint16_t value = numeric_cast<uint16_t>(numeric_cast<uint32_t>(data[cursor]) | (numeric_cast<uint32_t>(data[cursor + 1]) << 8));
+    cursor += sizeof(uint16_t);
+    return value;
+}
+
+static auto ReadSpriteStorageUInt32(const_span<uint8_t> data, size_t& cursor) -> uint32_t
+{
+    uint32_t value = 0;
+
+    for (size_t byte_index = 0; byte_index < sizeof(uint32_t); byte_index++) {
+        value |= numeric_cast<uint32_t>(data[cursor + byte_index]) << (byte_index * 8);
+    }
+
+    cursor += sizeof(uint32_t);
+    return value;
+}
+
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>
 {
     uint8_t raw_kind = reader.GetUInt8();
@@ -293,4 +463,3 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
 }
 
 FO_END_NAMESPACE
-

@@ -406,4 +406,3 @@ void LightCalculation<Reader, Sink>::MarkLight(mpos hex, int32_t raw_intensity)
 }
 
 FO_END_NAMESPACE
-

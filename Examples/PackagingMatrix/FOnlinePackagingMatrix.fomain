@@ -5,6 +5,7 @@
 Common.GameName = FOnline Packaging Matrix
 Common.GameVersion = 0.1.0
 Common.AsyncLogWrite = False
+Common.NonInteractive = False
 Common.SecretSettingTokens = secret token password apikey
 
 # AngelScript

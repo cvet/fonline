@@ -1918,7 +1918,7 @@
       "name": "Complete direction tables",
       "stability": "experimental",
       "requirement": "Frame/Frames composition requires one unnamed sequence or the complete active-geometry indexed direction table; even a later section without direction1 fails before resolution. Source permits overrides of existing directions without repeated references. Final direction counts and durations may differ, but every timeline must be valid.",
-      "rationale": "Every direction sheet shares one frame-count and timing header.",
+      "rationale": "Every final direction owns its frame count and timeline; indexed composition still requires the complete active-geometry direction table.",
       "source": [
         {
           "path": "Source/Tools/ImageRecipe.cpp",

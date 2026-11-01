@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"69afbdf09d5f4f12069b22aec3e343f1cf1636ba00abc7870520925a087da7df"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"d7bdaed8e0713d8c8c2271bf21fbb6e0cbde9f904ab609ae9f91b45869d4d959"} -->
 # Модульные тесты
 
 Детерминированные suites; [Тестирование](../../Docs/ru/contributing/testing/) описывает проверки, покрытие и полную карту.
@@ -66,7 +66,7 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 ## Квалификация worker-потоков частиц
 
-Запускайте скрытые `[particle-worker-qualification]` вместе с default suite. Оба cases используют все проверки model/equation geometry, RNG и attachment. Каждый логирует до четырёх полных попыток и требует реальные worker kernels отдельно для SPARK, model Effekseer и global equations; local equations остаются последовательными. Отключённые backends и SPARK с `SPK_DEBUG` не требуют witness. Отсутствие работы означает отказ qualification. Default допускает завершённую enabled работу целиком на owner или helpers. Сохраняйте все попытки; размер пула и плановые batches не доказывают участие или производительность.
+Запускайте скрытые `[particle-worker-qualification]` вместе с default suite. Они повторяют все проверки состояния, geometry, RNG, attachments и callbacks. Отдельные реальные worker-kernel witnesses нужны для basic и moving sprites каждого backend, SPARK atlas/root callbacks, model SPARK/Effekseer и global equations; local equations остаются последовательными. Sprite/callback qualifiers логируют четыре полных samples, model/equation — до четырёх. Отключённые backends и SPARK с `SPK_DEBUG` не требуют witness. Отсутствие работы означает отказ qualification. Default требует завершённую работу и admission для eligible batches, допускает owner-only/helper-only выполнение и включает regression с занятым worker. Сохраняйте все samples; размер пула и плановые batches не доказывают участие workers или производительность.
 
 ## Отдельное измерение стоимости пакета поз
 

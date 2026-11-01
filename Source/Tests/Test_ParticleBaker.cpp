@@ -36,13 +36,19 @@
 #include "catch_amalgamated.hpp"
 
 #include "ConfigFile.h"
+#include "EffekseerCompiler.h"
 #include "EffekseerExtension.h"
 #include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "RawCopyBaker.h"
+#include "ResourceUsage.h"
 #include "SparkExtension.h"
 #include "Test_BakerHelpers.h"
 #include "Test_ParticleFixtures.h"
+
+FO_DISABLE_WARNINGS_PUSH()
+#include <json.hpp>
+FO_DISABLE_WARNINGS_POP()
 
 #if FO_SPARK_PARTICLES
 FO_DISABLE_WARNINGS_PUSH()
@@ -51,6 +57,212 @@ FO_DISABLE_WARNINGS_POP()
 #endif
 
 FO_BEGIN_NAMESPACE
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("ParticleBaker preserves Effekseer model dependency names", "[particle][particle-resources]")
+{
+    for (string_view model_name : {"Fixture.efkmodel", "Fixture$Mesh.efkmodel"}) {
+        CAPTURE(model_name);
+        string project = ParticleTests::MakeModelProject(2);
+        string_view original_model = "Model/Fixture.efkmodel";
+        size_t position = project.find(original_model);
+        REQUIRE(position != string::npos);
+
+        project.replace(position, original_model.size(), strex("Model/{}", model_name).str());
+
+        vector<uint8_t> project_bytes(project.begin(), project.end());
+
+        EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/Nested/Dependency.efkproj", project_bytes);
+        REQUIRE(!compiled.Binary.empty());
+
+        BakerTests::TestRig rig;
+        rig.AddBakedFile("Particles/Nested/Dependency.efk", std::move(compiled.Binary));
+        string model_path = strex("Particles/Nested/Model/{}", model_name).str();
+        rig.AddBakedFile(model_path, ParticleTests::MakeFixtureModelPayload());
+        ParticleBaker baker {rig.MakeContext()};
+
+        const BaseBaker& dependencies = baker;
+        vector<string> paths = dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), "Particles/Nested/Dependency.efk");
+        CHECK(paths == vector<string> {model_path});
+
+        ResourceUsage usage;
+        usage.RegisterOutput("Visual", "Particles/Nested/Dependency.efk", "Particle", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", model_path, "RawCopy", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", "Particles/Unused.efkmodel", "RawCopy", BakingOutputKind::Resource);
+        usage.AddReference("Particles/Nested/Dependency.efk", "Particle dependency fixture");
+
+        string manifest;
+        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config",
+            [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
+            [&](const ResourceOutput& output) {
+                return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};
+            }));
+
+        nlohmann::json parsed = nlohmann::json::parse(manifest);
+        CHECK(parsed.at("Packs").at("Visual") == nlohmann::json::array({"Particles/Nested/Dependency.efk", model_path}));
+    }
+}
+
+TEST_CASE("ParticleBaker requires full Effekseer model provider identity", "[particle][particle-resources]")
+{
+    string project = ParticleTests::MakeModelProject(2);
+    string_view original_model = "Model/Fixture.efkmodel";
+    size_t position = project.find(original_model);
+    REQUIRE(position != string::npos);
+
+    project.replace(position, original_model.size(), "Model/Fixture$Mesh.efkmodel");
+
+    vector<uint8_t> project_bytes(project.begin(), project.end());
+
+    EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/Nested/Dependency.efkproj", project_bytes);
+    REQUIRE(!compiled.Binary.empty());
+
+    string descriptor_path = "Particles/Nested/Dependency.efk";
+    string full_model_path = "Particles/Nested/Model/Fixture$Mesh.efkmodel";
+    string alias_model_path = "Particles/Nested/Model/Fixture.efkmodel";
+    BakerTests::TestRig rig;
+    rig.AddBakedFile(descriptor_path, std::move(compiled.Binary));
+
+    SECTION("SelectsFullProviderWhenAliasIsAvailable")
+    {
+        rig.AddBakedFile(full_model_path, ParticleTests::MakeFixtureModelPayload());
+        rig.AddBakedFile(alias_model_path, ParticleTests::MakeFixtureModelPayload());
+
+        ParticleBaker baker {rig.MakeContext()};
+
+        const BaseBaker& dependencies = baker;
+        vector<string> paths = dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), descriptor_path);
+        CHECK(paths == vector<string> {full_model_path});
+
+        ResourceUsage usage;
+        usage.RegisterOutput("Visual", descriptor_path, "Particle", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", full_model_path, "RawCopy", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", alias_model_path, "RawCopy", BakingOutputKind::Resource);
+        usage.AddReference(descriptor_path, "Particle dependency fixture");
+
+        string manifest;
+        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config",
+            [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
+            [&](const ResourceOutput& output) {
+                return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};
+            }));
+
+        nlohmann::json parsed = nlohmann::json::parse(manifest);
+        CHECK(parsed.at("Packs").at("Visual") == nlohmann::json::array({descriptor_path, full_model_path}));
+    }
+
+    SECTION("RejectsMissingFullProviderWithoutAliasFallback")
+    {
+        rig.AddBakedFile(alias_model_path, ParticleTests::MakeFixtureModelPayload());
+
+        ParticleBaker baker {rig.MakeContext()};
+
+        const BaseBaker& dependencies = baker;
+        vector<string> paths = dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), descriptor_path);
+        CHECK(paths == vector<string> {full_model_path});
+
+        ResourceUsage usage;
+        usage.RegisterOutput("Visual", descriptor_path, "Particle", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", full_model_path, "RawCopy", BakingOutputKind::Resource);
+        usage.RegisterOutput("Visual", alias_model_path, "RawCopy", BakingOutputKind::Resource);
+        usage.AddReference(descriptor_path, "Particle dependency fixture");
+
+        CHECK_THROWS_WITH(usage.CreateManifest("build", "config",
+            [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
+            [&](const ResourceOutput& output) {
+                return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};
+            }), Catch::Matchers::ContainsSubstring("Referenced resource has no baked output"));
+    }
+}
+
+TEST_CASE("ParticleBaker validates Effekseer non-image dependency paths", "[particle][particle-resources]")
+{
+    string descriptor_path = "Particles/Nested/Dependency.efk";
+
+    SECTION("ResolvesParentRelativeModelPath")
+    {
+        pair<string_view, string_view> variants[] = {
+            {"../Model/Fixture.efkmodel", "Particles/Model/Fixture.efkmodel"},
+            {"../../Model/Fixture.efkmodel", "Model/Fixture.efkmodel"},
+        };
+
+        for (const auto& [model_reference, model_path] : variants) {
+            CAPTURE(model_reference);
+            string project = ParticleTests::MakeModelProject(2);
+            string_view original_model = "Model/Fixture.efkmodel";
+            size_t position = project.find(original_model);
+            REQUIRE(position != string::npos);
+
+            project.replace(position, original_model.size(), model_reference);
+
+            vector<uint8_t> project_bytes(project.begin(), project.end());
+
+            EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/Nested/Dependency.efkproj", project_bytes);
+            REQUIRE(!compiled.Binary.empty());
+
+            BakerTests::TestRig rig;
+            rig.AddBakedFile(descriptor_path, std::move(compiled.Binary));
+            rig.AddBakedFile(model_path, ParticleTests::MakeFixtureModelPayload());
+
+            ParticleBaker baker {rig.MakeContext()};
+
+            const BaseBaker& dependencies = baker;
+            vector<string> paths = dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), descriptor_path);
+            CHECK(paths == vector<string> {string {model_path}});
+        }
+    }
+
+    SECTION("RejectsAbsoluteModelPath")
+    {
+        string model_reference = fs::resolve_path("Model/Fixture.efkmodel");
+        string project = ParticleTests::MakeModelProject(2);
+        string_view original_model = "Model/Fixture.efkmodel";
+        size_t position = project.find(original_model);
+        REQUIRE(position != string::npos);
+
+        project.replace(position, original_model.size(), model_reference);
+
+        vector<uint8_t> project_bytes(project.begin(), project.end());
+
+        EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/Nested/Dependency.efkproj", project_bytes);
+        REQUIRE(!compiled.Binary.empty());
+
+        BakerTests::TestRig rig;
+        rig.AddBakedFile(descriptor_path, std::move(compiled.Binary));
+
+        ParticleBaker baker {rig.MakeContext()};
+
+        const BaseBaker& dependencies = baker;
+
+        CHECK_THROWS_WITH(dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), descriptor_path), Catch::Matchers::ContainsSubstring("Effekseer dependency path must be relative"));
+    }
+
+    SECTION("RejectsEscapingModelPath")
+    {
+        string model_reference = "../../../Model/Fixture.efkmodel";
+        string project = ParticleTests::MakeModelProject(2);
+        string_view original_model = "Model/Fixture.efkmodel";
+        size_t position = project.find(original_model);
+        REQUIRE(position != string::npos);
+
+        project.replace(position, original_model.size(), model_reference);
+
+        vector<uint8_t> project_bytes(project.begin(), project.end());
+
+        EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/Nested/Dependency.efkproj", project_bytes);
+        REQUIRE(!compiled.Binary.empty());
+
+        BakerTests::TestRig rig;
+        rig.AddBakedFile(descriptor_path, std::move(compiled.Binary));
+
+        ParticleBaker baker {rig.MakeContext()};
+
+        const BaseBaker& dependencies = baker;
+
+        CHECK_THROWS_WITH(dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), descriptor_path), Catch::Matchers::ContainsSubstring("Effekseer dependency path escapes mounted sources"));
+    }
+}
+#endif
 
 #if FO_SPARK_PARTICLES
 static constexpr string_view ValidParticle = R"PARTICLE(
@@ -1638,4 +1850,3 @@ TEST_CASE("SPARK decoded graph census", "[.census]")
 #endif
 
 FO_END_NAMESPACE
-

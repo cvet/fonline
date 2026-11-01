@@ -404,4 +404,3 @@ void ResourcePreparation::ReapCancelled()
 }
 
 FO_END_NAMESPACE
-
