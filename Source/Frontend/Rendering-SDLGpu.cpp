@@ -510,6 +510,27 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
 
 static constexpr size_t MAX_UPLOADS_PER_SUBMIT = 256;
 
+// Hand everything recorded so far to the GPU without waiting; a command buffer carrying readbacks still waits so
+// their fences resolve exactly as before
+static void SubmitPending(ptr<SDLGpu_Renderer::Context> ctx)
+{
+    if (ctx->CmdBufFence) {
+        SubmitAndWait(ctx);
+        return;
+    }
+
+    FlushPendingClears(ctx);
+
+    if (!ctx->CmdBuf) {
+        return;
+    }
+
+    bool submit_ok = SDL_SubmitGPUCommandBuffer(ctx->CmdBuf.get());
+    ctx->CmdBuf = nullptr;
+    ctx->PendingUploads = 0;
+    FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
+}
+
 static auto EnsureTransferBuffer(ptr<SDLGpu_Renderer::Context> ctx, nptr<SDL_GPUTransferBuffer>& transfer_buf, size_t& transfer_buf_size, size_t required_size, bool download) -> ptr<SDL_GPUTransferBuffer>
 {
     if (!transfer_buf || required_size > transfer_buf_size) {
@@ -1385,7 +1406,7 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     // A burst of uploads (a map load streams hundreds of sprites, five regions each) cycles the same transfer buffer
     // thousands of times inside one command buffer; Metal then drops some of the copies, so submit in bounded chunks
     if (++_ctx->PendingUploads >= MAX_UPLOADS_PER_SUBMIT) {
-        SubmitAndWait(_ctx);
+        SubmitPending(_ctx);
     }
 }
 
