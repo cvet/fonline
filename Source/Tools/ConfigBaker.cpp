@@ -70,8 +70,8 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             bool needs_bake {true};
 
             if (_context->HasBakeChecker()) {
-                bool output_outdated {_context->CheckOutput(cfg_name, std::numeric_limits<uint64_t>::max())};
-                bool embedded_output_outdated {_context->CheckOutput(embedded_cfg_name, std::numeric_limits<uint64_t>::max())};
+                bool output_outdated {_context->CheckOutput(cfg_name, ALWAYS_STALE_INPUT_WRITE_TIME)};
+                bool embedded_output_outdated {_context->CheckOutput(embedded_cfg_name, ALWAYS_STALE_INPUT_WRITE_TIME)};
 
                 needs_bake = output_outdated || embedded_output_outdated;
             }

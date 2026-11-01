@@ -331,6 +331,8 @@ Windows пытается применить OS/filesystem-specific POSIX rename 
 
 `BakerDataSource` адаптирует входы и выходы к интерфейсу `DataSource`, хранит resource packs, output resources, cache checks и построение output paths. `Reindex()` пересоздаёт mounts, baker-ы, collections и output index и сообщает, изменились ли пути или source write times. Это позволяет долгоживущим tools обнаруживать и лениво запекать новые или изменённые ресурсы без постоянного полного сканирования диска. Dry-run обнаружения output и последующее per-file запекание не подключают collector `MasterBaker` и поэтому намеренно отсутствуют в его отчёте.
 
+У output, для которого baker вместо времени записи источника сообщает `ALWAYS_STALE_INPUT_WRITE_TIME` (например, конфиг `ConfigBaker`), сравнивать нечего. Первое ленивое обращение после индексации запекает его заново и запоминает время записи свежего output, поэтому последующие обращения до следующего `Reindex()` используют этот output без повторного запекания.
+
 ## Отчёт полного прохода
 
 Каждая попытка `MasterBaker::BakeAll()` с непустым `BakeOutput` пересоздаёт `Baking.report.json`. Успешный полный rebuild дополнительно обновляет `Baking.full.report.json`:

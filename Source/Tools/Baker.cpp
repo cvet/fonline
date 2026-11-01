@@ -1372,8 +1372,14 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
                 input_write_time = _outputFiles.at(string(path));
                 uint64_t output_write_time {fs::last_write_time(output_path)};
                 optional<bool> image_current {image_is_current(res_entry)};
-                bool current {image_current.value_or(input_write_time <= output_write_time)};
+                bool always_stale {input_write_time == ALWAYS_STALE_INPUT_WRITE_TIME};
+                bool current {image_current.value_or(always_stale || input_write_time <= output_write_time)};
                 FO_VERIFY_AND_THROW(current, "Baked output is not current for its source inputs", path, output_path, input_write_time, output_write_time);
+
+                if (always_stale) {
+                    input_write_time = output_write_time;
+                    _outputFiles.at(string(path)) = output_write_time;
+                }
             }
 
             return accept_output_path(output_path);

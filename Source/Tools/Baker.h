@@ -18,6 +18,7 @@ FO_DECLARE_EXCEPTION(ResourceBakingException);
 
 inline constexpr string_view BAKER_CACHE_DIR {".baker-cache"};
 inline constexpr string_view REPORT_FILE_SUFFIX {".report.json"};
+inline constexpr uint64_t ALWAYS_STALE_INPUT_WRITE_TIME {std::numeric_limits<uint64_t>::max()};
 
 class Properties;
 class ScriptSystem;
@@ -144,7 +145,7 @@ private:
     unordered_map<string, pair<size_t, uint64_t>> _inputFileIndex {}; // Resource pack/path and input file size/write time
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
-    unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
+    mutable unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
     unordered_map<string, string> _outputPacks FO_TSA_GUARDED_BY(_outputFilesLocker) {};
 };
 

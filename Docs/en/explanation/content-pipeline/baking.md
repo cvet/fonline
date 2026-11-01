@@ -341,6 +341,8 @@ events to it.
 
 `BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans. Output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
 
+An output whose baker reports `ALWAYS_STALE_INPUT_WRITE_TIME` instead of a source write time, such as a `ConfigBaker` config, has no timestamp to compare. The first lazy lookup after an index pass rebakes it and records the fresh output's write time, so later lookups reuse that output until the next `Reindex()` without repeating the bake.
+
 ## Master bake report
 
 Every `MasterBaker::BakeAll()` attempt with a non-empty `BakeOutput` regenerates

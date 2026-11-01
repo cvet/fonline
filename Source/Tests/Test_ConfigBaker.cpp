@@ -10,6 +10,7 @@
 #if FO_ANGELSCRIPT_SCRIPTING || FO_MANAGED_SCRIPTING
 #include "ConfigBaker.h"
 #include "ConfigFile.h"
+#include "MetadataBaker.h"
 #include "MetadataRegistration.h"
 #endif
 
@@ -1212,5 +1213,66 @@ TEST_CASE("ConfigBaker")
     }
 #endif
 }
+
+#if FO_ANGELSCRIPT_SCRIPTING
+TEST_CASE("BakerDataSourceResolvesConfigsBakedOnDemand")
+{
+    string temp_dir = MakeConfigBakerTempDir();
+    string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
+    string output_dir = strex(temp_dir).combine_path("output").str();
+    string config_output_path = strex(output_dir).combine_path("Configs/(Root).fomain-server").str();
+
+    REQUIRE(fs::write_file(metadata_input_path, string_view {"void Placeholder() { }"}));
+
+    auto source_time = std::filesystem::file_time_type::clock::now() - std::chrono::minutes {2};
+    std::filesystem::last_write_time(fs::make_path(metadata_input_path), source_time);
+
+    for (string_view target : {"server", "client", "mapper"}) {
+        string metadata_output_path = strex(output_dir).combine_path(strex("Metadata/Metadata.fometa-{}", target).str()).str();
+        REQUIRE(fs::write_file(metadata_output_path, BakerTests::MakeEmptyMetadataBlob()));
+        std::filesystem::last_write_time(fs::make_path(metadata_output_path), source_time + std::chrono::minutes {1});
+    }
+
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Test.fomain").str(), MakeCompleteConfigBakerConfig() + strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Metadata
+InputDirs = metadata_input
+IncludePatterns = **/*.fos
+Bakers = {}
+[ResourcePack]
+Name = Configs
+Bakers = {}
+ServerOnly = True
+)",
+                                                                                                               output_dir, MetadataBaker::NAME, ConfigBaker::NAME)
+                                                                                                               .str()));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+    settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+    BakerDataSource data_source {&settings};
+    REQUIRE(data_source.IsFileExists("(Root).fomain-server"));
+
+    size_t size = 0;
+    uint64_t write_time = 0;
+
+    REQUIRE(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
+    REQUIRE(fs::exists(config_output_path));
+    CHECK(size != 0);
+    CHECK(write_time == fs::last_write_time(config_output_path));
+
+    auto later_time = std::filesystem::file_time_type::clock::now() + std::chrono::minutes {1};
+    std::filesystem::last_write_time(fs::make_path(config_output_path), later_time);
+    uint64_t pinned_output_time = fs::last_write_time(config_output_path);
+
+    REQUIRE(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
+    CHECK(fs::last_write_time(config_output_path) == pinned_output_time);
+
+    std::error_code ec;
+    std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+}
+#endif
 
 FO_END_NAMESPACE
