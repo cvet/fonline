@@ -127,7 +127,7 @@ public:
     auto CreateParticle(string_view name) -> optional<ParticleSystem>;
 
 private:
-    struct Impl;
+    class Impl;
 
     unique_ptr<Impl> _impl;
     ptr<RenderSettings> _settings;

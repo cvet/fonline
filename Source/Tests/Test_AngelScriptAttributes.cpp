@@ -284,9 +284,10 @@ namespace
         (void)gen->GetAddressOfArg(3);
     }
 
-    struct ScriptMessages
+    class ScriptMessages
     {
-        vector<string> Entries {};
+    public:
+        [[nodiscard]] auto GetEntries() const -> const vector<string>& { return _entries; }
 
         static void Callback(const asSMessageInfo* msg, void* param)
         {
@@ -296,8 +297,11 @@ namespace
             nptr<const char> section = message->section;
             nptr<const char> text = message->message;
 
-            self->Entries.emplace_back(strex("{}({},{}): {}", section ? section.get() : "<unknown>", message->row, message->col, text ? text.get() : "<no message>").str());
+            self->_entries.emplace_back(strex("{}({},{}): {}", section ? section.get() : "<unknown>", message->row, message->col, text ? text.get() : "<no message>").str());
         }
+
+    private:
+        vector<string> _entries {};
     };
 
     struct ParsedScript
@@ -408,15 +412,15 @@ namespace
         REQUIRE(module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
         int32_t build_result = module->Build();
         if (build_result < 0) {
-            for (const auto& entry : messages.Entries) {
+            for (const auto& entry : messages.GetEntries()) {
                 INFO("AS message: " << entry);
             }
         }
         REQUIRE(build_result >= 0);
-        if (!messages.Entries.empty()) {
-            INFO(messages.Entries.front());
+        if (!messages.GetEntries().empty()) {
+            INFO(messages.GetEntries().front());
         }
-        CHECK(messages.Entries.empty());
+        CHECK(messages.GetEntries().empty());
         return module;
     }
 
@@ -1829,7 +1833,7 @@ void TakesIntPlease(int? value)
         CHECK(mod->Build() < 0);
 
         bool found_message = false;
-        for (const auto& entry : messages.Entries) {
+        for (const auto& entry : messages.GetEntries()) {
             if (entry.find("Nullable marker '?' is only allowed on handle types") != string::npos) {
                 found_message = true;
                 break;

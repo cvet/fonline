@@ -112,8 +112,9 @@ using readonly_map = const map<K, V>&;
 
 struct ScriptFuncDesc;
 
-struct DataAccessor
+class DataAccessor
 {
+public:
     [[nodiscard]] virtual auto GetBackendIndex() const noexcept -> int32_t = 0;
     [[nodiscard]] virtual auto GetArraySize(ptr<void> /*data*/) const -> size_t { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto GetArrayElement(ptr<void> /*data*/, size_t /*index*/) const -> ptr<void> { throw InvalidCallException(FO_LINE_STR); }
@@ -304,8 +305,9 @@ namespace NativeDataProvider
 
     using StorageEntryType = variant<int32_t, ArrayDataProxy, DictDataProxy, nptr<Entity>>;
 
-    struct NativeDataAccessor final : DataAccessor
+    class NativeDataAccessor final : public DataAccessor
     {
+    public:
         [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return -1; }
         [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override { return cast_from_void<ArrayDataProxy*>(data.get())->Size(); }
         [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override { return cast_from_void<ArrayDataProxy*>(data.get())->Get(index); }
@@ -619,11 +621,12 @@ namespace NativeDataProvider
 namespace NativeDataCaller
 {
     template<typename Fn>
-    struct NativeCallTraits;
+    class NativeCallTraits;
 
     template<typename R, typename... Args>
-    struct NativeCallTraits<R (*)(Args...)>
+    class NativeCallTraits<R (*)(Args...)>
     {
+    public:
         using return_type = R;
         using args_tuple = tuple<Args...>;
         static constexpr size_t arity = sizeof...(Args);
@@ -870,7 +873,7 @@ public:
 namespace ScriptTypeIndex
 {
     template<typename T>
-    struct MutableArg final
+    struct MutableArg
     {
     };
 }

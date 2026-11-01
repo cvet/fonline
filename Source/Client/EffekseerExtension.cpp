@@ -51,7 +51,7 @@ constexpr size_t EFFEKSEER_CHUNK_VERTEX_MAX = 64000;
 constexpr float32_t EFFEKSEER_FRAMES_PER_SECOND = 60.0f;
 constexpr float32_t EFFEKSEER_PREWARM_SECONDS = 1.0f;
 
-struct EffekseerRuntimeState;
+class EffekseerRuntimeState;
 
 static auto EffekseerMalloc(uint32_t size) -> void*
 {
@@ -391,24 +391,6 @@ private:
 
 struct EffekseerParticleRuntimeSystem::Impl
 {
-    Impl(shared_ptr<EffekseerRuntimeState> runtime, Effekseer::EffectRef effect, string path, vec3 position_min, vec3 position_max, float32_t billboard_radius) :
-        Runtime {std::move(runtime)},
-        Effect {std::move(effect)},
-        Path {std::move(path)},
-        BakedPositionMin {position_min},
-        BakedPositionMax {position_max},
-        BakedBillboardRadius {billboard_radius}
-    {
-    }
-
-    void Fail(string_view reason)
-    {
-        if (!Failed) {
-            Failed = true;
-            LogEffekseerRejection(Path, reason);
-        }
-    }
-
     shared_ptr<EffekseerRuntimeState> Runtime;
     Effekseer::EffectRef Effect;
     string Path;
@@ -424,24 +406,36 @@ struct EffekseerParticleRuntimeSystem::Impl
     bool Failed {};
 };
 
-struct EffekseerDrawBinding
+static void FailEffekseerSystem(ptr<EffekseerParticleRuntimeSystem::Impl> system, string_view reason)
 {
+    if (!system->Failed) {
+        system->Failed = true;
+        LogEffekseerRejection(system->Path, reason);
+    }
+}
+
+class EffekseerDrawBinding
+{
+public:
+    [[nodiscard]] auto GetCurrentSystem() const noexcept -> nptr<EffekseerParticleRuntimeSystem::Impl> { return _currentSystem; }
+
     void Bind(ptr<EffekseerParticleRuntimeSystem::Impl> system)
     {
-        FO_VERIFY_AND_THROW(!CurrentSystem, "Effekseer renderer is already bound to a particle system");
-        CurrentSystem = system;
+        FO_VERIFY_AND_THROW(!_currentSystem, "Effekseer renderer is already bound to a particle system");
+        _currentSystem = system;
     }
 
-    void Unbind() { CurrentSystem = nullptr; }
+    void Unbind() { _currentSystem = nullptr; }
 
     void Fail(string_view reason)
     {
-        if (CurrentSystem) {
-            CurrentSystem->Fail(reason);
+        if (_currentSystem) {
+            FailEffekseerSystem(_currentSystem.as_ptr(), reason);
         }
     }
 
-    nptr<EffekseerParticleRuntimeSystem::Impl> CurrentSystem {};
+private:
+    nptr<EffekseerParticleRuntimeSystem::Impl> _currentSystem {};
 };
 
 struct EffekseerSpriteNodeSnapshot
@@ -910,21 +904,21 @@ static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl
     }
 
     if (texture_index >= (distortion ? system->Effect->GetDistortionImageCount() : system->Effect->GetColorImageCount())) {
-        system->Fail("particle node texture index is out of range");
+        FailEffekseerSystem(system, "particle node texture index is out of range");
         return std::nullopt;
     }
 
     Effekseer::TextureRef node_texture = distortion ? system->Effect->GetDistortionImage(texture_index) : system->Effect->GetColorImage(texture_index);
 
     if (!node_texture || !node_texture->GetBackend()) {
-        system->Fail("particle node texture is not loaded");
+        FailEffekseerSystem(system, "particle node texture is not loaded");
         return std::nullopt;
     }
 
     Effekseer::RefPtr<FOnlineEffekseerTexture> texture = node_texture->GetBackend().DownCast<FOnlineEffekseerTexture>();
 
     if (!texture || !texture->RenderTextureRef) {
-        system->Fail("particle node texture was not loaded by the FOnline texture loader");
+        FailEffekseerSystem(system, "particle node texture was not loaded by the FOnline texture loader");
         return std::nullopt;
     }
 
@@ -991,7 +985,7 @@ public:
         _node.reset();
         _declaredInstanceCount = 0;
 
-        if (!_binding->CurrentSystem) {
+        if (!_binding->GetCurrentSystem()) {
             return;
         }
         if (count < 0 || numeric_cast<size_t>(count) > EFFEKSEER_SPRITE_INSTANCE_MAX) {
@@ -1002,7 +996,7 @@ public:
             _binding->Fail(reason);
             return;
         }
-        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+        if (parameter.EffectPointer != _binding->GetCurrentSystem()->Effect.Get()) {
             _binding->Fail("sprite renderer received an unexpected effect pointer");
             return;
         }
@@ -1026,7 +1020,7 @@ public:
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
         ignore_unused(parameter, user_data);
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (_instances.size() >= EFFEKSEER_SPRITE_INSTANCE_MAX) {
@@ -1066,7 +1060,7 @@ public:
         }
 
         vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
-        vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        vec3 camera_backward = ExtractCameraBackward(_binding->GetCurrentSystem()->ViewMatrix);
 
         // Same key as the reference SpriteRendererBase: dot of the raw translation with the backward
         // vector, so NormalOrder ascending renders back-to-front
@@ -1095,7 +1089,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (_instances.size() != _declaredInstanceCount) {
@@ -1118,7 +1112,7 @@ public:
             StableSortSnapshotsByCameraDepth(_instances, true);
         }
 
-        Render(_binding->CurrentSystem.as_ptr());
+        Render(_binding->GetCurrentSystem().as_ptr());
         _instances.clear();
         _node.reset();
         _declaredInstanceCount = 0;
@@ -1147,7 +1141,7 @@ private:
         optional<EffekseerNodeRenderState> render_state = _particleEffects.Resolve(_node->AlphaBlend, _node->TextureWrap, _node->ZTest, _node->ZWrite);
 
         if (!render_state) {
-            system->Fail("node sampling or blend mode has no renderer equivalent");
+            FailEffekseerSystem(system, "node sampling or blend mode has no renderer equivalent");
             return;
         }
 
@@ -1174,7 +1168,7 @@ private:
                 vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
 
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
-                    system->Fail("sprite geometry produced a non-finite vertex");
+                    FailEffekseerSystem(system, "sprite geometry produced a non-finite vertex");
                     return;
                 }
 
@@ -1240,7 +1234,7 @@ private:
         optional<EffekseerNodeRenderState> render_state = _particleEffects.ResolveDistortion(_node->AlphaBlend, _node->TextureWrap, _node->ZTest, _node->ZWrite);
 
         if (!render_state) {
-            system->Fail("distortion node sampling or blend mode has no renderer equivalent");
+            FailEffekseerSystem(system, "distortion node sampling or blend mode has no renderer equivalent");
             return;
         }
 
@@ -1252,7 +1246,7 @@ private:
             return;
         }
         if (background.State != ParticleSceneBackgroundState::Available || !background.Texture) {
-            system->Fail("distortion nodes need a scene background, which this draw target has none of");
+            FailEffekseerSystem(system, "distortion nodes need a scene background, which this draw target has none of");
             return;
         }
 
@@ -1280,7 +1274,7 @@ private:
                 vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
 
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
-                    system->Fail("distortion geometry produced a non-finite vertex");
+                    FailEffekseerSystem(system, "distortion geometry produced a non-finite vertex");
                     return;
                 }
 
@@ -1377,7 +1371,7 @@ public:
         ignore_unused(user_data);
         ResetState();
 
-        if (!_binding->CurrentSystem) {
+        if (!_binding->GetCurrentSystem()) {
             return;
         }
         if (count < 0 || count > EFFEKSEER_INSTANCE_MAX) {
@@ -1388,7 +1382,7 @@ public:
             _binding->Fail(reason);
             return;
         }
-        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+        if (parameter.EffectPointer != _binding->GetCurrentSystem()->Effect.Get()) {
             _binding->Fail("ring renderer received an unexpected effect pointer");
             return;
         }
@@ -1414,7 +1408,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (_instances.size() >= numeric_cast<size_t>(EFFEKSEER_INSTANCE_MAX)) {
@@ -1453,7 +1447,7 @@ public:
         }
 
         vec3 position = ToVec3(instance.SRTMatrix43.GetTranslation());
-        vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        vec3 camera_backward = ExtractCameraBackward(_binding->GetCurrentSystem()->ViewMatrix);
         float32_t camera_depth = glm::dot(position, camera_backward);
 
         if (!std::isfinite(camera_depth)) {
@@ -1487,7 +1481,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (_instances.size() != _declaredInstanceCount) {
@@ -1507,7 +1501,7 @@ public:
             StableSortSnapshotsByCameraDepth(_instances, true);
         }
 
-        Render(_binding->CurrentSystem.as_ptr());
+        Render(_binding->GetCurrentSystem().as_ptr());
         ResetState();
     }
 
@@ -1548,7 +1542,7 @@ private:
         optional<EffekseerNodeRenderState> render_state = _particleEffects.Resolve(_node->AlphaBlend, _node->TextureWrap, _node->ZTest, _node->ZWrite);
 
         if (!render_state) {
-            system->Fail("node sampling or blend mode has no renderer equivalent");
+            FailEffekseerSystem(system, "node sampling or blend mode has no renderer equivalent");
             return;
         }
 
@@ -1648,7 +1642,7 @@ private:
                     vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_positions[vertex_offset], camera_backward);
 
                     if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
-                        system->Fail("ring geometry produced a non-finite vertex");
+                        FailEffekseerSystem(system, "ring geometry produced a non-finite vertex");
                         return;
                     }
 
@@ -1942,7 +1936,7 @@ private:
         optional<EffekseerNodeRenderState> render_state = _particleEffects.Resolve(node.AlphaBlend, node.TextureWrap, node.ZTest, node.ZWrite);
 
         if (!render_state) {
-            system->Fail("node sampling or blend mode has no renderer equivalent");
+            FailEffekseerSystem(system, "node sampling or blend mode has no renderer equivalent");
             return;
         }
 
@@ -1994,7 +1988,7 @@ private:
                 const vec3& position = positions[vertex_offset];
 
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) || !std::isfinite(texture_u[vertex_offset]) || !std::isfinite(texture_v[vertex_offset])) {
-                    system->Fail("strip geometry produced a non-finite vertex");
+                    FailEffekseerSystem(system, "strip geometry produced a non-finite vertex");
                     return;
                 }
 
@@ -2080,14 +2074,14 @@ public:
         ResetGroup();
         _node.reset();
 
-        if (!_binding->CurrentSystem) {
+        if (!_binding->GetCurrentSystem()) {
             return;
         }
         if (string_view reason = ValidateStripNodeParameter(parameter.BasicParameterPtr, parameter.DepthParameterPtr, parameter.TextureUVTypeParameterPtr, parameter.SplineDivision, parameter.EnableViewOffset, parameter.IsRightHand); !reason.empty()) {
             _binding->Fail(reason);
             return;
         }
-        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+        if (parameter.EffectPointer != _binding->GetCurrentSystem()->Effect.Get()) {
             _binding->Fail("ribbon renderer received an unexpected effect pointer");
             return;
         }
@@ -2109,7 +2103,7 @@ public:
         ignore_unused(parameter, user_data);
         ResetGroup();
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (count < 0 || count > EFFEKSEER_INSTANCE_MAX) {
@@ -2125,7 +2119,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed || _declaredInstanceCount == 0) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed || _declaredInstanceCount == 0) {
             return;
         }
         if (_chain.size() >= _declaredInstanceCount) {
@@ -2161,8 +2155,8 @@ public:
         ignore_unused(parameter, count, user_data);
 
         // A band needs two instances to span a segment; a shorter group draws nothing, exactly as upstream leaves it
-        if (_binding->CurrentSystem && _node && !_binding->CurrentSystem->Failed && _chain.size() >= 2) {
-            _geometry.Draw(_binding->CurrentSystem.as_ptr(), *_node, _chain, _declaredInstanceCount);
+        if (_binding->GetCurrentSystem() && _node && !_binding->GetCurrentSystem()->Failed && _chain.size() >= 2) {
+            _geometry.Draw(_binding->GetCurrentSystem().as_ptr(), *_node, _chain, _declaredInstanceCount);
         }
 
         ResetGroup();
@@ -2178,7 +2172,7 @@ public:
 private:
     auto MakeWidthTriple(const InstanceParameter& instance) const -> EffekseerStripWidthTriple
     {
-        FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer ribbon triple built without a bound system");
+        FO_VERIFY_AND_THROW(_binding->GetCurrentSystem(), "Effekseer ribbon triple built without a bound system");
 
         float32_t left_offset = instance.Positions[0];
         float32_t right_offset = instance.Positions[1];
@@ -2198,7 +2192,7 @@ private:
             instance.SRTMatrix43.GetSRT(scale, rotation, translation);
 
             vec3 up {rotation.X.GetY(), rotation.Y.GetY(), rotation.Z.GetY()};
-            vec3 view_direction = -ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+            vec3 view_direction = -ExtractCameraBackward(_binding->GetCurrentSystem()->ViewMatrix);
             vec3 width_axis = CalculateStripWidthAxis(up, view_direction);
             vec3 center = ToVec3(translation);
 
@@ -2264,7 +2258,7 @@ public:
         ResetGroup();
         _node.reset();
 
-        if (!_binding->CurrentSystem) {
+        if (!_binding->GetCurrentSystem()) {
             return;
         }
         if (string_view reason = ValidateStripNodeParameter(parameter.BasicParameterPtr, parameter.DepthParameterPtr, parameter.TextureUVTypeParameterPtr, parameter.SplineDivision, parameter.EnableViewOffset, parameter.IsRightHand); !reason.empty()) {
@@ -2279,7 +2273,7 @@ public:
             _binding->Fail("smoothed track nodes are unsupported");
             return;
         }
-        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+        if (parameter.EffectPointer != _binding->GetCurrentSystem()->Effect.Get()) {
             _binding->Fail("track renderer received an unexpected effect pointer");
             return;
         }
@@ -2299,7 +2293,7 @@ public:
         ignore_unused(parameter, user_data);
         ResetGroup();
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (count < 0 || count > EFFEKSEER_INSTANCE_MAX) {
@@ -2315,7 +2309,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed || _declaredInstanceCount == 0) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed || _declaredInstanceCount == 0) {
             return;
         }
         if (_instances.size() >= _declaredInstanceCount) {
@@ -2358,8 +2352,8 @@ public:
     {
         ignore_unused(parameter, count, user_data);
 
-        if (_binding->CurrentSystem && _node && !_binding->CurrentSystem->Failed && _instances.size() >= 2) {
-            _geometry.Draw(_binding->CurrentSystem.as_ptr(), *_node, MakeWidthChain(), _declaredInstanceCount);
+        if (_binding->GetCurrentSystem() && _node && !_binding->GetCurrentSystem()->Failed && _instances.size() >= 2) {
+            _geometry.Draw(_binding->GetCurrentSystem().as_ptr(), *_node, MakeWidthChain(), _declaredInstanceCount);
         }
 
         ResetGroup();
@@ -2375,10 +2369,10 @@ public:
 private:
     auto MakeWidthChain() const -> vector<EffekseerStripWidthTriple>
     {
-        FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer track chain built without a bound system");
+        FO_VERIFY_AND_THROW(_binding->GetCurrentSystem(), "Effekseer track chain built without a bound system");
         FO_VERIFY_AND_THROW(_instances.size() >= 2, "Effekseer track chain requires at least one segment", _instances.size());
 
-        vec3 view_direction = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
+        vec3 view_direction = ExtractCameraBackward(_binding->GetCurrentSystem()->ViewMatrix);
         float32_t fade_divisor = numeric_cast<float32_t>(_declaredInstanceCount - 1);
         vector<EffekseerStripWidthTriple> chain;
         chain.reserve(_instances.size());
@@ -2493,7 +2487,7 @@ public:
         ignore_unused(user_data);
         ResetState();
 
-        if (!_binding->CurrentSystem) {
+        if (!_binding->GetCurrentSystem()) {
             return;
         }
         if (count < 0 || count > EFFEKSEER_INSTANCE_MAX) {
@@ -2504,7 +2498,7 @@ public:
             _binding->Fail(reason);
             return;
         }
-        if (parameter.EffectPointer != _binding->CurrentSystem->Effect.Get()) {
+        if (parameter.EffectPointer != _binding->GetCurrentSystem()->Effect.Get()) {
             _binding->Fail("model renderer received an unexpected effect pointer");
             return;
         }
@@ -2535,7 +2529,7 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
         if (_instances.size() >= _declaredInstanceCount) {
@@ -2583,12 +2577,12 @@ public:
     {
         ignore_unused(parameter, user_data);
 
-        if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
+        if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             ResetState();
             return;
         }
         if (!_instances.empty()) {
-            Render(_binding->CurrentSystem.as_ptr());
+            Render(_binding->GetCurrentSystem().as_ptr());
         }
 
         ResetState();
@@ -2607,14 +2601,14 @@ private:
         FO_VERIFY_AND_THROW(_node, "Effekseer model render called without a node snapshot");
 
         if (_node->ModelIndex < 0 || _node->ModelIndex >= system->Effect->GetModelCount()) {
-            system->Fail("model index is out of range");
+            FailEffekseerSystem(system, "model index is out of range");
             return;
         }
 
         Effekseer::ModelRef model = system->Effect->GetModel(_node->ModelIndex);
 
         if (!model || model->GetFrameCount() <= 0) {
-            system->Fail("model resource is not loaded");
+            FailEffekseerSystem(system, "model resource is not loaded");
             return;
         }
 
@@ -2632,11 +2626,11 @@ private:
         }
 
         if (max_vertices_per_instance == 0) {
-            system->Fail("model resource has no faces");
+            FailEffekseerSystem(system, "model resource has no faces");
             return;
         }
         if (max_vertices_per_instance > EFFEKSEER_CHUNK_VERTEX_MAX) {
-            system->Fail("model mesh exceeds the supported geometry budget");
+            FailEffekseerSystem(system, "model mesh exceeds the supported geometry budget");
             return;
         }
 
@@ -2656,7 +2650,7 @@ private:
         optional<EffekseerNodeRenderState> render_state = _particleEffects.Resolve(_node->AlphaBlend, _node->TextureWrap, _node->ZTest, _node->ZWrite);
 
         if (!render_state) {
-            system->Fail("node sampling or blend mode has no renderer equivalent");
+            FailEffekseerSystem(system, "node sampling or blend mode has no renderer equivalent");
             return;
         }
 
@@ -2692,7 +2686,7 @@ private:
                     int32_t vertex_index = faces[face_index].Indexes[corner];
 
                     if (vertex_index < 0 || numeric_cast<size_t>(vertex_index) >= vertex_total) {
-                        system->Fail("model face references a vertex outside the mesh");
+                        FailEffekseerSystem(system, "model face references a vertex outside the mesh");
                         return;
                     }
 
@@ -2701,7 +2695,7 @@ private:
                     vec3 position = CalculateParticlePosition(_node->Billboard, instance.SRTMatrix43, instance.Direction, local_position, camera_backward);
 
                     if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) {
-                        system->Fail("model geometry produced a non-finite vertex");
+                        FailEffekseerSystem(system, "model geometry produced a non-finite vertex");
                         return;
                     }
 
@@ -2711,7 +2705,7 @@ private:
                     float32_t texture_v = instance.UV.Y + model_vertex.UV1.Y * instance.UV.Height;
 
                     if (!std::isfinite(texture_u) || !std::isfinite(texture_v)) {
-                        system->Fail("model geometry produced a non-finite texture coordinate");
+                        FailEffekseerSystem(system, "model geometry produced a non-finite texture coordinate");
                         return;
                     }
 
@@ -2896,51 +2890,57 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
     return ValidateEffectNode(path, effect->GetRoot(), effect);
 }
 
-struct EffekseerRuntimeState
+class EffekseerRuntimeState
 {
+public:
     EffekseerRuntimeState(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ParticleWireframeQuery draw_wireframe, ptr<FileSystem> resources, ParticleTextureLoader texture_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-        Binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
-        SceneBackgroundProvider {std::move(scene_background_provider)},
-        Setting {Effekseer::Setting::Create()},
-        Manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX)},
-        TextureLoader {Effekseer::MakeRefPtr<FOnlineEffekseerTextureLoader>(std::move(texture_loader))},
-        ModelLoader {Effekseer::MakeRefPtr<FOnlineEffekseerModelLoader>(resources)},
-        GpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
-        SpriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, draw_wireframe, Binding, SceneBackgroundProvider)},
-        RibbonRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRibbonRenderer>(effect_mngr, render, draw_wireframe, Binding)},
-        RingRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, draw_wireframe, Binding)},
-        TrackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, Binding)},
-        ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, Binding)}
+        _binding {safe_alloc::make_shared<EffekseerDrawBinding>()},
+        _sceneBackgroundProvider {std::move(scene_background_provider)},
+        _setting {Effekseer::Setting::Create()},
+        _manager {Effekseer::Manager::Create(EFFEKSEER_INSTANCE_MAX)},
+        _textureLoader {Effekseer::MakeRefPtr<FOnlineEffekseerTextureLoader>(std::move(texture_loader))},
+        _modelLoader {Effekseer::MakeRefPtr<FOnlineEffekseerModelLoader>(resources)},
+        _gpuParticleFactory {Effekseer::MakeRefPtr<DetectingGpuParticleFactory>()},
+        _spriteRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerSpriteRenderer>(effect_mngr, render, draw_wireframe, _binding, _sceneBackgroundProvider)},
+        _ribbonRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRibbonRenderer>(effect_mngr, render, draw_wireframe, _binding)},
+        _ringRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, draw_wireframe, _binding)},
+        _trackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, _binding)},
+        _modelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, _binding)}
     {
         FO_TRACE_ZONE(Particles);
 
-        FO_VERIFY_AND_THROW(Setting, "Failed to create Effekseer setting");
-        FO_VERIFY_AND_THROW(Manager, "Failed to create Effekseer manager");
-        Setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
-        Setting->SetTextureLoader(TextureLoader);
-        Setting->SetModelLoader(ModelLoader);
-        Setting->SetGpuParticleFactory(GpuParticleFactory);
-        Manager->SetSetting(Setting);
-        Manager->SetSpriteRenderer(SpriteRenderer);
-        Manager->SetRibbonRenderer(RibbonRenderer);
-        Manager->SetRingRenderer(RingRenderer);
-        Manager->SetTrackRenderer(TrackRenderer);
-        Manager->SetModelRenderer(ModelRenderer);
+        FO_VERIFY_AND_THROW(_setting, "Failed to create Effekseer setting");
+        FO_VERIFY_AND_THROW(_manager, "Failed to create Effekseer manager");
+        _setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
+        _setting->SetTextureLoader(_textureLoader);
+        _setting->SetModelLoader(_modelLoader);
+        _setting->SetGpuParticleFactory(_gpuParticleFactory);
+        _manager->SetSetting(_setting);
+        _manager->SetSpriteRenderer(_spriteRenderer);
+        _manager->SetRibbonRenderer(_ribbonRenderer);
+        _manager->SetRingRenderer(_ringRenderer);
+        _manager->SetTrackRenderer(_trackRenderer);
+        _manager->SetModelRenderer(_modelRenderer);
     }
 
-    shared_ptr<EffekseerDrawBinding> Binding;
+    [[nodiscard]] auto GetBinding() noexcept -> ptr<EffekseerDrawBinding> { return _binding.as_ptr(); }
+    [[nodiscard]] auto GetManager() const noexcept -> const Effekseer::ManagerRef& { return _manager; }
+    [[nodiscard]] auto GetGpuParticleFactory() const noexcept -> const Effekseer::RefPtr<DetectingGpuParticleFactory>& { return _gpuParticleFactory; }
+
+private:
+    shared_ptr<EffekseerDrawBinding> _binding;
     // Supplies the scene behind a refracting draw; absent where there is no scene to refract
-    ParticleSceneBackgroundProvider SceneBackgroundProvider;
-    Effekseer::SettingRef Setting;
-    Effekseer::ManagerRef Manager;
-    Effekseer::TextureLoaderRef TextureLoader;
-    Effekseer::ModelLoaderRef ModelLoader;
-    Effekseer::RefPtr<DetectingGpuParticleFactory> GpuParticleFactory;
-    Effekseer::SpriteRendererRef SpriteRenderer;
-    Effekseer::RibbonRendererRef RibbonRenderer;
-    Effekseer::RingRendererRef RingRenderer;
-    Effekseer::TrackRendererRef TrackRenderer;
-    Effekseer::ModelRendererRef ModelRenderer;
+    ParticleSceneBackgroundProvider _sceneBackgroundProvider;
+    Effekseer::SettingRef _setting;
+    Effekseer::ManagerRef _manager;
+    Effekseer::TextureLoaderRef _textureLoader;
+    Effekseer::ModelLoaderRef _modelLoader;
+    Effekseer::RefPtr<DetectingGpuParticleFactory> _gpuParticleFactory;
+    Effekseer::SpriteRendererRef _spriteRenderer;
+    Effekseer::RibbonRendererRef _ribbonRenderer;
+    Effekseer::RingRendererRef _ringRenderer;
+    Effekseer::TrackRendererRef _trackRenderer;
+    Effekseer::ModelRendererRef _modelRenderer;
 };
 
 static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> system)
@@ -2951,30 +2951,35 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
         return;
     }
 
-    if (system->Runtime->Manager->Exists(system->Handle)) {
-        system->Runtime->Manager->StopEffect(system->Handle);
+    if (system->Runtime->GetManager()->Exists(system->Handle)) {
+        system->Runtime->GetManager()->StopEffect(system->Handle);
     }
 
     // Effekseer intentionally retires draw sets through two deferred GC queues.
     // Three flips cover an active draw set as well as both queue stages
     for (size_t flush_index = 0; flush_index < 3; flush_index++) {
-        system->Runtime->Manager->BeginUpdate();
-        system->Runtime->Manager->EndUpdate();
+        system->Runtime->GetManager()->BeginUpdate();
+        system->Runtime->GetManager()->EndUpdate();
     }
 
     system->Handle = -1;
 }
 
-struct EffekseerParticleRuntimeBackend::Impl
+class EffekseerParticleRuntimeBackend::Impl
 {
+public:
     explicit Impl(const ParticleRuntimeServices& services) :
-        Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
-        Resources {services.Resources}
+        _runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
+        _resources {services.Resources}
     {
     }
 
-    shared_ptr<EffekseerRuntimeState> Runtime;
-    ptr<FileSystem> Resources;
+    [[nodiscard]] auto GetRuntime() const noexcept -> const shared_ptr<EffekseerRuntimeState>& { return _runtime; }
+    [[nodiscard]] auto GetResources() const noexcept -> ptr<FileSystem> { return _resources; }
+
+private:
+    shared_ptr<EffekseerRuntimeState> _runtime;
+    ptr<FileSystem> _resources;
 };
 
 EffekseerParticleRuntimeSystem::EffekseerParticleRuntimeSystem(unique_ptr<Impl>&& impl) :
@@ -2989,7 +2994,7 @@ EffekseerParticleRuntimeSystem::~EffekseerParticleRuntimeSystem()
 
 auto EffekseerParticleRuntimeSystem::IsActive() const -> bool
 {
-    return !_impl->Failed && _impl->Handle >= 0 && _impl->Runtime->Manager->Exists(_impl->Handle);
+    return !_impl->Failed && _impl->Handle >= 0 && _impl->Runtime->GetManager()->Exists(_impl->Handle);
 }
 
 auto EffekseerParticleRuntimeSystem::GetDrawInScene() const -> bool
@@ -3006,7 +3011,7 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
 {
     // Framed from the mandatory bake-time box and only while instances exist, so nothing is measured per frame and
     // a finished or unstarted effect reserves no space
-    if (_impl->Failed || _impl->Handle < 0 || !_impl->Runtime->Manager->Exists(_impl->Handle) || _impl->Runtime->Manager->GetInstanceCount(_impl->Handle) == 0) {
+    if (_impl->Failed || _impl->Handle < 0 || !_impl->Runtime->GetManager()->Exists(_impl->Handle) || _impl->Runtime->GetManager()->GetInstanceCount(_impl->Handle) == 0) {
         return std::nullopt;
     }
 
@@ -3022,7 +3027,7 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
 void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
     if (setup.LookDirectionAngle != 0.0f) {
-        _impl->Fail("look-direction oriented particles are unsupported");
+        FailEffekseerSystem(_impl.as_ptr(), "look-direction oriented particles are unsupported");
         return;
     }
 
@@ -3039,8 +3044,8 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     // transform into one matrix so the static box lands where the live particles emit
     _impl->BoundsMatrix = _impl->ViewMatrix * _impl->RootMatrix;
 
-    if (_impl->Handle >= 0 && _impl->Runtime->Manager->Exists(_impl->Handle)) {
-        _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
+    if (_impl->Handle >= 0 && _impl->Runtime->GetManager()->Exists(_impl->Handle)) {
+        _impl->Runtime->GetManager()->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
     }
 }
 
@@ -3048,7 +3053,7 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
 {
     FO_TRACE_ZONE(Particles);
 
-    if (_impl->Handle >= 0 && !_impl->Runtime->Manager->Exists(_impl->Handle)) {
+    if (_impl->Handle >= 0 && !_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
     }
     if (!IsActive()) {
@@ -3056,15 +3061,15 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
     }
 
     float32_t remaining_frames = EFFEKSEER_PREWARM_SECONDS * EFFEKSEER_FRAMES_PER_SECOND;
-    _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
-    _impl->Runtime->Manager->BeginUpdate();
-    while (remaining_frames > 0.0f && _impl->Runtime->Manager->Exists(_impl->Handle)) {
+    _impl->Runtime->GetManager()->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
+    _impl->Runtime->GetManager()->BeginUpdate();
+    while (remaining_frames > 0.0f && _impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         float32_t step = std::min(remaining_frames, 1.0f);
-        _impl->Runtime->Manager->UpdateHandle(_impl->Handle, step);
+        _impl->Runtime->GetManager()->UpdateHandle(_impl->Handle, step);
         remaining_frames -= step;
     }
-    _impl->Runtime->Manager->EndUpdate();
-    if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
+    _impl->Runtime->GetManager()->EndUpdate();
+    if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
     }
 
@@ -3080,16 +3085,16 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
-    _impl->Handle = _impl->Runtime->Manager->Play(_impl->Effect, 0.0f, 0.0f, 0.0f);
+    _impl->Handle = _impl->Runtime->GetManager()->Play(_impl->Effect, 0.0f, 0.0f, 0.0f);
     if (_impl->Handle < 0) {
-        _impl->Fail("Effekseer manager failed to play the effect");
+        FailEffekseerSystem(_impl.as_ptr(), "Effekseer manager failed to play the effect");
         return;
     }
 
     int32_t resolved_seed = seed ? *seed : std::bit_cast<int32_t>(static_cast<uint32_t>(_impl->RandomGenerator.next()));
-    _impl->Runtime->Manager->SetAutoDrawing(_impl->Handle, false);
-    _impl->Runtime->Manager->SetRandomSeed(_impl->Handle, resolved_seed);
-    _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
+    _impl->Runtime->GetManager()->SetAutoDrawing(_impl->Handle, false);
+    _impl->Runtime->GetManager()->SetRandomSeed(_impl->Handle, resolved_seed);
+    _impl->Runtime->GetManager()->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
 }
 
 void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
@@ -3100,16 +3105,16 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
     if (_impl->Failed || _impl->Handle < 0) {
         return;
     }
-    if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
+    if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
         return;
     }
 
-    _impl->Runtime->Manager->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
-    _impl->Runtime->Manager->BeginUpdate();
-    _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
-    _impl->Runtime->Manager->EndUpdate();
-    if (!_impl->Runtime->Manager->Exists(_impl->Handle)) {
+    _impl->Runtime->GetManager()->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
+    _impl->Runtime->GetManager()->BeginUpdate();
+    _impl->Runtime->GetManager()->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
+    _impl->Runtime->GetManager()->EndUpdate();
+    if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
         return;
     }
@@ -3139,9 +3144,9 @@ void EffekseerParticleRuntimeSystem::Draw()
     draw_parameter.CameraFrontDirection = {camera_backward.x, camera_backward.y, camera_backward.z};
 
     {
-        _impl->Runtime->Binding->Bind(_impl.as_ptr());
-        auto unbind_renderer = scope_exit([this]() noexcept { _impl->Runtime->Binding->Unbind(); });
-        _impl->Runtime->Manager->DrawHandle(_impl->Handle, draw_parameter);
+        _impl->Runtime->GetBinding()->Bind(_impl.as_ptr());
+        auto unbind_renderer = scope_exit([this]() noexcept { _impl->Runtime->GetBinding()->Unbind(); });
+        _impl->Runtime->GetManager()->DrawHandle(_impl->Handle, draw_parameter);
     }
 
     if (_impl->Failed) {
@@ -3177,7 +3182,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
         return {};
     }
 
-    File file = _impl->Resources->ReadFile(path);
+    File file = _impl->GetResources()->ReadFile(path);
 
     if (!file) {
         LogEffekseerRejection(path, "resource is missing");
@@ -3211,18 +3216,19 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 
     string material_path = strex(path).extract_dir().format_path().str();
     vector<char16_t> material_path_utf16 = ToUtf16(material_path);
-    _impl->Runtime->GpuParticleFactory->Reset();
-    Effekseer::EffectRef effect = Effekseer::Effect::Create(_impl->Runtime->Manager, data.data(), numeric_cast<int32_t>(bounds_trailer.PayloadSize), 1.0f, material_path_utf16.data());
+    _impl->GetRuntime()->GetGpuParticleFactory()->Reset();
+    Effekseer::EffectRef effect = Effekseer::Effect::Create(_impl->GetRuntime()->GetManager(), data.data(), numeric_cast<int32_t>(bounds_trailer.PayloadSize), 1.0f, material_path_utf16.data());
 
     if (!effect) {
         LogEffekseerRejection(path, "Effekseer core rejected the binary");
         return {};
     }
-    if (!ValidateEffect(path, effect.Get(), _impl->Runtime->GpuParticleFactory->WasRequested())) {
+    if (!ValidateEffect(path, effect.Get(), _impl->GetRuntime()->GetGpuParticleFactory()->WasRequested())) {
         return {};
     }
 
-    auto system = safe_alloc::make_unique<EffekseerParticleRuntimeSystem>(safe_alloc::make_unique<EffekseerParticleRuntimeSystem::Impl>(_impl->Runtime, std::move(effect), string {path}, bounds_trailer.PositionMin, bounds_trailer.PositionMax, bounds_trailer.BillboardRadius));
+    auto system = safe_alloc::make_unique<EffekseerParticleRuntimeSystem>(safe_alloc::make_unique<EffekseerParticleRuntimeSystem::Impl>(
+        _impl->GetRuntime(), std::move(effect), string {path}, Effekseer::Handle {-1}, mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}, bounds_trailer.PositionMin, bounds_trailer.PositionMax, bounds_trailer.BillboardRadius));
     system->Respawn(0);
 
     if (!system->IsActive()) {

@@ -93,7 +93,7 @@ public:
     auto MakeDisconnectPacket() const -> vector<uint8_t>;
 
 private:
-    struct PendingPacket final
+    struct PendingPacket
     {
         uint32_t Sequence {};
         vector<uint8_t> Payload {};

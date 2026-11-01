@@ -83,23 +83,27 @@ namespace BakerTests
     // Isolate persisted client/mapper settings and history from the embedding project's cache
     inline auto GetTestCacheDir() -> string
     {
-        struct TestCacheDir
+        class TestCacheDir
         {
+        public:
             TestCacheDir() :
-                Path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
+                _path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
             {
             }
             TestCacheDir(const TestCacheDir&) = delete;
             TestCacheDir(TestCacheDir&&) noexcept = delete;
             auto operator=(const TestCacheDir&) = delete;
             auto operator=(TestCacheDir&&) noexcept = delete;
-            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(Path)); }
+            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(_path)); }
 
-            string Path;
+            [[nodiscard]] auto GetPath() const noexcept -> const string& { return _path; }
+
+        private:
+            string _path;
         };
 
         static TestCacheDir dir;
-        return dir.Path;
+        return dir.GetPath();
     }
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)

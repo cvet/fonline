@@ -109,7 +109,7 @@ static auto Global_GetContextExceptionCount() -> int32_t
 {
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    auto ctx_ext = GetAngelScriptContextData(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     return ctx_ext->ExceptionCount;
 }
@@ -118,7 +118,7 @@ static auto Global_GetExceptionInfo() -> string
 {
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    auto ctx_ext = GetAngelScriptContextData(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     // AngelScript reports a native throw as a generic string, so the real message is the stored engine
@@ -166,7 +166,7 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
         int32_t arg_type_id = gen->GetArgTypeId(arg_index);
         auto arg_type = ResolveScriptFuncType(as_engine, arg_type_id);
 
-        if (!arg_type) {
+        if (!IsTypeDefined(arg_type)) {
             nptr<const char> type_decl = as_engine->GetTypeDeclaration(arg_type_id, true);
             throw ScriptException("Unsupported invoke argument type", type_decl ? type_decl.get() : "<unknown>");
         }
@@ -183,7 +183,7 @@ static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, Ange
     int32_t result_type_id = gen->GetArgTypeId(result_arg);
     auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
 
-    if (!result_type) {
+    if (!IsTypeDefined(result_type)) {
         nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
         throw ScriptException("Unsupported invoke result type", type_decl ? type_decl.get() : "<unknown>");
     }
@@ -455,78 +455,89 @@ static void Setting_SetEngineValue(AngelScript::asIScriptGeneric* gen)
 }
 
 template<typename T>
-struct SettingScalarTypeNames
+class SettingScalarTypeNames
 {
+public:
     static constexpr string_view ScalarName {};
     static constexpr string_view ArrayName {};
 };
 template<>
-struct SettingScalarTypeNames<int32_t>
+class SettingScalarTypeNames<int32_t>
 {
+public:
     static constexpr string_view ScalarName {"int"};
     static constexpr string_view ArrayName {"array<int>"};
 };
 template<>
-struct SettingScalarTypeNames<int64_t>
+class SettingScalarTypeNames<int64_t>
 {
+public:
     static constexpr string_view ScalarName {"int64"};
     static constexpr string_view ArrayName {"array<int64>"};
 };
 template<>
-struct SettingScalarTypeNames<int8_t>
+class SettingScalarTypeNames<int8_t>
 {
+public:
     static constexpr string_view ScalarName {"int8"};
     static constexpr string_view ArrayName {"array<int8>"};
 };
 template<>
-struct SettingScalarTypeNames<uint8_t>
+class SettingScalarTypeNames<uint8_t>
 {
+public:
     static constexpr string_view ScalarName {"uint8"};
     static constexpr string_view ArrayName {"array<uint8>"};
 };
 template<>
-struct SettingScalarTypeNames<int16_t>
+class SettingScalarTypeNames<int16_t>
 {
+public:
     static constexpr string_view ScalarName {"int16"};
     static constexpr string_view ArrayName {"array<int16>"};
 };
 template<>
-struct SettingScalarTypeNames<uint16_t>
+class SettingScalarTypeNames<uint16_t>
 {
+public:
     static constexpr string_view ScalarName {"uint16"};
     static constexpr string_view ArrayName {"array<uint16>"};
 };
 template<>
-struct SettingScalarTypeNames<float32_t>
+class SettingScalarTypeNames<float32_t>
 {
+public:
     static constexpr string_view ScalarName {"float"};
     static constexpr string_view ArrayName {"array<float>"};
 };
 template<>
-struct SettingScalarTypeNames<float64_t>
+class SettingScalarTypeNames<float64_t>
 {
+public:
     static constexpr string_view ScalarName {"double"};
     static constexpr string_view ArrayName {"array<double>"};
 };
 template<>
-struct SettingScalarTypeNames<bool>
+class SettingScalarTypeNames<bool>
 {
+public:
     static constexpr string_view ScalarName {"bool"};
     static constexpr string_view ArrayName {"array<bool>"};
 };
 template<>
-struct SettingScalarTypeNames<string>
+class SettingScalarTypeNames<string>
 {
+public:
     static constexpr string_view ScalarName {"string"};
     static constexpr string_view ArrayName {"array<string>"};
 };
 
 template<typename>
-struct IsVectorSetting : std::false_type
+class IsVectorSetting : public std::false_type
 {
 };
 template<typename U>
-struct IsVectorSetting<vector<U>> : std::true_type
+class IsVectorSetting<vector<U>> : public std::true_type
 {
 };
 

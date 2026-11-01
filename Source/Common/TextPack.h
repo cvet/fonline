@@ -41,7 +41,7 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
-struct BakeLanguageConfig final
+struct BakeLanguageConfig
 {
     vector<string> Languages {};
     map<string, string> Fallbacks {};
@@ -97,8 +97,9 @@ static_assert(std::is_standard_layout_v<TextPackKey>);
 
 FO_END_NAMESPACE
 template<>
-struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
+class FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
 {
+public:
     using is_avalanching = void;
 
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
@@ -108,8 +109,9 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
     }
 };
 template<>
-struct std::formatter<FO_NAMESPACE TextPackKey> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE TextPackKey> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE TextPackKey& value, FormatContext& ctx) const
     {

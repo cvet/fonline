@@ -327,74 +327,111 @@ struct InputEvent
     {
         KeyCode Code {};
     } KeyUp {};
-
-    InputEvent() = default;
-    explicit InputEvent(MouseMoveEvent ev) :
-        Type {EventType::MouseMoveEvent},
-        MouseMove {ev}
-    {
-    }
-    explicit InputEvent(MouseDownEvent ev) :
-        Type {EventType::MouseDownEvent},
-        MouseDown {ev}
-    {
-    }
-    explicit InputEvent(MouseUpEvent ev) :
-        Type {EventType::MouseUpEvent},
-        MouseUp {ev}
-    {
-    }
-    explicit InputEvent(MouseWheelEvent ev) :
-        Type {EventType::MouseWheelEvent},
-        MouseWheel {ev}
-    {
-    }
-    explicit InputEvent(TouchDownEvent ev) :
-        Type {EventType::TouchDownEvent},
-        TouchDown {ev}
-    {
-    }
-    explicit InputEvent(TouchMoveEvent ev) :
-        Type {EventType::TouchMoveEvent},
-        TouchMove {ev}
-    {
-    }
-    explicit InputEvent(TouchUpEvent ev) :
-        Type {EventType::TouchUpEvent},
-        TouchUp {ev}
-    {
-    }
-    explicit InputEvent(TouchTapEvent ev) :
-        Type {EventType::TouchTapEvent},
-        TouchTap {ev}
-    {
-    }
-    explicit InputEvent(TouchDoubleTapEvent ev) :
-        Type {EventType::TouchDoubleTapEvent},
-        TouchDoubleTap {ev}
-    {
-    }
-    explicit InputEvent(TouchScrollEvent ev) :
-        Type {EventType::TouchScrollEvent},
-        TouchScroll {ev}
-    {
-    }
-    explicit InputEvent(TouchZoomEvent ev) :
-        Type {EventType::TouchZoomEvent},
-        TouchZoom {ev}
-    {
-    }
-    explicit InputEvent(KeyDownEvent ev) :
-        Type {EventType::KeyDownEvent},
-        KeyDown {std::move(ev)}
-    {
-    }
-    explicit InputEvent(KeyUpEvent ev) :
-        Type {EventType::KeyUpEvent},
-        KeyUp {ev}
-    {
-    }
 };
+
+inline auto MakeInputEvent(InputEvent::MouseMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseMoveEvent,
+        .MouseMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseDownEvent,
+        .MouseDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseUpEvent,
+        .MouseUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseWheelEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseWheelEvent,
+        .MouseWheel = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDownEvent,
+        .TouchDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchMoveEvent,
+        .TouchMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchUpEvent,
+        .TouchUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchTapEvent,
+        .TouchTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDoubleTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDoubleTapEvent,
+        .TouchDoubleTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchScrollEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchScrollEvent,
+        .TouchScroll = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchZoomEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchZoomEvent,
+        .TouchZoom = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyDownEvent,
+        .KeyDown = std::move(ev),
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyUpEvent,
+        .KeyUp = ev,
+    };
+}
 
 class IAppRender
 {

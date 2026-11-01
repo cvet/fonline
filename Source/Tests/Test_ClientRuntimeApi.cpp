@@ -480,17 +480,14 @@ namespace
 
     // Stands in for the real sweep: it builds nothing, and afterwards hands the set back as created without
     // running a constructor, since the real globals of the test process were never touched
-    struct FakeGlobalDataSweep final
+    class FakeGlobalDataSweep final
     {
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
-        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
-        int32_t SavedCount {};
-
+    public:
         FakeGlobalDataSweep()
         {
-            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
-            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
-            SavedCount = global_data::callbacks_count;
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), _savedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), _savedNames.begin());
+            _savedCount = global_data::callbacks_count;
 
             global_data::callbacks_count = 2;
             global_data::delete_callbacks[0] = &SnapshotTeardownMarker;
@@ -499,15 +496,25 @@ namespace
             global_data::callback_names[1] = "FakeSetB";
         }
 
+        FakeGlobalDataSweep(const FakeGlobalDataSweep&) = delete;
+        FakeGlobalDataSweep(FakeGlobalDataSweep&&) = delete;
+        auto operator=(const FakeGlobalDataSweep&) -> FakeGlobalDataSweep& = delete;
+        auto operator=(FakeGlobalDataSweep&&) -> FakeGlobalDataSweep& = delete;
+
         ~FakeGlobalDataSweep()
         {
             global_data::callbacks_count = 0;
             (void)global_data::create();
 
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
-            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
-            global_data::callbacks_count = SavedCount;
+            std::copy(_savedDelete.begin(), _savedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(_savedNames.begin(), _savedNames.end(), std::begin(global_data::callback_names));
+            global_data::callbacks_count = _savedCount;
         }
+
+    private:
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> _savedNames {};
+        int32_t _savedCount {};
     };
 }
 

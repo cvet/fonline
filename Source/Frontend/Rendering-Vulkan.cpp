@@ -209,14 +209,6 @@ struct VulkanFrameSlot
 
 struct Vulkan_Renderer::Context
 {
-    Context(ptr<GlobalSettings> settings, ptr<SDL_Window> sdl_window) :
-        Settings {settings},
-        SdlWindow {sdl_window}
-    {
-    }
-
-    [[nodiscard]] auto CurrentFrameSlot() -> VulkanFrameSlot& { return FrameSlots[FrameIndex % VULKAN_FRAMES_IN_FLIGHT]; }
-
     ptr<GlobalSettings> Settings;
     nptr<const AppScreenState> Screen {};
     ptr<SDL_Window> SdlWindow;
@@ -286,6 +278,7 @@ struct Vulkan_Renderer::Context
 
 class Vulkan_Texture;
 
+static auto GetCurrentVulkanFrameSlot(ptr<Vulkan_Renderer::Context> ctx) -> VulkanFrameSlot&;
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
@@ -1164,7 +1157,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     if (_ctx->FrameCbRecording) {
         // Record the upload into the frame command buffer: program order preserves the engine's
         // immediate-mode ordering (e.g. an earlier atlas clear) with no mid-frame submit or wait
-        auto& staging = AcquireRingBuffer(_ctx, _ctx->CurrentFrameSlot().TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        auto& staging = AcquireRingBuffer(_ctx, GetCurrentVulkanFrameSlot(_ctx).TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         FO_VERIFY_AND_THROW(staging.Mapped, "Mapped memory data pointer is null");
         fill_staging(staging.Mapped.reinterpret_as<uint8_t>());
 
@@ -2222,7 +2215,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = safe_alloc::make_unique<Context>(&settings, window.reinterpret_as<SDL_Window>());
+    _ctx = safe_alloc::make_unique<Context>(&settings, nptr<const AppScreenState> {}, window.reinterpret_as<SDL_Window>());
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     _ctx->Screen = screen;
 
@@ -2633,7 +2626,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
 
     // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them
     {
-        auto& initial_slot = _ctx->CurrentFrameSlot();
+        auto& initial_slot = GetCurrentVulkanFrameSlot(_ctx);
         _ctx->CommandBuffer = initial_slot.CommandBuffer;
         _ctx->ImageAvailableSemaphore = initial_slot.ImageAvailableSemaphore;
         _ctx->FrameDescriptorPool = initial_slot.DescriptorPool;
@@ -3005,7 +2998,7 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     // Advance to the next frame slot and wait until the GPU released it (CPU records frame N
     // while the GPU still renders frame N-1)
     ctx->FrameIndex++;
-    auto& frame_slot = ctx->CurrentFrameSlot();
+    auto& frame_slot = GetCurrentVulkanFrameSlot(ctx);
 
     vk_result = vkWaitForFences(ctx->Device, 1, &frame_slot.InFlightFence, VK_TRUE, UINT64_MAX);
     VerifyVkResult(vk_result);
@@ -3153,7 +3146,7 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
         ctx->ImageAvailableWaited = true;
     }
 
-    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, ctx->CurrentFrameSlot().InFlightFence);
+    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, GetCurrentVulkanFrameSlot(ctx).InFlightFence);
     VerifyVkResult(vk_result);
 
     // Present to screen
@@ -3610,7 +3603,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
 static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
 {
     if (buffer != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Buffers.emplace_back(buffer);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Buffers.emplace_back(buffer);
         buffer = VK_NULL_HANDLE;
     }
 }
@@ -3618,7 +3611,7 @@ static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffe
 static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory)
 {
     if (memory != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Memories.emplace_back(memory);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Memories.emplace_back(memory);
         memory = VK_NULL_HANDLE;
     }
 }
@@ -3626,7 +3619,7 @@ static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory&
 static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image)
 {
     if (image != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Images.emplace_back(image);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Images.emplace_back(image);
         image = VK_NULL_HANDLE;
     }
 }
@@ -3634,7 +3627,7 @@ static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image)
 static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view)
 {
     if (image_view != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.ImageViews.emplace_back(image_view);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.ImageViews.emplace_back(image_view);
         image_view = VK_NULL_HANDLE;
     }
 }
@@ -3642,7 +3635,7 @@ static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView&
 static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer)
 {
     if (framebuffer != VK_NULL_HANDLE) {
-        ctx->CurrentFrameSlot().DestroyQueue.Framebuffers.emplace_back(framebuffer);
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Framebuffers.emplace_back(framebuffer);
         framebuffer = VK_NULL_HANDLE;
     }
 }
@@ -3698,6 +3691,11 @@ static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
     for (auto& slot : ctx->FrameSlots) {
         FlushDeferredDestroyQueue(ctx, slot.DestroyQueue);
     }
+}
+
+static auto GetCurrentVulkanFrameSlot(ptr<Vulkan_Renderer::Context> ctx) -> VulkanFrameSlot&
+{
+    return ctx->FrameSlots[ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT];
 }
 
 FO_END_NAMESPACE

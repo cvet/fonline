@@ -941,7 +941,7 @@ FO_SCRIPT_API void Client_Game_SimulateMouseMove(ptr<ClientEngine> client, ipos3
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}));
     }
 }
 
@@ -952,10 +952,10 @@ FO_SCRIPT_API void Client_Game_SimulateMouseDown(ptr<ClientEngine> client, ipos3
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}));
     }
 
-    client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseDownEvent {button}));
 }
 
 // Moves the simulated mouse to the requested position when needed, then injects a button-up event
@@ -965,10 +965,10 @@ FO_SCRIPT_API void Client_Game_SimulateMouseUp(ptr<ClientEngine> client, ipos32 
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}));
     }
 
-    client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseUpEvent {button}));
 }
 
 // Moves the simulated mouse when needed and injects either a wheel step or a matching button-down/button-up pair
@@ -978,18 +978,18 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos
     ipos32 prev_pos = client->MousePos;
 
     if (prev_pos.x != pos.x || prev_pos.y != pos.y) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseMoveEvent {pos.x, pos.y, checked_sub(pos.x, prev_pos.x), checked_sub(pos.y, prev_pos.y)}));
     }
 
     if (button == MouseButton::WheelUp) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseWheelEvent {1}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseWheelEvent {1}));
     }
     else if (button == MouseButton::WheelDown) {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseWheelEvent {-1}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseWheelEvent {-1}));
     }
     else {
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseDownEvent {button}});
-        client->ProcessInputEvent(InputEvent {InputEvent::MouseUpEvent {button}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseDownEvent {button}));
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::MouseUpEvent {button}));
     }
 }
 
@@ -997,28 +997,28 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchDown(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
 {
-    client->ProcessInputEvent(InputEvent {InputEvent::TouchDownEvent {fingerId, pos.x, pos.y}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchDownEvent {fingerId, pos.x, pos.y}));
 }
 
 // Injects a touch-move event with the supplied finger id, position, and movement offset
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchMove(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos, ipos32 offsetPos)
 {
-    client->ProcessInputEvent(InputEvent {InputEvent::TouchMoveEvent {fingerId, pos.x, pos.y, offsetPos.x, offsetPos.y}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchMoveEvent {fingerId, pos.x, pos.y, offsetPos.x, offsetPos.y}));
 }
 
 // Injects a touch-up event for the supplied finger id and client position
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchUp(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
 {
-    client->ProcessInputEvent(InputEvent {InputEvent::TouchUpEvent {fingerId, pos.x, pos.y}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchUpEvent {fingerId, pos.x, pos.y}));
 }
 
 // Injects a touch-tap event at the supplied client position
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32 pos)
 {
-    client->ProcessInputEvent(InputEvent {InputEvent::TouchTapEvent {pos.x, pos.y}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchTapEvent {pos.x, pos.y}));
 }
 
 // Raises the disconnect notification without touching the connection itself
@@ -1052,8 +1052,8 @@ FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCod
         return;
     }
 
-    client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key, string(text)}});
-    client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key}});
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyDownEvent {key, string(text)}));
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyUpEvent {key}));
 }
 
 // Injects key1 down, a complete key2 press, then key1 up, skipping either KeyCode::None value and doing nothing when both are None
@@ -1065,16 +1065,16 @@ FO_SCRIPT_API void Client_Game_SimulateKeyboardPress(ptr<ClientEngine> client, K
     }
 
     if (key1 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key1, string(key1Text)}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyDownEvent {key1, string(key1Text)}));
     }
 
     if (key2 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyDownEvent {key2, string(key2Text)}});
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key2}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyDownEvent {key2, string(key2Text)}));
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyUpEvent {key2}));
     }
 
     if (key1 != KeyCode::None) {
-        client->ProcessInputEvent(InputEvent {InputEvent::KeyUpEvent {key1}});
+        client->ProcessInputEvent(MakeInputEvent(InputEvent::KeyUpEvent {key1}));
     }
 }
 

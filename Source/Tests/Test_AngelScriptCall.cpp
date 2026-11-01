@@ -57,12 +57,13 @@ FO_BEGIN_NAMESPACE
 // Exact checksums pin values and aliasing while UBSan pins alignment
 namespace
 {
-    struct ManagedCallDataAccessor final : DataAccessor
+    class ManagedCallDataAccessor final : public DataAccessor
     {
+    public:
         [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::MANAGED_BACKEND_INDEX; }
     };
 
-    struct CallTestRig
+    namespace CallTestRig
     {
         static auto MakeSettings() -> GlobalSettings
         {
@@ -375,7 +376,7 @@ namespace CallTest
         }
 
         static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
-    };
+    }
 }
 
 TEST_CASE("AngelScriptCallShapes")

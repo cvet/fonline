@@ -357,13 +357,13 @@ static auto ReadRawValue(span<const uint8_t> data) -> T
     return value;
 }
 
-struct RawReadCursor final
+struct RawReadCursor
 {
     span<const uint8_t> Data {};
     size_t Pos {};
 };
 
-struct RawWriteCursor final
+struct RawWriteCursor
 {
     nptr<uint8_t> Data {};
     size_t Pos;

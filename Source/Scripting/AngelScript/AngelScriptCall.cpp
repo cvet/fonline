@@ -218,7 +218,7 @@ auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t 
         type.IsMutable = true;
     }
 
-    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
+    FO_VERIFY_AND_THROW(IsTypeDefined(type), "Missing type descriptor");
     return type;
 }
 
@@ -272,7 +272,7 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
         }
     }
 
-    bool call_supported = (is_void_ret || !!func_desc->Ret) && !std::ranges::any_of(func_desc->Args, [](auto&& a) { return !a.Type; });
+    bool call_supported = (is_void_ret || IsTypeDefined(func_desc->Ret)) && !std::ranges::any_of(func_desc->Args, [](auto&& a) { return !IsTypeDefined(a.Type); });
 
     if (call_supported) {
         func_desc->Call = [func](FuncCallData& call) FO_DEFERRED { ScriptFuncCall(func, call); };
@@ -500,16 +500,16 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+        bool can_suspend = !IsTypeDefined(func_desc->Ret) && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 
         if (can_suspend) {
-            auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+            auto ctx_ext = GetAngelScriptContextData(ctx);
             FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
             ctx_ext->Completion = std::move(call.Completion);
         }
 
         if (context_mngr->RunContext(ctx, can_suspend)) {
-            if (func_desc->Ret) {
+            if (IsTypeDefined(func_desc->Ret)) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
 
@@ -621,16 +621,16 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+        bool can_suspend = !IsTypeDefined(func_desc->Ret) && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
 
         if (can_suspend) {
-            auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+            auto ctx_ext = GetAngelScriptContextData(ctx);
             FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
             ctx_ext->Completion = std::move(call.Completion);
         }
 
         if (context_mngr->RunContext(ctx, can_suspend)) {
-            if (func_desc->Ret) {
+            if (IsTypeDefined(func_desc->Ret)) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
 

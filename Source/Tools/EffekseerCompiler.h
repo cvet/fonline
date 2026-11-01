@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(EffekseerCompilerException);
 
-struct EffekseerCompilerOutput final
+struct EffekseerCompilerOutput
 {
     vector<uint8_t> Binary {};
     vector<string> Dependencies {};

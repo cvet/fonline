@@ -58,7 +58,7 @@ static constexpr string_view EffekseerModelFixturePath = "Particles/EffekseerTes
 static constexpr string_view EffekseerDistortionFixturePath = "Particles/EffekseerTests/Refraction.efk";
 static constexpr frect32 EffekseerFixtureAtlasRect {0.125f, 0.25f, 0.5f, 0.375f};
 
-struct CapturedEffekseerDraw final
+struct CapturedEffekseerDraw
 {
     string EffectName {};
     vector<Vertex2D> Vertices {};
@@ -74,7 +74,7 @@ struct CapturedEffekseerDraw final
     CullModeType CullMode {};
 };
 
-struct EffekseerDrawCapture final
+struct EffekseerDrawCapture
 {
     vector<CapturedEffekseerDraw> Draws {};
 };

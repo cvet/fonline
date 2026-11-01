@@ -2347,7 +2347,7 @@ def append_ref_call_registration(register_lines: list[str], method_name: str, ca
     register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
             '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if is_stub else ''))
     if not is_stub:
-        register_lines.append('        struct Wrapped { ' + call + ' };')
+        register_lines.append('        class Wrapped { public: ' + call + ' };')
         register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
         register_lines.append('    } },')
 
@@ -2374,7 +2374,7 @@ def append_ref_method_registration(
         # A property accessor is a field read or write, cheaper than the zone that would time it
         if not is_property:
             register_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::' + method_name + '");')
-        register_lines.append('        struct Wrapped { static ' +
+        register_lines.append('        class Wrapped { public: static ' +
                 ('auto' if ret != 'void' else 'void') + ' Call(ptr<' + ref_type_tag.name + '> self' + (', ' if params else '') +
         ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True, wrap_handles=True, nullable=p.nullable) + ' ' + p.name for p in params]) + ') ' +
             ('-> ' + meta_type_to_engine_type(ret, ref_type_tag.target, False, wrap_handles=True, nullable=ret_nullable) if ret != 'void' else '') +
@@ -2522,7 +2522,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
             if not is_stub:
                 body_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::__Factory");')
 
-                body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
+                body_lines.append('        class Wrapped { public: ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
                         '{ return safe_alloc::make_refcounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')

@@ -93,7 +93,7 @@ public:
     auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
 
 private:
-    struct Impl;
+    class Impl;
 
     unique_ptr<Impl> _impl;
 };

@@ -37,110 +37,114 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto CreateEngineBuiltinTypes() -> unordered_map<string_view, void (*)(BaseTypeDesc&)>
+{
+    unordered_map<string_view, void (*)(BaseTypeDesc&)> builtin_types {};
+
+    builtin_types = {//
+        {"int8",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsInt8 = true;
+                type.IsSignedInt = true;
+                type.Size = sizeof(int8_t);
+            }},
+        {"int16",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsInt16 = true;
+                type.IsSignedInt = true;
+                type.Size = sizeof(int16_t);
+            }},
+        {"int32",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsInt32 = true;
+                type.IsSignedInt = true;
+                type.Size = sizeof(int32_t);
+            }},
+        {"int64",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsInt64 = true;
+                type.IsSignedInt = true;
+                type.Size = sizeof(int64_t);
+            }},
+        {"uint8",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsUInt8 = true;
+                type.IsSignedInt = false;
+                type.Size = sizeof(uint8_t);
+            }},
+        {"uint16",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsUInt16 = true;
+                type.IsSignedInt = false;
+                type.Size = sizeof(uint16_t);
+            }},
+        {"uint32",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsUInt32 = true;
+                type.IsSignedInt = false;
+                type.Size = sizeof(uint32_t);
+            }},
+        {"uint64",
+            [](BaseTypeDesc& type) {
+                type.IsInt = true;
+                type.IsUInt64 = true;
+                type.IsSignedInt = false;
+                type.Size = sizeof(uint64_t);
+            }},
+        {"float32",
+            [](BaseTypeDesc& type) {
+                type.IsFloat = true;
+                type.IsSingleFloat = true;
+                type.Size = sizeof(float32_t);
+            }},
+        {"float64",
+            [](BaseTypeDesc& type) {
+                type.IsFloat = true;
+                type.IsDoubleFloat = true;
+                type.Size = sizeof(float64_t);
+            }},
+        {"bool",
+            [](BaseTypeDesc& type) {
+                type.IsBool = true;
+                type.Size = sizeof(bool);
+            }},
+        {"string",
+            [](BaseTypeDesc& type) {
+                type.IsObject = true;
+                type.IsString = true;
+                type.Size = 0;
+            }},
+        {"any",
+            [](BaseTypeDesc& type) {
+                type.IsObject = true;
+                type.IsString = true;
+                type.Size = 0;
+            }},
+        {"hstring",
+            [](BaseTypeDesc& type) {
+                type.IsObject = true;
+                type.IsHashedString = true;
+                type.Size = sizeof(hstring::hash_t);
+            }},
+        {"Entity", [](BaseTypeDesc& type) {
+             type.IsEntity = true;
+             type.IsObject = true;
+         }}};
+
+    return builtin_types;
+}
+
 struct EngineBaseData
 {
-    EngineBaseData()
-    {
-        BuiltinTypes = {//
-            {"int8",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsInt8 = true;
-                    type.IsSignedInt = true;
-                    type.Size = sizeof(int8_t);
-                }},
-            {"int16",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsInt16 = true;
-                    type.IsSignedInt = true;
-                    type.Size = sizeof(int16_t);
-                }},
-            {"int32",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsInt32 = true;
-                    type.IsSignedInt = true;
-                    type.Size = sizeof(int32_t);
-                }},
-            {"int64",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsInt64 = true;
-                    type.IsSignedInt = true;
-                    type.Size = sizeof(int64_t);
-                }},
-            {"uint8",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsUInt8 = true;
-                    type.IsSignedInt = false;
-                    type.Size = sizeof(uint8_t);
-                }},
-            {"uint16",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsUInt16 = true;
-                    type.IsSignedInt = false;
-                    type.Size = sizeof(uint16_t);
-                }},
-            {"uint32",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsUInt32 = true;
-                    type.IsSignedInt = false;
-                    type.Size = sizeof(uint32_t);
-                }},
-            {"uint64",
-                [](BaseTypeDesc& type) {
-                    type.IsInt = true;
-                    type.IsUInt64 = true;
-                    type.IsSignedInt = false;
-                    type.Size = sizeof(uint64_t);
-                }},
-            {"float32",
-                [](BaseTypeDesc& type) {
-                    type.IsFloat = true;
-                    type.IsSingleFloat = true;
-                    type.Size = sizeof(float32_t);
-                }},
-            {"float64",
-                [](BaseTypeDesc& type) {
-                    type.IsFloat = true;
-                    type.IsDoubleFloat = true;
-                    type.Size = sizeof(float64_t);
-                }},
-            {"bool",
-                [](BaseTypeDesc& type) {
-                    type.IsBool = true;
-                    type.Size = sizeof(bool);
-                }},
-            {"string",
-                [](BaseTypeDesc& type) {
-                    type.IsObject = true;
-                    type.IsString = true;
-                    type.Size = 0;
-                }},
-            {"any",
-                [](BaseTypeDesc& type) {
-                    type.IsObject = true;
-                    type.IsString = true;
-                    type.Size = 0;
-                }},
-            {"hstring",
-                [](BaseTypeDesc& type) {
-                    type.IsObject = true;
-                    type.IsHashedString = true;
-                    type.Size = sizeof(hstring::hash_t);
-                }},
-            {"Entity", [](BaseTypeDesc& type) {
-                 type.IsEntity = true;
-                 type.IsObject = true;
-             }}};
-    }
-
     // Plain function pointers: every entry is a captureless initializer, so the table needs no wrapper
-    unordered_map<string_view, void (*)(BaseTypeDesc&)> BuiltinTypes {};
+    unordered_map<string_view, void (*)(BaseTypeDesc&)> BuiltinTypes {CreateEngineBuiltinTypes()};
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 

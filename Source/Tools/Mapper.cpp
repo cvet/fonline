@@ -917,14 +917,6 @@ auto MapperEngine::IsImGuiTextInputActive() const -> bool
     return ImGui::GetIO().WantTextInput;
 }
 
-MapperEngine::UndoOp::UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot) :
-    Label(std::move(label)),
-    IsSnapshot(is_snapshot),
-    Undo(std::move(undo)),
-    Redo(std::move(redo))
-{
-}
-
 auto MapperEngine::GetUndoContext(nptr<MapView> map, bool create) -> nptr<UndoContext>
 {
     if (!map) {

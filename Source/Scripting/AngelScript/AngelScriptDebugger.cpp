@@ -284,7 +284,7 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
 
 void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason)
 {
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    auto ctx_ext = GetAngelScriptContextData(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     if (reason == AngelScriptContextSetupReason::Create) {
@@ -294,7 +294,7 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
     }
     else if (reason == AngelScriptContextSetupReason::Request) {
         if (ctx_ext->Parent) {
-            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
+            auto parent_ctx_ext = GetAngelScriptContextData(ctx_ext->Parent);
             FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::In ? DebuggerStepMode::In : DebuggerStepMode::None;
@@ -302,7 +302,7 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
     }
     else if (reason == AngelScriptContextSetupReason::Return) {
         if (ctx_ext->Parent) {
-            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent);
+            auto parent_ctx_ext = GetAngelScriptContextData(ctx_ext->Parent);
             FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             if (ctx_ext->StepState->Mode == DebuggerStepMode::None) {
@@ -324,7 +324,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
         return;
     }
 
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    auto ctx_ext = GetAngelScriptContextData(ctx);
 
     if (!ctx_ext) {
         return;

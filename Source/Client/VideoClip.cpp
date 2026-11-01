@@ -100,7 +100,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
         }
 
         th_setup_info* setup_info_raw = _impl->SetupInfo.release();
-        int32_t r = th_decode_headerin(&_impl->VideoInfo.Value, &_impl->Comment.Value, &setup_info_raw, &_impl->Packet);
+        int32_t r = th_decode_headerin(&_impl->VideoInfo.get(), &_impl->Comment.get(), &setup_info_raw, &_impl->Packet);
         _impl->SetupInfo.reset(setup_info_raw);
 
         if (r == 0) {
@@ -125,7 +125,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
     }
 
     FO_VERIFY_AND_THROW(_impl->SetupInfo, "Setup info is null");
-    auto decoder_context = make_nptr(th_decode_alloc(&_impl->VideoInfo.Value, _impl->SetupInfo.get()));
+    auto decoder_context = make_nptr(th_decode_alloc(&_impl->VideoInfo.get(), _impl->SetupInfo.get()));
     FO_VERIFY_AND_THROW(decoder_context, "Theora decoder context allocation failed");
     _impl->DecoderContext = make_unique_del_ptr(decoder_context, [](th_dec_ctx* raw_decoder_context) noexcept {
         if (raw_decoder_context != nullptr) {
@@ -133,7 +133,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
             th_decode_free(owned_decoder_context.get());
         }
     });
-    _impl->RenderedTextureData.resize(numeric_cast<size_t>(_impl->VideoInfo.Value.pic_width) * _impl->VideoInfo.Value.pic_height);
+    _impl->RenderedTextureData.resize(numeric_cast<size_t>(_impl->VideoInfo.get().pic_width) * _impl->VideoInfo.get().pic_height);
     _impl->StartTime = nanotime::now();
 }
 
@@ -176,7 +176,7 @@ auto VideoClip::GetTime() const -> timespan
 
 auto VideoClip::GetSize() const -> isize32
 {
-    return {numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width), numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height)};
+    return {numeric_cast<int32_t>(_impl->VideoInfo.get().pic_width), numeric_cast<int32_t>(_impl->VideoInfo.get().pic_height)};
 }
 
 void VideoClip::Stop()
@@ -232,7 +232,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
     // Calculate next frame
     float64_t cur_second = (_impl->RenderTime - _impl->StartTime + _impl->AverageRenderTime).to_ms<float64_t>() / 1000.0;
-    int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_numerator) / numeric_cast<float64_t>(_impl->VideoInfo.Value.fps_denominator));
+    int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(_impl->VideoInfo.get().fps_numerator) / numeric_cast<float64_t>(_impl->VideoInfo.get().fps_denominator));
     int32_t next_frame_diff = new_frame - _impl->CurFrame;
 
     if (next_frame_diff <= 0) {
@@ -284,7 +284,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     int32_t di;
     int32_t dj;
 
-    switch (_impl->VideoInfo.Value.pixel_fmt) {
+    switch (_impl->VideoInfo.get().pixel_fmt) {
     case TH_PF_420:
         di = 2;
         dj = 2;
@@ -298,14 +298,14 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         dj = 1;
         break;
     default:
-        logging::write(logging::type::warning, "Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
+        logging::write(logging::type::warning, "Wrong pixel format {}", _impl->VideoInfo.get().pixel_fmt);
         Stop();
         return _impl->RenderedTextureData;
     }
 
     // Fill texture data
-    int32_t w = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width);
-    int32_t h = numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height);
+    int32_t w = numeric_cast<int32_t>(_impl->VideoInfo.get().pic_width);
+    int32_t h = numeric_cast<int32_t>(_impl->VideoInfo.get().pic_height);
 
     for (int32_t y = 0; y < h; y++) {
         for (int32_t x = 0; x < w; x++) {
@@ -376,7 +376,7 @@ int32_t VideoClip::DecodePacket()
     do {
         ogg_page op;
 
-        while (ogg_sync_pageout(&_impl->SyncState.Value, &op) != 1) {
+        while (ogg_sync_pageout(&_impl->SyncState.get(), &op) != 1) {
             int32_t read_bytes = numeric_cast<int32_t>(_impl->RawVideoData.size() - _impl->ReadPos);
             read_bytes = std::min(1024, read_bytes);
 
@@ -384,11 +384,11 @@ int32_t VideoClip::DecodePacket()
                 return -2;
             }
 
-            auto dest_buf = make_ptr(ogg_sync_buffer(&_impl->SyncState.Value, read_bytes));
+            auto dest_buf = make_ptr(ogg_sync_buffer(&_impl->SyncState.get(), read_bytes));
             auto source = make_ptr(_impl->RawVideoData.data()).offset(_impl->ReadPos);
             memory::copy(dest_buf, source, read_bytes);
             _impl->ReadPos += read_bytes;
-            ogg_sync_wrote(&_impl->SyncState.Value, read_bytes);
+            ogg_sync_wrote(&_impl->SyncState.get(), read_bytes);
         }
 
         if (ogg_page_bos(&op) != 0 && rv != 1) {

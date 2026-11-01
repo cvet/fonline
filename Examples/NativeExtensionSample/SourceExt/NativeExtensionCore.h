@@ -5,7 +5,7 @@
 namespace NativeExtensionSample
 {
 
-struct ServerState final
+struct ServerState
 {
     std::int32_t BaseValue {};
 };

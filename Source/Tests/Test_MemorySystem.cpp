@@ -65,11 +65,6 @@ TEST_CASE("MemorySystem")
     {
         struct TestValue
         {
-            explicit TestValue(int32_t value_) noexcept :
-                Value {value_}
-            {
-            }
-
             int32_t Value {};
         };
 
@@ -374,29 +369,33 @@ TEST_CASE("MemorySystem")
 
     SECTION("MakeRefCountedPreservesInitialOwnership")
     {
-        struct TestRefCounted final : refcounted<TestRefCounted>
+        class TestRefCounted final : public refcounted<TestRefCounted>
         {
+        public:
             TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
-                Value {value_},
-                Destroyed {destroyed}
+                _value {value_},
+                _destroyed {destroyed}
             {
             }
 
-            ~TestRefCounted() { ++*Destroyed; }
+            ~TestRefCounted() { ++*_destroyed; }
 
-            int32_t Value {};
-            ptr<int32_t> Destroyed;
+            [[nodiscard]] auto GetValue() const noexcept -> int32_t { return _value; }
+
+        private:
+            int32_t _value {};
+            ptr<int32_t> _destroyed;
         };
 
         int32_t destroyed = 0;
 
         {
             auto ptr = safe_alloc::make_refcounted<TestRefCounted>(42, &destroyed);
-            CHECK(ptr->Value == 42);
+            CHECK(ptr->GetValue() == 42);
 
             {
                 auto copy = ptr;
-                CHECK(copy->Value == 42);
+                CHECK(copy->GetValue() == 42);
             }
 
             CHECK(destroyed == 0);

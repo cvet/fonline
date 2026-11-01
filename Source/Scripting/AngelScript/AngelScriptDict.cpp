@@ -175,13 +175,13 @@ static auto Equals(int32_t type_id, nptr<const ScriptDictTypeData> type_data, pt
 static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeData> type_data, ptr<AngelScript::asIScriptEngine> engine, ptr<void> a, ptr<void> b) -> bool;
 
 ScriptDict::ScriptDictComparator::ScriptDictComparator(ptr<ScriptDict> owner) :
-    Owner {owner}
+    _owner {owner}
 {
 }
 
 auto ScriptDict::ScriptDictComparator::operator()(ptr<void> a, ptr<void> b) const -> bool
 {
-    return Less(Owner->_keyTypeId, Owner->_keyTypeData, Owner->_typeInfo->GetEngine(), a, b);
+    return Less(_owner->_keyTypeId, _owner->_keyTypeData, _owner->_typeInfo->GetEngine(), a, b);
 }
 
 auto ScriptDict::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptDict>

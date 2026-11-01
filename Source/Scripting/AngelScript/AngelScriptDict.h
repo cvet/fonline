@@ -59,11 +59,14 @@ class ScriptDict
         std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
 
 public:
-    struct ScriptDictComparator
+    class ScriptDictComparator
     {
+    public:
         explicit ScriptDictComparator(ptr<ScriptDict> owner);
         auto operator()(ptr<void> a, ptr<void> b) const -> bool;
-        ptr<ScriptDict> Owner;
+
+    private:
+        ptr<ScriptDict> _owner;
     };
 
     static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptDict>;

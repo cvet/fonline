@@ -271,19 +271,24 @@ template<typename T>
 }
 
 // RAII holder for a value-typed C resource bracketed by paired init/clear free functions (e.g. th_info_init / th_info_clear).
-// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction
+// The held value is default-zeroed, then InitFn runs on construction and ClearFn on destruction
 template<typename T, auto InitFn, auto ClearFn>
     requires(std::is_invocable_v<decltype(InitFn), T*> && std::is_invocable_v<decltype(ClearFn), T*>)
-struct scoped_init_clear
+class scoped_init_clear
 {
-    scoped_init_clear() noexcept { InitFn(&Value); }
+public:
+    scoped_init_clear() noexcept { InitFn(&_value); }
     scoped_init_clear(const scoped_init_clear&) = delete;
     scoped_init_clear(scoped_init_clear&&) noexcept = delete;
     auto operator=(const scoped_init_clear&) -> scoped_init_clear& = delete;
     auto operator=(scoped_init_clear&&) noexcept -> scoped_init_clear& = delete;
-    ~scoped_init_clear() noexcept { ClearFn(&Value); }
+    ~scoped_init_clear() noexcept { ClearFn(&_value); }
 
-    T Value {};
+    [[nodiscard]] auto get() noexcept -> T& { return _value; }
+    [[nodiscard]] auto get() const noexcept -> const T& { return _value; }
+
+private:
+    T _value {};
 };
 
 // Vector helpers

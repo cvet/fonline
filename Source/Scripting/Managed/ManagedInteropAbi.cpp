@@ -151,7 +151,7 @@ static auto CanUseManagedAbiBridge(const BaseTypeDesc& type) noexcept -> bool
 
 static auto CanUseManagedAbiBridge(const ComplexTypeDesc& type) noexcept -> bool
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return true;
     }
     if (type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array) {
@@ -349,14 +349,14 @@ static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const C
     result_offset = offset;
     out_ret = {};
 
-    if (ret && !ret.IsMutable && !ret.BaseType.IsRefType && IsManagedAbiHandleType(ret, true)) {
+    if (IsTypeDefined(ret) && !ret.IsMutable && !ret.BaseType.IsRefType && IsManagedAbiHandleType(ret, true)) {
         out_ret.Kind = ManagedAbiValueKind::Handle;
         out_ret.Nullable = ret_nullable;
         out_ret.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
         out_ret.Offset = offset;
         offset = numeric_cast<uint16_t>(offset + out_ret.Size);
     }
-    else if (ret) {
+    else if (IsTypeDefined(ret)) {
         if (!IsManagedAbiFixedValueType(ret)) {
             return false;
         }
@@ -678,7 +678,7 @@ auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTyp
     // Metadata type names, not C# spellings: every type a frame carries is a plain identifier on both sides
     string key = "Callback_";
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         key += ret.BaseType.Name;
     }
     else {
@@ -729,7 +729,7 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
 
     layout.ResultOffset = offset;
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         if (!IsManagedAbiFixedValueType(ret)) {
             return layout;
         }

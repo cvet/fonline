@@ -84,12 +84,12 @@ struct AngelScriptContextExtendedData
     vector<nptr<const AngelScriptTracyCallEntry>> TracyStackTrace {};
     vector<TracyCZoneCtx> TracyZones {};
 #endif
-
-    static auto Get(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
-    static auto Get(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
-    static auto Get(nptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
-    static auto Get(nptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 };
+
+auto GetAngelScriptContextData(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(nptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+auto GetAngelScriptContextData(nptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 
 class AngelScriptContextManager final
 {

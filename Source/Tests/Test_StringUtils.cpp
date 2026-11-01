@@ -46,8 +46,9 @@ struct ThrowingFormatValue
 FO_END_NAMESPACE
 
 template<>
-struct std::formatter<FO_NAMESPACE ThrowingFormatValue> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
+class std::formatter<FO_NAMESPACE ThrowingFormatValue> : public formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
+public:
     // The return type has to be spelled out: the body only throws, so deduction would pick void and the
     // type would stop satisfying the formattable concept
     template<typename FormatContext>

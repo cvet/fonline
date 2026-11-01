@@ -511,112 +511,162 @@ namespace
         int Index {};
     };
 
-    struct PropertiesStorageStrategyPerfFixture
+    class PropertiesStorageStrategyPerfFixture
     {
-        hash_storage Hashes {};
-        TestNameResolver Resolver {};
-        PropertyRegistrar Registrar;
-        vector<PerfPropertySpec> Props {};
-        vector<PerfPropertySpec> OverrideProps {};
-        nptr<const Property> ProbeIntProp {};
-        nptr<const Property> ProbeStringProp {};
-        Properties Proto;
-        Properties PackedSource;
-        Properties FullSource;
-        vector<vector<uint8_t>> PackedPublicChunks {};
-        vector<vector<uint8_t>> FullPublicChunks {};
-        vector<uint8_t> PackedAllData {};
-        vector<uint8_t> FullAllData {};
-        size_t PackedPublicBytes {};
-        size_t FullPublicBytes {};
-        int TotalProps {};
-        int FillPercent {};
-
+    public:
         PropertiesStorageStrategyPerfFixture(int total_props, int fill_percent) :
-            Registrar("PerfStorageEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
-            Proto(&Registrar),
-            PackedSource(&Registrar, &Proto),
-            FullSource(&Registrar),
-            TotalProps(total_props),
-            FillPercent(fill_percent)
+            _registrar("PerfStorageEntity", EngineSideKind::ServerSide, &_hashes, &_resolver),
+            _proto(&_registrar),
+            _packedSource(&_registrar, &_proto),
+            _fullSource(&_registrar)
         {
             FO_VERIFY_AND_THROW(total_props > 0, "Total properties must be positive");
             FO_VERIFY_AND_THROW(fill_percent > 0, "Fill percent must be positive");
 
-            Props.reserve(numeric_cast<size_t>(total_props));
+            _props.reserve(numeric_cast<size_t>(total_props));
 
             for (int i = 0; i < total_props; i++) {
                 auto kind = static_cast<PerfPropertyKind>(i % 5);
                 auto prop = RegisterProperty(kind, i);
 
-                Props.emplace_back(PerfPropertySpec {prop, kind, i});
+                _props.emplace_back(PerfPropertySpec {prop, kind, i});
 
-                if (!ProbeIntProp && kind == PerfPropertyKind::PublicInt) {
-                    ProbeIntProp = prop;
+                if (!_probeIntProp && kind == PerfPropertyKind::PublicInt) {
+                    _probeIntProp = prop;
                 }
-                if (!ProbeStringProp && kind == PerfPropertyKind::PublicString) {
-                    ProbeStringProp = prop;
+                if (!_probeStringProp && kind == PerfPropertyKind::PublicString) {
+                    _probeStringProp = prop;
                 }
             }
 
-            FO_VERIFY_AND_THROW(ProbeIntProp, "No public int property was registered for probing");
-            FO_VERIFY_AND_THROW(ProbeStringProp, "No public string property was registered for probing");
+            FO_VERIFY_AND_THROW(_probeIntProp, "No public int property was registered for probing");
+            FO_VERIFY_AND_THROW(_probeStringProp, "No public string property was registered for probing");
 
-            Proto.AllocData();
-            FullSource.AllocData();
+            _proto.AllocData();
+            _fullSource.AllocData();
 
-            for (const auto& spec : Props) {
-                SetProtoValue(Proto, spec);
+            for (const auto& spec : _props) {
+                SetProtoValue(_proto, spec);
             }
 
-            FullSource.CopyFrom(Proto);
+            _fullSource.CopyFrom(_proto);
 
             int32_t override_count = std::max(1, total_props * fill_percent / 100);
-            OverrideProps.reserve(numeric_cast<size_t>(override_count));
+            _overrideProps.reserve(numeric_cast<size_t>(override_count));
 
             for (int i = 0; i < override_count; i++) {
-                const auto& spec = Props[numeric_cast<size_t>(i)];
-                OverrideProps.emplace_back(spec);
-                SetOverrideValue(PackedSource, spec);
-                SetOverrideValue(FullSource, spec);
+                const auto& spec = _props[numeric_cast<size_t>(i)];
+                _overrideProps.emplace_back(spec);
+                SetOverrideValue(_packedSource, spec);
+                SetOverrideValue(_fullSource, spec);
             }
 
-            auto packed_public_data = PackedSource.StoreData(false);
-            PackedPublicChunks = MakeOwnedStoreData(packed_public_data);
-            PackedPublicBytes = CalcTotalBytes(PackedPublicChunks);
+            auto packed_public_data = _packedSource.StoreData(false);
+            _packedPublicChunks = MakeOwnedStoreData(packed_public_data);
+            _packedPublicBytes = CalcTotalBytes(_packedPublicChunks);
 
-            auto full_public_data = FullSource.StoreData(false);
-            FullPublicChunks = MakeOwnedStoreData(full_public_data);
-            FullPublicBytes = CalcTotalBytes(FullPublicChunks);
+            auto full_public_data = _fullSource.StoreData(false);
+            _fullPublicChunks = MakeOwnedStoreData(full_public_data);
+            _fullPublicBytes = CalcTotalBytes(_fullPublicChunks);
 
             set<hstring> str_hashes;
-            PackedSource.StoreAllData(PackedAllData, str_hashes);
-            FullSource.StoreAllData(FullAllData, str_hashes);
+            _packedSource.StoreAllData(_packedAllData, str_hashes);
+            _fullSource.StoreAllData(_fullAllData, str_hashes);
+        }
+
+        PropertiesStorageStrategyPerfFixture(const PropertiesStorageStrategyPerfFixture&) = delete;
+        PropertiesStorageStrategyPerfFixture(PropertiesStorageStrategyPerfFixture&&) = delete;
+        auto operator=(const PropertiesStorageStrategyPerfFixture&) -> PropertiesStorageStrategyPerfFixture& = delete;
+        auto operator=(PropertiesStorageStrategyPerfFixture&&) -> PropertiesStorageStrategyPerfFixture& = delete;
+
+        [[nodiscard]] auto GetRegistrar() const -> ptr<const PropertyRegistrar>
+        {
+            return &_registrar;
+        }
+
+        [[nodiscard]] auto GetProto() const -> ptr<const Properties>
+        {
+            return &_proto;
+        }
+
+        [[nodiscard]] auto GetPackedSource() -> Properties&
+        {
+            return _packedSource;
+        }
+
+        [[nodiscard]] auto GetFullSource() -> Properties&
+        {
+            return _fullSource;
+        }
+
+        [[nodiscard]] auto HasProbeIntProp() const -> bool
+        {
+            return static_cast<bool>(_probeIntProp);
+        }
+
+        [[nodiscard]] auto HasProbeStringProp() const -> bool
+        {
+            return static_cast<bool>(_probeStringProp);
         }
 
         [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
-            return ProbeIntProp;
+            FO_VERIFY_AND_THROW(_probeIntProp, "Probe int property not registered");
+            return _probeIntProp;
         }
 
         [[nodiscard]] auto GetProbeStringProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
-            return ProbeStringProp;
+            FO_VERIFY_AND_THROW(_probeStringProp, "Probe string property not registered");
+            return _probeStringProp;
         }
 
-        [[nodiscard]] auto DiagnoseTextSerializationFailure(const Properties& props) -> string
+        [[nodiscard]] auto GetOverrideCount() const -> size_t
         {
-            for (size_t i = 1; i < Registrar.GetPropertiesCount(); i++) {
-                auto prop = Registrar.GetPropertyByIndex(numeric_cast<int32_t>(i));
+            return _overrideProps.size();
+        }
+
+        [[nodiscard]] auto GetPackedPublicChunks() const -> const vector<vector<uint8_t>>&
+        {
+            return _packedPublicChunks;
+        }
+
+        [[nodiscard]] auto GetFullPublicChunks() const -> const vector<vector<uint8_t>>&
+        {
+            return _fullPublicChunks;
+        }
+
+        [[nodiscard]] auto GetPackedAllData() const -> const vector<uint8_t>&
+        {
+            return _packedAllData;
+        }
+
+        [[nodiscard]] auto GetFullAllData() const -> const vector<uint8_t>&
+        {
+            return _fullAllData;
+        }
+
+        [[nodiscard]] auto GetPackedPublicBytes() const -> size_t
+        {
+            return _packedPublicBytes;
+        }
+
+        [[nodiscard]] auto GetFullPublicBytes() const -> size_t
+        {
+            return _fullPublicBytes;
+        }
+
+        auto DiagnoseTextSerializationFailure(const Properties& props) -> string
+        {
+            for (size_t i = 1; i < _registrar.GetPropertiesCount(); i++) {
+                auto prop = _registrar.GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (prop->IsDisabled() || !prop->IsPersistent()) {
                     continue;
                 }
 
                 try {
-                    string text = PropertiesSerializer::SavePropertyToText(&props, prop.get(), Hashes, Resolver);
+                    string text = PropertiesSerializer::SavePropertyToText(&props, prop.get(), _hashes, _resolver);
                     static_cast<void>(text);
                 }
                 catch (const std::exception& ex) {
@@ -629,20 +679,9 @@ namespace
 
         void ApplyOverrides(Properties& props) const
         {
-            for (const auto& spec : OverrideProps) {
+            for (const auto& spec : _overrideProps) {
                 SetOverrideValue(props, spec);
             }
-        }
-
-        static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
-        {
-            size_t total = 0;
-
-            for (const auto& chunk : chunks) {
-                total += chunk.size();
-            }
-
-            return total;
         }
 
         auto TryBuildTextData(const Properties& props, map<string, string>& text_data, size_t& text_chars, string& error) -> bool
@@ -666,6 +705,17 @@ namespace
         }
 
     private:
+        static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
+        {
+            size_t total = 0;
+
+            for (const auto& chunk : chunks) {
+                total += chunk.size();
+            }
+
+            return total;
+        }
+
         auto RegisterProperty(PerfPropertyKind kind, int index) -> ptr<const Property>
         {
             string prop_name;
@@ -673,19 +723,19 @@ namespace
             switch (kind) {
             case PerfPropertyKind::PublicInt:
                 prop_name = strex("PublicValue{}", index);
-                return Registrar.RegisterProperty({"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"});
+                return _registrar.RegisterProperty({"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"});
             case PerfPropertyKind::PublicString:
                 prop_name = strex("PublicName{}", index);
-                return Registrar.RegisterProperty({"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"});
+                return _registrar.RegisterProperty({"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"});
             case PerfPropertyKind::OwnerBool:
                 prop_name = strex("OwnerFlag{}", index);
-                return Registrar.RegisterProperty({"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"});
+                return _registrar.RegisterProperty({"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"});
             case PerfPropertyKind::PublicFloat:
                 prop_name = strex("PublicRatio{}", index);
-                return Registrar.RegisterProperty({"Common", "float32", prop_name, "Mutable", "Persistent", "PublicSync"});
+                return _registrar.RegisterProperty({"Common", "float32", prop_name, "Mutable", "Persistent", "PublicSync"});
             case PerfPropertyKind::LocalInt:
                 prop_name = strex("LocalMarker{}", index);
-                return Registrar.RegisterProperty({"Common", "int32", prop_name, "Mutable", "Persistent", "NoSync"});
+                return _registrar.RegisterProperty({"Common", "int32", prop_name, "Mutable", "Persistent", "NoSync"});
             }
 
             throw std::runtime_error("Unknown perf property kind");
@@ -742,61 +792,119 @@ namespace
             FO_VERIFY_AND_THROW(spec.Prop, "Perf property spec has no property");
             return spec.Prop;
         }
+
+        hash_storage _hashes {};
+        TestNameResolver _resolver {};
+        PropertyRegistrar _registrar;
+        vector<PerfPropertySpec> _props {};
+        vector<PerfPropertySpec> _overrideProps {};
+        nptr<const Property> _probeIntProp {};
+        nptr<const Property> _probeStringProp {};
+        Properties _proto;
+        Properties _packedSource;
+        Properties _fullSource;
+        vector<vector<uint8_t>> _packedPublicChunks {};
+        vector<vector<uint8_t>> _fullPublicChunks {};
+        vector<uint8_t> _packedAllData {};
+        vector<uint8_t> _fullAllData {};
+        size_t _packedPublicBytes {};
+        size_t _fullPublicBytes {};
     };
 
-    struct PropertiesComplexStrategyPerfFixture
+    class PropertiesComplexStrategyPerfFixture
     {
-        hash_storage Hashes {};
-        TestNameResolver Resolver {};
-        PropertyRegistrar Registrar;
-        nptr<const Property> PatrolWaypointsProp {};
-        nptr<const Property> ModeSetsProp {};
-        string PatrolProtoText {};
-        string PatrolOverrideTextA {};
-        string PatrolOverrideTextB {};
-        string ModeProtoText {};
-        string ModeOverrideTextA {};
-        string ModeOverrideTextB {};
-        Properties Proto;
-        Properties PackedSource;
-        Properties FullSource;
-
+    public:
         PropertiesComplexStrategyPerfFixture() :
-            Registrar("PerfComplexStorageEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
-            PatrolWaypointsProp(Registrar.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
-            ModeSetsProp(Registrar.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
-            Proto(&Registrar),
-            PackedSource(&Registrar, &Proto),
-            FullSource(&Registrar)
+            _registrar("PerfComplexStorageEntity", EngineSideKind::ServerSide, &_hashes, &_resolver),
+            _patrolWaypointsProp(_registrar.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
+            _modeSetsProp(_registrar.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
+            _proto(&_registrar),
+            _packedSource(&_registrar, &_proto),
+            _fullSource(&_registrar)
         {
-            PatrolProtoText = MakePatrolValue(1, 2);
-            PatrolOverrideTextA = MakePatrolValue(10, 20);
-            PatrolOverrideTextB = MakePatrolValue(30, 40);
-            ModeProtoText = MakeModeSetsValue("primary", "reserve");
-            ModeOverrideTextA = MakeModeSetsValue("alpha", "beta");
-            ModeOverrideTextB = MakeModeSetsValue("gamma", "delta");
+            _patrolProtoText = MakePatrolValue(1, 2);
+            _patrolOverrideTextA = MakePatrolValue(10, 20);
+            _patrolOverrideTextB = MakePatrolValue(30, 40);
+            _modeProtoText = MakeModeSetsValue("primary", "reserve");
+            _modeOverrideTextA = MakeModeSetsValue("alpha", "beta");
+            _modeOverrideTextB = MakeModeSetsValue("gamma", "delta");
 
-            Proto.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolProtoText});
-            Proto.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeProtoText});
+            _proto.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {_patrolProtoText});
+            _proto.SetValueAsAnyProps(_modeSetsProp->GetRegIndex(), any_t {_modeProtoText});
 
-            FullSource.CopyFrom(Proto);
+            _fullSource.CopyFrom(_proto);
 
-            PackedSource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
-            PackedSource.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
-            FullSource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
-            FullSource.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
+            _packedSource.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {_patrolOverrideTextA});
+            _packedSource.SetValueAsAnyProps(_modeSetsProp->GetRegIndex(), any_t {_modeOverrideTextA});
+            _fullSource.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {_patrolOverrideTextA});
+            _fullSource.SetValueAsAnyProps(_modeSetsProp->GetRegIndex(), any_t {_modeOverrideTextA});
+        }
+
+        PropertiesComplexStrategyPerfFixture(const PropertiesComplexStrategyPerfFixture&) = delete;
+        PropertiesComplexStrategyPerfFixture(PropertiesComplexStrategyPerfFixture&&) = delete;
+        auto operator=(const PropertiesComplexStrategyPerfFixture&) -> PropertiesComplexStrategyPerfFixture& = delete;
+        auto operator=(PropertiesComplexStrategyPerfFixture&&) -> PropertiesComplexStrategyPerfFixture& = delete;
+
+        [[nodiscard]] auto GetRegistrar() const -> ptr<const PropertyRegistrar>
+        {
+            return &_registrar;
+        }
+
+        [[nodiscard]] auto GetHashes() -> hash_storage&
+        {
+            return _hashes;
+        }
+
+        [[nodiscard]] auto GetResolver() -> TestNameResolver&
+        {
+            return _resolver;
+        }
+
+        [[nodiscard]] auto GetProto() const -> ptr<const Properties>
+        {
+            return &_proto;
+        }
+
+        [[nodiscard]] auto GetPackedSource() -> Properties&
+        {
+            return _packedSource;
+        }
+
+        [[nodiscard]] auto GetFullSource() -> Properties&
+        {
+            return _fullSource;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp;
+            FO_VERIFY_AND_THROW(_patrolWaypointsProp, "Patrol waypoints property not registered");
+            return _patrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp;
+            FO_VERIFY_AND_THROW(_modeSetsProp, "Mode sets property not registered");
+            return _modeSetsProp;
+        }
+
+        [[nodiscard]] auto GetPatrolOverrideTextA() const -> const string&
+        {
+            return _patrolOverrideTextA;
+        }
+
+        [[nodiscard]] auto GetPatrolOverrideTextB() const -> const string&
+        {
+            return _patrolOverrideTextB;
+        }
+
+        [[nodiscard]] auto GetModeOverrideTextA() const -> const string&
+        {
+            return _modeOverrideTextA;
+        }
+
+        [[nodiscard]] auto GetModeOverrideTextB() const -> const string&
+        {
+            return _modeOverrideTextB;
         }
 
     private:
@@ -847,73 +955,126 @@ namespace
 
             return AnyData::ValueToString(AnyData::Value {std::move(mode_sets)});
         }
+
+        hash_storage _hashes {};
+        TestNameResolver _resolver {};
+        PropertyRegistrar _registrar;
+        nptr<const Property> _patrolWaypointsProp {};
+        nptr<const Property> _modeSetsProp {};
+        string _patrolProtoText {};
+        string _patrolOverrideTextA {};
+        string _patrolOverrideTextB {};
+        string _modeProtoText {};
+        string _modeOverrideTextA {};
+        string _modeOverrideTextB {};
+        Properties _proto;
+        Properties _packedSource;
+        Properties _fullSource;
     };
 
-    struct PropertiesPerfFixture
+    class PropertiesPerfFixture
     {
-        hash_storage Hashes {};
-        TestNameResolver Resolver {};
-        PropertyRegistrar Registrar;
-        vector<ptr<const Property>> PublicIntProps {};
-        vector<ptr<const Property>> PublicStringProps {};
-        vector<ptr<const Property>> OwnerBoolProps {};
-        Properties Proto;
-        Properties Full;
-        Properties DerivedSource;
-        vector<vector<uint8_t>> DerivedPublicChunks {};
-        vector<uint8_t> FullAllData {};
-        vector<uint8_t> DerivedAllData {};
-
+    public:
         PropertiesPerfFixture() :
-            Registrar("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
-            PublicIntProps {RegisterPublicIntProperties(Registrar)},
-            PublicStringProps {RegisterPublicStringProperties(Registrar)},
-            OwnerBoolProps {RegisterOwnerBoolProperties(Registrar)},
-            Proto(&Registrar),
-            Full(&Registrar),
-            DerivedSource(&Registrar, &Proto)
+            _registrar("PerfEntity", EngineSideKind::ServerSide, &_hashes, &_resolver),
+            _publicIntProps {RegisterPublicIntProperties(_registrar)},
+            _publicStringProps {RegisterPublicStringProperties(_registrar)},
+            _ownerBoolProps {RegisterOwnerBoolProperties(_registrar)},
+            _proto(&_registrar),
+            _full(&_registrar),
+            _derivedSource(&_registrar, &_proto)
         {
-            for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                Proto.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
-                Full.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
+            for (size_t i = 0; i < _publicIntProps.size(); i++) {
+                _proto.SetValue<int32_t>(_publicIntProps[i], numeric_cast<int32_t>(i));
+                _full.SetValue<int32_t>(_publicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
             }
 
-            for (size_t i = 0; i < PublicStringProps.size(); i++) {
+            for (size_t i = 0; i < _publicStringProps.size(); i++) {
                 string proto_value {"proto-"};
                 proto_value += std::to_string(i).c_str();
                 string full_value {"full-"};
                 full_value += std::to_string(i).c_str();
-                Proto.SetValue<string>(PublicStringProps[i], proto_value);
-                Full.SetValue<string>(PublicStringProps[i], full_value);
+                _proto.SetValue<string>(_publicStringProps[i], proto_value);
+                _full.SetValue<string>(_publicStringProps[i], full_value);
             }
 
-            for (size_t i = 0; i < OwnerBoolProps.size(); i++) {
-                Proto.SetValue<bool>(OwnerBoolProps[i], false);
-                Full.SetValue<bool>(OwnerBoolProps[i], i % 2 == 0);
+            for (size_t i = 0; i < _ownerBoolProps.size(); i++) {
+                _proto.SetValue<bool>(_ownerBoolProps[i], false);
+                _full.SetValue<bool>(_ownerBoolProps[i], i % 2 == 0);
             }
 
-            for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                DerivedSource.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(100 + i));
+            for (size_t i = 0; i < _publicIntProps.size(); i++) {
+                _derivedSource.SetValue<int32_t>(_publicIntProps[i], numeric_cast<int32_t>(100 + i));
             }
 
-            for (size_t i = 0; i < PublicStringProps.size(); i++) {
+            for (size_t i = 0; i < _publicStringProps.size(); i++) {
                 string override_value {"derived-"};
                 override_value += std::to_string(i).c_str();
-                DerivedSource.SetValue<string>(PublicStringProps[i], override_value);
+                _derivedSource.SetValue<string>(_publicStringProps[i], override_value);
             }
 
-            for (size_t i = 0; i < OwnerBoolProps.size(); i++) {
-                DerivedSource.SetValue<bool>(OwnerBoolProps[i], i % 3 == 0);
+            for (size_t i = 0; i < _ownerBoolProps.size(); i++) {
+                _derivedSource.SetValue<bool>(_ownerBoolProps[i], i % 3 == 0);
             }
 
-            auto derived_public_data = DerivedSource.StoreData(false);
-            DerivedPublicChunks = MakeOwnedStoreData(derived_public_data);
+            auto derived_public_data = _derivedSource.StoreData(false);
+            _derivedPublicChunks = MakeOwnedStoreData(derived_public_data);
 
-            (void)Full.StoreData(false);
+            (void)_full.StoreData(false);
 
             set<hstring> str_hashes;
-            Full.StoreAllData(FullAllData, str_hashes);
-            DerivedSource.StoreAllData(DerivedAllData, str_hashes);
+            _full.StoreAllData(_fullAllData, str_hashes);
+            _derivedSource.StoreAllData(_derivedAllData, str_hashes);
+        }
+
+        PropertiesPerfFixture(const PropertiesPerfFixture&) = delete;
+        PropertiesPerfFixture(PropertiesPerfFixture&&) = delete;
+        auto operator=(const PropertiesPerfFixture&) -> PropertiesPerfFixture& = delete;
+        auto operator=(PropertiesPerfFixture&&) -> PropertiesPerfFixture& = delete;
+
+        [[nodiscard]] auto GetRegistrar() const -> ptr<const PropertyRegistrar>
+        {
+            return &_registrar;
+        }
+
+        [[nodiscard]] auto GetProto() const -> ptr<const Properties>
+        {
+            return &_proto;
+        }
+
+        [[nodiscard]] auto GetFull() -> Properties&
+        {
+            return _full;
+        }
+
+        [[nodiscard]] auto GetDerivedSource() -> Properties&
+        {
+            return _derivedSource;
+        }
+
+        [[nodiscard]] auto GetPublicIntProps() const -> const vector<ptr<const Property>>&
+        {
+            return _publicIntProps;
+        }
+
+        [[nodiscard]] auto GetPublicStringProps() const -> const vector<ptr<const Property>>&
+        {
+            return _publicStringProps;
+        }
+
+        [[nodiscard]] auto GetDerivedPublicChunks() const -> const vector<vector<uint8_t>>&
+        {
+            return _derivedPublicChunks;
+        }
+
+        [[nodiscard]] auto GetFullAllData() const -> const vector<uint8_t>&
+        {
+            return _fullAllData;
+        }
+
+        [[nodiscard]] auto GetDerivedAllData() const -> const vector<uint8_t>&
+        {
+            return _derivedAllData;
         }
 
     private:
@@ -961,28 +1122,31 @@ namespace
 
             return result;
         }
+
+        hash_storage _hashes {};
+        TestNameResolver _resolver {};
+        PropertyRegistrar _registrar;
+        vector<ptr<const Property>> _publicIntProps {};
+        vector<ptr<const Property>> _publicStringProps {};
+        vector<ptr<const Property>> _ownerBoolProps {};
+        Properties _proto;
+        Properties _full;
+        Properties _derivedSource;
+        vector<vector<uint8_t>> _derivedPublicChunks {};
+        vector<uint8_t> _fullAllData {};
+        vector<uint8_t> _derivedAllData {};
     };
 
-    struct PropertiesDictPerfFixture
+    class PropertiesDictPerfFixture
     {
-        hash_storage Hashes {};
-        TestNameResolver Resolver {};
-        PropertyRegistrar Registrar;
-        nptr<const Property> FloatLabelsProp {};
-        nptr<const Property> PatrolWaypointsProp {};
-        nptr<const Property> ModeSetsProp {};
-        Properties Source;
-        Properties PatrolOnlySource;
-        map<string, string> TextData {};
-        optional<AnyData::Value> PatrolWaypointsValue {};
-
+    public:
         PropertiesDictPerfFixture() :
-            Registrar("PerfDictEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
-            FloatLabelsProp(Registrar.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"})),
-            PatrolWaypointsProp(Registrar.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
-            ModeSetsProp(Registrar.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
-            Source(&Registrar),
-            PatrolOnlySource(&Registrar)
+            _registrar("PerfDictEntity", EngineSideKind::ServerSide, &_hashes, &_resolver),
+            _floatLabelsProp(_registrar.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"})),
+            _patrolWaypointsProp(_registrar.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
+            _modeSetsProp(_registrar.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
+            _source(&_registrar),
+            _patrolOnlySource(&_registrar)
         {
             auto labels_value = []() {
                 AnyData::Dict labels;
@@ -1042,40 +1206,86 @@ namespace
                 return AnyData::Value {std::move(mode_sets)};
             }();
 
-            Source.SetValueAsAnyProps(FloatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
-            Source.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
-            Source.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
+            _source.SetValueAsAnyProps(_floatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
+            _source.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            _source.SetValueAsAnyProps(_modeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
 
-            PatrolOnlySource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            _patrolOnlySource.SetValueAsAnyProps(_patrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
 
-            TextData = Source.SaveToText(nullptr);
-            PatrolWaypointsValue.emplace(PropertiesSerializer::SavePropertyToValue(&Source, GetPatrolWaypointsProp(), Hashes, Resolver));
+            _textData = _source.SaveToText(nullptr);
+            _patrolWaypointsValue.emplace(PropertiesSerializer::SavePropertyToValue(&_source, GetPatrolWaypointsProp(), _hashes, _resolver));
+        }
+
+        PropertiesDictPerfFixture(const PropertiesDictPerfFixture&) = delete;
+        PropertiesDictPerfFixture(PropertiesDictPerfFixture&&) = delete;
+        auto operator=(const PropertiesDictPerfFixture&) -> PropertiesDictPerfFixture& = delete;
+        auto operator=(PropertiesDictPerfFixture&&) -> PropertiesDictPerfFixture& = delete;
+
+        [[nodiscard]] auto GetRegistrar() const -> ptr<const PropertyRegistrar>
+        {
+            return &_registrar;
+        }
+
+        [[nodiscard]] auto GetHashes() -> hash_storage&
+        {
+            return _hashes;
+        }
+
+        [[nodiscard]] auto GetResolver() -> TestNameResolver&
+        {
+            return _resolver;
+        }
+
+        [[nodiscard]] auto GetSource() -> Properties&
+        {
+            return _source;
+        }
+
+        [[nodiscard]] auto GetPatrolOnlySource() -> Properties&
+        {
+            return _patrolOnlySource;
+        }
+
+        [[nodiscard]] auto GetTextData() const -> const map<string, string>&
+        {
+            return _textData;
         }
 
         [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(FloatLabelsProp, "Float labels property not registered");
-            return FloatLabelsProp;
+            FO_VERIFY_AND_THROW(_floatLabelsProp, "Float labels property not registered");
+            return _floatLabelsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp;
+            FO_VERIFY_AND_THROW(_patrolWaypointsProp, "Patrol waypoints property not registered");
+            return _patrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
-            FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp;
+            FO_VERIFY_AND_THROW(_modeSetsProp, "Mode sets property not registered");
+            return _modeSetsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
         {
-            FO_VERIFY_AND_THROW(PatrolWaypointsValue.has_value(), "Patrol waypoints value not computed");
-            return &*PatrolWaypointsValue;
+            FO_VERIFY_AND_THROW(_patrolWaypointsValue.has_value(), "Patrol waypoints value not computed");
+            return &*_patrolWaypointsValue;
         }
 
+    private:
+        hash_storage _hashes {};
+        TestNameResolver _resolver {};
+        PropertyRegistrar _registrar;
+        nptr<const Property> _floatLabelsProp {};
+        nptr<const Property> _patrolWaypointsProp {};
+        nptr<const Property> _modeSetsProp {};
+        Properties _source;
+        Properties _patrolOnlySource;
+        map<string, string> _textData {};
+        optional<AnyData::Value> _patrolWaypointsValue {};
     };
 }
 
@@ -5006,13 +5216,13 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     PropertiesPerfFixture fixture;
     PropertiesDictPerfFixture dict_fixture;
 
-    CHECK(!fixture.PublicIntProps.empty());
-    CHECK(!fixture.PublicStringProps.empty());
-    CHECK(!fixture.DerivedPublicChunks.empty());
+    CHECK(!fixture.GetPublicIntProps().empty());
+    CHECK(!fixture.GetPublicStringProps().empty());
+    CHECK(!fixture.GetDerivedPublicChunks().empty());
 
     BENCHMARK("StoreData full cached public")
     {
-        auto stored_data = fixture.Full.StoreData(false);
+        auto stored_data = fixture.GetFull().StoreData(false);
         return stored_data.Sizes->size();
     };
 
@@ -5021,8 +5231,8 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         uint32_t counter = 0;
 
         meter.measure([&](int) {
-            fixture.Full.SetValue<int32_t>(fixture.PublicIntProps.front(), numeric_cast<int32_t>(++counter));
-            auto stored_data = fixture.Full.StoreData(false);
+            fixture.GetFull().SetValue<int32_t>(fixture.GetPublicIntProps().front(), numeric_cast<int32_t>(++counter));
+            auto stored_data = fixture.GetFull().StoreData(false);
             return stored_data.Sizes->at(0);
         });
     };
@@ -5030,9 +5240,9 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("RestoreData derived public payload")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrar, &fixture.Proto);
-            target.RestoreData(fixture.DerivedPublicChunks);
-            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
+            Properties target(fixture.GetRegistrar(), fixture.GetProto());
+            target.RestoreData(fixture.GetDerivedPublicChunks());
+            return target.GetValueFast<int32_t>(fixture.GetPublicIntProps().front());
         });
     };
 
@@ -5042,7 +5252,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
-            fixture.Full.StoreAllData(all_data, str_hashes);
+            fixture.GetFull().StoreAllData(all_data, str_hashes);
             return all_data.size();
         });
     };
@@ -5053,7 +5263,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
-            fixture.DerivedSource.StoreAllData(all_data, str_hashes);
+            fixture.GetDerivedSource().StoreAllData(all_data, str_hashes);
             return all_data.size();
         });
     };
@@ -5061,35 +5271,35 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("RestoreAllData full snapshot")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrar);
-            target.RestoreAllData(fixture.FullAllData);
-            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
+            Properties target(fixture.GetRegistrar());
+            target.RestoreAllData(fixture.GetFullAllData());
+            return target.GetValueFast<int32_t>(fixture.GetPublicIntProps().front());
         });
     };
 
     BENCHMARK_ADVANCED("RestoreAllData derived snapshot")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrar, &fixture.Proto);
-            target.RestoreAllData(fixture.DerivedAllData);
-            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
+            Properties target(fixture.GetRegistrar(), fixture.GetProto());
+            target.RestoreAllData(fixture.GetDerivedAllData());
+            return target.GetValueFast<int32_t>(fixture.GetPublicIntProps().front());
         });
     };
 
     BENCHMARK_ADVANCED("CopyFrom full to derived")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrar, &fixture.Proto);
-            target.CopyFrom(fixture.Full);
-            return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
+            Properties target(fixture.GetRegistrar(), fixture.GetProto());
+            target.CopyFrom(fixture.GetFull());
+            return target.GetValueFast<int32_t>(fixture.GetPublicIntProps().front());
         });
     };
 
-    Properties left(&fixture.Registrar, &fixture.Proto);
-    left.CopyFrom(fixture.DerivedSource);
+    Properties left(fixture.GetRegistrar(), fixture.GetProto());
+    left.CopyFrom(fixture.GetDerivedSource());
 
-    Properties right(&fixture.Registrar, &fixture.Proto);
-    right.CopyFrom(fixture.DerivedSource);
+    Properties right(fixture.GetRegistrar(), fixture.GetProto());
+    right.CopyFrom(fixture.GetDerivedSource());
 
     BENCHMARK("CompareData same-base derived fast path")
     {
@@ -5099,7 +5309,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("SaveToText dict-rich payload")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto text_data = dict_fixture.Source.SaveToText(nullptr);
+            auto text_data = dict_fixture.GetSource().SaveToText(nullptr);
             return text_data.size();
         });
     };
@@ -5107,9 +5317,9 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("ApplyFromText dict-rich payload")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&dict_fixture.Registrar);
-            target.ApplyFromText(dict_fixture.TextData);
-            return target.CompareData(dict_fixture.Source, {}, false);
+            Properties target(dict_fixture.GetRegistrar());
+            target.ApplyFromText(dict_fixture.GetTextData());
+            return target.CompareData(dict_fixture.GetSource(), {}, false);
         });
     };
 
@@ -5118,7 +5328,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("SavePropertyToValue struct dict-of-array")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto value = PropertiesSerializer::SavePropertyToValue(&dict_fixture.Source, dict_patrol_waypoints_prop, dict_fixture.Hashes, dict_fixture.Resolver);
+            auto value = PropertiesSerializer::SavePropertyToValue(&dict_fixture.GetSource(), dict_patrol_waypoints_prop, dict_fixture.GetHashes(), dict_fixture.GetResolver());
             return value.AsDict().Size();
         });
     };
@@ -5126,9 +5336,9 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("LoadPropertyFromValue struct dict-of-array")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&dict_fixture.Registrar);
-            PropertiesSerializer::LoadPropertyFromValue(&target, dict_patrol_waypoints_prop, dict_fixture.GetPatrolWaypointsValue()->Copy(), dict_fixture.Hashes, dict_fixture.Resolver);
-            return target.CompareData(dict_fixture.PatrolOnlySource, {}, false);
+            Properties target(dict_fixture.GetRegistrar());
+            PropertiesSerializer::LoadPropertyFromValue(&target, dict_patrol_waypoints_prop, dict_fixture.GetPatrolWaypointsValue()->Copy(), dict_fixture.GetHashes(), dict_fixture.GetResolver());
+            return target.CompareData(dict_fixture.GetPatrolOnlySource(), {}, false);
         });
     };
 }
@@ -5147,35 +5357,35 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
         {
             PropertiesStorageStrategyPerfFixture fixture(prop_count, fill_percent);
 
-            CHECK(static_cast<bool>(fixture.ProbeIntProp));
-            CHECK(static_cast<bool>(fixture.ProbeStringProp));
-            CHECK(numeric_cast<int>(fixture.OverrideProps.size()) == std::max(1, prop_count * fill_percent / 100));
+            CHECK(fixture.HasProbeIntProp());
+            CHECK(fixture.HasProbeStringProp());
+            CHECK(numeric_cast<int>(fixture.GetOverrideCount()) == std::max(1, prop_count * fill_percent / 100));
             auto probe_int_prop = fixture.GetProbeIntProp();
             auto probe_string_prop = fixture.GetProbeStringProp();
 
             BENCHMARK("Read simple int packed")
             {
-                return fixture.PackedSource.GetValueFast<int32_t>(probe_int_prop);
+                return fixture.GetPackedSource().GetValueFast<int32_t>(probe_int_prop);
             };
 
             BENCHMARK("Read simple int full")
             {
-                return fixture.FullSource.GetValueFast<int32_t>(probe_int_prop);
+                return fixture.GetFullSource().GetValueFast<int32_t>(probe_int_prop);
             };
 
             BENCHMARK("Read simple string packed")
             {
-                return fixture.PackedSource.GetValueFast<string>(probe_string_prop).size();
+                return fixture.GetPackedSource().GetValueFast<string>(probe_string_prop).size();
             };
 
             BENCHMARK("Read simple string full")
             {
-                return fixture.FullSource.GetValueFast<string>(probe_string_prop).size();
+                return fixture.GetFullSource().GetValueFast<string>(probe_string_prop).size();
             };
 
             BENCHMARK_ADVANCED("Modify simple int packed")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrar, &fixture.Proto);
+                Properties target(fixture.GetRegistrar(), fixture.GetProto());
                 int32_t counter = 0;
 
                 meter.measure([&](int) {
@@ -5186,8 +5396,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("Modify simple int full")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrar);
-                target.CopyFrom(fixture.Proto);
+                Properties target(fixture.GetRegistrar());
+                target.CopyFrom(*fixture.GetProto());
                 int32_t counter = 0;
 
                 meter.measure([&](int) {
@@ -5198,7 +5408,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("Modify simple string packed")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrar, &fixture.Proto);
+                Properties target(fixture.GetRegistrar(), fixture.GetProto());
                 uint32_t counter = 0;
 
                 meter.measure([&](int) {
@@ -5209,8 +5419,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
 
             BENCHMARK_ADVANCED("Modify simple string full")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrar);
-                target.CopyFrom(fixture.Proto);
+                Properties target(fixture.GetRegistrar());
+                target.CopyFrom(*fixture.GetProto());
                 uint32_t counter = 0;
 
                 meter.measure([&](int) {
@@ -5222,7 +5432,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("Construct packed from proto and apply overrides")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar, &fixture.Proto);
+                    Properties target(fixture.GetRegistrar(), fixture.GetProto());
                     fixture.ApplyOverrides(target);
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
@@ -5231,8 +5441,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("Construct full from proto and apply overrides")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar);
-                    target.CopyFrom(fixture.Proto);
+                    Properties target(fixture.GetRegistrar());
+                    target.CopyFrom(*fixture.GetProto());
                     fixture.ApplyOverrides(target);
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
@@ -5241,7 +5451,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("StoreData packed public payload")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    auto stored_data = fixture.PackedSource.StoreData(false);
+                    auto stored_data = fixture.GetPackedSource().StoreData(false);
                     return stored_data.Sizes->size();
                 });
             };
@@ -5249,7 +5459,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("StoreData full public payload")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    auto stored_data = fixture.FullSource.StoreData(false);
+                    auto stored_data = fixture.GetFullSource().StoreData(false);
                     return stored_data.Sizes->size();
                 });
             };
@@ -5257,8 +5467,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("RestoreData packed public payload into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar, &fixture.Proto);
-                    target.RestoreData(fixture.PackedPublicChunks);
+                    Properties target(fixture.GetRegistrar(), fixture.GetProto());
+                    target.RestoreData(fixture.GetPackedPublicChunks());
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
@@ -5266,9 +5476,9 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("RestoreData full public payload into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar);
-                    target.CopyFrom(fixture.Proto);
-                    target.RestoreData(fixture.FullPublicChunks);
+                    Properties target(fixture.GetRegistrar());
+                    target.CopyFrom(*fixture.GetProto());
+                    target.RestoreData(fixture.GetFullPublicChunks());
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
@@ -5279,7 +5489,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
-                    fixture.PackedSource.StoreAllData(all_data, str_hashes);
+                    fixture.GetPackedSource().StoreAllData(all_data, str_hashes);
                     return all_data.size();
                 });
             };
@@ -5290,7 +5500,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
-                    fixture.FullSource.StoreAllData(all_data, str_hashes);
+                    fixture.GetFullSource().StoreAllData(all_data, str_hashes);
                     return all_data.size();
                 });
             };
@@ -5298,8 +5508,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("RestoreAllData packed snapshot into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar, &fixture.Proto);
-                    target.RestoreAllData(fixture.PackedAllData);
+                    Properties target(fixture.GetRegistrar(), fixture.GetProto());
+                    target.RestoreAllData(fixture.GetPackedAllData());
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
@@ -5307,8 +5517,8 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("RestoreAllData full snapshot into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrar);
-                    target.RestoreAllData(fixture.FullAllData);
+                    Properties target(fixture.GetRegistrar());
+                    target.RestoreAllData(fixture.GetFullAllData());
                     return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
@@ -5326,7 +5536,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex patrol packed as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.PackedSource, patrol_waypoints_prop, fixture.Hashes, fixture.Resolver);
+            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.GetPackedSource(), patrol_waypoints_prop, fixture.GetHashes(), fixture.GetResolver());
             return value.AsDict().Size();
         });
     };
@@ -5334,7 +5544,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex patrol full as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.FullSource, patrol_waypoints_prop, fixture.Hashes, fixture.Resolver);
+            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.GetFullSource(), patrol_waypoints_prop, fixture.GetHashes(), fixture.GetResolver());
             return value.AsDict().Size();
         });
     };
@@ -5342,7 +5552,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex mode sets packed as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.PackedSource, mode_sets_prop, fixture.Hashes, fixture.Resolver);
+            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.GetPackedSource(), mode_sets_prop, fixture.GetHashes(), fixture.GetResolver());
             return value.AsDict().Size();
         });
     };
@@ -5350,18 +5560,18 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex mode sets full as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.FullSource, mode_sets_prop, fixture.Hashes, fixture.Resolver);
+            auto value = PropertiesSerializer::SavePropertyToValue(&fixture.GetFullSource(), mode_sets_prop, fixture.GetHashes(), fixture.GetResolver());
             return value.AsDict().Size();
         });
     };
 
     BENCHMARK_ADVANCED("Modify complex patrol packed via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrar, &fixture.Proto);
+        Properties target(fixture.GetRegistrar(), fixture.GetProto());
         uint32_t counter = 0;
 
         meter.measure([&](int) {
-            const string& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
+            const string& text = (++counter % 2 == 0) ? fixture.GetPatrolOverrideTextA() : fixture.GetPatrolOverrideTextB();
             target.SetValueAsAnyProps(patrol_waypoints_prop->GetRegIndex(), any_t {text});
             return target.GetRawData(patrol_waypoints_prop).size();
         });
@@ -5369,12 +5579,12 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("Modify complex patrol full via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrar);
-        target.CopyFrom(fixture.Proto);
+        Properties target(fixture.GetRegistrar());
+        target.CopyFrom(*fixture.GetProto());
         uint32_t counter = 0;
 
         meter.measure([&](int) {
-            const string& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
+            const string& text = (++counter % 2 == 0) ? fixture.GetPatrolOverrideTextA() : fixture.GetPatrolOverrideTextB();
             target.SetValueAsAnyProps(patrol_waypoints_prop->GetRegIndex(), any_t {text});
             return target.GetRawData(patrol_waypoints_prop).size();
         });
@@ -5382,11 +5592,11 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("Modify complex mode sets packed via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrar, &fixture.Proto);
+        Properties target(fixture.GetRegistrar(), fixture.GetProto());
         uint32_t counter = 0;
 
         meter.measure([&](int) {
-            const string& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;
+            const string& text = (++counter % 2 == 0) ? fixture.GetModeOverrideTextA() : fixture.GetModeOverrideTextB();
             target.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {text});
             return target.GetRawData(mode_sets_prop).size();
         });
@@ -5394,12 +5604,12 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
 
     BENCHMARK_ADVANCED("Modify complex mode sets full via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrar);
-        target.CopyFrom(fixture.Proto);
+        Properties target(fixture.GetRegistrar());
+        target.CopyFrom(*fixture.GetProto());
         uint32_t counter = 0;
 
         meter.measure([&](int) {
-            const string& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;
+            const string& text = (++counter % 2 == 0) ? fixture.GetModeOverrideTextA() : fixture.GetModeOverrideTextB();
             target.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {text});
             return target.GetRawData(mode_sets_prop).size();
         });
@@ -5425,15 +5635,15 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         string packed_text_error;
         string full_text_error;
 
-        bool packed_text_ok = fixture.TryBuildTextData(fixture.PackedSource, packed_text_data, packed_text_chars, packed_text_error);
-        bool full_text_ok = fixture.TryBuildTextData(fixture.FullSource, full_text_data, full_text_chars, full_text_error);
-        string packed_failing_prop = packed_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.PackedSource);
-        string full_failing_prop = full_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.FullSource);
+        bool packed_text_ok = fixture.TryBuildTextData(fixture.GetPackedSource(), packed_text_data, packed_text_chars, packed_text_error);
+        bool full_text_ok = fixture.TryBuildTextData(fixture.GetFullSource(), full_text_data, full_text_chars, full_text_error);
+        string packed_failing_prop = packed_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.GetPackedSource());
+        string full_failing_prop = full_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.GetFullSource());
 
-        std::cout << strex("StorageMetrics Props={} Fill={} Overrides={} PackedPublicChunks={} PackedPublicBytes={} FullPublicChunks={} FullPublicBytes={} PackedAllDataBytes={} FullAllDataBytes={} PackedTextOk={} PackedTextEntries={} PackedTextChars={} PackedTextError={} PackedTextFailingProp={} FullTextOk={} FullTextEntries={} FullTextChars={} FullTextError={} FullTextFailingProp={}\n", prop_count, fill_percent, fixture.OverrideProps.size(), fixture.PackedPublicChunks.size(), fixture.PackedPublicBytes, fixture.FullPublicChunks.size(), fixture.FullPublicBytes, fixture.PackedAllData.size(), fixture.FullAllData.size(), packed_text_ok, packed_text_data.size(), packed_text_chars, packed_text_error, packed_failing_prop, full_text_ok, full_text_data.size(), full_text_chars, full_text_error, full_failing_prop).str();
+        std::cout << strex("StorageMetrics Props={} Fill={} Overrides={} PackedPublicChunks={} PackedPublicBytes={} FullPublicChunks={} FullPublicBytes={} PackedAllDataBytes={} FullAllDataBytes={} PackedTextOk={} PackedTextEntries={} PackedTextChars={} PackedTextError={} PackedTextFailingProp={} FullTextOk={} FullTextEntries={} FullTextChars={} FullTextError={} FullTextFailingProp={}\n", prop_count, fill_percent, fixture.GetOverrideCount(), fixture.GetPackedPublicChunks().size(), fixture.GetPackedPublicBytes(), fixture.GetFullPublicChunks().size(), fixture.GetFullPublicBytes(), fixture.GetPackedAllData().size(), fixture.GetFullAllData().size(), packed_text_ok, packed_text_data.size(), packed_text_chars, packed_text_error, packed_failing_prop, full_text_ok, full_text_data.size(), full_text_chars, full_text_error, full_failing_prop).str();
 
-        CHECK(static_cast<bool>(fixture.ProbeIntProp));
-        CHECK(static_cast<bool>(fixture.ProbeStringProp));
+        CHECK(fixture.HasProbeIntProp());
+        CHECK(fixture.HasProbeStringProp());
     }
 }
 

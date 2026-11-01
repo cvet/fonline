@@ -877,19 +877,21 @@ TEST_CASE("SmartPointers")
 
         std::atomic<size_t> destroyed_count = 0;
 
-        struct RaceValue
+        class RaceValue
         {
+        public:
             explicit RaceValue(std::atomic<size_t>& counter) :
-                Counter {&counter}
+                _counter {&counter}
             {
             }
-            ~RaceValue() { Counter->fetch_add(1, std::memory_order_relaxed); }
+            ~RaceValue() { _counter->fetch_add(1, std::memory_order_relaxed); }
             RaceValue(const RaceValue&) = delete;
             RaceValue(RaceValue&&) noexcept = delete;
             auto operator=(const RaceValue&) = delete;
             auto operator=(RaceValue&&) noexcept = delete;
 
-            ptr<std::atomic<size_t>> Counter;
+        private:
+            ptr<std::atomic<size_t>> _counter;
         };
 
         auto shared = safe_alloc::make_shared<RaceValue>(destroyed_count);

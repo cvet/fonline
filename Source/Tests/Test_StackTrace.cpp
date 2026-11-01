@@ -44,8 +44,9 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     // RAII helper so each section starts with a clean provider regardless of the previous one
-    struct ScopedScriptStackTraceProvider
+    class ScopedScriptStackTraceProvider
     {
+    public:
         explicit ScopedScriptStackTraceProvider(stack_trace::script_provider provider) noexcept { stack_trace::set_script_provider("Test", std::move(provider)); }
         ScopedScriptStackTraceProvider(const ScopedScriptStackTraceProvider&) = delete;
         ScopedScriptStackTraceProvider(ScopedScriptStackTraceProvider&&) noexcept = delete;

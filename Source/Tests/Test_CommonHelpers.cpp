@@ -37,6 +37,29 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ScopedTestResource
+{
+    int32_t Initialized {};
+    nptr<int32_t> Cleared {};
+    nptr<int32_t> ClearCount {};
+};
+
+static void InitScopedTestResource(ScopedTestResource* value) noexcept
+{
+    value->Initialized = 37;
+}
+
+static void ClearScopedTestResource(ScopedTestResource* value) noexcept
+{
+    if (value->Cleared) {
+        *value->Cleared = value->Initialized;
+    }
+
+    if (value->ClearCount) {
+        ++*value->ClearCount;
+    }
+}
+
 namespace
 {
     class TestBase
@@ -208,6 +231,68 @@ TEST_CASE("CommonHelpers")
         CHECK(refs.size() == 2);
         CHECK(first.RefCount == 0);
         CHECK(second.RefCount == 0);
+    }
+
+    SECTION("ScopedInitClearNormalExit")
+    {
+        int32_t initialized = 0;
+        int32_t cleared = 0;
+        int32_t clear_count = 0;
+
+        {
+            scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource> resource;
+            resource.get().Cleared = &cleared;
+            resource.get().ClearCount = &clear_count;
+
+            initialized = resource.get().Initialized;
+            CHECK(initialized == 37);
+
+            const auto& const_resource = resource;
+            CHECK(const_resource.get().Initialized == 37);
+
+            resource.get().Initialized = 41;
+            CHECK(const_resource.get().Initialized == 41);
+            resource.get().Initialized = initialized;
+
+            CHECK(cleared == 0);
+            CHECK(clear_count == 0);
+        }
+
+        CHECK(cleared == 37);
+        CHECK(clear_count == 1);
+    }
+
+    SECTION("ScopedInitClearExceptionUnwind")
+    {
+        int32_t cleared = 0;
+        int32_t clear_count = 0;
+
+        auto operation = [&]() {
+            scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource> resource;
+            resource.get().Cleared = &cleared;
+            resource.get().ClearCount = &clear_count;
+
+            throw std::runtime_error("Scoped init clear unwind");
+        };
+
+        CHECK_THROWS_WITH(operation(), "Scoped init clear unwind");
+
+        CHECK(cleared == 37);
+        CHECK(clear_count == 1);
+    }
+
+    SECTION("ScopedInitClearContracts")
+    {
+        using resource_type = scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource>;
+
+        STATIC_REQUIRE(std::is_nothrow_default_constructible_v<resource_type>);
+        STATIC_REQUIRE(std::is_nothrow_destructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_copy_constructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_move_constructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_copy_assignable_v<resource_type>);
+        STATIC_REQUIRE(!std::is_move_assignable_v<resource_type>);
+        STATIC_REQUIRE(std::same_as<decltype(std::declval<resource_type&>().get()), ScopedTestResource&>);
+        STATIC_REQUIRE(std::same_as<decltype(std::declval<const resource_type&>().get()), const ScopedTestResource&>);
     }
 }
 

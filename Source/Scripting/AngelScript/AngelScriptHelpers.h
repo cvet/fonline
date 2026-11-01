@@ -208,67 +208,61 @@ FO_BEGIN_NAMESPACE
 namespace aswrap
 {
     template<typename T>
-    struct ArgReader
+    inline auto ReadArg(AngelScript::asIScriptGeneric* gen, int index) -> T
     {
-        static auto read(AngelScript::asIScriptGeneric* gen, int index) -> T
-        {
-            const auto arg_index = static_cast<AngelScript::asUINT>(index);
+        AngelScript::asUINT arg_index = static_cast<AngelScript::asUINT>(index);
 
-            if constexpr (std::is_lvalue_reference_v<T>) {
-                using BaseType = std::remove_reference_t<T>;
-                return *GetGenericArgAddressAs<BaseType>(gen, arg_index);
+        if constexpr (std::is_lvalue_reference_v<T>) {
+            using BaseType = std::remove_reference_t<T>;
+            return *GetGenericArgAddressAs<BaseType>(gen, arg_index);
+        }
+        else if constexpr (std::is_pointer_v<T>) {
+            if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+                static_assert(sizeof(T) == sizeof(void*));
+                return std::bit_cast<T>(GetGenericArgAddress(gen, arg_index).get());
             }
-            else if constexpr (std::is_pointer_v<T>) {
-                if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
-                    static_assert(sizeof(T) == sizeof(void*));
-                    return std::bit_cast<T>(GetGenericArgAddress(gen, arg_index).get());
-                }
-                else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
-                    return GetGenericArgAddress(gen, arg_index).get();
-                }
-                else {
-                    return GetGenericArgAddressAs<std::remove_pointer_t<T>>(gen, arg_index).get();
-                }
+            else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+                return GetGenericArgAddress(gen, arg_index).get();
             }
             else {
-                using BaseType = std::remove_cv_t<T>;
-                return *GetGenericAddressArgAs<BaseType>(gen, arg_index);
+                return GetGenericArgAddressAs<std::remove_pointer_t<T>>(gen, arg_index).get();
             }
         }
-    };
+        else {
+            using BaseType = std::remove_cv_t<T>;
+            return *GetGenericAddressArgAs<BaseType>(gen, arg_index);
+        }
+    }
 
     template<typename T>
-    struct ObjectReader
+    inline auto ReadObject(AngelScript::asIScriptGeneric* gen) -> T
     {
-        static auto read(AngelScript::asIScriptGeneric* gen) -> T
-        {
-            if constexpr (std::is_lvalue_reference_v<T>) {
-                using BaseType = std::remove_reference_t<T>;
-                return *GetGenericObjectAs<BaseType>(gen);
-            }
-            else if constexpr (std::is_pointer_v<T>) {
-                auto object = GetGenericObject(gen);
+        if constexpr (std::is_lvalue_reference_v<T>) {
+            using BaseType = std::remove_reference_t<T>;
+            return *GetGenericObjectAs<BaseType>(gen);
+        }
+        else if constexpr (std::is_pointer_v<T>) {
+            auto object = GetGenericObject(gen);
 
-                if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
-                    static_assert(sizeof(T) == sizeof(void*));
-                    return std::bit_cast<T>(object.get());
-                }
-                else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
-                    return object.get();
-                }
-                else {
-                    return cast_from_void<T>(object.get()).get();
-                }
+            if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+                static_assert(sizeof(T) == sizeof(void*));
+                return std::bit_cast<T>(object.get());
+            }
+            else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+                return object.get();
             }
             else {
-                using BaseType = std::remove_cv_t<T>;
-                return *GetGenericObjectAs<BaseType>(gen);
+                return cast_from_void<T>(object.get()).get();
             }
         }
-    };
+        else {
+            using BaseType = std::remove_cv_t<T>;
+            return *GetGenericObjectAs<BaseType>(gen);
+        }
+    }
 
     template<typename T>
-    static auto PointerReturnValueAsAddress(T value) noexcept -> void*
+    inline auto PointerReturnValueAsAddress(T value) noexcept -> void*
     {
         if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
             static_assert(sizeof(T) == sizeof(void*));
@@ -283,7 +277,7 @@ namespace aswrap
     }
 
     template<typename T>
-    static auto ReferenceReturnValueAsAddress(T& value) noexcept -> void*
+    inline auto ReferenceReturnValueAsAddress(T& value) noexcept -> void*
     {
         if constexpr (std::is_function_v<T>) {
             static_assert(sizeof(T*) == sizeof(void*));
@@ -295,7 +289,7 @@ namespace aswrap
     }
 
     template<typename T>
-    static void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
+    inline void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
     {
         if constexpr (std::is_lvalue_reference_v<T>) {
             const auto as_result = gen->SetReturnAddress(ReferenceReturnValueAsAddress(value));
@@ -316,11 +310,12 @@ namespace aswrap
     }
 
     template<auto Func>
-    struct FunctionWrapper;
+    class FunctionWrapper;
 
     template<typename R, typename... Args, R (*Func)(Args...)>
-    struct FunctionWrapper<Func>
+    class FunctionWrapper<Func>
     {
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::index_sequence_for<Args...> {}); }
 
     private:
@@ -328,25 +323,26 @@ namespace aswrap
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
             if constexpr (std::is_void_v<R>) {
-                Func(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+                Func(ReadArg<Args>(gen, static_cast<int>(Index))...);
             }
             else {
-                StoreReturnValue<R>(gen, Func(ArgReader<Args>::read(gen, static_cast<int>(Index))...));
+                StoreReturnValue<R>(gen, Func(ReadArg<Args>(gen, static_cast<int>(Index))...));
             }
         }
     };
 
     template<typename MethodType, MethodType Method>
-    struct MethodWrapperImpl;
+    class MethodWrapperImpl;
 
     template<auto Method>
-    struct MethodWrapper : MethodWrapperImpl<decltype(Method), Method>
+    class MethodWrapper : public MethodWrapperImpl<decltype(Method), Method>
     {
     };
 
     template<typename C, typename R, typename... Args, R (C::*Method)(Args...)>
-    struct MethodWrapperImpl<R (C::*)(Args...), Method>
+    class MethodWrapperImpl<R (C::*)(Args...), Method>
     {
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::index_sequence_for<Args...> {}); }
 
     private:
@@ -356,17 +352,18 @@ namespace aswrap
             auto object = GetGenericObjectAs<C>(gen);
 
             if constexpr (std::is_void_v<R>) {
-                (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+                (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...);
             }
             else {
-                StoreReturnValue<R>(gen, (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...));
+                StoreReturnValue<R>(gen, (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...));
             }
         }
     };
 
     template<typename C, typename R, typename... Args, R (C::*Method)(Args...) const>
-    struct MethodWrapperImpl<R (C::*)(Args...) const, Method>
+    class MethodWrapperImpl<R (C::*)(Args...) const, Method>
     {
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::index_sequence_for<Args...> {}); }
 
     private:
@@ -376,20 +373,21 @@ namespace aswrap
             auto object = GetGenericObjectAs<const C>(gen);
 
             if constexpr (std::is_void_v<R>) {
-                (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+                (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...);
             }
             else {
-                StoreReturnValue<R>(gen, (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...));
+                StoreReturnValue<R>(gen, (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...));
             }
         }
     };
 
     template<auto Func>
-    struct ObjFirstWrapper;
+    class ObjFirstWrapper;
 
     template<typename R, typename T, typename... Args, R (*Func)(T, Args...)>
-    struct ObjFirstWrapper<Func>
+    class ObjFirstWrapper<Func>
     {
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::index_sequence_for<Args...> {}); }
 
     private:
@@ -397,25 +395,26 @@ namespace aswrap
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
             if constexpr (std::is_void_v<R>) {
-                Func(ObjectReader<T>::read(gen), ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+                Func(ReadObject<T>(gen), ReadArg<Args>(gen, static_cast<int>(Index))...);
             }
             else {
-                StoreReturnValue<R>(gen, Func(ObjectReader<T>::read(gen), ArgReader<Args>::read(gen, static_cast<int>(Index))...));
+                StoreReturnValue<R>(gen, Func(ReadObject<T>(gen), ReadArg<Args>(gen, static_cast<int>(Index))...));
             }
         }
     };
 
     template<auto Func>
-    struct ObjLastWrapper;
+    class ObjLastWrapper;
 
     template<typename R, typename... Args, R (*Func)(Args...)>
-    struct ObjLastWrapper<Func>
+    class ObjLastWrapper<Func>
     {
         static_assert(sizeof...(Args) != 0);
 
         using ArgsTuple = std::tuple<Args...>;
         using ObjectArg = std::tuple_element_t<sizeof...(Args) - 1, ArgsTuple>;
 
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::make_index_sequence<sizeof...(Args) - 1> {}); }
 
     private:
@@ -423,27 +422,28 @@ namespace aswrap
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
             if constexpr (std::is_void_v<R>) {
-                Func(ArgReader<std::tuple_element_t<Index, ArgsTuple>>::read(gen, static_cast<int>(Index))..., ObjectReader<ObjectArg>::read(gen));
+                Func(ReadArg<std::tuple_element_t<Index, ArgsTuple>>(gen, static_cast<int>(Index))..., ReadObject<ObjectArg>(gen));
             }
             else {
-                StoreReturnValue<R>(gen, Func(ArgReader<std::tuple_element_t<Index, ArgsTuple>>::read(gen, static_cast<int>(Index))..., ObjectReader<ObjectArg>::read(gen)));
+                StoreReturnValue<R>(gen, Func(ReadArg<std::tuple_element_t<Index, ArgsTuple>>(gen, static_cast<int>(Index))..., ReadObject<ObjectArg>(gen)));
             }
         }
     };
 
     template<typename Signature>
-    struct ConstructorWrapper;
+    class ConstructorWrapper;
 
     template<typename T, typename... Args>
-    struct ConstructorWrapper<T(Args...)>
+    class ConstructorWrapper<T(Args...)>
     {
+    public:
         static void f(AngelScript::asIScriptGeneric* gen) { invoke(gen, std::index_sequence_for<Args...> {}); }
 
     private:
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            new (GetGenericObjectAs<T>(gen).get()) T(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+            new (GetGenericObjectAs<T>(gen).get()) T(ReadArg<Args>(gen, static_cast<int>(Index))...);
         }
     };
 

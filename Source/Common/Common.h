@@ -171,8 +171,9 @@ public:
 
 FO_END_NAMESPACE
 template<>
-struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE any_t> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE any_t& value, FormatContext& ctx) const
     {
@@ -209,8 +210,9 @@ concept some_atomic = specialization_of<T, std::atomic>;
 FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_atomic<T>)
-struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
+class std::formatter<T> : public formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
+public:
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
@@ -534,8 +536,6 @@ class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
-    [[nodiscard]] auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
-
     string Name {};
     hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
@@ -573,6 +573,11 @@ struct BaseTypeDesc
     size_t Size {};
 };
 
+inline auto operator==(const BaseTypeDesc& left, const BaseTypeDesc& right) noexcept -> bool
+{
+    return left.Name == right.Name;
+}
+
 enum class ComplexTypeKind : uint8_t
 {
     None = 0,
@@ -585,15 +590,22 @@ enum class ComplexTypeKind : uint8_t
 
 struct ComplexTypeDesc
 {
-    [[nodiscard]] explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
-    [[nodiscard]] auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
-
     ComplexTypeKind Kind {};
     BaseTypeDesc BaseType {};
     optional<BaseTypeDesc> KeyType {};
     shared_ptr<vector<ComplexTypeDesc>> CallbackArgs {};
     bool IsMutable {};
 };
+
+inline auto IsTypeDefined(const ComplexTypeDesc& type) noexcept -> bool
+{
+    return type.Kind != ComplexTypeKind::None;
+}
+
+inline auto operator==(const ComplexTypeDesc& left, const ComplexTypeDesc& right) noexcept -> bool
+{
+    return left.Kind == right.Kind && left.BaseType == right.BaseType && left.KeyType == right.KeyType && left.CallbackArgs == right.CallbackArgs && left.IsMutable == right.IsMutable;
+}
 
 // Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does

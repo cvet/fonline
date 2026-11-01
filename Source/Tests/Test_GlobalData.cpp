@@ -83,20 +83,21 @@ namespace
         observed->emplace_back(ObservedTeardown {.Name = string(set_name), .DeletedBefore = DeleteCallCount});
     }
 
-    struct GlobalDataCallbacksGuard final
+    class GlobalDataCallbacksGuard final
     {
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedCreate {};
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
-        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
-        int32_t SavedCount {};
-
+    public:
         GlobalDataCallbacksGuard()
         {
-            std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), SavedCreate.begin());
-            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
-            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
-            SavedCount = global_data::callbacks_count;
+            std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), _savedCreate.begin());
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), _savedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), _savedNames.begin());
+            _savedCount = global_data::callbacks_count;
         }
+
+        GlobalDataCallbacksGuard(const GlobalDataCallbacksGuard&) = delete;
+        GlobalDataCallbacksGuard(GlobalDataCallbacksGuard&&) = delete;
+        auto operator=(const GlobalDataCallbacksGuard&) -> GlobalDataCallbacksGuard& = delete;
+        auto operator=(GlobalDataCallbacksGuard&&) -> GlobalDataCallbacksGuard& = delete;
 
         ~GlobalDataCallbacksGuard()
         {
@@ -105,11 +106,17 @@ namespace
             global_data::callbacks_count = 0;
             (void)global_data::create();
 
-            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(global_data::create_callbacks));
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
-            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
-            global_data::callbacks_count = SavedCount;
+            std::copy(_savedCreate.begin(), _savedCreate.end(), std::begin(global_data::create_callbacks));
+            std::copy(_savedDelete.begin(), _savedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(_savedNames.begin(), _savedNames.end(), std::begin(global_data::callback_names));
+            global_data::callbacks_count = _savedCount;
         }
+
+    private:
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedCreate {};
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> _savedNames {};
+        int32_t _savedCount {};
     };
 }
 

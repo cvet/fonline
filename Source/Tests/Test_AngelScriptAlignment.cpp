@@ -56,7 +56,7 @@ FO_BEGIN_NAMESPACE
 // into a hard alignment error; call-shape coverage lives in Test_AngelScriptCall.cpp
 namespace
 {
-    struct AlignTestRig
+    namespace AlignTestRig
     {
         static auto MakeSettings() -> GlobalSettings
         {
@@ -288,7 +288,7 @@ namespace AlignTest
         }
 
         static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
-    };
+    }
 
     // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
     // and primitives align by their size

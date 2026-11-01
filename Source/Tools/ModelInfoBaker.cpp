@@ -44,8 +44,6 @@ FO_BEGIN_NAMESPACE
 
 struct BakerModelDescriptionCut
 {
-    void Save(data_writer& writer) const;
-
     string FileName {};
     vector<int32_t> Layers {};
     vector<string> Shapes {};
@@ -57,8 +55,6 @@ struct BakerModelDescriptionCut
 
 struct BakerModelDescriptionLink
 {
-    void Save(data_writer& writer) const;
-
     int32_t Layer {};
     int32_t LayerValue {};
     string LinkBone {};
@@ -85,8 +81,6 @@ struct BakerModelDescriptionLink
 
 struct BakerModelDescriptionAnimationEntry
 {
-    void Save(data_writer& writer) const;
-
     int32_t StateAnim {};
     int32_t ActionAnim {};
     string FileName {};
@@ -95,8 +89,6 @@ struct BakerModelDescriptionAnimationEntry
 
 struct BakerModelDescriptionAnimLayerValue
 {
-    void Save(data_writer& writer) const;
-
     int32_t StateAnim {};
     int32_t ActionAnim {};
     int32_t Layer {};
@@ -105,8 +97,6 @@ struct BakerModelDescriptionAnimLayerValue
 
 struct BakerModelDescription
 {
-    void Save(data_writer& writer) const;
-
     string Model {};
     bool DisableAnimationInterpolation {};
     bool DisableBackwardAnim {};
@@ -254,6 +244,11 @@ private:
 };
 
 static auto IsModelDescriptionTemplateFile(string_view path) -> bool;
+static void SaveModelDescription(data_writer& writer, const BakerModelDescription& description);
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionLink& description);
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionCut& description);
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionAnimationEntry& description);
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionAnimLayerValue& description);
 static auto GetModelDescriptionMaxWriteTime(const FileCollection& files, const NameResolver& name_resolver, string_view fname) -> uint64_t;
 static void CollectModelDescriptionLinkDependencies(const BakerModelDescriptionLink& link, unordered_set<string>& required_dependencies, unordered_set<string>& optional_dependencies);
 static void UpdateModelDescriptionDependencyWriteTime(const FileCollection& files, string_view dependency, string_view owner, bool required, uint64_t& max_write_time);
@@ -425,7 +420,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
             writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
             writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-            description.Save(writer);
+            SaveModelDescription(writer, description);
             vector<uint8_t> animation_rig_data = WriteModelAnimationRigData(validated.AnimationRigData, file.GetPath());
             writer.write<uint64_t>(numeric_cast<uint64_t>(animation_rig_data.size()));
             writer.write_bytes(animation_rig_data);
@@ -2545,96 +2540,121 @@ static void CollectBakedModelMeshInfo(const ModelMeshBoneData& bone, BakedModelM
     }
 }
 
-void BakerModelDescription::Save(data_writer& writer) const
+static void SaveModelDescription(data_writer& writer, const BakerModelDescription& description)
 {
     FO_TRACE_ZONE(Baking);
 
-    writer.write_string(Model);
-    writer.write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
-    writer.write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
-    writer.write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
+    writer.write_string(description.Model);
+    writer.write<uint8_t>(description.DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(description.DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
+    writer.write<uint8_t>(description.ShadowDisabled ? uint8_t {1} : uint8_t {0});
+
     // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds
     writer.write<int32_t>(0);
     writer.write<int32_t>(0);
     writer.write<int32_t>(0);
     writer.write<int32_t>(0);
-    writer.write_string(RotationBone);
-    DefaultLink.Save(writer);
-    writer.write<uint32_t>(numeric_cast<uint32_t>(Links.size()));
-    for (const BakerModelDescriptionLink& link : Links) {
-        link.Save(writer);
+
+    writer.write_string(description.RotationBone);
+    SaveModelDescription(writer, description.DefaultLink);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.Links.size()));
+
+    for (const BakerModelDescriptionLink& link : description.Links) {
+        SaveModelDescription(writer, link);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimationEntries.size()));
-    for (const BakerModelDescriptionAnimationEntry& anim_entry : AnimationEntries) {
-        anim_entry.Save(writer);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.AnimationEntries.size()));
+
+    for (const BakerModelDescriptionAnimationEntry& anim_entry : description.AnimationEntries) {
+        SaveModelDescription(writer, anim_entry);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimSpeed.size()));
-    for (const auto& [anim_pair, speed] : AnimSpeed) {
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.AnimSpeed.size()));
+
+    for (const auto& [anim_pair, speed] : description.AnimSpeed) {
         writer.write<int32_t>(anim_pair.first);
         writer.write<int32_t>(anim_pair.second);
         writer.write<float32_t>(speed);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(AnimLayerValues.size()));
-    for (const BakerModelDescriptionAnimLayerValue& value : AnimLayerValues) {
-        value.Save(writer);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.AnimLayerValues.size()));
+
+    for (const BakerModelDescriptionAnimLayerValue& value : description.AnimLayerValues) {
+        SaveModelDescription(writer, value);
     }
-    writer.write_string_vector(FastTransitionBones);
-    writer.write<uint32_t>(numeric_cast<uint32_t>(StateAnimEquals.size()));
-    for (const auto& [from, to] : StateAnimEquals) {
+
+    writer.write_string_vector(description.FastTransitionBones);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.StateAnimEquals.size()));
+
+    for (const auto& [from, to] : description.StateAnimEquals) {
         writer.write<int32_t>(from);
         writer.write<int32_t>(to);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(ActionAnimEquals.size()));
-    for (const auto& [from, to] : ActionAnimEquals) {
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.ActionAnimEquals.size()));
+
+    for (const auto& [from, to] : description.ActionAnimEquals) {
         writer.write<int32_t>(from);
         writer.write<int32_t>(to);
     }
 }
 
-void BakerModelDescriptionLink::Save(data_writer& writer) const
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionLink& description)
 {
-    writer.write<int32_t>(Layer);
-    writer.write<int32_t>(LayerValue);
-    writer.write_string(LinkBone);
-    writer.write_string(ChildName);
-    writer.write<uint8_t>(IsParticles ? uint8_t {1} : uint8_t {0});
-    writer.write<float32_t>(RotX);
-    writer.write<float32_t>(RotY);
-    writer.write<float32_t>(RotZ);
-    writer.write<float32_t>(MoveX);
-    writer.write<float32_t>(MoveY);
-    writer.write<float32_t>(MoveZ);
-    writer.write<float32_t>(ScaleX);
-    writer.write<float32_t>(ScaleY);
-    writer.write<float32_t>(ScaleZ);
-    writer.write<float32_t>(SpeedAjust);
-    writer.write_sized_object_vector(DisabledLayer);
-    writer.write_string_vector(DisabledMesh);
-    writer.write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
-    for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
+    writer.write<int32_t>(description.Layer);
+    writer.write<int32_t>(description.LayerValue);
+    writer.write_string(description.LinkBone);
+    writer.write_string(description.ChildName);
+    writer.write<uint8_t>(description.IsParticles ? uint8_t {1} : uint8_t {0});
+    writer.write<float32_t>(description.RotX);
+    writer.write<float32_t>(description.RotY);
+    writer.write<float32_t>(description.RotZ);
+    writer.write<float32_t>(description.MoveX);
+    writer.write<float32_t>(description.MoveY);
+    writer.write<float32_t>(description.MoveZ);
+    writer.write<float32_t>(description.ScaleX);
+    writer.write<float32_t>(description.ScaleY);
+    writer.write<float32_t>(description.ScaleZ);
+    writer.write<float32_t>(description.SpeedAjust);
+
+    writer.write_sized_object_vector(description.DisabledLayer);
+    writer.write_string_vector(description.DisabledMesh);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.TextureInfo.size()));
+
+    for (const auto& [texture_name, mesh_name, texture_index] : description.TextureInfo) {
         writer.write_string(texture_name);
         writer.write_string(mesh_name);
         writer.write<int32_t>(texture_index);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
-    for (const auto& [effect_name, mesh_name] : EffectInfo) {
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.EffectInfo.size()));
+
+    for (const auto& [effect_name, mesh_name] : description.EffectInfo) {
         writer.write_string(effect_name);
         writer.write_string(mesh_name);
     }
-    writer.write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
-    for (const BakerModelDescriptionCut& cut : CutInfo) {
-        cut.Save(writer);
+
+    writer.write<uint32_t>(numeric_cast<uint32_t>(description.CutInfo.size()));
+
+    for (const BakerModelDescriptionCut& cut : description.CutInfo) {
+        SaveModelDescription(writer, cut);
     }
-    bool has_geometry = !ChildName.empty() && !IsParticles;
-    FO_VERIFY_AND_THROW(Bounds.has_value() == has_geometry, "Model description link geometry and bounds do not match", ChildName, IsParticles, Bounds.has_value());
+
+    bool has_geometry = !description.ChildName.empty() && !description.IsParticles;
+    FO_VERIFY_AND_THROW(description.Bounds.has_value() == has_geometry, "Model description link geometry and bounds do not match", description.ChildName, description.IsParticles, description.Bounds.has_value());
+
     writer.write<uint8_t>(has_geometry ? uint8_t {1} : uint8_t {0});
 
     if (has_geometry) {
-        writer.write<vec3>(Bounds->Min);
-        writer.write<vec3>(Bounds->Max);
-        writer.write<uint32_t>(numeric_cast<uint32_t>(AnimationBounds.size()));
+        writer.write<vec3>(description.Bounds->Min);
+        writer.write<vec3>(description.Bounds->Max);
 
-        for (const auto& [state_anim, action_anim, bounds] : AnimationBounds) {
+        writer.write<uint32_t>(numeric_cast<uint32_t>(description.AnimationBounds.size()));
+
+        for (const auto& [state_anim, action_anim, bounds] : description.AnimationBounds) {
             writer.write<int32_t>(state_anim);
             writer.write<int32_t>(action_anim);
             writer.write<vec3>(bounds.Min);
@@ -2643,31 +2663,35 @@ void BakerModelDescriptionLink::Save(data_writer& writer) const
     }
 }
 
-void BakerModelDescriptionCut::Save(data_writer& writer) const
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionCut& description)
 {
-    writer.write_string(FileName);
-    writer.write_sized_object_vector(Layers);
-    writer.write_string_vector(Shapes);
-    writer.write_string(UnskinBone1);
-    writer.write_string(UnskinBone2);
-    writer.write_string(UnskinShape);
-    writer.write<uint8_t>(RevertUnskinShape ? uint8_t {1} : uint8_t {0});
+    writer.write_string(description.FileName);
+
+    writer.write_sized_object_vector(description.Layers);
+    writer.write_string_vector(description.Shapes);
+
+    writer.write_string(description.UnskinBone1);
+    writer.write_string(description.UnskinBone2);
+    writer.write_string(description.UnskinShape);
+    writer.write<uint8_t>(description.RevertUnskinShape ? uint8_t {1} : uint8_t {0});
 }
 
-void BakerModelDescriptionAnimationEntry::Save(data_writer& writer) const
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionAnimationEntry& description)
 {
-    writer.write<int32_t>(StateAnim);
-    writer.write<int32_t>(ActionAnim);
-    writer.write_string(FileName);
-    writer.write_string(Name);
+    writer.write<int32_t>(description.StateAnim);
+    writer.write<int32_t>(description.ActionAnim);
+
+    writer.write_string(description.FileName);
+    writer.write_string(description.Name);
 }
 
-void BakerModelDescriptionAnimLayerValue::Save(data_writer& writer) const
+static void SaveModelDescription(data_writer& writer, const BakerModelDescriptionAnimLayerValue& description)
 {
-    writer.write<int32_t>(StateAnim);
-    writer.write<int32_t>(ActionAnim);
-    writer.write<int32_t>(Layer);
-    writer.write<int32_t>(LayerValue);
+    writer.write<int32_t>(description.StateAnim);
+    writer.write<int32_t>(description.ActionAnim);
+
+    writer.write<int32_t>(description.Layer);
+    writer.write<int32_t>(description.LayerValue);
 }
 
 static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>

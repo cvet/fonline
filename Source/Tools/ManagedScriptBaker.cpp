@@ -483,7 +483,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
             AppendCsCallableDeclaration(out, "", strex("public delegate {} ", MakeCsTypeName(ret)).str(), EscapeCsIdentifier(name), arg_declarations, ";");
 
-            if (!ret) {
+            if (!IsTypeDefined(ret)) {
                 AppendCsCallableDeclaration(out, "", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(name + "Async"), arg_declarations, ";");
             }
 
@@ -673,7 +673,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
 
                     if (ref_counted) {
-                        bool dispose_name_used = type->Name == "Dispose" || std::ranges::any_of(type->RefType->Methods, [](const auto& method) { return method.Name == "Dispose" && (method.Getter || method.Setter || method.GlobalGetter || (method.Args.empty() && method.Ret)); });
+                        bool dispose_name_used = type->Name == "Dispose" || std::ranges::any_of(type->RefType->Methods, [](const auto& method) { return method.Name == "Dispose" && (method.Getter || method.Setter || method.GlobalGetter || (method.Args.empty() && IsTypeDefined(method.Ret))); });
                         out << CS_INDENT << (dispose_name_used ? "void global::System.IDisposable.Dispose()\n" : "public void Dispose()\n");
                         out << CS_INDENT << "{\n";
                         out << CS_INDENT << "    _refLifetime.Dispose();\n";
@@ -2410,7 +2410,7 @@ static auto MakeCallbackDelegateName(const ComplexTypeDesc& type) -> string
 
 static auto MakeCsTypeName(const ComplexTypeDesc& type) -> string
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return "void";
     }
 
@@ -2452,7 +2452,7 @@ static auto MakeCsTypeName(const ComplexTypeDesc& type, bool nullable) -> string
 
 static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return "void";
     }
 
@@ -2607,7 +2607,7 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_call
             declaration += "ref ";
         }
 
-        if (async_callbacks && arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->front()) {
+        if (async_callbacks && arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !IsTypeDefined(arg.Type.CallbackArgs->front())) {
             declaration += MakeCallbackDelegateName(arg.Type) + "Async?";
         }
         else {
@@ -2825,7 +2825,7 @@ static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys,
     string system_args_prefix = args.empty() ? string {} : system_args + ", ";
 
     auto write_result = [&](string_view variable) -> string {
-        if (!ret) {
+        if (!IsTypeDefined(ret)) {
             return {};
         }
 
@@ -2838,7 +2838,7 @@ static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys,
         out << CS_INDENT << "        try {\n";
         out << CS_INDENT << "            " << call_statement << "\n";
 
-        if (ret) {
+        if (IsTypeDefined(ret)) {
             out << CS_INDENT << "            " << write_result("__r") << "\n";
         }
 
@@ -2851,7 +2851,7 @@ static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys,
         out << CS_INDENT << "    }\n";
     };
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         if (!name.empty()) {
             append_branch(EscapeCsIdentifier(name), "typed", strex("{} __r = typed({});", ret_type, invoke_list).str());
         }
@@ -2877,7 +2877,7 @@ static void AppendCallbackAdapter(ostringstream& out, set<string>& emitted_keys,
         out << CS_INDENT << "    object?[] __args = new object?[] { " << invoke_list << " };\n";
     }
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         out << CS_INDENT << "    " << ret_type << " __boxedResult = global::FOnline.Native.UnboxArg<" << ret_type << ">(global::FOnline.Native.InvokeCallback(handler, __args));\n";
         out << CS_INDENT << "    " << write_result("__boxedResult") << "\n";
     }
@@ -3486,7 +3486,7 @@ static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool
 
 static auto CanUseManagedBridge(const ComplexTypeDesc& type) -> bool
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return true;
     }
     if (type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array) {
@@ -4261,7 +4261,7 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
         const MethodDesc& method = methods[method_index];
 
         // Reference operations belong to the managed lease; native Dispose is composed with its cleanup
-        if (ref_counted && method.Args.empty() && !method.Ret && (method.Name == "__AddRef" || method.Name == "__Release" || method.Name == "Dispose")) {
+        if (ref_counted && method.Args.empty() && !IsTypeDefined(method.Ret) && (method.Name == "__AddRef" || method.Name == "__Release" || method.Name == "Dispose")) {
             continue;
         }
 
@@ -4269,7 +4269,7 @@ static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods,
         AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, false, abi_method);
         bool is_timer_method = method.Name == "StartTimeEvent" || method.Name == "CountTimeEvent" || method.Name == "StopTimeEvent" || method.Name == "RepeatTimeEvent" || method.Name == "SetTimeEventData";
 
-        if (is_timer_method && std::ranges::any_of(method.Args, [](const ArgDesc& arg) { return arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->empty() && !arg.Type.CallbackArgs->front(); })) {
+        if (is_timer_method && std::ranges::any_of(method.Args, [](const ArgDesc& arg) { return arg.Type.Kind == ComplexTypeKind::Callback && arg.Type.CallbackArgs && !arg.Type.CallbackArgs->empty() && !IsTypeDefined(arg.Type.CallbackArgs->front()); })) {
             AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, true, abi_method);
         }
     }
@@ -4857,7 +4857,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 
 static void CollectCallbacks(const ComplexTypeDesc& type, unordered_map<string, ComplexTypeDesc>& callbacks)
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return;
     }
 

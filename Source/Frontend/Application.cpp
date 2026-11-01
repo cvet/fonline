@@ -1286,37 +1286,37 @@ void Application::ResetTouchGestures()
 
 void Application::QueueTouchDown(int64_t finger_id, ipos32 pos)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchDownEvent {finger_id, pos.x, pos.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchDownEvent {finger_id, pos.x, pos.y}));
 }
 
 void Application::QueueTouchMove(int64_t finger_id, ipos32 pos, ipos32 delta)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchMoveEvent {finger_id, pos.x, pos.y, delta.x, delta.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchMoveEvent {finger_id, pos.x, pos.y, delta.x, delta.y}));
 }
 
 void Application::QueueTouchUp(int64_t finger_id, ipos32 pos)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchUpEvent {finger_id, pos.x, pos.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchUpEvent {finger_id, pos.x, pos.y}));
 }
 
 void Application::QueueTouchTap(ipos32 pos)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchTapEvent {pos.x, pos.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchTapEvent {pos.x, pos.y}));
 }
 
 void Application::QueueTouchDoubleTap(ipos32 pos)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchDoubleTapEvent {pos.x, pos.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchDoubleTapEvent {pos.x, pos.y}));
 }
 
 void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchScrollEvent {pos.x, pos.y, delta.x, delta.y});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchScrollEvent {pos.x, pos.y, delta.x, delta.y}));
 }
 
 void Application::QueueTouchZoom(ipos32 pos, float32_t factor)
 {
-    _ctx->EventsQueue.emplace_back(InputEvent::TouchZoomEvent {pos.x, pos.y, factor});
+    _ctx->EventsQueue.emplace_back(MakeInputEvent(InputEvent::TouchZoomEvent {pos.x, pos.y, factor}));
 }
 
 void Application::FlushPendingTouchTap()
@@ -1610,7 +1610,7 @@ void Application::BeginFrame()
             _lastMouseMoveHostPosValid = true;
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(screen_pos)) {
-                _ctx->EventsQueue.emplace_back(ev);
+                _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
             }
 
             io.AddMouseSourceEvent(sdl_event.motion.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
@@ -1630,7 +1630,7 @@ void Application::BeginFrame()
                     ev.Button = button_it->second;
 
                     if (button_to_client) {
-                        _ctx->EventsQueue.emplace_back(ev);
+                        _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
                     }
                 }
                 else {
@@ -1638,7 +1638,7 @@ void Application::BeginFrame()
                     ev.Button = button_it->second;
 
                     if (button_to_client) {
-                        _ctx->EventsQueue.emplace_back(ev);
+                        _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
                     }
                 }
             }
@@ -1848,7 +1848,7 @@ void Application::BeginFrame()
             switch_active_to_hovered_child(wheel_screen_pos);
 
             if (!imgui_capture_mouse || host_pos_inside_active_virtual(wheel_screen_pos)) {
-                _ctx->EventsQueue.emplace_back(ev);
+                _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
             }
 
             float32_t wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
@@ -1883,7 +1883,7 @@ void Application::BeginFrame()
                 ev.Code = _ctx->KeysMap[sdl_event.key.scancode];
 
                 if (!imgui_capture_keyboard) {
-                    _ctx->EventsQueue.emplace_back(ev);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
                 }
 
 #if !FO_WEB
@@ -1905,10 +1905,10 @@ void Application::BeginFrame()
                     else {
                         paste_ev.Text = {};
                     }
-                    _ctx->EventsQueue.emplace_back(paste_ev);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(paste_ev));
                     InputEvent::KeyUpEvent paste_ev2;
                     paste_ev2.Code = KeyCode::Text;
-                    _ctx->EventsQueue.emplace_back(paste_ev2);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(paste_ev2));
                 }
 #endif
 
@@ -1921,7 +1921,7 @@ void Application::BeginFrame()
                 ev.Code = _ctx->KeysMap[sdl_event.key.scancode];
 
                 if (!imgui_capture_keyboard) {
-                    _ctx->EventsQueue.emplace_back(ev);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
                 }
             }
 
@@ -1945,14 +1945,14 @@ void Application::BeginFrame()
             ev1.Text = sdl_event.text.text;
 
             if (!imgui_capture_keyboard) {
-                _ctx->EventsQueue.emplace_back(ev1);
+                _ctx->EventsQueue.emplace_back(MakeInputEvent(ev1));
             }
 
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
 
             if (!imgui_capture_keyboard) {
-                _ctx->EventsQueue.emplace_back(ev2);
+                _ctx->EventsQueue.emplace_back(MakeInputEvent(ev2));
             }
 
             io.AddInputCharactersUTF8(sdl_event.text.text);
@@ -1961,10 +1961,10 @@ void Application::BeginFrame()
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.drop.data;
-            _ctx->EventsQueue.emplace_back(ev1);
+            _ctx->EventsQueue.emplace_back(MakeInputEvent(ev1));
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::Text;
-            _ctx->EventsQueue.emplace_back(ev2);
+            _ctx->EventsQueue.emplace_back(MakeInputEvent(ev2));
         } break;
         case SDL_EVENT_DROP_FILE: {
             if (auto file_size = fs::file_size(sdl_event.drop.data)) {
@@ -1989,10 +1989,10 @@ void Application::BeginFrame()
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::Text;
                     ev1.Text = strex("{}\n{}{}", sdl_event.drop.data, buf, stripped ? "..." : "");
-                    _ctx->EventsQueue.emplace_back(ev1);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(ev1));
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::Text;
-                    _ctx->EventsQueue.emplace_back(ev2);
+                    _ctx->EventsQueue.emplace_back(MakeInputEvent(ev2));
                 }
             }
         } break;
@@ -2175,7 +2175,7 @@ void Application::BeginFrame()
                         ev.DeltaY = local_delta.y;
 
                         if (!imgui_capture_mouse || host_pos_inside_active_virtual(screen_pos)) {
-                            _ctx->EventsQueue.emplace_back(ev);
+                            _ctx->EventsQueue.emplace_back(MakeInputEvent(ev));
                         }
                     }
 

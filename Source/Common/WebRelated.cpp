@@ -343,8 +343,8 @@ extern "C"
         FO_NAMESPACE string paste_text = text_ptr ? FO_NAMESPACE string {text_ptr.get()} : FO_NAMESPACE string {};
 
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(paste_text);
-        FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})}, false);
-        FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})}, false);
+        FO_NAMESPACE GetApp() -> Input.PushEvent(FO_NAMESPACE MakeInputEvent(InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})), false);
+        FO_NAMESPACE GetApp() -> Input.PushEvent(FO_NAMESPACE MakeInputEvent(InputEvent::KeyUpEvent({KeyCode::Text})), false);
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text)

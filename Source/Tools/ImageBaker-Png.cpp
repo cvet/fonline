@@ -83,6 +83,33 @@ namespace ImageBakerPng
         safe_alloc::free_raw(mem);
     }
 
+    [[noreturn]] static void PngError(png_structp png_ptr, png_const_charp error_msg)
+    {
+        ignore_unused(png_ptr);
+        throw ImageBakerException("PNG loading error", error_msg);
+    }
+
+    static void PngWarning(png_structp png_ptr, png_const_charp error_msg)
+    {
+        ignore_unused(png_ptr);
+        ignore_unused(error_msg);
+    }
+
+    static void PngRead(png_structp png_ptr, png_bytep png_data, png_size_t length)
+    {
+        if (length == 0) {
+            return;
+        }
+
+        auto io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
+        FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
+        auto source = make_ptr(*io_ptr);
+        auto target = make_ptr(png_data);
+        memory::copy(target, source, length);
+        auto next_source = source.offset(length);
+        *io_ptr = next_source.get();
+    }
+
     static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
     {
         // Created through the _2 form so libpng allocates from the engine memory system rather than the CRT heap
@@ -91,47 +118,14 @@ namespace ImageBakerPng
         nptr<png_info> info_ptr;
 
         try {
-            struct PngMessage
-            {
-                [[noreturn]] static void Error(png_structp png_ptr, png_const_charp error_msg)
-                {
-                    ignore_unused(png_ptr);
-                    throw ImageBakerException("PNG loading error", error_msg);
-                }
-
-                static void Warning(png_structp png_ptr, png_const_charp error_msg)
-                {
-                    ignore_unused(png_ptr);
-                    ignore_unused(error_msg);
-                }
-            };
-
-            png_set_error_fn(png_ptr.get(), png_get_error_ptr(png_ptr.get()), &PngMessage::Error, &PngMessage::Warning);
+            png_set_error_fn(png_ptr.get(), png_get_error_ptr(png_ptr.get()), &PngError, &PngWarning);
 
             info_ptr = png_create_info_struct(png_ptr.get());
             FO_VERIFY_AND_THROW(info_ptr, "Failed to create PNG info structure");
 
-            struct PngReader
-            {
-                static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
-                {
-                    if (length == 0) {
-                        return;
-                    }
-
-                    auto io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
-                    FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
-                    auto source = make_ptr(*io_ptr);
-                    auto target = make_ptr(png_data);
-                    memory::copy(target, source, length);
-                    auto next_source = source.offset(length);
-                    *io_ptr = next_source.get();
-                }
-            };
-
             // Get info
             nptr<const uint8_t> png_data_cursor = data;
-            png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngReader::Read);
+            png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngRead);
             png_read_info(png_ptr.get(), info_ptr.get());
 
             png_uint_32 width = 0;

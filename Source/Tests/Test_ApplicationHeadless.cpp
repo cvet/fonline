@@ -244,10 +244,7 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         InputEvent drained;
         CHECK_FALSE(input->PollEvent(drained));
 
-        InputEvent pushed;
-        pushed.Type = InputEvent::EventType::KeyDownEvent;
-        pushed.KeyDown.Code = KeyCode::A;
-        pushed.KeyDown.Text = "a";
+        InputEvent pushed = MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}});
         input->PushEvent(pushed, false);
 
         // The true headless frontend has no event queue; embedders use GetAppWindowStub when they need
@@ -364,10 +361,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         InputEvent ev;
         CHECK_FALSE(input->PollEvent(ev));
 
-        InputEvent pushed;
-        pushed.Type = InputEvent::EventType::KeyDownEvent;
-        pushed.KeyDown.Code = KeyCode::A;
-        pushed.KeyDown.Text = "a";
+        InputEvent pushed = MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}});
         input->PushEvent(pushed, false);
         REQUIRE(input->PollEvent(ev));
         CHECK(ev.Type == InputEvent::EventType::KeyDownEvent);

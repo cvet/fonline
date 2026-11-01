@@ -48,8 +48,9 @@ namespace AngelScript
 
 FO_BEGIN_NAMESPACE
 
-struct ScriptDataAccessor final : DataAccessor
+class ScriptDataAccessor final : public DataAccessor
 {
+public:
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX; }
     [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override;
     [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override;

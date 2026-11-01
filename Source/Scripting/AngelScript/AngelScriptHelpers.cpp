@@ -161,7 +161,7 @@ auto MakeScriptTypeName(const BaseTypeDesc& type) -> string
 
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 {
-    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
+    FO_VERIFY_AND_THROW(IsTypeDefined(type), "Missing type descriptor");
 
     string result;
 
@@ -211,7 +211,7 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 
 auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 {
-    FO_VERIFY_AND_THROW(type, "Missing type descriptor");
+    FO_VERIFY_AND_THROW(IsTypeDefined(type), "Missing type descriptor");
 
     string result = MakeScriptTypeName(type);
 
@@ -272,7 +272,7 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
 
 auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool nullable) -> string
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return "void";
     }
 

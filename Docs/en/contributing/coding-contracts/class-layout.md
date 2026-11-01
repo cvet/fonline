@@ -9,8 +9,36 @@ permalink: /Docs/en/contributing/coding-contracts/class-layout.html
 # Class Layout and Result Use
 
 This contract applies to authored native Engine code and project-native extensions.
-Third-party code retains its upstream conventions. The spelling `struct` does not
-exempt an existing behavioral type from the method rules.
+Third-party code retains its upstream conventions.
+
+## Passive records and classes
+
+Use `struct` only for passive records of public data. Do not declare constructors,
+destructors, methods or member operators, including explicitly defaulted special
+members and comparisons. They do not inherit behavior, enforce invariants or use
+`final`. Default member initializers may describe the record's initial data.
+Place functions that create, inspect, compare or modify records outside the
+record as free functions; use nonmember operators where appropriate.
+
+The passive-record restriction does not apply to `Source/Essentials/`.
+Structs there may have constructors, methods and member operators, including
+in foundational value types, internal data records and template/interface adapters.
+Preserve their natural API; do not replace it with free functions or change
+the keyword solely to satisfy the passive-record rule.
+
+Settings types (including generated groups and their base/aggregate settings)
+and all types marked `ExportValueType` are also exempt, in every native layer
+and project extension. Retain their struct constructors, methods, member
+operators and natural data API. For example, `mpos`, `msize` and `TextPackKey`
+keep their member interfaces, and native settings retain `settings.Group.Name`.
+An exception does not require converting an existing class to a struct.
+
+When a type needs controlled state or a custom lifetime protocol,
+use `class`. Encapsulate its representation, expose only the required public
+interface and keep implementation details private. A keyword change followed by
+making all fields public does not establish encapsulation. Choose the type from
+its responsibilities; do not add getters merely to preserve a record's old
+method syntax. Classes follow the method order and result-use rules below.
 
 ## Class method order
 

@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 static constexpr int32_t EffekseerBinaryVersion = 1810;
 static constexpr float32_t Pi = 3.14159265358979323846f;
 
-struct XmlNode final
+struct XmlNode
 {
     string Name {};
     string Text {};
@@ -65,7 +65,7 @@ private:
     vector<uint8_t> _data {};
 };
 
-struct CompilerContext final
+struct CompilerContext
 {
     string ProjectDirectory {};
     vector<nptr<const XmlNode>> ExportedNodes {};
@@ -655,7 +655,7 @@ static void WriteFloatEasing(BinaryWriter& writer, nptr<const XmlNode> node, flo
     }
 }
 
-struct CurveKey final
+struct CurveKey
 {
     int32_t Frame {};
     float32_t Value {};

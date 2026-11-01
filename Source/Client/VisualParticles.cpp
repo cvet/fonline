@@ -35,22 +35,27 @@
 
 FO_BEGIN_NAMESPACE
 
-struct ParticleManager::Impl
+class ParticleManager::Impl
 {
+public:
     explicit Impl(const ParticleRuntimeServices& services);
 
-    auto FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>;
-    auto FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>;
+    [[nodiscard]] auto FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>;
+    [[nodiscard]] auto FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>;
+    [[nodiscard]] auto GetExtensions() const -> vector<string>;
 
-    vector<unique_ptr<ParticleRuntimeBackend>> Backends;
+    void InvalidateResource(string_view name);
+
+private:
+    vector<unique_ptr<ParticleRuntimeBackend>> _backends;
 };
 
 ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
-    Backends {CreateParticleRuntimeBackends(services)}
+    _backends {CreateParticleRuntimeBackends(services)}
 {
     unordered_set<string> registered_exts;
 
-    for (const auto& backend_owner : Backends) {
+    for (const auto& backend_owner : _backends) {
         auto backend = backend_owner.as_ptr();
         vector<string> exts = backend->GetExtensions();
 
@@ -68,7 +73,7 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
 
 auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>
 {
-    for (auto& backend_owner : Backends) {
+    for (auto& backend_owner : _backends) {
         auto backend = backend_owner.as_ptr();
         vector<string> exts = backend->GetExtensions();
 
@@ -82,7 +87,7 @@ auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntime
 
 auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>
 {
-    for (const auto& backend_owner : Backends) {
+    for (const auto& backend_owner : _backends) {
         auto backend = backend_owner.as_ptr();
         vector<string> exts = backend->GetExtensions();
 
@@ -92,6 +97,25 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
     }
 
     return nullptr;
+}
+
+auto ParticleManager::Impl::GetExtensions() const -> vector<string>
+{
+    vector<string> exts;
+
+    for (const auto& backend_owner : _backends) {
+        vector<string> backend_exts = backend_owner->GetExtensions();
+        exts.insert(exts.end(), backend_exts.begin(), backend_exts.end());
+    }
+
+    return exts;
+}
+
+void ParticleManager::Impl::InvalidateResource(string_view name)
+{
+    for (auto& backend_owner : _backends) {
+        backend_owner->InvalidateResource(name);
+    }
 }
 
 ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
@@ -110,21 +134,12 @@ ParticleManager::~ParticleManager()
 
 auto ParticleManager::GetExtensions() const -> vector<string>
 {
-    vector<string> exts;
-
-    for (const auto& backend_owner : _impl->Backends) {
-        vector<string> backend_exts = backend_owner->GetExtensions();
-        exts.insert(exts.end(), backend_exts.begin(), backend_exts.end());
-    }
-
-    return exts;
+    return _impl->GetExtensions();
 }
 
 void ParticleManager::InvalidateResource(string_view name)
 {
-    for (auto& backend_owner : _impl->Backends) {
-        backend_owner->InvalidateResource(name);
-    }
+    _impl->InvalidateResource(name);
 }
 
 auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSystem>

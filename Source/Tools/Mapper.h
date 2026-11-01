@@ -99,12 +99,9 @@ public:
     struct UndoOp
     {
         string Label {};
-        bool IsSnapshot {};
         function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
         function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
-
-        UndoOp() = default;
-        UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
+        bool IsSnapshot {};
     };
 
     struct UndoContext

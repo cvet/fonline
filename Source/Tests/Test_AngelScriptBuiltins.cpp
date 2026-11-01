@@ -52,17 +52,23 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    struct ScriptMessages
+    class ScriptMessages
     {
-        vector<string> Entries {};
+    public:
+        [[nodiscard]] auto GetEntries() const -> const vector<string>& { return _entries; }
 
         static void Callback(const AngelScript::asSMessageInfo* msg, void* param)
         {
             auto self = cast_from_void<ScriptMessages*>(param);
             FO_VERIFY_AND_THROW(self, "Script message collector is null");
 
-            self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
+            self->_entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
         }
+
+        void Clear() { _entries.clear(); }
+
+    private:
+        vector<string> _entries {};
     };
 
     struct ArrayDummyRef
@@ -70,16 +76,18 @@ namespace
         int32_t RefCount {};
     };
 
-    struct ArrayNoDefaultValue
+    class ArrayNoDefaultValue
     {
+    public:
         explicit ArrayNoDefaultValue(int32_t value) noexcept :
-            Value {value}
+            _value {value}
         {
         }
 
-        ~ArrayNoDefaultValue() noexcept { Value = 0; }
+        ~ArrayNoDefaultValue() noexcept { _value = 0; }
 
-        int32_t Value {};
+    private:
+        int32_t _value {};
     };
 
     struct ArrayComparableValue
@@ -248,12 +256,12 @@ namespace
 
     static auto HasScriptMessage(const ScriptMessages& messages, string_view text) -> bool
     {
-        return std::ranges::any_of(messages.Entries, [text](const string& entry) { return entry.find(text) != string::npos; });
+        return std::ranges::any_of(messages.GetEntries(), [text](const string& entry) { return entry.find(text) != string::npos; });
     }
 
     static void ReportScriptMessages(const ScriptMessages& messages)
     {
-        for (const string& entry : messages.Entries) {
+        for (const string& entry : messages.GetEntries()) {
             UNSCOPED_INFO(entry);
         }
     }
@@ -4191,14 +4199,14 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         RegisterAngelScriptArray(as_engine.get());
 
         CHECK(BuildAngelScriptModule(as_engine.get(), "ArrayVoidRejected", "void Test() { array<void> values; }\n") < 0);
-        CHECK(!messages.Entries.empty());
-        messages.Entries.clear();
+        CHECK(!messages.GetEntries().empty());
+        messages.Clear();
         RegisterArrayNoDefaultValue(as_engine.get());
         CHECK(BuildAngelScriptModule(as_engine.get(), "ArrayNativeNoDefaultValueRejected", "void Test() { array<ArrayNoDefaultValue> values; }\n") < 0);
         CHECK(HasScriptMessage(messages, "The subtype has no default constructor"));
-        messages.Entries.clear();
+        messages.Clear();
         CHECK(BuildAngelScriptModule(as_engine.get(), "ArrayNoDefaultCtorRejected", "class NoDefault { NoDefault(int) {} }\nvoid Test() { array<NoDefault> values; }\n") < 0);
-        CHECK(!messages.Entries.empty());
+        CHECK(!messages.GetEntries().empty());
     }
 
     {
@@ -4490,17 +4498,17 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         RegisterAngelScriptDict(as_engine.get());
 
         CHECK(BuildAngelScriptModule(as_engine.get(), "DictVoidKeyRejected", "void Test() { dict<void,int> values; }\n") < 0);
-        CHECK(!messages.Entries.empty());
-        messages.Entries.clear();
+        CHECK(!messages.GetEntries().empty());
+        messages.Clear();
 
         CHECK(BuildAngelScriptModule(as_engine.get(), "DictVoidValueRejected", "void Test() { dict<int,void> values; }\n") < 0);
-        CHECK(!messages.Entries.empty());
-        messages.Entries.clear();
+        CHECK(!messages.GetEntries().empty());
+        messages.Clear();
 
         RegisterArrayNoDefaultValue(as_engine.get());
         CHECK(BuildAngelScriptModule(as_engine.get(), "DictNoDefaultValueRejected", "void Test() { dict<int,ArrayNoDefaultValue> values; }\n") < 0);
         CHECK(HasScriptMessage(messages, "The subtype has no default constructor"));
-        messages.Entries.clear();
+        messages.Clear();
 
         REQUIRE(as_engine->RegisterObjectType("DictNativeRef", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
         CHECK(BuildAngelScriptModule(as_engine.get(), "DictRefValueRejected", "void Test() { dict<int,DictNativeRef> values; }\n") < 0);

@@ -44,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-struct AngelScriptAllocator
+namespace AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*
     {
@@ -63,7 +63,7 @@ struct AngelScriptAllocator
         constexpr safe_allocator<uint8_t> allocator;
         allocator.deallocate(address.reinterpret_as<uint8_t>().get(), 0);
     }
-};
+}
 
 static void PrepareAngelScriptRuntime()
 {

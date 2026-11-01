@@ -379,11 +379,11 @@ static void ReleaseManagedGcHandle(nptr<MonoDomain> domain, uint32_t& handle) no
 
 // Forward declarations of the internal marshaling/bridge helper structs (defined below).
 struct ManagedScalarValue;
-struct ManagedObjectRoot;
+class ManagedObjectRoot;
 struct ManagedArrayBridgeData;
 struct ManagedDictBridgeData;
 struct ManagedCallbackBridgeData;
-struct ManagedDataAccessor;
+class ManagedDataAccessor;
 struct ManagedNativeValue;
 struct ManagedEventSubscription;
 struct ManagedAbiEventRuntime;
@@ -759,23 +759,24 @@ struct ManagedScalarValue
     nptr<Entity> EntityPtr {};
     refcount_nptr<DynamicRefTypeInstance> DynamicRefType {};
     nptr<void> RefTypePtr {};
-
-    auto Alloc(const BaseTypeDesc& type) -> void*
-    {
-        size_t size = type.Size;
-
-        if (size <= Local.size()) {
-            return Local.data();
-        }
-
-        Dynamic.resize(size);
-        return Dynamic.data();
-    }
 };
 
-// A GC handle preserves managed objects across native allocation and invocation boundaries
-struct ManagedObjectRoot
+static auto AllocateManagedScalarValue(ManagedScalarValue& storage, const BaseTypeDesc& type) -> void*
 {
+    size_t size = type.Size;
+
+    if (size <= storage.Local.size()) {
+        return storage.Local.data();
+    }
+
+    storage.Dynamic.resize(size);
+    return storage.Dynamic.data();
+}
+
+// A GC handle preserves managed objects across native allocation and invocation boundaries
+class ManagedObjectRoot
+{
+public:
     ManagedObjectRoot() = default;
     ManagedObjectRoot(const ManagedObjectRoot&) = delete;
     ManagedObjectRoot(ManagedObjectRoot&&) = delete;
@@ -806,15 +807,47 @@ private:
     uint32_t _objectHandle {};
 };
 
-struct ManagedArrayBridgeData : ManagedObjectRoot
+class ManagedGcHandleOwner
 {
+public:
+    ManagedGcHandleOwner() = default;
+    ManagedGcHandleOwner(const ManagedGcHandleOwner&) = delete;
+    ManagedGcHandleOwner(ManagedGcHandleOwner&&) = delete;
+    auto operator=(const ManagedGcHandleOwner&) -> ManagedGcHandleOwner& = delete;
+    auto operator=(ManagedGcHandleOwner&&) -> ManagedGcHandleOwner& = delete;
+    ~ManagedGcHandleOwner() { ReleaseManagedGcHandle(_domain, _handle); }
+
+    [[nodiscard]] auto GetDomain() const noexcept -> nptr<MonoDomain> { return _domain; }
+    [[nodiscard]] auto GetHandle() const noexcept -> uint32_t { return _handle; }
+
+    void Acquire(ptr<MonoDomain> domain, MonoObject* object)
+    {
+        FO_VERIFY_AND_THROW(_handle == 0, "Managed GC handle is already acquired");
+        _domain = domain;
+
+        if (object != nullptr) {
+            _handle = NewManagedGcHandle(object, false);
+        }
+    }
+
+private:
+    nptr<MonoDomain> _domain {};
+    uint32_t _handle {};
+};
+
+struct ManagedArrayBridgeData
+{
+    // The root outlives all bridge storage during teardown
+    ManagedObjectRoot Root {};
     nptr<ManagedScriptBackend> Backend {};
     ComplexTypeDesc Type {};
     vector<ManagedScalarValue> Elements {};
 };
 
-struct ManagedDictBridgeData : ManagedObjectRoot
+struct ManagedDictBridgeData
 {
+    // The root outlives all bridge storage during teardown
+    ManagedObjectRoot Root {};
     nptr<ManagedScriptBackend> Backend {};
     ComplexTypeDesc Type {};
     vector<ManagedScalarValue> Keys {};
@@ -824,23 +857,23 @@ struct ManagedDictBridgeData : ManagedObjectRoot
 struct ManagedCallbackBridgeData
 {
     nptr<ManagedScriptBackend> Backend {};
-    nptr<MonoDomain> Domain {};
     ComplexTypeDesc Type {};
-    uint32_t Handler {};
     hstring Name {};
 
-    ~ManagedCallbackBridgeData() { ReleaseManagedGcHandle(Domain, Handler); }
+    // Release the handle before destroying the remaining callback state
+    ManagedGcHandleOwner Handler {};
 };
 
-struct ManagedDataAccessor final : DataAccessor
+class ManagedDataAccessor final : public DataAccessor
 {
+public:
 
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::MANAGED_BACKEND_INDEX; }
 
     [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override
     {
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        return GetManagedListCount(array->Backend, array->GetObject());
+        return GetManagedListCount(array->Backend, array->Root.GetObject());
     }
 
     [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override
@@ -851,20 +884,20 @@ struct ManagedDataAccessor final : DataAccessor
             array->Elements.resize(index + 1);
         }
 
-        MonoObject* item = GetManagedListItem(array->Backend, array->GetObject(), index);
+        MonoObject* item = GetManagedListItem(array->Backend, array->Root.GetObject(), index);
         return ConvertManagedSimpleObjectToNative(array->Backend, array->Type.BaseType, item, array->Elements[index]);
     }
 
     [[nodiscard]] auto ReadArrayRaw(ptr<void> data, span<uint8_t> dest) const -> bool override
     {
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        return TryReadManagedListRaw(array->Backend, array->Type.BaseType, array->GetObject(), dest);
+        return TryReadManagedListRaw(array->Backend, array->Type.BaseType, array->Root.GetObject(), dest);
     }
 
     [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override
     {
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
-        return GetManagedDictionaryCount(dict->Backend, dict->GetObject());
+        return GetManagedDictionaryCount(dict->Backend, dict->Root.GetObject());
     }
 
     [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override
@@ -879,9 +912,9 @@ struct ManagedDataAccessor final : DataAccessor
             dict->Values.resize(index + 1);
         }
 
-        MonoObject* key = GetManagedDictionaryKey(dict->Backend, dict->GetObject(), index);
+        MonoObject* key = GetManagedDictionaryKey(dict->Backend, dict->Root.GetObject(), index);
         ptr<void> native_key = ConvertManagedSimpleObjectToNative(dict->Backend, *dict->Type.KeyType, key, dict->Keys[index]);
-        MonoObject* value = GetManagedDictionaryValue(dict->Backend, dict->GetObject(), index);
+        MonoObject* value = GetManagedDictionaryValue(dict->Backend, dict->Root.GetObject(), index);
         return pair<ptr<void>, ptr<void>>(native_key, ConvertManagedSimpleObjectToNative(dict->Backend, dict->Type.BaseType, value, dict->Values[index]));
     }
 
@@ -890,7 +923,7 @@ struct ManagedDataAccessor final : DataAccessor
     void ClearArray(ptr<void> data) const override
     {
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
-        array->SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
+        array->Root.SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
         array->Elements.clear();
     }
 
@@ -898,7 +931,7 @@ struct ManagedDataAccessor final : DataAccessor
     {
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
-        AddManagedListItem(array->Backend, array->GetObject(), item);
+        AddManagedListItem(array->Backend, array->Root.GetObject(), item);
     }
 
     auto WriteArrayRaw(ptr<void> data, const_span<uint8_t> src) const -> bool override
@@ -916,7 +949,7 @@ struct ManagedDataAccessor final : DataAccessor
             return false;
         }
 
-        array->SetObject(list);
+        array->Root.SetObject(list);
         array->Elements.clear();
         return true;
     }
@@ -925,7 +958,7 @@ struct ManagedDataAccessor final : DataAccessor
     {
         auto dict = data.reinterpret_as<ManagedDictBridgeData>();
         FO_VERIFY_AND_THROW(dict->Type.KeyType, "Dictionary bridge has no key type");
-        dict->SetObject(CreateManagedDictionary(dict->Backend, *dict->Type.KeyType, dict->Type.BaseType));
+        dict->Root.SetObject(CreateManagedDictionary(dict->Backend, *dict->Type.KeyType, dict->Type.BaseType));
         dict->Keys.clear();
         dict->Values.clear();
     }
@@ -937,7 +970,7 @@ struct ManagedDataAccessor final : DataAccessor
         ManagedObjectRoot managed_key;
         managed_key.SetObject(BoxNativeSimpleValue(dict->Backend, *dict->Type.KeyType, key.get()));
         MonoObject* managed_value = BoxNativeSimpleValue(dict->Backend, dict->Type.BaseType, value.get());
-        AddManagedDictionaryItem(dict->Backend, dict->GetObject(), managed_key.GetObject(), managed_value);
+        AddManagedDictionaryItem(dict->Backend, dict->Root.GetObject(), managed_key.GetObject(), managed_value);
     }
 };
 
@@ -953,9 +986,7 @@ struct ManagedNativeValue : ManagedScalarValue
 struct ManagedEventSubscription
 {
     nptr<ManagedScriptBackend> Backend {};
-    nptr<MonoDomain> Domain {};
     vector<ComplexTypeDesc> Args {};
-    uint32_t Handler {};
     bool HasExplicitResult {};
     int32_t EventId {-1};
     bool UsesScalarFrame {};
@@ -963,7 +994,8 @@ struct ManagedEventSubscription
     uint16_t FrameSize {};
     nptr<MonoMethod> AdaptInvoke {};
 
-    ~ManagedEventSubscription() { ReleaseManagedGcHandle(Domain, Handler); }
+    // Release the handle before destroying the remaining subscription state
+    ManagedGcHandleOwner Handler {};
 };
 
 struct ManagedAbiMethodRuntime
@@ -3359,8 +3391,7 @@ static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* 
 
     auto subscription = safe_alloc::make_shared<ManagedEventSubscription>();
     subscription->Backend = backend;
-    subscription->Domain = GetDomainOrThrow(backend->GetDomain());
-    subscription->Handler = NewManagedGcHandle(handler, false);
+    subscription->Handler.Acquire(GetDomainOrThrow(backend->GetDomain()), handler);
     subscription->HasExplicitResult = has_explicit_result != 0;
     subscription->EventId = event_id;
     subscription->UsesScalarFrame = entry.UsesScalarFrame;
@@ -3387,7 +3418,7 @@ static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* 
 
     Entity::EventCallbackData event_data;
     event_data.Callback = [subscription](FuncCallData& call) -> Entity::EventResult { return DispatchManagedEvent(subscription, call); };
-    event_data.SubscriptionPtr = subscription->Handler;
+    event_data.SubscriptionPtr = subscription->Handler.GetHandle();
     event_data.SubscriptionOwner = GetManagedEventSubscriptionOwner(backend);
     event_data.Priority = static_cast<Entity::EventPriority>(priority);
     event_data.HasExplicitResult = has_explicit_result != 0;
@@ -4327,7 +4358,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     ManagedNativeValue ret_storage;
     void* ret_data = nullptr;
 
-    if (method->Ret) {
+    if (IsTypeDefined(method->Ret)) {
         if (method->Ret.Kind == ComplexTypeKind::Simple) {
             const BaseTypeDesc& ret_base = method->Ret.BaseType;
 
@@ -4344,7 +4375,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
                 ret_data = &ret_storage.RefTypePtr;
             }
             else if (ret_base.IsPrimitive || ret_base.IsEnum || ret_base.IsStruct) {
-                ret_data = ret_storage.Alloc(ret_base);
+                ret_data = AllocateManagedScalarValue(ret_storage, ret_base);
             }
             else {
                 throw ScriptSystemException("Unsupported Managed method return type", ret_base.Name);
@@ -4396,7 +4427,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     size_t mutable_args_count = static_cast<size_t>(std::ranges::count_if(method->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; }));
 
     if (mutable_args_count != 0) {
-        if (!method->Ret && mutable_args_count == 1) {
+        if (!IsTypeDefined(method->Ret) && mutable_args_count == 1) {
             for (size_t i = 0; i < args_count; i++) {
                 if (method->Args[i].Type.IsMutable) {
                     return BoxNativeCallValue(backend, method->Args[i].Type, args_data[i + first_method_arg], call.Accessor.get());
@@ -4407,14 +4438,14 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
         }
 
         MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
-        size_t result_count = mutable_args_count + (method->Ret ? 1 : 0);
+        size_t result_count = mutable_args_count + (IsTypeDefined(method->Ret) ? 1 : 0);
         MonoArray* result = mono_array_new(domain, mono_get_object_class(), result_count);
         uint32_t result_handle = NewManagedGcHandle(reinterpret_cast<MonoObject*>(result), 0);
         auto free_result_handle = scope_exit([result_handle]() noexcept { mono_gchandle_free(result_handle); });
         size_t result_index = 0;
         auto get_result = [result_handle]() -> MonoArray* { return reinterpret_cast<MonoArray*>(mono_gchandle_get_target(result_handle)); };
 
-        if (method->Ret) {
+        if (IsTypeDefined(method->Ret)) {
             MonoObject* ret = BoxNativeMethodReturnValue(backend, *method, is_ref_type_factory, ret_data, call.Accessor.get());
             mono_array_setref(get_result(), result_index, ret);
             result_index++;
@@ -4433,7 +4464,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
         return reinterpret_cast<MonoObject*>(get_result());
     }
 
-    if (!method->Ret) {
+    if (!IsTypeDefined(method->Ret)) {
         // The generated C# wrapper discards the result of a void method, so return null instead of
         // allocating a throwaway managed string on every such call
         return nullptr;
@@ -4506,7 +4537,7 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
         FuncCallData call {.Accessor = &MANAGED_DATA_ACCESSOR};
         call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
-        if (method->Ret) {
+        if (IsTypeDefined(method->Ret)) {
             call.RetData = GetManagedAbiNativeFrameResult(native_frame);
         }
 
@@ -4576,8 +4607,8 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
     auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
 
     for (ptr<ScriptFuncDesc> func_desc : candidates) {
-        bool is_void_call = !func_desc->Ret && func_desc->Args.size() == args_count;
-        bool is_result_call = func_desc->Ret && func_desc->Args.size() + 1 == args_count;
+        bool is_void_call = !IsTypeDefined(func_desc->Ret) && func_desc->Args.size() == args_count;
+        bool is_result_call = IsTypeDefined(func_desc->Ret) && func_desc->Args.size() + 1 == args_count;
 
         if (!func_desc->Call || (!is_void_call && !is_result_call)) {
             continue;
@@ -4648,7 +4679,7 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
                     ret_data = &ret_storage.RefTypePtr;
                 }
                 else if (ret_base.IsPrimitive || ret_base.IsEnum || ret_base.IsStruct) {
-                    ret_data = ret_storage.Alloc(ret_base);
+                    ret_data = AllocateManagedScalarValue(ret_storage, ret_base);
                 }
                 else {
                     throw ScriptSystemException("Unsupported Managed invoke return type", ret_base.Name);
@@ -4691,10 +4722,10 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
                 auto& ret_array = ret_storage.Array;
                 FO_VERIFY_AND_THROW(ret_array, "Managed invoke array return storage is null");
 
-                ret = ret_array->GetObject();
+                ret = ret_array->Root.GetObject();
                 if (ret == nullptr) {
                     ret = CreateManagedList(backend, func_desc->Ret.BaseType);
-                    ret_array->SetObject(ret);
+                    ret_array->Root.SetObject(ret);
                 }
             }
             else if (func_desc->Ret.Kind == ComplexTypeKind::Dict) {
@@ -4702,10 +4733,10 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
                 FO_VERIFY_AND_THROW(ret_dict, "Managed invoke dictionary return storage is null");
                 FO_VERIFY_AND_THROW(func_desc->Ret.KeyType, "Managed invoke dictionary return type has no key type");
 
-                ret = ret_dict->GetObject();
+                ret = ret_dict->Root.GetObject();
                 if (ret == nullptr) {
                     ret = CreateManagedDictionary(backend, *func_desc->Ret.KeyType, func_desc->Ret.BaseType);
-                    ret_dict->SetObject(ret);
+                    ret_dict->Root.SetObject(ret);
                 }
             }
             else {
@@ -4763,7 +4794,7 @@ static void NativeRegisterGlobalScriptFuncImpl(void* backend_ptr, MonoString* fu
         MonoString* param_mono_str = mono_array_get(param_type_names, MonoString*, i);
         auto arg_type = MakeManagedGlobalSimpleType(meta, ToStringAndFree(param_mono_str));
 
-        if (!arg_type) {
+        if (!IsTypeDefined(arg_type)) {
             supported = false;
             break;
         }
@@ -4774,7 +4805,7 @@ static void NativeRegisterGlobalScriptFuncImpl(void* backend_ptr, MonoString* fu
     if (supported && ret_type_str != "void") {
         ret = MakeManagedGlobalSimpleType(meta, ret_type_str);
 
-        if (!ret) {
+        if (!IsTypeDefined(ret)) {
             supported = false;
         }
     }
@@ -4884,7 +4915,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
     if (server_side) {
         auto player_type = MakeManagedGlobalSimpleType(meta, "Player");
 
-        if (!player_type) {
+        if (!IsTypeDefined(player_type)) {
             throw ScriptSystemException("Managed remote call cannot resolve Player type", name);
         }
 
@@ -4980,18 +5011,18 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                     auto& bridge = array_bridges.emplace_back();
                     bridge.Backend = backend;
                     bridge.Type = arg_type;
-                    bridge.SetObject(CreateManagedList(backend, arg_type.BaseType));
+                    bridge.Root.SetObject(CreateManagedList(backend, arg_type.BaseType));
 
                     // Plain numbers are stored on the wire exactly as in memory, so the whole block goes over at once
                     if (count != 0 && IsManagedRawArrayElement(arg_type.BaseType)) {
                         const_span<uint8_t> raw = reader.read_bytes(numeric_cast<size_t>(count) * arg_type.BaseType.Size);
-                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.GetObject(), raw);
+                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.Root.GetObject(), raw);
                         FO_VERIFY_AND_THROW(written, "Managed list rejected a raw remote call array", call_name, wire_arg_name, arg_type.BaseType.Name);
                     }
                     else {
                         for (int32_t j = 0; j < count; j++) {
                             auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
-                            AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
+                            AddManagedListItem(backend, bridge.Root.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
                         }
                     }
 
@@ -5372,7 +5403,7 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
 
-    if ((call.Completion && plan.IsAsync && !plan.Ret) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
+    if ((call.Completion && plan.IsAsync && !IsTypeDefined(plan.Ret)) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
         DispatchManagedCallbackBoxed(backend, handler_handle, plan, call);
     }
 }
@@ -5416,7 +5447,7 @@ static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, u
 
     (void)InvokeManagedScript(backend, plan.Adapter.get_no_const(), nullptr, adapter_args, "Managed callback failed");
 
-    if (plan.Ret) {
+    if (IsTypeDefined(plan.Ret)) {
         FO_VERIFY_AND_THROW(call.RetData, "Managed callback result storage is missing");
         memory::copy(call.RetData.as_ptr(), frame.data() + plan.Layout.ResultOffset, plan.Layout.Ret.Size);
     }
@@ -5448,7 +5479,7 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
         mono_array_setref(get_args_array(), i, arg);
     }
 
-    if (call.Completion && plan.IsAsync && !ret) {
+    if (call.Completion && plan.IsAsync && !IsTypeDefined(ret)) {
         uint64_t completion_id = backend->RegisterCallCompletion(call.Completion);
         auto fail_completion = scope_fail([&]() noexcept { safe_call([&] { backend->CompleteCall(completion_id, false); }); });
         MonoMethod* invoke_tracked = FindNativeMethod(backend, "InvokeTrackedCallback", 3);
@@ -5479,7 +5510,7 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
         }
     }
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         CopyManagedCallbackReturnValue(backend, ret, result.GetObject(), call);
     }
 }
@@ -5497,7 +5528,7 @@ static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const
 
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call)
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return;
     }
 
@@ -5596,11 +5627,11 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
 
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>
 {
-    if (callback->Handler == 0) {
+    if (callback->Handler.GetHandle() == 0) {
         return nullptr;
     }
 
-    MonoObject* handler = mono_gchandle_get_target(callback->Handler);
+    MonoObject* handler = mono_gchandle_get_target(callback->Handler.GetHandle());
 
     if (handler == nullptr) {
         return nullptr;
@@ -5634,7 +5665,7 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
     func_desc->Call = [backend, handler_handle, plan](FuncCallData& call) { DispatchManagedCallback(backend, handler_handle, *plan, call); };
     func_desc->AttributeChecker = [](string_view /*attribute*/) -> bool { return true; };
 
-    nptr<MonoDomain> domain = callback->Domain;
+    nptr<MonoDomain> domain = callback->Handler.GetDomain();
     return make_unique_del_ptr(std::move(func_desc).release(), [domain, handler_handle](ScriptFuncDesc* desc) mutable {
         ReleaseManagedGcHandle(domain, handler_handle);
         delete desc;
@@ -5652,7 +5683,7 @@ static auto BoxNativeMethodReturnValue(ptr<const ManagedScriptBackend> backend, 
 
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return nullptr;
     }
 
@@ -5783,7 +5814,7 @@ static auto DispatchManagedEvent(shared_ptr<ManagedEventSubscription> subscripti
     FO_VERIFY_AND_THROW(engine, "Managed event dispatch requires an engine context");
 
     Entity::EventResult result = Entity::EventResult::ContinueChain;
-    RunManagedScriptEntry(subscription->Backend, engine, [handler = subscription->Handler] { return mono_gchandle_get_target(handler); }, [&] { result = DispatchManagedEventInContext(subscription, call); });
+    RunManagedScriptEntry(subscription->Backend, engine, [handler = subscription->Handler.GetHandle()] { return mono_gchandle_get_target(handler); }, [&] { result = DispatchManagedEventInContext(subscription, call); });
     return result;
 }
 
@@ -5793,7 +5824,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
     ManagedThreadAttachment managed_thread {domain};
 
-    if (mono_gchandle_get_target(subscription->Handler) == nullptr) {
+    if (mono_gchandle_get_target(subscription->Handler.GetHandle()) == nullptr) {
         return Entity::EventResult::ContinueChain;
     }
 
@@ -5837,7 +5868,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
             entity_ptr = *static_cast<Entity**>(ptr<void>(call.ArgsData[0]).get());
         }
 
-        MonoObject* handler = mono_gchandle_get_target(subscription->Handler);
+        MonoObject* handler = mono_gchandle_get_target(subscription->Handler.GetHandle());
         mono_bool has_result = subscription->HasExplicitResult ? 1 : 0;
         int32_t frame_size = numeric_cast<int32_t>(subscription->FrameSize);
         int32_t event_result = static_cast<int32_t>(Entity::EventResult::ContinueChain);
@@ -5871,7 +5902,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
     }
 
     mono_bool has_result = subscription->HasExplicitResult ? 1 : 0;
-    void* args[] = {mono_gchandle_get_target(subscription->Handler), &has_result, get_args_array()};
+    void* args[] = {mono_gchandle_get_target(subscription->Handler.GetHandle()), &has_result, get_args_array()};
     ManagedObjectRoot ret;
     ret.SetObject(InvokeManagedScript(subscription->Backend, invoke_event, nullptr, args, "Managed event handler failed"));
 
@@ -6080,7 +6111,7 @@ static auto CreateNativeRefTypeObject(ptr<const ManagedScriptBackend> backend, c
 
     if (adopt_reference) {
         FO_VERIFY_AND_THROW(base_type.RefType, "Owned Managed RefType has no native metadata", base_type.Name);
-        auto it = std::ranges::find_if(base_type.RefType->Methods, [](const MethodDesc& method) { return method.Name == "__Release" && method.Args.empty() && !method.Ret; });
+        auto it = std::ranges::find_if(base_type.RefType->Methods, [](const MethodDesc& method) { return method.Name == "__Release" && method.Args.empty() && !IsTypeDefined(method.Ret); });
         FO_VERIFY_AND_THROW(it != base_type.RefType->Methods.end(), "Owned Managed RefType has no reference release method", base_type.Name);
         release_method = make_ptr(&*it);
     }
@@ -6677,7 +6708,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
             throw ScriptSystemException("Null passed to Managed value argument", base_type.Name);
         }
 
-        void* data = storage.Alloc(base_type);
+        void* data = AllocateManagedScalarValue(storage, base_type);
 
         if (base_type.IsStruct) {
             CopyManagedStructToNative(backend, base_type, value, data);
@@ -6701,31 +6732,36 @@ static auto ConvertManagedObjectToNative(ptr<ManagedScriptBackend> backend, cons
         storage.Array = safe_alloc::make_unique<ManagedArrayBridgeData>();
         storage.Array->Backend = backend;
         storage.Array->Type = type;
-        storage.Array->SetObject(value);
+        storage.Array->Root.SetObject(value);
         return storage.Array.get();
     }
     if (type.Kind == ComplexTypeKind::Dict) {
         storage.Dict = safe_alloc::make_unique<ManagedDictBridgeData>();
         storage.Dict->Backend = backend;
         storage.Dict->Type = type;
-        storage.Dict->SetObject(value);
+        storage.Dict->Root.SetObject(value);
         return storage.Dict.get();
     }
     if (type.Kind == ComplexTypeKind::Callback) {
         if (value == nullptr) {
             storage.Callback = safe_alloc::make_unique<ManagedCallbackBridgeData>();
             storage.Callback->Backend = backend;
-            storage.Callback->Domain = GetDomainOrThrow(backend->GetDomain());
+
+            auto domain = make_ptr(GetDomainOrThrow(backend->GetDomain()));
+
             storage.Callback->Type = type;
+            storage.Callback->Handler.Acquire(domain, nullptr);
             return storage.Callback.get();
         }
 
         string delegate_key = GetManagedDelegateKey(backend, value);
         storage.Callback = safe_alloc::make_unique<ManagedCallbackBridgeData>();
         storage.Callback->Backend = backend;
-        storage.Callback->Domain = GetDomainOrThrow(backend->GetDomain());
+
+        auto domain = make_ptr(GetDomainOrThrow(backend->GetDomain()));
+
         storage.Callback->Type = type;
-        storage.Callback->Handler = NewManagedGcHandle(value, false);
+        storage.Callback->Handler.Acquire(domain, value);
         storage.Callback->Name = backend->GetMetadata()->Hashes.to_hashed_string(strex("ManagedCallback:{}", delegate_key).str());
         return storage.Callback.get();
     }
@@ -7255,7 +7291,7 @@ static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool
 
 static auto IsManagedBridgeType(const ComplexTypeDesc& type) -> bool
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return true;
     }
     if (type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array) {
@@ -7609,7 +7645,7 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
     if (type_name.ends_with("&")) {
         ComplexTypeDesc ref_type = MakeManagedGlobalSimpleType(meta, type_name.substr(0, type_name.size() - 1));
 
-        if (ref_type) {
+        if (IsTypeDefined(ref_type)) {
             ref_type.IsMutable = true;
         }
 

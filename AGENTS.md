@@ -65,8 +65,19 @@ in versioned docs; sanitize evidence.
   passive data. Pure template/constexpr/umbrella headers are exceptions. Keep
   engine-owned source inventories unconditional; self-guarded modules own their
   `#if FO_*` and are included normally. Third-party feature dependencies may be gated.
-- **Types/names:** passive structs have no user constructors, methods, invariants or
-  `final`; behavioral types are encapsulated classes. Static-only utilities are
+- **Types/names:** `struct` is exclusively a passive record of public data: no declared
+  constructors, destructors, methods or member operators, including defaulted ones,
+  inherited behavior, invariants or `final`. Operations on records are free functions.
+  Essentials is exempt from the passive-record restriction: its structs may have
+  constructors, methods and member operators. Preserve the natural API of its
+  value types, data records and adapters. Settings types (including generated groups
+  and their base/aggregate settings) and all `ExportValueType` types are also exempt,
+  in any native layer or project extension: retain their struct methods, constructors,
+  member operators and natural data API. Do not convert existing classes to structs
+  merely because they qualify for an exception.
+  Types needing behavior, controlled state or a custom lifetime protocol are encapsulated
+  classes with private representation and a deliberate public interface; changing
+  only the keyword and leaving public state is insufficient. Static-only utilities are
   namespaces unless class identity is required (`friend class safe_alloc`). Essentials
   uses snake_case, higher layers PascalCase; preserve documented exceptions/module filenames.
   Namespace helpers follow declaration order; moving a static-only class to a

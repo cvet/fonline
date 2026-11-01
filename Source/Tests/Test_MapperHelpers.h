@@ -957,9 +957,12 @@ namespace MapperMergeTest
         mpos Origin;
         vector<mpos> Covered;
         int32_t LightDistance;
-
-        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && LightDistance == other.LightDistance; }
     };
+
+    inline auto operator==(const SurvivorDesc& left, const SurvivorDesc& right) -> bool
+    {
+        return left.Id == right.Id && left.Origin == right.Origin && left.Covered == right.Covered && left.LightDistance == right.LightDistance;
+    }
 
     inline auto CollectSurvivors(ptr<MapView> map, hstring proto_id) -> vector<SurvivorDesc>
     {
