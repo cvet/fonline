@@ -147,6 +147,14 @@ not qualified by the in-memory native server fixtures.
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-19 - Rebase retained master onto published version 52
+
+- The owner explicitly requests this local rebase, overriding the earlier merge-only instruction for this operation. Preserve `36ca80edf3b98e1eaa3fdf13f9458641527987ee` on a safety branch and fetch only Engine origin. The published target is `2860bb2755621976d199883e254d66808a659ec1`; its thirteen incoming commits advance the published baseline from version 39 to 52. The rebased integration owns `2026.1.53-dev`, runtime `0.0.73` and Managed ABI `9`. No push, force-push or release is performed.
+- Preserve the original merge's manual content as well as its topology. Replaying merge parents alone omits the native Managed property-callback regression fixtures. Compare with a separate three-way merge of the full preserved tip and published target: the final `Source/` tree matches that reference, including retained unload-callback persistence, the published explicit NPC-record deletion choice, callback/lifetime tests and process-private test caches. Reconcile stale attachment-notification prose with the actual live-endpoint guards and remove the old snapshot-compatibility literal from current persistence guidance.
+- Preserve all exact four-part disposition keys: the two histories form 904 records, retaining the combined reconciliation prose for shared keys. The enforced comparison against published version 52 passes with zero changes across seventeen contract domains and no missing dispositions. Native API generation checks current; regenerate the stale paired public-contract indexes with their owning generator. Update the reviewed translation hashes only after checking paired changes and identical fenced examples.
+- Keep complete authored migration histories. The pre-policy-row AI bundle measures 2,345,711 bytes, 2,799 above the published bound. Review a bounded 4 KiB increase to 2,347,008 bytes in ADR-0003, the manifest, both site guides and policy tests without changing document membership or exclusions. Documentation preparation passes fifteen outputs, 313 normative snippets, 159 evidence snippets, 183 external-parser cases and 4,875 current description translations. Retrieval passes 28 tasks and 67 checks, with 100% success and 0.938 MRR.
+- Final documentation validation passes 415 Markdown entries and all 575 documentation tests pass. Version validation against the exact published baseline passes. Preserve the initial stale-index failure and its generator correction separately. These source/documentation checks do not claim a fresh native build, rendered-site/browser audit, bake, ordinary gameplay qualification, Web, Android or audible acceptance. The embedding project's earlier H3 campaign still describes its original Engine revision; qualifying the updated runtime remains separate work.
+
 ## 2026-10-16 - Integrate published movement fixes and preserve atomic writes
 
 - Rebase only the unpublished atomic-write commit `45b56b718f681acd4c6c7e6a656165aa9055a6ca` from `eedcaa955ff4be79e43384766f7a47cbda0788d1` onto published master `1d88ee229d2d5208dd6c4c86814e032598a06e4c`. The resulting commit is `377844dc6186c76bc9749a0f83aa4c5044fcc631`, version `2026.1.44-dev`; preserve both published movement fixes and all earlier migration entries. Source-only range-diff is `=`. Reconcile the dated EN/RU baseline, runtime `0.0.73` and translation provenance; Managed ABI remains `9`.
@@ -155,6 +163,15 @@ This report records source-grounded documentation verification passes for the en
 - All enabled native roles build without compiler warnings. The complete enabled native suite passes 655 cases / 732344 assertions, including the sparse-grid, map-path, filesystem/cache and Threading cases. Focused API/reference/aggregate/version/Managed-guide Python checks pass 45 tests. Version history validation passes the single unpublished 43-to-44 step.
 - Supplementary embedding checks: full forced baking succeeds in 794198 ms (34 packs, 16 bakers, 47 runs, 27018 inputs and 19025 changed outputs); all three Managed roles are rebuilt. Paired metadata generates a current 531-call project catalog. The targeted embedding gameplay run passes 61 cases / 1682 expectations across ten suites, with no failure, timeout, skip or global exception. A rendered native OpenGL development scene passes centering, zoom and return checks; four 1600x900 captures are inspected and no runtime hillshade cache is produced. This is development-scene evidence, not an ordinary-player route or graceful GUI-shutdown claim; the owned GUI process is force-stopped after capture.
 - Preserve the full embedding MCP smoke result separately: 1972 tests, 74 failures and two skips. All failures reproduce in 73 unchanged methods when reading original embedding text blobs; this qualifies stale static/source expectations, not a full old runtime. Five affected MCP checks pass. Browser/Jekyll, Web, Android, audible output and alternate-script-backend acceptance are not newly claimed. No push or standalone authored documentation commit is performed; recovery refs and all safety stashes are retained.
+
+## 2026-10-15 - Qualify the pending version-40 integration candidate
+
+- Prepare the ordinary merge of published first parent `92ee4cb67d66e586c026e181e576b830deb7112a` (2026.1.39-dev) and retained second parent `7355e322b54d087fcec85d4efbadccc9baefda7f` (candidate 2026.1.38-dev) as 2026.1.40-dev. Preserve both histories and their separately labelled release notes. Source reconciliation retains synchronous retained-critter persistence inside `OnCritterUnload`, the published canonical Managed component-property callback names, and effective instance-level `Static`/`Hidden` map-placement selection. Managed ABI 9, runtime 0.0.72 and sprite container v2 remain unchanged.
+- Reconcile the complete disposition histories: 893 published and 867 retained entries form 898 unique full keys, with the retained first 849 JSON entries preserved exactly. Both parent-to-candidate comparisons pass across all 17 source-owned contract models with zero changes and no missing dispositions. Preserve merge-only publication guidance and the published 2,326,528-byte complete-document limit. The full documentation suite passes 575/575 tests; source/documentation validation passes 414 Markdown entries. Preparation checks 313 normative snippets, 159 evidence snippets, 183 external-parser cases and 4,871 current generated-description translations. The complete AI corpus contains 112 full documents and 2,307,253 UTF-8 bytes, leaving 19,275 bytes under the unchanged limit.
+- Build and rendered-artifact validation pass for 592 routes, 41 static endpoints and 85,636 local references. The browser audit checks 1,776 pages across three profiles, 15 interactions and 23 screenshots with zero reported errors. Automated accessibility coverage retains its stated axe-core subset and checked fallback limits; it is not an unrestricted accessibility certification.
+- Reusable native qualification is owned by the Engine tests under `Source/Tests/`, including `Test_ManagedScriptRuntime.cpp`, `Fixtures/ManagedRuntimeProbe.cs`, the map-placement regressions and retained lifetime/unload cases. After restoring the canonical generator and rebuilding the complete native/managed cohort, the final full native run passes 664 cases and 733,120 assertions in 176.28 seconds. The separate `ManagedPropertyCallbacksUseCanonicalNames` run passes 1,225 assertions in 7.27 seconds: all seven callback forms, 43 exercised callback calls, 12 engine-time await continuations and 14 invalid registrations, including true underscores and recovery after rejection. Assertion totals can vary with asynchronous polling. Continuations use the actual `ScriptTask.Delay` API and reacquire entity synchronization. No embedding-project script, CI job or generated output is required as normative proof of these reusable tests.
+- Preserve the two initial fixture failures separately: redundant-cast diagnostic IDE0004 and an unknown-property sentinel overflowing the generated ushort enum were corrected in the test source. Neither failure establishes the intended canonical-name regression against the old wrapper. A controlled temporary reversal of only the canonical-name generator fix subsequently establishes the intended RED: all seven component registrations fail with the expected native missing-property error, while the remaining 908 assertions pass, with zero errors or skips. Catch's JUnit reporter intentionally writes only one failure element per testcase; its seven-failure suite count and the full console report identify all seven forms. The generator source is restored byte-for-byte; a complete native/managed rebuild, repeated GREEN and the full native suite pass on the restored source. Remove only the second overriding audio fixture construction after confirming byte-identical output from the retained general builder; all 50 documentation-validator tests pass on the resulting frozen file.
+- Full baking of the embedding cohort passes after restoration, with zero dialog-composition errors. Its separate gameplay requalification also passes and remains owned and recorded by that project. These source-owned Engine and documentation results do not establish H3 acceptance, a release or a push. Earlier dated build, callback and rendered-site records remain historical rather than substitute acceptance of this candidate.
 
 ## 2026-10-14 - Move placement fixes onto master
 
@@ -11655,6 +11672,73 @@ Completed local validation:
 - Correct that date in both locales and add this separately versioned correction's migration note. Keep the exact-publication-range validator, historical failure and native/settings/protocol behavior unchanged. No history rewrite or exception is introduced.
 - Regenerate the public index, snippet/localization state, site/search/routes, AI evaluation and delivery artifacts in dependency order. Preserve source-owned classification and limits. The existing version suite passes all ten cases and the working-tree comparison against the exact published baseline accepts the new minor.
 - This documentation correction does not independently qualify the newly published movement implementation or an embedding project's adoption. Native builds, controlling/observing-client movement and delayed-link checks retain their separate evidence boundaries.
+
+## 2026-10-10 — Preserve published grid/display updates and retained integration
+
+- Published baseline: `9ca3e5c986a38713cacf1a01661649861b9934ed`
+  (`2026.1.24-dev`). Retained integration:
+  `f684889580bf00f6a2c8a382a2a4eb1f00cd1111` (`2026.1.22-dev`).
+  Merge version `2026.1.25-dev` keeps the published baseline as first parent
+  and the retained integration as second parent. Both histories and their
+  complete bilingual migration notes remain reachable.
+- Reviewed all three incoming commits from the retained integration: chunked
+  client fields and string server grid selectors, public example configuration,
+  and optional display-size/mode queries. Regenerated API and map models,
+  public index, localized documentation delivery, site/search/routes and AI
+  artifacts in dependency order. The aggregate seventeen-domain contract diff
+  has seven API changes, three required dispositions and zero missing
+  dispositions; the other sixteen domains are unchanged.
+- Full source documentation validation, exact baseline version comparison,
+  generated model/index freshness and eight focused engine-owned unittest
+  modules pass (85 tests). AI evaluation passes 28 tasks and 67 retrieval
+  checks with 100% success and 0.930 mean reciprocal rank.
+- Fresh Windows native unit compilation and execution pass 552 test cases and
+  667305 assertions. Additional engine-owned probes pass client field access
+  twice, dynamic-grid memory, chunked-grid memory and server grid operation
+  cost. The cost probe checks matching result hashes across all nine
+  combinations with five warmed samples; its timing report is not a general
+  performance guarantee. Native roles were compiled together against the
+  version 25 source cohort; embedding-project runtime acceptance is recorded
+  separately by that project.
+- Jekyll rendering was attempted and could not start: `bundle` is absent
+  (`WinError 2`), with no Ruby installation or WSL available. Source/site
+  models and search/AI checks pass; no new rendered-site or browser-audit
+  acceptance is claimed. Existing dated rendered-site proofs remain historical.
+- These checks precede the merge commit and use the exact tracked working-tree
+  source cohort. The later verification-record edit changes documentation only.
+  Safety stashes remain retained. No push, release or production publication
+  was performed.
+
+## 2026-10-10 — Persist retained critter changes during unload
+
+- Baseline `a131717f8373b78f251c331699d15a4ab285eeca`
+  (`2026.1.25-dev`); correction `2026.1.26-dev`. A private per-critter
+  permission admits synchronous persistent-property writes only during its
+  `OnCritterUnload` dispatch and ends before native map/body teardown.
+  Ordinary destroying and finished entities continue rejecting persistence.
+- Two backend-independent engine-owned regressions reproduce lost callback
+  values before the fix and run successfully after it: 29 assertions, no
+  failure, error or skip. They verify actual load, resetting a property to
+  its default, saved map/hex preservation before load, and no finish-time
+  write or recreation of a deleted database record. Ordinary load still
+  clears local-map membership and enters the global map.
+- Clean Windows native compilation and the full embedding-generated engine
+  unit target pass 554 cases and 667334 assertions. An initial const-capture
+  compiler failure is retained separately; acceptance uses the subsequent
+  mutable unwind guard and unchanged source cohort.
+- The dated English/Russian migration notes and lifecycle guide describe the
+  precise synchronous boundary, private native-layout rebuild, unchanged
+  stored identities/API/formats and project-owned data reconciliation.
+  Generated API/map/index, complete source documentation validation
+  (414 Markdown entries), and 25 lifecycle/localization/version fixtures pass.
+  The seventeen-domain contract diff has zero changes and zero required or
+  missing dispositions. Site/search/routes and AI artifacts are regenerated
+  in dependency order.
+- Jekyll remains unavailable in this environment: no bundle/Ruby or WSL.
+  No fresh rendered-site or browser acceptance is claimed. Gameplay-specific
+  persisted outcomes remain the embedding project's evidence boundary.
+  Completion/report edits follow native validation and alter documentation
+  only. No push, release or production publication is performed.
 
 ## 2026-10-10 — lf-6 Engine update verification
 

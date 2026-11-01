@@ -13052,6 +13052,30 @@
         "Docs/en/reference/changelog.md"
       ]
     },
+    "Docs/_meta/QuestIntegrationUpdate20261010Plan.md": {
+      "id": "quest-integration-update-20261010-plan",
+      "title": "Retained integration update, 10 October 2026",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/QuestIntegrationUpdate20261010Plan.md",
+      "sources": [
+        "BuildTools/docs-browser/audit.mjs",
+        "BuildTools/docs-browser/test_diagram_rendering.mjs",
+        "Docs/en/contributing/documentation/site-publication.md",
+        "Docs/en/reference/changelog.md"
+      ]
+    },
     "Docs/_meta/ManagedRuntimeReadyValidationPlan.md": {
       "id": "managed-runtime-ready-validation-plan",
       "title": "Managed Runtime READY Validation Plan",
@@ -13076,6 +13100,57 @@
         "BuildTools/tests/test_managed_runtime_workspace_cache.py",
         "BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py",
         "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/_meta/QuestCollectionIntegrationUpdate20261010Plan.md": {
+      "id": "quest-collection-integration-update-20261010-plan",
+      "title": "Retained collection-event integration, 10 October 2026",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/QuestCollectionIntegrationUpdate20261010Plan.md",
+      "sources": [
+        "Source/Common/ScriptSystem.h",
+        "Source/Scripting/Managed/ManagedScriptBackend.cpp",
+        "Source/Tests/Test_EngineMetadata.cpp",
+        "BuildTools/tests/test_managed_event_collections.py",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/_meta/CritterUnloadPersistence20261010Plan.md": {
+      "id": "critter-unload-persistence-20261010-plan",
+      "title": "Retained critter persistence during unload callbacks, 10 October 2026",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/CritterUnloadPersistence20261010Plan.md",
+      "sources": [
+        "Source/Server/Server.cpp",
+        "Source/Server/Critter.h",
+        "Source/Tests/Test_ServerEntityLifetime.cpp",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
         "Docs/en/reference/changelog.md"
       ]
     }

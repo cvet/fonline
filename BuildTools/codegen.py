@@ -1036,6 +1036,7 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
         separator = arg.rfind(' ')
         assert separator != -1, 'Invalid argument declaration: ' + arg
         raw_type_text = arg[:separator].rstrip()
+        assert 'refcount_ptr<' not in raw_type_text, 'Owning handles are supported only in returned entity vectors: ' + raw_type_text
         type_text, wrapper, wrapper_nullable = strip_pointer_wrapper(raw_type_text)
         arg_type = engine_type_to_meta_type(type_text, valid_types, allow_raw_handle_pointer=wrapper)
         if is_validated_pointer_meta_type(arg_type):
@@ -1068,6 +1069,14 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     assert len([m for m in ret_cover_markers if m in RETURN_COVER_MARKERS]) <= 1, \
         'A return value takes at most one cover marker: ' + tag_context
     raw_ret_type_text = ''.join(return_tokens)
+    if 'refcount_ptr<' in raw_ret_type_text:
+        owning_prefix = 'vector<refcount_ptr<'
+        assert raw_ret_type_text.startswith(owning_prefix) and raw_ret_type_text.endswith('>>'), \
+            'Owning handles are supported only in returned entity vectors: ' + raw_ret_type_text
+        owned_type = raw_ret_type_text[len(owning_prefix):-2]
+        owned_meta_type = engine_type_to_meta_type(owned_type + '*', valid_types, allow_raw_handle_pointer=True)
+        assert owned_meta_type != 'Game' and (owned_meta_type in game_entities or owned_meta_type == 'Entity'), \
+            'Owning handles are supported only in returned entity vectors: ' + raw_ret_type_text
     ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
     ret = engine_type_to_meta_type(ret_type_text, valid_types, allow_raw_handle_pointer=ret_wrapper)
     if is_validated_pointer_meta_type(ret):
@@ -1353,7 +1362,7 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_r
     }
     # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
     # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements
-    for prefix in ('ptr<', 'nptr<'):
+    for prefix in ('ptr<', 'nptr<', 'refcount_ptr<'):
         if engine_type.startswith(prefix) and engine_type.endswith('>'):
             return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types, allow_raw_handle_pointer=True)
     if engine_type.startswith('ScriptFunc<'):
@@ -2140,7 +2149,7 @@ def container_element_wrapper(type_text: str) -> str:
     for prefix in ('readonly_vector<', 'vector<'):
         if text.startswith(prefix):
             inner = text[len(prefix):].lstrip()
-            for wrapper in ('nptr', 'ptr'):
+            for wrapper in ('nptr', 'ptr', 'refcount_ptr'):
                 if inner.startswith(wrapper + '<'):
                     return wrapper
             return ''
@@ -2158,7 +2167,7 @@ def apply_container_element_wrapper(engine_type: str, element_wrapper: str) -> s
     assert open_pos != -1 and close_pos > open_pos, 'container element wrapper requires a container type: ' + engine_type
     element = engine_type[open_pos + 1:close_pos].strip()
     inner = ''
-    for wrapper in ('nptr', 'ptr'):
+    for wrapper in ('nptr', 'ptr', 'refcount_ptr'):
         prefix = wrapper + '<'
         if element.startswith(prefix) and element.endswith('>'):
             inner = element[len(prefix):-1].strip()

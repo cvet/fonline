@@ -31,11 +31,11 @@ The calendar month is recorded in the UTC change/release date, not in `MAJOR`. S
 
 ## Every master update
 
-Each first-parent master commit owns one minor increment and dated bilingual notes, including merges, docs, tests, CI, dependencies and reverts. Reconcile feature fixups with the latest master before integration; a direct multi-commit push must satisfy every step. Rebase unpublished commits onto the fetched tip; merge only diverged published histories. Recalculate the next version and preserve published ancestry before publication.
+Each first-parent master commit owns one minor increment and dated bilingual notes, including merges, docs, tests, CI, dependencies and reverts. Reconcile the complete branch with the latest published master before integration; a direct multi-commit push must satisfy every step. If a branch has a remote tip, preserve its entire history, including unpublished commits: integrate incoming changes with an ordinary merge, never rebase, reset or amend that branch. No force-push or remote-branch deletion. Calculate the next version from the latest published master tip and retain that tip on the publication's first-parent chain; merge the preserved local branch into an integration branch based on that published tip when the histories diverge. Before publication, verify that the destination's published tip is an ancestor of the final local tip.
 
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
-3. Increment `VERSION` from the current master tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
+3. Increment `VERSION` from the latest published master tip, not an older divergent local tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
 4. Freeze the preceding `## Current - <date>` heading with its old `VERSION` identifier, then add `## Current - <UTC date>` in both changelog locales. The validator resolves only this newest entry from `VERSION`; historical headings keep their exact identifiers. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
 5. For every removal/replacement, write the exhaustive migration record below and bind any required generated-contract disposition to its exact base/current digests. Review semantic changes even when the static diff is empty.
 6. Update each owning guide, examples, both locales, and `AGENTS.md` routing in the same change. Regenerate affected source-owned models/references, diagrams/screenshots, snippets, translation state, site/search/routes, AI evaluation, and AI delivery in dependency order. [Documentation maintenance](../../contributing/documentation/) owns the complete route.
@@ -43,7 +43,7 @@ Each first-parent master commit owns one minor increment and dated bilingual not
 8. Before an authorized commit/publication run the update validator against the actual baseline. CI validates each incoming master step, not only the final version. Publish only with the owner's authorization and retain the published tip as an ancestor.
 
 ```bash
-python BuildTools/docs_engine_version.py --check --branch master --baseline-git-ref HEAD
+python BuildTools/docs_engine_version.py --check --branch master --baseline-git-ref <latest-published-master-sha>
 python BuildTools/tests/test_engine_version.py
 ```
 

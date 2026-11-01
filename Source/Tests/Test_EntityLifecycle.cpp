@@ -42,6 +42,7 @@ using namespace EntityLifecycleTests;
 
 // Same declaration shape as the other script exports driven directly from native tests
 bool Server_Critter_MapTransfersLocked(ptr<Critter> self);
+void Server_Critter_ReleaseExplicitPersistence(ptr<Critter> self, ptr<Map> map);
 map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id);
 
 TEST_CASE("EntityManagerCppApi")
@@ -1885,6 +1886,388 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
     CHECK(restored->IsDestroyed());
     CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     CHECK(map->GetItems().size() == 2);
+}
+
+
+TEST_CASE("CritterExplicitPersistenceRelease", "[persistence][entity]")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto hash = [&](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+    auto loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(map);
+    auto cr = server->CreateCritter(hash("TestCritter"), false);
+    auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(hash("TestItem"), nullptr), true);
+    ident_t cr_id = cr->GetId();
+    ident_t item_id = item->GetId();
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+
+    SECTION("PersistentCurrentMapKeepsRecordsAndExplicitDescendant")
+    {
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->EntityMngr.MakePersistent(item, true, true);
+        REQUIRE(cr->IsExplicitlyPersistent());
+        REQUIRE(item->IsExplicitlyPersistent());
+
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        server->DbStorage.WaitCommitChanges();
+        CHECK_FALSE(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(item->IsExplicitlyPersistent());
+        CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK(server->DbStorage.Valid(hash("Items"), item_id));
+        CHECK(cr->GetMapId() == map->GetId());
+        CHECK(map->GetCritter(cr_id) == cr);
+    }
+
+    SECTION("TemporaryCurrentMapDemotesOnlyTheReleasedTree")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        REQUIRE_FALSE(map->IsPersistent());
+        REQUIRE(item->IsPersistent());
+        REQUIRE_FALSE(item->IsExplicitlyPersistent());
+
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        server->DbStorage.WaitCommitChanges();
+        CHECK_FALSE(cr->IsExplicitlyPersistent());
+        CHECK_FALSE(cr->IsPersistent());
+        CHECK_FALSE(item->IsPersistent());
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+        CHECK(server->EntityMngr.GetCritter(cr_id) == cr);
+        CHECK(server->EntityMngr.GetItem(item_id) == item);
+        CHECK(cr->GetMapId() == map->GetId());
+        CHECK(map->GetCritter(cr_id) == cr);
+    }
+
+    SECTION("TemporaryMapRejectsIndependentExplicitDescendantWithoutMutation")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->EntityMngr.MakePersistent(item, true, true);
+        auto before_cr = Server_Game_DbGetRecord(server, hash("Critters"), cr_id);
+        auto before_item = Server_Game_DbGetRecord(server, hash("Items"), item_id);
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("independently persistent descendant"));
+        server->DbStorage.WaitCommitChanges();
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsExplicitlyPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(Server_Game_DbGetRecord(server, hash("Critters"), cr_id) == before_cr);
+        CHECK(Server_Game_DbGetRecord(server, hash("Items"), item_id) == before_item);
+        CHECK(map->GetCritter(cr_id) == cr);
+    }
+
+    SECTION("WrongMapRejectsWithoutMutation")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto other_loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+        auto other_map = other_loc->GetMapByIndex(0);
+        REQUIRE(other_map);
+        auto before = Server_Game_DbGetRecord(server, hash("Critters"), cr_id);
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, other_map), Catch::Matchers::ContainsSubstring("actual current map"));
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(map->GetCritter(cr_id) == cr);
+        CHECK(Server_Game_DbGetRecord(server, hash("Critters"), cr_id) == before);
+    }
+
+    SECTION("GlobalCritterRejectsWithoutMapFallback")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->MapMngr.TransferToGlobal(cr, {});
+        auto before = Server_Game_DbGetRecord(server, hash("Critters"), cr_id);
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("actual current map"));
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK_FALSE(cr->GetMapId());
+        CHECK(Server_Game_DbGetRecord(server, hash("Critters"), cr_id) == before);
+    }
+
+    SECTION("MissingMapCoverIsNotRepaired")
+    {
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto before = Server_Game_DbGetRecord(server, hash("Critters"), cr_id);
+
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 1> cr_only {cr};
+        ctx->SyncEntities(cr_only);
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+        small_vector<ptr<ServerEntity>, 4> full_cover {loc, map, cr, item};
+        ctx->SyncEntities(full_cover);
+
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(Server_Game_DbGetRecord(server, hash("Critters"), cr_id) == before);
+    }
+
+    SECTION("PropertyCallbackRelocationIsRetainedAndSignalsIncompleteRelease")
+    {
+        auto destination_loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+        auto destination = destination_loc->GetMapByIndex(0);
+        REQUIRE(destination);
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(destination_loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+        REQUIRE(prop);
+        prop->AddPostSetter([cr_id, destination, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id) {
+                auto body = entity.dyn_cast<Critter>();
+                REQUIRE(body);
+                server_ptr->MapMngr.TransferToMap(body, destination, mpos {30, 30}, mdir {}, std::nullopt);
+            }
+        });
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("callback changed the actual current map"));
+        CHECK_FALSE(cr->IsExplicitlyPersistent());
+        CHECK(cr->GetMapId() == destination->GetId());
+        CHECK(destination->GetCritter(cr_id) == cr);
+        CHECK_FALSE(map->GetCritter(cr_id));
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+    }
+
+    SECTION("PropertyCallbackDestructionIsRetainedWithoutStaleAccess")
+    {
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto retained = cr.hold_ref();
+        auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+        REQUIRE(prop);
+        prop->AddPostSetter([cr_id, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id) {
+                auto body = entity.dyn_cast<Critter>();
+                REQUIRE(body);
+                server_ptr->CrMngr.DestroyCritter(body);
+            }
+        });
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("callback ended an entity lifetime"));
+        CHECK(retained->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(map->GetCritter(cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+
+
+    SECTION("PropertyCallbackMayDestroyTheCurrentMapWithoutStaleAccess")
+    {
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto retained_cr = cr.hold_ref();
+        auto retained_map = map.hold_ref();
+        ident_t map_id = map->GetId();
+        auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+        REQUIRE(prop);
+        prop->AddPostSetter([cr_id, map, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id) {
+                server_ptr->MapMngr.DestroyMap(map);
+            }
+        });
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("callback ended an entity lifetime"));
+        CHECK(retained_cr->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+
+    SECTION("PropertySetterCannotSilentlyKeepTheExplicitRequest")
+    {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+        REQUIRE(prop);
+        prop->AddSetter([cr_id](nptr<Entity> entity, ptr<const Property>, PropertyRawData& value) {
+            if (entity->GetId() == cr_id) {
+                value.SetAs<bool>(true);
+            }
+        });
+
+        CHECK_THROWS_WITH(Server_Critter_ReleaseExplicitPersistence(cr, map), Catch::Matchers::ContainsSubstring("callback retained the explicit request"));
+        CHECK(cr->IsExplicitlyPersistent());
+        CHECK(cr->IsPersistent());
+        CHECK(item->IsPersistent());
+        CHECK(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+}
+
+#if FO_DATABASE_JSON
+TEST_CASE("CritterExplicitPersistenceReleaseSurvivesHolderRestart", "[persistence][entity]")
+{
+    string storage_dir = strex(BakerTests::GetTestCacheDir()).combine_path("explicit_release_json").str();
+    REQUIRE_FALSE(fs::exists(storage_dir));
+    bool created = fs::create_directories(storage_dir);
+    REQUIRE(created);
+    auto cleanup_storage = scope_exit([storage_dir]() noexcept { (void)fs::remove_dir_tree(storage_dir); });
+    string storage_option = strex("JSON {}", storage_dir).str();
+    ident_t map_id;
+    ident_t cr_id;
+    ident_t item_id;
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server = MakeServerEngine(settings);
+        auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+        REQUIRE(WaitForStart(server).empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        auto hash = [&](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+        auto loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(map);
+        auto cr = server->CreateCritter(hash("TestCritter"), false);
+        auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(hash("TestItem"), nullptr), true);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->EntityMngr.MakePersistent(cr, true, true);
+        map_id = map->GetId();
+        cr_id = cr->GetId();
+        item_id = item->GetId();
+
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        server->DbStorage.WaitCommitChanges();
+        REQUIRE_FALSE(cr->IsExplicitlyPersistent());
+        REQUIRE(cr->IsPersistent());
+    }
+
+    {
+        auto settings = MakeSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
+        auto server = MakeServerEngine(settings);
+        auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+        REQUIRE(WaitForStart(server).empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+        auto map = server->EntityMngr.GetMap(map_id);
+        auto cr = server->EntityMngr.GetCritter(cr_id);
+        auto item = server->EntityMngr.GetItem(item_id);
+        REQUIRE(map);
+        REQUIRE(cr);
+        REQUIRE(item);
+        small_vector<ptr<ServerEntity>, 3> cover {map, cr, item};
+        server->RequireCurrentSyncContext()->SyncEntities(cover);
+
+        CHECK(cr->GetMapId() == map_id);
+        CHECK(map->GetCritter(cr_id) == cr);
+        CHECK(cr->IsPersistent());
+        CHECK_FALSE(cr->IsExplicitlyPersistent());
+        CHECK(item->IsPersistent());
+        REQUIRE(cr->GetInvItems().size() == 1);
+        CHECK(cr->GetInvItems().front()->GetId() == item_id);
+        Server_Critter_ReleaseExplicitPersistence(cr, map);
+        CHECK(cr->IsPersistent());
+    }
+
+    bool removed = fs::remove_dir_tree(storage_dir);
+    CHECK(removed);
+    CHECK_FALSE(fs::exists(storage_dir));
+}
+#endif
+
+TEST_CASE("MakePersistentPropertyCallbackDestruction", "[persistence][entity]")
+{
+    bool persistent = GENERATE(true, false);
+    CAPTURE(persistent);
+
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto hash = [&](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+    auto loc = server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")});
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(map);
+    auto cr = server->CreateCritter(hash("TestCritter"), false);
+    auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(hash("TestItem"), nullptr), true);
+    ident_t cr_id = cr->GetId();
+    ident_t item_id = item->GetId();
+    ident_t map_id = map->GetId();
+    server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+    REQUIRE_FALSE(cr->IsPersistent());
+    REQUIRE_FALSE(cr->IsExplicitlyPersistent());
+    REQUIRE_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+    REQUIRE_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+    if (!persistent) {
+        server->EntityMngr.MakePersistent(cr, true, true);
+        REQUIRE(cr->IsPersistent());
+        REQUIRE(cr->IsExplicitlyPersistent());
+        REQUIRE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        REQUIRE(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+
+    auto retained_cr = cr.hold_ref();
+    auto retained_map = map.hold_ref();
+    auto prop = cr->GetProperties()->GetRegistrar()->FindProperty("ExplicitlyPersistent");
+    REQUIRE(prop);
+    bool callback_fired = false;
+
+    SECTION("DestroyingTheCritterKeepsDatabaseRecordsAbsent")
+    {
+        prop->AddPostSetter([cr_id, &callback_fired, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id) {
+                auto body = entity.dyn_cast<Critter>();
+                REQUIRE(body);
+                callback_fired = true;
+                server_ptr->CrMngr.DestroyCritter(body);
+            }
+        });
+
+        CHECK_THROWS_AS(server->EntityMngr.MakePersistent(cr, persistent, true), EntityManagerException);
+        CHECK(callback_fired);
+        CHECK(retained_cr->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(map->GetCritter(cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+    }
+
+    SECTION("DestroyingTheCurrentMapKeepsCritterRecordsAbsent")
+    {
+        prop->AddPostSetter([cr_id, map, &callback_fired, server_ptr = server.as_ptr()](nptr<Entity> entity, ptr<const Property>) mutable {
+            if (entity->GetId() == cr_id) {
+                callback_fired = true;
+                server_ptr->MapMngr.DestroyMap(map);
+            }
+        });
+
+        CHECK_THROWS_AS(server->EntityMngr.MakePersistent(cr, persistent, true), EntityManagerException);
+        CHECK(callback_fired);
+        CHECK(retained_cr->IsDestroyed());
+        CHECK(retained_map->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetMap(map_id));
+        CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
+        CHECK_FALSE(server->EntityMngr.GetItem(item_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Critters"), cr_id));
+        CHECK_FALSE(server->DbStorage.Valid(hash("Items"), item_id));
+    }
 }
 
 FO_END_NAMESPACE

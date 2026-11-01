@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"c1b31a5e8640489c0c88ee853fdcda3678d5bdae36c8f17a185cb20bde1f8b81"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"40e7914505f3603bd9a7bfcb9ba3c4557e42d5448f5850f9d266c25d8c18abbb"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -183,13 +183,13 @@ RPC dispatch и ожидающие временные события испол�
 
 ## Async и планирование continuations
 
-`Game.YieldAsync(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
+`ScriptTask.Delay(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
 
 Каждый backend владеет отдельной очередью continuation. `BaseEngine::FrameAdvance` обрабатывает только свои backend после освобождения frame-property lock. Каждая продолженная continuation снова входит в свой Engine через `RunScriptContext`; на сервере это создаёт новый synchronization context. Новая continuation ждёт следующего frame, поэтому yielding loop не может занять весь текущий frame.
 
 `Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
-Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
+Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `ScriptTask.Delay` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
 `ScriptTask.Delay(timespan)` сохраняет наносекунды; `Delay(int)` переводит миллисекунды.
 Обе перегрузки запрещают синхронный callback. Масштабирование единиц использует checked-арифметику.
@@ -461,7 +461,7 @@ Source port завершён только тогда, когда перенес�
 
 Сохраняйте public metadata names, declarations remote-call wire, property layouts, persisted identifiers и behavior, если migration намеренно их не меняет. Backend-neutral metadata не должна меняться только из-за нового синтаксиса. Запускайте оба backend во временном сравнительном lane только по явному плану проекта; не допускайте случайно двух handlers одного event или remote call.
 
-Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
+Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
 
 ## Граница документации проекта
 

@@ -8,7 +8,7 @@ The canonical explanation moved to locale-specific paths.
 
 ## Bounded map view presentation
 
-Continue with the [canonical English explanation](en/explanation/rendering/#bounded-map-view-presentation).
+Entry-focused views keep the replicated visibility area anchored while the camera can scroll within authored bounds. Continue with the [canonical bounded-view explanation](en/explanation/rendering/#bounded-map-view-presentation).
 
 ## Contract status
 

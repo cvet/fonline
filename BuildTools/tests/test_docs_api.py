@@ -376,12 +376,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                     [],
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
-        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 4)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2590)
+        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 5)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2591)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2589, "internal": 1},
+            {"experimental": 2590, "internal": 1},
         )
         transfer_state = next(
             symbol for symbol in model["symbols"]
@@ -403,8 +403,13 @@ class DocumentationApiModelTests(unittest.TestCase):
             {symbol["id"] for symbol in experimental_symbols if symbol["since"] == "2026.1.83-dev"},
             view_refresh_ids,
         )
+        persistence_id = "script.method.server.Critter.ReleaseExplicitPersistence"
+        persistence_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == persistence_id)
+        self.assertEqual(persistence_symbol["since"], "2026.1.64-dev")
+        self.assertEqual(persistence_symbol["contract"]["selector"], persistence_id)
+        self.assertIn("preserving inherited persistence", persistence_symbol["description"])
         self.assertTrue(all(symbol["since"] == "2022.1.0.wip"
-                            for symbol in experimental_symbols if symbol["id"] not in view_refresh_ids))
+                            for symbol in experimental_symbols if symbol["id"] not in view_refresh_ids and symbol["id"] != persistence_id))
         self.assertTrue(all(symbol["contract"]["selector"] == symbol["id"]
                             for symbol in experimental_symbols if symbol["id"] in view_refresh_ids))
         allocator_id = "script.method.common.Game.GetAllocatorStatistics"
@@ -414,7 +419,7 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertIn("whole-process memory contract", allocator_symbol["contract"]["notes"])
         self.assertTrue(all(symbol["contract"]["selector"] == "scope:native-codegen"
                             for symbol in experimental_symbols
-                            if symbol["id"] != allocator_id and symbol["id"] not in view_refresh_ids))
+                            if symbol["id"] not in {allocator_id, persistence_id} and symbol["id"] not in view_refresh_ids))
 
     def test_view_map_contract_requires_context_and_refresh(self) -> None:
         model = json.loads(

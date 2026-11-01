@@ -116,7 +116,7 @@ Script execution is a sequence of bounded entries, not one serialized game-wide 
 | Module initialization | `ScriptSystem::InitModules()` | Init functions run in ascending priority while global assignment is temporarily enabled. |
 | Entity initialization | `EntityManager::CallInit()` | The entity is marked initialized, its `On*Init` event fires, then its optional persisted `InitScript` callback runs. |
 | Callback dispatch | Client loop or server worker job | Events, time events, remote calls, and native re-entry invoke attributed functions through their owning API. |
-| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await Game.YieldAsync(...)` preserves a continuation, but the current native execution scope returns. |
+| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await ScriptTask.Delay(...)` preserves a continuation, but the current native execution scope returns. |
 | Resumption | Client scheduled-callback pass or server worker pool | The continuation runs later; on the server it may run on another worker under a fresh synchronization context. |
 | Entity destruction | Entity/manager owner | Event callbacks and time-event storage are cleared; server dispatch jobs are cancelled by the owning manager. |
 | Runtime shutdown | Client/server and scripting backend | Global events/time events, entities, script globals, contexts, and the backend are drained in owner-defined order. |
@@ -192,11 +192,51 @@ Completion of the script invocation, rather than the return of its first native 
 
 A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
 
+### Persistence property callbacks
+
+`MakePersistent` changes `ExplicitlyPersistent` through the normal property
+setter before recursively updating the entity graph's persistence. A post-set
+reaction may destroy the root entity or its current map. The native owner retains
+the root across that callback, then checks its lifetime and validates current
+entity access before entering either recursive persistence pass. An ended root
+lifetime raises a lifecycle exception instead of continuing into the database
+pass and recreating deleted records.
+
+A surviving relocation is not itself a failure. The operation can continue on
+the live entity under the caller's valid current cover; it does not acquire an
+omitted lock. This is a `Basic` exception guarantee: a failure does not roll back
+the property change or valid callback effects, including relocation or destruction.
+Recheck lifetime, current parent links and required cover before continuing or
+retrying; a retained handle is not proof that the original entity graph survived.
+
 ### Persistence preload boundary
 
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.
 
 The callback runs with map transfers locked. Limit it to normalizing the critter's own persisted properties and inventory: the rest of the world may still be only partially restored, and resolving, loading, or relocating other persisted entities is not supported at this phase. A handler may explicitly destroy the critter to drop a stale persisted graph. Throwing or stopping the event chain instead marks the load as failed and leaves the persisted record available for diagnosis. See [Server Runtime](../../explanation/runtime/server.md) for the full load order and player-bound behavior.
+
+### Persistence during critter unload
+
+`ServerEngine::UnloadCritter` requires the critter to be detached from its
+player and marks it destroying before `Game.OnCritterUnload`. Synchronous
+changes to that critter's own persistent properties during this exact event
+are written to its retained database record and survive a later load. This
+permission belongs to the critter instance under its entity cover, ends when
+the event returns, and does not apply to another destroying entity or to a
+continuation after suspension.
+
+Native map removal and the rest of unload teardown do not save their temporary
+property changes: the stored map/hex fields remain those from before teardown.
+The ordinary load path still clears `MapId` before preload and starts through
+global-map entry; preserving the stored fields does not change that policy.
+Ordinary destruction and writes after `IsDestroyed` never update or recreate
+the record. Actual logout and actual critter unload remain separate events;
+the embedding game owns when an offline body is unloaded.
+
+Engine-owned `ServerCritterUnloadPersistsCallbackChanges` and
+`ServerCritterFinishDoesNotPersistChangesOrRecreateRecords` in
+`Source/Tests/Test_ServerEntityLifetime.cpp` cover the callback/teardown
+boundary, a write back to a default value, real reload and ordinary finish.
 
 ## Entity `InitScript` callbacks
 
@@ -267,6 +307,35 @@ Server callbacks can run concurrently. The engine validates authoritative entity
 - `Game.SyncRelease()` releases both the entity cover and any singleton lock entries held by the current script execution scope.
 
 `Game.Sync(...)` carries `[[Async]]`, so the marker propagates through its direct script callers even when acquisition completes without suspending the AngelScript context.
+
+### Registry handles and filtered critter scans
+
+`Game.GetCritters(CritterFindType.Any)` snapshots registered critter handles without
+reading their mutable properties or acquiring entity cover. A returned handle is
+not permission for later reads or mutations. Acquire the complete required cover,
+then recheck lifetime, membership and the properties used by the operation after
+any acquisition that may suspend.
+
+The native export returns `vector<refcount_ptr<Critter>>`. Its snapshot owners stay
+in the native call frame until every result is inserted into the backend array;
+exceptional insertion releases the remaining native owners during unwinding.
+This preserves native storage while logical destruction remains possible. A
+returned handle may already represent a destroyed critter when acquisition starts.
+The backend's references and the caller's entity cover have separate lifetimes.
+
+The same native ownership boundary applies to all registry-backed overloads of
+`Game.GetMaps`, `Game.GetLocations`, `Game.GetAllItems` and
+`Game.GetOnlinePlayers`: their `vector<refcount_ptr<T>>` results retain each
+entity through backend array insertion. This ownership does not add entity cover
+or change the existing access requirements of their filters.
+
+Other `Game.GetCritters` filters and all `Game.GetAllNpc` overloads inspect mutable
+candidate state. The caller must already cover every critter in the registry
+snapshot, including candidates excluded by the role, condition or prototype
+filter. Missing cover raises an ordinary script exception before a protected
+native property read; the scan never acquires a missing lock. For selective work,
+start with `Any`, acquire the intended entities explicitly, and filter only while
+their required cover is held.
 
 ### Native entry covers
 
@@ -362,11 +431,11 @@ Managed C# enters the same backend-neutral `ScriptSystem`, entity, property, eve
 - `[ModuleInit(priority)]` marks a static parameterless `void` or `Task` method. `ScriptSystem::InitModules()` still orders initializers by ascending priority; a returned task is awaited inside the backend-owned synchronization context before initialization advances.
 - Event, timer, remote-call, property, and other engine-dispatched handlers use their managed attributes from `CoreScripts/Attributes.cs`. A dispatcher-owned attributed method is entered through its dispatcher, not invoked directly merely because C# can name it.
 - `async void` is rejected. Awaitable handlers and named calls return `Task`; use `Task<T>` only where the caller contract consumes a result. Inbound remote-call return values are ignored by the wire even when the managed handler is awaitable.
-- `Game.YieldAsync(milliseconds)` schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
+- `ScriptTask.Delay(milliseconds)` schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
 - Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC007` and `FOSYNC009` catch invalid targets, missing propagation, entry declarations, covered collections, and locks crossing `await`.
 - Cover normally does not survive `await`. Preserve it only through the explicit `[PreservesCover]` contract supported by the called operation; otherwise re-resolve mutable state and reacquire the complete cover after resumption.
 - Named invocation requires `[CallableByName]`. Administrative and internal named-call allowlists are separate boundaries; do not widen one to satisfy the other.
-- Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Native reference objects retained by managed code must follow the generated `__AddRef` / `__Release` ownership contract.
+- Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Ref-counted native wrappers automatically acquire or adopt a lease at the generated boundary. Retain the wrapper across calls and use `using` / `Dispose()` for deterministic release; `__AddRef` / `__Release` are private implementation details, not script ownership calls.
 
 The full generated-project, value-marshalling, runtime-isolation, packaging, platform, and migration details are in [Managed C# Scripting](managed-csharp.md). This section is intentionally the lifecycle crosswalk, not a second competing C# manual.
 

@@ -182,13 +182,13 @@ Callback and remote-call arguments keep their metadata shape: native `any[]` arr
 
 ## Async and continuation scheduling
 
-`Game.YieldAsync(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
+`ScriptTask.Delay(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
 
 Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pumps only its backends after releasing the frame-property lock. Every resumed continuation re-enters the owning Engine through `RunScriptContext`; on the server this creates a fresh synchronization context. A newly posted continuation waits for a later frame, so a yielding loop cannot monopolize one frame.
 
 `Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
-Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
+Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `ScriptTask.Delay` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
 `ScriptTask.Delay(timespan)` retains nanoseconds; `Delay(int)` adapts milliseconds.
 Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
@@ -457,7 +457,7 @@ A source port is complete only when declarations, generated API use, lifecycle, 
 
 Preserve public metadata names, remote-call wire declarations, property layouts, persisted identifiers, and behavior unless the migration deliberately changes them. Backend-neutral metadata should not change merely because syntax changed. Run both sides during a controlled comparison only when the project has explicitly designed that lane; do not ship two handlers for the same event or remote call accidentally.
 
-Replace AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield`, and dynamic synchronization comments with the managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync`, and cover-attribute/analyzer contracts. Port Engine-provided helpers by semantics, not by transliterating syntax or retaining no-op compatibility shims.
+Replace AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield`, and dynamic synchronization comments with the managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay`, and cover-attribute/analyzer contracts. Port Engine-provided helpers by semantics, not by transliterating syntax or retaining no-op compatibility shims.
 
 ## Project documentation boundary
 

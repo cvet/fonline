@@ -840,7 +840,16 @@ namespace NativeDataCaller
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {
-                    accessor.AddArrayElement(data, make_nptr(&e).void_cast());
+                    if constexpr (specialization_of<typename raw_t::value_type, refcount_ptr>) {
+                        static_assert(std::is_base_of_v<Entity, typename raw_t::value_type::element_type>, "Owning script result vectors require entity elements");
+
+                        // The native vector retains every owner while the backend copies a borrowed entity slot
+                        nptr<Entity> element = e.get();
+                        accessor.AddArrayElement(data, make_ptr(&element).void_cast());
+                    }
+                    else {
+                        accessor.AddArrayElement(data, make_nptr(&e).void_cast());
+                    }
                 }
             }
             else if constexpr (map_collection<raw_t>) {

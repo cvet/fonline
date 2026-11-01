@@ -270,8 +270,8 @@ Before updating:
 2. Preserve a dirty worktree with a named stash or separate worktree, including untracked generated documentation, and retain that safety copy until validation passes.
 3. Preserve the current generated JSON model under ignored `Workspace/` when it is not available from a committed baseline.
 
-Rebase unpublished commits onto the fetched base, including on branches with an upstream.
-Keep already-pushed tips as ancestors; merge only diverged published histories.
+On every branch with a remote tip, preserve the entire history, including unpublished commits. Integrate incoming changes with an ordinary merge; never rebase, reset or amend that branch. No force-push or remote-branch deletion.
+Retain the latest published tip on the publication's first-parent chain. When histories diverge, start an integration branch from the published tip and merge the preserved local branch into it. Before publication, verify that the destination's published tip is an ancestor of the final local tip.
 Apply separately to Engine and embedding projects.
 
 After integration:

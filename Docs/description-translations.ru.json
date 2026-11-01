@@ -7418,6 +7418,14 @@
           "source_sha256": "2e98ceeb6e5a4a92a93de2943bc31165d55682c9e86ae69f3f74ce73c10632ca",
           "translation": "SyncScope: требует self и текущую карту для размещенной сущности; пересчитывает видимых криттеров и предметы."
         },
+        "/symbols/@id=script.method.server.Critter.ReleaseExplicitPersistence/contract/notes": {
+          "source_sha256": "86901770ef0fc6c7f18e190f0601af43e7ff536643be9ba4ee3e04229d51336e",
+          "translation": "SyncScope: требует self, его фактическую текущую карту и дерево persistent-потомков; проверяет без приобретения cover\nСнимает только собственный explicit-запрос self; обычный возврат включает повторный вызов при уже снятом запросе"
+        },
+        "/symbols/@id=script.method.server.Critter.ReleaseExplicitPersistence/description": {
+          "source_sha256": "d30df640e06079e473fd8df16a77b458c63c5c404ec8812b5958bd9e9075f058",
+          "translation": "Снимает только собственный запрос persistence этого криттера, сохраняя унаследованную persistence"
+        },
         "/symbols/@id=script.method.server.Critter.SendGlobalMapGroupInfo/description": {
           "source_sha256": "de85723b179bd20ae55d760089373dbf877f7c72e09fd63042f96840536cb2b9",
           "translation": "SyncScope: требует self и каждого криттера его текущей группы глобальной карты; отправляет остальных участников игроку self без получения дополнительного покрытия. Начальная информация содержит только самого криттера, поэтому код, присоединяющий криттера глобальной карты к игроку, покрывает группу через Sync::WidenCritterWithGlobalMapGroup и затем вызывает этот метод."
@@ -7827,16 +7835,16 @@
           "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы предметов не покрыты для последующего чтения или изменения."
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23568d2e4962ad093b/description": {
-          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
-          "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
+          "source_sha256": "7c13dea3b81b083398f1103d42a029631faabc3c0c21244d1bb33ddcfa0d8a47",
+          "translation": "SyncScope: до фильтрации NPC требуется cover всех critter-кандидатов реестра; scan никогда не получает cover"
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23d318af6f5c78cd43/description": {
-          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
-          "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
+          "source_sha256": "7c13dea3b81b083398f1103d42a029631faabc3c0c21244d1bb33ddcfa0d8a47",
+          "translation": "SyncScope: до фильтрации NPC требуется cover всех critter-кандидатов реестра; scan никогда не получает cover"
         },
         "/symbols/@id=script.method.server.Game.GetAllNpc%23e7c595cfaf4c11a4/description": {
-          "source_sha256": "be374fe25044df64d86b52aa07a99ea3609032bf7e581c8a797e64a47f419e3f",
-          "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы NPC-криттеров не покрыты для последующего чтения или изменения."
+          "source_sha256": "7c13dea3b81b083398f1103d42a029631faabc3c0c21244d1bb33ddcfa0d8a47",
+          "translation": "SyncScope: до фильтрации NPC требуется cover всех critter-кандидатов реестра; scan никогда не получает cover"
         },
         "/symbols/@id=script.method.server.Game.GetAllocatorMemoryUsage/description": {
           "source_sha256": "3d242bcc4abcdd439c391381617b957c7a1a1bfaf178e8cd647d9d17e2a93753",
@@ -7851,8 +7859,8 @@
           "translation": "SyncScope: только считает записи реестра; покрытие сущности не требуется."
         },
         "/symbols/@id=script.method.server.Game.GetCritters/description": {
-          "source_sha256": "d62883512b2f1620d47bf38c41c51043654ec6f3d294360e0bd8cceb589da81b",
-          "translation": "SyncScope: только сканирует реестр; возвращенные дескрипторы криттеров не покрыты для последующего чтения или изменения."
+          "source_sha256": "00d139f0d98d82b76477c5e69dfd1b4b4a8330953cd3c76e643f0f94e1a333fa",
+          "translation": "SyncScope: Any читает только реестр; прочие фильтры требуют cover всех кандидатов; scan никогда не получает cover"
         },
         "/symbols/@id=script.method.server.Game.GetDistance%231be05ad1508d9bdf/description": {
           "source_sha256": "983f0050c35e4a744ceb75bb541dfaa0672a27e477b8d7ad7f26ac37f577f083",

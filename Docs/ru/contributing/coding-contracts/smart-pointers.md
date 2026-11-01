@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"00127de2f7ad8dc83ae4397bee91938e88a859e61e5d4d9ce1f581f7dff69a4e"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"5787750969d6d3c57fb0d903519253583ace7aedca1fc13a4fab7be26113070f"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.
@@ -376,7 +376,7 @@ refcount_ptr<Entity> adopted = refcount_ptr<Entity>::from_adopted_ref(raw_entity
 ## Граница script binding (`FO_SCRIPT_API`)
 
 Binding `///@ ExportMethod` создаёт `BuildTools/codegen.py`, и каждый
-script-visible handle в generated ABI использует `ptr<T>` / `nptr<T>`, включая
+script-visible scalar handle в generated ABI использует `ptr<T>` / `nptr<T>`, включая
 `///@ ExportEvent`, `FO_ENTITY_EVENT`, `///@ ExportRefType` и
 `///@ EngineHook`. Codegen запрещает bare raw handle pointers, а
 `NativeDataProvider` / `NativeDataCaller` содержат static assert.
@@ -388,6 +388,12 @@ script-visible handle в generated ABI использует `ptr<T>` / `nptr<T>`
   `readonly_vector<ptr<T>>` / `readonly_vector<nptr<T>>`. Только metadata
   AngelScript сводит element к raw handle, сохраняя registered signature и
   compatibility hash; generated extern и `NativeCall` сохраняют C++ wrapper.
+- Метод export может вернуть владеющий snapshot сущностей как `vector<refcount_ptr<T>>`.
+  `NativeCallImpl` удерживает vector до конца `ReturnArg`, который передаёт заимствованный
+  слот `Entity` каждой вставке в backend; обычный и аварийный выход освобождают native holds.
+  Тип script array и compatibility hash сохраняются. Владеющие scalar returns,
+  входные контейнеры владельцев и returns `readonly_vector<refcount_ptr<T>>`
+  запрещены; это исключение не предоставляет entity cover.
 - Методы `///@ ExportRefType` используют wrapper для return и generated
   `ptr<RefType>` receiver; script metadata и compatibility hash не меняются.
 - Регистрация AngelScript не меняется, поэтому миграция `.fos`, bytecode или

@@ -320,6 +320,8 @@ auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
     result.reserve(all_critters.size());
 
     for (auto& cr : all_critters) {
+        ValidateEntityAccess(cr);
+
         if (!cr->GetControlledByPlayer()) {
             result.emplace_back(cr);
         }
@@ -336,6 +338,8 @@ auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
     result.reserve(all_critters.size());
 
     for (auto& cr : all_critters) {
+        ValidateEntityAccess(cr);
+
         if (cr->GetControlledByPlayer()) {
             result.emplace_back(cr);
         }

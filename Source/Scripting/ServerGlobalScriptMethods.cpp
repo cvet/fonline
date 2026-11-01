@@ -707,21 +707,28 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
     return entity ? entity.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations
+// SyncScope: Any scans registry only; other filters require all candidate critters; never acquires cover
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
+FO_SCRIPT_API vector<refcount_ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
 {
     vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
+
+    if (findType == CritterFindType::Any) {
+        return critters;
+    }
+
     vector<refcount_ptr<Critter>> result;
     result.reserve(critters.size());
 
     for (size_t i = 0; i != critters.size(); i++) {
+        ValidateEntityAccess(critters[i]);
+
         if (critters[i]->CheckFind(findType)) {
             result.emplace_back(std::move(critters[i]));
         }
     }
 
-    return MakeScriptHandleVector<Critter>(result);
+    return result;
 }
 
 // SyncScope: no existing entity cover required; creates a disconnected not-logged-in player session
@@ -818,18 +825,18 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMa
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
-    return MakeScriptRefHandleVectorAs<Map, Map>(maps);
+    return maps;
 }
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
-    vector<ptr<Map>> result;
+    vector<refcount_ptr<Map>> result;
 
     if (!pid) {
         result.reserve(maps.size());
@@ -839,7 +846,7 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hst
         auto map = maps[i].as_ptr();
 
         if (!pid || pid == map->GetProtoId()) {
-            result.emplace_back(map);
+            result.emplace_back(std::move(maps[i]));
         }
     }
 
@@ -848,17 +855,17 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hst
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations
 ///@ ExportMethod
-FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
+FO_SCRIPT_API vector<refcount_ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
 {
     nptr<const ProtoMap> proto_lookup = proto;
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
-    vector<ptr<Map>> result;
+    vector<refcount_ptr<Map>> result;
 
     if (!proto_lookup) {
         result.reserve(maps.size());
 
         for (size_t i = 0; i != maps.size(); i++) {
-            result.emplace_back(maps[i]);
+            result.emplace_back(std::move(maps[i]));
         }
 
         return result;
@@ -868,7 +875,7 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, npt
         auto map = maps[i].as_ptr();
 
         if (proto_lookup->GetProtoId() == map->GetProtoId()) {
-            result.emplace_back(map);
+            result.emplace_back(std::move(maps[i]));
         }
     }
 
@@ -918,7 +925,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, L
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<refcount_ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
     vector<refcount_ptr<Location>> result;
@@ -928,12 +935,12 @@ FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> s
         result.emplace_back(std::move(locs[i]));
     }
 
-    return MakeScriptHandleVector<Location>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<refcount_ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
     vector<refcount_ptr<Location>> result;
@@ -948,12 +955,12 @@ FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> s
         }
     }
 
-    return MakeScriptHandleVector<Location>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, nptr<ProtoLocation> proto)
+FO_SCRIPT_API vector<refcount_ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, nptr<ProtoLocation> proto)
 {
     nptr<const ProtoLocation> proto_lookup = proto;
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
@@ -966,7 +973,7 @@ FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> s
             result.emplace_back(std::move(locs[i]));
         }
 
-        return MakeScriptHandleVector<Location>(result);
+        return result;
     }
 
     for (size_t i = 0; i != locs.size(); i++) {
@@ -975,12 +982,12 @@ FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> s
         }
     }
 
-    return MakeScriptHandleVector<Location>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<refcount_ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
@@ -993,12 +1000,12 @@ FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> s
         }
     }
 
-    return MakeScriptHandleVector<Location>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<refcount_ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
     vector<refcount_ptr<Item>> result;
@@ -1013,12 +1020,12 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, nptr<ProtoItem> proto)
+FO_SCRIPT_API vector<refcount_ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, nptr<ProtoItem> proto)
 {
     nptr<const ProtoItem> proto_lookup = proto;
     vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
@@ -1031,7 +1038,7 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server
             result.emplace_back(std::move(items[i]));
         }
 
-        return MakeScriptHandleVector<Item>(result);
+        return result;
     }
 
     for (size_t i = 0; i != items.size(); i++) {
@@ -1040,12 +1047,12 @@ FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned player handles are not covered for later reads/mutations
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<ptr<Player>> Server_Game_GetOnlinePlayers(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<refcount_ptr<Player>> Server_Game_GetOnlinePlayers(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
     vector<refcount_ptr<Player>> result;
@@ -1055,7 +1062,7 @@ FO_SCRIPT_API vector<ptr<Player>> Server_Game_GetOnlinePlayers(ptr<ServerEngine>
         result.emplace_back(std::move(players[i]));
     }
 
-    return MakeScriptHandleVector<Player>(result);
+    return result;
 }
 
 // SyncScope: database registry read only; no live player cover is required
@@ -1500,7 +1507,7 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ptr<ServerEngine> server, hstring 
     }
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server)
 {
@@ -1508,7 +1515,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> serve
     return MakeScriptRefHandleVectorAs<Critter, Critter>(npcs);
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid)
 {
@@ -1527,7 +1534,7 @@ FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> serve
     return result;
 }
 
-// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations
+// SyncScope: requires all registry candidate critters before NPC filtering; never acquires cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, ptr<ProtoCritter> proto)
 {
